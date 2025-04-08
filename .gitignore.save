@@ -1,0 +1,43 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Compiled Sanity Studio
+/dist
+
+# Temporary Sanity runtime
+/.sanity
+
+# Logs
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+/coverage
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+
+# SSL certs
+*.pem
+
+# TypeScript
+*.tsbuildinfo
+
+# Dotenv and local-only files
+.env
+.env.*.local
+*.local
+
+# Vite/Next.js cache (if using)
+.vite/
+.next/
+
