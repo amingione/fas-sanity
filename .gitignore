@@ -14,16 +14,30 @@
 # Logs
 /logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Coverage directory used by testing tools
 /coverage
 
-# Misc
+# OS / Editor junk
 .DS_Store
+Thumbs.db
+.vscode/
+
+# SSL certs
 *.pem
 
 # Typescript
 *.tsbuildinfo
 
 # Dotenv and similar local-only files
+.env
+.env.*.local
 *.local
+
+
+# Vite/Next.js cache (if using)
+.vite/
+.next/
