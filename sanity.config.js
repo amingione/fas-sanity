@@ -21,7 +21,6 @@ export default defineConfig({
   plugins: [
     structureTool({structure}),
     colorInput(),
-    imageHotspotArrayPlugin(),
     customDocumentActions(),
     media(),
     ...(isDev ? devOnlyPlugins : []),
