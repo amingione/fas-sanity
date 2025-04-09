@@ -10,8 +10,13 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "jsx": "preserve",
-    "incremental": true
+    "incremental": true,
+    "outDir": "./dist"
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": ["**/*.ts", "**/*.tsx", "./sanity.config.js"],
+  "exclude": [
+  "node_modules",
+  "sanity.config.js",
+  "schemaTypes/objects/buildQuote.js"
+]
 }
