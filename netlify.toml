@@ -1,3 +1,6 @@
 [build]
   command = "npm run build"
   publish = "dist"
+
+[build.environment]
+  GO_VERSION = "none"
