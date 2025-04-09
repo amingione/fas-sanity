@@ -3,4 +3,4 @@
   publish = "dist"
 
 [build.environment]
-  GO_VERSION = "none"
+  NODE_VERSION = "18"
