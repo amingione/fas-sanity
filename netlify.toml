@@ -1,11 +1,3 @@
 [build]
   command = "npm run build"
   publish = "dist"
-
-[build.environment]
-  NODE_VERSION = "18"
-
-[context.production.environment]
-  SANITY_STUDIO_PROJECT_ID = "r4og35qd"
-  SANITY_STUDIO_DATASET = "production"
-  PUBLIC_SANITY_WRITE_TOKEN = "your_token_here"
