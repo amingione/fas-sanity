@@ -1,13 +1,13 @@
 import { defineConfig } from 'sanity'
-import { deskTool } from 'sanity/desk'
-import deskStructure from './deskStructure'
+import { deskTool } from '@sanity/desk-tool'
 import { visionTool } from '@sanity/vision'
-import { media } from 'sanity-plugin-media'
-import { structureTool } from 'sanity/structure'
+import { media, mediaAssetSource } from 'sanity-plugin-media'
 import { colorInput } from '@sanity/color-input'
 import { customDocumentActions } from './your/path'
 import { schemaTypes } from './schemaTypes'
+import deskStructure from './deskStructure'
 
+const isDev = process.env.NODE_ENV === 'development'
 const devOnlyPlugins = [visionTool()]
 
 export default defineConfig({
@@ -18,7 +18,7 @@ export default defineConfig({
   dataset: 'production',
 
   plugins: [
-    deskTool({ structure: deskStructure }), // custom desk layout
+    deskTool({ structure: deskStructure }),
     colorInput(),
     customDocumentActions(),
     media(),
@@ -28,15 +28,20 @@ export default defineConfig({
   schema: {
     types: schemaTypes,
   },
+
   form: {
     file: {
       assetSources: (previousAssetSources) => {
-        return previousAssetSources.filter((assetSource) => assetSource !== mediaAssetSource)
+        return previousAssetSources.filter(
+          (assetSource) => assetSource !== mediaAssetSource
+        )
       },
     },
     image: {
       assetSources: (previousAssetSources) => {
-        return previousAssetSources.filter((assetSource) => assetSource === mediaAssetSource)
+        return previousAssetSources.filter(
+          (assetSource) => assetSource === mediaAssetSource
+        )
       },
     },
   },
