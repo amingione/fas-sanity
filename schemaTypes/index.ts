@@ -1,3 +1,4 @@
+import wooProduct from './documents/wooProduct'
 import {buildQuoteType} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
 import {accordionType} from './objects/module/accordionType'
@@ -104,4 +105,4 @@ import {settingsType} from './singletons/settingsType'
 
 const singletons = [homeType, settingsType]
 
-export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuoteType]
+export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuoteType, wooProduct]
