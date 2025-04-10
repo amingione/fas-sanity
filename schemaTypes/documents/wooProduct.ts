@@ -61,12 +61,22 @@ export default defineType({
       name: 'categories',
       title: 'Categories',
       type: 'array',
-      of: [{ type: 'string' }]
+      of: [{ type: 'string' }],
+      initialValue: []
     }),
     defineField({
       name: 'featured',
       title: 'Featured Product',
       type: 'boolean'
+    }),
+    defineField({
+      name: 'productType',
+      title: 'Product Type',
+      type: 'string',
+      options: {
+        list: ['simple', 'variable', 'grouped'],
+        layout: 'dropdown'
+      }
     })
   ]
 })
