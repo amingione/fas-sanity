@@ -9,10 +9,15 @@ import deskStructure from './deskStructure'
 const isDev = process.env.NODE_ENV === 'development'
 const devOnlyPlugins = [visionTool()]
 
+const basePlugins = [
+  deskTool({ structure: deskStructure }),
+  colorInput(),
+  media(),
+]
+
 export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
-
   projectId: 'r4og35qd',
   dataset: 'production',
 
