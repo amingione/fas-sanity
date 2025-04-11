@@ -1,5 +1,7 @@
-// /fas-sanity/schemaTypes/objects/buildQuote.js
-export const buildQuoteType = {
+import { defineType } from 'sanity'
+import { SendIcon } from '@sanity/icons'
+
+export const buildQuote = defineType({
   name: 'buildQuote',
   title: 'Build Quote',
   type: 'document',
@@ -31,14 +33,13 @@ export const buildQuoteType = {
         },
       ],
     },
+    {
+      name: 'quoteSent',
+      title: 'Quote Sent?',
+      type: 'boolean',
+      initialValue: false
+    }
   ],
-};
-
-import { SendIcon } from '@sanity/icons'
-
-export const buildQuote = defineType({
-  // ... existing schema
-  // 👇 ADD THIS INSIDE THE buildQuote definition
   actions: (prev, context) => {
     return [
       ...prev,
@@ -46,6 +47,11 @@ export const buildQuote = defineType({
         label: 'Send Quote Email',
         icon: SendIcon,
         onHandle: async () => {
+          if (context.document.quoteSent) {
+            alert('Quote has already been sent.')
+            return
+          }
+
           const res = await fetch('/.netlify/functions/sendQuoteEmail', {
             method: 'POST',
             body: JSON.stringify({ quoteId: context.document._id }),
@@ -56,6 +62,7 @@ export const buildQuote = defineType({
 
           if (res.ok) {
             alert('Quote sent successfully!')
+            // Optionally patch quoteSent = true (requires Sanity client)
           } else {
             alert('Error sending quote.')
           }
