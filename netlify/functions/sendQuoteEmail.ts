@@ -41,13 +41,16 @@ export const handler: Handler = async (event, context) => {
     }
 
     const html = `
-      <h2>Build Quote for ${quote.customer.fullName}</h2>
-      <p><strong>Purpose:</strong> ${quote.buildPurpose}</p>
-      <p><strong>Target HP:</strong> ${quote.targetHP}whp</p>
-      <ul>
-        ${quote.selectedProducts.map(p => `<li>${p.title} - $${p.price}</li>`).join('')}
-      </ul>
-      <p><strong>Total:</strong> $${quote.quoteTotal}</p>
+      <div style="font-family: sans-serif; color: #333;">
+        <h2 style="color: #000;">Build Quote for ${quote.customer.fullName}</h2>
+        <p><strong>Purpose:</strong> ${quote.buildPurpose}</p>
+        <p><strong>Target HP:</strong> ${quote.targetHP}whp</p>
+        <ul>
+          ${(quote.selectedProducts || []).map(p => `<li>${p.title} - $${p.price.toFixed(2)}</li>`).join('')}
+        </ul>
+        <p><strong>Total:</strong> $${quote.quoteTotal.toFixed(2)}</p>
+        <p>Let us know if you're ready to move forward. We appreciate your business!</p>
+      </div>
     `
 
     await resend.emails.send({
