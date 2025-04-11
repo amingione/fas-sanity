@@ -1,4 +1,5 @@
 import wooProduct from './documents/wooProduct'
+import bill from './documents/bill'
 import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
 import {accordionType} from './objects/module/accordionType'
@@ -117,7 +118,8 @@ const documents = [
   quote,
   shippingLabel,
   invoice,
-  vendor
+  vendor,
+  bill
 ]
 
 import {homeType} from './singletons/homeType'
