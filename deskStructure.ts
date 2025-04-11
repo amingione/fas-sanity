@@ -33,6 +33,11 @@ const deskStructure = (S: StructureBuilder) =>
           .title('Shipping Options')
           .schemaType('shippingOption')
           .child(S.documentTypeList('shippingOption')),
+
+        S.listItem()
+          .title('Vendors')
+          .schemaType('vendor')
+          .child(S.documentTypeList('vendor').title('Vendors')),
   
         S.divider(),
   
