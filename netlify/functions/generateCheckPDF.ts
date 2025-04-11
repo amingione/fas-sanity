@@ -43,26 +43,45 @@ const handler: Handler = async (event) => {
     }
   }
 
+  if (!bill.amount || !bill.vendor?.name || !bill.vendor?.address) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Incomplete bill data for check generation' })
+    }
+  }
+
   const doc = new PDFDocument({ size: 'letter', margin: 36 })
   const date = new Date(bill.paidDate || new Date()).toLocaleDateString()
-  const amountFormatted = `$${bill.amount?.toFixed(2)}`
-  const amountWritten = `${bill.amount?.toFixed(2)} DOLLARS` // Placeholder for words
+  const amountFormatted = `$${bill.amount.toFixed(2)}`
+  const amountWritten = `${bill.amount.toFixed(2)} DOLLARS` // Still a placeholder
 
-  // Top check section
+  // Section heights
+  const sectionHeight = 250
+
+  // Top Check
   doc.fontSize(10).text(`Date: ${date}`, 400, 50)
   doc.text(`Check #: ${bill.checkNumber || 'TBD'}`, 400, 65)
-  doc.text(`Pay to the Order of: ${bill.vendor?.name}`, 50, 90)
+  doc.text(`Pay to the Order of: ${bill.vendor.name}`, 50, 90)
   doc.text(amountFormatted, 400, 90)
   doc.text(amountWritten, 50, 110)
   doc.text(`Memo: ${bill.description || ''}`, 50, 130)
 
-  // Check stub
-  doc.moveTo(36, 180).lineTo(576, 180).stroke()
-  doc.fontSize(12).text('Check Stub', 50, 200)
-  doc.fontSize(10).text(`Payee: ${bill.vendor?.name}`, 50, 220)
-  doc.text(`Address: ${bill.vendor?.address || '—'}`, 50, 235)
-  doc.text(`Amount: ${amountFormatted}`, 50, 250)
-  doc.text(`Memo: ${bill.description || ''}`, 50, 265)
+  // Mid Stub
+  doc.moveTo(36, sectionHeight).lineTo(576, sectionHeight).stroke()
+  doc.fontSize(12).text('Check Stub', 50, sectionHeight + 20)
+  doc.fontSize(10).text(`Payee: ${bill.vendor.name}`, 50, sectionHeight + 40)
+  doc.text(`Address: ${bill.vendor.address}`, 50, sectionHeight + 55)
+  doc.text(`Amount: ${amountFormatted}`, 50, sectionHeight + 70)
+  doc.text(`Memo: ${bill.description || ''}`, 50, sectionHeight + 85)
+
+  // Bottom Stub Copy
+  const copyY = sectionHeight * 2
+  doc.moveTo(36, copyY).lineTo(576, copyY).stroke()
+  doc.fontSize(12).text('Check Stub (Copy)', 50, copyY + 20)
+  doc.fontSize(10).text(`Payee: ${bill.vendor.name}`, 50, copyY + 40)
+  doc.text(`Address: ${bill.vendor.address}`, 50, copyY + 55)
+  doc.text(`Amount: ${amountFormatted}`, 50, copyY + 70)
+  doc.text(`Memo: ${bill.description || ''}`, 50, copyY + 85)
 
   doc.end()
   const { PassThrough } = require('stream')
