@@ -1,5 +1,5 @@
 import { defineType } from 'sanity'
-import { SendIcon } from '@sanity/icons'
+import { ComposeIcon } from '@sanity/icons'
 
 export const buildQuote = defineType({
   name: 'buildQuote',
@@ -45,7 +45,7 @@ export const buildQuote = defineType({
       ...prev,
       {
         label: 'Send Quote Email',
-        icon: SendIcon,
+        icon: ComposeIcon,
         onHandle: async () => {
           if (context.document.quoteSent) {
             alert('Quote has already been sent.')
