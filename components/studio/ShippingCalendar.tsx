@@ -87,7 +87,7 @@ export default function ShippingCalendar() {
   return (
     <Card padding={4}>
       <Heading size={2}>📆 Shipping Calendar + Booking</Heading>
-      <Box display="flex" style={{ flexDirection: 'row', gap: '2rem', marginTop: '1rem' }}>
+      <Box display="flex" paddingTop={4} style={{ flexDirection: 'row', gap: '2rem' }}>
         {/* Calendar Column */}
         <Box flex={2}>
           <Stack space={4}>
