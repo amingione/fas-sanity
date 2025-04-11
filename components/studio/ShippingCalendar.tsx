@@ -1,6 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { useClient } from 'sanity'
-import { Card, Heading, Text, Stack } from '@sanity/ui'
+import { Card, Heading, Text, Stack, Box } from '@sanity/ui'
+
+type RawShippingLabel = {
+  _id: string
+  shipDate: string
+  status?: string
+  trackingUrl?: string
+  labelUrl?: string
+  invoice: {
+    quote: {
+      customer: {
+        fullName: string
+      }
+    }
+  }
+}
 
 type Event = {
   _id: string
@@ -11,39 +26,59 @@ type Event = {
   labelUrl?: string
 }
 
+const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
+  const color = status === 'Delivered' ? 'green' :
+                status === 'Shipped' ? 'blue' :
+                status === 'Delayed' ? 'red' : 'gray';
+
+  return (
+    <span style={{ marginLeft: '0.5rem', color }}>
+      {status}
+    </span>
+  );
+};
+
 export default function ShippingCalendar() {
   const client = useClient({ apiVersion: '2024-04-10' })
   const [events, setEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
     const fetchEvents = async () => {
-      const result = await client.fetch(`
-        *[_type == "shippingLabel" && defined(shipDate)]{
-          _id,
-          shipDate,
-          status,
-          trackingUrl,
-          labelUrl,
-          invoice->{
-            quote->{
-              customer->{
-                fullName
+      setLoading(true);
+      try {
+        const result: RawShippingLabel[] = await client.fetch(`
+          *[_type == "shippingLabel" && defined(shipDate)]{
+            _id,
+            shipDate,
+            status,
+            trackingUrl,
+            labelUrl,
+            invoice->{
+              quote->{
+                customer->{
+                  fullName
+                }
               }
             }
           }
-        }
-      `)
+        `)
 
-      const formatted = result.map((item: any) => ({
-        _id: item._id,
-        shipDate: item.shipDate,
-        customerName: item.invoice?.quote?.customer?.fullName || 'Unknown',
-        status: item.status || 'Pending',
-        trackingUrl: item.trackingUrl,
-        labelUrl: item.labelUrl
-      }))
+        const formatted = result.map((item) => ({
+          _id: item._id,
+          shipDate: item.shipDate,
+          customerName: item.invoice?.quote?.customer?.fullName || 'Unknown',
+          status: item.status || 'Pending',
+          trackingUrl: item.trackingUrl,
+          labelUrl: item.labelUrl
+        }))
 
-      setEvents(formatted)
+        setEvents(formatted)
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
     }
 
     fetchEvents()
@@ -51,57 +86,68 @@ export default function ShippingCalendar() {
 
   return (
     <Card padding={4}>
-      <Heading size={2}>📆 Shipping Calendar</Heading>
-      <Stack space={4} marginTop={4}>
-        {events.length === 0 ? (
-          <Text>No shipments scheduled.</Text>
-        ) : (
-          Object.entries(
-            events.reduce((acc, event) => {
-              const dateKey = new Date(event.shipDate).toDateString()
-              acc[dateKey] = acc[dateKey] || []
-              acc[dateKey].push(event)
-              return acc
-            }, {} as Record<string, Event[]>)
-          ).map(([date, dayEvents]) => (
-            <Card
-              key={date}
-              padding={3}
-              shadow={1}
-              radius={2}
-              style={{
-                backgroundColor: new Date(date).toDateString() === new Date().toDateString() ? '#fef9e7' : undefined
-              }}
-            >
-              <Heading size={1}>{date}</Heading>
-              <Stack space={2} marginTop={2}>
-                {dayEvents.map((event) => (
-                  <Text key={event._id}>
-                    🚚 {event.customerName} — 
-                    <span style={{
-                      marginLeft: '0.5rem',
-                      color: event.status === 'Delivered' ? 'green' :
-                             event.status === 'Shipped' ? 'blue' :
-                             event.status === 'Delayed' ? 'red' : 'gray'
-                    }}>
-                      {event.status}
-                    </span>
-                    {event.trackingUrl && (
-                      <a href={event.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 12 }}>
-                        📦 Track
-                      </a>
-                    )}
-                    {event.labelUrl && (
-                      <a href={event.labelUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
-                        🧾 Label
-                      </a>
-                    )}
-                  </Text>
-                ))}
-              </Stack>
-            </Card>
-          ))
-        )}
+      <Heading size={2}>📆 Shipping Calendar + Booking</Heading>
+      <Stack space={4} marginTop={4} style={{ display: 'flex', flexDirection: 'row' }}>
+        {/* Calendar Column */}
+        <Box flex={2}>
+          <Stack space={4}>
+            {loading ? (
+              <Text>Loading...</Text>
+            ) : events.length === 0 ? (
+              <Text>No shipments scheduled.</Text>
+            ) : (
+              Object.entries(
+                events.reduce((acc, event) => {
+                  const dateKey = new Date(event.shipDate).toDateString()
+                  acc[dateKey] = acc[dateKey] || []
+                  acc[dateKey].push(event)
+                  return acc
+                }, {} as Record<string, Event[]>)
+              ).map(([date, dayEvents]) => (
+                <Card
+                  key={date}
+                  padding={3}
+                  shadow={1}
+                  radius={2}
+                  style={{
+                    backgroundColor: new Date(date).toDateString() === new Date().toDateString() ? '#fef9e7' : undefined
+                  }}
+                >
+                  <Heading size={1}>{date}</Heading>
+                  <Stack space={2} marginTop={2}>
+                    {dayEvents.map((event) => (
+                      <Text key={event._id}>
+                        🚚 {event.customerName} — 
+                        <StatusBadge status={event.status} />
+                        {event.trackingUrl && (
+                          <a href={event.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 12 }}>
+                            📦 Track
+                          </a>
+                        )}
+                        {event.labelUrl && (
+                          <a href={event.labelUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
+                            🧾 Label
+                          </a>
+                        )}
+                      </Text>
+                    ))}
+                  </Stack>
+                </Card>
+              ))
+            )}
+          </Stack>
+        </Box>
+
+        {/* Calendly Sidebar */}
+        <Box flex={1} style={{ minWidth: '400px', height: '700px' }}>
+          <iframe
+            src="https://calendly.com/fasmotorsports-support"
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            style={{ borderRadius: '8px' }}
+          />
+        </Box>
       </Stack>
     </Card>
   )
