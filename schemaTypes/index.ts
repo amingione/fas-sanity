@@ -1,5 +1,5 @@
 import wooProduct from './documents/wooProduct'
-import {buildQuoteType} from './objects/buildQuote'
+import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
 import {accordionType} from './objects/module/accordionType'
 import {calloutType} from './objects/module/calloutType'
@@ -111,4 +111,4 @@ import shippingOption from './documents/shippingOption'
 
 const singletons = [homeType, siteSettingsType]
 
-export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuoteType, wooProduct, productBundle, customer, shippingOption]
+export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, wooProduct, productBundle, customer, shippingOption]

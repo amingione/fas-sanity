@@ -31,6 +31,7 @@
     "sanity": "^3.83.0",
     "sanity-plugin-media": "^3.0.2",
     "slug": "^8.2.2",
+    "stripe": "^18.0.0",
     "styled-components": "^6.1.17"
   },
   "devDependencies": {
