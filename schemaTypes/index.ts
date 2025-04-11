@@ -101,8 +101,24 @@ import {productVariantType} from './documents/productVariant'
 import category from './documents/category'
 import vehicleModel from './documents/vehicleModel'
 import { productBundle } from './documents/productBundle'
+import quote from './documents/quote'
+import shippingLabel from './documents/shippingLabel'
+import invoice from './documents/invoice'
+import vendor from './documents/vendor'
 
-const documents = [collectionType, colorThemeType, pageType, productType, productVariantType, category, vehicleModel]
+const documents = [
+  collectionType,
+  colorThemeType,
+  pageType,
+  productType,
+  productVariantType,
+  category,
+  vehicleModel,
+  quote,
+  shippingLabel,
+  invoice,
+  vendor
+]
 
 import {homeType} from './singletons/homeType'
 import { settingsType as siteSettingsType } from './singletons/siteSettingsType'

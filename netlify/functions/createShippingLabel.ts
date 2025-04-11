@@ -13,7 +13,7 @@ const sanity = createClient({
 })
 
 export const handler: Handler = async (event) => {
-  const { customerId, labelDescription } = JSON.parse(event.body || '{}')
+  const { customerId, labelDescription, invoiceId } = JSON.parse(event.body || '{}')
 
   try {
     const customer = await sanity.fetch(
@@ -79,7 +79,8 @@ export const handler: Handler = async (event) => {
           ]
         },
         label_format: "pdf",
-        label_download_type: "url"
+        label_download_type: "url",
+        external_order_id: invoiceId,
       },
       {
         headers: {
@@ -91,11 +92,14 @@ export const handler: Handler = async (event) => {
 
     const labelData = response.data
 
+    await sanity.patch(invoiceId).set({ status: 'Shipped' }).commit()
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         trackingNumber: labelData.tracking_number,
-        labelUrl: labelData.label_download.href
+        labelUrl: labelData.label_download.href,
+        invoiceUpdated: true
       })
     }
   } catch (err: any) {
