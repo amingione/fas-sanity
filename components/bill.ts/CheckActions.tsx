@@ -10,33 +10,39 @@ interface CheckActionsProps {
 
 export default function CheckActions({ doc }: CheckActionsProps) {
   const id = doc?.displayed?._id?.replace('drafts.', '')
+  const [loading, setLoading] = React.useState(false)
 
   const handlePrint = async () => {
     if (!id) return
-    const res = await fetch('/.netlify/functions/generateCheckPDF', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ billId: id })
-    })
+    setLoading(true)
+    try {
+      const res = await fetch('/.netlify/functions/generateCheckPDF', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billId: id })
+      })
 
-    if (!res.ok) {
-      alert('Failed to generate check PDF.')
-      return
+      if (!res.ok) throw new Error('Failed to generate check PDF.')
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = window.document.createElement('a')
+      a.href = url
+      a.download = `check-${id}.pdf`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      alert((err as Error).message)
+    } finally {
+      setLoading(false)
     }
-
-    const blob = await res.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = window.document.createElement('a')
-    a.href = url
-    a.download = `check-${id}.pdf`
-    a.click()
-    window.URL.revokeObjectURL(url)
   }
 
   return (
     <div style={{ marginTop: '2rem' }}>
       <button
         onClick={handlePrint}
+        disabled={loading}
         style={{
           display: 'inline-block',
           padding: '10px 16px',
@@ -44,11 +50,12 @@ export default function CheckActions({ doc }: CheckActionsProps) {
           color: '#fff',
           fontSize: '14px',
           borderRadius: '4px',
-          cursor: 'pointer',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          opacity: loading ? 0.6 : 1,
           border: 'none'
         }}
       >
-        🧾 Print Check
+        {loading ? 'Generating…' : '🧾 Print Check'}
       </button>
     </div>
   )

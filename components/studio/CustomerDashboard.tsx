@@ -15,6 +15,8 @@ export default function CustomerDashboard() {
     const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null)
     const [recentQuotes, setRecentQuotes] = useState<any[]>([])
     const [recentInvoices, setRecentInvoices] = useState<any[]>([])
+    const [sendingQuoteIds, setSendingQuoteIds] = useState<string[]>([])
+    const [sendingInvoiceIds, setSendingInvoiceIds] = useState<string[]>([])
 
     useEffect(() => {
         const fetchData = async () => {
@@ -104,8 +106,10 @@ export default function CustomerDashboard() {
                                     {quote.customer?.name || 'Unknown'} ({quote.customer?.email || 'No email'})
                                   </Text>
                                   <button
+                                    disabled={sendingQuoteIds.includes(quote._id)}
                                     onClick={async () => {
                                       try {
+                                        setSendingQuoteIds((prev) => [...prev, quote._id])
                                         const res = await fetch('/.netlify/functions/sendQuoteEmail', {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
@@ -115,10 +119,12 @@ export default function CustomerDashboard() {
                                         alert(result.message || 'Quote email sent.')
                                       } catch (err) {
                                         alert('Failed to send quote email.')
+                                      } finally {
+                                        setSendingQuoteIds((prev) => prev.filter(id => id !== quote._id))
                                       }
                                     }}
                                   >
-                                    Send Quote
+                                    {sendingQuoteIds.includes(quote._id) ? 'Sending…' : 'Send Quote'}
                                   </button>
                                 </Flex>
                               ))}
@@ -137,8 +143,10 @@ export default function CustomerDashboard() {
                                     {invoice.customer?.name || 'Unknown'} ({invoice.customer?.email || 'No email'})
                                   </Text>
                                   <button
+                                    disabled={sendingInvoiceIds.includes(invoice._id)}
                                     onClick={async () => {
                                       try {
+                                        setSendingInvoiceIds((prev) => [...prev, invoice._id])
                                         const res = await fetch('/.netlify/functions/resendInvoiceEmail', {
                                           method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
@@ -148,10 +156,12 @@ export default function CustomerDashboard() {
                                         alert(result.message || 'Invoice email sent.')
                                       } catch (err) {
                                         alert('Failed to send invoice email.')
+                                      } finally {
+                                        setSendingInvoiceIds((prev) => prev.filter(id => id !== invoice._id))
                                       }
                                     }}
                                   >
-                                    Resend Invoice
+                                    {sendingInvoiceIds.includes(invoice._id) ? 'Sending…' : 'Resend Invoice'}
                                   </button>
                                 </Flex>
                               ))}

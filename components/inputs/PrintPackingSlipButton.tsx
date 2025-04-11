@@ -8,7 +8,10 @@ type Props = {
 }
 
 export default function PrintPackingSlipButton({ invoiceId, customerName, products }: Props) {
+  const [loading, setLoading] = React.useState(false)
+
   const handleClick = async () => {
+    setLoading(true)
     try {
       const response = await fetch('/.netlify/functions/generatePackingSlips', {
         method: 'POST',
@@ -27,10 +30,17 @@ export default function PrintPackingSlipButton({ invoiceId, customerName, produc
       window.URL.revokeObjectURL(url)
     } catch (err) {
       console.error('Failed to download packing slip', err)
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <Button text="🧾 Print Packing Slip" onClick={handleClick} tone="primary" />
+    <Button
+      text={loading ? 'Generating…' : '🧾 Print Packing Slip'}
+      onClick={handleClick}
+      tone="primary"
+      disabled={loading}
+    />
   )
 }

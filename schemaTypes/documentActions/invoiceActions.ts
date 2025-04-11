@@ -1,11 +1,13 @@
 import { DocumentActionComponent } from 'sanity'
 import { createClient } from '@sanity/client'
 
+const projectId = 'r4og35qd'
+
 const sanityClient = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
+  projectId,
+  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
   apiVersion: '2024-04-10',
-  token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  token: process.env.PUBLIC_SANITY_WRITE_TOKEN || '',
   useCdn: false
 })
 

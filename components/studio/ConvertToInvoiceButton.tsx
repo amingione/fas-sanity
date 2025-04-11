@@ -2,13 +2,29 @@ import React from 'react'
 import { Button, Card, Text, useToast } from '@sanity/ui'
 import { useFormValue, useClient } from 'sanity'
 
+interface QuoteDoc {
+  _id: string
+  customer?: any
+  lineItems?: any[]
+  total?: number
+  conversionStatus?: string
+}
+
 export default function ConvertToInvoiceButton() {
   const toast = useToast()
   const sanityClient = useClient({ apiVersion: '2024-04-10' })
-  const quote = useFormValue([]) as any
+  const quote = useFormValue([]) as QuoteDoc
 
   const handleConvert = async () => {
-    if (!quote || !quote._id) return
+    if (!quote?._id || !quote.customer || !quote.lineItems || !quote.total) {
+      toast.push({
+        status: 'warning',
+        title: 'Missing fields',
+        description: 'Quote must include customer, line items, and total.',
+        closable: true
+      })
+      return
+    }
 
     try {
       const newInvoice = await sanityClient.create({
@@ -49,6 +65,7 @@ export default function ConvertToInvoiceButton() {
           text="Convert to Invoice"
           tone="positive"
           onClick={handleConvert}
+          disabled={quote?.conversionStatus === 'Converted'}
         />
       </div>
     </Card>

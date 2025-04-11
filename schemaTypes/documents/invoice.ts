@@ -4,13 +4,14 @@ import StatusBadge from '../../components/inputs/FulfillmentBadge'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
 import PrintPackingSlipButton from '../../components/inputs/PrintPackingSlipButton'
 
-const sanityClient = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
-  apiVersion: '2024-04-10',
-  token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
-  useCdn: false
-})
+const getSanityClient = () =>
+  createClient({
+    projectId: 'r4og35qd',
+    dataset: 'production',
+    apiVersion: '2024-04-10',
+    token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
+    useCdn: false
+  })
 
 export default defineType({
   name: 'invoice',

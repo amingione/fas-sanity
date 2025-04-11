@@ -1,6 +1,5 @@
 import { StructureBuilder } from 'sanity/structure'
 import CustomerDashboard from './components/studio/CustomerDashboard'
-import ShippingCalendar from './components/studio/ShippingCalendar'
 import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerator'
 import FinancialDashboard from './components/studio/FinancialDashboard'
@@ -201,14 +200,6 @@ const deskStructure = (S: StructureBuilder) =>
       S.listItem()
         .title('Customer Dashboard')
         .child(S.component().title('Dashboard').component(CustomerDashboard)),
-
-      S.listItem()
-        .title('Shipping Calendar')
-        .child(
-          S.component()
-            .title('Calendar View')
-            .component(ShippingCalendar)
-        ),
 
       S.listItem()
         .title('Financial Dashboard')
