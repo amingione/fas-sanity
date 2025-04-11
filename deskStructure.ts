@@ -39,6 +39,7 @@ const deskStructure = (S: StructureBuilder) =>
         // Optional: Site Settings
         S.listItem()
           .title('Site Settings')
+          .id('globalSettings')
           .schemaType('siteSettings')
           .child(S.documentTypeList('siteSettings')),  
    
