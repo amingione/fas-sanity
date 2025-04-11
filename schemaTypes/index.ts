@@ -85,6 +85,7 @@ const objects = [
   shopifyProductType,
   shopifyProductVariantType,
   spotType,
+  { name: 'siteSettings', type: 'document', title: 'Site Settings', fields: [{ name: 'title', type: 'string', title: 'Site Title' }, { name: 'description', type: 'text', title: 'Site Description' }, { name: 'logo', type: 'image', title: 'Logo', options: { hotspot: true } }, { name: 'favicon', type: 'image', title: 'Favicon', options: { hotspot: true } }, { name: 'seo', type: 'seo', title: 'Global SEO' }] }
 ]
 
 import {portableTextType} from './portableText/portableTextType'
@@ -97,12 +98,17 @@ import {colorThemeType} from './documents/colorTheme'
 import {pageType} from './documents/page'
 import {productType} from './documents/product'
 import {productVariantType} from './documents/productVariant'
+import category from './documents/category'
+import vehicleModel from './documents/vehicleModel'
+import { productBundle } from './documents/productBundle'
 
-const documents = [collectionType, colorThemeType, pageType, productType, productVariantType]
+const documents = [collectionType, colorThemeType, pageType, productType, productVariantType, category, vehicleModel]
 
 import {homeType} from './singletons/homeType'
-import {settingsType} from './singletons/settingsType'
+import { settingsType as siteSettingsType } from './singletons/siteSettingsType'
+import customer from './documents/customer'
+import shippingOption from './documents/shippingOption'
 
-const singletons = [homeType, settingsType]
+const singletons = [homeType, siteSettingsType]
 
-export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuoteType, wooProduct]
+export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuoteType, wooProduct, productBundle, customer, shippingOption]

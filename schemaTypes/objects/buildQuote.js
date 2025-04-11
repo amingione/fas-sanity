@@ -33,3 +33,34 @@ export const buildQuoteType = {
     },
   ],
 };
+
+import { SendIcon } from '@sanity/icons'
+
+export const buildQuote = defineType({
+  // ... existing schema
+  // 👇 ADD THIS INSIDE THE buildQuote definition
+  actions: (prev, context) => {
+    return [
+      ...prev,
+      {
+        label: 'Send Quote Email',
+        icon: SendIcon,
+        onHandle: async () => {
+          const res = await fetch('/.netlify/functions/sendQuoteEmail', {
+            method: 'POST',
+            body: JSON.stringify({ quoteId: context.document._id }),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (res.ok) {
+            alert('Quote sent successfully!')
+          } else {
+            alert('Error sending quote.')
+          }
+        }
+      }
+    ]
+  }
+})
