@@ -87,53 +87,53 @@ export default function ShippingCalendar() {
   return (
     <Card padding={4}>
       <Heading size={2}>📆 Shipping Calendar + Booking</Heading>
-      <Stack space={4} marginTop={4} style={{ display: 'flex', flexDirection: 'row' }}>
+      <Box display="flex" style={{ flexDirection: 'row', gap: '2rem', marginTop: '1rem' }}>
         {/* Calendar Column */}
         <Box flex={2}>
           <Stack space={4}>
-            {loading ? (
-              <Text>Loading...</Text>
-            ) : events.length === 0 ? (
-              <Text>No shipments scheduled.</Text>
-            ) : (
-              Object.entries(
-                events.reduce((acc, event) => {
-                  const dateKey = new Date(event.shipDate).toDateString()
-                  acc[dateKey] = acc[dateKey] || []
-                  acc[dateKey].push(event)
-                  return acc
-                }, {} as Record<string, Event[]>)
-              ).map(([date, dayEvents]) => (
-                <Card
-                  key={date}
-                  padding={3}
-                  shadow={1}
-                  radius={2}
-                  style={{
-                    backgroundColor: new Date(date).toDateString() === new Date().toDateString() ? '#fef9e7' : undefined
-                  }}
-                >
-                  <Heading size={1}>{date}</Heading>
-                  <Stack space={2} marginTop={2}>
-                    {dayEvents.map((event) => (
-                      <Text key={event._id}>
-                        🚚 {event.customerName} — 
-                        <StatusBadge status={event.status} />
-                        {event.trackingUrl && (
-                          <a href={event.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 12 }}>
-                            📦 Track
-                          </a>
-                        )}
-                        {event.labelUrl && (
-                          <a href={event.labelUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
-                            🧾 Label
-                          </a>
-                        )}
-                      </Text>
-                    ))}
-                  </Stack>
-                </Card>
-              ))
+            {loading && <Text>Loading...</Text>}
+            {!loading && events.length === 0 && <Text>No shipments scheduled.</Text>}
+            {!loading && events.length > 0 && (
+              <>
+                {Object.entries(
+                  events.reduce((acc, event) => {
+                    const dateKey = new Date(event.shipDate).toDateString()
+                    acc[dateKey] = acc[dateKey] || []
+                    acc[dateKey].push(event)
+                    return acc
+                  }, {} as Record<string, Event[]>)
+                ).map(([date, dayEvents]) => (
+                  <Card
+                    key={date}
+                    padding={3}
+                    shadow={1}
+                    radius={2}
+                    style={{
+                      backgroundColor: new Date(date).toDateString() === new Date().toDateString() ? '#fef9e7' : undefined
+                    }}
+                  >
+                    <Heading size={1}>{date}</Heading>
+                    <Stack space={2} marginTop={2}>
+                      {dayEvents.map((event) => (
+                        <Text key={event._id}>
+                          🚚 {event.customerName} — 
+                          <StatusBadge status={event.status} />
+                          {event.trackingUrl && (
+                            <a href={event.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 12 }}>
+                              📦 Track
+                            </a>
+                          )}
+                          {event.labelUrl && (
+                            <a href={event.labelUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
+                              🧾 Label
+                            </a>
+                          )}
+                        </Text>
+                      ))}
+                    </Stack>
+                  </Card>
+                ))}
+              </>
             )}
           </Stack>
         </Box>
@@ -148,7 +148,7 @@ export default function ShippingCalendar() {
             style={{ borderRadius: '8px' }}
           />
         </Box>
-      </Stack>
+      </Box>
     </Card>
   )
 }
