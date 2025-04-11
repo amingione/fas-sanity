@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useClient } from 'sanity'
 import { Card, Heading, Text, Stack, Box } from '@sanity/ui'
+import { InlineWidget } from "react-calendly"
 
 type RawShippingLabel = {
   _id: string
@@ -140,13 +141,7 @@ export default function ShippingCalendar() {
 
         {/* Calendly Sidebar */}
         <Box flex={1} style={{ minWidth: '400px', height: '700px' }}>
-          <iframe
-            src="https://calendly.com/fasmotorsports-support"
-            width="100%"
-            height="100%"
-            frameBorder="0"
-            style={{ borderRadius: '8px' }}
-          />
+          <InlineWidget url="https://calendly.com/fasmotorsports-support" styles={{ height: '100%' }} />
         </Box>
       </Box>
     </Card>
