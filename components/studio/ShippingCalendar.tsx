@@ -83,7 +83,7 @@ export default function ShippingCalendar() {
     }
 
     fetchEvents()
-  }, [client])
+  }, [])
 
   return (
     <Card padding={4}>
@@ -146,4 +146,10 @@ export default function ShippingCalendar() {
       </Box>
     </Card>
   )
+}
+
+export const shippingCalendarTool = {
+  name: 'shipping-calendar',
+  title: 'Shipping Calendar',
+  component: ShippingCalendar,
 }

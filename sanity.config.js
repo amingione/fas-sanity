@@ -6,13 +6,15 @@ import { colorInput } from '@sanity/color-input'
 import { schemaTypes } from './schemaTypes'
 import ShippingCalendar from './components/studio/ShippingCalendar'
 import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
-
+import deskStructure from './deskStructure'
 
 const isDev = process.env.NODE_ENV === 'development'
 const devOnlyPlugins = [visionTool()]
 
 const basePlugins = [
-  deskTool({ structure: () => ShippingCalendar }),
+  deskTool({
+    structure: deskStructure,
+  }),
   colorInput(),
   media(),
 ]
@@ -24,10 +26,20 @@ export default defineConfig({
   dataset: 'production',
 
   plugins: [
-    deskTool({ structure: () => ShippingCalendar }),
+    deskTool({
+      structure: deskStructure,
+    }),
     colorInput(),
     media(),
     ...(isDev ? devOnlyPlugins : [])
+  ],
+
+  tools: [
+    {
+      name: 'shipping-calendar',
+      title: 'Shipping Calendar',
+      component: ShippingCalendar,
+    },
   ],
 
   document: {

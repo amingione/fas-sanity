@@ -81,9 +81,10 @@ export default function BulkPackingSlipGenerator() {
             <Stack space={2}>
               <Text>🧾 {invoice.customerName}</Text>
               <Button
-                text="Download Packing Slip"
+                text={status[invoice._id] === 'Generating...' ? 'Generating…' : 'Download Packing Slip'}
                 onClick={() => generateSlip(invoice)}
                 tone="primary"
+                disabled={status[invoice._id] === 'Generating...'}
               />
               <Text size={1} muted>{status[invoice._id]}</Text>
             </Stack>

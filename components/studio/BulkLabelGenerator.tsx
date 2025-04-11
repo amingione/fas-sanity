@@ -73,9 +73,10 @@ export default function BulkLabelGenerator() {
               <Text>🧾 {invoice.customerName}</Text>
               <Text>Method: {invoice.shippingMethod}</Text>
               <Button
-                text="Generate Label"
+                text={status[invoice._id] === 'Generating...' ? 'Generating…' : 'Generate Label'}
                 onClick={() => generateLabel(invoice)}
                 tone="primary"
+                disabled={status[invoice._id] === 'Generating...'}
               />
               <Text size={1} muted>{status[invoice._id]}</Text>
             </Stack>
