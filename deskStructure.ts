@@ -20,13 +20,6 @@ const deskStructure = (S: StructureBuilder) =>
         .title('Quote Requests')
         .schemaType('buildQuote')
         .child(S.documentTypeList('buildQuote').title('Quote Requests')),
-
-      S.divider(),
-
-      S.listItem()
-        .title('Site Settings')
-        .schemaType('siteSettings')
-        .child(S.documentTypeList('siteSettings').title('Settings')),
         
       
         S.divider(),
