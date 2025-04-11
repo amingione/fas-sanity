@@ -5,6 +5,8 @@ import { media } from 'sanity-plugin-media'
 import { colorInput } from '@sanity/color-input'
 import { schemaTypes } from './schemaTypes'
 import deskStructure from './deskStructure'
+import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
+
 
 const isDev = process.env.NODE_ENV === 'development'
 const devOnlyPlugins = [visionTool()]
@@ -28,7 +30,14 @@ export default defineConfig({
     ...(isDev ? devOnlyPlugins : [])
   ],
 
+  document: {
+    actions: (prev, context) =>
+      context.schemaType === 'invoice'
+        ? [...prev, createShippingLabel]
+        : prev
+  },
+
   schema: {
     types: schemaTypes,
-  },
+  }
 })

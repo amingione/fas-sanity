@@ -1,4 +1,13 @@
 import { defineType, defineField } from 'sanity'
+import { createClient } from '@sanity/client'
+
+const sanityClient = createClient({
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: process.env.SANITY_STUDIO_DATASET!,
+  apiVersion: '2024-04-10',
+  token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  useCdn: false
+})
 
 export default defineType({
   name: 'invoice',
@@ -75,6 +84,13 @@ export default defineType({
       name: 'invoicePdfUrl',
       title: 'Invoice PDF (Optional)',
       type: 'url'
+    }),
+    defineField({
+      name: 'shippingLabelUrl',
+      title: 'Shipping Label PDF',
+      type: 'url',
+      readOnly: true
     })
+ 
   ]
 })
