@@ -29,6 +29,43 @@ export default defineType({
       name: 'notes',
       title: 'Notes',
       type: 'text'
+    }),
+    defineField({
+      name: 'status',
+      title: 'Approval Status',
+      type: 'string',
+      options: {
+        list: ['Pending', 'Approved', 'Rejected'],
+        layout: 'radio',
+      }
+    }),
+    defineField({
+      name: 'companyName',
+      title: 'Company Name',
+      type: 'string'
+    }),
+    defineField({
+      name: 'website',
+      title: 'Company Website',
+      type: 'url'
+    }),
+    defineField({
+      name: 'appliedAt',
+      title: 'Date Applied',
+      type: 'datetime'
+    }),
+    defineField({
+      name: 'contactPerson',
+      title: 'Main Contact Person',
+      type: 'string'
+    }),
+    defineField({
+      name: 'partnershipType',
+      title: 'Partnership Type',
+      type: 'string',
+      options: {
+        list: ['Reseller', 'Installer', 'Wholesaler', 'Service Center']
+      }
     })
   ]
 })

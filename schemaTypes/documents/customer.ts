@@ -47,6 +47,56 @@ export default defineType({
       name: 'orders',
       title: 'Orders',
       type: 'array',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'orderNumber', title: 'Order Number', type: 'string' },
+            { name: 'status', title: 'Status', type: 'string' },
+            { name: 'orderDate', title: 'Order Date', type: 'datetime' },
+            { name: 'total', title: 'Total Amount', type: 'string' }
+          ]
+        }
+      ]
+    },
+    {
+      name: 'quotes',
+      title: 'Saved Quotes',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'quoteId', title: 'Quote ID', type: 'string' },
+            { name: 'status', title: 'Status', type: 'string' },
+            { name: 'dateRequested', title: 'Date Requested', type: 'datetime' },
+            { name: 'notes', title: 'Notes', type: 'text' }
+          ]
+        }
+      ]
+    },
+    {
+      name: 'addresses',
+      title: 'Addresses',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'label', title: 'Label (e.g. Home, Office)', type: 'string' },
+            { name: 'street', title: 'Street Address', type: 'string' },
+            { name: 'city', title: 'City', type: 'string' },
+            { name: 'state', title: 'State', type: 'string' },
+            { name: 'zip', title: 'ZIP Code', type: 'string' },
+            { name: 'country', title: 'Country', type: 'string' }
+          ]
+        }
+      ]
+    },
+    {
+      name: 'wishlistItems',
+      title: 'Wishlist Items',
+      type: 'array',
       of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }]
     }
   ]
