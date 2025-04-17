@@ -18,12 +18,17 @@ const basePlugins = [
   colorInput(),
   media(),
 ]
+if (!process.env.SANITY_STUDIO_PROJECT_ID) {
+  console.warn('⚠️ SANITY_STUDIO_PROJECT_ID is not defined');
+} else {
+  console.log('✅ SANITY_STUDIO_PROJECT_ID:', process.env.SANITY_STUDIO_PROJECT_ID);
+}
 
 export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
-  projectId: 'r4og35qd',
-  dataset: 'production',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
+  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
 
   plugins: [
     deskTool({
