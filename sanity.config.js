@@ -8,6 +8,10 @@ import ShippingCalendar from './components/studio/ShippingCalendar'
 import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
 import deskStructure from './deskStructure'
 
+console.log('🔥 sanity.config.js is loading...');
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔑 process.env.SANITY_STUDIO_PROJECT_ID:', process.env.SANITY_STUDIO_PROJECT_ID);
+console.log('🔑 process.env.SANITY_STUDIO_DATASET:', process.env.SANITY_STUDIO_DATASET);
 console.log('🧪 VITE_SANITY_STUDIO_PROJECT_ID:', import.meta.env.VITE_SANITY_STUDIO_PROJECT_ID);
 console.log('🧪 VITE_SANITY_STUDIO_DATASET:', import.meta.env.VITE_SANITY_STUDIO_DATASET);
 
