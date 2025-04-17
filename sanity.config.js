@@ -8,6 +8,9 @@ import ShippingCalendar from './components/studio/ShippingCalendar'
 import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
 import deskStructure from './deskStructure'
 
+console.log('🧪 VITE_SANITY_STUDIO_PROJECT_ID:', import.meta.env.VITE_SANITY_STUDIO_PROJECT_ID);
+console.log('🧪 VITE_SANITY_STUDIO_DATASET:', import.meta.env.VITE_SANITY_STUDIO_DATASET);
+
 const isDev = process.env.NODE_ENV === 'development'
 const devOnlyPlugins = [visionTool()]
 
