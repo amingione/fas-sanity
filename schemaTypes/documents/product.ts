@@ -115,7 +115,7 @@ export const productType = defineType({
         name: 'parentProduct',
         title: 'Parent Product',
         type: 'reference',
-        to: [{ type: 'wooProduct' }],
+        to: [{ type: 'product' }],
         hidden: ({ parent }) => parent?.productType !== 'variation',
         group: 'details'
       }),
@@ -423,7 +423,7 @@ export const productType = defineType({
     type: 'document',
     fields: [
       defineField({ name: 'customer', title: 'Customer', type: 'reference', to: [{ type: 'customer' }] }),
-      defineField({ name: 'selectedProducts', title: 'Selected Products', type: 'array', of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }] }),
+      defineField({ name: 'selectedProducts', title: 'Selected Products', type: 'array', of: [{ type: 'reference', to: [{ type: 'product' }] }] }),
       defineField({ name: 'targetHP', title: 'Target Horsepower', type: 'number' }),
       defineField({ name: 'buildPurpose', title: 'Build Purpose', type: 'string', options: { list: ['Street', 'Track', 'Show', 'All-Purpose'] } }),
       defineField({ name: 'quoteTotal', title: 'Quote Total', type: 'number' }),

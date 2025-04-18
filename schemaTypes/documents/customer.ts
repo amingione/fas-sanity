@@ -97,7 +97,7 @@ export default defineType({
       name: 'wishlistItems',
       title: 'Wishlist Items',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }]
+      of: [{ type: 'reference', to: [{ type: 'product' }] }]
     }
   ]
 })
@@ -199,7 +199,7 @@ export const customerType = defineType({
       name: 'wishlistItems',
       title: 'Wishlist Items',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }]
+      of: [{ type: 'reference', to: [{ type: 'product' }] }]
     }
   ]
 })
