@@ -60,8 +60,10 @@ export default defineType({
       name: 'categories',
       title: 'Categories',
       type: 'array',
-      of: [{ type: 'string' }],
-      initialValue: []
+      of: [{ type: 'reference', to: [{ type: 'category' }] }],
+      options: {
+        layout: 'tags'
+      }
     }),
     defineField({
       name: 'featured',
