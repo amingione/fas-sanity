@@ -24,6 +24,7 @@
     "@sanity/ui": "^2.15.13",
     "@sanity/vision": "^3.84.0",
     "axios": "^1.8.4",
+    "dotenv": "^16.5.0",
     "jspdf": "^3.0.1",
     "lodash.get": "^4.4.2",
     "node-fetch": "^3.3.2",
