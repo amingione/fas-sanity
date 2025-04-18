@@ -24,7 +24,7 @@ export const productBundle = defineType({
       name: 'products',
       title: 'Products in this Bundle',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }]
+      of: [{ type: 'reference', to: [{ type: 'product' }] }]
     }),
     defineField({
       name: 'bundlePrice',
