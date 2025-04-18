@@ -282,14 +282,14 @@ export default defineType({
         name: 'relatedProducts',
         title: 'Related Products',
         type: 'array',
-        of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }],
+        of: [{ type: 'reference', to: [{ type: 'product' }] }],
         group: 'relations'
       }),
       defineField({
         name: 'upsellProducts',
         title: 'Upsell Products',
         type: 'array',
-        of: [{ type: 'reference', to: [{ type: 'wooProduct' }] }],
+        of: [{ type: 'reference', to: [{ type: 'product' }] }],
         group: 'relations'
       }),
       defineField({
