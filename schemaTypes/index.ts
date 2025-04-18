@@ -1,4 +1,4 @@
-import wooProduct from './documents/wooProduct'
+import { productType } from './documents/product'
 import bill from './documents/bill'
 import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
@@ -97,7 +97,6 @@ const blocks = [portableTextType, portableTextSimpleType]
 import {collectionType} from './documents/collection'
 import {colorThemeType} from './documents/colorTheme'
 import {pageType} from './documents/page'
-import {productType} from './documents/product'
 import {productVariantType} from './documents/productVariant'
 import category from './documents/category'
 import vehicleModel from './documents/vehicleModel'
@@ -129,4 +128,4 @@ import shippingOption from './documents/shippingOption'
 
 const singletons = [homeType, siteSettingsType]
 
-export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, wooProduct, productBundle, customer, shippingOption]
+export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, productBundle, customer, shippingOption]
