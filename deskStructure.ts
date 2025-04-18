@@ -11,8 +11,8 @@ const deskStructure = (S: StructureBuilder) =>
     .items([
       S.listItem()
         .title('Products')
-        .schemaType('wooProduct')
-        .child(S.documentTypeList('wooProduct').title('Products')),
+        .schemaType('product')
+        .child(S.documentTypeList('product').title('Products')),
 
       S.listItem()
         .title('Categories')
