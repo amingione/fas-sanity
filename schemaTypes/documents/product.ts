@@ -14,7 +14,8 @@ export const productType = defineType({
       { name: 'bundles', title: 'Bundles' },
       { name: 'media', title: 'Media' },
       { name: 'relations', title: 'Related Products' },
-      { name: 'internal', title: 'Internal' }
+      { name: 'internal', title: 'Internal' },
+      { name: 'filters', title: 'Filters' }
     ],
     fields: [
       defineField({
@@ -202,6 +203,20 @@ export const productType = defineType({
         of: [{ type: 'reference', to: [{ type: 'vehicleModel' }] }],
         
         group: 'relations'
+      }),
+      defineField({
+        name: 'tuneFilters',
+        title: 'Tune Filters',
+        type: 'array',
+        of: [{ type: 'reference', to: [{ type: 'tune' }] }],
+        group: 'filters'
+      }),
+      defineField({
+        name: 'vehicleFilters',
+        title: 'Vehicle Filters',
+        type: 'array',
+        of: [{ type: 'reference', to: [{ type: 'vehicleModel' }] }],
+        group: 'filters'
       }),
       defineField({
         name: 'attributes',
