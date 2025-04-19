@@ -43,8 +43,8 @@ import {shopifyCollectionType} from './objects/shopify/shopifyCollectionType'
 import {shopifyProductType} from './objects/shopify/shopifyProductType'
 import {shopifyProductVariantType} from './objects/shopify/shopifyProductVariantType'
 import {spotType} from './objects/hotspot/spotType'
+import tune from './documents/tune';
 
-// Objects used as annotations must be imported first
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
 const objects = [
@@ -118,7 +118,7 @@ const documents = [
   shippingLabel,
   invoice,
   vendor,
-  bill
+  bill,
 ]
 
 import {homeType} from './singletons/homeType'
@@ -128,4 +128,4 @@ import shippingOption from './documents/shippingOption'
 
 const singletons = [homeType, siteSettingsType]
 
-export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, productBundle, customer, shippingOption]
+export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, productBundle, customer, shippingOption, productWithVariantType, vehicleModel, category, tune, shippingLabel, productType, productVariantType, collectionType, colorThemeType, shopifyProductVariantType, shopifyCollectionType, shopifyProductType, productReferenceType, productHotspotsType, productFeaturesType, imageWithProductHotspotsType, imageFeatureType, imageFeaturesType, gridItemType, gridType, heroType, callToActionType, calloutType, accordionGroupType, accordionType, collectionGroupType, collectionLinksType, collectionReferenceType, collectionRuleType]
