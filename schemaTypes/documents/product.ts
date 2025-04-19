@@ -147,16 +147,6 @@ export const productType = defineType({
         group: 'details'
       }),
       defineField({
-        name: 'vehicleCompatibility',
-        title: 'Compatible Vehicles',
-        type: 'array',
-        of: [{ type: 'string' }],
-        options: {
-          layout: 'tags'
-        },
-        group: 'details'
-      }),
-      defineField({
         name: 'horsepowerRange',
         title: 'Recommended HP Range',
         type: 'object',
@@ -210,6 +200,7 @@ export const productType = defineType({
         title: 'Compatible Vehicles (Linked)',
         type: 'array',
         of: [{ type: 'reference', to: [{ type: 'vehicleModel' }] }],
+        
         group: 'relations'
       }),
       defineField({
@@ -396,6 +387,14 @@ export const productType = defineType({
           list: ['Street', 'Track', 'Off-Road', 'Show', 'All-Purpose'],
           layout: 'dropdown'
         },
+        group: 'details'
+      }),
+      defineField({
+        name: 'tune',
+        title: 'Tune',
+        type: 'reference',
+        to: [{ type: 'tune' }],
+        
         group: 'details'
       })
     ]

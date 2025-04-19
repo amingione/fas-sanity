@@ -11,13 +11,25 @@ const deskStructure = (S: StructureBuilder) =>
     .items([
       S.listItem()
         .title('Products')
-        .schemaType('product')
-        .child(S.documentTypeList('product').title('Products')),
+        .child(
+          S.list()
+            .title('Products')
+            .items([
+              S.listItem()
+                .title('All Products')
+                .schemaType('product')
+                .child(S.documentTypeList('product').title('All Products')),
+              S.listItem()
+                .title('Categories')
+                .schemaType('category')
+                .child(S.documentTypeList('category').title('Categories')),
+              S.listItem()
+                .title('Filters')
+                .schemaType('productFilter')
+                .child(S.documentTypeList('productFilter').title('Filters')),
+            ])
+        ),
 
-      S.listItem()
-        .title('Categories')
-        .schemaType('category')
-        .child(S.documentTypeList('category').title('Categories')),
 
       S.divider(),
       
