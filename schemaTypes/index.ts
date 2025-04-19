@@ -111,8 +111,6 @@ const documents = [
   pageType,
   productType,
   productVariantType,
-  category,
-  vehicleModel,
   quote,
   shippingLabel,
   invoice,
