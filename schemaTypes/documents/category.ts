@@ -19,6 +19,13 @@ export default defineType({
         source: 'title',
         maxLength: 96
       }
-    })
+    }),
+    defineField({
+      name: 'products',
+      title: 'Products in Category',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      description: 'Assign products to this category for bulk editing',
+    }),
   ]
 })
