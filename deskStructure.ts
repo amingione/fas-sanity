@@ -4,6 +4,7 @@ import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerator'
 import FinancialDashboard from './components/studio/FinancialDashboard'
 import FinancialReports from './components/studio/FinancialReports'
+import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
 
 const deskStructure = (S: StructureBuilder) =>
   S.list()
@@ -227,6 +228,50 @@ const deskStructure = (S: StructureBuilder) =>
           S.component()
             .title('Downloadable Reports')
             .component(FinancialReports)
+        ),
+
+      S.divider(),
+
+      // Orders (Stripe Checkout)
+      S.listItem()
+        .title('Orders (Stripe Checkout)')
+        .child(
+          S.list()
+            .title('Orders (Stripe)')
+            .items([
+              S.listItem()
+                .title('All Orders')
+                .schemaType('order')
+                .child(S.documentTypeList('order').title('All Orders')),
+              S.listItem()
+                .title('Paid Orders')
+                .child(
+                  S.documentList()
+                    .title('Paid Orders')
+                    .filter('_type == "order" && status == "paid"')
+                ),
+              S.listItem()
+                .title('Fulfilled Orders')
+                .child(
+                  S.documentList()
+                    .title('Fulfilled Orders')
+                    .filter('_type == "order" && status == "fulfilled"')
+                ),
+              S.listItem()
+                .title('Cancelled Orders')
+                .child(
+                  S.documentList()
+                    .title('Cancelled Orders')
+                    .filter('_type == "order" && status == "cancelled"')
+                ),
+              S.listItem()
+                .title('Bulk Fulfillment Console')
+                .child(
+                  S.component()
+                    .title('Bulk Fulfillment Console')
+                    .component(BulkFulfillmentConsole)
+                ),
+            ])
         ),
 
       S.divider(),
