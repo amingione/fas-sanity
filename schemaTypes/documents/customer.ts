@@ -98,6 +98,24 @@ export default defineType({
       title: 'Wishlist Items',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'product' }] }]
+    },
+    {
+      name: 'orderCount',
+      title: 'Order Count',
+      type: 'number',
+      readOnly: true
+    },
+    {
+      name: 'quoteCount',
+      title: 'Quote Count',
+      type: 'number',
+      readOnly: true
+    },
+    {
+      name: 'lifetimeSpend',
+      title: 'Lifetime Spend ($)',
+      type: 'number',
+      readOnly: true
     }
   ]
 })
@@ -200,6 +218,24 @@ export const customerType = defineType({
       title: 'Wishlist Items',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'product' }] }]
+    },
+    {
+      name: 'orderCount',
+      title: 'Order Count',
+      type: 'number',
+      readOnly: true
+    },
+    {
+      name: 'quoteCount',
+      title: 'Quote Count',
+      type: 'number',
+      readOnly: true
+    },
+    {
+      name: 'lifetimeSpend',
+      title: 'Lifetime Spend ($)',
+      type: 'number',
+      readOnly: true
     }
   ]
 })

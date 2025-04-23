@@ -7,6 +7,7 @@ import { schemaTypes } from './schemaTypes'
 import ShippingCalendar from './components/studio/ShippingCalendar'
 import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
 import deskStructure from './deskStructure'
+import resolveDocumentActions from './resolveDocumentActions';
 
 const isDev = process.env.NODE_ENV === 'development'
 const devOnlyPlugins = [visionTool()]
@@ -43,10 +44,7 @@ export default defineConfig({
   ],
 
   document: {
-    actions: (prev, context) =>
-      context.schemaType === 'invoice'
-        ? [...prev, createShippingLabel]
-        : prev
+    actions: resolveDocumentActions
   },
 
   schema: {

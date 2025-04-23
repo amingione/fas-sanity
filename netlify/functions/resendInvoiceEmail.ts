@@ -13,12 +13,30 @@ const sanity = createClient({
 })
 
 const handler: Handler = async (event) => {
-  const { email, invoiceId } = JSON.parse(event.body || '{}')
+  let email = ''
+  let invoiceId = ''
+  try {
+    const payload = JSON.parse(event.body || '{}')
+    email = String(payload.email || '').trim()
+    invoiceId = String(payload.invoiceId || '').trim()
+  } catch {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: 'Invalid JSON' })
+    }
+  }
 
   if (!email || !invoiceId) {
     return {
       statusCode: 400,
       body: JSON.stringify({ message: 'Missing email or invoiceId' })
+    }
+  }
+
+  if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ message: 'Invalid email format' })
     }
   }
 
@@ -65,6 +83,7 @@ const handler: Handler = async (event) => {
       body: JSON.stringify({ message: 'Invoice email sent successfully!' })
     }
   } catch (err: any) {
+    console.error('Failed to send invoice email:', err)
     return {
       statusCode: 500,
       body: JSON.stringify({ message: 'Email send failed.', error: err.message })

@@ -5,6 +5,9 @@ export async function updateCustomer(userId: string, updates: {
   phone?: string;
   billingAddress?: string;
   shippingAddress?: string;
+  orderCount?: number;
+  quoteCount?: number;
+  lifetimeSpend?: number;
 }) {
   if (!userId) throw new Error('Missing userId for update');
 
@@ -16,6 +19,9 @@ export async function updateCustomer(userId: string, updates: {
         ...(updates.phone && { phone: updates.phone }),
         ...(updates.billingAddress && { billingAddress: updates.billingAddress }),
         ...(updates.shippingAddress && { shippingAddress: updates.shippingAddress }),
+        ...(updates.orderCount !== undefined && { orderCount: updates.orderCount }),
+        ...(updates.quoteCount !== undefined && { quoteCount: updates.quoteCount }),
+        ...(updates.lifetimeSpend !== undefined && { lifetimeSpend: updates.lifetimeSpend }),
       })
       .commit();
 
