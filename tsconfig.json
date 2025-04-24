@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["sanity"],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "Preserve",
+    "module": "ESNext",
     "moduleDetection": "force",
     "isolatedModules": true,
     "jsx": "react-jsx",
@@ -15,8 +19,20 @@
     "baseUrl": "./",
     "paths": {
       "lib/*": ["src/lib/*"]
-    }
+    },
+    "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["src", "schemaTypes", "components", "*.ts", "*.tsx"],
-  "exclude": ["node_modules", "schemaTypes/objects/buildQuote.js"]
+  "include": [
+    "sanity.config.ts",
+    "src",
+    "schemaTypes",
+    "desk",
+    "components",
+    "*.ts",
+    "*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "schemaTypes/objects/buildQuote.js"
+  ]
 }

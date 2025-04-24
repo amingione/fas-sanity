@@ -2,15 +2,26 @@ import React from 'react'
 import { Badge, Card, Text } from '@sanity/ui'
 import type { StringInputProps } from 'sanity'
 
+interface Props {
+  value: string
+  readOnly?: boolean
+}
+
+// Shared tone mappings
 const fulfillmentColors: Record<string, 'positive' | 'caution' | 'critical' | 'default'> = {
   fulfilled: 'positive',
   unfulfilled: 'caution',
   'in progress': 'default',
-  cancelled: 'critical'
+  cancelled: 'critical',
+  paid: 'caution',
+  pending: 'default'
 }
 
-export default function FulfillmentBadge(props: StringInputProps) {
-  const value = props.value
+// Component that works for both input + readonly
+export default function FulfillmentBadge(props: StringInputProps | Props) {
+  const value = (props as any).value
+  const readOnly = (props as any).readOnly ?? false
+
   if (!value) {
     return (
       <Card padding={3} tone="caution">
@@ -23,7 +34,7 @@ export default function FulfillmentBadge(props: StringInputProps) {
 
   return (
     <Card padding={3}>
-      <Badge mode="outline" tone={tone}>
+      <Badge mode={readOnly ? 'outline' : 'default'} tone={tone}>
         {value}
       </Badge>
     </Card>
