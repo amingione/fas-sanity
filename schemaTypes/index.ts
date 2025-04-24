@@ -1,3 +1,4 @@
+import order from './documents/order'
 import { productType } from './documents/product'
 import bill from './documents/bill'
 import {buildQuote} from './objects/buildQuote'
@@ -115,7 +116,8 @@ const documents = [
   shippingLabel,
   invoice,
   vendor,
-  bill
+  bill,
+  order,
 ]
 
 import {homeType} from './singletons/homeType'

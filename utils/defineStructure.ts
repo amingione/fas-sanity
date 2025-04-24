@@ -7,5 +7,5 @@ import {StructureBuilder} from 'sanity/structure'
 export default function defineStructure<StructureType>(
   factory: (S: StructureBuilder, context: ConfigContext) => StructureType
 ) {
-  return factory
+  return (S: StructureBuilder, context: ConfigContext) => factory(S, context)
 }
