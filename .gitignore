@@ -44,3 +44,8 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Sanity build output
+dist
+.sanity
+node_modules
