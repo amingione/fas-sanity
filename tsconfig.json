@@ -11,8 +11,12 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "lib/*": ["src/lib/*"]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx", "sanity.config.ts"],
+  "include": ["src", "schemaTypes", "components", "*.ts", "*.tsx"],
   "exclude": ["node_modules", "schemaTypes/objects/buildQuote.js"]
 }

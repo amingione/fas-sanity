@@ -9,10 +9,10 @@ export default defineStructure<ListItemBuilder>((S) =>
     .icon(DocumentTextIcon)
     .child(
       S.list()
-        .title('Stripe Orders')
+        .title('Stripe Invoices')
         .items([
           S.listItem()
-            .title('All Orders')
+            .title('All Invoices')
             .schemaType('order')
             .child(S.documentTypeList('order').title('All Orders')),
 
@@ -20,8 +20,24 @@ export default defineStructure<ListItemBuilder>((S) =>
             .title('Unfulfilled Orders')
             .child(
               S.documentList()
-                .title('Unfulfilled Orders')
+                .title('Unfulfilled Invoices')
                 .filter('_type == "order" && status != "fulfilled"')
+            ),
+
+          S.listItem()
+            .title('Paid Invoices')
+            .child(
+              S.documentList()
+                .title('Paid Invoices')
+                .filter('_type == "order" && status == "paid"')
+            ),
+
+          S.listItem()
+            .title('Pending Invoices')
+            .child(
+              S.documentList()
+                .title('Pending Invoices')
+                .filter('_type == "order" && status == "pending"')
             )
         ])
     )
