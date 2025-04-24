@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity'
+import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
 
 export default defineType({
   name: 'order',
@@ -41,6 +42,9 @@ export default defineType({
         layout: 'dropdown',
       },
       initialValue: 'pending',
+      components: {
+        input: FulfillmentBadge, // ✅ Shows badge in Studio
+      }
     }),
     defineField({
       name: 'createdAt',
@@ -78,6 +82,29 @@ export default defineType({
     defineField({ name: 'packingSlipUrl', title: 'Packing Slip PDF URL', type: 'url' }),
     defineField({ name: 'fulfilledAt', title: 'Fulfilled Date', type: 'datetime' }),
     defineField({ name: 'webhookNotified', title: 'Webhook Notification Sent', type: 'boolean', initialValue: false }),
+
+    // ✅ New Field: shippingLog[]
+    defineField({
+      name: 'shippingLog',
+      title: 'Shipping History',
+      type: 'array',
+      of: [
+        defineField({
+          name: 'entry',
+          type: 'object',
+          title: 'Shipping Event',
+          fields: [
+            { name: 'status', type: 'string', title: 'Status' },
+            { name: 'message', type: 'text', title: 'Message' },
+            { name: 'labelUrl', type: 'url', title: 'Label URL' },
+            { name: 'trackingUrl', type: 'url', title: 'Tracking URL' },
+            { name: 'trackingNumber', type: 'string', title: 'Tracking Number' },
+            { name: 'weight', type: 'number', title: 'Weight (lbs)' },
+            { name: 'createdAt', type: 'datetime', title: 'Timestamp' },
+          ],
+        }),
+      ],
+    }),
   ],
 
   preview: {
@@ -88,11 +115,16 @@ export default defineType({
       status: 'status',
     },
     prepare({ stripeSessionId, email, total, status }) {
+      const badge =
+        status === 'fulfilled' ? '✅' :
+        status === 'paid' ? '💵' :
+        status === 'cancelled' ? '❌' :
+        '🕒'
+    
       return {
         title: `${email || 'No Email'} - $${total ?? 0}`,
-        subtitle: `#${stripeSessionId?.slice(-6) || 'N/A'} • ${status ?? 'pending'}`,
+        subtitle: `${badge} #${stripeSessionId?.slice(-6) || 'N/A'} • ${status || 'pending'}`
       }
-    },
+    }
   },
-
 })

@@ -21,39 +21,44 @@ interface Invoice {
   fulfillmentStatus?: string;
 }
 
-export const createShippingLabel: DocumentActionComponent = ({ id, published }: { id: string; published: any }) => {
+export const createShippingLabel: DocumentActionComponent = (props) => {
+  const { id, published, onComplete } = props
+
   if (!published || published._type !== 'invoice') return null
   const invoice = published as Invoice
 
   return {
     label: 'Create Shipping Label',
     onHandle: async () => {
-      const res = await fetch('/.netlify/functions/createShippingLabel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          customerId: invoice.quote?.customer?._ref || '',
-          labelDescription: invoice.fulfillmentStatus || 'standard'
+      try {
+        const res = await fetch('/.netlify/functions/createShippingLabel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            customerId: invoice.quote?.customer?._ref || '',
+            labelDescription: invoice.fulfillmentStatus || 'standard'
+          })
         })
-      })
 
-      const result = await res.json()
+        const result = await res.json()
 
-      if (res.ok) {
-        await sanityClient
-          .patch(id)
-          .set({
+        if (res.ok) {
+          await sanityClient.patch(id).set({
             trackingNumber: result.trackingNumber,
             shippingLabelUrl: result.labelUrl
-          })
-          .commit()
+          }).commit()
 
-        window.alert(`Label created!\nTracking: ${result.trackingNumber}`)
-      } else {
-        window.alert('Error creating label: ' + result.error)
+          console.log('Label Created!', `Tracking: ${result.trackingNumber}`)
+        } else {
+          console.error('Error creating label', result.error)
+        }
+      } catch (error) {
+        console.error('Request failed', String(error))
       }
+
+      onComplete() // 🧼 finish action
     }
   }
 }
