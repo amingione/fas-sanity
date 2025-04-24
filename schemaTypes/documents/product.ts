@@ -205,17 +205,18 @@ export const productType = defineType({
         group: 'relations'
       }),
       defineField({
-        name: 'tuneFilters',
-        title: 'Tune Filters',
+        name: 'filters',
+        title: 'Filters',
         type: 'array',
-        of: [{ type: 'reference', to: [{ type: 'tune' }] }],
-        group: 'filters'
-      }),
-      defineField({
-        name: 'vehicleFilters',
-        title: 'Vehicle Filters',
-        type: 'array',
-        of: [{ type: 'reference', to: [{ type: 'vehicleModel' }] }],
+        of: [
+          {
+            type: 'reference',
+            to: [{ type: 'productFilter' }], // Matches your existing filter schema
+          }
+        ],
+        options: {
+          layout: 'tags' // Optional: renders filters as tag-style in Studio
+        },
         group: 'filters'
       }),
       defineField({
