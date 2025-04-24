@@ -1,5 +1,6 @@
 import React from 'react'
-import { Badge } from '@sanity/ui'
+import { Badge, Card, Text } from '@sanity/ui'
+import type { StringInputProps } from 'sanity'
 
 const fulfillmentColors: Record<string, 'positive' | 'caution' | 'critical' | 'default'> = {
   fulfilled: 'positive',
@@ -8,8 +9,23 @@ const fulfillmentColors: Record<string, 'positive' | 'caution' | 'critical' | 'd
   cancelled: 'critical'
 }
 
-export default function FulfillmentBadge({ value }: { value: string }) {
-  if (!value) return null
-  const tone = fulfillmentColors[value.toLowerCase()] || 'default'
-  return <Badge tone={tone}>{value}</Badge>
+export default function FulfillmentBadge(props: StringInputProps) {
+  const value = props.value
+  if (!value) {
+    return (
+      <Card padding={3} tone="caution">
+        <Text size={1}>No fulfillment status selected</Text>
+      </Card>
+    )
+  }
+
+  const tone = fulfillmentColors[String(value).toLowerCase()] || 'default'
+
+  return (
+    <Card padding={3}>
+      <Badge mode="outline" tone={tone}>
+        {value}
+      </Badge>
+    </Card>
+  )
 }

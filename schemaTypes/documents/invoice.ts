@@ -1,8 +1,8 @@
 import { defineType, defineField } from 'sanity'
 import { createClient } from '@sanity/client'
-import StatusBadge from '../../components/inputs/FulfillmentBadge'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
 import PrintPackingSlipButton from '../../components/inputs/PrintPackingSlipButton'
+import { StringInputProps } from 'sanity'
 
 const getSanityClient = () =>
   createClient({
@@ -18,34 +18,11 @@ export default defineType({
   title: 'Invoice',
   type: 'document',
   fields: [
-    defineField({
-      name: 'invoiceNumber',
-      title: 'Invoice Number',
-      type: 'string',
-      readOnly: true
-    }),
-    defineField({
-      name: 'quote',
-      title: 'Related Quote',
-      type: 'reference',
-      to: [{ type: 'buildQuote' }]
-    }),
-    defineField({
-      name: 'customerEmail',
-      title: 'Customer Email',
-      type: 'string'
-    }),
-    defineField({
-      name: 'stripeInvoiceId',
-      title: 'Stripe Invoice ID',
-      type: 'string',
-      readOnly: true
-    }),
-    defineField({
-      name: 'amount',
-      title: 'Total Amount',
-      type: 'number'
-    }),
+    defineField({ name: 'invoiceNumber', title: 'Invoice Number', type: 'string', readOnly: true }),
+    defineField({ name: 'quote', title: 'Related Quote', type: 'reference', to: [{ type: 'buildQuote' }] }),
+    defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
+    defineField({ name: 'stripeInvoiceId', title: 'Stripe Invoice ID', type: 'string', readOnly: true }),
+    defineField({ name: 'amount', title: 'Total Amount', type: 'number' }),
     defineField({
       name: 'status',
       title: 'Payment Status',
@@ -63,18 +40,8 @@ export default defineType({
       initialValue: () => new Date().toISOString(),
       readOnly: true
     }),
-    defineField({
-      name: 'stripeReceiptUrl',
-      title: 'Stripe Receipt URL',
-      type: 'url',
-      readOnly: true
-    }),
-    defineField({
-      name: 'trackingNumber',
-      title: 'Tracking Number',
-      type: 'string',
-      description: 'Shipping tracking info if applicable.'
-    }),
+    defineField({ name: 'stripeReceiptUrl', title: 'Stripe Receipt URL', type: 'url', readOnly: true }),
+    defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string', description: 'Shipping tracking info if applicable.' }),
     defineField({
       name: 'fulfillmentStatus',
       title: 'Fulfillment Status',
@@ -84,17 +51,8 @@ export default defineType({
       },
       initialValue: 'unfulfilled'
     }),
-    defineField({
-      name: 'invoicePdfUrl',
-      title: 'Invoice PDF (Optional)',
-      type: 'url'
-    }),
-    defineField({
-      name: 'shippingLabelUrl',
-      title: 'Shipping Label PDF',
-      type: 'url',
-      readOnly: true
-    }),
+    defineField({ name: 'invoicePdfUrl', title: 'Invoice PDF (Optional)', type: 'url' }),
+    defineField({ name: 'shippingLabelUrl', title: 'Shipping Label PDF', type: 'url', readOnly: true }),
     defineField({
       name: 'shippingMethod',
       title: 'Shipping Method',
@@ -125,43 +83,34 @@ export default defineType({
         }
       ]
     }),
-    defineField({
-      name: 'shippingLabel',
-      title: 'Shipping Label',
-      type: 'reference',
-      to: [{ type: 'shippingLabel' }]
-    }),
+    defineField({ name: 'shippingLabel', title: 'Shipping Label', type: 'reference', to: [{ type: 'shippingLabel' }] }),
+
     defineField({
       name: 'statusBadge',
       title: 'Payment Status Display',
       type: 'string',
-      readOnly: true,
-      hidden: true
+      components: {
+        input: FulfillmentBadge
+      },
+      readOnly: true
     }),
-    defineField({
-      name: 'fulfillmentBadge',
-      title: 'Fulfillment Status Display',
-      type: 'string',
-      readOnly: true,
-      hidden: true
-    }),
+
     defineField({
       name: 'packingSlipButton',
       title: 'Packing Slip Button',
       type: 'string',
-      readOnly: true,
-      hidden: true
-    }),
-    defineField({
-      name: 'orderId',
-      title: 'Order ID',
-      type: 'string',
+      components: {
+        input: PrintPackingSlipButton
+      },
       readOnly: true
     }),
+
+    defineField({ name: 'orderId', title: 'Order ID', type: 'string', readOnly: true })
   ],
+
   initialValue: async () => {
     const random = Math.floor(Math.random() * 1000000)
     const orderId = `FAS-${random.toString().padStart(6, '0')}`
     return { orderId }
-  },
+  }
 })

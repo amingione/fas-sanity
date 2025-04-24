@@ -4,6 +4,10 @@ import { useFormValue } from 'sanity'
 import { createClient } from '@sanity/client'
 import { Resend } from 'resend'
 
+interface Props {
+  doc: Record<string, any>
+}
+
 const getSanityClient = () =>
   createClient({
     projectId: 'r4og35qd',
@@ -15,8 +19,7 @@ const getSanityClient = () =>
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
 
-export default function ShippingLabelActions() {
-  const doc = useFormValue([]) as any
+export default function ShippingLabelActions({ doc }: Props) {
   const labelUrl = useFormValue(['labelUrl']) as string | undefined
   const trackingUrl = useFormValue(['trackingUrl']) as string | undefined
 
@@ -44,25 +47,20 @@ export default function ShippingLabelActions() {
       }).commit()
 
       await resend.emails.send({
-        from: 'FAS Motorsports &lt;shipping@fasmotorsports.com&gt;',
-        to: 'customer@example.com', // Replace with actual customer's email if available
+        from: 'FAS Motorsports <shipping@fasmotorsports.com>',
+        to: 'customer@example.com',
         subject: 'Your FAS Shipping Label is Ready!',
         html: `
-          &lt;h2 style="font-family:sans-serif;color:#333"&gt;Your Order Has Shipped!&lt;/h2&gt;
-          &lt;p&gt;We're excited to let you know your order has been shipped.&lt;/p&gt;
-          &lt;p&gt;&lt;strong&gt;Tracking Number:&lt;/strong&gt; ${result.trackingNumber}&lt;/p&gt;
-          &lt;p&gt;
-            &lt;a href="${result.trackingUrl}" style="background:#0f62fe;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;"&gt;
+          <h2>Your Order Has Shipped!</h2>
+          <p>We're excited to let you know your order has been shipped.</p>
+          <p><strong>Tracking Number:</strong> ${result.trackingNumber}</p>
+          <p>
+            <a href="${result.trackingUrl}" style="background:#0f62fe;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">
               Track Your Package
-            &lt;/a&gt;
-          &lt;/p&gt;
-          &lt;p&gt;
-            Or &lt;a href="${result.labelUrl}"&gt;download your shipping label&lt;/a&gt; if needed.
-          &lt;/p&gt;
-          &lt;br /&gt;
-          &lt;footer style="font-size:12px;color:#999"&gt;
-            FAS Motorsports &mdash; Performance Delivered.
-          &lt;/footer&gt;
+            </a>
+          </p>
+          <p>Or <a href="${result.labelUrl}">download your shipping label</a> if needed.</p>
+          <footer style="font-size:12px;color:#999">FAS Motorsports — Performance Delivered.</footer>
         `
       })
 

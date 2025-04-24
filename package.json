@@ -20,6 +20,8 @@
     "@sanity/cli": "^3.83.0",
     "@sanity/client": "^6.28.4",
     "@sanity/color-input": "^3.1.2",
+    "@sanity/default-layout": "^2.36.2",
+    "@sanity/desk-tool": "^2.36.2",
     "@sanity/icons": "^2.11.8",
     "@sanity/ui": "^2.15.13",
     "@sanity/vision": "^3.86.1",
