@@ -1,6 +1,6 @@
 import { defineType, defineField } from 'sanity'
 
-export const productType = defineType({
+const product = defineType({
     name: 'product',
     title: 'Product',
     type: 'document',
@@ -79,7 +79,7 @@ export const productType = defineType({
         group: 'media'
       }),
       defineField({
-        name: 'categories',
+        name: 'category',
         title: 'Categories',
         type: 'array',
         of: [{ type: 'reference', to: [{ type: 'category' }] }],
@@ -415,9 +415,11 @@ export const productType = defineType({
       })
     ]
   });
-  
-  // Customer Database
-  export const customer = defineType({
+
+export default product;
+
+// Customer Database
+export const customer = defineType({
     name: 'customer',
     title: 'Customer',
     type: 'document',
@@ -430,9 +432,9 @@ export const productType = defineType({
       defineField({ name: 'notes', title: 'Notes', type: 'text' })
     ]
   })
-  
-  // Build Quote for Garage Builder
-  export const buildQuote = defineType({
+
+// Build Quote for Garage Builder
+export const buildQuote = defineType({
     name: 'buildQuote',
     title: 'Build Quote',
     type: 'document',

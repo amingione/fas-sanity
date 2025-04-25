@@ -1,5 +1,6 @@
+import product from './documents/product'
+import category from './documents/category'
 import order from './documents/order'
-import { productType } from './documents/product'
 import bill from './documents/bill'
 import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
@@ -44,7 +45,7 @@ import {shopifyCollectionType} from './objects/shopify/shopifyCollectionType'
 import {shopifyProductType} from './objects/shopify/shopifyProductType'
 import {shopifyProductVariantType} from './objects/shopify/shopifyProductVariantType'
 import {spotType} from './objects/hotspot/spotType'
-import tune from './documents/tune';
+import tune from './documents/tune'
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
 const objects = [
@@ -98,19 +99,21 @@ import {collectionType} from './documents/collection'
 import {colorThemeType} from './documents/colorTheme'
 import {pageType} from './documents/page'
 import {productVariantType} from './documents/productVariant'
-import category from './documents/category'
 import vehicleModel from './documents/vehicleModel'
 import { productBundle } from './documents/productBundle'
 import quote from './documents/quote'
 import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
 import vendor from './documents/vendor'
+import customer from './documents/customer'
+import shippingOption from './documents/shippingOption'
+import productFilter from './documents/productFilter'
 
 const documents = [
   collectionType,
   colorThemeType,
   pageType,
-  productType,
+  product,
   productVariantType,
   quote,
   shippingLabel,
@@ -118,14 +121,13 @@ const documents = [
   vendor,
   bill,
   order,
+  category,
+  productFilter,
 ]
 
 import {homeType} from './singletons/homeType'
 import { settingsType as siteSettingsType } from './singletons/siteSettingsType'
-import customer from './documents/customer'
-import shippingOption from './documents/shippingOption'
-import productFilter from './documents/productFilter'
 
 const singletons = [homeType, siteSettingsType]
 
-export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, productBundle, customer, shippingOption, vehicleModel, category, tune, productFilter]
+export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents, buildQuote, productBundle, customer, shippingOption, vehicleModel, tune]

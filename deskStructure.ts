@@ -1,7 +1,6 @@
 // deskStructure.ts
-// Removed StructureResolver as it is not exported from 'sanity/desk'
-import DocumentIframePreview from './components/studio/DocumentIframePreview'
 import { MdCategory, MdViewList, MdFilterList } from 'react-icons/md'
+import DocumentIframePreview from './components/studio/DocumentIframePreview'
 import CustomerDashboard from './components/studio/CustomerDashboard'
 import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerator'
@@ -28,37 +27,40 @@ const getPreviewViews = (S: any, schema: string) => [
     S.view.component(OrderStatusPreview).title('📌 Fulfillment Status'),
 ].filter(Boolean)
 
-export const deskStructure = (S: any) =>
-  S.list()
+export const deskStructure = (S: any, context: any) => {
+  const safeListItem = (typeName: string, title: string, icon: any) => {
+    return context.schema.get(typeName)
+      ? S.listItem().title(title).icon(icon).child(S.documentTypeList(typeName).title(title))
+      : S.listItem()
+          .title(`⚠️ Missing: ${typeName} schema`)
+          .child(
+            S.component()
+              .title('Schema Error')
+              .component(() => `Schema "${typeName}" not found.`)
+          )
+  }
+
+  const productListItems = [
+    safeListItem('product', 'All Products', MdViewList),
+    safeListItem('category', 'Categories', MdCategory),
+    safeListItem('productFilter', 'Filters', MdFilterList),
+  ]
+
+  return S.list()
     .title('F.A.S. Motorsports')
     .items([
       S.listItem()
-      .title('Products')
-      .icon(MdViewList)
-      .child(
-        S.list()
-          .title('Products')
-          .items([
-            S.documentTypeListItem('product').title('All Products'),
-            S.listItem()
-              .title('Categories')
-              .icon(MdCategory)
-              .child(S.documentTypeList('category').title('Categories')),
-            S.listItem()
-              .title('Filters')
-              .icon(MdFilterList)
-              .child(S.documentTypeList('productFilter').title('Filter'))
-          ])
-      ),
-      
+        .title('Products')
+        .icon(MdViewList)
+        .child(S.list().title('Products').items(productListItems)),
 
       S.divider(),
 
-      S.documentTypeListItem('customer').title('Customers'),
-      S.documentTypeListItem('invoice').title('Invoices'),
-      S.documentTypeListItem('quote').title('Quote Requests'),
-      S.documentTypeListItem('order').title('Orders'),
-      S.documentTypeListItem('shippingLabel').title('Shipping Labels'),
+      context.schema.get('customer') ? S.documentTypeListItem('customer').title('Customers') : null,
+      context.schema.get('invoice') ? S.documentTypeListItem('invoice').title('Invoices') : null,
+      context.schema.get('quote') ? S.documentTypeListItem('quote').title('Quote Requests') : null,
+      context.schema.get('order') ? S.documentTypeListItem('order').title('Orders') : null,
+      context.schema.get('shippingLabel') ? S.documentTypeListItem('shippingLabel').title('Shipping Labels') : null,
 
       S.divider(),
 
@@ -68,8 +70,5 @@ export const deskStructure = (S: any) =>
       S.listItem().title('📥 Financial Reports').child(S.component().title('Reports').component(FinancialReports)),
       S.listItem().title('🧾 Fulfillment Console').child(S.component().title('Console').component(BulkFulfillmentConsole)),
       S.listItem().title('👤 Customer Dashboard').child(S.component().title('Customers').component(CustomerDashboard)),
-    ])
-
-
-
-  
+    ].filter(Boolean))
+}
