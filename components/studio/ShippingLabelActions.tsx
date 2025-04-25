@@ -17,7 +17,7 @@ const getSanityClient = () =>
     useCdn: false
   })
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
+  const resend = new Resend(process.env.SANITY_STUDIO_RESEND_API_KEY)
 
 export default function ShippingLabelActions({ doc }: Props) {
   const labelUrl = useFormValue(['labelUrl']) as string | undefined
