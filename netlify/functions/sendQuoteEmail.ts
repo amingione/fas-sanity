@@ -54,7 +54,7 @@ export const handler: Handler = async (event, context) => {
     `
 
     await resend.emails.send({
-      from: 'FAS Motorsports <quotes@fasmotorsports.com>',
+      from: 'FAS Motorsports <quotes@updates.fasmotorsports.com>',
       to: quote.customer.email,
       subject: 'Your Custom Build Quote',
       html

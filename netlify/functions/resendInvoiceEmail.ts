@@ -72,7 +72,7 @@ const handler: Handler = async (event) => {
     `
 
     await resend.emails.send({
-      from: 'FAS Motorsports <billing@fasmotorsports.com>',
+      from: 'FAS Motorsports <billing@updates.fasmotorsports.com>',
       to: email,
       subject: 'Your Invoice & Tracking Info',
       html
