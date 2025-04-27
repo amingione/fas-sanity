@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useClient } from 'sanity'
-import { Button, Card, Heading, Stack, Text, Select, Flex } from '@sanity/ui'
+import { Button, Card, Heading, Stack, Text, Select, Flex, Box } from '@sanity/ui'
 import jsPDF from 'jspdf'
 
 export default function FinancialReports() {
@@ -12,6 +12,22 @@ export default function FinancialReports() {
   const [product, setProduct] = useState('')
   const [category, setCategory] = useState('')
   const [format, setFormat] = useState<'csv' | 'pdf'>('csv')
+  const [productList, setProductList] = useState<string[]>([])
+  const [categoryList, setCategoryList] = useState<string[]>([])
+
+  useEffect(() => {
+    async function fetchDropdowns() {
+      try {
+        const prods = await client.fetch(`*[_type == "product"].title`)
+        const cats = await client.fetch(`*[_type == "category"].title`)
+        setProductList(prods)
+        setCategoryList(cats)
+      } catch (err) {
+        console.error('Dropdown fetch failed', err)
+      }
+    }
+    fetchDropdowns()
+  }, [client])
 
   const handleExport = async () => {
     let filter = `dateTime(_createdAt) >= dateTime("${from}") && dateTime(_createdAt) <= dateTime("${to}")`
@@ -55,11 +71,7 @@ export default function FinancialReports() {
     if (product) filter += ` && "${product}" in quote.products[]->title`
     if (category) filter += ` && "${category}" in quote.products[]->categories[]->title`
     const query = `*[_type == "invoice" && ${filter}]{
-      _createdAt,
-      amount,
-      status,
-      orderId,
-      quote->{ customer->{ fullName } }
+      _createdAt, amount, status, orderId, quote->{ customer->{ fullName } }
     }`
     const results = await client.fetch(query)
 
@@ -89,60 +101,104 @@ export default function FinancialReports() {
     doc.save(`financial-report-${reportType}.pdf`)
   }
 
+
   return (
-    <Card padding={4}>
-      <Heading size={2}>📥 Download Financial Reports</Heading>
-      <Stack space={4} marginTop={4}>
-        <Flex gap={3} wrap="wrap">
-          <label>
-            <Text size={1}>Report Type</Text>
-            <Select value={reportType} onChange={e => setReportType((e.target as HTMLSelectElement).value)}>
-              <option value="orders">Orders</option>
-              <option value="revenue">Revenue</option>
-              <option value="aov">Average Order Value</option>
-            </Select>
-          </label>
-          <label>
-            <Text size={1}>From Date</Text>
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} />
-          </label>
-          <label>
-            <Text size={1}>To Date</Text>
-            <input type="date" value={to} onChange={e => setTo(e.target.value)} />
-          </label>
-          <label>
-            <Text size={1}>Status</Text>
-            <Select value={status} onChange={e => setStatus((e.target as HTMLSelectElement).value)}>
-              <option value="">All</option>
-              <option value="Paid">Paid</option>
-              <option value="Pending">Pending</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="Refunded">Refunded</option>
-            </Select>
-          </label>
-          <label>
-            <Text size={1}>Product</Text>
-            <input type="text" value={product} onChange={e => setProduct(e.target.value)} placeholder="Product name" />
-          </label>
-          <label>
-            <Text size={1}>Category</Text>
-            <input type="text" value={category} onChange={e => setCategory(e.target.value)} placeholder="Category name" />
-          </label>
-        </Flex>
-        <label>
-          <Text size={1}>Format</Text>
-          <Select value={format} onChange={e => setFormat((e.target as HTMLSelectElement).value as 'csv' | 'pdf')}>
-            <option value="csv">CSV</option>
-            <option value="pdf">PDF</option>
+    <Box marginTop={6} padding={4}>
+      <Box paddingBottom={6} style={{ textAlign: 'center' }}>
+        <Heading as="h2" size={2}>
+          📩 Download Financial Reports
+        </Heading>
+      </Box>
+
+      {/* Row 1 */}
+      <Flex gap={4} wrap="wrap" marginBottom={4}>
+        <Box flex={1}>
+          <Box marginBottom={2}><Text size={1}>Report Type</Text></Box>
+          <Select value={reportType} onChange={e => setReportType((e.target as HTMLSelectElement).value)}>
+            <option value="orders">Orders</option>
+            <option value="revenue">Revenue</option>
+            <option value="aov">Average Order Value</option>
           </Select>
-        </label>
-        {format === 'csv' ? (
-          <Button text="⬇️ Download CSV" tone="primary" onClick={handleExport} disabled={!from || !to} />
-        ) : (
-          <Button text="⬇️ Download PDF" tone="primary" onClick={handleExportPDF} disabled={!from || !to} />
-        )}
-        <Text size={1} muted>Filter by date range and download matching results as a CSV or PDF file.</Text>
-      </Stack>
-    </Card>
+        </Box>
+        <Box flex={1}>
+          <Box marginBottom={2}><Text size={1}>From Date</Text></Box>
+          <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ width: '100%' }} />
+        </Box>
+        <Box flex={1}>
+          <Box marginBottom={2}><Text size={1}>To Date</Text></Box>
+          <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ width: '100%' }} />
+        </Box>
+      </Flex>
+
+      {/* Row 2 */}
+      <Flex gap={4} wrap="wrap" marginBottom={4}>
+        <Box flex={1}>
+          <Box marginBottom={2}><Text size={1}>Status</Text></Box>
+          <Select value={status} onChange={e => setStatus((e.target as HTMLSelectElement).value)}>
+            <option value="">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Refunded">Refunded</option>
+          </Select>
+        </Box>
+        <Box flex={1}>
+          <Box marginBottom={2}><Text size={1}>Product</Text></Box>
+          <input
+            type="text"
+            list="product-list"
+            value={product}
+            onChange={e => setProduct(e.target.value)}
+            placeholder="Search product"
+            style={{ width: '100%' }}
+          />
+          <datalist id="product-list">
+            {productList.map((p, i) => <option key={i} value={p} />)}
+          </datalist>
+        </Box>
+        <Box flex={1}>
+          <Box marginBottom={2}><Text size={1}>Category</Text></Box>
+          <input
+            type="text"
+            list="category-list"
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+            placeholder="Search category"
+            style={{ width: '100%' }}
+          />
+          <datalist id="category-list">
+            {categoryList.map((c, i) => <option key={i} value={c} />)}
+          </datalist>
+        </Box>
+      </Flex>
+
+      {/* Divider */}
+      <Box paddingY={4} style={{ borderTop: '1px solid #444' }} />
+
+      {/* Row 3 */}
+      <Box marginBottom={4}>
+        <Box marginBottom={2}><Text size={1}>Format</Text></Box>
+        <Select value={format} onChange={e => setFormat((e.target as HTMLSelectElement).value as 'csv' | 'pdf')}>
+          <option value="csv">CSV</option>
+          <option value="pdf">PDF</option>
+        </Select>
+      </Box>
+
+      {/* Row 4 */}
+      <Box paddingTop={4} style={{ display: 'flex', justifyContent: 'center' }}>
+        <Button
+          text={format === 'csv' ? '⬇️ Download CSV' : '⬇️ Download PDF'}
+          tone="primary"
+          onClick={format === 'csv' ? handleExport : handleExportPDF}
+          disabled={!from || !to}
+        />
+      </Box>
+
+      <Box paddingTop={5}>
+        <Text size={1} muted style={{ textAlign: 'center' }}>
+          Filter by date range and download matching results as a CSV or PDF file.
+        </Text>
+      </Box>
+    </Box>
   )
 }
