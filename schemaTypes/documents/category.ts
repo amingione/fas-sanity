@@ -21,7 +21,7 @@ export default defineType({
       }
     }),
     defineField({
-      name: 'products',
+      name: 'product',
       title: 'Products in Category',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'product' }] }],

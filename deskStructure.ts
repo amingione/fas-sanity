@@ -1,0 +1,74 @@
+// deskStructure.ts
+import { MdCategory, MdViewList, MdFilterList } from 'react-icons/md'
+import DocumentIframePreview from './components/studio/DocumentIframePreview'
+import CustomerDashboard from './components/studio/CustomerDashboard'
+import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
+import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerator'
+import FinancialDashboard from './components/studio/FinancialDashboard'
+import FinancialReports from './components/studio/FinancialReports'
+import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
+import OrderStatusPreview from './components/inputs/FulfillmentBadge'
+
+const previewPaths: Record<string, string> = {
+  product: '/product',
+  customer: '/customer',
+  invoice: '/invoice',
+  shippingLabel: '/label',
+  quote: '/quote',
+  order: '/order',
+}
+
+const getPreviewViews = (S: any, schema: string) => [
+  S.view.form(),
+  S.view
+    .component((props: any) => DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' }))
+    .title('🔎 Preview'),
+  schema === 'order' &&
+    S.view.component(OrderStatusPreview).title('📌 Fulfillment Status'),
+].filter(Boolean)
+
+export const deskStructure = (S: any, context: any) => {
+  const safeListItem = (typeName: string, title: string, icon: any) => {
+    return context.schema.get(typeName)
+      ? S.listItem().title(title).icon(icon).child(S.documentTypeList(typeName).title(title))
+      : S.listItem()
+          .title(`⚠️ Missing: ${typeName} schema`)
+          .child(
+            S.component()
+              .title('Schema Error')
+              .component(() => `Schema "${typeName}" not found.`)
+          )
+  }
+
+  const productListItems = [
+    safeListItem('product', 'All Products', MdViewList),
+    safeListItem('category', 'Categories', MdCategory),
+    safeListItem('productFilter', 'Filters', MdFilterList),
+  ]
+
+  return S.list()
+    .title('F.A.S. Motorsports')
+    .items([
+      S.listItem()
+        .title('Products')
+        .icon(MdViewList)
+        .child(S.list().title('Products').items(productListItems)),
+
+      S.divider(),
+
+      context.schema.get('customer') ? S.documentTypeListItem('customer').title('Customers') : null,
+      context.schema.get('invoice') ? S.documentTypeListItem('invoice').title('Invoices') : null,
+      context.schema.get('quote') ? S.documentTypeListItem('quote').title('Quote Requests') : null,
+      context.schema.get('order') ? S.documentTypeListItem('order').title('Orders') : null,
+      context.schema.get('shippingLabel') ? S.documentTypeListItem('shippingLabel').title('Shipping Labels') : null,
+
+      S.divider(),
+
+      S.listItem().title('📦 Bulk Label Generator').child(S.component().title('Bulk Label Generator').component(BulkLabelGenerator)),
+      S.listItem().title('📄 Packing Slip Generator').child(S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)),
+      S.listItem().title('📊 Financial Dashboard').child(S.component().title('Finance').component(FinancialDashboard)),
+      S.listItem().title('📥 Financial Reports').child(S.component().title('Reports').component(FinancialReports)),
+      S.listItem().title('🧾 Fulfillment Console').child(S.component().title('Console').component(BulkFulfillmentConsole)),
+      S.listItem().title('👤 Customer Dashboard').child(S.component().title('Customers').component(CustomerDashboard)),
+    ].filter(Boolean))
+}

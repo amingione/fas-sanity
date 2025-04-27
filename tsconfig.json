@@ -23,8 +23,9 @@
     "typeRoots": ["./types", "./node_modules/@types"]
   },
   "include": [
-    "sanity.config.ts",
+    "sanity.config.js",
     "src",
+    "types",
     "schemaTypes",
     "desk",
     "components",

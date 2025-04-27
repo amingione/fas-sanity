@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useClient } from 'sanity'
-import { Card, Button, Stack, Text } from '@sanity/ui'
+import { Card, Button, Stack, Text, Box } from '@sanity/ui'
 
 type Invoice = {
   _id: string
@@ -63,26 +63,31 @@ export default function BulkLabelGenerator() {
 
   return (
     <Card padding={4}>
-      <Stack space={3}>
+      <Stack space={5}>
         <Text size={2} weight="semibold">📦 Bulk Shipping Label Generator</Text>
-      </Stack>
-      <Stack space={4}>
-        {invoices.map(invoice => (
-          <Card key={invoice._id} padding={3} shadow={1} radius={2}>
-            <Stack space={2}>
-              <Text>🧾 {invoice.customerName}</Text>
-              <Text>Method: {invoice.shippingMethod}</Text>
-              <Button
-                text={status[invoice._id] === 'Generating...' ? 'Generating…' : 'Generate Label'}
-                onClick={() => generateLabel(invoice)}
-                tone="primary"
-                disabled={status[invoice._id] === 'Generating...'}
-              />
-              <Text size={1} muted>{status[invoice._id]}</Text>
+        <Box marginTop={3}>
+          {invoices.length === 0 ? (
+            <Text>No unshipped invoices found.</Text>
+          ) : (
+            <Stack space={5}>
+              {invoices.map(invoice => (
+                <Card key={invoice._id} padding={3} shadow={1} radius={2}>
+                  <Stack space={6}>
+                    <Text>🧾 {invoice.customerName}</Text>
+                    <Text>Method: {invoice.shippingMethod}</Text>
+                    <Button
+                      text={status[invoice._id] === 'Generating...' ? 'Generating…' : 'Generate Label'}
+                      onClick={() => generateLabel(invoice)}
+                      tone="primary"
+                      disabled={status[invoice._id] === 'Generating...'}
+                    />
+                    <Text size={1} muted>{status[invoice._id]}</Text>
+                  </Stack>
+                </Card>
+              ))}
             </Stack>
-          </Card>
-        ))}
-        {invoices.length === 0 && <Text>No unshipped invoices found.</Text>}
+          )}
+        </Box>
       </Stack>
     </Card>
   )

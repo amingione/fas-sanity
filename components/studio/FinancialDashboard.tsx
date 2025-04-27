@@ -28,7 +28,7 @@ export default function FinancialDashboard() {
         const avg = revenue / (last90.length || 1)
 
         const productTally: Record<string, number> = {}
-        invoices.forEach((i: { _createdAt: string; amount?: number; quote?: { products?: { title?: string }[] } }) => {
+        invoices.forEach((i: any) => {
           i.quote?.products?.forEach((p: any) => {
             if (p?.title) productTally[p.title] = (productTally[p.title] || 0) + 1
           })
@@ -64,24 +64,27 @@ export default function FinancialDashboard() {
       ) : error ? (
         <Text style={{ color: 'red' }}>{error}</Text>
       ) : (
-        <Stack space={4} marginTop={4}>
-          <Flex gap={5} wrap="wrap">
+        <Stack space={6} marginTop={5}>
+          <Flex gap={6} wrap="wrap">
             <Box flex={1} style={{ minWidth: 250 }}>
-              <Text size={1} weight="semibold">🧾 Orders (Last 30 Days)</Text>
+              <Text size={1} weight="semibold" style={{ marginBottom: 10 }}>🧾 Orders (Last 30 Days)</Text>
               <Text size={3}>{metrics.ordersLast30}</Text>
             </Box>
             <Box flex={1} style={{ minWidth: 250 }}>
-              <Text size={1} weight="semibold">💰 Revenue (Last 90 Days)</Text>
+              <Text size={1} weight="semibold" style={{ marginBottom: 10 }}>💰 Revenue (Last 90 Days)</Text>
               <Text size={3}>${metrics.revenueLast90.toFixed(2)}</Text>
             </Box>
             <Box flex={1} style={{ minWidth: 250 }}>
-              <Text size={1} weight="semibold">📈 Average Order Value</Text>
+              <Text size={1} weight="semibold" style={{ marginBottom: 10 }}>📈 Average Order Value</Text>
               <Text size={3}>${metrics.avgOrderValue.toFixed(2)}</Text>
             </Box>
           </Flex>
+
+          <hr style={{ borderTop: '1px solid #333', margin: '1rem 0' }} />
+
           <Box>
             <Text size={1} weight="semibold">🏆 Top Products</Text>
-            <Stack marginTop={2}>
+            <Stack marginTop={3} space={4}>
               {metrics.topProducts.map((product, i) => (
                 <Text key={i}>• {product}</Text>
               ))}
