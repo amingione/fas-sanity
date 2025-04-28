@@ -1,6 +1,4 @@
-
-
-import { client } from '../.sanity/lib/client'
+import { client } from '@/lib/client'
 
 export async function deleteQuote(userId: string, quoteId: string) {
   if (!userId || !quoteId) throw new Error('Missing userId or quoteId');
