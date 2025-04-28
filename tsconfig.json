@@ -21,6 +21,7 @@
       "lib/*": ["src/lib/*"],
       "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
+      "@/*": ["src/*"],
     },
     "typeRoots": ["./types", "./node_modules/@types"]
   },
