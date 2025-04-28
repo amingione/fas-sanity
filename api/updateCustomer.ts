@@ -1,4 +1,4 @@
-import { client } from '../.sanity/lib/client'
+import { client } from '@/lib/client';
 
 export async function updateCustomer(userId: string, updates: {
   email?: string;

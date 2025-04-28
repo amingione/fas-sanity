@@ -18,7 +18,9 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "lib/*": ["src/lib/*"]
+      "lib/*": ["src/lib/*"],
+      "@/lib/*": ["src/lib/*"],
+      "@/components/*": ["src/components/*"],
     },
     "typeRoots": ["./types", "./node_modules/@types"]
   },
