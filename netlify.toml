@@ -5,9 +5,15 @@
 [build.environment]
   NODE_VERSION = "22"
   MISE_DISABLE = "1"
+  NODE_ENV = "production"
 
 [functions]
   directory = "netlify/functions"
 
 [dev]
   targetPort = 3333
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
