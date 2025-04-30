@@ -22,5 +22,8 @@ export default defineConfig({
   ],
   schema: {
     types: schemaTypes, // ✅ Register your schemas
+  },
+  studio: {
+    unstable__disableLiveEdit: true,
   }
 })
