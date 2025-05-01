@@ -8,6 +8,7 @@ import FinancialDashboard from './components/studio/FinancialDashboard'
 import FinancialReports from './components/studio/FinancialReports'
 import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
 import OrderStatusPreview from './components/inputs/FulfillmentBadge'
+import VendorStatusBadge from './components/inputs/VendorStatusBadge'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -70,5 +71,31 @@ export const deskStructure = (S: any, context: any) => {
       S.listItem().title('📥 Financial Reports').child(S.component().title('Reports').component(FinancialReports)),
       S.listItem().title('🧾 Fulfillment Console').child(S.component().title('Console').component(BulkFulfillmentConsole)),
       S.listItem().title('👤 Customer Dashboard').child(S.component().title('Customers').component(CustomerDashboard)),
+
+      S.listItem()
+        .title('🛠 Admin Tools')
+        .child(
+          S.list()
+            .title('Admin Tools')
+            .items([
+              S.listItem()
+                .title('📝 Vendor Applications')
+                .child(
+                  S.documentTypeList('vendor')
+                    .title('Vendor Applications')
+                    .filter('_type == "vendor" && status == $status')
+                    .params({ status: 'Pending' })
+                    .child((id: string) =>
+                      S.document()
+                        .documentId(id)
+                        .schemaType('vendor')
+                        .views([
+                          S.view.form(),
+                          S.view.component(require('./components/inputs/VendorStatusBadge').default).title('🟢 Status Badge'),
+                        ])
+                    )
+                )
+            ])
+        ),
     ].filter(Boolean))
 }

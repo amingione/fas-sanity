@@ -8,18 +8,21 @@ export default defineType({
     defineField({
       name: 'name',
       title: 'Vendor Name',
-      type: 'string'
+      type: 'string',
+      validation: Rule => Rule.required()
     }),
     defineField({
       name: 'email',
       title: 'Email',
-      type: 'string'
+      type: 'string',
+      validation: Rule => Rule.required().email()
     }),
     defineField({
       name: 'passwordHash',
       title: 'Password Hash',
       type: 'string',
-      hidden: true
+      hidden: true,
+      readOnly: true
     }),
     defineField({
       name: 'phone',
@@ -40,10 +43,12 @@ export default defineType({
       name: 'status',
       title: 'Approval Status',
       type: 'string',
+      initialValue: 'Pending',
       options: {
         list: ['Pending', 'Approved', 'Rejected'],
-        layout: 'radio',
-      }
+        layout: 'radio'
+      },
+      validation: Rule => Rule.required()
     }),
     defineField({
       name: 'companyName',
@@ -70,7 +75,8 @@ export default defineType({
       title: 'User Role',
       type: 'string',
       initialValue: 'vendor',
-      hidden: true
+      hidden: true,
+      readOnly: true
     }),
     defineField({
       name: 'approved',
@@ -85,6 +91,63 @@ export default defineType({
       options: {
         list: ['Reseller', 'Installer', 'Wholesaler', 'Service Center']
       }
+    }),
+    defineField({
+      name: 'logo',
+      title: 'Company Logo',
+      type: 'image',
+      options: {
+        hotspot: true
+      }
+    }),
+    defineField({
+      name: 'orders',
+      title: 'Orders',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'orderId', title: 'Order ID', type: 'string' },
+            { name: 'status', title: 'Status', type: 'string' },
+            { name: 'amount', title: 'Order Total', type: 'number' },
+            { name: 'orderDate', title: 'Order Date', type: 'datetime' }
+          ]
+        }
+      ]
+    }),
+    defineField({
+      name: 'quotes',
+      title: 'Submitted Quotes',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            { name: 'quoteId', title: 'Quote ID', type: 'string' },
+            { name: 'status', title: 'Status', type: 'string' },
+            { name: 'dateSubmitted', title: 'Date Submitted', type: 'datetime' },
+            { name: 'description', title: 'Description', type: 'text' }
+          ]
+        }
+      ]
+    }),
+    defineField({
+      name: 'assignedCustomers',
+      title: 'Assigned Customers',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'customer' }] }]
+    }),
+    defineField({
+      name: 'lastLogin',
+      title: 'Last Login Date',
+      type: 'datetime'
+    }),
+    defineField({
+      name: 'active',
+      title: 'Active Status',
+      type: 'boolean',
+      initialValue: true
     })
   ]
 })
