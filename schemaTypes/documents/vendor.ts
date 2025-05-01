@@ -16,6 +16,12 @@ export default defineType({
       type: 'string'
     }),
     defineField({
+      name: 'passwordHash',
+      title: 'Password Hash',
+      type: 'string',
+      hidden: true
+    }),
+    defineField({
       name: 'phone',
       title: 'Phone Number',
       type: 'string'
@@ -58,6 +64,19 @@ export default defineType({
       name: 'contactPerson',
       title: 'Main Contact Person',
       type: 'string'
+    }),
+    defineField({
+      name: 'userRole',
+      title: 'User Role',
+      type: 'string',
+      initialValue: 'vendor',
+      hidden: true
+    }),
+    defineField({
+      name: 'approved',
+      title: 'Approved Vendor',
+      type: 'boolean',
+      initialValue: false
     }),
     defineField({
       name: 'partnershipType',
