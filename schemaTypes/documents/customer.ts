@@ -8,8 +8,18 @@ export default defineType({
   fields: [
     defineField({ name: 'firstName', title: 'First Name', type: 'string' }),
     defineField({ name: 'lastName', title: 'Last Name', type: 'string' }),
-    defineField({ name: 'email', title: 'Email', type: 'string' }),
-    defineField({ name: 'passwordHash', title: 'Password Hash', type: 'string' }),
+    defineField({
+      name: 'email',
+      title: 'Email',
+      type: 'string',
+      validation: Rule => Rule.required().email()
+    }),
+    defineField({
+      name: 'passwordHash',
+      title: 'Password Hash',
+      type: 'string',
+      hidden: true
+    }),
     defineField({ name: 'phone', title: 'Phone Number', type: 'string' }),
     defineField({ name: 'address', title: 'Shipping Address', type: 'text' }),
     defineField({
@@ -36,7 +46,7 @@ export default defineType({
             { name: 'orderNumber', title: 'Order Number', type: 'string' },
             { name: 'status', title: 'Status', type: 'string' },
             { name: 'orderDate', title: 'Order Date', type: 'datetime' },
-            { name: 'total', title: 'Total Amount', type: 'string' }
+            { name: 'total', title: 'Total Amount', type: 'number' }
           ]
         }
       ]
