@@ -9,6 +9,7 @@ export default defineType({
     defineField({ name: 'firstName', title: 'First Name', type: 'string' }),
     defineField({ name: 'lastName', title: 'Last Name', type: 'string' }),
     defineField({ name: 'email', title: 'Email', type: 'string' }),
+    defineField({ name: 'passwordHash', title: 'Password Hash', type: 'string' }),
     defineField({ name: 'phone', title: 'Phone Number', type: 'string' }),
     defineField({ name: 'address', title: 'Shipping Address', type: 'text' }),
     defineField({
