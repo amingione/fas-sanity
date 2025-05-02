@@ -70,6 +70,43 @@ export default defineType({
       title: 'Main Contact Person',
       type: 'string'
     }),
+    // Business verification fields
+    defineField({
+      name: 'resaleCertificateId',
+      title: 'Resale Certificate ID',
+      type: 'string',
+      validation: Rule => Rule.required()
+    }),
+    defineField({
+      name: 'taxId',
+      title: 'Tax ID (EIN)',
+      type: 'string',
+      validation: Rule => Rule.required()
+    }),
+    defineField({
+      name: 'businessAddress',
+      title: 'Business Address',
+      type: 'string',
+      validation: Rule => Rule.required()
+    }),
+    defineField({
+      name: 'businessType',
+      title: 'Business Type',
+      type: 'string',
+      options: {
+        list: ['LLC', 'Corporation', 'Sole Proprietor', 'Partnership', 'Other']
+      }
+    }),
+    defineField({
+      name: 'yearsInBusiness',
+      title: 'Years in Business',
+      type: 'number'
+    }),
+    defineField({
+      name: 'licenseDocument',
+      title: 'Business License Upload',
+      type: 'file'
+    }),
     defineField({
       name: 'userRole',
       title: 'User Role',
