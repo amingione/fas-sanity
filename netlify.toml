@@ -13,6 +13,28 @@
 [dev]
   targetPort = 3333
 
+# Bypass redirect for known static assets
+[[redirects]]
+  from = "/site.webmanifest"
+  to = "/site.webmanifest"
+  status = 200
+
+[[redirects]]
+  from = "/favicon.ico"
+  to = "/favicon.ico"
+  status = 200
+
+[[redirects]]
+  from = "/robots.txt"
+  to = "/robots.txt"
+  status = 200
+
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+
+# Catch-all redirect for everything else
 [[redirects]]
   from = "/*"
   to = "/"
