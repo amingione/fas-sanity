@@ -21,9 +21,11 @@ const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
   apiVersion: '2024-04-10',
-  token: process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  token: process.env.SANITY_API_TOKEN as string,
   useCdn: false,
 })
+
+const CAN_PATCH = Boolean(process.env.SANITY_API_TOKEN)
 
 function computeTotals(doc: any) {
   const items = Array.isArray(doc?.lineItems) ? doc.lineItems : []
@@ -47,6 +49,14 @@ function computeTotals(doc: any) {
   return { subtotal, discountAmt, taxAmount, total }
 }
 
+// Helper to get both draft and published variants of a document ID
+function idVariants(id: string): string[] {
+  const ids = [id]
+  if (id.startsWith('drafts.')) ids.push(id.replace('drafts.', ''))
+  else ids.push(`drafts.${id}`)
+  return Array.from(new Set(ids))
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -54,6 +64,11 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Method Not Allowed' }) }
   if (!stripe) return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Stripe not configured' }) }
+
+  console.log('createCheckout env', {
+    hasStripeKey: Boolean(process.env.STRIPE_SECRET_KEY),
+    hasSanityToken: Boolean(process.env.SANITY_API_TOKEN),
+  })
 
   let invoiceId = ''
   try {
@@ -172,13 +187,39 @@ try {
   }
 }
 
-const url = session.url || ''
-if (!url) throw new Error('Stripe did not return a checkout URL')
+const url = session?.url || ''
+if (!url) {
+  return {
+    statusCode: 500,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Failed to create checkout session: no URL from Stripe' }),
+  }
+}
 
-    // Save URL back on the invoice so Studio buttons and emails can reuse it
-    await sanity.patch(invoiceId).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
+// Try to persist the URL on the invoice (draft and published variants), but never fail the request if we can't write.
+if (CAN_PATCH) {
+  try {
+    const ids = idVariants(invoiceId)
+    for (const id of ids) {
+      try {
+        await sanity.patch(id).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
+        break // saved on one variant; stop trying others
+      } catch {
+        // try the other variant (draft/published)
+      }
+    }
+  } catch {
+    console.warn('createCheckout: patch paymentLinkUrl failed (permissions or token issue). Continuing.')
+  }
+} else {
+  console.warn('createCheckout: SANITY_API_TOKEN not set — skipping persist of paymentLinkUrl.')
+}
 
-    return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) }
+return {
+  statusCode: 200,
+  headers: { ...CORS, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ url }),
+}
   } catch (err: any) {
     console.error('createCheckout error', err)
     return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Failed to create checkout session', error: String(err?.message || err) }) }
