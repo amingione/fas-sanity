@@ -13,7 +13,6 @@ const getSanityClient = () =>
     projectId: 'r4og35qd',
     dataset: 'production',
     apiVersion: '2024-04-10',
-    token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
     useCdn: false,
   })
 
@@ -57,10 +56,15 @@ function InvoiceNumberInput(props: any) {
 function BillToInput(props: any) {
   const { renderDefault, value, onChange } = props
   const client = useClient({ apiVersion: '2024-10-01' })
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const [q, setQ] = useState('')
   const [results, setResults] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+
+  const inputRef = React.useRef<HTMLInputElement | null>(null)
+  function chooseFirst() {
+    if (results.length > 0) applyCustomer(results[0])
+  }
 
   // live search existing customers
   useEffect(() => {
@@ -84,22 +88,24 @@ function BillToInput(props: any) {
 
   function applyCustomer(c: any) {
     const patch: any = {
-      name: c?.name || '',
-      email: c?.email || '',
-      phone: c?.phone || '',
-      address_line1: c?.address_line1 || '',
-      address_line2: c?.address_line2 || '',
-      city_locality: c?.city_locality || '',
-      state_province: c?.state_province || '',
-      postal_code: c?.postal_code || '',
-      country_code: c?.country_code || '',
+      name: (c?.name || '').trim(),
+      email: (c?.email || '').trim(),
+      phone: (c?.phone || '').trim(),
+      address_line1: (c?.address_line1 || '').trim(),
+      address_line2: (c?.address_line2 || '').trim(),
+      city_locality: (c?.city_locality || '').trim(),
+      state_province: (c?.state_province || '').trim(),
+      postal_code: (c?.postal_code || '').trim(),
+      country_code: (c?.country_code || '').trim(),
     }
     onChange(set(patch))
-    // also set a sibling hidden reference field if present
     try {
       const docId = (useFormValue(['_id']) as string) || ''
-      // Patch sibling field `customerRef` on the invoice (if it exists)
-      if (docId) client.patch(docId).set({ customerRef: { _type: 'reference', _ref: c._id } }).commit({ autoGenerateArrayKeys: true })
+      const currentShip = (useFormValue(['shipTo']) as any) || {}
+      const emptyShip = !currentShip?.name && !currentShip?.address_line1 && !currentShip?.postal_code
+      const ops: any = { customerRef: { _type: 'reference', _ref: c._id } }
+      if (emptyShip) ops.shipTo = patch
+      if (docId) client.patch(docId).set(ops).commit({ autoGenerateArrayKeys: true })
     } catch {}
   }
 
@@ -142,9 +148,17 @@ function BillToInput(props: any) {
       // search bar
       el('div', { style: { display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginBottom: 8 } },
         el('input', {
+          ref: (r: any) => (inputRef.current = r),
           placeholder: 'Search customers by name, email, or phone…',
           value: q,
           onChange: (e: any) => setQ(e.currentTarget.value),
+          onKeyDown: (e: any) => {
+            if (e.key === 'Enter') { e.preventDefault(); chooseFirst() }
+            if (e.key === 'ArrowDown' && results.length > 0) {
+              // focus list container for screen readers; click first item
+              chooseFirst()
+            }
+          },
           style: { width: '100%', padding: '6px 8px', color: '#000' },
         }),
         el('button', { type: 'button', onClick: createFromBillTo, style: { padding: '6px 10px', borderRadius: 4, border: '1px solid #bbb', background: '#eaeaea', color: '#000', fontWeight: 600, cursor: 'pointer' } }, 'Create Customer from Bill To')
@@ -159,9 +173,12 @@ function BillToInput(props: any) {
             key: c._id,
             onMouseDown: (e: any) => e.preventDefault(),
             onClick: () => applyCustomer(c),
-            style: { padding: '8px 10px', cursor: 'pointer' }
+            style: { padding: '8px 10px', cursor: 'pointer', color: '#000' }
           },
-          `${c.name || '(No name)'}${c.email ? ' • ' + c.email : ''}${c.phone ? ' • ' + c.phone : ''}`,
+          el('div', { style: { fontWeight: 600, color: '#000' } }, c.name || '(No name)'),
+          el('div', { style: { fontSize: 12, color: '#000' } }, [c.email || '—', c.phone ? ` • ${c.phone}` : ''].join('')),
+          el('div', { style: { fontSize: 12, color: '#000' } }, `${c.address_line1 || ''}${c.address_line2 ? ', ' + c.address_line2 : ''}`),
+          el('div', { style: { fontSize: 12, color: '#000' } }, `${c.city_locality || ''}${c.state_province ? ', ' + c.state_province : ''} ${c.postal_code || ''} ${c.country_code || ''}`)
         ))
       ) : (q && !loading ? el('div', { style: { fontSize: 12, color: '#666', marginBottom: 8 } }, 'No matches — fill the form below and click “Create Customer from Bill To”.') : null),
 
