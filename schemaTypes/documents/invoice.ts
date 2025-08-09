@@ -17,6 +17,13 @@ export default defineType({
   name: 'invoice',
   title: 'Invoice',
   type: 'document',
+  fieldsets: [
+    {
+      name: 'documents',
+      title: 'PDF Documents',
+      options: { collapsible: true, collapsed: false }
+    }
+  ],
   fields: [
     defineField({ name: 'invoiceNumber', title: 'Invoice Number', type: 'string', readOnly: true }),
     defineField({ name: 'quote', title: 'Related Quote', type: 'reference', to: [{ type: 'buildQuote' }] }),
@@ -51,8 +58,24 @@ export default defineType({
       },
       initialValue: 'unfulfilled'
     }),
-    defineField({ name: 'invoicePdfUrl', title: 'Invoice PDF (Optional)', type: 'url' }),
-    defineField({ name: 'shippingLabelUrl', title: 'Shipping Label PDF', type: 'url', readOnly: true }),
+    defineField({
+      name: 'invoicePdfUrl',
+      title: 'Invoice PDF',
+      type: 'file',
+      options: {
+        accept: '.pdf'
+      },
+      fieldset: 'documents'
+    }),
+    defineField({
+      name: 'shippingLabelUrl',
+      title: 'Shipping Label PDF',
+      type: 'file',
+      options: {
+        accept: '.pdf'
+      },
+      fieldset: 'documents'
+    }),
     defineField({
       name: 'shippingMethod',
       title: 'Shipping Method',
@@ -77,8 +100,20 @@ export default defineType({
         {
           type: 'object',
           fields: [
-            { name: 'action', type: 'string', title: 'Action' },
-            { name: 'timestamp', type: 'datetime', title: 'Timestamp' }
+            {
+              name: 'action',
+              type: 'string',
+              title: 'Action',
+              options: {
+                list: ['Created', 'Payment Received', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+              }
+            },
+            {
+              name: 'timestamp',
+              type: 'datetime',
+              title: 'Timestamp',
+              initialValue: () => new Date().toISOString()
+            }
           ]
         }
       ]

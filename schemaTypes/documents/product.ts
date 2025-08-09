@@ -205,20 +205,15 @@ const product = defineType({
         group: 'relations'
       }),
       defineField({
-        name: 'filters',
-        title: 'Filters',
-        type: 'array',
-        of: [
-          {
-            type: 'reference',
-            to: [{ type: 'productFilter' }], // Matches your existing filter schema
-          }
-        ],
-        options: {
-          layout: 'tags' // Optional: renders filters as tag-style in Studio
-        },
-        group: 'filters'
-      }),
+  name: 'filters',
+  title: 'Filters',
+  type: 'array',
+  of: [{ type: 'string' }],
+  options: {
+    layout: 'tags',
+  },
+  group: 'filters'
+}),
       defineField({
         name: 'attributes',
         title: 'Product Attributes',
@@ -417,34 +412,3 @@ const product = defineType({
   });
 
 export default product;
-
-// Customer Database
-export const customer = defineType({
-    name: 'customer',
-    title: 'Customer',
-    type: 'document',
-    fields: [
-      defineField({ name: 'fullName', title: 'Full Name', type: 'string' }),
-      defineField({ name: 'email', title: 'Email', type: 'string' }),
-      defineField({ name: 'phone', title: 'Phone', type: 'string' }),
-      defineField({ name: 'address', title: 'Address', type: 'text' }),
-      defineField({ name: 'vehicle', title: 'Vehicle Info', type: 'string' }),
-      defineField({ name: 'notes', title: 'Notes', type: 'text' })
-    ]
-  })
-
-// Build Quote for Garage Builder
-export const buildQuote = defineType({
-    name: 'buildQuote',
-    title: 'Build Quote',
-    type: 'document',
-    fields: [
-      defineField({ name: 'customer', title: 'Customer', type: 'reference', to: [{ type: 'customer' }] }),
-      defineField({ name: 'selectedProducts', title: 'Selected Products', type: 'array', of: [{ type: 'reference', to: [{ type: 'product' }] }] }),
-      defineField({ name: 'targetHP', title: 'Target Horsepower', type: 'number' }),
-      defineField({ name: 'buildPurpose', title: 'Build Purpose', type: 'string', options: { list: ['Street', 'Track', 'Show', 'All-Purpose'] } }),
-      defineField({ name: 'quoteTotal', title: 'Quote Total', type: 'number' }),
-      defineField({ name: 'status', title: 'Status', type: 'string', options: { list: ['Draft', 'Sent', 'Approved', 'Rejected'] }, initialValue: 'Draft' }),
-      defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', initialValue: () => new Date().toISOString() })
-    ]
-  })

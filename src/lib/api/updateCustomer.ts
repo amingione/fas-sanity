@@ -12,8 +12,15 @@ export async function updateCustomer(userId: string, updates: {
   if (!userId) throw new Error('Missing userId for update');
 
   try {
+    const customer = await client.fetch(
+      `*[_type == "customer" && userId == $userId][0]`,
+      { userId }
+    );
+
+    if (!customer?._id) throw new Error('Customer not found');
+
     const updated = await client
-      .patch(userId) // assumes Clerk userId is the document _id
+      .patch(customer._id)
       .set({
         ...(updates.email && { email: updates.email }),
         ...(updates.phone && { phone: updates.phone }),

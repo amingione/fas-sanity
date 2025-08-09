@@ -4,7 +4,6 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["sanity"],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -21,7 +20,7 @@
       "lib/*": ["src/lib/*"],
       "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
-      "@/*": ["src/*"],
+      "@/*": ["src/*"]
     },
     "typeRoots": ["./types", "./node_modules/@types"]
   },
@@ -37,6 +36,6 @@
   ],
   "exclude": [
     "node_modules",
-    "schemaTypes/objects/buildQuote.js"
+    "schemaTypes/objects/buildQuote.ts"
   ]
 }

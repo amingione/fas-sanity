@@ -1,11 +1,22 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Button, Flex, Text, useToast } from '@sanity/ui'
 import { useFormValue } from 'sanity'
 import { createClient } from '@sanity/client'
-import { Resend } from 'resend'
 
 interface Props {
   doc: Record<string, any>
+}
+
+function asShipEngineAddress(raw?: any) {
+  if (!raw) return null
+  return {
+    name: raw.name || `${raw.firstName ?? ''} ${raw.lastName ?? ''}`.trim() || undefined,
+    address_line1: raw.address_line1 || raw.street || raw.line1 || undefined,
+    city_locality: raw.city_locality || raw.city || undefined,
+    state_province: raw.state_province || raw.state || undefined,
+    postal_code: raw.postal_code || raw.postalCode || undefined,
+    country_code: raw.country_code || raw.country || 'US',
+  }
 }
 
 const getSanityClient = () =>
@@ -17,34 +28,121 @@ const getSanityClient = () =>
     useCdn: false
   })
 
-  const resend = new Resend(process.env.SANITY_STUDIO_RESEND_API_KEY)
-
 export default function ShippingLabelActions({ doc }: Props) {
+  const client = useMemo(() => getSanityClient(), [])
+
+  const saveSelectedRate = async (rate: {
+    carrierId: string
+    carrierCode: string
+    carrier: string
+    service: string
+    serviceCode: string
+    amount: number
+    currency: string
+    deliveryDays: number | null
+    estimatedDeliveryDate: string | null
+  }) => {
+    await client
+      .patch(doc._id)
+      .set({
+        selectedService: {
+          serviceCode: rate.serviceCode,
+          carrierId: rate.carrierId,
+          carrier: rate.carrier,
+          service: rate.service,
+          amount: rate.amount,
+          currency: rate.currency,
+          deliveryDays: rate.deliveryDays ?? null,
+        },
+      })
+      .commit()
+  }
+
   const labelUrl = useFormValue(['labelUrl']) as string | undefined
   const trackingUrl = useFormValue(['trackingUrl']) as string | undefined
+  // Pull additional fields from the form
+  const weight = useFormValue(['weight']) as number | undefined
+  const dimensions = useFormValue(['dimensions']) as {
+    length: number
+    width: number
+    height: number
+  } | undefined
+  const carrier = useFormValue(['carrier']) as string | undefined
+  const customerEmail = useFormValue(['customerEmail']) as string | undefined
 
   const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
 
-  const noData = !labelUrl && !trackingUrl
+  const [availableRates, setAvailableRates] = useState<
+    {
+      carrierId: string
+      carrierCode: string
+      carrier: string
+      service: string
+      serviceCode: string
+      amount: number
+      currency: string
+      deliveryDays: number | null
+      estimatedDeliveryDate: string | null
+    }[]
+  >([])
+  const [selectedRate, setSelectedRate] = useState<
+    {
+      carrierId: string
+      carrierCode: string
+      carrier: string
+      service: string
+      serviceCode: string
+      amount: number
+      currency: string
+      deliveryDays: number | null
+      estimatedDeliveryDate: string | null
+    } | null
+  >(null)
+
+  const [localLabelUrl, setLocalLabelUrl] = useState<string | undefined>(labelUrl)
+  const [localTrackingUrl, setLocalTrackingUrl] = useState<string | undefined>(trackingUrl)
+
+  const hasData = Boolean(localLabelUrl || localTrackingUrl)
 
   const handleCreateLabel = async () => {
-    const input = prompt('Enter package weight in pounds (e.g. 1.2):')
-    const weight = input ? parseFloat(input) : 1.2
+    // Try to derive addresses from the current document
+    const shipTo = asShipEngineAddress((doc as any)?.shipTo || (doc as any)?.shippingAddress || (doc as any)?.invoice?.shippingAddress)
+    const shipFrom = asShipEngineAddress((doc as any)?.shipFrom || (doc as any)?.warehouseAddress || (doc as any)?.originAddress)
 
-    if (isNaN(weight) || weight <= 0) {
+    if (!shipTo || !shipFrom) {
       toast.push({
         status: 'warning',
-        title: 'Invalid weight entered',
-        description: 'Please enter a valid number greater than 0.',
+        title: 'Missing addresses',
+        description: 'Please provide both Ship To and Ship From addresses on this document.',
+        closable: true,
+      })
+      return
+    }
+
+    // Validate shipping fields from form
+    if (!weight || weight <= 0) {
+      toast.push({
+        status: 'warning',
+        title: 'Missing or invalid weight',
+        description: 'Please enter a valid weight before generating a label.',
         closable: true
+      })
+      return
+    }
+
+    if (!dimensions) {
+      toast.push({
+        status: 'warning',
+        title: 'Missing dimensions',
+        description: 'Please enter package dimensions before generating a label.',
+        closable: true,
       })
       return
     }
 
     setIsLoading(true)
 
-    const client = getSanityClient()
     const logEvent = async (entry: Record<string, any>) => {
       await client
         .patch(doc._id)
@@ -54,10 +152,51 @@ export default function ShippingLabelActions({ doc }: Props) {
     }
 
     try {
+      if (!selectedRate) {
+        const ratesRes = await fetch('/.netlify/functions/getShipEngineRates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ship_to: shipTo,
+            ship_from: shipFrom,
+            package_details: {
+              weight: { value: Number(weight), unit: 'pound' },
+              dimensions: dimensions
+                ? { unit: 'inch', length: Number(dimensions.length), width: Number(dimensions.width), height: Number(dimensions.height) }
+                : undefined,
+            },
+            // Optionally let backend auto-discover carriers; you can pass specific ids with `carrier_ids`
+          }),
+        })
+
+        const ratesResult = await ratesRes.json()
+        if (!ratesRes.ok) throw new Error(ratesResult?.error || 'Failed to fetch rates')
+
+        const rates = Array.isArray(ratesResult?.rates) ? ratesResult.rates : []
+        if (rates.length === 0) {
+          toast.push({ status: 'warning', title: 'No rates available', description: 'Try different package details or verify carrier setup in ShipEngine.', closable: true })
+          setIsLoading(false)
+          return
+        }
+
+        setAvailableRates(rates)
+        setSelectedRate(rates[0])
+        await saveSelectedRate(rates[0])
+        setIsLoading(false)
+        return
+      }
+
       const res = await fetch('/.netlify/functions/createShippingLabel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ labelSize: '4x6', weight, orderId: doc._id })
+        body: JSON.stringify({
+          labelSize: '4x6',
+          serviceCode: selectedRate.serviceCode,
+          carrier: selectedRate.carrierId,
+          weight,
+          dimensions,
+          orderId: doc._id,
+        })
       })
 
       const result = await res.json()
@@ -69,17 +208,6 @@ export default function ShippingLabelActions({ doc }: Props) {
         labelUrl: result.labelUrl
       }).commit()
 
-      await resend.emails.send({
-        from: 'FAS Motorsports <shipping@fasmotorsports.com>',
-        to: 'customer@example.com',
-        subject: 'Your FAS Shipping Label is Ready!',
-        html: `
-          <h2>Your Order Has Shipped!</h2>
-          <p><strong>Tracking Number:</strong> ${result.trackingNumber}</p>
-          <p><a href="${result.trackingUrl}">Track your package</a></p>
-        `
-      })
-
       await logEvent({
         _type: 'shippingLogEntry',
         status: 'created',
@@ -87,7 +215,9 @@ export default function ShippingLabelActions({ doc }: Props) {
         trackingUrl: result.trackingUrl,
         trackingNumber: result.trackingNumber,
         createdAt: new Date().toISOString(),
-        weight
+        weight,
+        dimensions,
+        carrier
       })
 
       toast.push({
@@ -96,7 +226,8 @@ export default function ShippingLabelActions({ doc }: Props) {
         closable: true
       })
 
-      location.reload()
+      setLocalLabelUrl(result.labelUrl)
+      setLocalTrackingUrl(result.trackingUrl)
     } catch (error: any) {
       console.error(error)
 
@@ -120,21 +251,40 @@ export default function ShippingLabelActions({ doc }: Props) {
 
   return (
     <Flex direction="column" gap={3} padding={4}>
-      {noData && (
+      {!hasData && (
         <Text size={1} muted>
           No shipping label or tracking info yet.
         </Text>
       )}
 
-      {labelUrl && (
-        <Button text="🔘 Download Label" tone="primary" as="a" href={labelUrl} target="_blank" />
+      {availableRates.length > 0 && (
+        <select
+          onChange={(e) => {
+            const selected = availableRates.find((rate) => rate.serviceCode === e.target.value)
+            setSelectedRate(selected || null)
+            if (selected) {
+              saveSelectedRate(selected)
+            }
+          }}
+          value={selectedRate?.serviceCode || ''}
+        >
+          {availableRates.map((rate, idx) => (
+            <option key={`${rate.serviceCode}-${idx}`} value={rate.serviceCode}>
+              {rate.carrier} — {rate.service} ({rate.serviceCode}) — ${rate.amount.toFixed(2)}{rate.deliveryDays ? ` • ${rate.deliveryDays}d` : ''}
+            </option>
+          ))}
+        </select>
       )}
 
-      {trackingUrl && (
-        <Button text="🚚 Track Package" tone="positive" as="a" href={trackingUrl} target="_blank" />
+      {localLabelUrl && (
+        <Button text="🔘 Download Label" tone="primary" as="a" href={localLabelUrl} target="_blank" />
       )}
 
-      {noData && (
+      {localTrackingUrl && (
+        <Button text="🚚 Track Package" tone="positive" as="a" href={localTrackingUrl} target="_blank" />
+      )}
+
+      {!hasData && (
         <Button
           text={isLoading ? 'Creating label...' : '📦 Create Label'}
           tone="default"
