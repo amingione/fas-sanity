@@ -49,6 +49,8 @@ const sanity = createClient({
   useCdn: false,
 })
 
+const CAN_PATCH = Boolean(process.env.SANITY_API_TOKEN)
+
 // ---- Helpers
 function money(n: number) { return `$${Number(n || 0).toFixed(2)}` }
 
@@ -111,11 +113,12 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
   }
 
   const url = session?.url || ''
-  if (url) {
+  if (url && CAN_PATCH) {
     try {
       await sanity.patch(invoiceId).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
-    } catch (e) {
-      console.warn('Failed to patch paymentLinkUrl on invoice:', e)
+    } catch (e: any) {
+      const code = (e?.response?.statusCode || e?.statusCode || '').toString()
+      console.warn(`resendInvoiceEmail: could not save paymentLinkUrl (status ${code || 'unknown'}) — continuing without persisting.`)
     }
   }
   return url
