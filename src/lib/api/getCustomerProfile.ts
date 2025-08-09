@@ -1,23 +1,23 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getAuth } from '@clerk/nextjs/server';
+import { getSession } from '@auth0/nextjs-auth0';
 import { client } from '@/lib/client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { userId } = getAuth(req);
+    const session = await getSession(req, res);
+    const userId = session?.user?.sub;
 
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Query Sanity for the customer with the matching Clerk userId
-    const query = `*[_type == "customer" && clerkId == $userId][0]{
+    // Query Sanity for the customer with the matching Auth0 userId
+    const query = `*[_type == "customer" && userId == $userId][0]{
       _id,
       name,
       email,
       phone
     }`;
-
     const customer = await client.fetch(query, { userId });
 
     if (!customer) {

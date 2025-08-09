@@ -1,14 +1,16 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getAuth } from '@clerk/nextjs/server';
+import { getAccessToken } from '@auth0/nextjs-auth0/edge';
 import { client } from '@/lib/client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { userId } = getAuth(req);
-
-    if (!userId) {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
+
+    const decoded = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const userId = decoded.sub;
 
     // 🛠 Query Sanity for Quotes where userId matches
     const query = `*[_type == "quote" && userId == $userId]{

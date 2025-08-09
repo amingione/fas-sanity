@@ -1,4 +1,5 @@
-import { defineType, defineField } from 'sanity'
+
+import { defineType, defineField } from 'sanity';
 
 export default defineType({
   name: 'category',
@@ -9,23 +10,14 @@ export default defineType({
       name: 'title',
       title: 'Title',
       type: 'string',
-      validation: Rule => Rule.required()
+      validation: Rule => Rule.required(),
     }),
     defineField({
       name: 'slug',
       title: 'Slug',
       type: 'slug',
-      options: {
-        source: 'title',
-        maxLength: 96
-      }
+      options: { source: 'title', maxLength: 96 },
+      validation: Rule => Rule.required(),
     }),
-    defineField({
-      name: 'product',
-      title: 'Products in Category',
-      type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }],
-      description: 'Assign products to this category for bulk editing',
-    }),
-  ]
-})
+  ],
+});

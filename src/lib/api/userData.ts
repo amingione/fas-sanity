@@ -1,10 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getAuth } from '@clerk/nextjs/server';
+import { getAccessToken } from '@auth0/nextjs-auth0/edge';
 import { client } from '@/lib/client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { userId } = getAuth(req);
+    const accessToken = await getAccessToken();
+    const decoded = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const userId = decoded.sub;
 
     if (!userId) {
       return res.status(401).json({ message: 'Unauthorized' });

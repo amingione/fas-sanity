@@ -1,17 +1,19 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { client } from '@/lib/client';
-import { getAuth } from '@clerk/nextjs/server';
+import { getAccessToken } from '@auth0/nextjs-auth0/edge';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { userId } = getAuth(req);
-
-  if (!userId) {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
+
+  const decoded = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+  const userId = decoded.sub;
 
   const { email, firstName, lastName } = req.body;
 

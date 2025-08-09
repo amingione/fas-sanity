@@ -45,45 +45,83 @@ export default function ShippingCalendar() {
   const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        const result: RawShippingLabel[] = await client.fetch(`
-          *[_type == "shippingLabel" && defined(shipDate)]{
-            _id,
-            shipDate,
-            status,
-            trackingUrl,
-            labelUrl,
-            invoice->{
-              quote->{
-                customer->{
-                  fullName
-                }
-              }
+    const query = `
+      *[_type == "shippingLabel" && defined(shipDate)]{
+        _id,
+        shipDate,
+        status,
+        trackingUrl,
+        labelUrl,
+        invoice->{
+          quote->{
+            customer->{
+              fullName
             }
           }
-        `)
-
-        const formatted = result.map((item) => ({
-          _id: item._id,
-          shipDate: item.shipDate,
-          customerName: item.invoice?.quote?.customer?.fullName || 'Unknown',
-          status: item.status || 'Pending',
-          trackingUrl: item.trackingUrl,
-          labelUrl: item.labelUrl
-        }))
-
-        setEvents(formatted)
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setLoading(false);
+        }
       }
+    `
+
+    let sub: { unsubscribe: () => void } | null = null
+    let mounted = true
+
+    const toEvent = (item: RawShippingLabel): Event => ({
+      _id: item._id,
+      shipDate: item.shipDate,
+      customerName: item.invoice?.quote?.customer?.fullName || 'Unknown',
+      status: item.status || 'Pending',
+      trackingUrl: item.trackingUrl,
+      labelUrl: item.labelUrl,
+    })
+
+    async function run() {
+      setLoading(true)
+      try {
+        const initial: RawShippingLabel[] = await client.fetch(query)
+        if (!mounted) return
+        setEvents(initial.map(toEvent))
+      } catch (err) {
+        console.error('Error fetching events:', err)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+
+      // Subscribe to real-time changes for this query
+      sub = client
+        .listen(query, {}, { visibility: 'query' })
+        .subscribe((msg: any) => {
+          const { transition, result } = msg || {}
+          if (!result?._id) return
+
+          setEvents((prev) => {
+            const copy = [...prev]
+            const idx = copy.findIndex((e) => e._id === result._id)
+            const nextEvent = toEvent(result as RawShippingLabel)
+
+            if (transition === 'appear') {
+              // New matching doc
+              if (idx === -1) copy.push(nextEvent)
+            } else if (transition === 'update') {
+              // Existing doc changed
+              if (idx !== -1) copy[idx] = nextEvent
+              else copy.push(nextEvent)
+            } else if (transition === 'disappear') {
+              // Doc no longer matches (deleted or shipDate unset)
+              if (idx !== -1) copy.splice(idx, 1)
+            }
+
+            return copy
+          })
+        })
     }
 
-    fetchEvents()
-  }, [])
+    run()
+
+    return () => {
+      mounted = false
+      if (sub) sub.unsubscribe()
+    }
+  }, [client])
 
   return (
     <Card padding={4}>

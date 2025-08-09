@@ -1,9 +1,12 @@
 import { defineConfig } from 'sanity';
-import { deskTool } from 'sanity';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import deskTool from 'sanity/deskTool';
 import { visionTool } from '@sanity/vision';
 import { media } from 'sanity-plugin-media';
 import { colorInput } from '@sanity/color-input';
 import { schemaTypes } from './schemaTypes';
+import booking from './schemaTypes/documents/booking';
 import { deskStructure } from './desk/deskStructure';
 import resolveDocumentActions from './resolveDocumentActions';
 import ShippingCalendar from './components/studio/ShippingCalendar';
@@ -39,6 +42,6 @@ export default defineConfig({
   },
 
   schema: {
-    types: schemaTypes,
+    types: [...schemaTypes, booking],
   },
 });
