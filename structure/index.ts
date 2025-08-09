@@ -38,6 +38,7 @@ const hiddenDocTypes = (listItem: ListItemBuilder) => {
     'productVariant',
     'settings',
     'order',
+    'shippingLabel',
   ].includes(id)
 }
 
@@ -55,6 +56,13 @@ export const structure: StructureResolver = (S, context) =>
       S.divider(),
       settings(S, context),
       orders(S, context),
+      S.listItem()
+        .title('Shipping Labels')
+        .schemaType('shippingLabel')
+        .child(
+          S.documentTypeList('shippingLabel')
+            .title('Shipping Labels')
+        ),
       S.divider(),
       ...S.documentTypeListItems().filter(hiddenDocTypes),
     ])

@@ -2,6 +2,13 @@ import { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
 import axios from 'axios'
 
+const ALLOW_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3333'
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': ALLOW_ORIGIN,
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+}
+
 const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY!
 
 const sanity = createClient({
@@ -13,26 +20,41 @@ const sanity = createClient({
 })
 
 export const handler: Handler = async (event) => {
+  // CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS_HEADERS, body: '' }
+  }
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Method Not Allowed' }),
+    }
+  }
+
   const { customerId, labelDescription, invoiceId, weight, dimensions, carrier, customerEmail, serviceCode } = JSON.parse(event.body || '{}')
 
   if (!serviceCode) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Missing serviceCode' })
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Missing serviceCode' }),
     }
   }
 
   if (!weight) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Missing weight' })
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Missing weight' }),
     }
   }
 
   if (!dimensions || !dimensions.length || !dimensions.width || !dimensions.height) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Missing or incomplete dimensions' })
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Missing or incomplete dimensions' }),
     }
   }
 
@@ -111,7 +133,8 @@ export const handler: Handler = async (event) => {
     if (!rates || rates.length === 0) {
       return {
         statusCode: 404,
-        body: JSON.stringify({ error: 'No shipping rates found for this shipment.' })
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'No shipping rates found for this shipment.' }),
       }
     }
 
@@ -146,6 +169,7 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         trackingNumber: labelData.tracking_number,
         labelUrl: labelData.label_download.href,
@@ -153,12 +177,13 @@ export const handler: Handler = async (event) => {
         price: labelData.price,
         estimatedDeliveryDate: labelData.estimated_delivery_date,
         selectedRate
-      })
+      }),
     }
   } catch (err: any) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: err.message }),
     }
   }
 }
