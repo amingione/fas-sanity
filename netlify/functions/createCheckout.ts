@@ -1,108 +1,186 @@
+import { Handler } from '@netlify/functions'
 import Stripe from 'stripe'
 import { createClient } from '@sanity/client'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-03-31.basil'
-})
+// --- CORS (Studio at 8888/3333)
+const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+function makeCORS(origin?: string) {
+  const o = origin && DEFAULT_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': o,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  }
+}
+
+// Use account default API version to avoid TS literal mismatches
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY as string) : (null as any)
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
   apiVersion: '2024-04-10',
-  token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
-  useCdn: false
+  token: process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  useCdn: false,
 })
 
-export const config = {
-  api: {
-    bodyParser: false
-  }
+function computeTotals(doc: any) {
+  const items = Array.isArray(doc?.lineItems) ? doc.lineItems : []
+  const discountType = (doc?.discountType === 'percent') ? 'percent' : 'amount'
+  const discountValue = Number(doc?.discountValue || 0)
+  const taxRate = Number(doc?.taxRate || 0)
+
+  const subtotal = items.reduce((sum: number, li: any) => {
+    const qty = Number(li?.quantity || 1)
+    const unit = Number(li?.unitPrice || 0)
+    const override = typeof li?.lineTotal === 'number' ? li.lineTotal : undefined
+    const line = typeof override === 'number' ? override : qty * unit
+    return sum + (isNaN(line) ? 0 : line)
+  }, 0)
+
+  const discountAmt = discountType === 'percent' ? subtotal * (discountValue / 100) : discountValue
+  const taxableBase = Math.max(0, subtotal - discountAmt)
+  const taxAmount = taxableBase * (taxRate / 100)
+  const total = Math.max(0, taxableBase + taxAmount)
+
+  return { subtotal, discountAmt, taxAmount, total }
 }
 
-export const handler = async (event: any) => {
-  try {
-    const { quoteId } = JSON.parse(event.body)
+export const handler: Handler = async (event) => {
+  const origin = (event.headers?.origin || event.headers?.Origin || '') as string
+  const CORS = makeCORS(origin)
 
-    const quote = await sanity.fetch(
-      `*[_type == "buildQuote" && _id == $id][0]{
-        quoteTotal,
-        customerEmail,
-        modList[]->{title, price}
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Method Not Allowed' }) }
+  if (!stripe) return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Stripe not configured' }) }
+
+  let invoiceId = ''
+  try {
+    const payload = JSON.parse(event.body || '{}')
+    invoiceId = String(payload.invoiceId || '').trim()
+  } catch {
+    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invalid JSON' }) }
+  }
+
+  if (!invoiceId) return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Missing invoiceId' }) }
+
+  try {
+    // Fetch invoice doc
+    const invoice = await sanity.fetch(
+      `*[_type == "invoice" && _id == $id][0]{
+        _id,
+        invoiceNumber,
+        title,
+        lineItems,
+        discountType,
+        discountValue,
+        taxRate,
+        paymentLinkUrl,
+        billTo { email }
       }`,
-      { id: quoteId }
+      { id: invoiceId }
     )
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      customer_email: quote.customerEmail,
-      line_items: quote.modList.map((mod: any) => ({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: mod.title || mod.name
-          },
-          unit_amount: Math.round(mod.price * 100)
-        },
-        quantity: 1
-      })),
-      mode: 'payment',
-      success_url: `${process.env.SITE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.SITE_URL}/cancel`
-    })
+    if (!invoice) {
+      return { statusCode: 404, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice not found' }) }
+    }
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ url: session.url })
+    const { total } = computeTotals(invoice)
+    if (!total || total <= 0) {
+      return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice total must be greater than 0' }) }
     }
-  } catch (err: any) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+
+    // If a link already exists, reuse it
+    if (invoice.paymentLinkUrl) {
+      return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ url: invoice.paymentLinkUrl, reused: true }) }
     }
+
+    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3333'
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('createCheckout: missing STRIPE_SECRET_KEY')
+      return {
+        statusCode: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Server is missing STRIPE_SECRET_KEY' }),
+      }
+    }
+    
+    // Diagnostics + amount in cents
+const unitAmount = Math.round(Number(total) * 100)
+console.log('createCheckout diagnostics', {
+  invoiceId,
+  total,
+  unitAmount,
+  hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+  baseUrl: process.env.AUTH0_BASE_URL || 'http://localhost:3333',
+})
+
+if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
+  return {
+    statusCode: 400,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Invoice total must be a positive number' }),
   }
 }
 
-export const webhookHandler = async (event: any) => {
-  const sig = event.headers['stripe-signature']
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
-
-  let stripeEvent
-
-  try {
-    const rawBody = Buffer.from(event.body, 'utf8')
-    stripeEvent = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
-  } catch (err: any) {
-    return {
-      statusCode: 400,
-      body: `Webhook Error: ${err.message}`
-    }
-  }
-
-  if (stripeEvent.type === 'checkout.session.completed') {
-    const session = stripeEvent.data.object as Stripe.Checkout.Session
-
-    try {
-      await sanity.create({
-        _type: 'invoice',
-        stripeSessionId: session.id,
-        email: session.customer_email,
-        total: session.amount_total! / 100,
-        currency: session.currency,
-        status: 'paid',
-        date: new Date().toISOString()
-      })
-
-      return { statusCode: 200, body: 'Invoice saved to Sanity' }
-    } catch (err: any) {
-      return {
-        statusCode: 500,
-        body: `Sanity Error: ${err.message}`
-      }
-    }
-  }
-
+// Stripe minimum for USD is 50 cents
+if (unitAmount < 50) {
   return {
-    statusCode: 200,
-    body: 'Webhook received'
+    statusCode: 400,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Amount must be at least $0.50 to create a Stripe Checkout session' }),
+  }
+}
+
+// Single line item for invoice total (simplest path). We can switch to itemized later.
+let session
+try {
+  session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          product_data: { name: `Invoice ${invoice.invoiceNumber || ''}`.trim() || 'Invoice Payment' },
+          unit_amount: unitAmount,
+        },
+        quantity: 1,
+      },
+    ],
+    customer_email: invoice?.billTo?.email || undefined,
+    metadata: {
+      sanity_invoice_id: invoiceId,
+      sanity_invoice_number: String(invoice.invoiceNumber || ''),
+    },
+    success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,
+    cancel_url: `${baseUrl}/invoice/cancel?invoiceId=${encodeURIComponent(invoiceId)}`,
+  })
+} catch (e: any) {
+  console.error('Stripe create session failed', { message: e?.message, type: e?.type, code: e?.code })
+  return {
+    statusCode: 500,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'Stripe session creation failed',
+      error: e?.message,
+      type: e?.type,
+      code: e?.code,
+      raw: e?.raw,
+    }),
+  }
+}
+
+const url = session.url || ''
+if (!url) throw new Error('Stripe did not return a checkout URL')
+
+    // Save URL back on the invoice so Studio buttons and emails can reuse it
+    await sanity.patch(invoiceId).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
+
+    return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) }
+  } catch (err: any) {
+    console.error('createCheckout error', err)
+    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Failed to create checkout session', error: String(err?.message || err) }) }
   }
 }
