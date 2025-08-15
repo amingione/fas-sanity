@@ -31,6 +31,7 @@ export default defineType({
       name: 'billTo',
       title: 'Bill To',
       type: 'object',
+      options: { collapsible: true, collapsed: false },
       fields: [
         {name: 'name', type: 'string', title: 'Name'},
         {name: 'email', type: 'string', title: 'Email'},
@@ -47,6 +48,7 @@ export default defineType({
       name: 'shipTo',
       title: 'Ship To',
       type: 'object',
+      options: { collapsible: true, collapsed: false },
       fields: [
         {name: 'name', type: 'string', title: 'Name'},
         {name: 'email', type: 'string', title: 'Email'},
