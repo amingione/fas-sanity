@@ -1,8 +1,8 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+// Removed @vercel/node types to avoid dependency; using untyped req/res compatible with current runtime
 import { getSession } from '@auth0/nextjs-auth0';
 import { client } from '@/lib/client';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: any, res: any) {
   try {
     const session = await getSession(req, res);
     const userId = session?.user?.sub;

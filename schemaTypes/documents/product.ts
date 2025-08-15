@@ -83,9 +83,6 @@ const product = defineType({
         title: 'Categories',
         type: 'array',
         of: [{ type: 'reference', to: [{ type: 'category' }] }],
-        options: {
-          layout: 'tags'
-        },
         group: 'general'
       }),
       defineField({
@@ -148,24 +145,6 @@ const product = defineType({
         group: 'details'
       }),
       defineField({
-        name: 'horsepowerRange',
-        title: 'Recommended HP Range',
-        type: 'object',
-        fields: [
-          { name: 'min', type: 'number', title: 'Min HP' },
-          { name: 'max', type: 'number', title: 'Max HP' },
-        ],
-        group: 'details'
-      }),
-      defineField({
-        name: 'averageHorsepower',
-        title: 'Average Horsepower',
-        type: 'number',
-        description: 'Derived for filtering purposes. Not shown to users.',
-        hidden: true,
-        group: 'details'
-      }),
-      defineField({
         name: 'partOfBundles',
         title: 'Included in Packages',
         type: 'array',
@@ -205,15 +184,20 @@ const product = defineType({
         group: 'relations'
       }),
       defineField({
-  name: 'filters',
-  title: 'Filters',
-  type: 'array',
-  of: [{ type: 'string' }],
-  options: {
-    layout: 'tags',
-  },
-  group: 'filters'
-}),
+        name: 'filters',
+        title: 'Filters',
+        type: 'array',
+        of: [{ type: 'string' }],
+        // Use default array input (not tags) to avoid rendering reference objects as strings
+        description: 'Free-form filter tags (plain text only). Example: "ford", "ecoboost", "intercooler", "500hp+". Horsepower is not special-cased—treat it like any other tag.',
+        validation: (Rule) =>
+          Rule.custom((items) => {
+            if (!items) return true
+            const allStrings = items.every((v: unknown) => typeof v === 'string')
+            return allStrings || 'All filters must be text (no references).'
+          }),
+        group: 'filters',
+      }),
       defineField({
         name: 'attributes',
         title: 'Product Attributes',
