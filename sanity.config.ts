@@ -1,8 +1,13 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
 import { defineConfig } from 'sanity';
+// Desk Tool import is different across Sanity versions; support both named and default
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import deskTool from 'sanity/deskTool';
+import * as _desk from 'sanity/desk';
+const deskTool = // runtime resolve: prefer named export, then default, then module itself
+  (// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (_desk as any).deskTool) || (// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (_desk as any).default) || (_desk as unknown as (opts?: unknown) => unknown);
 import { visionTool } from '@sanity/vision';
 import { media } from 'sanity-plugin-media';
 import { schemaTypes } from './schemaTypes';
