@@ -4,7 +4,6 @@ import { defineConfig } from 'sanity';
 import deskTool from 'sanity/deskTool';
 import { visionTool } from '@sanity/vision';
 import { media } from 'sanity-plugin-media';
-import { colorInput } from '@sanity/color-input';
 import { schemaTypes } from './schemaTypes';
 import booking from './schemaTypes/documents/booking';
 import { deskStructure } from './desk/deskStructure';
@@ -24,7 +23,7 @@ export default defineConfig({
     deskTool({
       structure: deskStructure,
     }),
-    colorInput(),
+    // Removed @sanity/color-input to avoid peer-dep conflict with Sanity v4
     media(),
     ...(isDev ? [visionTool()] : []),
   ],

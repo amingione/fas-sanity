@@ -7,9 +7,9 @@ interface ColorOption {
 
 export const customProductOptionColorType = defineField({
   name: 'customProductOption.color',
-  title: 'Color',
+  title: 'Color options',
   type: 'object',
-  icon: false,
+  options: {collapsible: true, collapsed: false},
   fields: [
     defineField({
       name: 'title',
@@ -21,13 +21,15 @@ export const customProductOptionColorType = defineField({
       name: 'colors',
       type: 'array',
       of: [{type: 'customProductOption.colorObject'}],
+      // Allow empty; enforce uniqueness via custom validation
+      // (no required rule here)
       validation: (Rule) =>
-        Rule.custom((options: ColorOption[] | undefined) => {
-          // Each size must have a unique title
+        Rule.min(0).custom((options: ColorOption[] | undefined) => {
+          // Each color must have a unique title
           if (options) {
-            const uniqueTitles = new Set(options.map((option) => option?.title))
+            const uniqueTitles = new Set((options || []).map((option) => option?.title?.trim()?.toLowerCase()))
             if (options.length > uniqueTitles.size) {
-              return 'Each product option must have a unique title'
+              return 'Each color option must have a unique title'
             }
           }
           return true
@@ -40,10 +42,12 @@ export const customProductOptionColorType = defineField({
       title: 'title',
     },
     prepare(selection) {
-      const {colors, title} = selection
+      const {colors, title} = selection as {colors?: unknown; title?: string}
+      const list = Array.isArray(colors) ? colors : []
+      const count = list.length
       return {
-        subtitle: colors.length ? pluralize('color', colors.length, true) : 'No colors',
-        title,
+        subtitle: count ? pluralize('color', count, true) : 'No colors',
+        title: title || 'Color options',
       }
     },
   },

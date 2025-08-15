@@ -16,21 +16,29 @@ export const colorThemeType = defineType({
     }),
     defineField({
       name: 'text',
-      type: 'color',
-      options: {disableAlpha: true},
-      validation: (Rule) => Rule.required(),
+      type: 'string',
+      title: 'Text color',
+      description: 'Hex color like #000000',
+      validation: (Rule) =>
+        Rule.required()
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/,{name:'hex color'})
+          .error('Enter a valid hex color, e.g. #000000'),
     }),
     defineField({
       name: 'background',
-      type: 'color',
-      options: {disableAlpha: true},
-      validation: (Rule) => Rule.required(),
+      type: 'string',
+      title: 'Background color',
+      description: 'Hex color like #FFFFFF',
+      validation: (Rule) =>
+        Rule.required()
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/,{name:'hex color'})
+          .error('Enter a valid hex color, e.g. #FFFFFF'),
     }),
   ],
   preview: {
     select: {
-      backgroundColor: 'background.hex',
-      textColor: 'text.hex',
+      backgroundColor: 'background',
+      textColor: 'text',
       title: 'title',
     },
     prepare({backgroundColor, textColor, title}) {
