@@ -1,4 +1,5 @@
 // deskStructure.ts
+import type {StructureResolver} from 'sanity/structure'
 import { MdCategory, MdViewList, MdFilterList } from 'react-icons/md'
 import DocumentIframePreview from './components/studio/DocumentIframePreview'
 import CustomerDashboard from './components/studio/CustomerDashboard'
@@ -28,7 +29,7 @@ const getPreviewViews = (S: any, schema: string) => [
     S.view.component(OrderStatusPreview).title('📌 Fulfillment Status'),
 ].filter(Boolean)
 
-export const deskStructure = (S: any, context: any) => {
+export const deskStructure: StructureResolver = (S, context) => {
   const safeListItem = (typeName: string, title: string, icon: any) => {
     return context.schema.get(typeName)
       ? S.listItem().title(title).icon(icon).child(S.documentTypeList(typeName).title(title))
@@ -57,20 +58,42 @@ export const deskStructure = (S: any, context: any) => {
 
       S.divider(),
 
-      context.schema.get('customer') ? S.documentTypeListItem('customer').title('Customers') : null,
-      context.schema.get('invoice') ? S.documentTypeListItem('invoice').title('Invoices') : null,
-      context.schema.get('quote') ? S.documentTypeListItem('quote').title('Quote Requests') : null,
-      context.schema.get('order') ? S.documentTypeListItem('order').title('Orders') : null,
-      context.schema.get('shippingLabel') ? S.documentTypeListItem('shippingLabel').title('Shipping Labels') : null,
+      ...(context.schema.get('customer')
+        ? [S.documentTypeListItem('customer').title('Customers')]
+        : []),
+      ...(context.schema.get('invoice')
+        ? [S.documentTypeListItem('invoice').title('Invoices')]
+        : []),
+      ...(context.schema.get('quote')
+        ? [S.documentTypeListItem('quote').title('Quote Requests')]
+        : []),
+      ...(context.schema.get('order')
+        ? [S.documentTypeListItem('order').title('Orders')]
+        : []),
+      ...(context.schema.get('shippingLabel')
+        ? [S.documentTypeListItem('shippingLabel').title('Shipping Labels')]
+        : []),
 
       S.divider(),
 
-      S.listItem().title('📦 Bulk Label Generator').child(S.component().title('Bulk Label Generator').component(BulkLabelGenerator)),
-      S.listItem().title('📄 Packing Slip Generator').child(S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)),
-      S.listItem().title('📊 Financial Dashboard').child(S.component().title('Finance').component(FinancialDashboard)),
-      S.listItem().title('📥 Financial Reports').child(S.component().title('Reports').component(FinancialReports)),
-      S.listItem().title('🧾 Fulfillment Console').child(S.component().title('Console').component(BulkFulfillmentConsole)),
-      S.listItem().title('👤 Customer Dashboard').child(S.component().title('Customers').component(CustomerDashboard)),
+      S.listItem().title('📦 Bulk Label Generator').child(
+        S.component().title('Bulk Label Generator').component(BulkLabelGenerator)
+      ),
+      S.listItem().title('📄 Packing Slip Generator').child(
+        S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)
+      ),
+      S.listItem().title('📊 Financial Dashboard').child(
+        S.component().title('Finance').component(FinancialDashboard)
+      ),
+      S.listItem().title('📥 Financial Reports').child(
+        S.component().title('Reports').component(FinancialReports)
+      ),
+      S.listItem().title('🧾 Fulfillment Console').child(
+        S.component().title('Console').component(BulkFulfillmentConsole)
+      ),
+      S.listItem().title('👤 Customer Dashboard').child(
+        S.component().title('Customers').component(CustomerDashboard)
+      ),
 
       S.listItem()
         .title('🛠 Admin Tools')
@@ -91,11 +114,11 @@ export const deskStructure = (S: any, context: any) => {
                         .schemaType('vendor')
                         .views([
                           S.view.form(),
-                          S.view.component(require('./components/inputs/VendorStatusBadge').default).title('🟢 Status Badge'),
+                          S.view.component(VendorStatusBadge).title('🟢 Status Badge'),
                         ])
                     )
-                )
+                ),
             ])
         ),
-    ].filter(Boolean))
+    ])
 }

@@ -15,6 +15,31 @@ export default defineType({
       validation: Rule => Rule.required().email()
     }),
     defineField({
+      name: 'userRole',
+      title: 'User Role',
+      type: 'string',
+      initialValue: 'customer',
+      options: {
+        list: [
+          {title: 'Customer', value: 'customer'},
+          {title: 'Vendor', value: 'vendor'},
+          {title: 'Admin', value: 'admin'},
+        ],
+        layout: 'radio',
+        direction: 'horizontal',
+      },
+      validation: (Rule) => Rule.required(),
+      description:
+        'Controls post-login routing (e.g. customer portal vs vendor portal). Change only if you know what you are doing.'
+    }),
+    defineField({
+      name: 'auth0Id',
+      title: 'Auth0 User ID',
+      type: 'string',
+      readOnly: true,
+      hidden: true,
+    }),
+    defineField({
       name: 'passwordHash',
       title: 'Password Hash',
       type: 'string',
