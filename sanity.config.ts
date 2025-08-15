@@ -1,3 +1,4 @@
+// NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
 import { defineConfig } from 'sanity';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -23,7 +24,6 @@ export default defineConfig({
     deskTool({
       structure: deskStructure,
     }),
-    // Removed @sanity/color-input to avoid peer-dep conflict with Sanity v4
     media(),
     ...(isDev ? [visionTool()] : []),
   ],
