@@ -28,14 +28,20 @@ export const customProductOptionColorObjectType = defineField({
     }),
     defineField({
       name: 'color',
-      type: 'color',
-      options: {disableAlpha: true},
-      validation: (Rule) => Rule.required(),
+      type: 'string',
+      title: 'Hex color',
+      description: 'Hex value like #RRGGBB or #RGB',
+      validation: (Rule) =>
+        Rule.required()
+          .regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/,
+            {name: 'hex color', invert: false}
+          )
+          .error('Enter a valid hex color like #FF0000 or #F00'),
     }),
   ],
   preview: {
     select: {
-      color: 'color.hex',
+      color: 'color',
       title: 'title',
     },
     prepare({color, title}) {
