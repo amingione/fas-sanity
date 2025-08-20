@@ -307,6 +307,70 @@ const product = defineType({
         group: 'marketing'
       }),
       defineField({
+  name: 'brand',
+  title: 'Brand / Manufacturer',
+  type: 'string',
+  description: 'Brand name (helps Google understand the product).',
+  group: 'seo'
+}),
+defineField({
+  name: 'gtin',
+  title: 'GTIN (UPC/EAN/ISBN)',
+  type: 'string',
+  description: 'Global Trade Item Number, if applicable.',
+  group: 'seo'
+}),
+defineField({
+  name: 'mpn',
+  title: 'MPN (Manufacturer Part Number)',
+  type: 'string',
+  description: 'Manufacturer part number (useful for Google / merchant feeds).',
+  group: 'seo'
+}),
+defineField({
+  name: 'metaTitle',
+  title: 'Meta Title',
+  type: 'string',
+  description: 'Title tag for search results (target ~50–60 chars).',
+  validation: Rule => Rule.max(60).warning('Google typically shows up to ~60 characters.'),
+  group: 'seo'
+}),
+defineField({
+  name: 'metaDescription',
+  title: 'Meta Description',
+  type: 'text',
+  rows: 3,
+  description: 'Short summary for search results (target ~140–160 chars).',
+  validation: Rule => Rule.max(160).warning('Google typically shows up to ~160 characters.'),
+  group: 'seo'
+}),
+defineField({
+  name: 'canonicalUrl',
+  title: 'Canonical URL',
+  type: 'url',
+  description: 'Use to avoid duplicate content issues if this product appears at multiple URLs.',
+  group: 'seo'
+}),
+defineField({
+  name: 'noindex',
+  title: 'Noindex this page?',
+  type: 'boolean',
+  initialValue: false,
+  description: 'Enable to prevent indexing (e.g., staging, duplicates, discontinued).',
+  group: 'seo'
+}),
+defineField({
+  name: 'socialImage',
+  title: 'Social / Open Graph Image',
+  type: 'image',
+  options: { hotspot: true },
+  fields: [
+    { name: 'alt', title: 'Alt Text', type: 'string' }
+  ],
+  description: 'Fallback preview image for social sharing (1200×630 recommended).',
+  group: 'seo'
+}),
+      defineField({
         name: 'coreRequired',
         title: 'Core Return Required',
         type: 'boolean',
