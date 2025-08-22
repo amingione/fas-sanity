@@ -9,6 +9,7 @@ const product = defineType({
     { name: 'pricing', title: 'Pricing' },
     { name: 'inventory', title: 'Inventory' },
     { name: 'details', title: 'Details' },
+    { name: 'upgrades', title: 'Upgrades & Add-ons' },
     { name: 'shipping', title: 'Shipping' },
     { name: 'marketing', title: 'Marketing' },
     { name: 'bundles', title: 'Bundles' },
@@ -173,11 +174,35 @@ const product = defineType({
       title: 'Custom Paint',
       type: 'object',
       fields: [
-        { name: 'paintCodeRequired', title: 'Require Paint Code', type: 'boolean', initialValue: true, description: 'If enabled, the customer must enter a valid paint code before adding to cart.' },
-        { name: 'instructions', title: 'Paint Code Instructions', type: 'text', rows: 3, description: 'Explain accepted formats (e.g., OEM code), where to find it, and any limitations (pearls, candy, multi-stage, etc.).' }
+        { name: 'enabled', title: 'Offer Custom Paint?', type: 'boolean', initialValue: false, description: 'Toggle to offer paint while the item is in the shop.' },
+        { name: 'additionalPrice', title: 'Additional Price ($)', type: 'number', description: 'Price added when customer selects paint.', hidden: ({ parent }) => !parent?.enabled },
+        { name: 'paintCodeRequired', title: 'Require Paint Code', type: 'boolean', initialValue: true, description: 'If enabled, the customer must enter a valid paint code before adding to cart.', hidden: ({ parent }) => !parent?.enabled },
+        { name: 'codeLabel', title: 'Paint Code Field Label', type: 'string', initialValue: 'OEM Paint Code', hidden: ({ parent }) => !parent?.enabled },
+        { name: 'instructions', title: 'Paint Code Instructions', type: 'text', rows: 3, description: 'Explain accepted formats (e.g., OEM code), where to find it, and any limitations (pearls, candy, multi-stage, etc.).', hidden: ({ parent }) => !parent?.enabled }
       ],
-      hidden: ({ parent }) => parent?.productType !== 'custom',
-      group: 'details'
+      group: 'upgrades'
+    }),
+    defineField({
+      name: 'addOns',
+      title: 'Optional Upgrades',
+      type: 'array',
+      of: [{
+        type: 'object',
+        name: 'addOn',
+        fields: [
+          { name: 'label', type: 'string', title: 'Upgrade Name', validation: Rule => Rule.required() },
+          { name: 'priceDelta', type: 'number', title: 'Price Adjustment ($)', validation: Rule => Rule.min(0) },
+          { name: 'description', type: 'text', title: 'Description', rows: 2 },
+          { name: 'skuSuffix', type: 'string', title: 'SKU Suffix', description: 'Optional suffix to append when this upgrade is selected (e.g., -CERAMIC).'},
+          { name: 'defaultSelected', type: 'boolean', title: 'Selected by Default?' }
+        ],
+        preview: {
+          select: { title: 'label', price: 'priceDelta' },
+          prepare: ({ title, price }) => ({ title: title || 'Upgrade', subtitle: typeof price === 'number' ? `+$${price.toFixed(2)}` : 'No charge' })
+        }
+      }],
+      description: 'Checkbox-style add-ons (e.g., ceramic bearings +$500, paint service +$X). Customer can pick none, one, or many.',
+      group: 'upgrades'
     }),
 
     // SPECIFICATIONS (key/value)
