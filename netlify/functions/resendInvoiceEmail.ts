@@ -104,6 +104,12 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
         sanity_invoice_id: String(invoiceId),
         sanity_invoice_number: String(inv?.invoiceNumber || ''),
       },
+      payment_intent_data: {
+        metadata: {
+          sanity_invoice_id: String(invoiceId),
+          sanity_invoice_number: String(inv?.invoiceNumber || ''),
+        },
+      },
       success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,
       cancel_url: `${baseUrl}/invoice/cancel?invoiceId=${encodeURIComponent(invoiceId)}`,
     })

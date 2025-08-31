@@ -29,9 +29,12 @@ function getFnBase(): string {
     if (typeof window !== 'undefined') {
       const ls = window.localStorage?.getItem('NLFY_BASE')
       if (ls) return ls
+      // default to current origin in production Studio
+      const origin = window.location?.origin
+      if (origin && /^https?:\/\//i.test(origin)) return origin
     }
   } catch {}
-  return 'http://localhost:8888'
+  return 'https://fassanity.fasmotorsports.com'
 }
 
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
@@ -408,7 +411,7 @@ function TotalsPanel() {
   const taxRate = Number(useFormValue(['taxRate']) as any) || 0
 
   const subtotal = useMemo(() => {
-    return lineItems.reduce((sum, li) => {
+    return lineItems.reduce((sum: number, li: any) => {
       const qty = Number(li?.quantity || 1)
       const unit = Number(li?.unitPrice || 0)
       const manual = li?.lineTotal

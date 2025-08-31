@@ -53,7 +53,7 @@ function computeTotals(doc: any) {
   const discountValue = Number(doc?.discountValue || 0)
   const taxRate = Number(doc?.taxRate || 0)
 
-  const subtotal = items.reduce((sum, li) => {
+  const subtotal = items.reduce((sum: number, li: LineItem) => {
     const qty = Number(li?.quantity || 1)
     const unit = Number(li?.unitPrice || 0)
     const override = typeof li?.lineTotal === 'number' ? li.lineTotal : undefined

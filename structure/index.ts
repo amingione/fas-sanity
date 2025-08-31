@@ -6,6 +6,7 @@ import pages from './pageStructure'
 import products from './productStructure'
 import settings from './settingStructure'
 import orders from './orderStructure'
+import freightQuotes from './freightQuoteStructure'
 
 /**
  * Structure overrides
@@ -39,6 +40,7 @@ const hiddenDocTypes = (listItem: ListItemBuilder) => {
     'settings',
     'order',
     'shippingLabel',
+    'freightQuote',
   ].includes(id)
 }
 
@@ -56,6 +58,7 @@ export const structure: StructureResolver = (S, context) =>
       S.divider(),
       settings(S, context),
       orders(S, context),
+      freightQuotes(S, context),
       S.listItem()
         .title('Shipping Labels')
         .schemaType('shippingLabel')

@@ -193,6 +193,7 @@ import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
 import productFilter from './documents/productFilter'
+import freightQuote from './documents/freightQuote'
 
 const documents = [
   collectionType,
@@ -211,6 +212,7 @@ const documents = [
   productBundle,
   customer,
   shippingOption,
+  freightQuote,
   vehicleModel,
   tune,
 ]
