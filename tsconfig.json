@@ -22,11 +22,13 @@
       "@/components/*": ["src/components/*"],
       "@/*": ["src/*"]
     },
-    "typeRoots": ["./types", "./node_modules/@types"]
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "types": ["node"]
   },
   "include": [
     "sanity.config.ts",
     "src",
+    "netlify/functions",
     "types",
     "schemaTypes",
     "desk",

@@ -183,7 +183,7 @@ export const handler: Handler = async (event) => {
     const { subtotal, discount, taxAmount, total } = computeTotals(quote)
 
     // Build a concise HTML summary + CTA
-    const baseUrl = process.env.SANITY_STUDIO_NETLIFY_BASE || 'http://localhost:8888'
+    const baseUrl = process.env.SANITY_STUDIO_NETLIFY_BASE || 'https://fassanity.fasmotorsports.com'
     const pdfFilename = `Quote_${safe(quote.quoteNumber || quote._id)}.pdf`
 
     const html = `

@@ -4,7 +4,7 @@ import { defineType, defineField, set, useClient, useFormValue } from 'sanity'
 /**
  * Netlify base
  * - When running `netlify dev`, set SANITY_STUDIO_NETLIFY_BASE=http://localhost:8888
- * - In production, set SANITY_STUDIO_NETLIFY_BASE=https://your-site.netlify.app
+ * - In production, set SANITY_STUDIO_NETLIFY_BASE=https://fassanity.fasmotorsports.com
  */
 // Resolve the Netlify functions base dynamically.
 // Priority: ENV -> localStorage -> empty (caller must set)
@@ -14,6 +14,11 @@ function getFnBase(): string {
   if (typeof window !== 'undefined') {
     const saved = window.localStorage?.getItem('NLFY_BASE') || ''
     if (saved) return saved
+    // Fallback to current origin so production Studio works without manual input
+    try {
+      const origin = window.location?.origin
+      if (origin && /^https?:\/\//i.test(origin)) return origin
+    } catch {}
   }
   return ''
 }
@@ -87,7 +92,7 @@ function ServiceRateInput(props: any) {
       setLoading(true)
       setError('')
       try {
-        const data = (await safeFetchJson(`${currentBase || 'http://localhost:8888'}/.netlify/functions/getShipEngineRates`, {
+        const data = (await safeFetchJson(`${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/getShipEngineRates`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
@@ -116,7 +121,7 @@ function ServiceRateInput(props: any) {
       } catch (e: any) {
         if (!cancelled) {
           const msg = String(e?.message || 'Unable to load rates')
-          const hint = ` • Tip: Verify functions running at ${currentBase || 'http://localhost:8888'} (run: netlify dev --port=8888)`
+          const hint = currentBase ? '' : ` • Tip: Set SANITY_STUDIO_NETLIFY_BASE to https://fassanity.fasmotorsports.com`
           setError(msg + hint)
         }
       } finally {
@@ -150,7 +155,7 @@ function ServiceRateInput(props: any) {
         <label style={{fontSize:12}}>Functions Base:</label>
         <input
           type="text"
-          placeholder="http://localhost:8888"
+          placeholder="https://fassanity.fasmotorsports.com"
           value={baseOverride || currentBase}
           onChange={(e)=>{
             const v = e.currentTarget.value
@@ -228,7 +233,7 @@ function GenerateAndPrintPanel(props: any) {
             : undefined,
         },
       }
-      const res = (await safeFetchJson(`${currentBase || 'http://localhost:8888'}/.netlify/functions/createShippingLabel`, {
+      const res = (await safeFetchJson(`${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/createShippingLabel`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
@@ -284,7 +289,7 @@ export default defineType({
       validation: (Rule) => Rule.required().min(2),
     }),
 
-    defineField({ name: 'ship_from', title: 'Ship From', type: 'shipFromAddress', options: { collapsible: true, columns: 2 }, validation: (Rule) => Rule.required() }),
+    defineField({ name: 'ship_from', title: 'Ship From', type: 'shipFromAddress', options: { collapsible: true, columns: 2 }, readOnly: true, validation: (Rule) => Rule.required() }),
 
     defineField({ name: 'ship_to', title: 'Ship To', type: 'shipToAddress', options: { collapsible: true, columns: 2 }, validation: (Rule) => Rule.required() }),
 

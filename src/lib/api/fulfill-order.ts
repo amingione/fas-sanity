@@ -25,7 +25,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const stripe = new Stripe(STRIPE_SECRET_KEY, {
-      apiVersion: '2025-03-31.basil',
+      apiVersion: '2025-08-27.basil',
     });
 
     const order = await sanity.fetch(

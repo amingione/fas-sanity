@@ -1,5 +1,5 @@
-import { client } from '@/lib/client'
 import type { Handler } from '@netlify/functions'
+import { createClient } from '@sanity/client'
 
 function decodeJwt(authHeader?: string | null): { sub?: string; email?: string } | null {
   if (!authHeader) return null
@@ -17,20 +17,31 @@ function decodeJwt(authHeader?: string | null): { sub?: string; email?: string }
   }
 }
 
-const handler: Handler = async (event) => {
+const sanity = createClient({
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: process.env.SANITY_STUDIO_DATASET!,
+  apiVersion: '2024-04-10',
+  token: process.env.SANITY_API_TOKEN!,
+  useCdn: false,
+})
+
+export const handler: Handler = async (event) => {
   try {
+    if (event.httpMethod === 'OPTIONS') {
+      return { statusCode: 200, body: '' }
+    }
+    if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
+      return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) }
+    }
+
     const auth = decodeJwt(event.headers?.authorization || null)
     const userId = auth?.sub
     const email = (auth?.email || '').trim().toLowerCase()
 
     if (!userId) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ message: 'Unauthorized' }),
-      };
+      return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) }
     }
 
-    // Prefer email-based lookup because orders store customerEmail
     const query = `*[_type == "order" && defined(customerEmail) && lower(customerEmail) == $email]{
       _id,
       customerEmail,
@@ -42,21 +53,22 @@ const handler: Handler = async (event) => {
       packingSlipUrl
     } | order(createdAt desc)`
 
-    const orders = email
-      ? await client.fetch(query, { email })
-      : []
+    const orders = email ? await sanity.fetch(query, { email }) : []
 
     return {
       statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orders }),
-    };
-  } catch (error) {
-    console.error('Failed to fetch user orders:', error);
+    }
+  } catch (error: any) {
+    console.error('userData function error:', error)
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'Failed to fetch user orders' }),
-    };
+    }
   }
-};
+}
 
-export default handler;
+export default handler
+

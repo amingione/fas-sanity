@@ -18,7 +18,7 @@ export default function MapboxAddressInput(props: any) {
   useEffect(() => {
     if (!token) return
     const query = (q || '').trim()
-    if (query.length < 3) { setItems([]); setOpen(false); return }
+    if (query.length < 2) { setItems([]); setOpen(false); return }
     let t: any = setTimeout(async () => {
       try {
         setBusy(true)
@@ -93,11 +93,12 @@ export default function MapboxAddressInput(props: any) {
         type="text"
         value={q}
         onChange={(e) => { setQ(e.currentTarget.value); onChange(set(e.currentTarget.value)) }}
+        onBlur={() => { setTimeout(() => setOpen(false), 120) }}
         placeholder="Start typing an address…"
-        style={{ width: '100%', padding: '6px 8px' }}
+        style={{ width: '100%', padding: '6px 8px', color: '#000', background: '#fff' }}
       />
       {open && items.length > 0 && (
-        <div style={{ position: 'absolute', zIndex: 10, top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ddd', borderTop: 'none', maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+        <div style={{ position: 'absolute', zIndex: 10, top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ddd', borderTop: 'none', maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', color: '#000' }}>
           {items.map((f: any) => (
             <div
               key={f.id}
