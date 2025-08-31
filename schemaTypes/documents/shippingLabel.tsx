@@ -1,11 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {
-  defineType,
-  defineField,
-  set,
-  useClient,
-  useFormValue,
-} from 'sanity'
+import { defineType, defineField, set, useClient, useFormValue } from 'sanity'
 
 /**
  * Netlify base
@@ -15,7 +9,7 @@ import {
 // Resolve the Netlify functions base dynamically.
 // Priority: ENV -> localStorage -> empty (caller must set)
 function getFnBase(): string {
-  const envBase = (import.meta as any)?.env?.SANITY_STUDIO_NETLIFY_BASE as string | undefined
+  const envBase = (typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     const saved = window.localStorage?.getItem('NLFY_BASE') || ''
@@ -49,122 +43,7 @@ async function safeFetchJson(url: string, init?: RequestInit) {
  * - Shows suggestions as you type
  * - On select, fills address_line1, city_locality, state_province (2-letter for US), postal_code, country_code
  */
-function MapboxAddressInput(props: any) {
-  const {value, onChange, path} = props
-  const client = useClient({apiVersion: '2024-10-01'})
-  const _id = useFormValue(["_id"]) as string
-  const [q, setQ] = useState<string>(value || '')
-  const [items, setItems] = useState<any[]>([])
-  const [open, setOpen] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const token = (import.meta as any)?.env?.SANITY_STUDIO_MAPBOX_TOKEN as string | undefined
-
-  // root field ("ship_to" or "ship_from") inferred from the input path
-  const root: 'ship_to' | 'ship_from' = (Array.isArray(path) && path[0]) || 'ship_to'
-
-  // Debounced fetch to Mapbox Places API
-  useEffect(() => {
-    if (!token) return
-    const query = (q || '').trim()
-    if (query.length < 3) { setItems([]); setOpen(false); return }
-    let t: any = setTimeout(async () => {
-      try {
-        setBusy(true)
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=address&autocomplete=true&limit=5&access_token=${token}`
-        const res = await fetch(url)
-        const data = await res.json().catch(() => ({features: []}))
-        setItems(Array.isArray(data?.features) ? data.features : [])
-        setOpen(true)
-      } catch {
-        setItems([])
-        setOpen(false)
-      } finally {
-        setBusy(false)
-      }
-    }, 250)
-    return () => clearTimeout(t)
-  }, [q, token])
-
-  function usAbbr(val?: string) {
-    if (!val) return undefined
-    const s = String(val).trim()
-    if (s.length === 2) return s.toUpperCase()
-    const LUT: Record<string,string> = {
-      alabama:'AL', alaska:'AK', arizona:'AZ', arkansas:'AR', california:'CA', colorado:'CO', connecticut:'CT', delaware:'DE', 'district of columbia':'DC', florida:'FL', georgia:'GA', hawaii:'HI', idaho:'ID', illinois:'IL', indiana:'IN', iowa:'IA', kansas:'KS', kentucky:'KY', louisiana:'LA', maine:'ME', maryland:'MD', massachusetts:'MA', michigan:'MI', minnesota:'MN', mississippi:'MS', missouri:'MO', montana:'MT', nebraska:'NE', nevada:'NV', 'new hampshire':'NH', 'new jersey':'NJ', 'new mexico':'NM', 'new york':'NY', 'north carolina':'NC', 'north dakota':'ND', ohio:'OH', oklahoma:'OK', oregon:'OR', pennsylvania:'PA', 'rhode island':'RI', 'south carolina':'SC', 'south dakota':'SD', tennessee:'TN', texas:'TX', utah:'UT', vermont:'VT', virginia:'VA', washington:'WA', 'west virginia':'WV', wisconsin:'WI', wyoming:'WY'
-    }
-    return LUT[s.toLowerCase()] || s.toUpperCase()
-  }
-
-  function pick(feature: any) {
-    try {
-      const addrNum = feature?.address || feature?.properties?.address
-      const street = feature?.text || feature?.text_en || feature?.place_name?.split(',')[0]
-      const line1 = [addrNum, street].filter(Boolean).join(' ')
-
-      // Mapbox context lookups
-      const ctx = Array.isArray(feature?.context) ? feature.context : []
-      const byId: Record<string, any> = {}
-      ctx.forEach((c: any) => { if (c?.id) byId[c.id.split('.')[0]] = c })
-
-      const place = ctx.find((c:any)=> String(c.id||'').startsWith('place.'))
-      const region = ctx.find((c:any)=> String(c.id||'').startsWith('region.'))
-      const postcode = ctx.find((c:any)=> String(c.id||'').startsWith('postcode.'))
-      const country = ctx.find((c:any)=> String(c.id||'').startsWith('country.'))
-
-      const city = feature?.properties?.city || place?.text
-      const rawState = feature?.properties?.region || region?.text
-      const countryCode = feature?.properties?.short_code || country?.short_code || country?.properties?.short_code
-      const state = (String(countryCode || '').toUpperCase() === 'US') ? usAbbr(rawState) : rawState
-      const postal = feature?.properties?.postcode || postcode?.text
-
-      // Update this field locally
-      onChange(set(line1))
-
-      // Patch sibling fields on the document
-      const patch: Record<string, any> = {}
-      patch[`${root}.address_line1`] = line1
-      if (city) patch[`${root}.city_locality`] = city
-      if (state) patch[`${root}.state_province`] = state
-      if (postal) patch[`${root}.postal_code`] = postal
-      if (countryCode) patch[`${root}.country_code`] = String(countryCode).toUpperCase()
-
-      if (_id) {
-        client.patch(_id).set(patch).commit({autoGenerateArrayKeys: true}).catch(()=>{})
-      }
-
-      setOpen(false)
-    } catch {
-      // swallow
-    }
-  }
-
-  return (
-    <div style={{position:'relative'}}>
-      <input
-        type="text"
-        value={q}
-        onChange={(e)=>{ setQ(e.currentTarget.value); onChange(set(e.currentTarget.value)) }}
-        placeholder="Start typing an address…"
-        style={{width:'100%', padding:'6px 8px'}}
-      />
-      {open && items.length > 0 && (
-        <div style={{position:'absolute', zIndex: 10, top:'100%', left:0, right:0, background:'#fff', border:'1px solid #ddd', borderTop:'none', maxHeight:220, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,0.08)'}}>
-          {items.map((f:any) => (
-            <div
-              key={f.id}
-              onClick={()=>pick(f)}
-              style={{padding:'8px 10px', cursor:'pointer', borderTop:'1px solid #eee'}}
-              onMouseDown={(e)=> e.preventDefault()}
-            >
-              {f.place_name}
-            </div>
-          ))}
-          {busy && <div style={{padding:'8px 10px', fontSize:12, color:'#666'}}>Searching…</div>}
-        </div>
-      )}
-    </div>
-  )
-}
+// MapboxAddressInput moved to components/studio/MapboxAddressInput.tsx and used within object types
 
 /**
  * Custom input to fetch live ShipEngine rates and select a service.
@@ -405,72 +284,13 @@ export default defineType({
       validation: (Rule) => Rule.required().min(2),
     }),
 
-    defineField({
-      name: 'ship_from',
-      title: 'Ship From',
-      type: 'object',
-      options: {collapsible: true, columns: 2},
-      fields: [
-        {name: 'name', title: 'Name', type: 'string'},
-        {name: 'phone', title: 'Phone', type: 'string'},
-        {name: 'address_line1', title: 'Address 1', type: 'string', validation: (Rule) => Rule.required(), components: { input: MapboxAddressInput }},
-        {name: 'address_line2', title: 'Address 2', type: 'string'},
-        {name: 'city_locality', title: 'City', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'state_province', title: 'State', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'postal_code', title: 'Postal Code', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'country_code', title: 'Country', type: 'string', initialValue: 'US', validation: (Rule) => Rule.required()},
-      ],
-      initialValue: {
-        name: 'FAS Motorsports',
-        address_line1: '6161 Riverside Dr',
-        city_locality: 'Punta Gorda',
-        state_province: 'FL',
-        postal_code: '33982',
-        country_code: 'US',
-      },
-      validation: (Rule) => Rule.required(),
-    }),
+    defineField({ name: 'ship_from', title: 'Ship From', type: 'shipFromAddress', options: { collapsible: true, columns: 2 }, validation: (Rule) => Rule.required() }),
 
-    defineField({
-      name: 'ship_to',
-      title: 'Ship To',
-      type: 'object',
-      options: {collapsible: true, columns: 2},
-      fields: [
-        {name: 'name', title: 'Name', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'phone', title: 'Phone', type: 'string'},
-        {name: 'address_line1', title: 'Address 1', type: 'string', validation: (Rule) => Rule.required(), components: { input: MapboxAddressInput }},
-        {name: 'address_line2', title: 'Address 2', type: 'string'},
-        {name: 'city_locality', title: 'City', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'state_province', title: 'State', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'postal_code', title: 'Postal Code', type: 'string', validation: (Rule) => Rule.required()},
-        {name: 'country_code', title: 'Country', type: 'string', initialValue: 'US', validation: (Rule) => Rule.required()},
-      ],
-      validation: (Rule) => Rule.required(),
-    }),
+    defineField({ name: 'ship_to', title: 'Ship To', type: 'shipToAddress', options: { collapsible: true, columns: 2 }, validation: (Rule) => Rule.required() }),
 
-    defineField({
-      name: 'weight',
-      title: 'Weight',
-      type: 'object',
-      fields: [
-        {name: 'value', title: 'Value', type: 'number', validation: (Rule) => Rule.required().positive()},
-        {name: 'unit', title: 'Unit', type: 'string', options: {list: ['pound', 'ounce', 'gram', 'kilogram']}, initialValue: 'pound', validation: (Rule) => Rule.required()},
-      ],
-      validation: (Rule) => Rule.required(),
-    }),
+    defineField({ name: 'weight', title: 'Weight', type: 'shipmentWeight', validation: (Rule) => Rule.required() }),
 
-    defineField({
-      name: 'dimensions',
-      title: 'Dimensions (inches)',
-      type: 'object',
-      fields: [
-        {name: 'length', title: 'Length', type: 'number', validation: (Rule) => Rule.required().positive()},
-        {name: 'width', title: 'Width', type: 'number', validation: (Rule) => Rule.required().positive()},
-        {name: 'height', title: 'Height', type: 'number', validation: (Rule) => Rule.required().positive()},
-      ],
-      validation: (Rule) => Rule.required(),
-    }),
+    defineField({ name: 'dimensions', title: 'Dimensions (inches)', type: 'packageDimensions', validation: (Rule) => Rule.required() }),
 
     defineField({
       name: 'serviceSelection',

@@ -1,9 +1,11 @@
 import { defineType, defineField } from 'sanity';
 
 export default defineType({
-  name: 'productFilter',
+  name: 'productFilterDoc',
   title: 'Product Filter',
   type: 'document',
+  // Avoid GraphQL name collision with generated ProductFilter input type
+  __experimental_omittedFromGraphQL: true,
   fields: [
     defineField({
       name: 'title',

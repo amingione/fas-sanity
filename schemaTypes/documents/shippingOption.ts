@@ -149,46 +149,8 @@ const shippingOption = defineType({
         ],
       },
     },
-    {
-      name: 'customerAddress',
-      title: 'Customer Address',
-      type: 'object',
-      fields: [
-        { name: 'name', type: 'string' },
-        { name: 'address_line1', type: 'string' },
-        { name: 'city_locality', type: 'string' },
-        { name: 'state_province', type: 'string' },
-        { name: 'postal_code', type: 'string' },
-        { name: 'country_code', type: 'string' },
-      ],
-    },
-    {
-      name: 'packageDetails',
-      title: 'Package Details',
-      type: 'object',
-      fields: [
-        {
-          name: 'weight',
-          title: 'Weight',
-          type: 'object',
-          fields: [
-            { name: 'value', type: 'number' },
-            { name: 'unit', type: 'string', initialValue: 'pound' },
-          ],
-        },
-        {
-          name: 'dimensions',
-          title: 'Dimensions',
-          type: 'object',
-          fields: [
-            { name: 'length', type: 'number' },
-            { name: 'width', type: 'number' },
-            { name: 'height', type: 'number' },
-            { name: 'unit', type: 'string', initialValue: 'inch' },
-          ],
-        },
-      ],
-    },
+    { name: 'customerAddress', title: 'Customer Address', type: 'shippingOptionCustomerAddress' },
+    { name: 'packageDetails', title: 'Package Details', type: 'packageDetails' },
     {
       name: 'shipEngineService',
       title: 'ShipEngine Service',
