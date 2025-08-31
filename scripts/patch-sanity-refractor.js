@@ -26,6 +26,17 @@ function main() {
     // Remove existing target and copy
     fs.rmSync(target, { recursive: true, force: true });
     copyDir(src, target);
+    // Ensure Sanity's CJS requires like `refractor/bash` resolve by adding alias files
+    const aliases = ['bash', 'javascript', 'json', 'jsx', 'typescript'];
+    for (const name of aliases) {
+      const aliasPath = path.join(target, `${name}.js`);
+      const content = `module.exports = require('./lang/${name}.js');\n`;
+      try {
+        fs.writeFileSync(aliasPath, content);
+      } catch (e) {
+        // ignore individual alias errors
+      }
+    }
     console.log('[patch-sanity-refractor] patched sanity nested refractor to', srcPkg.version);
   } catch (err) {
     console.warn('[patch-sanity-refractor] patch failed:', err && err.message ? err.message : err);
@@ -49,4 +60,3 @@ function copyDir(from, to) {
 }
 
 main();
-
