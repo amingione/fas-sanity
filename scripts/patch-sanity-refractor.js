@@ -41,6 +41,23 @@ function main() {
   } catch (err) {
     console.warn('[patch-sanity-refractor] patch failed:', err && err.message ? err.message : err);
   }
+
+  // Patch Sanity's patched worker file to not auto-run in main thread
+  try {
+    const workerFile = path.join(projectRoot, 'node_modules', 'sanity', 'lib', '_internal', 'cli', 'threads', 'getGraphQLAPIs.patched.js');
+    if (fs.existsSync(workerFile)) {
+      let content = fs.readFileSync(workerFile, 'utf8');
+      const needle = 'main().then(() => process.exit());';
+      const guard = 'if (!node_worker_threads.isMainThread) main().then(() => process.exit());';
+      if (content.includes(needle) && !content.includes(guard)) {
+        content = content.replace(needle, guard);
+        fs.writeFileSync(workerFile, content);
+        console.log('[patch-sanity-refractor] guarded worker main() in getGraphQLAPIs.patched.js');
+      }
+    }
+  } catch (err) {
+    console.warn('[patch-sanity-refractor] failed to guard worker file:', err && err.message ? err.message : err);
+  }
 }
 
 function copyDir(from, to) {
