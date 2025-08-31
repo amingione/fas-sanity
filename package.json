@@ -9,7 +9,8 @@
     "start": "sanity start",
     "build": "sanity build",
     "deploy": "sanity deploy",
-    "deploy-graphql": "sanity graphql deploy"
+    "deploy-graphql": "sanity graphql deploy",
+    "postinstall": "node scripts/patch-sanity-refractor.js || true"
   },
   "keywords": [
     "sanity"
@@ -68,6 +69,18 @@
   },
   "overrides": {
     "prismjs": "^1.30.0",
-    "react-refractor": "^2.1.0"
+    "react-refractor": "^2.1.0",
+    "refractor": "3.6.0",
+    "sanity": {
+      "refractor": "3.6.0"
+    },
+    "sanity@4.6.0": {
+      "refractor": "3.6.0"
+    }
+  }
+  ,
+  "resolutions": {
+    "refractor": "3.6.0",
+    "sanity/refractor": "3.6.0"
   }
 }
