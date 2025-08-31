@@ -228,5 +228,4 @@ export const handler: Handler = async (event) => {
   }
 }
 
-export { handler }
-
+// Netlify picks up the named export automatically; avoid duplicate exports.
