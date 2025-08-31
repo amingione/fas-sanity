@@ -40,6 +40,35 @@ import { productHotspotsType } from './objects/hotspot/productHotspotsType'
 import { productReferenceType } from './objects/module/productReferenceType'
 import { productWithVariantType } from './objects/shopify/productWithVariantType'
 import { proxyStringType } from './objects/shopify/proxyStringType'
+import { pricingTierType } from './objects/pricingTierType'
+import { customPaintType } from './objects/customPaintType'
+import { addOnType } from './objects/addOnType'
+import { specItemType } from './objects/specItemType'
+import { kitItemType } from './objects/kitItemType'
+import { attributeType } from './objects/attributeType'
+import { mediaItemType } from './objects/mediaItemType'
+import { billToType } from './objects/billToType'
+import { shipToType } from './objects/shipToType'
+import { quoteLineItemType } from './objects/quoteLineItemType'
+import { quoteTimelineEventType } from './objects/quoteTimelineEventType'
+import { shipFromAddressType } from './objects/shipFromType'
+import { shipToAddressType } from './objects/shipToSnakeType'
+import { shipmentWeightType } from './objects/shipmentWeightType'
+import { packageDimensionsType } from './objects/packageDimensionsType'
+import { modListItemType } from './objects/modListItemType'
+import { invoiceLineItemType } from './objects/invoiceLineItemType'
+import { customerBillingAddressType } from './objects/customerBillingAddressType'
+import { customerOrderSummaryType } from './objects/customerOrderSummaryType'
+import { customerQuoteSummaryType } from './objects/customerQuoteSummaryType'
+import { customerAddressType } from './objects/customerAddressType'
+import { vendorOrderSummaryType } from './objects/vendorOrderSummaryType'
+import { vendorQuoteSummaryType } from './objects/vendorQuoteSummaryType'
+import { orderCartItemType } from './objects/orderCartItemType'
+import { shippingAddressType } from './objects/shippingAddressType'
+import { shippingLogEntryType } from './objects/shippingLogEntryType'
+import { shippingOptionCustomerAddressType } from './objects/shippingOptionCustomerAddressType'
+import { shippingOptionDimensionsType } from './objects/shippingOptionDimensionsType'
+import { packageDetailsType } from './objects/packageDetailsType'
 import { seoType } from './objects/seoType'
 import { shopifyCollectionType } from './objects/shopify/shopifyCollectionType'
 import { shopifyProductType } from './objects/shopify/shopifyProductType'
@@ -88,6 +117,35 @@ const objects = [
   productReferenceType,
   productWithVariantType,
   proxyStringType,
+  pricingTierType,
+  customPaintType,
+  addOnType,
+  specItemType,
+  kitItemType,
+  attributeType,
+  mediaItemType,
+  billToType,
+  shipToType,
+  quoteLineItemType,
+  quoteTimelineEventType,
+  shipFromAddressType,
+  shipToAddressType,
+  shipmentWeightType,
+  packageDimensionsType,
+  modListItemType,
+  invoiceLineItemType,
+  customerBillingAddressType,
+  customerOrderSummaryType,
+  customerQuoteSummaryType,
+  customerAddressType,
+  vendorOrderSummaryType,
+  vendorQuoteSummaryType,
+  orderCartItemType,
+  shippingAddressType,
+  shippingLogEntryType,
+  shippingOptionCustomerAddressType,
+  shippingOptionDimensionsType,
+  packageDetailsType,
   seoType,
   shopifyCollectionType,
   shopifyProductType,

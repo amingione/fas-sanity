@@ -143,10 +143,7 @@ const product = defineType({
     defineField({ name: 'salePrice', title: 'Sale Price', type: 'number', group: 'pricing' }),
     defineField({ name: 'onSale', title: 'On Sale?', type: 'boolean', group: 'pricing' }),
     defineField({ name: 'pricingTiers', title: 'Pricing Tiers', type: 'array', of: [
-      { type: 'object', name: 'pricingTier', fields: [
-        { name: 'label', type: 'string', title: 'Tier Name' },
-        { name: 'price', type: 'number', title: 'Price' }
-      ]}
+      { type: 'pricingTier' }
     ], group: 'pricing' }),
     defineField({ name: 'inventory', title: 'Inventory', type: 'number', group: 'inventory' }),
 
@@ -172,35 +169,14 @@ const product = defineType({
     defineField({
       name: 'customPaint',
       title: 'Custom Paint',
-      type: 'object',
-      fields: [
-        { name: 'enabled', title: 'Offer Custom Paint?', type: 'boolean', initialValue: false, description: 'Toggle to offer paint while the item is in the shop.' },
-        { name: 'additionalPrice', title: 'Additional Price ($)', type: 'number', description: 'Price added when customer selects paint.', hidden: ({ parent }) => !parent?.enabled },
-        { name: 'paintCodeRequired', title: 'Require Paint Code', type: 'boolean', initialValue: true, description: 'If enabled, the customer must enter a valid paint code before adding to cart.', hidden: ({ parent }) => !parent?.enabled },
-        { name: 'codeLabel', title: 'Paint Code Field Label', type: 'string', initialValue: 'OEM Paint Code', hidden: ({ parent }) => !parent?.enabled },
-        { name: 'instructions', title: 'Paint Code Instructions', type: 'text', rows: 3, description: 'Explain accepted formats (e.g., OEM code), where to find it, and any limitations (pearls, candy, multi-stage, etc.).', hidden: ({ parent }) => !parent?.enabled }
-      ],
+      type: 'customPaint',
       group: 'upgrades'
     }),
     defineField({
       name: 'addOns',
       title: 'Optional Upgrades',
       type: 'array',
-      of: [{
-        type: 'object',
-        name: 'addOn',
-        fields: [
-          { name: 'label', type: 'string', title: 'Upgrade Name', validation: Rule => Rule.required() },
-          { name: 'priceDelta', type: 'number', title: 'Price Adjustment ($)', validation: Rule => Rule.min(0) },
-          { name: 'description', type: 'text', title: 'Description', rows: 2 },
-          { name: 'skuSuffix', type: 'string', title: 'SKU Suffix', description: 'Optional suffix to append when this upgrade is selected (e.g., -CERAMIC).'},
-          { name: 'defaultSelected', type: 'boolean', title: 'Selected by Default?' }
-        ],
-        preview: {
-          select: { title: 'label', price: 'priceDelta' },
-          prepare: ({ title, price }) => ({ title: title || 'Upgrade', subtitle: typeof price === 'number' ? `+$${price.toFixed(2)}` : 'No charge' })
-        }
-      }],
+      of: [ { type: 'addOn' } ],
       description: 'Checkbox-style add-ons (e.g., ceramic bearings +$500, paint service +$X). Customer can pick none, one, or many.',
       group: 'upgrades'
     }),
@@ -211,18 +187,7 @@ const product = defineType({
       title: 'Specifications',
       type: 'array',
       description: 'Technical key/value facts shown in a structured table (e.g., Material, Finish, Diameter, Weight).',
-      of: [{
-        type: 'object',
-        name: 'specItem',
-        fields: [
-          { name: 'label', type: 'string', title: 'Label', validation: Rule => Rule.required().error('Label is required') },
-          { name: 'value', type: 'string', title: 'Value', validation: Rule => Rule.required().error('Value is required') }
-        ],
-        preview: {
-          select: { label: 'label', value: 'value' },
-          prepare: ({ label, value }) => ({ title: label || '—', subtitle: String(value || '') })
-        }
-      }],
+      of: [ { type: 'specItem' } ],
       options: { sortable: true },
       group: 'details'
     }),
@@ -232,16 +197,7 @@ const product = defineType({
       name: 'includedInKit',
       title: 'Included in Kit',
       type: 'array',
-      of: [{
-        type: 'object',
-        name: 'kitItem',
-        fields: [
-          { name: 'item', title: 'Item', type: 'string' },
-          { name: 'quantity', title: 'Quantity', type: 'string' },
-          { name: 'notes', title: 'Notes', type: 'text' }
-        ],
-        preview: { select: { title: 'item', subtitle: 'quantity' } }
-      }],
+      of: [ { type: 'kitItem' } ],
       description: 'What’s in the installation kit (e.g., bolts, gaskets, wiring).',
       group: 'details'
     }),
@@ -251,14 +207,7 @@ const product = defineType({
       name: 'attributes',
       title: 'Product Attributes',
       type: 'array',
-      of: [{
-        type: 'object',
-        name: 'attribute',
-        fields: [
-          { name: 'name', type: 'string', title: 'Attribute Name' },
-          { name: 'value', type: 'string', title: 'Value' }
-        ]
-      }],
+      of: [ { type: 'attribute' } ],
       description: 'Freeform descriptive traits for filtering/quick info (e.g., Color: Gloss Black, Finish: Anodized, Compat: Charger/Challenger). Use this for descriptive tags that aren’t technical specs or kit contents.',
       group: 'details'
     }),
@@ -279,15 +228,7 @@ const product = defineType({
       name: 'mediaAssets',
       title: 'Media Assets',
       type: 'array',
-      of: [{
-        type: 'object',
-        name: 'mediaItem',
-        fields: [
-          { name: 'type', type: 'string', title: 'Type', options: { list: ['video', '3d', 'image', 'pdf'] } },
-          { name: 'label', type: 'string', title: 'Label' },
-          { name: 'url', type: 'url', title: 'URL' }
-        ]
-      }],
+      of: [ { type: 'mediaItem' } ],
       group: 'media'
     }),
 

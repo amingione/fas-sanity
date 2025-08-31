@@ -22,8 +22,16 @@ function fmt(n?: number) {
 }
 
 function getFnBase(): string {
-  const env = (import.meta as any)?.env
-  return env?.SANITY_STUDIO_NETLIFY_BASE || 'http://localhost:8888'
+  // Prefer env (works in Node/CLI). In Studio, you can also store an override in localStorage under 'NLFY_BASE'.
+  const envBase = typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  if (envBase) return envBase
+  try {
+    if (typeof window !== 'undefined') {
+      const ls = window.localStorage?.getItem('NLFY_BASE')
+      if (ls) return ls
+    }
+  } catch {}
+  return 'http://localhost:8888'
 }
 
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
@@ -617,77 +625,12 @@ export default defineType({
 
     defineField({ name: 'quote', title: 'Related Quote', type: 'reference', to: [{ type: 'buildQuote' }] }),
 
-    defineField({
-      name: 'billTo',
-      title: 'Bill To',
-      type: 'object',
-      components: { input: BillToInput },
-      fields: [
-        { name: 'name', title: 'Name', type: 'string', validation: (Rule) => Rule.required() },
-        { name: 'email', title: 'Email', type: 'string' },
-        { name: 'phone', title: 'Phone', type: 'string' },
-        { name: 'address_line1', title: 'Address 1', type: 'string' },
-        { name: 'address_line2', title: 'Address 2', type: 'string' },
-        { name: 'city_locality', title: 'City', type: 'string' },
-        { name: 'state_province', title: 'State/Province', type: 'string' },
-        { name: 'postal_code', title: 'Postal Code', type: 'string' },
-        { name: 'country_code', title: 'Country Code', type: 'string' },
-      ],
-    }),
+    defineField({ name: 'billTo', title: 'Bill To', type: 'billTo', components: { input: BillToInput } }),
 
-    defineField({
-      name: 'shipTo',
-      title: 'Ship To',
-      type: 'object',
-      components: { input: ShipToInput },
-      fields: [
-        { name: 'name', title: 'Name', type: 'string' },
-        { name: 'email', title: 'Email', type: 'string' },
-        { name: 'phone', title: 'Phone', type: 'string' },
-        { name: 'address_line1', title: 'Address 1', type: 'string' },
-        { name: 'address_line2', title: 'Address 2', type: 'string' },
-        { name: 'city_locality', title: 'City', type: 'string' },
-        { name: 'state_province', title: 'State/Province', type: 'string' },
-        { name: 'postal_code', title: 'Postal Code', type: 'string' },
-        { name: 'country_code', title: 'Country Code', type: 'string' },
-      ],
-    }),
+    defineField({ name: 'shipTo', title: 'Ship To', type: 'shipTo', components: { input: ShipToInput } }),
 
     // Line Items with product link or custom rows
-    defineField({
-      name: 'lineItems',
-      title: 'Line Items',
-      type: 'array',
-      of: [
-        defineField({
-          type: 'object',
-          name: 'lineItem',
-          components: { input: LineItemInput },
-          fields: [
-            { name: 'kind', title: 'Kind', type: 'string', initialValue: 'product', options: { list: ['product','custom'], layout: 'radio' } },
-            { name: 'product', title: 'Product', type: 'reference', to: [{ type: 'product' }] },
-            { name: 'description', title: 'Description', type: 'string' },
-            { name: 'sku', title: 'SKU', type: 'string' },
-            { name: 'quantity', title: 'Qty', type: 'number' },
-            { name: 'unitPrice', title: 'Unit Price', type: 'number' },
-            { name: 'lineTotal', title: 'Line Total (override)', type: 'number' },
-          ],
-          validation: (Rule) => Rule.custom((val: any) => {
-            if (!val) return 'Required'
-            if (val.kind === 'product' && !val.product) return 'Choose a product or switch to Custom'
-            if (val.kind === 'custom' && !val.description) return 'Description is required for custom items'
-            return true
-          }),
-          preview: {
-            select: { title: 'description', qty: 'quantity', price: 'unitPrice', kind: 'kind', sku: 'sku' },
-            prepare({ title, qty, price, kind, sku }: any) {
-              const label = kind === 'product' ? (title || 'Product') : (title || 'Custom item')
-              return { title: `${label}${sku ? ` • ${sku}`:''} — ${qty||1} × $${fmt(Number(price||0))}` }
-            },
-          },
-        })
-      ],
-    }),
+    defineField({ name: 'lineItems', title: 'Line Items', type: 'array', of: [ { type: 'invoiceLineItem' } ] }),
 
     // Discount controls
     defineField({ name: 'discountType', title: 'Discount Type', type: 'string', options: { list: [ {title:'Amount ($)', value:'amount'}, {title:'Percent (%)', value:'percent'} ], layout:'radio' }, initialValue: 'amount' }),

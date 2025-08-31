@@ -137,38 +137,8 @@ export default defineType({
         hotspot: true
       }
     }),
-    defineField({
-      name: 'orders',
-      title: 'Orders',
-      type: 'array',
-      of: [
-        {
-          type: 'object',
-          fields: [
-            { name: 'orderId', title: 'Order ID', type: 'string' },
-            { name: 'status', title: 'Status', type: 'string' },
-            { name: 'amount', title: 'Order Total', type: 'number' },
-            { name: 'orderDate', title: 'Order Date', type: 'datetime' }
-          ]
-        }
-      ]
-    }),
-    defineField({
-      name: 'quotes',
-      title: 'Submitted Quotes',
-      type: 'array',
-      of: [
-        {
-          type: 'object',
-          fields: [
-            { name: 'quoteId', title: 'Quote ID', type: 'string' },
-            { name: 'status', title: 'Status', type: 'string' },
-            { name: 'dateSubmitted', title: 'Date Submitted', type: 'datetime' },
-            { name: 'description', title: 'Description', type: 'text' }
-          ]
-        }
-      ]
-    }),
+    defineField({ name: 'orders', title: 'Orders', type: 'array', of: [ { type: 'vendorOrderSummary' } ] }),
+    defineField({ name: 'quotes', title: 'Submitted Quotes', type: 'array', of: [ { type: 'vendorQuoteSummary' } ] }),
     defineField({
       name: 'assignedCustomers',
       title: 'Assigned Customers',

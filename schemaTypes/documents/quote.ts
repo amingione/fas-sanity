@@ -30,36 +30,14 @@ export default defineType({
     defineField({
       name: 'billTo',
       title: 'Bill To',
-      type: 'object',
+      type: 'billTo',
       options: { collapsible: true, collapsed: false },
-      fields: [
-        {name: 'name', type: 'string', title: 'Name'},
-        {name: 'email', type: 'string', title: 'Email'},
-        {name: 'phone', type: 'string', title: 'Phone'},
-        {name: 'address_line1', type: 'string', title: 'Address Line 1'},
-        {name: 'address_line2', type: 'string', title: 'Address Line 2'},
-        {name: 'city_locality', type: 'string', title: 'City'},
-        {name: 'state_province', type: 'string', title: 'State/Province'},
-        {name: 'postal_code', type: 'string', title: 'Postal Code'},
-        {name: 'country_code', type: 'string', title: 'Country Code'},
-      ],
     }),
     defineField({
       name: 'shipTo',
       title: 'Ship To',
-      type: 'object',
+      type: 'shipTo',
       options: { collapsible: true, collapsed: false },
-      fields: [
-        {name: 'name', type: 'string', title: 'Name'},
-        {name: 'email', type: 'string', title: 'Email'},
-        {name: 'phone', type: 'string', title: 'Phone'},
-        {name: 'address_line1', type: 'string', title: 'Address Line 1'},
-        {name: 'address_line2', type: 'string', title: 'Address Line 2'},
-        {name: 'city_locality', type: 'string', title: 'City'},
-        {name: 'state_province', type: 'string', title: 'State/Province'},
-        {name: 'postal_code', type: 'string', title: 'Postal Code'},
-        {name: 'country_code', type: 'string', title: 'Country Code'},
-      ],
     }),
 
     // Line items (product or custom), mirrors invoice style
@@ -67,32 +45,7 @@ export default defineType({
       name: 'lineItems',
       title: 'Line Items',
       type: 'array',
-      of: [
-        {
-          type: 'object',
-          name: 'quoteLineItem',
-          title: 'Line Item',
-          fields: [
-            // Choose a product OR provide a custom item
-            {name: 'product', title: 'Product', type: 'reference', to: [{type: 'product'}]},
-            {name: 'customName', title: 'Custom Item Name', type: 'string'},
-            {name: 'description', title: 'Description', type: 'text'},
-
-            // Pricing
-            {name: 'unitPrice', title: 'Unit Price (USD)', type: 'number'},
-            {name: 'quantity', title: 'Quantity', type: 'number', initialValue: 1},
-            {name: 'lineTotal', title: 'Line Total (auto)', type: 'number', readOnly: true},
-          ],
-          preview: {
-            select: {name: 'customName', product: 'product.title', qty: 'quantity', price: 'unitPrice', total: 'lineTotal'},
-            prepare({name, product, qty, price, total}) {
-              const title = product || name || 'Item'
-              const subtitle = `${qty ?? 1} × $${price ?? 0} = $${total ?? 0}`
-              return {title, subtitle}
-            },
-          },
-        },
-      ],
+      of: [ { type: 'quoteLineItem' } ],
     }),
 
     // Totals & adjustments (mirrors invoice)
@@ -130,15 +83,7 @@ export default defineType({
       name: 'timeline',
       title: 'Quote Timeline',
       type: 'array',
-      of: [
-        {
-          type: 'object',
-          fields: [
-            {name: 'action', type: 'string', title: 'Action'},
-            {name: 'timestamp', type: 'datetime', title: 'Timestamp'},
-          ],
-        },
-      ],
+      of: [ { type: 'quoteTimelineEvent' } ],
     }),
 
     // Delivery (PDF + Email)
