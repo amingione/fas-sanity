@@ -11,6 +11,7 @@ import FinancialDashboard from '../components/studio/FinancialDashboard'
 import FinancialReports from '../components/studio/FinancialReports'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
 import OrderStatusPreview from '../components/inputs/FulfillmentBadge' // shows <FulfillmentBadge />
+import EnvSelfCheck from '../components/studio/EnvSelfCheck'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -163,4 +164,9 @@ export const deskStructure: StructureResolver = () =>
       S.listItem()
         .title('👤 Customer Dashboard')
         .child(S.component().title('Customers').component(CustomerDashboard))
+
+      ,
+      S.listItem()
+        .title('🔒 Env Self‑Check')
+        .child(S.component().title('Environment Status').component(EnvSelfCheck))
     ])

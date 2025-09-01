@@ -19,7 +19,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Unfulfilled Orders')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Unfulfilled Invoices')
                 .filter('_type == "order" && status != "fulfilled"')
             ),
@@ -27,7 +27,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Paid Invoices')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Paid Invoices')
                 .filter('_type == "order" && status == "paid"')
             ),
@@ -35,7 +35,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Pending Invoices')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Pending Invoices')
                 .filter('_type == "order" && status == "pending"')
             )
