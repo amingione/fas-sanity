@@ -104,7 +104,7 @@ export const deskStructure: StructureResolver = (S, context) => {
               S.listItem()
                 .title('📝 Vendor Applications')
                 .child(
-                  S.documentTypeList('vendor')
+                  S.documentTypeList('vendor').apiVersion('2024-10-01')
                     .title('Vendor Applications')
                     .filter('_type == "vendor" && status == $status')
                     .params({ status: 'Pending' })

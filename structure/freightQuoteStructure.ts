@@ -18,7 +18,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Open')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Open')
                 .filter('_type == "freightQuote" && status == "open"')
             ),
@@ -26,7 +26,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Quoted')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Quoted')
                 .filter('_type == "freightQuote" && status == "quoted"')
             ),
@@ -34,7 +34,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Scheduled')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Scheduled')
                 .filter('_type == "freightQuote" && status == "scheduled"')
             ),
@@ -42,7 +42,7 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Completed')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Completed')
                 .filter('_type == "freightQuote" && status == "completed"')
             ),
@@ -50,11 +50,10 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('Cancelled')
             .child(
-              S.documentList()
+              S.documentList().apiVersion('2024-10-01')
                 .title('Cancelled')
                 .filter('_type == "freightQuote" && status == "cancelled"')
             ),
         ])
     )
 )
-

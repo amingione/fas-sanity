@@ -1,13 +1,18 @@
 // resolveDocumentActions.ts
 import type { DocumentActionsResolver } from 'sanity'
 import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
+import { reprocessStripeSessionAction } from './schemaTypes/documentActions/reprocessStripeAction'
 
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
+  const list = [...prev]
   if (context.schemaType === 'invoice') {
-    return [...prev, createShippingLabel]
+    list.push(createShippingLabel)
+    list.push(reprocessStripeSessionAction)
   }
-
-  return prev
+  if (context.schemaType === 'order') {
+    list.push(reprocessStripeSessionAction)
+  }
+  return list
 }
 
 export default resolveDocumentActions
