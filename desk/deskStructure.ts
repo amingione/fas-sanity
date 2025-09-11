@@ -1,6 +1,5 @@
 // desk/deskStructure.ts
 
-import S from 'sanity/structure'
 type StructureResolver = import('sanity/structure').StructureResolver
 
 import DocumentIframePreview from '../components/studio/DocumentIframePreview'
@@ -35,7 +34,7 @@ const getPreviewViews = (schema: string) => [
       .title('📌 Fulfillment Status')
 ].filter(Boolean)
 
-export const deskStructure: StructureResolver = () =>
+export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('F.A.S. Motorsports')
     .items([
