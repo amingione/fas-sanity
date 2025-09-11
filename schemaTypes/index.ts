@@ -75,6 +75,7 @@ import { shopifyProductType } from './objects/shopify/shopifyProductType'
 import { shopifyProductVariantType } from './objects/shopify/shopifyProductVariantType'
 import { spotType } from './objects/hotspot/spotType'
 import tune from './documents/tune'
+import wheelQuote from './documents/wheelQuote'
 
 const annotations = [
   linkEmailType,
@@ -215,6 +216,7 @@ const documents = [
   freightQuote,
   vehicleModel,
   tune,
+  wheelQuote,
 ]
 
 import { homeType } from './singletons/homeType'
