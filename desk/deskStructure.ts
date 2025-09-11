@@ -54,15 +54,15 @@ export const deskStructure: StructureResolver = (S) =>
 
       S.listItem()
         .title('Filters')
-        .schemaType('productFilter')
+        .schemaType('productFilterDoc')
         .child(
-          S.documentTypeList('productFilter')
+          S.documentTypeList('productFilterDoc')
             .title('Filters')
             .child((id: string) =>
               S.document()
                 .documentId(id)
-                .schemaType('productFilter')
-                .views(getPreviewViews(S, 'productFilter'))
+                .schemaType('productFilterDoc')
+                .views(getPreviewViews(S, 'productFilterDoc'))
             )
         ),
 
