@@ -45,7 +45,7 @@ export const deskStructure: StructureResolver = (S, context) => {
   const productListItems = [
     safeListItem('product', 'All Products', MdViewList),
     safeListItem('category', 'Categories', MdCategory),
-    safeListItem('productFilter', 'Filters', MdFilterList),
+    safeListItem('productFilterDoc', 'Filters', MdFilterList),
   ]
 
   return S.list()
