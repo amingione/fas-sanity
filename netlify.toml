@@ -9,6 +9,9 @@
 
 [functions]
   directory = "netlify/functions"
+  # Ensure certain deps are not bundled and are resolved from node_modules
+  node_bundler = "esbuild"
+  external_node_modules = ["get-stream"]
 
 [dev]
   targetPort = 3333
