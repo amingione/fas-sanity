@@ -21,7 +21,7 @@ const previewPaths: Record<string, string> = {
   order: '/order'
 }
 
-const getPreviewViews = (schema: string) => [
+const getPreviewViews = (S: any, schema: string) => [
   S.view.form(),
   S.view
     .component((props: any) =>
@@ -48,7 +48,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('product')
-                .views(getPreviewViews('product'))
+                .views(getPreviewViews(S, 'product'))
             )
         ),
 
@@ -62,7 +62,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('productFilter')
-                .views(getPreviewViews('productFilter'))
+                .views(getPreviewViews(S, 'productFilter'))
             )
         ),
 
@@ -78,7 +78,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('quote')
-                .views(getPreviewViews('quote'))
+                .views(getPreviewViews(S, 'quote'))
             )
         ),
 
@@ -92,7 +92,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('shippingLabel')
-                .views(getPreviewViews('shippingLabel'))
+                .views(getPreviewViews(S, 'shippingLabel'))
             )
         ),
 
@@ -106,7 +106,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('order')
-                .views(getPreviewViews('order'))
+                .views(getPreviewViews(S, 'order'))
             )
         ),
 
@@ -120,7 +120,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('invoice')
-                .views(getPreviewViews('invoice'))
+                .views(getPreviewViews(S, 'invoice'))
             )
         ),
 
@@ -134,7 +134,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.document()
                 .documentId(id)
                 .schemaType('customer')
-                .views(getPreviewViews('customer'))
+                .views(getPreviewViews(S, 'customer'))
             )
         ),
 

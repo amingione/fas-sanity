@@ -29,10 +29,13 @@ export default defineType({
       readOnly: true,
     }),
     defineField({
-    name: 'attachments',
-    title: 'Attachments',
-    type: 'array',
-    of: [{ type: 'reference', to: [{ type: 'sanity.imageAsset' }, { type: 'sanity.fileAsset' }] }],
+      name: 'attachments',
+      title: 'Attachments',
+      type: 'array',
+      of: [
+        { type: 'image' },
+        { type: 'file' },
+      ],
     }),
 
     // Customer
