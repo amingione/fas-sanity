@@ -68,19 +68,7 @@ export const deskStructure: StructureResolver = (S, context) =>
             )
         ),
 
-      S.listItem()
-        .title('Filters')
-        .schemaType('productFilterDoc')
-        .child(
-          S.documentTypeList('productFilterDoc')
-            .title('Filters')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('productFilterDoc')
-                .views(getPreviewViews(S, 'productFilterDoc'))
-            )
-        ),
+      // Removed curated Filters panel to keep things simple. Use Product Filters (auto) instead.
 
       // Computed filters from products (unique strings in product.filters)
       S.listItem()
@@ -92,16 +80,33 @@ export const deskStructure: StructureResolver = (S, context) =>
           )
           const items = (tags || [])
             .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+            .map((t) => t.trim().toLowerCase())
             .sort((a, b) => a.localeCompare(b))
             .map((tag) =>
               S.listItem()
                 .title(tag)
                 .child(
-                  S.documentList()
-                    .title(`Products: ${tag}`)
-                    .schemaType('product')
-                    .filter('_type == "product" && $tag in filters')
-                    .params({ tag })
+                  S.list()
+                    .title(`Filter: ${tag}`)
+                    .items([
+                      S.listItem()
+                        .title('Products with this filter')
+                        .child(
+                          S.documentList()
+                            .title(`Products: ${tag}`)
+                            .schemaType('product')
+                            .filter('_type == "product" && $tag in filters')
+                            .params({ tag })
+                        ),
+                      S.listItem()
+                        .title('Add products to this filter (bulk)')
+                        .child(
+                          S.component()
+                            .title('Bulk Add to Filter')
+                            .component(require('../components/studio/FilterBulkAssign').default)
+                            .options({ tag })
+                        ),
+                    ])
                 )
             )
           return S.list().title('Product Filters').items(items)
