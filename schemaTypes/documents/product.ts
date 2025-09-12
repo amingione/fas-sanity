@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity'
+import FilterTagsInput from '../../components/studio/FilterTagsInput'
 
 const product = defineType({
   name: 'product',
@@ -271,11 +272,16 @@ const product = defineType({
       title: 'Filters',
       type: 'array',
       of: [{ type: 'string' }],
-      description: 'Free-form filter tags (plain text only). Example: "ford", "ecoboost", "intercooler", "500hp+". Horsepower is not special-cased—treat it like any other tag.',
+      description: 'Type to add or pick from suggestions. Examples: ford, ecoboost, intercooler, 500hp+ (free text).',
+      components: { input: FilterTagsInput },
       validation: (Rule) => Rule.custom((items) => {
         if (!items) return true
         const allStrings = items.every((v: unknown) => typeof v === 'string')
-        return allStrings || 'All filters must be text (no references).'
+        if (!allStrings) return 'All filters must be text (no references).'
+        const norm = (items as string[]).map((s) => String(s).trim().replace(/\s+/g, ' ').toLowerCase())
+        const uniq = new Set(norm)
+        if (uniq.size !== norm.length) return 'Duplicate filters (case-insensitive). Use suggestions to keep consistent.'
+        return true
       }),
       group: 'filters'
     }),

@@ -193,7 +193,6 @@ import invoice from './documents/invoice'
 import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
-import productFilter from './documents/productFilter'
 import freightQuote from './documents/freightQuote'
 
 const documents = [
@@ -209,7 +208,6 @@ const documents = [
   bill,
   order,
   category,
-  productFilter,
   productBundle,
   customer,
   shippingOption,
