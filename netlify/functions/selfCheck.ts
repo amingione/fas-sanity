@@ -18,7 +18,23 @@ function presence(name: string): boolean {
   return s.length > 0
 }
 
+// --- CORS (align with other functions)
+const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+function makeCORS(origin?: string) {
+  const o = origin && DEFAULT_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': o,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET,OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
+  }
+}
+
 export const handler: Handler = async (event) => {
+  const origin = (event.headers?.origin || event.headers?.Origin || '') as string
+  const CORS = makeCORS(origin)
+
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
   const all: Record<string, boolean> = {}
   const missing: Partial<Record<Group, string[]>> = {}
   let ok = true
@@ -44,8 +60,7 @@ export const handler: Handler = async (event) => {
 
   return {
     statusCode: ok ? 200 : 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok, missing, present: all, extras }, null, 2),
   }
 }
-

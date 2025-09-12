@@ -22,19 +22,21 @@ const previewPaths: Record<string, string> = {
 }
 
 const getPreviewViews = (S: any, schema: string) => [
-  S.view.form(),
+  S.view.form().id('form'),
   S.view
     .component((props: any) =>
       DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' })
     )
-    .title('🔎 Preview'),
+    .title('Preview')
+    .id('preview'),
   schema === 'order' &&
     S.view
       .component(OrderStatusPreview)
-      .title('📌 Fulfillment Status')
+      .title('Fulfillment Status')
+      .id('fulfillment-status')
 ].filter(Boolean)
 
-export const deskStructure: StructureResolver = (S) =>
+export const deskStructure: StructureResolver = (S, context) =>
   S.list()
     .title('F.A.S. Motorsports')
     .items([
@@ -52,6 +54,20 @@ export const deskStructure: StructureResolver = (S) =>
             )
         ),
 
+      // Categories (document type)
+      S.listItem()
+        .title('Categories')
+        .schemaType('category')
+        .child(
+          S.documentTypeList('category')
+            .title('Categories')
+            .child((id: string) =>
+              S.document()
+                .documentId(id)
+                .schemaType('category')
+            )
+        ),
+
       S.listItem()
         .title('Filters')
         .schemaType('productFilterDoc')
@@ -65,6 +81,31 @@ export const deskStructure: StructureResolver = (S) =>
                 .views(getPreviewViews(S, 'productFilterDoc'))
             )
         ),
+
+      // Computed filters from products (unique strings in product.filters)
+      S.listItem()
+        .title('Product Filters (auto)')
+        .child(async () => {
+          const client = context.getClient({ apiVersion: '2024-10-01' })
+          const tags: string[] = await client.fetch(
+            'array::unique(*[_type == "product" && defined(filters)][].filters[])'
+          )
+          const items = (tags || [])
+            .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+            .sort((a, b) => a.localeCompare(b))
+            .map((tag) =>
+              S.listItem()
+                .title(tag)
+                .child(
+                  S.documentList()
+                    .title(`Products: ${tag}`)
+                    .schemaType('product')
+                    .filter('_type == "product" && $tag in filters')
+                    .params({ tag })
+                )
+            )
+          return S.list().title('Product Filters').items(items)
+        }),
 
       S.divider(),
 

@@ -4,14 +4,24 @@ import Stripe from 'stripe';
 
 const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY!;
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
-const SANITY_PROJECT_ID = process.env.SANITY_PROJECT_ID!;
+const SANITY_PROJECT_ID =
+  process.env.SANITY_PROJECT_ID ||
+  process.env.SANITY_STUDIO_PROJECT_ID ||
+  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
+  process.env.VITE_SANITY_STUDIO_PROJECT_ID ||
+  'r4og35qd';
 const SANITY_TOKEN = process.env.SANITY_API_TOKEN!;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
 
 const sanity = createClient({
   projectId: SANITY_PROJECT_ID,
-  dataset: 'production',
-  apiVersion: '2023-10-01',
+  dataset:
+    process.env.SANITY_DATASET ||
+    process.env.SANITY_STUDIO_DATASET ||
+    process.env.NEXT_PUBLIC_SANITY_DATASET ||
+    process.env.VITE_SANITY_STUDIO_DATASET ||
+    'production',
+  apiVersion: '2024-10-01',
   token: SANITY_TOKEN,
   useCdn: false,
 });

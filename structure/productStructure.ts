@@ -21,7 +21,7 @@ export default defineStructure<ListItemBuilder>((S) =>
                 .title('Details')
                 .icon(InfoOutlineIcon)
                 .schemaType('product')
-                .id(id)
+                .id(`details-${String(id).replace(/[^A-Za-z0-9_-]/g, '_')}`)
                 .child(S.document().schemaType('product').documentId(id)),
               // Product variants
               S.listItem()

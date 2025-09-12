@@ -22,7 +22,7 @@ type CheckResponse = {
   extras?: Record<string, string>
 }
 
-export default function EnvSelfCheck() {
+export default React.forwardRef<HTMLDivElement, Record<string, never>>(function EnvSelfCheck(_props, ref) {
   const [data, setData] = React.useState<CheckResponse | null>(null)
   const [err, setErr] = React.useState<string>('')
   const [loading, setLoading] = React.useState<boolean>(true)
@@ -85,7 +85,7 @@ export default function EnvSelfCheck() {
   )
 
   return (
-    <div style={{ padding: 16, color: '#000' }}>
+    <div ref={ref} style={{ padding: 16, color: '#000' }}>
       <div style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#000' }}>Environment Self‑Check</div>
         <div style={{ fontSize: 12, color: '#333' }}>Base: {base}</div>
@@ -152,4 +152,4 @@ export default function EnvSelfCheck() {
       )}
     </div>
   )
-}
+})

@@ -21,20 +21,26 @@ const previewPaths: Record<string, string> = {
 }
 
 const getPreviewViews = (S: any, schema: string) => [
-  S.view.form(),
+  S.view.form().id('form'),
   S.view
     .component((props: any) => DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' }))
-    .title('🔎 Preview'),
+    .title('Preview')
+    .id('preview'),
   schema === 'order' &&
-    S.view.component(OrderStatusPreview).title('📌 Fulfillment Status'),
+    S.view.component(OrderStatusPreview).title('Fulfillment Status').id('fulfillment-status'),
 ].filter(Boolean)
 
 export const deskStructure: StructureResolver = (S, context) => {
   const safeListItem = (typeName: string, title: string, icon: any) => {
     return context.schema.get(typeName)
-      ? S.listItem().title(title).icon(icon).child(S.documentTypeList(typeName).title(title))
+      ? S.listItem()
+          .id(`mgr-${typeName}`)
+          .title(title)
+          .icon(icon)
+          .child(S.documentTypeList(typeName).title(title))
       : S.listItem()
-          .title(`⚠️ Missing: ${typeName} schema`)
+          .id(`missing-${typeName}`)
+          .title(`Missing: ${typeName} schema`)
           .child(
             S.component()
               .title('Schema Error')
@@ -51,7 +57,7 @@ export const deskStructure: StructureResolver = (S, context) => {
   return S.list()
     .title('F.A.S. Motorsports')
     .items([
-      S.listItem()
+      S.listItem().id('products-root')
         .title('Products')
         .icon(MdViewList)
         .child(S.list().title('Products').items(productListItems)),
@@ -76,32 +82,32 @@ export const deskStructure: StructureResolver = (S, context) => {
 
       S.divider(),
 
-      S.listItem().title('📦 Bulk Label Generator').child(
+      S.listItem().id('bulk-label-generator').title('📦 Bulk Label Generator').child(
         S.component().title('Bulk Label Generator').component(BulkLabelGenerator)
       ),
-      S.listItem().title('📄 Packing Slip Generator').child(
+      S.listItem().id('packing-slip-generator').title('📄 Packing Slip Generator').child(
         S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)
       ),
-      S.listItem().title('📊 Financial Dashboard').child(
+      S.listItem().id('financial-dashboard').title('📊 Financial Dashboard').child(
         S.component().title('Finance').component(FinancialDashboard)
       ),
-      S.listItem().title('📥 Financial Reports').child(
+      S.listItem().id('financial-reports').title('📥 Financial Reports').child(
         S.component().title('Reports').component(FinancialReports)
       ),
-      S.listItem().title('🧾 Fulfillment Console').child(
+      S.listItem().id('fulfillment-console').title('🧾 Fulfillment Console').child(
         S.component().title('Console').component(BulkFulfillmentConsole)
       ),
-      S.listItem().title('👤 Customer Dashboard').child(
+      S.listItem().id('customer-dashboard').title('👤 Customer Dashboard').child(
         S.component().title('Customers').component(CustomerDashboard)
       ),
 
-      S.listItem()
+      S.listItem().id('admin-tools')
         .title('🛠 Admin Tools')
         .child(
           S.list()
             .title('Admin Tools')
             .items([
-              S.listItem()
+              S.listItem().id('vendor-applications')
                 .title('📝 Vendor Applications')
                 .child(
                   S.documentTypeList('vendor').apiVersion('2024-10-01')
@@ -113,8 +119,8 @@ export const deskStructure: StructureResolver = (S, context) => {
                         .documentId(id)
                         .schemaType('vendor')
                         .views([
-                          S.view.form(),
-                          S.view.component(VendorStatusBadge).title('🟢 Status Badge'),
+                          S.view.form().id('form'),
+                          S.view.component(VendorStatusBadge).title('Status Badge').id('status-badge'),
                         ])
                     )
                 ),
