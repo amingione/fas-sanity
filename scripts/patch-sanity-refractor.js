@@ -106,20 +106,21 @@ function main() {
 
     if (fs.existsSync(uiEs)) {
       let s = fs.readFileSync(uiEs, 'utf8')
-      s = s.replace(/Refractor\.hasLanguage\(language\)\s*:\s*!1/, '!1')
-      s = s.replace(/\$\[0\]\s*!==\s*language\s*\?\s*\(t0\s*=\s*language\s*\?\s*Refractor\.hasLanguage\(language\)\s*:\s*!1\s*,/,
-        '$[0] !== language ? (t0 = !1,'
-      )
+      // Replace the entire ternary that sets t0 with a constant false: t0 = !1
+      s = s.replace(/t0\s*=\s*language\s*\?\s*Refractor\.hasLanguage\(language\)\s*:\s*!1/g, 't0 = !1')
+      // And common compiled variant where default wrapper is used
+      s = s.replace(/t0\s*=\s*language\s*\?\s*Refractor__default\.default\.hasLanguage\(language\)\s*:\s*!1/g, 't0 = !1')
+      // Fallback: if the full ternary still exists within the conditional sequence, collapse it explicitly
+      s = s.replace(/\$\[0\]\s*!==\s*language\s*\?\s*\(t0\s*=\s*language\s*\?[^:]+:\s*!1\s*,/g, '$[0] !== language ? (t0 = !1,')
       fs.writeFileSync(uiEs, s)
       console.log('[patch-sanity-refractor] patched @sanity/ui ESM refractor to disable highlighting')
     }
 
     if (fs.existsSync(uiCjs)) {
       let s2 = fs.readFileSync(uiCjs, 'utf8')
-      s2 = s2.replace(/Refractor__default\.default\.hasLanguage\(language\)\s*:\s*!1/, '!1')
-      s2 = s2.replace(/\$\[0\]\s*!==\s*language\s*\?\s*\(t0\s*=\s*language\s*\?\s*Refractor__default\.default\.hasLanguage\(language\)\s*:\s*!1\s*,/,
-        '$[0] !== language ? (t0 = !1,'
-      )
+      s2 = s2.replace(/t0\s*=\s*language\s*\?\s*Refractor__default\.default\.hasLanguage\(language\)\s*:\s*!1/g, 't0 = !1')
+      s2 = s2.replace(/t0\s*=\s*language\s*\?\s*Refractor\.hasLanguage\(language\)\s*:\s*!1/g, 't0 = !1')
+      s2 = s2.replace(/\$\[0\]\s*!==\s*language\s*\?\s*\(t0\s*=\s*language\s*\?[^:]+:\s*!1\s*,/g, '$[0] !== language ? (t0 = !1,')
       fs.writeFileSync(uiCjs, s2)
       console.log('[patch-sanity-refractor] patched @sanity/ui CJS refractor to disable highlighting')
     }
