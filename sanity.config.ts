@@ -138,5 +138,10 @@ export default defineConfig({
         },
       },
     ],
+    build: {
+      rollupOptions: {
+        external: ['sanity/refractor'],
+      },
+    },
   },
 });
