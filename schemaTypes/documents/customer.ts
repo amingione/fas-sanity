@@ -6,6 +6,9 @@ export default defineType({
   title: 'Customer',
   type: 'document',
   fields: [
+    // Identity
+    defineField({ name: 'userId', title: 'Auth0 User ID', type: 'string', description: 'Auth0 subject (sub). Used for portal lookups.' }),
+    defineField({ name: 'authId', title: 'Auth ID (legacy)', type: 'string', hidden: true, description: 'Legacy alias for Auth0 user id.' }),
     defineField({ name: 'firstName', title: 'First Name', type: 'string' }),
     defineField({ name: 'lastName', title: 'Last Name', type: 'string' }),
     defineField({
@@ -32,13 +35,7 @@ export default defineType({
       description:
         'Controls post-login routing (e.g. customer portal vs vendor portal). Change only if you know what you are doing.'
     }),
-    defineField({
-      name: 'auth0Id',
-      title: 'Auth0 User ID',
-      type: 'string',
-      readOnly: true,
-      hidden: true,
-    }),
+    defineField({ name: 'auth0Id', title: 'Auth0 User ID (hidden)', type: 'string', readOnly: true, hidden: true }),
     defineField({
       name: 'passwordHash',
       title: 'Password Hash',
@@ -57,9 +54,14 @@ export default defineType({
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'product' }] }]
     }),
+    // Marketing preferences
+    defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false }),
+    defineField({ name: 'marketingOptIn', title: 'Marketing Opt‑In', type: 'boolean', initialValue: false }),
+    defineField({ name: 'textOptIn', title: 'Text/SMS Opt‑In', type: 'boolean', initialValue: false }),
     defineField({ name: 'orderCount', title: 'Order Count', type: 'number', readOnly: true }),
     defineField({ name: 'quoteCount', title: 'Quote Count', type: 'number', readOnly: true }),
-    defineField({ name: 'lifetimeSpend', title: 'Lifetime Spend ($)', type: 'number', readOnly: true })
+    defineField({ name: 'lifetimeSpend', title: 'Lifetime Spend ($)', type: 'number', readOnly: true }),
+    defineField({ name: 'updatedAt', title: 'Updated At', type: 'datetime' }),
   ],
 
   preview: {

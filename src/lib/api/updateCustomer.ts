@@ -29,8 +29,9 @@ export async function updateCustomer(userId: string, updates: {
         ...(updates.orderCount !== undefined && { orderCount: updates.orderCount }),
         ...(updates.quoteCount !== undefined && { quoteCount: updates.quoteCount }),
         ...(updates.lifetimeSpend !== undefined && { lifetimeSpend: updates.lifetimeSpend }),
+        updatedAt: new Date().toISOString(),
       })
-      .commit();
+      .commit({ autoGenerateArrayKeys: true });
 
     return updated;
   } catch (err) {

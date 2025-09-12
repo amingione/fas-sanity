@@ -83,7 +83,8 @@ export const handler: Handler = async (event) => {
     if (Array.isArray(products) && products.length > 0) {
       products.forEach((p: any, i: number) => {
         const qty = Number(p?.quantity ?? 1)
-        const line = `${i + 1}. ${p?.title || 'Unnamed Product'}  x${qty}`
+        const name = p?.name || p?.title || p?.description || p?.sku || 'Item'
+        const line = `${i + 1}. ${String(name)}  x${qty}`
         page.drawText(line, { x: 24, y, size: 10, font: helvetica })
         y -= 12
       })

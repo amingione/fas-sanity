@@ -1,6 +1,5 @@
-import { Handler } from '@netlify/functions'
+import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
-import axios from 'axios'
 
 const ALLOW_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3333'
 const CORS_HEADERS = {
@@ -9,13 +8,13 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 }
 
-const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY!
+const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY || ''
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
   apiVersion: '2024-04-10',
-  token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  token: process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN,
   useCdn: false
 })
 
@@ -32,13 +31,28 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  const { customerId, labelDescription, invoiceId, weight, dimensions, carrier, customerEmail, serviceCode } = JSON.parse(event.body || '{}')
+  let body: any = {}
+  try { body = JSON.parse(event.body || '{}') } catch { body = {} }
 
-  if (!serviceCode) {
+  // Two payload shapes are supported:
+  // A) From shippingLabel doc: { ship_to, ship_from, service_code, package_details }
+  // B) From orders UI: { orderId, serviceCode, carrier, weight, dimensions }
+  const ship_to = body.ship_to
+  const ship_from = body.ship_from
+  const service_code = body.service_code || body.serviceCode
+  const package_details = body.package_details
+
+  const orderId = body.orderId as string | undefined
+  const invoiceId = body.invoiceId as string | undefined
+  const weight = body.weight || package_details?.weight
+  const dimensions = body.dimensions || package_details?.dimensions
+  const carrierId = body.carrier || body.carrier_id || body.carrierId
+
+  if (!service_code) {
     return {
       statusCode: 400,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing serviceCode' }),
+      body: JSON.stringify({ error: 'Missing service_code/serviceCode' }),
     }
   }
 
@@ -59,33 +73,50 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const customer = await sanity.fetch(
-      `*[_type == "customer" && _id == $id][0]{
-        firstName, lastName, phone, email,
-        billingAddress, address
-      }`,
-      { id: customerId }
-    )
+    // Derive addresses depending on payload
+    let toAddress = ship_to
+    let fromAddress = ship_from
 
-    const toAddress = {
-      name: `${customer.firstName} ${customer.lastName}`,
-      phone: customer.phone,
-      address_line1: customer.billingAddress.street,
-      city_locality: customer.billingAddress.city,
-      state_province: customer.billingAddress.state,
-      postal_code: customer.billingAddress.postalCode,
-      country_code: customer.billingAddress.country,
-      email: customerEmail || customer.email
-    }
-
-    const fromAddress = {
-      name: "FAS Motorsports",
-      phone: "555-555-5555",
-      address_line1: "123 Performance Ln",
-      city_locality: "Dayton",
-      state_province: "OH",
-      postal_code: "45402",
-      country_code: "US"
+    if (!toAddress || !fromAddress) {
+      // Try derive from order or invoice
+      if (orderId) {
+        const order = await sanity.fetch(`*[_type == "order" && _id == $id][0]{ shippingAddress }`, { id: orderId })
+        const sa = order?.shippingAddress || {}
+        toAddress = {
+          name: sa?.name,
+          phone: sa?.phone,
+          address_line1: sa?.addressLine1,
+          address_line2: sa?.addressLine2,
+          city_locality: sa?.city,
+          state_province: sa?.state,
+          postal_code: sa?.postalCode,
+          country_code: sa?.country || 'US',
+        }
+      } else if (invoiceId) {
+        const inv = await sanity.fetch(`*[_type == "invoice" && _id == $id][0]{ shipTo }`, { id: invoiceId })
+        const st = inv?.shipTo || {}
+        toAddress = {
+          name: st?.name,
+          phone: st?.phone,
+          address_line1: st?.address_line1,
+          address_line2: st?.address_line2,
+          city_locality: st?.city_locality,
+          state_province: st?.state_province,
+          postal_code: st?.postal_code,
+          country_code: st?.country_code || 'US',
+        }
+      }
+      // From address from env with fallbacks
+      fromAddress = {
+        name: process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports LLC',
+        phone: process.env.SHIP_FROM_PHONE || '(812) 200-9012',
+        address_line1: process.env.SHIP_FROM_ADDRESS1 || '6161 Riverside Dr',
+        address_line2: process.env.SHIP_FROM_ADDRESS2 || undefined,
+        city_locality: process.env.SHIP_FROM_CITY || 'Punta Gorda',
+        state_province: process.env.SHIP_FROM_STATE || 'FL',
+        postal_code: process.env.SHIP_FROM_POSTAL_CODE || '33982',
+        country_code: process.env.SHIP_FROM_COUNTRY || 'US',
+      }
     }
 
     const shipment = {
@@ -93,97 +124,82 @@ export const handler: Handler = async (event) => {
       ship_from: fromAddress,
       packages: [
         {
-          weight: {
-            value: weight,
-            unit: "pound"
-          },
+          weight: { value: Number(weight?.value ?? weight) || 1, unit: (weight?.unit || 'pound') },
           dimensions: {
-            length: dimensions.length,
-            width: dimensions.width,
-            height: dimensions.height,
-            unit: "inch"
-          }
-        }
-      ]
+            length: Number(dimensions.length),
+            width: Number(dimensions.width),
+            height: Number(dimensions.height),
+            unit: 'inch',
+          },
+        },
+      ],
     }
 
-    // Dynamically fetch rates from ShipEngine
-    const ratesResponse = await axios.post(
-      'https://api.shipengine.com/v1/rates/estimate',
-      {
-        rate_options: {
-          carrier_ids: [carrier]
-        },
-        shipment: {
-          ship_to: toAddress,
-          ship_from: fromAddress,
-          packages: shipment.packages
-        }
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'API-Key': SHIPENGINE_API_KEY
-        }
-      }
-    )
-
-    const rates = ratesResponse.data.rate_response.rates
-
-    if (!rates || rates.length === 0) {
-      return {
-        statusCode: 404,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'No shipping rates found for this shipment.' }),
-      }
+    if (!SHIPENGINE_API_KEY) {
+      return { statusCode: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing SHIPENGINE_API_KEY' }) }
     }
 
-    const selectedRate = rates[0]
-
-    // Create shipping label with selected rate details
-    const labelResponse = await axios.post(
-      'https://api.shipengine.com/v1/labels',
-      {
-        shipment: {
-          service_code: selectedRate.service_code,
-          carrier_id: selectedRate.carrier_id,
-          ship_to: toAddress,
-          ship_from: fromAddress,
-          packages: shipment.packages
-        },
-        label_format: "pdf",
-        label_download_type: "url",
-        external_order_id: invoiceId,
+    // Create label directly using provided service + carrier or derive carrier from ShipEngine
+    const labelReq = {
+      shipment: {
+        service_code,
+        carrier_id: carrierId || undefined,
+        ship_to: shipment.ship_to,
+        ship_from: shipment.ship_from,
+        packages: shipment.packages,
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'API-Key': SHIPENGINE_API_KEY
-        }
+      label_format: 'pdf',
+      label_download_type: 'url',
+      external_order_id: orderId || invoiceId || undefined,
+    }
+
+    const labelResp = await fetch('https://api.shipengine.com/v1/labels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'API-Key': SHIPENGINE_API_KEY },
+      body: JSON.stringify(labelReq),
+    })
+    const labelData = await labelResp.json()
+    if (!labelResp.ok) {
+      return { statusCode: labelResp.status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: labelData }) }
+    }
+
+    const trackingNumber = labelData?.tracking_number
+    const labelUrl = labelData?.label_download?.href || labelData?.label_download?.pdf
+
+    // Patch target doc with tracking/label if we know what to update
+    try {
+      if (orderId) {
+        await sanity
+          .patch(orderId)
+          .set({ shippingLabelUrl: labelUrl, trackingNumber })
+          .setIfMissing({ shippingLog: [] })
+          .append('shippingLog', [{ _type: 'shippingLogEntry', status: 'label_created', labelUrl, trackingNumber, createdAt: new Date().toISOString() }])
+          .commit({ autoGenerateArrayKeys: true })
+        // Also create a Shipping Label document for reference
+        try {
+          await sanity.create({
+            _type: 'shippingLabel',
+            name: `Order ${orderId.slice(-6)} Label`,
+            trackingNumber,
+            labelUrl,
+            createdAt: new Date().toISOString(),
+          })
+        } catch {}
+      } else if (invoiceId) {
+        await sanity.patch(invoiceId).set({ status: 'Shipped' }).commit({ autoGenerateArrayKeys: true })
       }
-    )
-
-    const labelData = labelResponse.data
-
-    await sanity.patch(invoiceId).set({ status: 'Shipped' }).commit()
+    } catch {}
 
     return {
       statusCode: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        trackingNumber: labelData.tracking_number,
-        labelUrl: labelData.label_download.href,
-        invoiceUpdated: true,
-        price: labelData.price,
-        estimatedDeliveryDate: labelData.estimated_delivery_date,
-        selectedRate
-      }),
+      body: JSON.stringify({ trackingNumber, labelUrl, invoiceUpdated: Boolean(invoiceId), raw: labelData }),
     }
   } catch (err: any) {
     return {
       statusCode: 500,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err?.message || 'Label create failed' }),
     }
   }
 }

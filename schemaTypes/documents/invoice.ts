@@ -552,6 +552,103 @@ el(
   },
   'Download PDF'
 ),
+el(
+  'button',
+  {
+    type: 'button',
+    onClick: async () => {
+      try {
+        const bill = doc?.billTo || {}
+        const customerName = bill?.name || doc?.customerEmail || 'Customer'
+        const items = Array.isArray(doc?.lineItems) ? doc.lineItems : []
+        const products = items.map((li: any) => ({ name: li?.description || li?.sku || 'Item', quantity: Number(li?.quantity || 1) }))
+
+        const res = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerName, invoiceId: _id, products })
+        })
+        if (!res.ok) throw new Error(await res.text())
+
+        const ct = (res.headers.get('content-type') || '').toLowerCase()
+        let blob: Blob
+        if (ct.includes('application/pdf')) {
+          try {
+            const ab = await res.arrayBuffer()
+            blob = new Blob([ab], { type: 'application/pdf' })
+          } catch {
+            const b64 = await res.text()
+            const clean = b64.replace(/^\"|\"$/g, '')
+            const bytes = atob(clean)
+            const buf = new Uint8Array(bytes.length)
+            for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i)
+            blob = new Blob([buf], { type: 'application/pdf' })
+          }
+        } else {
+          const b64 = await res.text()
+          const clean = b64.replace(/^\"|\"$/g, '')
+          const bytes = atob(clean)
+          const buf = new Uint8Array(bytes.length)
+          for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i)
+          blob = new Blob([buf], { type: 'application/pdf' })
+        }
+
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `packing-slip-${invoiceNumber || _id}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+      } catch (e: any) {
+        alert(`Packing slip failed: ${e?.message || e}`)
+      }
+    }
+  },
+  'Generate Packing Slip'
+),
+el(
+  'button',
+  {
+    type: 'button',
+    onClick: async () => {
+      try {
+        const svc = (typeof window !== 'undefined' ? (window.prompt('Enter ShipEngine service_code (e.g., usps_priority_mail):', 'usps_priority_mail') || '').trim() : '')
+        if (!svc) return
+        const weightStr = (typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1')
+        const dimsStr = (typeof window !== 'undefined' ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim() : '10x8x4')
+        const m = dimsStr.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
+        if (!m) throw new Error('Invalid dimensions')
+        const L = Number(m[1]), W = Number(m[2]), H = Number(m[3])
+        const wt = Number(weightStr)
+        if (!Number.isFinite(wt) || wt <= 0) throw new Error('Invalid weight')
+
+        const res = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            invoiceId: _id,
+            service_code: svc,
+            package_details: { weight: { value: wt, unit: 'pound' }, dimensions: { unit: 'inch', length: L, width: W, height: H } }
+          })
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || data?.error) throw new Error(data?.error || `HTTP ${res.status}`)
+        const url = data?.labelUrl
+        if (url) {
+          try { window.open(url, '_blank') } catch {}
+          alert(`Label created. Tracking: ${data?.trackingNumber || 'n/a'}`)
+        } else {
+          alert('Label created, but URL missing. Check Shipping Label doc or Order shipping log.')
+        }
+      } catch (e: any) {
+        alert(`Create label failed: ${e?.message || e}`)
+      }
+    }
+  },
+  'Create Shipping Label'
+),
     el(
       'button',
       {
@@ -628,6 +725,12 @@ export default defineType({
 
     defineField({ name: 'quote', title: 'Related Quote', type: 'reference', to: [{ type: 'buildQuote' }] }),
 
+    // Link to Order (if created from website checkout)
+    defineField({ name: 'orderRef', title: 'Related Order', type: 'reference', to: [{ type: 'order' }] }),
+    // Legacy compatibility (hidden): previously used `order` and `customer` field names
+    defineField({ name: 'order', title: 'Order (legacy)', type: 'reference', to: [{ type: 'order' }], hidden: true, options: { disableNew: true } }),
+    defineField({ name: 'customer', title: 'Customer (legacy)', type: 'reference', to: [{ type: 'customer' }], hidden: true, options: { disableNew: true } }),
+
     defineField({ name: 'billTo', title: 'Bill To', type: 'billTo', components: { input: BillToInput } }),
 
     defineField({ name: 'shipTo', title: 'Ship To', type: 'shipTo', components: { input: ShipToInput } }),
@@ -644,6 +747,8 @@ export default defineType({
 
     // Calculated totals (read-only; shown via TotalsPanel)
     defineField({ name: 'subtotal', title: 'Subtotal (auto)', type: 'number', readOnly: true }),
+    // Optional stored total for compatibility with older docs
+    defineField({ name: 'total', title: 'Total (stored)', type: 'number' }),
 
     // Notes
     defineField({ name: 'customerNotes', title: 'Notes (Visible to Customer)', type: 'text' }),
@@ -661,6 +766,17 @@ export default defineType({
     defineField({ name: 'dueDate', title: 'Due Date', type: 'date' }),
 
     defineField({ name: 'paymentLinkUrl', title: 'Payment Link URL', type: 'url' }),
+
+    // Stripe/payment metadata for compatibility with imported or legacy invoices
+    defineField({ name: 'currency', title: 'Currency', type: 'string' }),
+    defineField({ name: 'amountSubtotal', title: 'Amount Subtotal', type: 'number' }),
+    defineField({ name: 'amountTax', title: 'Amount Tax', type: 'number' }),
+    defineField({ name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string' }),
+    defineField({ name: 'paymentIntentId', title: 'Payment Intent ID', type: 'string' }),
+    defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
+    defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
+    defineField({ name: 'userId', title: 'User ID (Auth0)', type: 'string' }),
+    defineField({ name: 'dateIssued', title: 'Date Issued (legacy)', type: 'datetime' }),
 
     // Visual totals panel (virtual field)
     defineField({ name: 'totalsPanel', title: 'Totals', type: 'string', components: { input: TotalsPanel }, readOnly: true }),
