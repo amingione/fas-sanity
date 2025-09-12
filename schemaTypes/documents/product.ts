@@ -95,7 +95,9 @@ const product = defineType({
               }
             ]
           }
-        }
+        },
+        { type: 'image', options: { hotspot: true } },
+        { type: 'code' }
       ],
       description: 'Full product description with formatting, lists, and headings.',
       group: 'details'
@@ -123,7 +125,9 @@ const product = defineType({
               }
             ]
           }
-        }
+        },
+        { type: 'image', options: { hotspot: true } },
+        { type: 'code' }
       ],
       description: 'Brief intro near title/price (aim for 1–2 sentences).',
       validation: (Rule) => Rule.max(2).warning('Keep the short description concise (1–2 paragraphs).'),
