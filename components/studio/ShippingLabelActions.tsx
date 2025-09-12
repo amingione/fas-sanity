@@ -11,12 +11,27 @@ function asShipEngineAddress(raw?: any) {
   if (!raw) return null
   return {
     name: raw.name || `${raw.firstName ?? ''} ${raw.lastName ?? ''}`.trim() || undefined,
-    address_line1: raw.address_line1 || raw.street || raw.line1 || undefined,
+    address_line1: raw.address_line1 || raw.addressLine1 || raw.street || raw.line1 || undefined,
+    address_line2: raw.address_line2 || raw.addressLine2 || raw.line2 || undefined,
     city_locality: raw.city_locality || raw.city || undefined,
     state_province: raw.state_province || raw.state || undefined,
     postal_code: raw.postal_code || raw.postalCode || undefined,
     country_code: raw.country_code || raw.country || 'US',
   }
+}
+
+function getFnBase(): string {
+  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
+  if (envBase) return envBase
+  if (typeof window !== 'undefined') {
+    try {
+      const ls = window.localStorage?.getItem('NLFY_BASE')
+      if (ls) return ls
+      const origin = window.location?.origin
+      if (origin && /^https?:\/\//i.test(origin)) return origin
+    } catch {}
+  }
+  return ''
 }
 
 const getSanityClient = () =>
@@ -106,6 +121,7 @@ export default function ShippingLabelActions({ doc }: Props) {
   const hasData = Boolean(localLabelUrl || localTrackingUrl)
 
   const handleCreateLabel = async () => {
+    const base = getFnBase() || 'https://fassanity.fasmotorsports.com'
     // Try to derive addresses from the current document
     const shipTo = asShipEngineAddress((doc as any)?.shipTo || (doc as any)?.shippingAddress || (doc as any)?.invoice?.shippingAddress)
     const shipFrom = asShipEngineAddress((doc as any)?.shipFrom || (doc as any)?.warehouseAddress || (doc as any)?.originAddress)
@@ -153,7 +169,7 @@ export default function ShippingLabelActions({ doc }: Props) {
 
     try {
       if (!selectedRate) {
-        const ratesRes = await fetch('/.netlify/functions/getShipEngineRates', {
+        const ratesRes = await fetch(`${base}/.netlify/functions/getShipEngineRates`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -186,7 +202,7 @@ export default function ShippingLabelActions({ doc }: Props) {
         return
       }
 
-      const res = await fetch('/.netlify/functions/createShippingLabel', {
+      const res = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

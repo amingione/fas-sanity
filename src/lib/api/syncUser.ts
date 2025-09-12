@@ -102,8 +102,9 @@ export const handler: NetlifyHandler = async (event) => {
         email: email ?? null,
         firstName: firstName ?? null,
         lastName: lastName ?? null,
+        updatedAt: new Date().toISOString(),
       })
-      .commit()
+      .commit({ autoGenerateArrayKeys: true })
 
     return {
       statusCode: 200,

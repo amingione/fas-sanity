@@ -1,5 +1,6 @@
 import { defineType, defineField } from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
+import OrderShippingActions from '../../components/studio/OrderShippingActions'
 
 export default defineType({
   name: 'order',
@@ -12,6 +13,18 @@ export default defineType({
     defineField({ name: 'invoiceRef', title: 'Linked Invoice', type: 'reference', to: [{ type: 'invoice' }] }),
     defineField({ name: 'cart', title: 'Cart Items', type: 'array', of: [ { type: 'orderCartItem' } ] }),
     defineField({ name: 'totalAmount', title: 'Total Amount (USD)', type: 'number' }),
+    // Stripe/Payment details (added to match existing data and avoid unknown fields)
+    defineField({ name: 'amountSubtotal', title: 'Subtotal Amount', type: 'number', description: 'Order subtotal before shipping/tax' }),
+    defineField({ name: 'amountTax', title: 'Tax Amount', type: 'number' }),
+    defineField({ name: 'amountShipping', title: 'Shipping Amount', type: 'number' }),
+    defineField({ name: 'currency', title: 'Currency', type: 'string' }),
+    defineField({ name: 'paymentIntentId', title: 'Payment Intent ID', type: 'string' }),
+    defineField({ name: 'chargeId', title: 'Charge ID', type: 'string' }),
+    defineField({ name: 'cardBrand', title: 'Card Brand', type: 'string' }),
+    defineField({ name: 'cardLast4', title: 'Card Last4', type: 'string' }),
+    defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
+    defineField({ name: 'paymentStatus', title: 'Payment Status', type: 'string', description: 'Raw Stripe payment status (e.g. succeeded, processing)'}),
+    defineField({ name: 'userId', title: 'User ID (Auth0)', type: 'string' }),
     defineField({
       name: 'status',
       title: 'Order Status',
@@ -49,6 +62,9 @@ export default defineType({
 
     // ✅ New Field: shippingLog[]
     defineField({ name: 'shippingLog', title: 'Shipping History', type: 'array', of: [ { type: 'shippingLogEntry' } ] }),
+
+    // Actions to create packing slips and labels directly from the order
+    defineField({ name: 'shippingActions', title: 'Shipping', type: 'string', readOnly: true, components: { input: OrderShippingActions } }),
   ],
 
   preview: {

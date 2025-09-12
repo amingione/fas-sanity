@@ -30,15 +30,16 @@ export default function ConvertToInvoiceButton() {
       const newInvoice = await sanityClient.create({
         _type: 'invoice',
         quote: { _type: 'reference', _ref: quote._id },
-        customer: quote.customer,
-        lineItems: quote.lineItems,
-        total: quote.total,
-        createdAt: new Date().toISOString()
-      })
+        customerRef: quote.customer ? { _type: 'reference', _ref: (quote.customer as any)?._ref || (quote.customer as any)?._id || quote.customer } : undefined,
+        lineItems: Array.isArray(quote.lineItems) ? quote.lineItems : [],
+        total: typeof quote.total === 'number' ? quote.total : undefined,
+        invoiceDate: new Date().toISOString().slice(0,10),
+        status: 'pending',
+      }, { autoGenerateArrayKeys: true })
 
       await sanityClient.patch(quote._id).set({
         conversionStatus: 'Converted'
-      }).commit()
+      }).commit({ autoGenerateArrayKeys: true })
 
       toast.push({
         status: 'success',

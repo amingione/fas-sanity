@@ -58,6 +58,45 @@ export const handler: Handler = async (event) => {
         const stripeSessionId = session.id
         const mode = session.mode
         const metadata = (session.metadata || {}) as Record<string, string>
+        const userIdMeta = (
+          metadata['auth0_user_id'] ||
+          metadata['auth0_sub'] ||
+          metadata['userId'] ||
+          metadata['user_id'] ||
+          ''
+        ).toString().trim() || undefined
+
+        // Enrich with Stripe payment details if available
+        let paymentIntent: Stripe.PaymentIntent | null = null
+        try {
+          if (session.payment_intent) {
+            paymentIntent = await stripe.paymentIntents.retrieve(String(session.payment_intent))
+          }
+        } catch {}
+
+        const currency = ((session as any)?.currency || (paymentIntent as any)?.currency || '').toString().toLowerCase() || undefined
+        const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal)) ? Number((session as any)?.amount_subtotal) / 100 : undefined
+        const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax)) ? Number((session as any)?.total_details?.amount_tax) / 100 : undefined
+        const amountShipping = (() => {
+          const a = Number((session as any)?.shipping_cost?.amount_total)
+          if (Number.isFinite(a)) return a / 100
+          const b = Number((session as any)?.total_details?.amount_shipping)
+          return Number.isFinite(b) ? b / 100 : undefined
+        })()
+        let chargeId: string | undefined
+        let cardBrand: string | undefined
+        let cardLast4: string | undefined
+        let receiptUrl: string | undefined
+        try {
+          const ch = (paymentIntent as any)?.charges?.data?.[0]
+          if (ch) {
+            chargeId = ch.id || undefined
+            receiptUrl = ch.receipt_url || undefined
+            const c = ch.payment_method_details?.card
+            cardBrand = c?.brand || undefined
+            cardLast4 = c?.last4 || undefined
+          }
+        } catch {}
 
         // 1) If linked to an Invoice in Sanity, mark it paid
         const invoiceId = metadata['sanity_invoice_id']
@@ -80,11 +119,12 @@ export const handler: Handler = async (event) => {
             limit: 100,
             expand: ['data.price.product'],
           })
-          cart = (items?.data || []).map((li) => {
+          cart = (items?.data || []).map((li: any) => {
             const qty = Number(li.quantity || 0)
             const unitAmount = Number((li.price as any)?.unit_amount || 0) / 100
             const productObj: any = (li.price as any)?.product
             return {
+              _type: 'orderCartItem',
               id: (li.price?.id || productObj?.id || '').toString() || undefined,
               name: (productObj?.name || li.description || '').toString() || undefined,
               sku: (productObj?.metadata?.sku || (li as any)?.metadata?.sku || '').toString() || undefined,
@@ -136,7 +176,18 @@ export const handler: Handler = async (event) => {
             totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
             status: 'paid',
             createdAt: new Date().toISOString(),
+            paymentStatus: (session.payment_status || (paymentIntent?.status === 'succeeded' ? 'paid' : 'unpaid')) as string,
+            currency,
+            amountSubtotal,
+            amountTax,
+            amountShipping,
+            paymentIntentId: paymentIntent?.id || undefined,
+            chargeId,
+            cardBrand,
+            cardLast4,
+            receiptUrl,
             ...(shippingAddress ? { shippingAddress } : {}),
+            ...(userIdMeta ? { userId: userIdMeta } : {}),
             ...(cart.length ? { cart } : {}),
           }
 
@@ -159,8 +210,108 @@ export const handler: Handler = async (event) => {
           if (existingId) {
             await sanity.patch(existingId).set(baseDoc).setIfMissing({ webhookNotified: true }).commit({ autoGenerateArrayKeys: true })
           } else {
-            const created = await sanity.create({ ...baseDoc, webhookNotified: true })
+            const created = await sanity.create({ ...baseDoc, webhookNotified: true }, { autoGenerateArrayKeys: true })
             orderId = created?._id
+          }
+
+          // If no invoice was linked, create one from the order so Studio has a full record
+          try {
+            if (!invoiceId && orderId) {
+              const skus = (cart || []).map((c: any) => (c?.sku || '').toString().trim()).filter(Boolean)
+              const titles = (cart || []).map((c: any) => (c?.name || '').toString().trim()).filter(Boolean)
+              let products: any[] = []
+              if (skus.length || titles.length) {
+                try { products = await sanity.fetch(`*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`, { skus, titles }) } catch {}
+              }
+              const findRef = (ci: any): string | null => {
+                if (!products?.length) return null
+                if (ci?.sku) { const p = products.find((p) => p?.sku === ci.sku); if (p) return p._id }
+                if (ci?.name) { const p = products.find((p) => p?.title === ci.name); if (p) return p._id }
+                return null
+              }
+              const invoiceLineItems = (cart || []).map((ci: any) => {
+                const qty = Number(ci?.quantity || 1)
+                const unit = Number(ci?.price || 0)
+                const line = Number.isFinite(qty * unit) ? qty * unit : undefined
+                const ref = findRef(ci)
+                return {
+                  _type: 'invoiceLineItem' as const,
+                  description: (ci?.name || ci?.sku || 'Item').toString(),
+                  sku: (ci?.sku || '').toString() || undefined,
+                  quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+                  unitPrice: Number.isFinite(unit) ? unit : undefined,
+                  lineTotal: Number.isFinite(line as number) ? (line as number) : undefined,
+                  ...(ref ? { product: { _type: 'reference', _ref: ref } } : {}),
+                }
+              })
+              const taxRatePct = Number.isFinite(amountSubtotal || NaN) && Number.isFinite(amountTax || NaN) && (amountSubtotal as number) > 0
+                ? Math.round(((amountTax as number) / (amountSubtotal as number)) * 10000) / 100
+                : undefined
+              const sa: any = shippingAddress || {}
+              const billTo = sa && (sa.name || sa.addressLine1)
+                ? {
+                    _type: 'billTo',
+                    name: sa.name || undefined,
+                    email: sa.email || email || undefined,
+                    phone: sa.phone || undefined,
+                    address_line1: sa.addressLine1 || undefined,
+                    address_line2: sa.addressLine2 || undefined,
+                    city_locality: sa.city || undefined,
+                    state_province: sa.state || undefined,
+                    postal_code: sa.postalCode || undefined,
+                    country_code: sa.country || undefined,
+                  }
+                : undefined
+              const shipTo = billTo ? { ...billTo, _type: 'shipTo' } : undefined
+              const createdAtIso = (() => {
+                try {
+                  const t = (session as any)?.created || (paymentIntent as any)?.created
+                  if (typeof t === 'number' && t > 0) return new Date(t * 1000).toISOString()
+                } catch {}
+                return new Date().toISOString()
+              })()
+              // Prefer full name from linked customer if available
+              let titleName = sa?.name || email || 'Invoice'
+              try {
+                const cref = (baseDoc as any)?.customerRef?._ref
+                if (cref) {
+                  const cust = await sanity.fetch(`*[_type == "customer" && _id == $id][0]{firstName,lastName,email}`, { id: cref })
+                  const full = [cust?.firstName, cust?.lastName].filter(Boolean).join(' ').trim()
+                  if (full) titleName = full
+                  else if (cust?.email) titleName = cust.email
+                }
+              } catch {}
+              const siteOrderNo = (metadata['order_number'] || metadata['orderNo'] || metadata['website_order_number'] || '').toString().trim()
+              const invBase: any = {
+                _type: 'invoice',
+                title: titleName,
+                orderNumber: siteOrderNo || stripeSessionId || undefined,
+                customerRef: baseDoc.customerRef || undefined,
+                orderRef: { _type: 'reference', _ref: orderId },
+                billTo,
+                shipTo,
+                lineItems: invoiceLineItems,
+                discountType: 'amount',
+                discountValue: 0,
+                taxRate: taxRatePct || 0,
+                subtotal: Number.isFinite(amountSubtotal || NaN) ? (amountSubtotal as number) : undefined,
+                total: Number.isFinite(totalAmount || NaN) ? totalAmount : undefined,
+                amountSubtotal: Number.isFinite(amountSubtotal || NaN) ? (amountSubtotal as number) : undefined,
+                amountTax: Number.isFinite(amountTax || NaN) ? (amountTax as number) : undefined,
+                currency: currency || 'usd',
+                customerEmail: email || undefined,
+                userId: userIdMeta || undefined,
+                status: 'paid',
+                invoiceDate: createdAtIso.slice(0,10),
+                dueDate: createdAtIso.slice(0,10),
+              }
+              const createdInv = await sanity.create(invBase, { autoGenerateArrayKeys: true })
+              if (createdInv?._id) {
+                try { await sanity.patch(orderId).set({ invoiceRef: { _type: 'reference', _ref: createdInv._id } }).commit({ autoGenerateArrayKeys: true }) } catch {}
+              }
+            }
+          } catch (e) {
+            console.warn('stripeWebhook: failed to create invoice from order', e)
           }
 
           // 4) Auto-fulfillment: call our Netlify function to generate packing slip, label, and email
@@ -195,6 +346,13 @@ export const handler: Handler = async (event) => {
       case 'payment_intent.succeeded': {
         const pi = webhookEvent.data.object as Stripe.PaymentIntent
         const meta = (pi.metadata || {}) as Record<string, string>
+        const userIdMeta = (
+          meta['auth0_user_id'] ||
+          meta['auth0_sub'] ||
+          meta['userId'] ||
+          meta['user_id'] ||
+          ''
+        ).toString().trim() || undefined
         const invoiceId = meta['sanity_invoice_id']
 
         // Mark invoice paid if we can link
@@ -211,7 +369,14 @@ export const handler: Handler = async (event) => {
         // Create a minimal Order if none exists yet
         try {
           const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
-          const email = (pi?.charges as any)?.data?.[0]?.billing_details?.email || (pi as any)?.receipt_email || undefined
+          const email = (pi as any)?.charges?.data?.[0]?.billing_details?.email || (pi as any)?.receipt_email || undefined
+          const currency = ((pi as any)?.currency || '').toString().toLowerCase() || undefined
+          const ch = (pi as any)?.charges?.data?.[0]
+          const chargeId = ch?.id || undefined
+          const receiptUrl = ch?.receipt_url || undefined
+          const cardBrand = ch?.payment_method_details?.card?.brand || undefined
+          const cardLast4 = ch?.payment_method_details?.card?.last4 || undefined
+          const shippingAddr: any = (pi as any)?.shipping?.address || undefined
 
           const existingId = await sanity.fetch(
             `*[_type == "order" && stripeSessionId == $sid][0]._id`,
@@ -224,6 +389,26 @@ export const handler: Handler = async (event) => {
             totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
             status: 'paid',
             createdAt: new Date().toISOString(),
+            paymentStatus: (pi.status || 'succeeded') as string,
+            currency,
+            paymentIntentId: pi.id,
+            chargeId,
+            cardBrand,
+            cardLast4,
+            receiptUrl,
+            ...(userIdMeta ? { userId: userIdMeta } : {}),
+            ...(shippingAddr ? {
+              shippingAddress: {
+                name: (pi as any)?.shipping?.name || undefined,
+                addressLine1: shippingAddr.line1 || undefined,
+                addressLine2: shippingAddr.line2 || undefined,
+                city: shippingAddr.city || undefined,
+                state: shippingAddr.state || undefined,
+                postalCode: shippingAddr.postal_code || undefined,
+                country: shippingAddr.country || undefined,
+                email: email || undefined,
+              }
+            } : {}),
           }
           if (invoiceId) baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
 
@@ -231,7 +416,7 @@ export const handler: Handler = async (event) => {
           if (existingId) {
             await sanity.patch(existingId).set(baseDoc).commit({ autoGenerateArrayKeys: true })
           } else {
-            const created = await sanity.create(baseDoc)
+            const created = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
             orderId = created?._id
           }
 

@@ -6,12 +6,11 @@ interface Props {
   text?: string
 }
 
-interface StyledSpanProps {
-  background?: string
-}
+// Use transient prop ($background) to avoid forwarding unknown props to the DOM
+interface StyledSpanProps { $background?: string }
 
-const StyledSpan = styled.span<StyledSpanProps>(({background}) => {
-  const bg = background || 'white'
+const StyledSpan = styled.span<StyledSpanProps>(({ $background }) => {
+  const bg = $background || 'white'
 
   return css`
     align-items: center;
@@ -29,7 +28,7 @@ const ColorThemePreview = (props: Props) => {
   const {background, text} = props
 
   return (
-    <StyledSpan background={background}>
+    <StyledSpan $background={background}>
       {text && <span style={{color: text, fontSize: '1.5em', fontWeight: 600}}>T</span>}
     </StyledSpan>
   )

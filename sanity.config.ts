@@ -16,6 +16,7 @@ import booking from './schemaTypes/documents/booking';
 import { deskStructure } from './desk/deskStructure';
 import resolveDocumentActions from './resolveDocumentActions';
 import ShippingCalendar from './components/studio/ShippingCalendar';
+import AdminTools from './components/studio/AdminTools';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -40,6 +41,11 @@ export default defineConfig({
       name: 'shipping-calendar',
       title: 'Shipping Calendar',
       component: ShippingCalendar,
+    },
+    {
+      name: 'admin-tools',
+      title: 'Admin Tools',
+      component: AdminTools,
     },
   ],
 
