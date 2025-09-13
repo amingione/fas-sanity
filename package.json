@@ -22,7 +22,7 @@
     "@sanity/client": "^6.29.0",
     "@sanity/code-input": "^6.0.1",
     "@sanity/icons": "^3.7.0",
-    "@sanity/ui": "^2.15.13",
+    "@sanity/ui": "^2.16.14",
     "@sanity/vision": "^4.8.1",
     "astro": "^5.7.5",
     "axios": "^1.11.0",
@@ -34,9 +34,9 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.16.0",
     "pluralize-esm": "^9.0.2",
-    "react": "18.2.0",
+    "react": "18.3.1",
     "react-calendly": "^4.3.1",
-    "react-dom": "18.2.0",
+    "react-dom": "18.3.1",
     "react-icons": "^5.5.0",
     "react-is": "^19.1.0",
     "resend": "^4.2.0",
@@ -46,7 +46,7 @@
     "shipengine": "^1.0.7",
     "slug": "^8.2.2",
     "stripe": "^18.0.0",
-    "styled-components": "^5.3.11"
+    "styled-components": "^6.1.17"
   },
   "devDependencies": {
     "@portabletext/types": "^2.0.2",
