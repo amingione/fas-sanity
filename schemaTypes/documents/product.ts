@@ -271,18 +271,11 @@ const product = defineType({
       name: 'filters',
       title: 'Filters',
       type: 'array',
-      of: [{ type: 'string' }],
-      description: 'Type to add or pick from suggestions. Examples: ford, ecoboost, intercooler, 500hp+ (free text).',
-      components: { input: FilterTagsInput },
-      validation: (Rule) => Rule.custom((items) => {
-        if (!items) return true
-        const allStrings = items.every((v: unknown) => typeof v === 'string')
-        if (!allStrings) return 'All filters must be text (no references).'
-        const norm = (items as string[]).map((s) => String(s).trim().replace(/\s+/g, ' ').toLowerCase())
-        const uniq = new Set(norm)
-        if (uniq.size !== norm.length) return 'Duplicate filters (case-insensitive). Use suggestions to keep consistent.'
-        return true
-      }),
+      of: [{
+        type: 'reference',
+        to: [{ type: 'filterTag' }],
+      }],
+      description: 'Pick from Filters. Manage filters in the Filters section.',
       group: 'filters'
     }),
 

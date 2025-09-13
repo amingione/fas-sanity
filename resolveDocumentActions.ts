@@ -5,6 +5,7 @@ import { reprocessStripeSessionAction } from './schemaTypes/documentActions/repr
 import { backfillInvoicesAction } from './schemaTypes/documentActions/backfillInvoicesAction'
 import { backfillOrdersAction } from './schemaTypes/documentActions/backfillOrdersAction'
 import { backfillCustomersAction } from './schemaTypes/documentActions/backfillCustomersAction'
+import { forceDeleteUnlinkAction } from './schemaTypes/documentActions/forceDeleteUnlinkAction'
 
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
@@ -19,6 +20,9 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)
+  }
+  if (context.schemaType === 'vehicleModel' || context.schemaType === 'filterTag') {
+    list.push(forceDeleteUnlinkAction)
   }
   return list
 }

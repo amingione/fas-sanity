@@ -187,6 +187,7 @@ import { pageType } from './documents/page'
 import { productVariantType } from './documents/productVariant'
 import vehicleModel from './documents/vehicleModel'
 import { productBundle } from './documents/productBundle'
+import filterTag from './documents/filterTag'
 import quote from './documents/quote'
 import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
@@ -213,6 +214,7 @@ const documents = [
   shippingOption,
   freightQuote,
   vehicleModel,
+  filterTag,
   tune,
   wheelQuote,
 ]

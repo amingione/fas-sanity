@@ -33,7 +33,7 @@ function isValidSignature(rawBody: string, headerSig?: string) {
 type ProductDoc = {
   _id: string
   _type: 'product'
-  filters?: string[]
+  filtersArr?: string[]
   category?: { _ref: string }[] // references to category docs
 }
 
@@ -67,13 +67,18 @@ const handler: Handler = async (event) => {
 
     // Fetch the source product
     const product: ProductDoc | null = await client.fetch(
-      `*[_type=="product" && _id==$id][0]{_id, filters, category[]{_ref}}`,
+      `*[_type=="product" && _id==$id][0]{
+        _id,
+        // Support both legacy string tags and new filterTag references
+        "filtersArr": coalesce(filters[]->slug.current, filters),
+        category[]{_ref}
+      }`,
       { id },
     )
 
     if (!product) return { statusCode: 200, body: 'Product not found (possibly deleted)' }
 
-    const sourceFilterSet = new Set<string>((product.filters || []).map((s) => s.trim().toLowerCase()).filter(Boolean))
+    const sourceFilterSet = new Set<string>((product.filtersArr || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean))
     const sourceCategoryIds = new Set<string>((product.category || []).map((c) => c._ref))
 
     // If there are no signals, clear related and exit
@@ -87,20 +92,18 @@ const handler: Handler = async (event) => {
 
     // Fetch candidate products (exclude self)
     const candidates: ProductDoc[] = await client.fetch(
-      `
-      *[_type=="product" && _id!=$id]{
+      `*[_type=="product" && _id!=$id]{
         _id,
-        filters,
+        "filtersArr": coalesce(filters[]->slug.current, filters),
         "category": coalesce(category, [])
-      }
-      `,
+      }`,
       { id },
     )
 
     // Score candidates
     const scored = candidates
       .map((p) => {
-        const theirFilters = new Set<string>((p.filters || []).map((s) => s.trim().toLowerCase()).filter(Boolean))
+        const theirFilters = new Set<string>((p.filtersArr || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean))
         const theirCats = new Set<string>((p.category || []).map((c: any) => c?._ref).filter(Boolean))
 
         let score = 0
