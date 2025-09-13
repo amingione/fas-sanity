@@ -19,6 +19,7 @@ export default function FilterTagsInput(props: Props) {
   const client = useClient({apiVersion: '2024-10-01'})
   const [allTags, setAllTags] = useState<string[]>([])
   const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -54,11 +55,20 @@ export default function FilterTagsInput(props: Props) {
     return q ? suggestions.filter((t) => t.includes(q)) : suggestions
   }, [allTags, current, query])
 
+  function arraysEqual(a: string[], b: string[]) {
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+    return true
+  }
+
   function commit(next: string[]) {
     // Deduplicate case-insensitive, normalized
     const normalized = next.map(normalizeTag).filter((s) => s.length > 0)
     const uniq = Array.from(new Set(normalized))
-    onChange(set(uniq))
+    // Avoid infinite loops: only patch if changed vs current normalized value
+    if (!arraysEqual(uniq, current)) {
+      onChange(set(uniq))
+    }
   }
 
   function addTag(tag: string) {
@@ -97,36 +107,38 @@ export default function FilterTagsInput(props: Props) {
           <span style={{fontSize: 12, color: '#666'}}>No filters yet. Type to add or pick from suggestions.</span>
         ) : (
           current.map((t) => (
-            <span key={t} style={{display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 8px', border: '1px solid #ddd', borderRadius: 12}}>
-              {t}
-              <button type="button" onClick={() => removeTag(t)} style={{border: 'none', background: 'transparent', cursor: 'pointer', color: '#888'}} aria-label={`Remove ${t}`}>
+            <span key={t} style={{display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 8px', border: '1px solid #ccc', background: '#f2f2f2', color: '#111', borderRadius: 12}}>
+              <span>{t}</span>
+              <button type="button" onClick={() => removeTag(t)} style={{border: 'none', background: 'transparent', cursor: 'pointer', color: '#444'}} aria-label={`Remove ${t}`}>
                 ×
               </button>
             </span>
           ))
         )}
       </div>
-      <div>
+      <div style={{ position: 'relative' }}>
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.currentTarget.value)}
+          onChange={(e) => { setQuery(e.currentTarget.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={onKeyDown}
           placeholder="Add filter… (press Enter)"
-          list="filter-suggestions"
-          style={{width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4}}
+          style={{width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4, background: '#fff', color: '#000'}}
         />
-        <datalist id="filter-suggestions">
-          {filteredSuggestions.slice(0, 100).map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-        {filteredSuggestions.length > 0 && (
-          <div style={{marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap'}}>
-            {filteredSuggestions.slice(0, 10).map((s) => (
-              <button key={s} type="button" onClick={() => addTag(s)} style={{padding: '2px 8px', border: '1px solid #ddd', borderRadius: 12, background: '#f8f8f8', cursor: 'pointer'}}>
-                + {s}
-              </button>
+
+        {open && filteredSuggestions.length > 0 && (
+          <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, background: '#fff', color: '#000', border: '1px solid #ddd', borderTop: 'none', maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
+            {filteredSuggestions.slice(0, 100).map((s) => (
+              <div
+                key={s}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => addTag(s)}
+                style={{ padding: '8px 10px', cursor: 'pointer', borderTop: '1px solid #eee' }}
+              >
+                {s}
+              </div>
             ))}
           </div>
         )}
@@ -134,4 +146,3 @@ export default function FilterTagsInput(props: Props) {
     </div>
   )
 }
-

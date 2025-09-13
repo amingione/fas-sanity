@@ -11,6 +11,9 @@ import FinancialReports from '../components/studio/FinancialReports'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
 import OrderStatusPreview from '../components/inputs/FulfillmentBadge' // shows <FulfillmentBadge />
 import EnvSelfCheck from '../components/studio/EnvSelfCheck'
+import FilterBulkAssign from '../components/studio/FilterBulkAssign'
+import FilterBulkRemove from '../components/studio/FilterBulkRemove'
+import FilterDeleteTag from '../components/studio/FilterDeleteTag'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -50,7 +53,7 @@ export const deskStructure: StructureResolver = (S, context) =>
               S.document()
                 .documentId(id)
                 .schemaType('product')
-                .views(getPreviewViews(S, 'product'))
+                .views([S.view.form().id('form')])
             )
         ),
 
@@ -68,49 +71,50 @@ export const deskStructure: StructureResolver = (S, context) =>
             )
         ),
 
+      // Vehicles (document type)
+      S.listItem()
+        .title('Vehicles')
+        .schemaType('vehicleModel')
+        .child(
+          S.documentTypeList('vehicleModel')
+            .title('Vehicles')
+            .child((id: string) =>
+              S.document()
+                .documentId(id)
+                .schemaType('vehicleModel')
+            )
+        ),
+
       // Removed curated Filters panel to keep things simple. Use Product Filters (auto) instead.
 
-      // Computed filters from products (unique strings in product.filters)
-      S.listItem()
-        .title('Product Filters (auto)')
-        .child(async () => {
-          const client = context.getClient({ apiVersion: '2024-10-01' })
-          const tags: string[] = await client.fetch(
-            'array::unique(*[_type == "product" && defined(filters)][].filters[])'
-          )
-          const items = (tags || [])
-            .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
-            .map((t) => t.trim().toLowerCase())
-            .sort((a, b) => a.localeCompare(b))
-            .map((tag) =>
+  // Filters (document type, like Categories)
+  S.listItem()
+    .title('Filters')
+    .schemaType('filterTag')
+    .child(
+      S.documentTypeList('filterTag')
+        .title('Filters')
+        .child((id: string) =>
+          S.list()
+            .title('Filter')
+            .items([
               S.listItem()
-                .title(tag)
+                .title('Edit Filter')
                 .child(
-                  S.list()
-                    .title(`Filter: ${tag}`)
-                    .items([
-                      S.listItem()
-                        .title('Products with this filter')
-                        .child(
-                          S.documentList()
-                            .title(`Products: ${tag}`)
-                            .schemaType('product')
-                            .filter('_type == "product" && $tag in filters')
-                            .params({ tag })
-                        ),
-                      S.listItem()
-                        .title('Add products to this filter (bulk)')
-                        .child(
-                          S.component()
-                            .title('Bulk Add to Filter')
-                            .component(require('../components/studio/FilterBulkAssign').default)
-                            .options({ tag })
-                        ),
-                    ])
-                )
-            )
-          return S.list().title('Product Filters').items(items)
-        }),
+                  S.document().documentId(id).schemaType('filterTag')
+                ),
+              S.listItem()
+                .title('Products with this filter')
+                .child(
+                  S.documentList()
+                    .title('Products')
+                    .schemaType('product')
+                    .filter('references($id)')
+                    .params({ id })
+                ),
+            ])
+        )
+    ),
 
       S.divider(),
 
