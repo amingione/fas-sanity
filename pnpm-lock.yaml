@@ -121,7 +121,7 @@ importers:
         specifier: ^4.4.7
         version: 4.4.9
       '@types/node':
-        specifier: ^22.0.0
+        specifier: ^22
         version: 22.18.3
       '@types/pdfkit':
         specifier: ^0.13.9

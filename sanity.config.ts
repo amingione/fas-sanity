@@ -58,6 +58,9 @@ export default defineConfig({
   },
   vite: {
     resolve: {
+      // Ensure only a single instance of these packages end up in the bundle.
+      // With pnpm, multiple peer variants can otherwise create duplicate contexts.
+      dedupe: ['sanity', '@sanity/ui', 'react', 'react-dom', 'styled-components'],
       alias: {
         // Work around occasional CJS/ESM interop glitches with react-refractor in dev.
         // Use a relative replacement to avoid importing Node's `path` in the browser.
