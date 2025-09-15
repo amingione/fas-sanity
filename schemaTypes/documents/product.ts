@@ -53,6 +53,9 @@ const product = defineType({
       name: 'productType',
       title: 'Product Type',
       type: 'string',
+      description:
+        'Controls which editing fields appear in Studio (e.g., options for Variable). This does not create separate product documents.',
+      initialValue: 'simple',
       options: { list: ['simple', 'variable', 'grouped', 'variation', 'custom'], layout: 'dropdown' },
       group: 'general'
     }),
@@ -153,12 +156,33 @@ const product = defineType({
     defineField({ name: 'inventory', title: 'Inventory', type: 'number', group: 'inventory' }),
 
     // VARIANTS & RELATIONS
+    // PRODUCT OPTIONS (embedded; does not create new product docs)
+    defineField({
+      name: 'options',
+      title: 'Options',
+      description:
+        'Selectable options for this product (e.g., Color, Size). Used for pickers on the product page; does not create separate product documents.',
+      type: 'array',
+      of: [
+        { type: 'customProductOption.color' },
+        { type: 'customProductOption.size' }
+      ],
+      hidden: ({ parent }) => parent?.productType !== 'variable',
+      group: 'details'
+    }),
+    // Deprecated: replaced by "options" above. Kept visible only if existing values are present.
     defineField({
       name: 'variationOptions',
-      title: 'Variation Options',
+      title: 'Variation Options (deprecated)',
       type: 'array',
       of: [{ type: 'string' }],
-      hidden: ({ parent }) => parent?.productType !== 'variable',
+      readOnly: true,
+      description: 'Deprecated. Use the Options field above (Color/Size, etc.).',
+      hidden: ({ parent }) => {
+        const isVariable = parent?.productType === 'variable'
+        const hasValues = Array.isArray(parent?.variationOptions) && parent.variationOptions.length > 0
+        return !isVariable || !hasValues
+      },
       group: 'details'
     }),
     defineField({
