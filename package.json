@@ -47,7 +47,7 @@
     "shipengine": "^1.0.7",
     "slug": "^8.2.2",
     "stripe": "^18.0.0",
-    "styled-components": "^6.1.17"
+    "styled-components": "^6.1.19"
   },
   "devDependencies": {
     "@portabletext/types": "^2.0.2",
@@ -71,10 +71,12 @@
     "singleQuote": true
   },
   "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "prismjs": "^1.30.0",
     "react-refractor": "^2.1.0",
     "refractor": "3.6.0",
-    "styled-components": "^5.3.11",
+    "styled-components": "^6.1.19",
     "sanity": {
       "refractor": "3.6.0"
     },
