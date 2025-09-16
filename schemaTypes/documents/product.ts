@@ -168,6 +168,32 @@ const product = defineType({
         { type: 'customProductOption.size' }
       ],
       hidden: ({ parent }) => parent?.productType !== 'variable',
+      validation: (Rule) =>
+        Rule.custom((options, context) => {
+          const productType = (context?.parent as {productType?: string} | undefined)?.productType
+          if (productType !== 'variable') return true
+
+          if (!Array.isArray(options) || options.length === 0) {
+            return 'Add at least one option set for variable products.'
+          }
+
+          const hasEmptySet = options.some((option: any) => {
+            if (!option) return true
+            if (option._type === 'customProductOption.color') {
+              return !Array.isArray(option.colors) || option.colors.length === 0
+            }
+            if (option._type === 'customProductOption.size') {
+              return !Array.isArray(option.sizes) || option.sizes.length === 0
+            }
+            return false
+          })
+
+          if (hasEmptySet) {
+            return 'Each option must include at least one selectable choice.'
+          }
+
+          return true
+        }),
       group: 'details'
     }),
     // Deprecated: replaced by "options" above. Kept visible only if existing values are present.

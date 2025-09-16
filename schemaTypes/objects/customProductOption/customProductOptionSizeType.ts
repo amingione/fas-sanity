@@ -22,7 +22,9 @@ export const customProductOptionSizeType = defineField({
       type: 'array',
       of: [{type: 'customProductOption.sizeObject'}],
       validation: (Rule) =>
-        Rule.custom((options: SizeOption[] | undefined) => {
+        Rule.min(1)
+          .error('Add at least one size choice')
+          .custom((options: SizeOption[] | undefined) => {
           // Each size must have a unique title
           if (options) {
             const uniqueTitles = new Set(options.map((option) => option.title))
