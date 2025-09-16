@@ -44,15 +44,15 @@ export const handler: Handler = async (event) => {
   let cursor = ''
   let total = 0
   let changed = 0
-  let userIdSet = 0
   let optInDefaults = 0
   let updatedStamped = 0
+  let rolesDefaulted = 0
 
   try {
     while (true) {
       const docs: any[] = await sanity.fetch(
         `*[_type == "customer" && _id > $cursor] | order(_id) {
-          _id, userId, authId, auth0Id, updatedAt, emailOptIn, marketingOptIn, textOptIn
+          _id, userId, roles, updatedAt, emailOptIn, marketingOptIn, textOptIn
         }[0...$limit]`,
         { cursor, limit: pageSize }
       )
@@ -61,8 +61,14 @@ export const handler: Handler = async (event) => {
         total++
         const setOps: Record<string, any> = {}
 
-        if (!d.userId && d.authId) { setOps.userId = d.authId; userIdSet++ }
-        else if (!d.userId && d.auth0Id) { setOps.userId = d.auth0Id; userIdSet++ }
+        if (d.userId && typeof d.userId === 'string' && d.userId.startsWith('auth0|')) {
+          setOps.userId = null
+        }
+
+        if (!Array.isArray(d.roles) || d.roles.length === 0) {
+          setOps.roles = ['customer']
+          rolesDefaulted++
+        }
 
         // Default opt-in flags to false if undefined
         const beforeOpt = optInDefaults
@@ -91,6 +97,5 @@ export const handler: Handler = async (event) => {
     return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e?.message || 'Backfill customers failed' }) }
   }
 
-  return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, dryRun, total, changed, userIdSet, optInDefaults, updatedStamped }) }
+  return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, dryRun, total, changed, optInDefaults, updatedStamped, rolesDefaulted }) }
 }
-

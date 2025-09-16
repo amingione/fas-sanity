@@ -7,8 +7,13 @@ export default defineType({
   type: 'document',
   fields: [
     // Identity
-    defineField({ name: 'userId', title: 'Auth0 User ID', type: 'string', description: 'Auth0 subject (sub). Used for portal lookups.' }),
-    defineField({ name: 'authId', title: 'Auth ID (legacy)', type: 'string', hidden: true, description: 'Legacy alias for Auth0 user id.' }),
+    defineField({
+      name: 'userId',
+      title: 'External User ID',
+      type: 'string',
+      description:
+        'Legacy identifier for imported accounts. FAS Auth uses this document ID, so new users can leave this empty.',
+    }),
     defineField({ name: 'firstName', title: 'First Name', type: 'string' }),
     defineField({ name: 'lastName', title: 'Last Name', type: 'string' }),
     defineField({
@@ -18,24 +23,22 @@ export default defineType({
       validation: Rule => Rule.required().email()
     }),
     defineField({
-      name: 'userRole',
-      title: 'User Role',
-      type: 'string',
-      initialValue: 'customer',
+      name: 'roles',
+      title: 'Roles',
+      type: 'array',
+      of: [{ type: 'string' }],
+      initialValue: ['customer'],
       options: {
         list: [
-          {title: 'Customer', value: 'customer'},
-          {title: 'Vendor', value: 'vendor'},
-          {title: 'Admin', value: 'admin'},
+          { title: 'Customer', value: 'customer' },
+          { title: 'Vendor', value: 'vendor' },
+          { title: 'Admin', value: 'admin' },
         ],
-        layout: 'radio',
-        direction: 'horizontal',
       },
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) => Rule.required().min(1).warning('Users should have at least one role'),
       description:
-        'Controls post-login routing (e.g. customer portal vs vendor portal). Change only if you know what you are doing.'
+        'Used by FAS Auth to gate access to portals. Most users should stay as Customer unless granted vendor/admin access.',
     }),
-    defineField({ name: 'auth0Id', title: 'Auth0 User ID (hidden)', type: 'string', readOnly: true, hidden: true }),
     defineField({
       name: 'passwordHash',
       title: 'Password Hash',

@@ -775,7 +775,12 @@ export default defineType({
     defineField({ name: 'paymentIntentId', title: 'Payment Intent ID', type: 'string' }),
     defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
     defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
-    defineField({ name: 'userId', title: 'User ID (Auth0)', type: 'string' }),
+    defineField({
+      name: 'userId',
+      title: 'User ID (Portal)',
+      type: 'string',
+      description: 'Legacy external id for the billed customer. FAS Auth uses the document _id going forward.',
+    }),
     defineField({ name: 'dateIssued', title: 'Date Issued (legacy)', type: 'datetime' }),
 
     // Visual totals panel (virtual field)

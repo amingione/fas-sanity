@@ -21,15 +21,20 @@ async function run() {
   const dry = process.argv.includes('--dry-run') || process.env.DRY_RUN === '1'
   const limit = 200
   let cursor = ''
-  let total = 0, changed = 0, userIdSet = 0, optInDefaults = 0, updatedStamped = 0
+  let total = 0, changed = 0, optInDefaults = 0, updatedStamped = 0, rolesDefaulted = 0
   while (true) {
-    const docs = await client.fetch(`*[_type == "customer" && _id > $cursor] | order(_id){_id, userId, authId, auth0Id, updatedAt, emailOptIn, marketingOptIn, textOptIn}[0...$limit]`, { cursor, limit })
+    const docs = await client.fetch(`*[_type == "customer" && _id > $cursor] | order(_id){_id, userId, roles, updatedAt, emailOptIn, marketingOptIn, textOptIn}[0...$limit]`, { cursor, limit })
     if (!docs?.length) break
     for (const d of docs) {
       total++
       const setOps = {}
-      if (!d.userId && d.authId) { setOps.userId = d.authId; userIdSet++ }
-      else if (!d.userId && d.auth0Id) { setOps.userId = d.auth0Id; userIdSet++ }
+      if (d.userId && d.userId.startsWith('auth0|')) {
+        setOps.userId = null
+      }
+      if (!Array.isArray(d.roles) || d.roles.length === 0) {
+        setOps.roles = ['customer']
+        rolesDefaulted++
+      }
       let defaulted = false
       if (typeof d.emailOptIn === 'undefined') { setOps.emailOptIn = false; defaulted = true }
       if (typeof d.marketingOptIn === 'undefined') { setOps.marketingOptIn = false; defaulted = true }
@@ -44,8 +49,7 @@ async function run() {
     }
     if (docs.length < limit) break
   }
-  console.log(JSON.stringify({ total, changed, userIdSet, optInDefaults, updatedStamped }, null, 2))
+  console.log(JSON.stringify({ total, changed, optInDefaults, updatedStamped, rolesDefaulted }, null, 2))
 }
 
 run().catch((e) => { console.error(e); process.exit(1) })
-
