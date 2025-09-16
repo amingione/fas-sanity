@@ -4,8 +4,9 @@ import { useClient } from 'sanity'
 
 interface Vendor {
   _id: string
-  businessName?: string
-  contactName?: string
+  name?: string
+  companyName?: string
+  contactPerson?: string
   email?: string
   status?: string
   approved?: boolean
@@ -21,8 +22,9 @@ export default function VendorAdminDashboard() {
       .fetch(
         `*[_type == "vendor"]{
           _id,
-          businessName,
-          contactName,
+          name,
+          companyName,
+          contactPerson,
           email,
           status,
           approved,
@@ -66,8 +68,8 @@ export default function VendorAdminDashboard() {
         <tbody>
           {vendors.map((vendor) => (
             <tr key={vendor._id}>
-              <td>{vendor.businessName || 'N/A'}</td>
-              <td>{vendor.contactName || 'N/A'}</td>
+              <td>{vendor.companyName || vendor.name || 'N/A'}</td>
+              <td>{vendor.contactPerson || 'N/A'}</td>
               <td>{vendor.email || 'N/A'}</td>
               <td>{vendor.status || 'N/A'}</td>
               <td>{vendor.approved ? 'Yes' : 'No'}</td>
