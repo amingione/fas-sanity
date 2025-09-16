@@ -21,7 +21,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)
   }
-  if (context.schemaType === 'vehicleModel' || context.schemaType === 'filterTag') {
+  if (['vehicleModel', 'filterTag', 'product'].includes(context.schemaType)) {
     list.push(forceDeleteUnlinkAction)
   }
   return list

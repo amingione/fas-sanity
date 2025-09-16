@@ -39,7 +39,7 @@ export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
   const {id, onComplete, type} = props
 
   // Only show for specific types for now
-  if (type !== 'vehicleModel' && type !== 'filterTag') return null
+  if (!['vehicleModel', 'filterTag', 'product'].includes(type)) return null
 
   const baseId = id.startsWith('drafts.') ? id.slice(7) : id
 
@@ -48,7 +48,12 @@ export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
     tone: 'critical',
     onHandle: async () => {
       try {
-        const ok = typeof window !== 'undefined' ? window.confirm('This will remove references to this document from all other documents, then delete it. Continue?') : false
+        const ok =
+          typeof window !== 'undefined'
+            ? window.confirm(
+                `Force delete will remove references to this ${type} from related documents before deleting it. Continue?`
+              )
+            : false
         if (!ok) return onComplete()
 
         // Find referencing docs
