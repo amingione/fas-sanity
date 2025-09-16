@@ -162,7 +162,7 @@ export default function AdminTools() {
       <div style={{ padding: 12, border: '1px solid #ffffffff', borderRadius: 6, marginTop: 12 }}>
         <h3 style={{ marginTop: 0 }}>Customers Backfill</h3>
         <p style={{ color: '#ffffffff' }}>
-          Copies legacy authId/auth0Id to userId if missing, defaults opt-in flags, updates updatedAt.
+          Cleans up legacy auth provider ids, defaults opt-in flags, updates updatedAt.
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

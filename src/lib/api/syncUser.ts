@@ -7,8 +7,7 @@
 //
 // Auth:
 // We extract the user id (`sub`) from a Bearer JWT in the `Authorization` header.
-// If you want full JWT verification, we can wire up `jose` with your Auth0 JWKS,
-// but this light decode matches what you had before.
+// For production deployments you can swap in a full JWT verification helper.
 
 import { client } from '@/lib/client'
 
