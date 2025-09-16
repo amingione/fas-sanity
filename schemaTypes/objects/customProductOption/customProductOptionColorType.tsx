@@ -21,10 +21,10 @@ export const customProductOptionColorType = defineField({
       name: 'colors',
       type: 'array',
       of: [{type: 'customProductOption.colorObject'}],
-      // Allow empty; enforce uniqueness via custom validation
-      // (no required rule here)
       validation: (Rule) =>
-        Rule.min(0).custom((options: ColorOption[] | undefined) => {
+        Rule.min(1)
+          .error('Add at least one color choice')
+          .custom((options: ColorOption[] | undefined) => {
           // Each color must have a unique title
           if (options) {
             const uniqueTitles = new Set((options || []).map((option) => option?.title?.trim()?.toLowerCase()))
