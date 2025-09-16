@@ -24,7 +24,12 @@ export default defineType({
     defineField({ name: 'cardLast4', title: 'Card Last4', type: 'string' }),
     defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
     defineField({ name: 'paymentStatus', title: 'Payment Status', type: 'string', description: 'Raw Stripe payment status (e.g. succeeded, processing)'}),
-    defineField({ name: 'userId', title: 'User ID (Auth0)', type: 'string' }),
+    defineField({
+      name: 'userId',
+      title: 'User ID (Portal)',
+      type: 'string',
+      description: 'Legacy external id for the purchasing customer. FAS Auth uses the document _id.',
+    }),
     defineField({
       name: 'status',
       title: 'Order Status',

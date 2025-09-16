@@ -108,12 +108,20 @@ export default defineType({
       type: 'file'
     }),
     defineField({
-      name: 'userRole',
-      title: 'User Role',
-      type: 'string',
-      initialValue: 'vendor',
-      hidden: true,
-      readOnly: true
+      name: 'roles',
+      title: 'Roles',
+      type: 'array',
+      of: [{ type: 'string' }],
+      initialValue: ['vendor'],
+      options: {
+        list: [
+          { title: 'Vendor', value: 'vendor' },
+          { title: 'Customer', value: 'customer' },
+          { title: 'Admin', value: 'admin' },
+        ],
+      },
+      description: 'Controls access to vendor portal features. Most vendors should keep the Vendor role.',
+      validation: (Rule) => Rule.required().min(1),
     }),
     defineField({
       name: 'approved',
