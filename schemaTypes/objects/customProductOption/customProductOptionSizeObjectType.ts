@@ -11,28 +11,14 @@ export const customProductOptionSizeObjectType = defineField({
       description: 'Shopify product option value (case sensitive)',
       validation: (Rule) => Rule.required(),
     }),
-    defineField({
-      name: 'width',
-      type: 'number',
-      description: 'In mm',
-      validation: (Rule) => Rule.required().precision(2),
-    }),
-    defineField({
-      name: 'height',
-      type: 'number',
-      description: 'In mm',
-      validation: (Rule) => Rule.required().precision(2),
-    }),
   ],
   preview: {
     select: {
-      height: 'height',
       title: 'title',
-      width: 'width',
     },
-    prepare({height, title, width}) {
+    prepare({title}) {
       return {
-        subtitle: `${width || '??'}mm x ${height || '??'}mm`,
+        subtitle: undefined,
         title,
       }
     },
