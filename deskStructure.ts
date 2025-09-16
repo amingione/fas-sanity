@@ -112,8 +112,29 @@ export const deskStructure: StructureResolver = (S, context) => {
                 .child(
                   S.documentTypeList('vendor').apiVersion('2024-10-01')
                     .title('Vendor Applications')
-                    .filter('_type == "vendor" && status == $status')
+                    .filter(
+                      '_type == "vendor" && coalesce(status, select(approved == true => "Approved", "Pending")) == $status'
+                    )
                     .params({ status: 'Pending' })
+                    .child((id: string) =>
+                      S.document()
+                        .documentId(id)
+                        .schemaType('vendor')
+                        .views([
+                          S.view.form().id('form'),
+                          S.view.component(VendorStatusBadge).title('Status Badge').id('status-badge'),
+                        ])
+                    )
+                ),
+              S.listItem().id('vendor-profiles')
+                .title('🤝 Vendor Profiles')
+                .child(
+                  S.documentTypeList('vendor').apiVersion('2024-10-01')
+                    .title('Vendor Profiles')
+                    .filter(
+                      '_type == "vendor" && coalesce(status, select(approved == true => "Approved", "Pending")) == $status'
+                    )
+                    .params({ status: 'Approved' })
                     .child((id: string) =>
                       S.document()
                         .documentId(id)

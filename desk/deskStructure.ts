@@ -14,6 +14,8 @@ import EnvSelfCheck from '../components/studio/EnvSelfCheck'
 import FilterBulkAssign from '../components/studio/FilterBulkAssign'
 import FilterBulkRemove from '../components/studio/FilterBulkRemove'
 import FilterDeleteTag from '../components/studio/FilterDeleteTag'
+import VendorAdminDashboard from '../components/studio/VendorAdminDashboard'
+import VendorStatusBadge from '../components/inputs/VendorStatusBadge'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -218,4 +220,67 @@ export const deskStructure: StructureResolver = (S, context) =>
       S.listItem()
         .title('🔒 Env Self‑Check')
         .child(S.component().title('Environment Status').component(EnvSelfCheck))
+
+      ,
+      S.listItem()
+        .title('🛠 Admin Tools')
+        .child(
+          S.list()
+            .title('Admin Tools')
+            .items([
+              S.listItem()
+                .title('📝 Vendor Applications')
+                .child(
+                  S.documentTypeList('vendor')
+                    .title('Vendor Applications')
+                    .apiVersion('2024-10-01')
+                    .filter(
+                      '_type == "vendor" && coalesce(status, select(approved == true => "Approved", "Pending")) == $status'
+                    )
+                    .params({status: 'Pending'})
+                    .child((id: string) =>
+                      S.document()
+                        .documentId(id)
+                        .schemaType('vendor')
+                        .views([
+                          S.view.form().id('form'),
+                          S.view
+                            .component(VendorStatusBadge)
+                            .title('Status Badge')
+                            .id('status-badge'),
+                        ])
+                    )
+                ),
+              S.listItem()
+                .title('🤝 Vendor Profiles')
+                .child(
+                  S.documentTypeList('vendor')
+                    .title('Vendor Profiles')
+                    .apiVersion('2024-10-01')
+                    .filter(
+                      '_type == "vendor" && coalesce(status, select(approved == true => "Approved", "Pending")) == $status'
+                    )
+                    .params({status: 'Approved'})
+                    .child((id: string) =>
+                      S.document()
+                        .documentId(id)
+                        .schemaType('vendor')
+                        .views([
+                          S.view.form().id('form'),
+                          S.view
+                            .component(VendorStatusBadge)
+                            .title('Status Badge')
+                            .id('status-badge'),
+                        ])
+                    )
+                ),
+              S.listItem()
+                .title('🤝 Vendor Admin')
+                .child(
+                  S.component()
+                    .title('Vendor Admin Dashboard')
+                    .component(VendorAdminDashboard)
+                ),
+            ])
+        )
     ])

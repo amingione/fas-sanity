@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useClient } from 'sanity'
 import { Card, Heading, Text, Stack, Box } from '@sanity/ui'
-import { InlineWidget } from "react-calendly"
 
 type RawShippingLabel = {
   _id: string
@@ -43,6 +42,12 @@ export default function ShippingCalendar() {
   const client = useClient({ apiVersion: '2024-04-10' })
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState<boolean>(true)
+  const calcomEmbedUrl = useMemo(
+    () =>
+      (import.meta.env.SANITY_STUDIO_CALCOM_EMBED_URL as string | undefined) ||
+      (import.meta.env.VITE_CALCOM_EMBED_URL as string | undefined),
+    []
+  )
 
   useEffect(() => {
     const query = `
@@ -179,7 +184,26 @@ export default function ShippingCalendar() {
 
         {/* Calendly Sidebar */}
         <Box flex={1} style={{ minWidth: '400px', height: '700px' }}>
-          <InlineWidget url="https://calendly.com/fasmotorsports-support" styles={{ height: '100%' }} />
+          {calcomEmbedUrl ? (
+            <iframe
+              src={calcomEmbedUrl}
+              title="Cal.com Booking"
+              style={{ border: 'none', width: '100%', height: '100%', borderRadius: 8 }}
+              allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+            />
+          ) : (
+            <Card padding={4} tone="caution" radius={2} shadow={1}>
+              <Stack space={3}>
+                <Heading as="h3" size={1}>
+                  Cal.com embed not configured
+                </Heading>
+                <Text>
+                  Provide `SANITY_STUDIO_CALCOM_EMBED_URL` (or `VITE_CALCOM_EMBED_URL`) in your environment to show the
+                  booking widget.
+                </Text>
+              </Stack>
+            </Card>
+          )}
         </Box>
       </Box>
     </Card>
