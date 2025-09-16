@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Backfill Customers: set userId from authId/auth0Id if missing; default opt-in flags; stamp updatedAt */
+/* Backfill Customers: clear legacy auth provider ids, default opt-in flags, stamp updatedAt */
 const path = require('path')
 const fs = require('fs')
 const dotenv = require('dotenv')
