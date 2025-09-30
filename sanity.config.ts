@@ -17,6 +17,10 @@ import { deskStructure } from './desk/deskStructure';
 import resolveDocumentActions from './resolveDocumentActions';
 import ShippingCalendar from './components/studio/ShippingCalendar';
 import AdminTools from './components/studio/AdminTools';
+import path from 'path';
+
+const aliasFromNodeModules = (specifier: string) =>
+  path.resolve(process.cwd(), 'node_modules', ...specifier.split('/'));
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -62,15 +66,20 @@ export default defineConfig({
       // With pnpm, multiple peer variants can otherwise create duplicate contexts.
       dedupe: ['sanity', '@sanity/ui', 'react', 'react-dom', 'styled-components'],
       alias: {
+        sanity: aliasFromNodeModules('sanity'),
+        '@sanity/ui': aliasFromNodeModules('@sanity/ui'),
+        react: aliasFromNodeModules('react'),
+        'react-dom': aliasFromNodeModules('react-dom'),
+        'styled-components': aliasFromNodeModules('styled-components'),
         // Work around occasional CJS/ESM interop glitches with react-refractor in dev.
         // Use a relative replacement to avoid importing Node's `path` in the browser.
         'react-refractor': './shims/react-refractor-shim.tsx',
         // Explicitly map refractor language subpaths to v3 files to satisfy Sanity imports
-        'refractor/bash': './node_modules/refractor/lang/bash.js',
-        'refractor/javascript': './node_modules/refractor/lang/javascript.js',
-        'refractor/json': './node_modules/refractor/lang/json.js',
-        'refractor/jsx': './node_modules/refractor/lang/jsx.js',
-        'refractor/typescript': './node_modules/refractor/lang/typescript.js',
+        'refractor/bash': aliasFromNodeModules('refractor/lang/bash.js'),
+        'refractor/javascript': aliasFromNodeModules('refractor/lang/javascript.js'),
+        'refractor/json': aliasFromNodeModules('refractor/lang/json.js'),
+        'refractor/jsx': aliasFromNodeModules('refractor/lang/jsx.js'),
+        'refractor/typescript': aliasFromNodeModules('refractor/lang/typescript.js'),
       },
     },
     // Remove custom Vite transforms that monkey‑patch @sanity/ui to avoid input regressions
