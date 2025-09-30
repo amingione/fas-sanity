@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react'
+import {Box, Button, Dialog, Flex, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 
 type Props = { tag: string }
@@ -12,6 +13,7 @@ export default function FilterDeleteTag({ tag }: Props) {
   const [count, setCount] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string>('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const normTag = normalizeTag(tag)
 
   async function refresh() {
@@ -31,8 +33,6 @@ export default function FilterDeleteTag({ tag }: Props) {
   useEffect(() => { refresh() }, [tag])
 
   async function removeEverywhere() {
-    const ok = typeof window !== 'undefined' ? window.confirm(`Delete filter "${normTag}" from all products?`) : false
-    if (!ok) return
     setBusy(true)
     setMsg('')
     try {
@@ -59,25 +59,67 @@ export default function FilterDeleteTag({ tag }: Props) {
     }
   }
 
+  function openConfirm() {
+    setConfirmOpen(true)
+  }
+
+  function closeConfirm() {
+    setConfirmOpen(false)
+  }
+
+  async function confirmDelete() {
+    closeConfirm()
+    await removeEverywhere()
+  }
+
   return (
-    <div style={{ padding: 12 }}>
-      <h3 style={{ margin: '4px 0 10px' }}>Delete filter: “{normTag}”</h3>
-      <div style={{ marginBottom: 8, color: '#444' }}>
-        {count === null ? 'Counting…' : `Products with this filter: ${count}`}
-      </div>
-      {msg ? <div style={{ marginBottom: 8, color: '#555' }}>{msg}</div> : null}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" onClick={refresh} disabled={busy} style={{ padding: '6px 10px' }}>
-          {busy ? 'Refreshing…' : 'Refresh'}
-        </button>
-        <button type="button" onClick={removeEverywhere} disabled={busy} style={{ padding: '6px 10px', background: '#e03a3a', color: '#fff', border: '1px solid #d22', borderRadius: 4 }}>
-          {busy ? 'Deleting…' : 'Delete This Filter Everywhere'}
-        </button>
-      </div>
-      <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-        This removes the tag from all products. Since the filter list is auto‑generated from products, the tag disappears once no products have it.
-      </div>
-    </div>
+    <Box padding={3}>
+      <Stack space={3}>
+        <Text as="h3" size={2} weight="semibold">
+          Delete filter: “{normTag}”
+        </Text>
+        <Text muted>
+          {count === null ? 'Counting…' : `Products with this filter: ${count}`}
+        </Text>
+        {msg ? (
+          <Text size={1} muted>
+            {msg}
+          </Text>
+        ) : null}
+        <Flex gap={2}>
+          <Button text={busy ? 'Refreshing…' : 'Refresh'} onClick={refresh} disabled={busy} />
+          <Button
+            text={busy ? 'Deleting…' : 'Delete This Filter Everywhere'}
+            tone="critical"
+            onClick={openConfirm}
+            disabled={busy}
+          />
+        </Flex>
+        <Text size={1} muted>
+          This removes the tag from all products. Since the filter list is auto-generated from products, the tag disappears once no products have it.
+        </Text>
+      </Stack>
+
+      {confirmOpen ? (
+        <Dialog
+          id="delete-filter-confirm"
+          header={`Delete filter "${normTag}"?`}
+          onClose={closeConfirm}
+          width={1}
+          footer={
+            <Flex gap={2} justify="flex-end">
+              <Button text="Cancel" mode="ghost" onClick={closeConfirm} />
+              <Button text="Delete" tone="critical" onClick={confirmDelete} loading={busy} disabled={busy} />
+            </Flex>
+          }
+        >
+          <Box padding={4}>
+            <Text>
+              This action removes “{normTag}” from all products that currently include it.
+            </Text>
+          </Box>
+        </Dialog>
+      ) : null}
+    </Box>
   )
 }
-
