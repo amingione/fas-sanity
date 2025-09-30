@@ -1,3 +1,5 @@
+import {useState} from 'react'
+import {Box, Button, Flex, Stack, Text, useToast} from '@sanity/ui'
 import type {DocumentActionComponent} from 'sanity'
 import {useClient} from 'sanity'
 
@@ -36,52 +38,87 @@ function deepRemoveRefs(node: any, idSet: Set<string>): {node: any; removed: num
 
 export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
   const client = useClient({apiVersion: '2024-10-01'})
+  const toast = useToast()
   const {id, onComplete, type} = props
+  const [isOpen, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  // Only show for specific types for now
   if (!['vehicleModel', 'filterTag', 'product'].includes(type)) return null
 
   const baseId = id.startsWith('drafts.') ? id.slice(7) : id
 
+  function close() {
+    setOpen(false)
+    setBusy(false)
+    onComplete()
+  }
+
+  async function handleConfirm() {
+    setBusy(true)
+    try {
+      const refDocs: {_id: string; _type: string}[] = await client.fetch('*[references($id)]{_id,_type}[0...1000]', {
+        id: baseId,
+      })
+      const ids = new Set([baseId, `drafts.${baseId}`])
+
+      for (const r of refDocs) {
+        const doc = await client.fetch('*[_id == $id][0]', {id: r._id})
+        if (!doc) continue
+        const {node: next, removed} = deepRemoveRefs(doc, ids)
+        if (removed > 0 && next) {
+          await client.createOrReplace(next)
+        }
+      }
+
+      const tx = client.transaction()
+      tx.delete(baseId)
+      tx.delete(`drafts.${baseId}`)
+      await tx.commit({visibility: 'async'})
+
+      toast.push({
+        status: 'success',
+        title: 'Deleted document and unlinked references',
+        description: `Removed ${refDocs.length} referencing document(s) before deletion.`,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      toast.push({
+        status: 'error',
+        title: 'Force delete failed',
+        description: message,
+      })
+    } finally {
+      close()
+    }
+  }
+
   return {
     label: 'Force Delete (unlink refs)',
     tone: 'critical',
-    onHandle: async () => {
-      try {
-        const ok =
-          typeof window !== 'undefined'
-            ? window.confirm(
-                `Force delete will remove references to this ${type} from related documents before deleting it. Continue?`
-              )
-            : false
-        if (!ok) return onComplete()
-
-        // Find referencing docs
-        const refDocs: {_id: string; _type: string}[] = await client.fetch('*[references($id)]{_id,_type}[0...1000]', {id: baseId})
-        const ids = new Set([baseId, `drafts.${baseId}`])
-
-        // Unlink references
-        for (const r of refDocs) {
-          const doc = await client.fetch('*[_id == $id][0]', {id: r._id})
-          if (!doc) continue
-          const {node: next, removed} = deepRemoveRefs(doc, ids)
-          if (removed > 0 && next) {
-            await client.createOrReplace(next)
-          }
-        }
-
-        // Delete draft + published
-        const tx = client.transaction()
-        tx.delete(baseId)
-        tx.delete(`drafts.${baseId}`)
-        await tx.commit({visibility: 'async'})
-
-        if (typeof window !== 'undefined') window.alert('Deleted (and unlinked references).')
-      } catch (e: any) {
-        if (typeof window !== 'undefined') window.alert(`Force delete failed: ${e?.message || e}`)
-      } finally {
-        onComplete()
-      }
+    onHandle: () => {
+      setOpen(true)
     },
+    dialog: isOpen
+      ? {
+          type: 'modal' as const,
+          onClose: close,
+          content: (
+            <Box padding={4}>
+              <Stack space={4}>
+                <Text size={2} weight="semibold">
+                  Force delete this {type}?
+                </Text>
+                <Text size={1} muted>
+                  This removes references to the selected document from up to 1000 related documents and then deletes both draft and published versions. This action cannot be undone.
+                </Text>
+                <Flex justify="flex-end" gap={3}>
+                  <Button text="Cancel" mode="ghost" onClick={close} disabled={busy} />
+                  <Button text="Delete" tone="critical" onClick={handleConfirm} disabled={busy} loading={busy} />
+                </Flex>
+              </Stack>
+            </Box>
+          ),
+        }
+      : undefined,
   }
 }

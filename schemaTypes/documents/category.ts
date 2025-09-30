@@ -19,6 +19,13 @@ export default defineType({
       options: { source: 'title', maxLength: 96 },
       validation: Rule => Rule.required(),
     }),
+    defineField({
+      name: 'image',
+      title: 'Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Displayed for this category on the storefront.',
+    }),
     // Optional curated list of products for this category.
     // This matches existing documents that already have a `products` array of product references
     // and prevents Studio from showing an "Unknown field" warning.
