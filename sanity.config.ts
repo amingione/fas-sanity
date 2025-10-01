@@ -48,6 +48,8 @@ export default defineConfig({
 
   plugins: [
     deskTool({
+      name: 'desk',
+      title: 'Content',
       structure: deskStructure,
     }),
     media(),
