@@ -17,12 +17,27 @@ import { deskStructure } from './desk/deskStructure';
 import resolveDocumentActions from './resolveDocumentActions';
 import ShippingCalendar from './components/studio/ShippingCalendar';
 import AdminTools from './components/studio/AdminTools';
-import path from 'path';
+
+const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function';
+const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/');
+const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : '';
 
 const aliasFromNodeModules = (specifier: string) =>
-  path.resolve(process.cwd(), 'node_modules', ...specifier.split('/'));
+  hasProcess
+    ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/'))
+    : specifier;
 
-const isDev = process.env.NODE_ENV === 'development';
+const workspaceModuleAliases = hasProcess
+  ? {
+      sanity: aliasFromNodeModules('sanity'),
+      '@sanity/ui': aliasFromNodeModules('@sanity/ui'),
+      react: aliasFromNodeModules('react'),
+      'react-dom': aliasFromNodeModules('react-dom'),
+      'styled-components': aliasFromNodeModules('styled-components'),
+    }
+  : {};
+
+const isDev = hasProcess ? process.env.NODE_ENV === 'development' : false;
 
 export default defineConfig({
   name: 'default',
@@ -66,11 +81,7 @@ export default defineConfig({
       // With pnpm, multiple peer variants can otherwise create duplicate contexts.
       dedupe: ['sanity', '@sanity/ui', 'react', 'react-dom', 'styled-components'],
       alias: {
-        sanity: aliasFromNodeModules('sanity'),
-        '@sanity/ui': aliasFromNodeModules('@sanity/ui'),
-        react: aliasFromNodeModules('react'),
-        'react-dom': aliasFromNodeModules('react-dom'),
-        'styled-components': aliasFromNodeModules('styled-components'),
+        ...workspaceModuleAliases,
         // Work around occasional CJS/ESM interop glitches with react-refractor in dev.
         // Use a relative replacement to avoid importing Node's `path` in the browser.
         'react-refractor': './shims/react-refractor-shim.tsx',
