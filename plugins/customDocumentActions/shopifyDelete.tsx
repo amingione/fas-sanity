@@ -75,7 +75,7 @@ export default (props: ShopifyDocumentActionProps): DocumentActionDescription | 
         try {
           await transaction.commit()
           // Navigate back to products root
-          router.navigateUrl({path: '/structure/products'})
+          router.navigateIntent('type', {type: 'product'})
         } catch (err) {
           let message = 'Unknown Error'
           if (err instanceof Error) message = err.message
@@ -115,7 +115,7 @@ export default (props: ShopifyDocumentActionProps): DocumentActionDescription | 
         try {
           await transaction.commit()
           // Navigate back to collections root
-          router.navigateUrl({path: '/structure/collections'})
+          router.navigateIntent('type', {type: 'collection'})
         } catch (err) {
           let message = 'Unknown Error'
           if (err instanceof Error) message = err.message
