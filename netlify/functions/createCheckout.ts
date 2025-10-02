@@ -123,109 +123,122 @@ export const handler: Handler = async (event) => {
     }
     
     // Diagnostics + amount in cents
-const unitAmount = Math.round(Number(total) * 100)
-console.log('createCheckout diagnostics', {
-  invoiceId,
-  total,
-  unitAmount,
-  hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-  baseUrl: process.env.AUTH0_BASE_URL || 'http://localhost:3333',
-})
+    const unitAmount = Math.round(Number(total) * 100)
+    const currency = 'usd'
+    const allowAffirm = currency === 'usd' && unitAmount >= 5000 && String(process.env.STRIPE_ENABLE_AFFIRM || 'true').toLowerCase() !== 'false'
+    console.log('createCheckout diagnostics', {
+      invoiceId,
+      total,
+      unitAmount,
+      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+      baseUrl: process.env.AUTH0_BASE_URL || 'http://localhost:3333',
+      allowAffirm,
+    })
 
-if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
-  return {
-    statusCode: 400,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: 'Invoice total must be a positive number' }),
-  }
-}
-
-// Stripe minimum for USD is 50 cents
-if (unitAmount < 50) {
-  return {
-    statusCode: 400,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: 'Amount must be at least $0.50 to create a Stripe Checkout session' }),
-  }
-}
-
-// Single line item for invoice total (simplest path). We can switch to itemized later.
-let session
-try {
-  session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    line_items: [
-      {
-        price_data: {
-          currency: 'usd',
-          product_data: { name: `Invoice ${invoice.invoiceNumber || ''}`.trim() || 'Invoice Payment' },
-          unit_amount: unitAmount,
-        },
-        quantity: 1,
-      },
-    ],
-    customer_email: invoice?.billTo?.email || undefined,
-    metadata: {
-      sanity_invoice_id: invoiceId,
-      sanity_invoice_number: String(invoice.invoiceNumber || ''),
-    },
-    payment_intent_data: {
-      metadata: {
-        sanity_invoice_id: invoiceId,
-        sanity_invoice_number: String(invoice.invoiceNumber || ''),
-      },
-    },
-    success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,
-    cancel_url: `${baseUrl}/invoice/cancel?invoiceId=${encodeURIComponent(invoiceId)}`,
-  })
-} catch (e: any) {
-  console.error('Stripe create session failed', { message: e?.message, type: e?.type, code: e?.code })
-  return {
-    statusCode: 500,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: 'Stripe session creation failed',
-      error: e?.message,
-      type: e?.type,
-      code: e?.code,
-      raw: e?.raw,
-    }),
-  }
-}
-
-const url = session?.url || ''
-if (!url) {
-  return {
-    statusCode: 500,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: 'Failed to create checkout session: no URL from Stripe' }),
-  }
-}
-
-// Try to persist the URL on the invoice (draft and published variants), but never fail the request if we can't write.
-if (CAN_PATCH) {
-  try {
-    const ids = idVariants(invoiceId)
-    for (const id of ids) {
-      try {
-        await sanity.patch(id).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
-        break // saved on one variant; stop trying others
-      } catch {
-        // try the other variant (draft/published)
+    if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
+      return {
+        statusCode: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Invoice total must be a positive number' }),
       }
     }
-  } catch {
-    console.warn('createCheckout: patch paymentLinkUrl failed (permissions or token issue). Continuing.')
-  }
-} else {
-  console.warn('createCheckout: SANITY_API_TOKEN not set — skipping persist of paymentLinkUrl.')
-}
 
-return {
-  statusCode: 200,
-  headers: { ...CORS, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ url }),
-}
+    // Stripe minimum for USD is 50 cents
+    if (unitAmount < 50) {
+      return {
+        statusCode: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Amount must be at least $0.50 to create a Stripe Checkout session' }),
+      }
+    }
+
+    // Single line item for invoice total (simplest path). We can switch to itemized later.
+    const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = ['card']
+    if (allowAffirm) paymentMethodTypes.push('affirm')
+
+    let session
+    try {
+      const sessionParams: Stripe.Checkout.SessionCreateParams = {
+        mode: 'payment',
+        payment_method_types: paymentMethodTypes,
+        line_items: [
+          {
+            price_data: {
+              currency,
+              product_data: { name: `Invoice ${invoice.invoiceNumber || ''}`.trim() || 'Invoice Payment' },
+              unit_amount: unitAmount,
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: invoice?.billTo?.email || undefined,
+        metadata: {
+          sanity_invoice_id: invoiceId,
+          sanity_invoice_number: String(invoice.invoiceNumber || ''),
+        },
+        payment_intent_data: {
+          metadata: {
+            sanity_invoice_id: invoiceId,
+            sanity_invoice_number: String(invoice.invoiceNumber || ''),
+          },
+        },
+        success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,
+        cancel_url: `${baseUrl}/invoice/cancel?invoiceId=${encodeURIComponent(invoiceId)}`,
+      }
+
+      if (allowAffirm) {
+        sessionParams.phone_number_collection = { enabled: true }
+      }
+
+      session = await stripe.checkout.sessions.create(sessionParams)
+    } catch (e: any) {
+      console.error('Stripe create session failed', { message: e?.message, type: e?.type, code: e?.code })
+      return {
+        statusCode: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Stripe session creation failed',
+          error: e?.message,
+          type: e?.type,
+          code: e?.code,
+          raw: e?.raw,
+        }),
+      }
+    }
+
+    const url = session?.url || ''
+    if (!url) {
+      return {
+        statusCode: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Failed to create checkout session: no URL from Stripe' }),
+      }
+    }
+
+    // Try to persist the URL on the invoice (draft and published variants), but never fail the request if we can't write.
+    if (CAN_PATCH) {
+      try {
+        const ids = idVariants(invoiceId)
+        for (const id of ids) {
+          try {
+            await sanity.patch(id).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
+            break // saved on one variant; stop trying others
+          } catch {
+            // try the other variant (draft/published)
+          }
+        }
+      } catch {
+        console.warn('createCheckout: patch paymentLinkUrl failed (permissions or token issue). Continuing.')
+      }
+    } else {
+      console.warn('createCheckout: SANITY_API_TOKEN not set — skipping persist of paymentLinkUrl.')
+    }
+
+    return {
+      statusCode: 200,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }
   } catch (err: any) {
     console.error('createCheckout error', err)
     return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Failed to create checkout session', error: String(err?.message || err) }) }
