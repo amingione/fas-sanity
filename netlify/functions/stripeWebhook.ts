@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions'
 import Stripe from 'stripe'
 import { createClient } from '@sanity/client'
+import { randomUUID } from 'crypto'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -125,6 +126,7 @@ export const handler: Handler = async (event) => {
             const productObj: any = (li.price as any)?.product
             return {
               _type: 'orderCartItem',
+              _key: randomUUID(),
               id: (li.price?.id || productObj?.id || '').toString() || undefined,
               name: (productObj?.name || li.description || '').toString() || undefined,
               sku: (productObj?.metadata?.sku || (li as any)?.metadata?.sku || '').toString() || undefined,

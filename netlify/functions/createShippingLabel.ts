@@ -165,15 +165,20 @@ export const handler: Handler = async (event) => {
 
     const trackingNumber = labelData?.tracking_number
     const labelUrl = labelData?.label_download?.href || labelData?.label_download?.pdf
+    const trackingUrl =
+      labelData?.tracking_url ||
+      labelData?.trackingStatus?.public_url ||
+      labelData?.tracking_status?.public_url ||
+      undefined
 
     // Patch target doc with tracking/label if we know what to update
     try {
       if (orderId) {
         await sanity
           .patch(orderId)
-          .set({ shippingLabelUrl: labelUrl, trackingNumber })
+          .set({ shippingLabelUrl: labelUrl, trackingNumber, trackingUrl })
           .setIfMissing({ shippingLog: [] })
-          .append('shippingLog', [{ _type: 'shippingLogEntry', status: 'label_created', labelUrl, trackingNumber, createdAt: new Date().toISOString() }])
+          .append('shippingLog', [{ _type: 'shippingLogEntry', status: 'label_created', labelUrl, trackingNumber, trackingUrl, createdAt: new Date().toISOString() }])
           .commit({ autoGenerateArrayKeys: true })
         // Also create a Shipping Label document for reference
         try {
@@ -193,7 +198,13 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 200,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trackingNumber, labelUrl, invoiceUpdated: Boolean(invoiceId), raw: labelData }),
+      body: JSON.stringify({
+        trackingNumber,
+        trackingUrl,
+        labelUrl,
+        invoiceUpdated: Boolean(invoiceId),
+        raw: labelData,
+      }),
     }
   } catch (err: any) {
     return {

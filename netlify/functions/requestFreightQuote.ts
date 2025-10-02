@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
 import { Resend } from 'resend'
+import { randomUUID } from 'crypto'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
 function makeCORS(origin?: string) {
@@ -182,7 +183,13 @@ export const handler: Handler = async (event) => {
       postalCode: dest?.postalCode || '',
       country: dest?.country || '',
     },
-    cart: items.map((i) => ({ _type: 'orderCartItem', sku: i?.sku || '', name: i?.name || '', quantity: Number(i?.quantity || 1) })),
+    cart: items.map((i) => ({
+      _type: 'orderCartItem',
+      _key: randomUUID(),
+      sku: i?.sku || '',
+      name: i?.name || '',
+      quantity: Number(i?.quantity || 1),
+    })),
     packages: packages.map((p) => ({ _type: 'packageDetails', weight: { _type: 'shipmentWeight', value: p.weight.value, unit: p.weight.unit }, dimensions: { _type: 'shippingOptionDimensions', length: p.dimensions.length, width: p.dimensions.width, height: p.dimensions.height, unit: p.dimensions.unit } })),
     createdAt: new Date().toISOString(),
   }
@@ -225,4 +232,3 @@ export const handler: Handler = async (event) => {
 
   return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ freight: true, createdId: created?._id }) }
 }
-

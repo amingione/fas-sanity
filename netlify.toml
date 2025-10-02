@@ -5,6 +5,8 @@
 [build.environment]
   NODE_VERSION = "22"
   MISE_DISABLE = "1"
+
+[context.production.environment]
   NODE_ENV = "production"
 
 [functions]

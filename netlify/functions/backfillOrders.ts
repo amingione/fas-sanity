@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import { randomUUID } from 'crypto'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
 function makeCORS(origin?: string) {
@@ -24,16 +25,37 @@ const sanity = createClient({
   useCdn: false,
 })
 
+function toOrderCartItem(it: any) {
+  if (!it || typeof it !== 'object') return null
+
+  const cloned = { ...it }
+
+  if (cloned._type === 'cartLine') {
+    const qty = Number(cloned.quantity || cloned.qty || 1)
+    const price = Number(cloned.amount_total || cloned.amount || cloned.total || 0)
+    return {
+      _type: 'orderCartItem',
+      _key: typeof cloned._key === 'string' && cloned._key ? cloned._key : randomUUID(),
+      name: cloned.description || cloned.name || 'Line item',
+      sku: cloned.sku || undefined,
+      quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+      price: Number.isFinite(price) ? price : undefined,
+    }
+  }
+
+  if (!cloned._type) cloned._type = 'orderCartItem'
+  if (cloned._type !== 'orderCartItem') return null
+  if (typeof cloned._key !== 'string' || !cloned._key) cloned._key = randomUUID()
+  return cloned
+}
+
 function fixCart(arr: any[]) {
   if (!Array.isArray(arr)) return null
-  const out: any[] = []
-  for (const it of arr) {
-    if (!it || typeof it !== 'object') continue
-    const copy = { ...it }
-    if (!copy._type) copy._type = 'orderCartItem'
-    out.push(copy)
-  }
-  return out
+  const transformed = arr
+    .map((it) => toOrderCartItem(it))
+    .filter((it): it is Record<string, any> => Boolean(it))
+
+  return transformed
 }
 
 export const handler: Handler = async (event) => {
@@ -127,4 +149,3 @@ export const handler: Handler = async (event) => {
     body: JSON.stringify({ ok: true, dryRun, total, changed, migratedCustomer, cartFixed, remainingCustomer }),
   }
 }
-
