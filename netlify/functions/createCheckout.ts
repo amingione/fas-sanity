@@ -141,7 +141,14 @@ export const handler: Handler = async (event) => {
     const billTo = invoice?.billTo || {}
     const customerEmail = (billTo?.email || '').trim() || undefined
     const customerName = (billTo?.name || '').trim() || undefined
-    const customerAddress: Stripe.Checkout.SessionCreateParams.CustomerDetails.Address = {
+
+    const metadata: Stripe.MetadataParam = {
+      sanity_invoice_id: invoiceId,
+      sanity_invoice_number: String(invoice.invoiceNumber || ''),
+    }
+    if (customerName) metadata.bill_to_name = customerName
+    if (customerEmail) metadata.bill_to_email = customerEmail
+    const addressFields = {
       line1: billTo?.address_line1 || undefined,
       line2: billTo?.address_line2 || undefined,
       city: billTo?.city_locality || undefined,
@@ -149,6 +156,8 @@ export const handler: Handler = async (event) => {
       postal_code: billTo?.postal_code || undefined,
       country: (billTo?.country_code || '').toUpperCase() || undefined,
     }
+    const hasAddress = Object.values(addressFields).some(Boolean)
+    if (hasAddress) metadata.bill_to_address = JSON.stringify(addressFields)
 
     const allowedShippingCountries = (process.env.STRIPE_TAX_ALLOWED_COUNTRIES || process.env.STRIPE_SHIPPING_COUNTRIES || process.env.STRIPE_ALLOWED_COUNTRIES || 'US')
       .split(',')
@@ -210,10 +219,7 @@ export const handler: Handler = async (event) => {
           },
         ],
         customer_email: customerEmail,
-        metadata: {
-          sanity_invoice_id: invoiceId,
-          sanity_invoice_number: String(invoice.invoiceNumber || ''),
-        },
+        metadata,
         payment_intent_data: {
           metadata: {
             sanity_invoice_id: invoiceId,
@@ -236,14 +242,6 @@ export const handler: Handler = async (event) => {
           }
         }
       }
-
-      const customerDetails: Stripe.Checkout.SessionCreateParams.CustomerDetails = {}
-      if (customerEmail) customerDetails.email = customerEmail
-      if (customerName) customerDetails.name = customerName
-
-      const addressHasValues = Boolean(customerAddress.line1 || customerAddress.postal_code || customerAddress.country)
-      if (addressHasValues) customerDetails.address = customerAddress
-      if (Object.keys(customerDetails).length > 0) sessionParams.customer_details = customerDetails
 
       session = await stripe.checkout.sessions.create(sessionParams)
     } catch (e: any) {

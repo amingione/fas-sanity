@@ -5,6 +5,18 @@ export default defineType({
   name: 'customer',
   title: 'Customer',
   type: 'document',
+  fieldsets: [
+    {
+      name: 'shippingInfo',
+      title: 'Shipping Address',
+      options: { collapsible: true, collapsed: true },
+    },
+    {
+      name: 'billingInfo',
+      title: 'Billing Address',
+      options: { collapsible: true, collapsed: true },
+    },
+  ],
   fields: [
     // Identity
     defineField({
@@ -46,8 +58,18 @@ export default defineType({
       hidden: true
     }),
     defineField({ name: 'phone', title: 'Phone Number', type: 'string' }),
-    defineField({ name: 'address', title: 'Shipping Address', type: 'text' }),
-    defineField({ name: 'billingAddress', title: 'Billing Address', type: 'customerBillingAddress' }),
+    defineField({
+      name: 'address',
+      title: 'Shipping Address',
+      type: 'text',
+      fieldset: 'shippingInfo',
+    }),
+    defineField({
+      name: 'billingAddress',
+      title: 'Billing Address',
+      type: 'customerBillingAddress',
+      fieldset: 'billingInfo',
+    }),
     defineField({ name: 'orders', title: 'Orders', type: 'array', of: [ { type: 'customerOrderSummary' } ] }),
     defineField({ name: 'quotes', title: 'Saved Quotes', type: 'array', of: [ { type: 'customerQuoteSummary' } ] }),
     defineField({ name: 'addresses', title: 'Addresses', type: 'array', of: [ { type: 'customerAddress' } ] }),

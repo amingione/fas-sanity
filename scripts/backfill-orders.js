@@ -8,6 +8,7 @@
 
 const path = require('path')
 const fs = require('fs')
+const { randomUUID } = require('crypto')
 const dotenv = require('dotenv')
 const { createClient } = require('@sanity/client')
 
@@ -29,16 +30,34 @@ if (!projectId || !dataset || !token) {
 
 const client = createClient({ projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false })
 
+function normalizeCartItem(it) {
+  if (!it || typeof it !== 'object') return null
+  const cloned = { ...it }
+
+  if (cloned._type === 'cartLine') {
+    const qty = Number(cloned.quantity || cloned.qty || 1)
+    const price = Number(cloned.amount_total || cloned.amount || cloned.total || 0)
+    return {
+      _type: 'orderCartItem',
+      _key: typeof cloned._key === 'string' && cloned._key ? cloned._key : randomUUID(),
+      name: cloned.description || cloned.name || 'Line item',
+      sku: cloned.sku || undefined,
+      quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+      price: Number.isFinite(price) ? price : undefined,
+    }
+  }
+
+  if (!cloned._type) cloned._type = 'orderCartItem'
+  if (cloned._type !== 'orderCartItem') return null
+  if (typeof cloned._key !== 'string' || !cloned._key) cloned._key = randomUUID()
+  return cloned
+}
+
 function fixCart(arr) {
   if (!Array.isArray(arr)) return null
-  const out = []
-  for (const it of arr) {
-    if (!it || typeof it !== 'object') continue
-    const copy = { ...it }
-    if (!copy._type) copy._type = 'orderCartItem'
-    out.push(copy)
-  }
-  return out
+  return arr
+    .map(normalizeCartItem)
+    .filter(Boolean)
 }
 
 async function run() {

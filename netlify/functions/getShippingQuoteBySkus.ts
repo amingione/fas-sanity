@@ -221,7 +221,7 @@ export const handler: Handler = async (event) => {
       carrierId: rate.carrier_id,
       carrierCode: rate.carrier_code,
       carrier: rate.carrier_friendly_name,
-      serviceName: rate.service_friendly_name || rate.service_type || rate.service_code,
+      service: rate.service_friendly_name || rate.service_type || rate.service_code,
       serviceCode: rate.service_code,
       amount: Number(rate.shipping_amount?.amount ?? 0),
       currency: rate.shipping_amount?.currency || 'USD',
