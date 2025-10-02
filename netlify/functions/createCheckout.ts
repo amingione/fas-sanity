@@ -92,7 +92,17 @@ export const handler: Handler = async (event) => {
         discountValue,
         taxRate,
         paymentLinkUrl,
-        billTo { email }
+        billTo {
+          name,
+          email,
+          phone,
+          address_line1,
+          address_line2,
+          city_locality,
+          state_province,
+          postal_code,
+          country_code
+        }
       }`,
       { id: invoiceId }
     )
@@ -101,8 +111,14 @@ export const handler: Handler = async (event) => {
       return { statusCode: 404, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice not found' }) }
     }
 
-    const { total } = computeTotals(invoice)
-    if (!total || total <= 0) {
+    const { subtotal, discountAmt, taxAmount, total } = computeTotals(invoice)
+    const taxableBase = Math.max(0, subtotal - discountAmt)
+    const autoTaxEnv = String(process.env.STRIPE_AUTOMATIC_TAX || 'true').toLowerCase()
+    const enableAutomaticTax = autoTaxEnv !== 'false'
+    const automaticTaxEnabled = enableAutomaticTax && taxableBase > 0
+    const amountForStripe = automaticTaxEnabled ? taxableBase : total
+
+    if (!amountForStripe || amountForStripe <= 0) {
       return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice total must be greater than 0' }) }
     }
 
@@ -122,8 +138,25 @@ export const handler: Handler = async (event) => {
       }
     }
     
+    const billTo = invoice?.billTo || {}
+    const customerEmail = (billTo?.email || '').trim() || undefined
+    const customerName = (billTo?.name || '').trim() || undefined
+    const customerAddress: Stripe.Checkout.SessionCreateParams.CustomerDetails.Address = {
+      line1: billTo?.address_line1 || undefined,
+      line2: billTo?.address_line2 || undefined,
+      city: billTo?.city_locality || undefined,
+      state: billTo?.state_province || undefined,
+      postal_code: billTo?.postal_code || undefined,
+      country: (billTo?.country_code || '').toUpperCase() || undefined,
+    }
+
+    const allowedShippingCountries = (process.env.STRIPE_TAX_ALLOWED_COUNTRIES || process.env.STRIPE_SHIPPING_COUNTRIES || process.env.STRIPE_ALLOWED_COUNTRIES || 'US')
+      .split(',')
+      .map(c => c.trim().toUpperCase())
+      .filter(Boolean)
+
     // Diagnostics + amount in cents
-    const unitAmount = Math.round(Number(total) * 100)
+    const unitAmount = Math.round(Number(amountForStripe) * 100)
     const currency = 'usd'
     const allowAffirm = currency === 'usd' && unitAmount >= 5000 && String(process.env.STRIPE_ENABLE_AFFIRM || 'true').toLowerCase() !== 'false'
     console.log('createCheckout diagnostics', {
@@ -132,6 +165,11 @@ export const handler: Handler = async (event) => {
       unitAmount,
       hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
       baseUrl: process.env.AUTH0_BASE_URL || 'http://localhost:3333',
+      subtotal,
+      discountAmt,
+      taxableBase,
+      taxAmount,
+      automaticTaxEnabled,
       allowAffirm,
     })
 
@@ -171,7 +209,7 @@ export const handler: Handler = async (event) => {
             quantity: 1,
           },
         ],
-        customer_email: invoice?.billTo?.email || undefined,
+        customer_email: customerEmail,
         metadata: {
           sanity_invoice_id: invoiceId,
           sanity_invoice_number: String(invoice.invoiceNumber || ''),
@@ -189,6 +227,23 @@ export const handler: Handler = async (event) => {
       if (allowAffirm) {
         sessionParams.phone_number_collection = { enabled: true }
       }
+
+      if (automaticTaxEnabled) {
+        sessionParams.automatic_tax = { enabled: true }
+        if (allowedShippingCountries.length > 0) {
+          sessionParams.shipping_address_collection = {
+            allowed_countries: allowedShippingCountries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+          }
+        }
+      }
+
+      const customerDetails: Stripe.Checkout.SessionCreateParams.CustomerDetails = {}
+      if (customerEmail) customerDetails.email = customerEmail
+      if (customerName) customerDetails.name = customerName
+
+      const addressHasValues = Boolean(customerAddress.line1 || customerAddress.postal_code || customerAddress.country)
+      if (addressHasValues) customerDetails.address = customerAddress
+      if (Object.keys(customerDetails).length > 0) sessionParams.customer_details = customerDetails
 
       session = await stripe.checkout.sessions.create(sessionParams)
     } catch (e: any) {
