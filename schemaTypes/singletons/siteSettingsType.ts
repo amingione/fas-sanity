@@ -58,6 +58,10 @@ export const settingsType = defineType({
           name: 'customProductOption.size',
           type: 'customProductOption.size',
         },
+        {
+          name: 'customProductOption.custom',
+          type: 'customProductOption.custom',
+        },
       ],
       validation: (Rule) =>
         Rule.custom((options: ProductOptions[] | undefined) => {

@@ -165,7 +165,8 @@ const product = defineType({
       type: 'array',
       of: [
         { type: 'customProductOption.color' },
-        { type: 'customProductOption.size' }
+        { type: 'customProductOption.size' },
+        { type: 'customProductOption.custom' }
       ],
       hidden: ({ parent }) => parent?.productType !== 'variable',
       validation: (Rule) =>
@@ -184,6 +185,9 @@ const product = defineType({
             }
             if (option._type === 'customProductOption.size') {
               return !Array.isArray(option.sizes) || option.sizes.length === 0
+            }
+            if (option._type === 'customProductOption.custom') {
+              return !Array.isArray(option.values) || option.values.length === 0
             }
             return false
           })
