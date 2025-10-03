@@ -91,19 +91,14 @@ function pickPackage(packages: any[] | undefined | null) {
 }
 
 async function createPackingSlip(netlifyBase: string, order: any) {
-  const customerName = order?.shippingAddress?.name || order?.customerEmail || 'Customer'
   const invoiceId = order?.invoiceRef?._ref || order?._id
-  const products = Array.isArray(order?.cart)
-    ? order.cart.map((item: any) => ({
-        name: item?.name || item?.sku || 'Item',
-        quantity: Number(item?.quantity || 1) || 1,
-      }))
-    : []
-
   const res = await fetch(`${netlifyBase}/.netlify/functions/generatePackingSlips`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ customerName, invoiceId, products }),
+    body: JSON.stringify({
+      orderId,
+      invoiceId: order?.invoiceRef?._ref || invoiceId,
+    }),
   })
 
   if (!res.ok) {

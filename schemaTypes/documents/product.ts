@@ -312,7 +312,7 @@ const product = defineType({
       title: 'Shipping Class',
       type: 'string',
       options: {
-        list: ['Standard', 'Oversized', 'Freight', 'Hazardous', 'Free Shipping', 'Install Only'],
+        list: ['Standard', 'Oversized', 'Freight', 'Free Shipping', 'Install Only'],
         layout: 'dropdown',
       },
       description: 'Used to calculate shipping rates or rules based on product class. “Install Only” skips shipping calculations.',

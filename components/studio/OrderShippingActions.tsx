@@ -22,14 +22,19 @@ export default function OrderShippingActions() {
 
   async function generateSlip() {
     try {
-      const sa = doc?.shippingAddress || {}
-      const customerName = sa?.name || doc?.customerEmail || 'Customer'
-      const products = Array.isArray(doc?.cart) ? doc.cart.map((c: any) => ({ name: c?.name || c?.sku || 'Item', quantity: Number(c?.quantity || 1) })) : []
+      const payload: Record<string, any> = {}
+      const orderId = (doc?._id || '').replace(/^drafts\./, '')
+      const invoiceId = (doc?.invoiceRef?._ref || '').replace(/^drafts\./, '')
+      if (orderId) payload.orderId = orderId
+      if (invoiceId) payload.invoiceId = invoiceId
+      if (!payload.orderId && !payload.invoiceId) {
+        throw new Error('Missing order or invoice reference for packing slip generation')
+      }
 
       const res = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName, invoiceId: doc?._id || 'Order', products })
+        body: JSON.stringify(payload)
       })
       if (!res.ok) throw new Error(await res.text())
       const ct = (res.headers.get('content-type') || '').toLowerCase()

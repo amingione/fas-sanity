@@ -50,7 +50,16 @@ export const handler: Handler = async (event) => {
     return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing SHIPENGINE_API_KEY' }) }
   }
 
-  type CartItem = { sku: string; quantity?: number }
+  type CartItem = {
+    sku?: string
+    quantity?: number
+    productId?: string
+    id?: string
+    _id?: string
+    title?: string
+    name?: string
+    product?: { _id?: string; sku?: string; title?: string }
+  }
   type Dest = {
     name?: string
     phone?: string
@@ -109,18 +118,69 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const skus = cart.map(c => (c?.sku || '').trim()).filter(Boolean)
-    const qtyBySku = new Map<string, number>()
-    for (const c of cart) {
-      const sku = (c?.sku || '').trim()
-      if (!sku) continue
-      qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + (Number(c?.quantity || 1)))
+    const normalizeId = (value?: string) => {
+      if (!value) return ''
+      return value.replace(/^drafts\./, '')
     }
 
+    const skuSet = new Set<string>()
+    const idSet = new Set<string>()
+    const titleSet = new Set<string>()
+
+    for (const item of cart) {
+      const possibleSkus = [item?.sku, item?.product?.sku]
+      possibleSkus.forEach((sku) => {
+        const normalized = (sku || '').trim()
+        if (normalized) skuSet.add(normalized)
+      })
+
+      const possibleIds = [item?.productId, item?.id, item?._id, item?.product?._id]
+      possibleIds.forEach((pid) => {
+        const normalized = normalizeId(pid)
+        if (normalized) idSet.add(normalized)
+      })
+
+      const possibleTitles = [item?.title, item?.name, item?.product?.title]
+      possibleTitles.forEach((title) => {
+        const normalized = (title || '').trim()
+        if (normalized) titleSet.add(normalized)
+      })
+    }
+
+    const skus = Array.from(skuSet)
+    const ids = Array.from(idSet)
+    const titles = Array.from(titleSet)
+
     const products: any[] = await sanity.fetch(
-      `*[_type == "product" && sku in $skus]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass}`,
-      { skus }
+      `*[_type == "product" && (sku in $skus || _id in $ids || _id in $draftIds || title in $titles)]{
+        _id,
+        title,
+        sku,
+        shippingWeight,
+        boxDimensions,
+        shipsAlone,
+        shippingClass
+      }`,
+      {
+        skus,
+        ids,
+        draftIds: ids.map((id) => `drafts.${id}`),
+        titles,
+      }
     )
+
+    const productBySku = new Map<string, any>()
+    const productById = new Map<string, any>()
+    const productByTitle = new Map<string, any>()
+
+    for (const prod of products) {
+      const sku = (prod?.sku || '').trim()
+      if (sku) productBySku.set(sku, prod)
+      const id = normalizeId(prod?._id)
+      if (id) productById.set(id, prod)
+      const title = (prod?.title || '').trim()
+      if (title) productByTitle.set(title, prod)
+    }
 
     // Package logic (mirrors fulfill-order.ts)
     const defaultDims = {
@@ -134,16 +194,46 @@ export const handler: Handler = async (event) => {
     let maxDims = { ...defaultDims }
     let freightRequired = false
     let shippableCount = 0
-    const installOnlySkus: string[] = []
+    const installOnlyItems: string[] = []
     const soloPackages: Array<{ weight: number; dims: typeof defaultDims; sku?: string; title?: string; qty?: number }> = []
+    const missingProducts: string[] = []
 
-    function bySku(sku: string) {
-      return products.find(p => p?.sku === sku) || null
+    function resolveProduct(item: CartItem) {
+      const skuCandidates = [item?.sku, item?.product?.sku]
+      for (const sku of skuCandidates) {
+        const normalized = (sku || '').trim()
+        if (normalized && productBySku.has(normalized)) return productBySku.get(normalized)
+      }
+
+      const idCandidates = [item?.productId, item?.id, item?._id, item?.product?._id]
+      for (const raw of idCandidates) {
+        const normalized = normalizeId(raw)
+        if (normalized && productById.has(normalized)) return productById.get(normalized)
+      }
+
+      const titleCandidates = [item?.title, item?.name, item?.product?.title]
+      for (const title of titleCandidates) {
+        const normalized = (title || '').trim()
+        if (normalized && productByTitle.has(normalized)) return productByTitle.get(normalized)
+      }
+
+      return null
     }
 
-    for (const sku of skus) {
-      const qty = Number(qtyBySku.get(sku) || 1)
-      const prod = bySku(sku)
+    for (const item of cart) {
+      const qty = Number(item?.quantity || 1)
+      const prod = resolveProduct(item)
+      const identifier =
+        (item?.sku || '').trim() ||
+        normalizeId(item?.productId || item?.id || item?._id || item?.product?._id) ||
+        (item?.title || item?.name || item?.product?.title || '').trim() ||
+        'unknown'
+
+      if (!prod) {
+        missingProducts.push(identifier)
+        continue
+      }
+
       const weight = Number(prod?.shippingWeight || 0)
       const dims = parseDims(prod?.boxDimensions || '') || null
       const shipsAlone = Boolean(prod?.shipsAlone)
@@ -151,7 +241,8 @@ export const handler: Handler = async (event) => {
       const installOnly = isInstallOnlyClass(shippingClass)
 
       if (installOnly) {
-        if (sku && !installOnlySkus.includes(sku)) installOnlySkus.push(sku)
+        const key = prod?.sku || prod?._id || identifier
+        if (key && !installOnlyItems.includes(key)) installOnlyItems.push(key)
         continue
       }
 
@@ -165,7 +256,7 @@ export const handler: Handler = async (event) => {
       if (weight > 0) {
         if (shipsAlone) {
           for (let i = 0; i < qty; i++) {
-            soloPackages.push({ weight, dims: dims || defaultDims, sku, title: prod?.title, qty: 1 })
+            soloPackages.push({ weight, dims: dims || defaultDims, sku: prod?.sku || identifier, title: prod?.title, qty: 1 })
           }
         } else {
           combinedWeight += weight * qty
@@ -182,7 +273,7 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: 200,
         headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ installOnly: true, message: 'All items are install-only; schedule installation instead of shipping.', installOnlySkus }),
+        body: JSON.stringify({ installOnly: true, message: 'All items are install-only; schedule installation instead of shipping.', installOnlySkus: installOnlyItems, missingProducts }),
       }
     }
 
@@ -198,11 +289,14 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: 200,
         headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ freight: true, message: 'Freight required due to weight/dimensions or product class.', packages, installOnlySkus }),
+        body: JSON.stringify({ freight: true, message: 'Freight required due to weight/dimensions or product class.', packages, installOnlySkus: installOnlyItems }),
       }
     }
 
     // Carrier selection
+    const FALLBACK_CARRIER_IDS = ['se-2300833', 'se-2945844', 'se-2300834'] // UPS + FedEx + GlobalPost
+    const FALLBACK_SERVICE_CODES = ['ups_ground', 'ups_2nd_day_air', 'fedex_ground', 'fedex_express_saver', 'globalpost_priority']
+
     let serviceCode = process.env.SHIPENGINE_SERVICE_CODE || process.env.DEFAULT_SHIPENGINE_SERVICE_CODE || ''
     let carrierId = process.env.SHIPENGINE_CARRIER_ID || process.env.DEFAULT_SHIPENGINE_CARRIER_ID || ''
     if (!looksLikeCarrierId(carrierId)) carrierId = ''
@@ -214,7 +308,11 @@ export const handler: Handler = async (event) => {
         headers: { 'API-Key': SHIPENGINE_API_KEY, 'Content-Type': 'application/json' },
       })
       const carriersJson: any = await carriersResp.json().catch(() => null)
-      carrierIds = Array.isArray(carriersJson) ? carriersJson.map((c: any) => c.carrier_id).filter(Boolean) : []
+      carrierIds = Array.isArray(carriersJson)
+        ? carriersJson
+            .map((c: any) => c.carrier_id)
+            .filter((id: string | undefined) => FALLBACK_CARRIER_IDS.includes(id || ''))
+        : FALLBACK_CARRIER_IDS
     }
 
     const ratesResp = await fetch('https://api.shipengine.com/v1/rates', {
@@ -222,11 +320,11 @@ export const handler: Handler = async (event) => {
       headers: { 'API-Key': SHIPENGINE_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         rate_options: { carrier_ids: carrierIds },
-        shipment: {
-          ship_to: toAddress,
-          ship_from: fromAddress,
-          packages,
-        },
+          shipment: {
+            ship_to: toAddress,
+            ship_from: fromAddress,
+            packages,
+          },
       }),
     })
 
@@ -251,10 +349,16 @@ export const handler: Handler = async (event) => {
     rates.sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0))
     const bestRate = rates[0] || null
 
+    if (bestRate && !serviceCode) serviceCode = bestRate.serviceCode
+    if (bestRate && !carrierId) carrierId = bestRate.carrierId
+
+    if (!serviceCode) serviceCode = FALLBACK_SERVICE_CODES[0]
+    if (!carrierId) carrierId = FALLBACK_CARRIER_IDS[0]
+
     return {
       statusCode: 200,
       headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true, freight: false, bestRate, rates, packages, installOnlySkus }),
+      body: JSON.stringify({ success: true, freight: false, bestRate, rates, packages, installOnlySkus: installOnlyItems, carrierId, serviceCode, missingProducts }),
     }
   } catch (err: any) {
     console.error('getShippingQuoteBySkus error:', err)

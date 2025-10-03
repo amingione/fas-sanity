@@ -1,6 +1,9 @@
 // desk/deskStructure.ts
 
 type StructureResolver = import('sanity/structure').StructureResolver
+type UserComponent = import('sanity/structure').UserComponent
+
+import React from 'react'
 
 import DocumentIframePreview from '../components/studio/DocumentIframePreview'
 import CustomerDashboard from '../components/studio/CustomerDashboard'
@@ -11,6 +14,7 @@ import FinancialReports from '../components/studio/FinancialReports'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
 import OrderStatusPreview from '../components/inputs/FulfillmentBadge' // shows <FulfillmentBadge />
 import EnvSelfCheck from '../components/studio/EnvSelfCheck'
+import BookingCalendar from '../components/studio/BookingCalendar'
 import FilterBulkAssign from '../components/studio/FilterBulkAssign'
 import FilterBulkRemove from '../components/studio/FilterBulkRemove'
 import FilterDeleteTag from '../components/studio/FilterDeleteTag'
@@ -24,6 +28,18 @@ const previewPaths: Record<string, string> = {
   shippingLabel: '/label',
   quote: '/quote',
   order: '/order'
+}
+
+const EnvSelfCheckPane: UserComponent = function EnvSelfCheckPane(
+  _props: React.ComponentProps<UserComponent>
+) {
+  return React.createElement(EnvSelfCheck)
+}
+
+const CustomerDashboardPane: UserComponent = function CustomerDashboardPane(
+  props: React.ComponentProps<UserComponent>
+) {
+  return React.createElement(CustomerDashboard, props as any)
 }
 
 const getPreviewViews = (S: any, schema: string) => [
@@ -193,33 +209,38 @@ export const deskStructure: StructureResolver = (S, context) =>
       S.divider(),
 
       S.listItem()
-        .title('📦 Bulk Label Generator')
+        .title('Bulk Label Generator')
         .child(S.component().title('Bulk Label Generator').component(BulkLabelGenerator)),
 
       S.listItem()
-        .title('📄 Packing Slip Generator')
+        .title('Packing Slip Generator')
         .child(S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)),
 
       S.listItem()
-        .title('📊 Financial Dashboard')
+        .title('Financial Dashboard')
         .child(S.component().title('Finance').component(FinancialDashboard)),
 
       S.listItem()
-        .title('📥 Financial Reports')
+        .title('Financial Reports')
         .child(S.component().title('Reports').component(FinancialReports)),
 
       S.listItem()
-        .title('🧾 Fulfillment Console')
+        .title('Fulfillment Console')
         .child(S.component().title('Console').component(BulkFulfillmentConsole)),
 
       S.listItem()
-        .title('👤 Customer Dashboard')
-        .child(S.component().title('Customers').component(CustomerDashboard))
+        .title('Customer Dashboard')
+        .child(S.component().title('Customers').component(CustomerDashboardPane))
 
       ,
       S.listItem()
-        .title('🔒 Env Self‑Check')
-        .child(S.component().title('Environment Status').component(EnvSelfCheck))
+        .title('Booking Calendar')
+        .child(S.component().title('Bookings').component(BookingCalendar))
+
+      ,
+      S.listItem()
+        .title('Env Self‑Check')
+        .child(S.component().title('Environment Status').component(EnvSelfCheckPane))
 
       ,
       S.listItem()
@@ -229,7 +250,7 @@ export const deskStructure: StructureResolver = (S, context) =>
             .title('Admin Tools')
             .items([
               S.listItem()
-                .title('📝 Vendor Applications')
+                .title('Vendor Applications')
                 .child(
                   S.documentTypeList('vendor')
                     .title('Vendor Applications')
@@ -252,7 +273,7 @@ export const deskStructure: StructureResolver = (S, context) =>
                     )
                 ),
               S.listItem()
-                .title('🤝 Vendor Profiles')
+                .title('Vendor Profiles')
                 .child(
                   S.documentTypeList('vendor')
                     .title('Vendor Profiles')
@@ -275,7 +296,7 @@ export const deskStructure: StructureResolver = (S, context) =>
                     )
                 ),
               S.listItem()
-                .title('🤝 Vendor Admin')
+                .title('Vendor Admin')
                 .child(
                   S.component()
                     .title('Vendor Admin Dashboard')

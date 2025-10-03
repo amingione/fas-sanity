@@ -222,6 +222,9 @@ export const handler: Handler = async (event) => {
     }
 
     // Choose service
+    const FALLBACK_CARRIER_IDS = ['se-2300833', 'se-2945844', 'se-2300834'] // UPS, FedEx, GlobalPost
+    const FALLBACK_SERVICE_CODES = ['ups_ground', 'ups_2nd_day_air', 'fedex_ground', 'fedex_express_saver', 'globalpost_priority']
+
     let serviceCode = process.env.SHIPENGINE_SERVICE_CODE || process.env.DEFAULT_SHIPENGINE_SERVICE_CODE || ''
     let carrierId = process.env.SHIPENGINE_CARRIER_ID || process.env.DEFAULT_SHIPENGINE_CARRIER_ID || ''
     const looksLikeCarrierId = (s?: string) => typeof s === 'string' && /[a-f0-9]{8}-[a-f0-9]{4}-/.test(s)
@@ -233,7 +236,10 @@ export const handler: Handler = async (event) => {
         headers: { 'API-Key': SHIPENGINE_API_KEY, 'Content-Type': 'application/json' },
       })
       const carriersJson: any = await carriersResp.json().catch(() => null)
-      const carrierIds = Array.isArray(carriersJson) ? carriersJson.map((c: any) => c.carrier_id).filter(Boolean) : []
+      const carrierIds = Array.isArray(carriersJson) ? carriersJson
+        .map((c: any) => c.carrier_id)
+        .filter((id: string | undefined) => FALLBACK_CARRIER_IDS.includes(id || ''))
+        : FALLBACK_CARRIER_IDS
 
       // Get rate options via /v1/rates with shipment-style payload
       const ratesResp = await fetch('https://api.shipengine.com/v1/rates', {
@@ -270,8 +276,8 @@ export const handler: Handler = async (event) => {
         },
         body: JSON.stringify({
           shipment: {
-            service_code: serviceCode || 'usps_priority_mail',
-            carrier_id: carrierId || undefined,
+            service_code: serviceCode || FALLBACK_SERVICE_CODES[0],
+            carrier_id: carrierId || FALLBACK_CARRIER_IDS[0],
             ship_to: toAddress,
             ship_from: fromAddress,
             packages: [pack],
@@ -306,9 +312,8 @@ export const handler: Handler = async (event) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            customerName: to.name,
-            invoiceId: orderId,
-            products: Array.isArray(order.cart) ? order.cart : [],
+            orderId,
+            invoiceId: order?.invoiceRef?._ref || undefined,
           }),
         })
         if (psRes.ok) {
