@@ -109,8 +109,8 @@ export const handler: Handler = async (event) => {
 
 const content = google.content({ version: 'v2.1', auth })
 
-const products = await sanity.fetch(
-  `*[_type == "product" && defined(price) && price > 0]{
+    const products = await sanity.fetch(
+      `*[_type == "product" && defined(price) && price > 0]{
         _id,
         title,
         slug,
@@ -125,7 +125,7 @@ const products = await sanity.fetch(
         description,
         brand,
         canonicalUrl,
-        images[]{asset->{url}},
+        images[]{ 'url': asset->url },
         category[]->title
       }`
     )
@@ -187,7 +187,7 @@ const products = await sanity.fetch(
         batchId: index,
         merchantId: MERCHANT_ID,
         method: 'insert',
-        resource: googleProduct,
+        product: googleProduct,
       })
       } catch (err: any) {
         skipped.push({ id: product?._id || `index-${index}`, reason: err?.message || 'Failed to build product payload' })
