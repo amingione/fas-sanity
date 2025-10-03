@@ -11,6 +11,24 @@ export default defineType({
     defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
     defineField({ name: 'customerRef', title: 'Customer Reference', type: 'reference', to: [{ type: 'customer' }] }),
     defineField({ name: 'invoiceRef', title: 'Linked Invoice', type: 'reference', to: [{ type: 'invoice' }] }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'slug',
+      description: 'Auto-generated from the Stripe session ID for previews.',
+      options: {
+        source: 'stripeSessionId',
+        slugify: (value: string) =>
+          (value || '')
+            .toString()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 96),
+      },
+      readOnly: true,
+      hidden: true,
+    }),
     defineField({ name: 'cart', title: 'Cart Items', type: 'array', of: [ { type: 'orderCartItem' } ] }),
     defineField({ name: 'totalAmount', title: 'Total Amount (USD)', type: 'number' }),
     // Stripe/Payment details (added to match existing data and avoid unknown fields)

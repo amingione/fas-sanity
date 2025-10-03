@@ -27,6 +27,17 @@ function idVariants(id?: string): string[] {
   return Array.from(new Set(ids))
 }
 
+function createOrderSlug(source?: string | null, fallback?: string | null): string | null {
+  const raw = (source || fallback || '').toString().trim()
+  if (!raw) return null
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96)
+  return slug || null
+}
+
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
 
@@ -231,6 +242,9 @@ export const handler: Handler = async (event) => {
       ...(shippingAddress ? { shippingAddress } : {}),
       ...(cart.length ? { cart } : {}),
     }
+
+    const orderSlug = createOrderSlug(stripeSessionId, paymentIntentId)
+    if (orderSlug) baseDoc.slug = { _type: 'slug', current: orderSlug }
 
     if (invoiceId) baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
 

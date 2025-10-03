@@ -58,6 +58,17 @@ function fixCart(arr: any[]) {
   return transformed
 }
 
+function createOrderSlug(source?: string | null, fallback?: string | null): string | null {
+  const raw = (source || fallback || '').toString().trim()
+  if (!raw) return null
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96)
+  return slug || null
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -92,7 +103,9 @@ export const handler: Handler = async (event) => {
           _id,
           cart,
           customerRef,
-          customer
+          customer,
+          slug,
+          stripeSessionId
         }[0...$limit]`,
         { limit: pageSize, cursor }
       )
@@ -114,8 +127,28 @@ export const handler: Handler = async (event) => {
         // Fix cart item types
         const fixedCart = fixCart(doc.cart)
         if (Array.isArray(fixedCart)) {
-          const needs = (doc.cart || []).some((i: any) => i && typeof i === 'object' && !i._type)
+          const original = Array.isArray(doc.cart) ? doc.cart : []
+          const lengthsDiffer = original.length !== fixedCart.length
+          const needs =
+            lengthsDiffer ||
+            original.some((i: any) => {
+              if (!i || typeof i !== 'object') return false
+              if (i._type !== 'orderCartItem') return true
+              return typeof i._key !== 'string' || i._key.length === 0
+            })
           if (needs) setOps.cart = fixedCart
+        }
+
+        const slugSource = (doc.stripeSessionId || doc._id || '').toString()
+        const desiredSlug = createOrderSlug(slugSource, doc._id)
+        const currentSlug = (() => {
+          if (!doc?.slug) return ''
+          if (typeof doc.slug === 'string') return doc.slug
+          if (typeof doc.slug?.current === 'string') return doc.slug.current
+          return ''
+        })()
+        if (desiredSlug && currentSlug !== desiredSlug) {
+          setOps.slug = { _type: 'slug', current: desiredSlug }
         }
 
         if (Object.keys(setOps).length || unsetOps.length) {

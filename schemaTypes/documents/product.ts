@@ -307,7 +307,17 @@ const product = defineType({
     // SHIPPING
     defineField({ name: 'shippingWeight', title: 'Shipping Weight (lbs)', type: 'number', group: 'shipping' }),
     defineField({ name: 'boxDimensions', title: 'Box Dimensions', type: 'string', description: 'Example: 18x12x10 inches', group: 'shipping' }),
-    defineField({ name: 'shippingClass', title: 'Shipping Class', type: 'string', options: { list: ['Standard', 'Oversized', 'Freight', 'Hazardous', 'Free Shipping'], layout: 'dropdown' }, description: 'Used to calculate shipping rates or rules based on product class.', group: 'shipping' }),
+    defineField({
+      name: 'shippingClass',
+      title: 'Shipping Class',
+      type: 'string',
+      options: {
+        list: ['Standard', 'Oversized', 'Freight', 'Hazardous', 'Free Shipping', 'Install Only'],
+        layout: 'dropdown',
+      },
+      description: 'Used to calculate shipping rates or rules based on product class. “Install Only” skips shipping calculations.',
+      group: 'shipping',
+    }),
     defineField({ name: 'shipsAlone', title: 'Ships Alone?', type: 'boolean', description: 'Enable if this item must be shipped separately due to size or fragility.', group: 'shipping' }),
     defineField({ name: 'handlingTime', title: 'Estimated Handling Time (Days)', type: 'number', description: 'Days before the product ships. Used in estimated delivery time.', group: 'shipping' }),
     defineField({ name: 'specialShippingNotes', title: 'Shipping Notes', type: 'text', description: 'Internal notes or customer messages about delivery or packaging.', group: 'shipping' }),

@@ -75,7 +75,7 @@ export const handler: Handler = async (event) => {
 
     // fetch matching products by sku or title
     const products: any[] = await sanity.fetch(
-      `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone}`,
+      `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass}`,
       { skus, titles }
     )
 
@@ -90,7 +90,11 @@ export const handler: Handler = async (event) => {
     let maxDims = { ...defaultDims }
     let hasShipsAlone = false
     let freightRequired = false
+    let shippableCount = 0
+    const installOnlySkus: string[] = []
     const soloPackages: Array<{ weight: number; dims: typeof defaultDims; sku?: string; title?: string }> = []
+
+    const isInstallOnlyClass = (value?: string) => typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
 
     function findProd(ci: CartItem) {
       if (!products || products.length === 0) return null
@@ -112,6 +116,15 @@ export const handler: Handler = async (event) => {
       const dims = parseDims(prod?.boxDimensions || '') || null
       const shipsAlone = Boolean(prod?.shipsAlone)
       const shippingClass = (prod?.shippingClass || '').toString()
+      const installOnly = isInstallOnlyClass(shippingClass)
+
+      if (installOnly) {
+        const sku = (ci?.sku || prod?.sku || '').toString()
+        if (sku && !installOnlySkus.includes(sku)) installOnlySkus.push(sku)
+        continue
+      }
+
+      shippableCount += 1
 
       // Freight rules: explicit shippingClass == 'Freight' OR heavy/bulky packages
       if (/^freight$/i.test(shippingClass)) freightRequired = true
@@ -136,6 +149,29 @@ export const handler: Handler = async (event) => {
             maxDims.height = Math.max(maxDims.height, dims.height)
           }
         }
+      }
+    }
+
+    if (shippableCount === 0) {
+      try {
+        await sanity.patch(orderId)
+          .setIfMissing({ shippingLog: [] })
+          .append('shippingLog', [
+            {
+              _type: 'shippingLogEntry',
+              status: 'install_only',
+              message: 'Order contains install-only items — no shipping label required.',
+              createdAt: new Date().toISOString(),
+            },
+          ])
+          .commit({ autoGenerateArrayKeys: true })
+      } catch (e) {
+        console.warn('fulfill-order: failed to log install-only status', e)
+      }
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ success: true, installOnly: true, message: 'Install-only order. Schedule installation instead of shipping.', installOnlySkus }),
       }
     }
 

@@ -35,6 +35,8 @@ function parseDims(s?: string): { length: number; width: number; height: number;
   return { length: Number(L), width: Number(W), height: Number(H), unit: 'inch' as const }
 }
 
+const isInstallOnlyClass = (value?: string) => typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -113,6 +115,8 @@ export const handler: Handler = async (event) => {
   let combinedWeight = 0
   let maxDims = { ...defaultDims }
   let freightRequired = false
+  let shippableCount = 0
+  const installOnlySkus: string[] = []
   const soloPackages: Array<{ weight: number; dims: typeof defaultDims; sku?: string; title?: string }> = []
 
   function findProd(ci: CartItem) {
@@ -134,6 +138,15 @@ export const handler: Handler = async (event) => {
     const dims = parseDims(prod?.boxDimensions || '') || null
     const shipsAlone = Boolean(prod?.shipsAlone)
     const shippingClass = (prod?.shippingClass || '').toString()
+    const installOnly = isInstallOnlyClass(shippingClass)
+
+    if (installOnly) {
+      const sku = (prod?.sku || ci?.sku || '').toString()
+      if (sku && !installOnlySkus.includes(sku)) installOnlySkus.push(sku)
+      continue
+    }
+
+    shippableCount += 1
 
     if (/^freight$/i.test(shippingClass)) freightRequired = true
     const anyDim = dims ? Math.max(dims.length, dims.width, dims.height) : 0
@@ -151,6 +164,14 @@ export const handler: Handler = async (event) => {
           maxDims.height = Math.max(maxDims.height, dims.height)
         }
       }
+    }
+  }
+
+  if (shippableCount === 0) {
+    return {
+      statusCode: 200,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ freight: false, installOnly: true, message: 'All items are install-only; no freight quote required.', installOnlySkus }),
     }
   }
 
