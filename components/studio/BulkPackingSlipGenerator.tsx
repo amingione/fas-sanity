@@ -7,7 +7,8 @@ import { format } from 'date-fns'
 type Invoice = {
   _id: string
   customerName: string
-  products: { title: string; quantity: number }[]
+  reference: string
+  itemCount: number
 }
 
 type FileMeta = {
@@ -26,20 +27,29 @@ export default function BulkPackingSlipGenerator() {
     const fetchData = async () => {
       const result = await client.fetch(`*[_type == "invoice" && !defined(shippingLabel)]{
         _id,
-        quote->{ 
-          customer->{ fullName },
-          products[]->{ title }
-        }
+        invoiceNumber,
+        orderNumber,
+        customerEmail,
+        billTo{ name },
+        shipTo{ name },
+        lineItems[]{ _key }
       }`)
 
-      const formatted = result.map((doc: any) => ({
-        _id: doc._id,
-        customerName: doc.quote?.customer?.fullName || 'Unknown',
-        products: (doc.quote?.products || []).map((p: any) => ({
-          title: p.title || 'Unnamed',
-          quantity: 1
-        }))
-      }))
+      const formatted = result.map((doc: any) => {
+        const items = Array.isArray(doc.lineItems) ? doc.lineItems.length : 0
+        const displayName =
+          doc.shipTo?.name ||
+          doc.billTo?.name ||
+          doc.customerEmail ||
+          'Customer'
+        const ref = doc.invoiceNumber || doc.orderNumber || doc._id.slice(-6)
+        return {
+          _id: doc._id,
+          customerName: displayName,
+          reference: ref,
+          itemCount: items,
+        }
+      })
       setInvoices(formatted)
     }
 
@@ -52,7 +62,7 @@ export default function BulkPackingSlipGenerator() {
       const res = await fetch('/.netlify/functions/generatePackingSlips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invoice)
+        body: JSON.stringify({ invoiceId: invoice._id })
       })
 
       const blob = await res.blob()
@@ -65,7 +75,7 @@ export default function BulkPackingSlipGenerator() {
       window.URL.revokeObjectURL(url)
 
       const size = Math.round(blob.size / 1024)
-      const pages = Math.max(1, Math.ceil(invoice.products.length / 12))
+      const pages = Math.max(1, Math.ceil(Math.max(invoice.itemCount, 1) / 15))
 
       setFileMeta(prev => ({
         ...prev,
@@ -87,7 +97,7 @@ export default function BulkPackingSlipGenerator() {
       const res = await fetch('/.netlify/functions/generatePackingSlips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(invoice)
+        body: JSON.stringify({ invoiceId: invoice._id })
       })
 
       const blob = await res.blob()
@@ -95,7 +105,7 @@ export default function BulkPackingSlipGenerator() {
       window.open(url, '_blank')
 
       const size = Math.round(blob.size / 1024)
-      const pages = Math.max(1, Math.ceil(invoice.products.length / 12))
+      const pages = Math.max(1, Math.ceil(Math.max(invoice.itemCount, 1) / 15))
 
       setFileMeta(prev => ({
         ...prev,
@@ -120,7 +130,7 @@ export default function BulkPackingSlipGenerator() {
         {invoices.map((invoice) => (
           <Card key={invoice._id} padding={4} shadow={1} radius={3}>
             <Stack space={3}>
-              <Text size={2}>🧾 {invoice.customerName}</Text>
+              <Text size={2}>🧾 {invoice.customerName} — {invoice.reference}</Text>
               <Flex gap={2}>
                 <Button
                   text="Download"

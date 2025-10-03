@@ -26,6 +26,15 @@ export default defineType({
       description:
         'Legacy identifier for imported accounts. FAS Auth uses this document ID, so new users can leave this empty.',
     }),
+    defineField({
+      name: 'name',
+      title: 'Legacy Full Name',
+      type: 'string',
+      readOnly: true,
+      description:
+        'Existing records may still use this legacy field. Use the action button or copy the value into First/Last Name below.',
+      hidden: ({ document }) => !document?.name,
+    }),
     defineField({ name: 'firstName', title: 'First Name', type: 'string' }),
     defineField({ name: 'lastName', title: 'Last Name', type: 'string' }),
     defineField({
@@ -91,9 +100,17 @@ export default defineType({
 
   preview: {
     select: {
-      title: 'email',
-      subtitle: 'firstName'
-    }
+      firstName: 'firstName',
+      lastName: 'lastName',
+      email: 'email'
+    },
+    prepare({ firstName, lastName, email }) {
+      const name = [firstName, lastName].filter(Boolean).join(' ').trim()
+      return {
+        title: name || email || 'Unnamed Customer',
+        subtitle: email || undefined,
+      }
+    },
   },
 
 })

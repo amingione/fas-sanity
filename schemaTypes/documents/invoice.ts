@@ -558,15 +558,10 @@ el(
     type: 'button',
     onClick: async () => {
       try {
-        const bill = doc?.billTo || {}
-        const customerName = bill?.name || doc?.customerEmail || 'Customer'
-        const items = Array.isArray(doc?.lineItems) ? doc.lineItems : []
-        const products = items.map((li: any) => ({ name: li?.description || li?.sku || 'Item', quantity: Number(li?.quantity || 1) }))
-
         const res = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customerName, invoiceId: _id, products })
+          body: JSON.stringify({ invoiceId: (_id || '').replace(/^drafts\./, '') })
         })
         if (!res.ok) throw new Error(await res.text())
 

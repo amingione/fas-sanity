@@ -58,6 +58,8 @@ async function getActiveCarrierIds(apiKey: string): Promise<string[]> {
   return carriersArr.map((c: any) => c?.carrier_id).filter(Boolean)
 }
 
+const DEFAULT_CARRIER_IDS = ['se-2300833', 'se-2945844', 'se-2300834'] // UPS, FedEx, GlobalPost
+
 export const handler: Handler = async (event) => {
   // Preflight support for Studio's POST JSON
   if (event.httpMethod === 'OPTIONS') {
@@ -92,17 +94,18 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const carrierIds = Array.isArray(bodyCarrierIds) && bodyCarrierIds.length > 0
+    const carrierIds = (Array.isArray(bodyCarrierIds) && bodyCarrierIds.length > 0
       ? bodyCarrierIds
-      : await getActiveCarrierIds(SHIPENGINE_API_KEY)
+      : DEFAULT_CARRIER_IDS
+    ).filter(Boolean)
 
     if (!carrierIds || carrierIds.length === 0) {
       return {
         statusCode: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          error: 'No active carriers available for this ShipEngine account.',
-          hint: 'Verify SHIPENGINE_API_KEY is valid and at least one carrier is connected & active in ShipEngine.',
+          error: 'No carrier IDs provided for rate lookup.',
+          hint: 'Pass carrier_ids in the request body or set DEFAULT_CARRIER_IDS for UPS/FedEx.',
         }),
       }
     }

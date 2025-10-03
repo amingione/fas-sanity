@@ -3,7 +3,9 @@ import { Card, Heading, Text, Stack, Flex, Spinner, TabList, Tab, Button } from 
 import { useClient } from 'sanity'
 import { useRouter } from 'sanity/router'
 
-export default function CustomerDashboard() {
+const DAY = 24 * 60 * 60 * 1000
+
+const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
     const client = useClient({ apiVersion: '2024-04-10' })
     const router = useRouter()
 
@@ -31,15 +33,54 @@ export default function CustomerDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [quotes, invoices, customers, recent, openQ, revenue, recentQuotes, recentInvoices] = await Promise.all([
+                const customersQuery = `*[_type == "customer"] | order(_createdAt desc)[0...12]{
+                  _id,
+                  _createdAt,
+                  email,
+                  phone,
+                  notes,
+                  address,
+                  firstName,
+                  lastName,
+                  name,
+                  lifetimeSpend,
+                  orderCount,
+                  quoteCount
+                }`
+
+                const thirtyDaysAgo = new Date(Date.now() - 30 * DAY).toISOString()
+
+                const [quotes, invoices, customers, recent, openQ, recentInvoiceTotals, recentQuotes, recentInvoices] = await Promise.all([
                     client.fetch('count(*[_type == "quote"])'),
                     client.fetch('count(*[_type == "invoice"])'),
                     client.fetch('count(*[_type == "customer"])'),
-                    client.fetch(`*[_type == "customer"] | order(_createdAt desc)[0...5]{_id, name, _createdAt, email, phone, vehicle, notes, address}`),
+                    client.fetch(customersQuery),
                     client.fetch('count(*[_type == "quote" && conversionStatus == "Open"])'),
-                    client.fetch('sum(*[_type == "invoice" && defined(total) && dateTime(_createdAt) >= dateTime(now()) - 30*24*60*60]{total})'),
-                    client.fetch(`*[_type == "quote"] | order(_createdAt desc)[0...5]{_id, customer->{name, email}}`),
-                    client.fetch(`*[_type == "invoice"] | order(_createdAt desc)[0...5]{_id, customer->{name, email}}`)
+                    client.fetch(`*[_type == "invoice" && defined(total) && dateTime(_createdAt) >= dateTime($from)]{total}` , { from: thirtyDaysAgo }),
+                    client.fetch(`*[_type == "quote"] | order(_createdAt desc)[0...5]{
+                      _id,
+                      customer->{
+                        name,
+                        email,
+                        firstName,
+                        lastName
+                      }
+                    }`),
+                    client.fetch(`*[_type == "invoice"] | order(_createdAt desc)[0...5]{
+                      _id,
+                      customer->{
+                        name,
+                        email,
+                        firstName,
+                        lastName
+                      },
+                      customerRef->{
+                        name,
+                        email,
+                        firstName,
+                        lastName
+                      }
+                    }`)
                 ])
 
                 setData({
@@ -51,20 +92,53 @@ export default function CustomerDashboard() {
                 // Enrich recent customers with order/quote counts and spend
                 const customerIds = recent.map((c: any) => c._id)
                 const enriched = await Promise.all(customerIds.map(async (id: string) => {
-                  const [orderCount, quoteCount, totalSpend] = await Promise.all([
-                    client.fetch(`count(*[_type == "invoice" && customer._ref == $id])`, { id }),
+                  const [orderCount, quoteCount, invoiceTotals] = await Promise.all([
+                    client.fetch(`count(*[_type == "invoice" && coalesce(customer._ref, customerRef._ref) == $id])`, { id }),
                     client.fetch(`count(*[_type == "quote" && customer._ref == $id])`, { id }),
-                    client.fetch(`sum(*[_type == "invoice" && customer._ref == $id && defined(total)]{total})`, { id }),
+                    client.fetch(`*[_type == "invoice" && coalesce(customer._ref, customerRef._ref) == $id && defined(total)]{total}`, { id }),
                   ])
                   const c = recent.find((c: any) => c._id === id)
-                  return { ...c, orderCount, quoteCount, lifetimeSpend: totalSpend || 0 }
+                  const displayName = (c?.name || '').trim() ||
+                    [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() ||
+                    c?.email ||
+                    'Unnamed Customer'
+                  const totalSpend = (Array.isArray(invoiceTotals) ? invoiceTotals : [])
+                    .reduce((sum: number, item: any) => sum + Number(item?.total || 0), 0)
+                  return { ...c, name: displayName, orderCount, quoteCount, lifetimeSpend: totalSpend }
                 }))
 
                 setRecentCustomers(enriched)
                 setOpenQuotes(openQ)
-                setMonthlyRevenue(revenue || 0)
-                setRecentQuotes(recentQuotes)
-                setRecentInvoices(recentInvoices)
+                const monthly = (Array.isArray(recentInvoiceTotals) ? recentInvoiceTotals : [])
+                  .reduce((sum: number, item: any) => sum + Number(item?.total || 0), 0)
+                setMonthlyRevenue(monthly)
+                const normalizePerson = (entity: any) => {
+                  if (!entity) return { name: 'Unknown', email: 'N/A' }
+                  const full = (entity.name || '').trim() ||
+                    [entity.firstName, entity.lastName].filter(Boolean).join(' ').trim()
+                  return {
+                    name: full || entity.email || 'Unknown',
+                    email: entity.email || 'N/A'
+                  }
+                }
+
+                const normalizedQuotes = recentQuotes.map((quote: any) => ({
+                  ...quote,
+                  customerSummary: normalizePerson(quote.customer)
+                }))
+
+                const normalizedInvoices = recentInvoices.map((invoice: any) => {
+                  const primary = normalizePerson(invoice.customer)
+                  const fallback = normalizePerson(invoice.customerRef)
+                  const merged = primary.name === 'Unknown' && fallback.name !== 'Unknown' ? fallback : primary
+                  return {
+                    ...invoice,
+                    customerSummary: merged
+                  }
+                })
+
+                setRecentQuotes(normalizedQuotes)
+                setRecentInvoices(normalizedInvoices)
             } catch (err) {
                 console.error('❌ Failed to fetch dashboard data:', err)
             }
@@ -73,7 +147,7 @@ export default function CustomerDashboard() {
     }, [client])
 
     return (
-      <>
+      <div ref={ref}>
         {/* Toast message for confirmation */}
         {toastMsg && (
           <Card padding={3} radius={2} shadow={1} tone="positive" style={{ marginBottom: '1rem' }}>
@@ -204,7 +278,7 @@ export default function CustomerDashboard() {
                         radius={2}
                         shadow={1}
                         tone="default"
-                        style={{ backgroundColor: '#111' }}
+                        style={{ backgroundColor: '#ecececff' }}
                       >
                         <Flex justify="space-between" align="center" style={{ cursor: 'pointer' }} onClick={() => {
                           setExpandedCustomerIds((prev) =>
@@ -329,7 +403,9 @@ export default function CustomerDashboard() {
                       <Card key={idx} padding={3} radius={2} shadow={1} tone="default">
                         <Stack space={2}>
                           <Text size={2}>Invoice #{inv._id}</Text>
-                          <Text size={1} muted>Customer: {inv.customer?.name || 'Unknown'} — {inv.customer?.email || 'N/A'}</Text>
+                          <Text size={1} muted>
+                            Customer: {inv.customerSummary?.name || 'Unknown'} — {inv.customerSummary?.email || 'N/A'}
+                          </Text>
                           <Flex align="center" justify="space-between">
                             <Stack space={1}>
                               <Text size={1}>Status:</Text>
@@ -401,7 +477,9 @@ export default function CustomerDashboard() {
                       <Card key={idx} padding={3} radius={2} shadow={1} tone="default">
                         <Stack space={2}>
                           <Text size={2}>Invoice #{inv._id}</Text>
-                          <Text size={1} muted>Customer: {inv.customer?.name || 'Unknown'} — {inv.customer?.email || 'N/A'}</Text>
+                          <Text size={1} muted>
+                            Customer: {inv.customerSummary?.name || 'Unknown'} — {inv.customerSummary?.email || 'N/A'}
+                          </Text>
                           <Flex justify="flex-end">
                             <Button
                               text="View Details"
@@ -426,6 +504,10 @@ export default function CustomerDashboard() {
             )}
           </div>
         </div>
-      </>
+      </div>
     )
-}
+})
+
+CustomerDashboard.displayName = 'CustomerDashboard'
+
+export default CustomerDashboard
