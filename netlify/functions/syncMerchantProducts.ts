@@ -125,8 +125,8 @@ const content = google.content({ version: 'v2.1', auth })
         description,
         brand,
         canonicalUrl,
-        images[]{ 'url': asset->url },
-        category[]->title
+        "images": images[].asset->url,
+        "categories": category[]->title
       }`
     )
 
@@ -149,9 +149,9 @@ const content = google.content({ version: 'v2.1', auth })
       const description = selectDescription(product)
      const salePrice = product?.onSale ? toPositiveNumber(product?.salePrice) : undefined
       const currency = (product?.currency || product?.priceCurrency || 'USD').toString().toUpperCase() || 'USD'
-     const productType = Array.isArray(product?.category) && product.category.length > 0
-       ? product.category.join(' > ')
-       : undefined
+      const productType = Array.isArray(product?.categories) && product.categories.length > 0
+        ? product.categories.join(' > ')
+        : undefined
       const googleProductCategory = product?.googleProductCategory || product?.google_product_category
 
       const googleProduct: any = {

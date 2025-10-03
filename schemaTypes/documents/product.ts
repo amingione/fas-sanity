@@ -150,6 +150,29 @@ const product = defineType({
     defineField({ name: 'price', title: 'Price', type: 'number', group: 'pricing' }),
     defineField({ name: 'salePrice', title: 'Sale Price', type: 'number', group: 'pricing' }),
     defineField({ name: 'onSale', title: 'On Sale?', type: 'boolean', group: 'pricing' }),
+    defineField({
+      name: 'taxBehavior',
+      title: 'Tax Behavior',
+      type: 'string',
+      description: 'Controls how this product is taxed when building invoices or Stripe checkout sessions.',
+      options: {
+        list: [
+          {title: 'Taxable', value: 'taxable'},
+          {title: 'Tax Exempt', value: 'exempt'},
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'taxable',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'taxCode',
+      title: 'Tax Code (optional)',
+      type: 'string',
+      description: 'Optional Stripe or internal tax code to map this product to a specific tax category.',
+      group: 'pricing',
+      hidden: ({parent}) => parent?.taxBehavior === 'exempt',
+    }),
     defineField({ name: 'pricingTiers', title: 'Pricing Tiers', type: 'array', of: [
       { type: 'pricingTier' }
     ], group: 'pricing' }),
