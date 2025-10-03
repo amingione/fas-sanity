@@ -15,6 +15,7 @@ import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
 import OrderStatusPreview from '../components/inputs/FulfillmentBadge' // shows <FulfillmentBadge />
 import EnvSelfCheck from '../components/studio/EnvSelfCheck'
 import BookingCalendar from '../components/studio/BookingCalendar'
+import ProductBulkEditor from '../components/studio/ProductBulkEditor'
 import FilterBulkAssign from '../components/studio/FilterBulkAssign'
 import FilterBulkRemove from '../components/studio/FilterBulkRemove'
 import FilterDeleteTag from '../components/studio/FilterDeleteTag'
@@ -231,6 +232,11 @@ export const deskStructure: StructureResolver = (S, context) =>
       S.listItem()
         .title('Customer Dashboard')
         .child(S.component().title('Customers').component(CustomerDashboardPane))
+
+      ,
+      S.listItem()
+        .title('Product Bulk Editor')
+        .child(S.component().title('Bulk Editor').component(ProductBulkEditor))
 
       ,
       S.listItem()
