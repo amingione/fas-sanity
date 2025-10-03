@@ -49,6 +49,111 @@ function computeTotals(doc: any) {
   return { subtotal, discountAmt, taxAmount, total }
 }
 
+function normalizeId(id?: string): string {
+  if (!id) return ''
+  return id.startsWith('drafts.') ? id.slice(7) : id
+}
+
+function resolveNetlifyBase(): string {
+  const candidates = [
+    process.env.NETLIFY_FUNCTIONS_BASE,
+    process.env.NETLIFY_BASE_URL,
+    process.env.SANITY_STUDIO_NETLIFY_BASE,
+    process.env.AUTH0_BASE_URL,
+  ]
+
+  for (const candidate of candidates) {
+    if (candidate && /^https?:\/\//i.test(candidate)) {
+      return candidate.replace(/\/$/, '')
+    }
+  }
+
+  return 'https://fassanity.fasmotorsports.com'
+}
+
+type InvoiceAddress = {
+  name?: string
+  phone?: string
+  email?: string
+  address_line1?: string
+  addressLine1?: string
+  address_line2?: string
+  addressLine2?: string
+  city_locality?: string
+  city?: string
+  state_province?: string
+  state?: string
+  postal_code?: string
+  postalCode?: string
+  country_code?: string
+  country?: string
+}
+
+type Destination = {
+  name?: string
+  phone?: string
+  email?: string
+  addressLine1: string
+  addressLine2?: string
+  city?: string
+  state?: string
+  postalCode: string
+  country: string
+}
+
+function buildDestinationAddress(addr?: InvoiceAddress | null): Destination | null {
+  if (!addr) return null
+  const line1 = (addr.address_line1 || addr.addressLine1 || '').trim()
+  const postal = (addr.postal_code || addr.postalCode || '').trim()
+  const country = (addr.country_code || addr.country || '').trim().toUpperCase()
+  if (!line1 || !postal || !country) return null
+  return {
+    name: (addr as any)?.name || undefined,
+    phone: (addr as any)?.phone || undefined,
+    email: (addr as any)?.email || undefined,
+    addressLine1: line1,
+    addressLine2: (addr.address_line2 || addr.addressLine2 || '').trim() || undefined,
+    city: (addr.city_locality || addr.city || '').trim() || undefined,
+    state: (addr.state_province || addr.state || '').trim() || undefined,
+    postalCode: postal,
+    country,
+  }
+}
+
+type ShippingCartItem = {
+  sku?: string
+  productId?: string
+  title?: string
+  quantity: number
+}
+
+function buildShippingCart(lineItems: any[]): ShippingCartItem[] {
+  if (!Array.isArray(lineItems) || lineItems.length === 0) return []
+  const cart: ShippingCartItem[] = []
+
+  for (const item of lineItems) {
+    if (!item) continue
+    const quantity = Number(item?.quantity || 1)
+    if (!Number.isFinite(quantity) || quantity <= 0) continue
+
+    const productObj = item?.product || {}
+    const productId = normalizeId(productObj?._id || productObj?._ref)
+    const sku = (item?.sku || productObj?.sku || '').toString().trim()
+    const title = (productObj?.title || item?.description || item?.name || '').toString().trim() || undefined
+
+    if (!sku && !productId) continue
+
+    cart.push({
+      sku: sku || undefined,
+      productId: productId || undefined,
+      title,
+      quantity,
+    })
+  }
+
+  return cart
+}
+
 // Helper to get both draft and published variants of a document ID
 function idVariants(id: string): string[] {
   const ids = [id]
@@ -87,12 +192,29 @@ export const handler: Handler = async (event) => {
         _id,
         invoiceNumber,
         title,
-        lineItems,
+        lineItems[]{
+          quantity,
+          unitPrice,
+          sku,
+          description,
+          product->{ _id, sku, title }
+        },
         discountType,
         discountValue,
         taxRate,
         paymentLinkUrl,
         billTo {
+          name,
+          email,
+          phone,
+          address_line1,
+          address_line2,
+          city_locality,
+          state_province,
+          postal_code,
+          country_code
+        },
+        shipTo {
           name,
           email,
           phone,
@@ -115,8 +237,67 @@ export const handler: Handler = async (event) => {
     const taxableBase = Math.max(0, subtotal - discountAmt)
     const autoTaxEnv = String(process.env.STRIPE_AUTOMATIC_TAX || 'true').toLowerCase()
     const enableAutomaticTax = autoTaxEnv !== 'false'
-    const automaticTaxEnabled = enableAutomaticTax && taxableBase > 0
-    const amountForStripe = automaticTaxEnabled ? taxableBase : total
+    const hasManualTaxRate = Number.isFinite(invoice?.taxRate) && Number(invoice?.taxRate) > 0
+    const automaticTaxEnabled = enableAutomaticTax && taxableBase > 0 && !hasManualTaxRate
+    const amountForStripe = taxableBase > 0 ? taxableBase : total
+
+    const shippingCart = buildShippingCart(invoice?.lineItems || [])
+    const destination = buildDestinationAddress((invoice?.shipTo as InvoiceAddress) || (invoice?.billTo as InvoiceAddress))
+    let shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined
+
+    if (shippingCart.length && destination) {
+      try {
+        const netlifyBase = resolveNetlifyBase()
+        const quoteRes = await fetch(`${netlifyBase}/.netlify/functions/getShippingQuoteBySkus`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cart: shippingCart, destination }),
+        })
+        const quoteData = await quoteRes.json().catch(() => ({}))
+
+        if (quoteData?.installOnly) {
+          console.log('createCheckout: shipping quote indicates install-only items; skipping shipping options.')
+        } else if (quoteData?.freight) {
+          console.log('createCheckout: shipping quote requires freight. Consider manual handling.', {
+            invoiceId,
+          })
+        } else if (quoteRes.ok && !quoteData?.error && Array.isArray(quoteData?.rates) && quoteData.rates.length > 0) {
+          const filteredRates = quoteData.rates
+            .filter((rate: any) => Number.isFinite(Number(rate?.amount)))
+            .sort((a: any, b: any) => Number(a?.amount || 0) - Number(b?.amount || 0))
+
+          shippingOptions = filteredRates.slice(0, 6).map((rate: any) => {
+            const amountCents = Math.max(0, Math.round(Number(rate.amount) * 100))
+            const displayNameParts = [rate?.carrier, rate?.service].map((part: any) => (part || '').toString().trim()).filter(Boolean)
+            const displayName = displayNameParts.join(' – ') || 'Shipping'
+            const deliveryDays = Number(rate?.deliveryDays)
+            const estimate = Number.isFinite(deliveryDays) && deliveryDays > 0
+              ? {
+                  minimum: { unit: 'business_day' as const, value: Math.max(1, Math.floor(deliveryDays)) },
+                  maximum: { unit: 'business_day' as const, value: Math.max(1, Math.ceil(deliveryDays)) },
+                }
+              : undefined
+
+            return {
+              shipping_rate_data: {
+                display_name: displayName,
+                type: 'fixed_amount',
+                fixed_amount: { amount: amountCents, currency: 'usd' },
+                tax_behavior: 'exclusive',
+                ...(estimate ? { delivery_estimate: estimate } : {}),
+              },
+            }
+          })
+        } else {
+          console.warn('createCheckout: shipping quote unavailable', {
+            status: quoteRes.status,
+            body: quoteData,
+          })
+        }
+      } catch (err) {
+        console.error('createCheckout: failed to fetch shipping quote', err)
+      }
+    }
 
     if (!amountForStripe || amountForStripe <= 0) {
       return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice total must be greater than 0' }) }
@@ -236,10 +417,63 @@ export const handler: Handler = async (event) => {
 
       if (automaticTaxEnabled) {
         sessionParams.automatic_tax = { enabled: true }
-        if (allowedShippingCountries.length > 0) {
-          sessionParams.shipping_address_collection = {
-            allowed_countries: allowedShippingCountries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+      }
+
+      if (allowedShippingCountries.length > 0) {
+        sessionParams.shipping_address_collection = {
+          allowed_countries: allowedShippingCountries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+        }
+      }
+
+      if (shippingOptions && shippingOptions.length > 0) {
+        sessionParams.shipping_options = shippingOptions
+      }
+
+      if (hasManualTaxRate) {
+        try {
+          const jurisdiction = (billTo?.state_province || billTo?.country_code || 'US').toString().trim()
+          const taxRatePct = Number(invoice?.taxRate)
+          const existingRates = await stripe.taxRates.list({
+            limit: 100,
+            active: true,
+            percentage: taxRatePct,
+          })
+          let taxRateId: string | undefined
+          if (existingRates && existingRates.data.length > 0) {
+            taxRateId = existingRates.data.find((rate: Stripe.TaxRate) => {
+              if (!jurisdiction) return true
+              const metaMatch = rate.metadata?.sanity_jurisdiction === jurisdiction
+              const descMatch = (rate.jurisdiction || '').toLowerCase() === jurisdiction.toLowerCase()
+              return metaMatch || descMatch
+            })?.id
           }
+          if (!taxRateId) {
+            const created = await stripe.taxRates.create({
+              display_name: 'Sales Tax',
+              inclusive: false,
+              percentage: taxRatePct,
+              jurisdiction: jurisdiction || undefined,
+              country: (billTo?.country_code || 'US').toUpperCase(),
+              state: (billTo?.state_province || undefined) || undefined,
+              metadata: {
+                sanity_invoice_id: invoiceId,
+                sanity_jurisdiction: jurisdiction || 'US',
+              },
+            })
+            taxRateId = created.id
+          }
+
+          if (taxRateId) {
+            const firstLineItem = sessionParams.line_items?.[0]
+            if (firstLineItem?.price_data) {
+              firstLineItem.price_data.tax_behavior = 'exclusive'
+            }
+            if (firstLineItem) {
+              firstLineItem.tax_rates = [taxRateId]
+            }
+          }
+        } catch (taxErr) {
+          console.error('createCheckout: failed to configure manual tax rate', taxErr)
         }
       }
 

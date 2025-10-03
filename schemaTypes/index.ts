@@ -15,6 +15,8 @@ import { customProductOptionColorObjectType } from './objects/customProductOptio
 import { customProductOptionColorType } from './objects/customProductOption/customProductOptionColorType'
 import { customProductOptionSizeObjectType } from './objects/customProductOption/customProductOptionSizeObjectType'
 import { customProductOptionSizeType } from './objects/customProductOption/customProductOptionSizeType'
+import { customProductOptionCustomObjectType } from './objects/customProductOption/customProductOptionCustomObjectType'
+import { customProductOptionCustomType } from './objects/customProductOption/customProductOptionCustomType'
 import { footerType } from './objects/global/footerType'
 import { gridItemType } from './objects/module/gridItemType'
 import { gridType } from './objects/module/gridType'
@@ -97,6 +99,8 @@ const objects = [
   customProductOptionColorType,
   customProductOptionSizeObjectType,
   customProductOptionSizeType,
+  customProductOptionCustomObjectType,
+  customProductOptionCustomType,
   footerType,
   gridItemType,
   gridType,
