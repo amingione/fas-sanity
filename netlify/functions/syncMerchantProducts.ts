@@ -134,6 +134,7 @@ export const handler: Handler = async (event) => {
     const skipped: Array<{ id: string; reason: string }> = []
 
     products.forEach((product: any, index: number) => {
+      try {
       const offerId = (product?.sku || product?._id || '').toString().trim()
       const link = buildProductLink(product?.slug, product?.canonicalUrl)
       const imageLink = buildImageUrl(product?.images || [])
@@ -143,14 +144,17 @@ export const handler: Handler = async (event) => {
         return
       }
 
-      const availability = Number(product?.inventory) > 0 ? 'in stock' : 'out of stock'
+     const availability = Number(product?.inventory) > 0 ? 'in stock' : 'out of stock'
+      const condition = (product?.condition || product?.productCondition || 'new').toString().toLowerCase()
       const description = selectDescription(product)
-      const salePrice = product?.onSale ? toPositiveNumber(product?.salePrice) : undefined
+     const salePrice = product?.onSale ? toPositiveNumber(product?.salePrice) : undefined
+      const currency = (product?.currency || product?.priceCurrency || 'USD').toString().toUpperCase() || 'USD'
       const shippingWeight = toPositiveNumber(product?.shippingWeight)
       const box = parseBoxDimensions(product?.boxDimensions)
-      const productType = Array.isArray(product?.category) && product.category.length > 0
-        ? product.category.join(' > ')
-        : undefined
+     const productType = Array.isArray(product?.category) && product.category.length > 0
+       ? product.category.join(' > ')
+       : undefined
+      const googleProductCategory = product?.googleProductCategory || product?.google_product_category
 
       const googleProduct: any = {
         offerId,
@@ -161,19 +165,23 @@ export const handler: Handler = async (event) => {
         description: description || product?.title,
         link,
         imageLink,
-        condition: 'new',
+        condition: ['new', 'used', 'refurbished'].includes(condition) ? condition : 'new',
         availability,
-        price: { value: price.toFixed(2), currency: 'USD' },
+        price: { value: price.toFixed(2), currency },
         brand: product?.brand || 'F.A.S. Motorsports',
         mpn: offerId,
       }
 
       if (salePrice && salePrice < price) {
-        googleProduct.salePrice = { value: salePrice.toFixed(2), currency: 'USD' }
+        googleProduct.salePrice = { value: salePrice.toFixed(2), currency }
       }
 
-      if (productType) {
+     if (productType) {
         googleProduct.productType = productType
+      }
+
+      if (googleProductCategory) {
+        googleProduct.googleProductCategory = googleProductCategory
       }
 
       if (shippingWeight) {
@@ -196,6 +204,9 @@ export const handler: Handler = async (event) => {
         method: 'insert',
         product: googleProduct,
       })
+      } catch (err: any) {
+        skipped.push({ id: product?._id || `index-${index}`, reason: err?.message || 'Failed to build product payload' })
+      }
     })
 
     if (entries.length === 0) {
