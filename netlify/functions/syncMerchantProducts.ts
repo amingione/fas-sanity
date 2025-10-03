@@ -107,10 +107,10 @@ export const handler: Handler = async (event) => {
 
     await auth.authorize()
 
-    const content = google.content({ version: 'v2.1', auth })
+const content = google.content({ version: 'v2.1', auth })
 
-    const products = await sanity.fetch(
-      `*[_type == "product" && defined(price) && price > 0]{
+const products = await sanity.fetch(
+  `*[_type == "product" && defined(price) && price > 0]{
         _id,
         title,
         slug,
@@ -149,8 +149,6 @@ export const handler: Handler = async (event) => {
       const description = selectDescription(product)
      const salePrice = product?.onSale ? toPositiveNumber(product?.salePrice) : undefined
       const currency = (product?.currency || product?.priceCurrency || 'USD').toString().toUpperCase() || 'USD'
-      const shippingWeight = toPositiveNumber(product?.shippingWeight)
-      const box = parseBoxDimensions(product?.boxDimensions)
      const productType = Array.isArray(product?.category) && product.category.length > 0
        ? product.category.join(' > ')
        : undefined
@@ -169,7 +167,7 @@ export const handler: Handler = async (event) => {
         availability,
         price: { value: price.toFixed(2), currency },
         brand: product?.brand || 'F.A.S. Motorsports',
-        mpn: offerId,
+       mpn: offerId,
       }
 
       if (salePrice && salePrice < price) {
@@ -184,23 +182,10 @@ export const handler: Handler = async (event) => {
         googleProduct.googleProductCategory = googleProductCategory
       }
 
-      if (shippingWeight) {
-        googleProduct.shippingWeight = `${shippingWeight} lb`
-      }
 
-      if (box.length) {
-        googleProduct.shippingLength = `${box.length} in`
-      }
-      if (box.width) {
-        googleProduct.shippingWidth = `${box.width} in`
-      }
-      if (box.height) {
-        googleProduct.shippingHeight = `${box.height} in`
-      }
-
-      entries.push({
-        batchId: index,
-        merchantId: Number(MERCHANT_ID),
+     entries.push({
+       batchId: index,
+       merchantId: Number(MERCHANT_ID),
         method: 'insert',
         product: googleProduct,
       })
@@ -233,11 +218,14 @@ export const handler: Handler = async (event) => {
       statusCode: 200,
       body: JSON.stringify({ synced: entries.length, skipped, errors }),
     }
-  } catch (err: any) {
-    console.error('syncMerchantProducts error', err)
-    return {
+ } catch (err: any) {
+   console.error('syncMerchantProducts error', err)
+   return {
       statusCode: 500,
-      body: JSON.stringify({ error: err?.message || 'Failed to sync products' }),
+      body: JSON.stringify({
+        error: err?.message || 'Failed to sync products',
+        details: err?.response?.data || err?.errors || null,
+      }),
     }
   }
 }
