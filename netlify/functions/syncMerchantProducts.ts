@@ -177,17 +177,17 @@ export const handler: Handler = async (event) => {
       }
 
       if (shippingWeight) {
-        googleProduct.shippingWeight = { value: shippingWeight, unit: 'lb' }
+        googleProduct.shippingWeight = `${shippingWeight} lb`
       }
 
       if (box.length) {
-        googleProduct.shippingLength = { value: box.length, unit: 'in' }
+        googleProduct.shippingLength = `${box.length} in`
       }
       if (box.width) {
-        googleProduct.shippingWidth = { value: box.width, unit: 'in' }
+        googleProduct.shippingWidth = `${box.width} in`
       }
       if (box.height) {
-        googleProduct.shippingHeight = { value: box.height, unit: 'in' }
+        googleProduct.shippingHeight = `${box.height} in`
       }
 
       entries.push({
