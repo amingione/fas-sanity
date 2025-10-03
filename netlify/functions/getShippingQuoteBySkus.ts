@@ -37,6 +37,7 @@ function parseDims(s?: string): { length: number; width: number; height: number;
 }
 
 const looksLikeCarrierId = (s?: string) => typeof s === 'string' && /[a-f0-9]{8}-[a-f0-9]{4}-/i.test(s)
+const isInstallOnlyClass = (value?: string) => typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
 
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
@@ -132,6 +133,8 @@ export const handler: Handler = async (event) => {
     let combinedWeight = 0
     let maxDims = { ...defaultDims }
     let freightRequired = false
+    let shippableCount = 0
+    const installOnlySkus: string[] = []
     const soloPackages: Array<{ weight: number; dims: typeof defaultDims; sku?: string; title?: string; qty?: number }> = []
 
     function bySku(sku: string) {
@@ -145,6 +148,14 @@ export const handler: Handler = async (event) => {
       const dims = parseDims(prod?.boxDimensions || '') || null
       const shipsAlone = Boolean(prod?.shipsAlone)
       const shippingClass = (prod?.shippingClass || '').toString()
+      const installOnly = isInstallOnlyClass(shippingClass)
+
+      if (installOnly) {
+        if (sku && !installOnlySkus.includes(sku)) installOnlySkus.push(sku)
+        continue
+      }
+
+      shippableCount += 1
 
       if (/^freight$/i.test(shippingClass)) freightRequired = true
       const anyDim = dims ? Math.max(dims.length, dims.width, dims.height) : 0
@@ -167,6 +178,14 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    if (shippableCount === 0) {
+      return {
+        statusCode: 200,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ installOnly: true, message: 'All items are install-only; schedule installation instead of shipping.', installOnlySkus }),
+      }
+    }
+
     if (combinedWeight === 0 && soloPackages.length === 0) {
       combinedWeight = Number(process.env.DEFAULT_PACKAGE_WEIGHT_LBS || 5)
     }
@@ -179,7 +198,7 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: 200,
         headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ freight: true, message: 'Freight required due to weight/dimensions or product class.', packages }),
+        body: JSON.stringify({ freight: true, message: 'Freight required due to weight/dimensions or product class.', packages, installOnlySkus }),
       }
     }
 
@@ -235,7 +254,7 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 200,
       headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true, freight: false, bestRate, rates, packages }),
+      body: JSON.stringify({ success: true, freight: false, bestRate, rates, packages, installOnlySkus }),
     }
   } catch (err: any) {
     console.error('getShippingQuoteBySkus error:', err)
