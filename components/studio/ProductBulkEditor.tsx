@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {Box, Button, Card, Flex, Inline, Spinner, Stack, Table, Text, TextInput, Tooltip, useToast} from '@sanity/ui'
+import {Box, Button, Card, Flex, Inline, Spinner, Stack, Text, TextInput, Tooltip, useToast} from '@sanity/ui'
 import {useClient} from 'sanity'
 
 type ProductDoc = {
@@ -312,40 +312,46 @@ export default function ProductBulkEditor() {
           </Flex>
         ) : (
           <Card shadow={1} radius={2} padding={0} style={{overflowX: 'auto'}}>
-            <Table>
+            <table style={{width: '100%', borderCollapse: 'collapse', minWidth: 960}}>
               <thead>
-                <tr>
-                  <th>ID / SKU</th>
-                  <th>Title</th>
-                  <th>Price</th>
-                  <th>Sale Price</th>
-                  <th>On Sale?</th>
-                  <th>Inventory</th>
-                  <th>Brand</th>
-                  <th>Tax Behavior</th>
-                  <th>Tax Code</th>
-                  <th>Shipping Weight (lb)</th>
-                  <th>Box Dimensions</th>
-                  <th>Google Category</th>
-                  <th>Actions</th>
+                <tr style={{background: '#111827'}}>
+                  {[
+                    'ID / SKU',
+                    'Title',
+                    'Price',
+                    'Sale Price',
+                    'On Sale?',
+                    'Inventory',
+                    'Brand',
+                    'Tax Behavior',
+                    'Tax Code',
+                    'Shipping Weight (lb)',
+                    'Box Dimensions',
+                    'Google Category',
+                    'Actions',
+                  ].map((header) => (
+                    <th key={header} style={{textAlign: 'left', padding: '12px 16px', color: '#d1d5db', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5}}>
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.map((product) => (
-                  <tr key={product._key}>
-                    <td>
+                  <tr key={product._key} style={{borderTop: '1px solid rgba(148, 163, 184, 0.1)'}}>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <Stack space={2}>
                         <Text size={1} style={{color: '#e5e7eb'}}>{product.sku || '—'}</Text>
                         <Text size={1} muted>{product._id}</Text>
                       </Stack>
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.title || ''}
                         onChange={(event) => updateProductField(product._id, 'title', event.currentTarget.value)}
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.price?.toString() ?? ''}
                         onChange={(event) =>
@@ -358,7 +364,7 @@ export default function ProductBulkEditor() {
                         inputMode="decimal"
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.salePrice?.toString() ?? ''}
                         onChange={(event) =>
@@ -371,14 +377,14 @@ export default function ProductBulkEditor() {
                         inputMode="decimal"
                       />
                     </td>
-                    <td style={{textAlign: 'center'}}>
+                    <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
                       <input
                         type="checkbox"
                         checked={Boolean(product.onSale)}
                         onChange={(event) => updateProductField(product._id, 'onSale', event.currentTarget.checked)}
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.inventory?.toString() ?? ''}
                         onChange={(event) =>
@@ -391,13 +397,13 @@ export default function ProductBulkEditor() {
                         inputMode="numeric"
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.brand || ''}
                         onChange={(event) => updateProductField(product._id, 'brand', event.currentTarget.value)}
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <select
                         value={product.taxBehavior || 'taxable'}
                         onChange={(event) => updateProductField(product._id, 'taxBehavior', event.currentTarget.value as any)}
@@ -406,14 +412,14 @@ export default function ProductBulkEditor() {
                         <option value="exempt">Tax Exempt</option>
                       </select>
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.taxCode || ''}
                         onChange={(event) => updateProductField(product._id, 'taxCode', event.currentTarget.value)}
                         disabled={product.taxBehavior === 'exempt'}
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.shippingWeight?.toString() ?? ''}
                         onChange={(event) =>
@@ -426,20 +432,20 @@ export default function ProductBulkEditor() {
                         inputMode="decimal"
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.boxDimensions || ''}
                         onChange={(event) => updateProductField(product._id, 'boxDimensions', event.currentTarget.value)}
                         placeholder="LxWxH"
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
                         value={product.googleProductCategory || ''}
                         onChange={(event) => updateProductField(product._id, 'googleProductCategory', event.currentTarget.value)}
                       />
                     </td>
-                    <td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <Stack space={2}>
                         <Button
                           text={product.isSaving ? 'Saving…' : 'Save'}
@@ -467,7 +473,7 @@ export default function ProductBulkEditor() {
                   </tr>
                 ))}
               </tbody>
-            </Table>
+            </table>
           </Card>
         )}
       </Stack>
