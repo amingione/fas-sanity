@@ -187,7 +187,7 @@ const products = await sanity.fetch(
         batchId: index,
         merchantId: MERCHANT_ID,
         method: 'insert',
-        product: googleProduct,
+        resource: googleProduct,
       })
       } catch (err: any) {
         skipped.push({ id: product?._id || `index-${index}`, reason: err?.message || 'Failed to build product payload' })
