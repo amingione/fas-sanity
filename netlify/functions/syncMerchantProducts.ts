@@ -201,11 +201,17 @@ const products = await sanity.fetch(
       }
     }
 
-    const response = await content.products.custombatch({
-      requestBody: {
-        entries,
-      },
-    })
+    let response
+    try {
+      response = await content.products.custombatch({
+        requestBody: {
+          entries,
+        },
+      })
+    } catch (apiErr: any) {
+      console.error('Google Content API error', apiErr?.response?.data || apiErr)
+      throw apiErr
+    }
 
     const errors = (response.data?.entries || [])
       .filter((entry: any) => entry?.errors)
@@ -218,13 +224,13 @@ const products = await sanity.fetch(
       statusCode: 200,
       body: JSON.stringify({ synced: entries.length, skipped, errors }),
     }
- } catch (err: any) {
-   console.error('syncMerchantProducts error', err)
-   return {
+  } catch (err: any) {
+    console.error('syncMerchantProducts error', err)
+    return {
       statusCode: 500,
       body: JSON.stringify({
         error: err?.message || 'Failed to sync products',
-        details: err?.response?.data || err?.errors || null,
+        details: err?.response?.data || err?.errors || err,
       }),
     }
   }
