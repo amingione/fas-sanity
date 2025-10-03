@@ -183,9 +183,9 @@ const products = await sanity.fetch(
       }
 
 
-     entries.push({
-       batchId: index,
-       merchantId: Number(MERCHANT_ID),
+      entries.push({
+        batchId: index,
+        merchantId: MERCHANT_ID,
         method: 'insert',
         product: googleProduct,
       })
