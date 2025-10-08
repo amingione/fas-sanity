@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {google} from 'googleapis'
+import {deriveProductFeedFields} from '../../utils/productFeed'
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -115,6 +116,7 @@ const content = google.content({ version: 'v2.1', auth })
         title,
         slug,
         sku,
+        mpn,
         price,
         salePrice,
         onSale,
@@ -126,6 +128,24 @@ const content = google.content({ version: 'v2.1', auth })
         shippingLabel,
         productHighlights,
         productDetails,
+        specifications[]{
+          label,
+          value,
+        },
+        attributes[]{
+          name,
+          value,
+        },
+        options[]{
+          _type,
+          title,
+          colors[]{
+            title,
+          },
+          sizes[]{
+            title,
+          },
+        },
         color,
         size,
         material,
@@ -154,6 +174,8 @@ const content = google.content({ version: 'v2.1', auth })
         return
       }
 
+      const derivedFeed = deriveProductFeedFields(product)
+      const mpn = (product?.mpn || offerId).toString().trim() || offerId
       const availabilityMap: Record<string, string> = {
         in_stock: 'in stock',
         out_of_stock: 'out of stock',
@@ -171,8 +193,8 @@ const content = google.content({ version: 'v2.1', auth })
         : undefined
       const googleProductCategory = product?.googleProductCategory || product?.google_product_category
       const shippingLabel = product?.shippingLabel || (product?.installOnly ? 'install_only' : undefined)
-      const productHighlights = Array.isArray(product?.productHighlights) ? product.productHighlights : []
-      const productDetails = Array.isArray(product?.productDetails) ? product.productDetails : []
+      const productHighlights = Array.isArray(derivedFeed?.highlights) ? derivedFeed.highlights : []
+      const productDetails = Array.isArray(derivedFeed?.details) ? derivedFeed.details : []
 
       const googleProduct: any = {
         offerId,
@@ -187,7 +209,7 @@ const content = google.content({ version: 'v2.1', auth })
         availability,
         price: { value: price.toFixed(2), currency },
         brand: product?.brand || 'F.A.S. Motorsports',
-       mpn: offerId,
+        mpn,
       }
 
       if (salePrice && salePrice < price) {
@@ -216,52 +238,26 @@ const content = google.content({ version: 'v2.1', auth })
 
       if (productDetails.length > 0) {
         googleProduct.productDetails = productDetails
-          .map((detail: string) => {
-            const parts = detail.split(':').map((part) => part.trim()).filter(Boolean)
-            if (parts.length === 3) {
-              return {
-                sectionName: parts[0],
-                attributeName: parts[1],
-                attributeValue: parts[2],
-              }
-            }
-            if (parts.length === 2) {
-              return {
-                sectionName: 'Details',
-                attributeName: parts[0],
-                attributeValue: parts[1],
-              }
-            }
-            if (parts.length === 1) {
-              return {
-                sectionName: 'Details',
-                attributeName: parts[0],
-                attributeValue: parts[0],
-              }
-            }
-            return null
-          })
-          .filter(Boolean)
       }
 
-      if (product?.color) {
-        googleProduct.color = product.color
+      if (derivedFeed?.color) {
+        googleProduct.color = derivedFeed.color
       }
 
-      if (product?.size) {
-        googleProduct.sizes = [product.size]
+      if (Array.isArray(derivedFeed?.sizes) && derivedFeed.sizes.length > 0) {
+        googleProduct.sizes = derivedFeed.sizes
       }
 
-      if (product?.material) {
-        googleProduct.material = product.material
+      if (derivedFeed?.material) {
+        googleProduct.material = derivedFeed.material
       }
 
-      if (product?.productLength) {
-        googleProduct.productLength = product.productLength
+      if (derivedFeed?.productLength) {
+        googleProduct.productLength = derivedFeed.productLength
       }
 
-      if (product?.productWidth) {
-        googleProduct.productWidth = product.productWidth
+      if (derivedFeed?.productWidth) {
+        googleProduct.productWidth = derivedFeed.productWidth
       }
 
 
