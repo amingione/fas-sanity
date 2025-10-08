@@ -1,5 +1,6 @@
 import { defineType, defineField } from 'sanity'
 import FilterTagsInput from '../../components/studio/FilterTagsInput'
+import { googleProductCategories } from '../constants/googleProductCategories'
 
 const product = defineType({
   name: 'product',
@@ -145,6 +146,27 @@ const product = defineType({
       description: 'Critical information the customer must acknowledge before ordering. Displayed prominently on the product page.',
       group: 'details'
     }),
+    defineField({
+      name: 'productHighlights',
+      title: 'Product Highlights',
+      type: 'array',
+      of: [{ type: 'string' }],
+      description: 'Short bullet-style highlights (<=150 characters each) shown in Shopping listings.',
+      group: 'details'
+    }),
+    defineField({
+      name: 'productDetails',
+      title: 'Product Details',
+      type: 'array',
+      of: [{ type: 'string' }],
+      description: 'Additional detail lines formatted as "section_name: attribute_name: attribute_value".',
+      group: 'details'
+    }),
+    defineField({ name: 'color', title: 'Color', type: 'string', group: 'details' }),
+    defineField({ name: 'size', title: 'Size', type: 'string', group: 'details' }),
+    defineField({ name: 'material', title: 'Material', type: 'string', group: 'details' }),
+    defineField({ name: 'productLength', title: 'Product Length', type: 'string', description: 'Example: 10 in', group: 'details' }),
+    defineField({ name: 'productWidth', title: 'Product Width', type: 'string', description: 'Example: 4 in', group: 'details' }),
 
     // PRICING & INVENTORY
     defineField({ name: 'price', title: 'Price', type: 'number', group: 'pricing' }),
@@ -176,7 +198,39 @@ const product = defineType({
     defineField({ name: 'pricingTiers', title: 'Pricing Tiers', type: 'array', of: [
       { type: 'pricingTier' }
     ], group: 'pricing' }),
-    defineField({ name: 'inventory', title: 'Inventory', type: 'number', group: 'inventory' }),
+    defineField({
+      name: 'availability',
+      title: 'Availability',
+      type: 'string',
+      description: 'Google Shopping availability flag used in feeds and storefront messaging.',
+      options: {
+        list: [
+          {title: 'In stock', value: 'in_stock'},
+          {title: 'Out of stock', value: 'out_of_stock'},
+          {title: 'Preorder', value: 'preorder'},
+          {title: 'Backorder', value: 'backorder'},
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'in_stock',
+      group: 'inventory',
+    }),
+    defineField({
+      name: 'condition',
+      title: 'Product Condition',
+      type: 'string',
+      description: 'Required for Google Shopping when the product is used or refurbished.',
+      options: {
+        list: [
+          {title: 'New', value: 'new'},
+          {title: 'Refurbished', value: 'refurbished'},
+          {title: 'Used', value: 'used'},
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'new',
+      group: 'inventory',
+    }),
 
     // VARIANTS & RELATIONS
     // PRODUCT OPTIONS (embedded; does not create new product docs)
@@ -335,6 +389,21 @@ const product = defineType({
     defineField({ name: 'shippingWeight', title: 'Shipping Weight (lbs)', type: 'number', group: 'shipping' }),
     defineField({ name: 'boxDimensions', title: 'Box Dimensions', type: 'string', description: 'Example: 18x12x10 inches', group: 'shipping' }),
     defineField({
+      name: 'installOnly',
+      title: 'Install Only (No Shipping)',
+      type: 'boolean',
+      description: 'Mark when this item can only be installed/picked up in-store and should be excluded from shipping quotes.',
+      initialValue: false,
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'shippingLabel',
+      title: 'Google Shipping Label',
+      type: 'string',
+      description: 'Optional label sent with Google Shopping feed (e.g., install_only) so Merchant Center shipping rules can target this product.',
+      group: 'shipping',
+    }),
+    defineField({
       name: 'shippingClass',
       title: 'Shipping Class',
       type: 'string',
@@ -368,6 +437,16 @@ const product = defineType({
 
     // SEO
     defineField({ name: 'brand', title: 'Brand / Manufacturer', type: 'string', description: 'Brand name (helps Google understand the product).', group: 'seo' }),
+    defineField({
+      name: 'googleProductCategory',
+      title: 'Google Product Category',
+      type: 'string',
+      options: {
+        list: googleProductCategories.map((category) => ({ title: category, value: category })),
+      },
+      description: 'Select the closest Google taxonomy category for Shopping feeds.',
+      group: 'seo'
+    }),
     defineField({ name: 'gtin', title: 'GTIN (UPC/EAN/ISBN)', type: 'string', description: 'Global Trade Item Number, if applicable.', group: 'seo' }),
     defineField({ name: 'mpn', title: 'MPN (Manufacturer Part Number)', type: 'string', description: 'Manufacturer part number (useful for Google / merchant feeds).', group: 'seo' }),
     defineField({ name: 'metaTitle', title: 'Meta Title', type: 'string', description: 'Title tag for search results (target ~50–60 chars).', validation: Rule => Rule.max(60).warning('Google typically shows up to ~60 characters.'), group: 'seo' }),

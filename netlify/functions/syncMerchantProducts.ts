@@ -118,9 +118,19 @@ const content = google.content({ version: 'v2.1', auth })
         price,
         salePrice,
         onSale,
-        inventory,
+        availability,
+        condition,
         shippingWeight,
         boxDimensions,
+        installOnly,
+        shippingLabel,
+        productHighlights,
+        productDetails,
+        color,
+        size,
+        material,
+        productLength,
+        productWidth,
         shortDescription,
         description,
         brand,
@@ -144,15 +154,25 @@ const content = google.content({ version: 'v2.1', auth })
         return
       }
 
-     const availability = Number(product?.inventory) > 0 ? 'in stock' : 'out of stock'
+      const availabilityMap: Record<string, string> = {
+        in_stock: 'in stock',
+        out_of_stock: 'out of stock',
+        preorder: 'preorder',
+        backorder: 'backorder',
+      }
+      const availability = availabilityMap[product?.availability || 'in_stock'] || 'in stock'
       const condition = (product?.condition || product?.productCondition || 'new').toString().toLowerCase()
       const description = selectDescription(product)
      const salePrice = product?.onSale ? toPositiveNumber(product?.salePrice) : undefined
       const currency = (product?.currency || product?.priceCurrency || 'USD').toString().toUpperCase() || 'USD'
+      const shippingWeight = toPositiveNumber(product?.shippingWeight)
       const productType = Array.isArray(product?.categories) && product.categories.length > 0
         ? product.categories.join(' > ')
         : undefined
       const googleProductCategory = product?.googleProductCategory || product?.google_product_category
+      const shippingLabel = product?.shippingLabel || (product?.installOnly ? 'install_only' : undefined)
+      const productHighlights = Array.isArray(product?.productHighlights) ? product.productHighlights : []
+      const productDetails = Array.isArray(product?.productDetails) ? product.productDetails : []
 
       const googleProduct: any = {
         offerId,
@@ -180,6 +200,68 @@ const content = google.content({ version: 'v2.1', auth })
 
       if (googleProductCategory) {
         googleProduct.googleProductCategory = googleProductCategory
+      }
+
+      if (shippingWeight) {
+        googleProduct.shippingWeight = `${shippingWeight} lb`
+      }
+
+      if (shippingLabel) {
+        googleProduct.shippingLabel = shippingLabel
+      }
+
+      if (productHighlights.length > 0) {
+        googleProduct.productHighlights = productHighlights.slice(0, 10)
+      }
+
+      if (productDetails.length > 0) {
+        googleProduct.productDetails = productDetails
+          .map((detail: string) => {
+            const parts = detail.split(':').map((part) => part.trim()).filter(Boolean)
+            if (parts.length === 3) {
+              return {
+                sectionName: parts[0],
+                attributeName: parts[1],
+                attributeValue: parts[2],
+              }
+            }
+            if (parts.length === 2) {
+              return {
+                sectionName: 'Details',
+                attributeName: parts[0],
+                attributeValue: parts[1],
+              }
+            }
+            if (parts.length === 1) {
+              return {
+                sectionName: 'Details',
+                attributeName: parts[0],
+                attributeValue: parts[0],
+              }
+            }
+            return null
+          })
+          .filter(Boolean)
+      }
+
+      if (product?.color) {
+        googleProduct.color = product.color
+      }
+
+      if (product?.size) {
+        googleProduct.sizes = [product.size]
+      }
+
+      if (product?.material) {
+        googleProduct.material = product.material
+      }
+
+      if (product?.productLength) {
+        googleProduct.productLength = product.productLength
+      }
+
+      if (product?.productWidth) {
+        googleProduct.productWidth = product.productWidth
       }
 
 
