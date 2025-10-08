@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {Box, Button, Card, Flex, Inline, Spinner, Stack, Text, TextInput, Tooltip, useToast} from '@sanity/ui'
 import {useClient} from 'sanity'
+import { googleProductCategories } from '../../schemaTypes/constants/googleProductCategories'
 
 type ProductDoc = {
   _id: string
@@ -10,7 +11,8 @@ type ProductDoc = {
   price?: number
   salePrice?: number
   onSale?: boolean
-  inventory?: number
+  availability?: 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder'
+  condition?: 'new' | 'refurbished' | 'used'
   taxBehavior?: 'taxable' | 'exempt'
   taxCode?: string
   shippingWeight?: number
@@ -18,6 +20,15 @@ type ProductDoc = {
   brand?: string
   canonicalUrl?: string
   googleProductCategory?: string
+  installOnly?: boolean
+  shippingLabel?: string
+  productHighlights?: string[]
+  productDetails?: string[]
+  color?: string
+  size?: string
+  material?: string
+  productLength?: string
+  productWidth?: string
   shortDescription?: any
   description?: any
   images?: string[]
@@ -72,6 +83,7 @@ const GOOGLE_FEED_HEADERS = [
   'description',
   'link',
   'image_link',
+  'additional_image_link',
   'availability',
   'price',
   'condition',
@@ -80,6 +92,14 @@ const GOOGLE_FEED_HEADERS = [
   'shipping_weight',
   'product_type',
   'google_product_category',
+  'shipping_label',
+  'product_highlight',
+  'product_detail',
+  'color',
+  'size',
+  'material',
+  'product_length',
+  'product_width',
 ]
 
 export default function ProductBulkEditor() {
@@ -104,14 +124,24 @@ export default function ProductBulkEditor() {
             price,
             salePrice,
             onSale,
-            inventory,
+            availability,
+            condition,
             taxBehavior,
             taxCode,
+            installOnly,
+            shippingLabel,
             shippingWeight,
             boxDimensions,
             brand,
             canonicalUrl,
             googleProductCategory,
+            productHighlights,
+            productDetails,
+            color,
+            size,
+            material,
+            productLength,
+            productWidth,
             shortDescription,
             description,
             "images": images[].asset->url,
@@ -174,7 +204,8 @@ export default function ProductBulkEditor() {
         price: Number.isFinite(product.price) ? Number(product.price) : undefined,
         salePrice: Number.isFinite(product.salePrice) ? Number(product.salePrice) : undefined,
         onSale: Boolean(product.onSale),
-        inventory: Number.isFinite(product.inventory) ? Number(product.inventory) : undefined,
+        availability: product.availability || 'in_stock',
+        condition: product.condition || 'new',
         taxBehavior: product.taxBehavior || undefined,
         taxCode: product.taxCode || undefined,
         shippingWeight: Number.isFinite(product.shippingWeight) ? Number(product.shippingWeight) : undefined,
@@ -182,6 +213,15 @@ export default function ProductBulkEditor() {
         brand: product.brand || undefined,
         canonicalUrl: product.canonicalUrl || undefined,
         googleProductCategory: product.googleProductCategory || undefined,
+        installOnly: Boolean(product.installOnly),
+        shippingLabel: product.shippingLabel || undefined,
+        productHighlights: Array.isArray(product.productHighlights) ? product.productHighlights : undefined,
+        productDetails: Array.isArray(product.productDetails) ? product.productDetails : undefined,
+        color: product.color || undefined,
+        size: product.size || undefined,
+        material: product.material || undefined,
+        productLength: product.productLength || undefined,
+        productWidth: product.productWidth || undefined,
       }
 
       await client.patch(product._id).set(payload).commit({autoGenerateArrayKeys: true})
@@ -228,14 +268,30 @@ export default function ProductBulkEditor() {
       const description = portableTextToPlain(product.shortDescription) || portableTextToPlain(product.description) || title
       const link = buildProductLink(product)
       const image = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : ''
-      const availability = Number(product.inventory) > 0 ? 'in stock' : 'out of stock'
+      const additionalImages = Array.isArray(product.images) && product.images.length > 1 ? product.images.slice(1).join(',') : ''
+      const availabilityValue = product.availability || 'in_stock'
+      const availabilityMap: Record<string, string> = {
+        in_stock: 'in stock',
+        out_of_stock: 'out of stock',
+        preorder: 'preorder',
+        backorder: 'backorder',
+      }
+      const availability = availabilityMap[availabilityValue] || 'in stock'
       const price = toGooglePrice(product.price)
-      const condition = product.taxBehavior === 'exempt' ? 'used' : 'new'
+      const condition = product.condition || 'new'
       const brand = product.brand || 'F.A.S. Motorsports'
       const mpn = product.sku || product._id
       const shippingWeight = product.shippingWeight ? `${product.shippingWeight} lb` : ''
       const productType = Array.isArray(product.categories) ? product.categories.join(' > ') : ''
       const googleCategory = product.googleProductCategory || ''
+      const shippingLabel = product.shippingLabel || (product.installOnly ? 'install_only' : '')
+      const highlightsString = Array.isArray(product.productHighlights) ? product.productHighlights.join('; ') : ''
+      const detailsString = Array.isArray(product.productDetails) ? product.productDetails.join('; ') : ''
+      const color = product.color || ''
+      const size = product.size || ''
+      const material = product.material || ''
+      const productLength = product.productLength || ''
+      const productWidth = product.productWidth || ''
 
       rows.push([
         id,
@@ -243,6 +299,7 @@ export default function ProductBulkEditor() {
         description,
         link,
         image,
+        additionalImages,
         availability,
         price || '',
         condition,
@@ -251,6 +308,14 @@ export default function ProductBulkEditor() {
         shippingWeight,
         productType,
         googleCategory,
+        shippingLabel,
+        highlightsString,
+        detailsString,
+        color,
+        size,
+        material,
+        productLength,
+        productWidth,
       ])
     })
 
@@ -321,13 +386,23 @@ export default function ProductBulkEditor() {
                     'Price',
                     'Sale Price',
                     'On Sale?',
-                    'Inventory',
+                    'Availability',
+                    'Condition',
                     'Brand',
                     'Tax Behavior',
                     'Tax Code',
                     'Shipping Weight (lb)',
                     'Box Dimensions',
                     'Google Category',
+                    'Highlights',
+                    'Details',
+                    'Color',
+                    'Size',
+                    'Material',
+                    'Length',
+                    'Width',
+                    'Install Only',
+                    'Shipping Label',
                     'Actions',
                   ].map((header) => (
                     <th key={header} style={{textAlign: 'left', padding: '12px 16px', color: '#d1d5db', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5}}>
@@ -385,17 +460,25 @@ export default function ProductBulkEditor() {
                       />
                     </td>
                     <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.inventory?.toString() ?? ''}
-                        onChange={(event) =>
-                          updateProductField(
-                            product._id,
-                            'inventory',
-                            sanitizeNumber(event.currentTarget.value, product.inventory)
-                          )
-                        }
-                        inputMode="numeric"
-                      />
+                      <select
+                        value={product.availability || 'in_stock'}
+                        onChange={(event) => updateProductField(product._id, 'availability', event.currentTarget.value as any)}
+                      >
+                        <option value="in_stock">In stock</option>
+                        <option value="out_of_stock">Out of stock</option>
+                        <option value="preorder">Preorder</option>
+                        <option value="backorder">Backorder</option>
+                      </select>
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <select
+                        value={product.condition || 'new'}
+                        onChange={(event) => updateProductField(product._id, 'condition', event.currentTarget.value as any)}
+                      >
+                        <option value="new">New</option>
+                        <option value="refurbished">Refurbished</option>
+                        <option value="used">Used</option>
+                      </select>
                     </td>
                     <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
@@ -440,9 +523,97 @@ export default function ProductBulkEditor() {
                       />
                     </td>
                     <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
+                      <select
                         value={product.googleProductCategory || ''}
                         onChange={(event) => updateProductField(product._id, 'googleProductCategory', event.currentTarget.value)}
+                      >
+                        <option value="">Select category</option>
+                        {googleProductCategories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <textarea
+                        value={(product.productHighlights || []).join('\n')}
+                        onChange={(event) =>
+                          updateProductField(
+                            product._id,
+                            'productHighlights',
+                            event.currentTarget.value
+                              .split('\n')
+                              .map((line) => line.trim())
+                              .filter(Boolean)
+                          )
+                        }
+                        rows={3}
+                        style={{width: '100%', resize: 'vertical'}}
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <textarea
+                        value={(product.productDetails || []).join('\n')}
+                        onChange={(event) =>
+                          updateProductField(
+                            product._id,
+                            'productDetails',
+                            event.currentTarget.value
+                              .split('\n')
+                              .map((line) => line.trim())
+                              .filter(Boolean)
+                          )
+                        }
+                        rows={3}
+                        style={{width: '100%', resize: 'vertical'}}
+                        placeholder="section: attribute: value"
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={product.color || ''}
+                        onChange={(event) => updateProductField(product._id, 'color', event.currentTarget.value)}
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={product.size || ''}
+                        onChange={(event) => updateProductField(product._id, 'size', event.currentTarget.value)}
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={product.material || ''}
+                        onChange={(event) => updateProductField(product._id, 'material', event.currentTarget.value)}
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={product.productLength || ''}
+                        onChange={(event) => updateProductField(product._id, 'productLength', event.currentTarget.value)}
+                        placeholder="10 in"
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={product.productWidth || ''}
+                        onChange={(event) => updateProductField(product._id, 'productWidth', event.currentTarget.value)}
+                        placeholder="4 in"
+                      />
+                    </td>
+                    <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(product.installOnly)}
+                        onChange={(event) => updateProductField(product._id, 'installOnly', event.currentTarget.checked)}
+                      />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={product.shippingLabel || ''}
+                        onChange={(event) => updateProductField(product._id, 'shippingLabel', event.currentTarget.value)}
+                        placeholder="install_only"
                       />
                     </td>
                     <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
