@@ -98,6 +98,7 @@ export default defineType({
 
     // Actions to create packing slips and labels directly from the order
     defineField({ name: 'shippingActions', title: 'Shipping', type: 'string', readOnly: true, components: { input: OrderShippingActions } }),
+    defineField({ name: 'confirmationEmailSent', title: 'Confirmation Email Sent', type: 'boolean', readOnly: true, initialValue: false }),
   ],
 
   preview: {
