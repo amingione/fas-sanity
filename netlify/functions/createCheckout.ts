@@ -329,6 +329,7 @@ export const handler: Handler = async (event) => {
     }
     if (customerName) metadata.bill_to_name = customerName
     if (customerEmail) metadata.bill_to_email = customerEmail
+    if (invoice?.invoiceNumber) metadata.order_number = String(invoice.invoiceNumber)
     const addressFields = {
       line1: billTo?.address_line1 || undefined,
       line2: billTo?.address_line2 || undefined,
@@ -405,6 +406,7 @@ export const handler: Handler = async (event) => {
           metadata: {
             sanity_invoice_id: invoiceId,
             sanity_invoice_number: String(invoice.invoiceNumber || ''),
+            ...(invoice?.invoiceNumber ? { order_number: String(invoice.invoiceNumber) } : {}),
           },
         },
         success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,

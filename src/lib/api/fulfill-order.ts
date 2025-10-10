@@ -90,7 +90,7 @@ function pickPackage(packages: any[] | undefined | null) {
   return DEFAULT_PACKAGE
 }
 
-async function createPackingSlip(netlifyBase: string, order: any) {
+async function createPackingSlip(netlifyBase: string, orderId: string, order: any) {
   const invoiceId = order?.invoiceRef?._ref || order?._id
   const res = await fetch(`${netlifyBase}/.netlify/functions/generatePackingSlips`, {
     method: 'POST',
@@ -200,7 +200,7 @@ export const POST: APIRoute = async ({ request }) => {
       throw new Error('Shipping label response missing tracking number or label URL')
     }
 
-    const pdfBase64 = await createPackingSlip(netlifyBase, order)
+    const pdfBase64 = await createPackingSlip(netlifyBase, orderId, order)
 
     await sanity
       .patch(orderId)
@@ -212,6 +212,8 @@ export const POST: APIRoute = async ({ request }) => {
       .commit({ autoGenerateArrayKeys: true })
 
     const toEmail = order?.shippingAddress?.email || order?.customerEmail
+    const orderNumber = order?.orderNumber || order?.stripeSessionId || orderId
+    const orderLabel = orderNumber ? ` #${orderNumber}` : ''
     if (toEmail) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -222,9 +224,9 @@ export const POST: APIRoute = async ({ request }) => {
         body: JSON.stringify({
           from: 'orders@fasmotorsports.com',
           to: toEmail,
-          subject: 'Your FAS Motorsports Order Has Shipped!',
+          subject: `Your FAS Motorsports Order${orderLabel} Has Shipped!`,
           html: `
-            <h1>Your order is on the way!</h1>
+            <h1>Your order${orderLabel} is on the way!</h1>
             <p><strong>Tracking Number:</strong> ${trackingNumber}</p>
             ${trackingUrl ? `<p><a href="${trackingUrl}">Track your package</a></p>` : ''}
           `,
