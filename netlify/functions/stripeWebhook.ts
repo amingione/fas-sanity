@@ -84,6 +84,7 @@ async function resolveOrderNumber(options: {
 
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
+const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -92,6 +93,196 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN as string,
   useCdn: false,
 })
+
+const money = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : '')
+
+const renderAddressHtml = (address?: any): string => {
+  if (!address) return ''
+  const lines = [
+    address?.name,
+    address?.addressLine1,
+    address?.addressLine2,
+    [address?.city, address?.state, address?.postalCode].filter(Boolean).join(', '),
+    address?.country,
+  ].filter((line) => Boolean(line && String(line).trim()))
+  if (lines.length === 0) return ''
+  return lines.map((line) => `<div>${line}</div>`).join('')
+}
+
+const renderAddressText = (address?: any): string => {
+  if (!address) return ''
+  const lines = [
+    address?.name,
+    address?.addressLine1,
+    address?.addressLine2,
+    [address?.city, address?.state, address?.postalCode].filter(Boolean).join(', '),
+    address?.country,
+  ].filter((line) => Boolean(line && String(line).trim()))
+  return lines.join('\n')
+}
+
+async function sendOrderConfirmationEmail(opts: {
+  to: string
+  orderNumber: string
+  customerName?: string
+  items: Array<{ name?: string; sku?: string; quantity?: number; price?: number }>
+  totalAmount?: number
+  subtotal?: number
+  taxAmount?: number
+  shippingAmount?: number
+  shippingAddress?: any
+}) {
+  if (!RESEND_API_KEY || !opts.to) return
+
+  const { to, orderNumber, customerName, items, totalAmount, subtotal, taxAmount, shippingAmount, shippingAddress } = opts
+
+  const displayOrderNumber = sanitizeOrderNumber(orderNumber) || orderNumber
+  const trimmedName = (customerName || '').toString().trim()
+  const greetingLine = trimmedName
+    ? `Hi ${trimmedName}, we’re getting your order ready now.`
+    : 'We’re getting your order ready now.'
+  const salutationPlain = trimmedName ? `Hi ${trimmedName}` : 'Hi there'
+
+  const itemsHtml = items.length
+    ? `<table role="presentation" style="width:100%;border-collapse:collapse;margin:24px 0;">
+        <thead>
+          <tr>
+            <th align="left" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;">Item</th>
+            <th align="center" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;width:70px;">Qty</th>
+            <th align="right" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;width:90px;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items
+            .map((item) => `
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                  <div style="font-size:14px;color:#111827;font-weight:600;">${item?.name || item?.sku || 'Item'}</div>
+                  ${item?.sku ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">SKU ${item.sku}</div>` : ''}
+                </td>
+                <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:center;font-size:14px;color:#374151;">${Number(item?.quantity || 1)}</td>
+                <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:14px;color:#374151;">${money(item?.price)}</td>
+              </tr>
+            `)
+            .join('')}
+        </tbody>
+      </table>`
+    : ''
+
+  const shippingHtml = renderAddressHtml(shippingAddress)
+    ? `<div style="margin:24px 0 12px;">
+        <h3 style="margin:0 0 6px;font-size:15px;color:#111827;">Shipping to</h3>
+        <div style="font-size:14px;color:#374151;line-height:1.5;">${renderAddressHtml(shippingAddress)}</div>
+      </div>`
+    : ''
+
+  const summaryRows = [
+    { label: 'Subtotal', value: money(typeof subtotal === 'number' ? subtotal : undefined) },
+    { label: 'Shipping', value: money(typeof shippingAmount === 'number' ? shippingAmount : undefined) },
+    { label: 'Tax', value: money(typeof taxAmount === 'number' ? taxAmount : undefined) },
+  ].filter((row) => row.value)
+
+  const totalDisplay = money(totalAmount)
+  const summaryHtml = (summaryRows.length || totalDisplay)
+    ? `<div style="margin:12px 0 24px;padding:12px 16px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;max-width:340px;">
+        <table role="presentation" style="width:100%;border-collapse:collapse;">
+          <tbody>
+            ${summaryRows
+              .map((row) => `
+                <tr>
+                  <td style="padding:6px 0;font-size:13px;color:#52525b;">${row.label}</td>
+                  <td style="padding:6px 0;font-size:13px;color:#374151;text-align:right;">${row.value}</td>
+                </tr>
+              `)
+              .join('')}
+            ${totalDisplay
+              ? `<tr>
+                  <td style="padding:8px 0 0;font-size:15px;font-weight:700;color:#111827;border-top:1px solid #e4e4e7;">Total</td>
+                  <td style="padding:8px 0 0;font-size:15px;font-weight:700;color:#111827;text-align:right;border-top:1px solid #e4e4e7;">${totalDisplay}</td>
+                </tr>`
+              : ''}
+          </tbody>
+        </table>
+      </div>`
+    : ''
+
+  const html = `
+    <div style="margin:0;padding:24px 12px;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;border-collapse:collapse;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background:#0f172a;color:#ffffff;padding:24px 28px;">
+            <h1 style="margin:0;font-size:22px;font-weight:700;">Thank you for your order${displayOrderNumber ? ` <span style=\"color:#f97316\">#${displayOrderNumber}</span>` : ''}</h1>
+            <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${greetingLine}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 28px 24px;color:#111827;">
+            <p style="margin:0 0 16px;font-size:15px;">Here’s a quick summary for your records. We’ll send tracking details as soon as your package ships.</p>
+            ${itemsHtml}
+            ${summaryHtml}
+            ${shippingHtml}
+            <div style="margin:28px 0 0;padding:16px 20px;border-radius:10px;background:#f9fafb;color:#4b5563;font-size:13px;border:1px solid #e4e4e7;">
+              Questions? Reply to this email or call us at (812) 200-9012.
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:18px 28px;border-top:1px solid #e4e4e7;background:#f4f4f5;font-size:12px;color:#6b7280;text-align:center;">
+            F.A.S. Motorsports LLC • 6161 Riverside Dr • Punta Gorda, FL 33982
+          </td>
+        </tr>
+      </table>
+    </div>
+  `
+
+  const textItems = items
+    .map((item) => `- ${Number(item?.quantity || 1)} × ${item?.name || item?.sku || 'Item'} ${money(item?.price)}`)
+    .join('\n') || '- (details unavailable)'
+
+  const textLines: string[] = []
+  textLines.push(`${salutationPlain},`)
+  textLines.push('')
+  textLines.push(`Thank you for your order${displayOrderNumber ? ` #${displayOrderNumber}` : ''}!`)
+  textLines.push('')
+  textLines.push('Items:')
+  textLines.push(textItems)
+  if (totalDisplay) {
+    textLines.push('')
+    textLines.push(`Order total: ${totalDisplay}`)
+  }
+  if (renderAddressText(shippingAddress)) {
+    textLines.push('')
+    textLines.push('Shipping to:')
+    textLines.push(renderAddressText(shippingAddress))
+  }
+  textLines.push('')
+  textLines.push('We will email you tracking details as soon as your package ships.')
+  textLines.push('')
+  textLines.push('Questions? Reply to this email or call (812) 200-9012.')
+  textLines.push('')
+  textLines.push('— F.A.S. Motorsports')
+
+  const text = textLines.join('\n')
+
+  const subject = displayOrderNumber
+    ? `Order Confirmation #${displayOrderNumber} – F.A.S. Motorsports`
+    : 'Order Confirmation – F.A.S. Motorsports'
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'orders@fasmotorsports.com',
+      to,
+      subject,
+      html,
+      text,
+    }),
+  })
+}
 
 export const handler: Handler = async (event) => {
   if (!stripe) return { statusCode: 500, body: 'Stripe not configured' }
@@ -237,6 +428,8 @@ export const handler: Handler = async (event) => {
             `*[_type == "order" && stripeSessionId == $sid][0]._id`,
             { sid: stripeSessionId }
           )
+          const normalizedEmail = typeof email === 'string' ? email.trim() : ''
+          const shouldSendConfirmation = !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
 
           const baseDoc: any = {
             _type: 'order',
@@ -269,20 +462,20 @@ export const handler: Handler = async (event) => {
             baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
           }
 
-        if (invoiceId) {
-          const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
-          const ids = idVariants(invoiceId)
-          for (const id of ids) {
-            try {
-              let patch = sanity.patch(id).set({ status: 'paid' })
-              if (orderNumber) patch = patch.setIfMissing({ orderNumber })
-              if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
-              if (customerName) patch = patch.setIfMissing({ title: customerName })
-              await patch.commit({ autoGenerateArrayKeys: true })
-              break
-            } catch (e) {
-              // try next variant
-            }
+          if (invoiceId) {
+            const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
+            const ids = idVariants(invoiceId)
+            for (const id of ids) {
+              try {
+                let patch = sanity.patch(id).set({ status: 'paid' })
+                if (orderNumber) patch = patch.setIfMissing({ orderNumber })
+                if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
+                if (customerName) patch = patch.setIfMissing({ title: customerName })
+                await patch.commit({ autoGenerateArrayKeys: true })
+                break
+              } catch (e) {
+                // try next variant
+              }
             }
           }
 
@@ -303,6 +496,25 @@ export const handler: Handler = async (event) => {
           } else {
             const created = await sanity.create({ ...baseDoc, webhookNotified: true }, { autoGenerateArrayKeys: true })
             orderId = created?._id
+          }
+
+          if (shouldSendConfirmation && orderId) {
+            try {
+              await sendOrderConfirmationEmail({
+                to: normalizedEmail,
+                orderNumber,
+                customerName,
+                items: cart,
+                totalAmount,
+                subtotal: typeof amountSubtotal === 'number' ? amountSubtotal : undefined,
+                taxAmount: typeof amountTax === 'number' ? amountTax : undefined,
+                shippingAmount: typeof amountShipping === 'number' ? amountShipping : undefined,
+                shippingAddress,
+              })
+              await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
+            } catch (err) {
+              console.warn('stripeWebhook: order confirmation email failed', err)
+            }
           }
 
           // If no invoice was linked, create one from the order so Studio has a full record
@@ -476,6 +688,8 @@ export const handler: Handler = async (event) => {
             `*[_type == "order" && stripeSessionId == $sid][0]._id`,
             { sid: pi.id }
           )
+          const normalizedEmail = typeof email === 'string' ? email.trim() : ''
+          const shouldSendConfirmation = !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
           const baseDoc: any = {
             _type: 'order',
             stripeSessionId: pi.id,
@@ -531,6 +745,22 @@ export const handler: Handler = async (event) => {
           } else {
             const created = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
             orderId = created?._id
+          }
+
+          if (shouldSendConfirmation && orderId) {
+            try {
+              await sendOrderConfirmationEmail({
+                to: normalizedEmail,
+                orderNumber,
+                customerName,
+                items: [],
+                totalAmount,
+                shippingAddress: shippingAddr,
+              })
+              await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
+            } catch (err) {
+              console.warn('stripeWebhook: PI order confirmation email failed', err)
+            }
           }
 
           // Try auto-fulfillment only if we have a shipping address on the PI
