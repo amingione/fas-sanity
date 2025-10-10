@@ -38,6 +38,55 @@ function createOrderSlug(source?: string | null, fallback?: string | null): stri
   return slug || null
 }
 
+const ORDER_NUMBER_PREFIX = 'FAS'
+
+function sanitizeOrderNumber(value?: string | null): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.toString().trim().toUpperCase()
+  if (!trimmed) return undefined
+  if (/^FAS-\d{6}$/.test(trimmed)) return trimmed
+  const digits = trimmed.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+function candidateFromSessionId(id?: string | null): string | undefined {
+  if (!id) return undefined
+  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
+  const digits = core.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+async function resolveOrderNumber(options: { metadataOrderNumber?: string; invoiceNumber?: string; fallbackId?: string }): Promise<string> {
+  const candidates = [
+    sanitizeOrderNumber(options.metadataOrderNumber),
+    sanitizeOrderNumber(options.invoiceNumber),
+    candidateFromSessionId(options.fallbackId),
+  ].filter(Boolean) as string[]
+
+  for (const candidate of candidates) {
+    const exists = await sanity.fetch<number>(
+      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      { num: candidate }
+    )
+    if (!Number(exists)) return candidate
+  }
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const randomCandidate = `${ORDER_NUMBER_PREFIX}-${Math.floor(Math.random() * 1_000_000)
+      .toString()
+      .padStart(6, '0')}`
+    const exists = await sanity.fetch<number>(
+      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      { num: randomCandidate }
+    )
+    if (!Number(exists)) return randomCandidate
+  }
+
+  return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
+}
+
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
 
@@ -157,6 +206,8 @@ export const handler: Handler = async (event) => {
       ...(paymentIntent?.metadata || {}),
     } as Record<string, string>
     const invoiceId = (meta['sanity_invoice_id'] || '').toString().trim()
+    const metadataOrderNumberRaw = (meta['order_number'] || meta['orderNo'] || meta['website_order_number'] || '').toString().trim()
+    const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '').toString().trim()
     const userIdMeta = (
       meta['auth0_user_id'] ||
       meta['auth0_sub'] ||
@@ -216,6 +267,12 @@ export const handler: Handler = async (event) => {
 
     // Upsert Order
     const stripeSessionId = session?.id || paymentIntent?.id || id
+    const customerName = (shippingAddress?.name || meta['bill_to_name'] || billingAddress?.name || email || '').toString().trim() || undefined
+    const orderNumber = await resolveOrderNumber({
+      metadataOrderNumber: metadataOrderNumberRaw,
+      invoiceNumber: metadataInvoiceNumber,
+      fallbackId: stripeSessionId,
+    })
     let existingId: string | null = null
     try {
       existingId = await sanity.fetch(`*[_type == "order" && stripeSessionId == $sid][0]._id`, { sid: stripeSessionId })
@@ -224,6 +281,8 @@ export const handler: Handler = async (event) => {
     const baseDoc: any = {
       _type: 'order',
       stripeSessionId,
+      orderNumber,
+      customerName,
       customerEmail: email || undefined,
       totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
       status: paymentStatus === 'paid' ? 'paid' : 'pending',
@@ -243,7 +302,7 @@ export const handler: Handler = async (event) => {
       ...(cart.length ? { cart } : {}),
     }
 
-    const orderSlug = createOrderSlug(stripeSessionId, paymentIntentId)
+    const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
     if (orderSlug) baseDoc.slug = { _type: 'slug', current: orderSlug }
 
     if (invoiceId) baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
@@ -302,6 +361,7 @@ export const handler: Handler = async (event) => {
           const ref = findProductRef(ci)
           return {
             _type: 'invoiceLineItem' as const,
+            _key: randomUUID(),
             description: (ci?.name || ci?.sku || 'Item').toString(),
             sku: (ci?.sku || '').toString() || undefined,
             quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
@@ -364,7 +424,7 @@ export const handler: Handler = async (event) => {
           return new Date().toISOString()
         })()
         // Prefer full name from linked customer if available
-        let titleName = sa?.name || email || 'Invoice'
+        let titleName = customerName || sa?.name || email || 'Invoice'
         try {
           const cref = (baseDoc as any)?.customerRef?._ref
           if (cref) {
@@ -374,11 +434,11 @@ export const handler: Handler = async (event) => {
             else if (cust?.email) titleName = cust.email
           }
         } catch {}
-        const siteOrderNo = (meta['order_number'] || meta['orderNo'] || meta['website_order_number'] || '').toString().trim()
         const invBase: any = {
           _type: 'invoice',
           title: titleName,
-          orderNumber: siteOrderNo || stripeSessionId || undefined,
+          orderNumber,
+          invoiceNumber: sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber,
           customerRef: (baseDoc as any)?.customerRef || undefined,
           orderRef: { _type: 'reference', _ref: orderId },
           billTo,
@@ -412,7 +472,15 @@ export const handler: Handler = async (event) => {
     if (invoiceId && paymentStatus === 'paid') {
       const ids = idVariants(invoiceId)
       for (const vid of ids) {
-        try { await sanity.patch(vid).set({ status: 'paid' }).commit({ autoGenerateArrayKeys: true }); break } catch {}
+        try {
+          const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
+          let patch = sanity.patch(vid).set({ status: 'paid' })
+          if (orderNumber) patch = patch.setIfMissing({ orderNumber })
+          if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
+          if (customerName) patch = patch.setIfMissing({ title: customerName })
+          await patch.commit({ autoGenerateArrayKeys: true })
+          break
+        } catch {}
       }
     }
 

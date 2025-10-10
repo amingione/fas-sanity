@@ -788,13 +788,22 @@ export default defineType({
   initialValue: async () => ({ status: 'pending' }),
 
   preview: {
-    select: { title: 'title', invoiceNumber: 'invoiceNumber', total: 'total', status: 'status' },
+    select: {
+      title: 'title',
+      invoiceNumber: 'invoiceNumber',
+      orderNumber: 'orderNumber',
+      billToName: 'billTo.name',
+      total: 'total',
+      status: 'status',
+    },
     prepare(sel) {
-      const { title, invoiceNumber, total, status } = sel as any
-      const name = title || `Invoice ${invoiceNumber || ''}`
-      const amt = typeof total === 'number' ? ` • $${fmt(total)}` : ''
+      const { title, invoiceNumber, orderNumber, billToName, total, status } = sel as any
+      const name = billToName || title || 'Invoice'
+      const reference = orderNumber || invoiceNumber || ''
+      const header = reference ? `${name} • ${reference}` : name
+      const amount = typeof total === 'number' ? ` – $${fmt(total)}` : ''
       const st = status ? ` • ${status.toUpperCase()}` : ''
-      return { title: `${name}${amt}${st}` }
+      return { title: `${header}${amount}${st}` }
     },
   },
 })

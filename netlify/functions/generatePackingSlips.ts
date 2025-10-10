@@ -410,7 +410,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   const billingAddress = normalizeAddress(invoice?.billTo || order?.billingAddress || shippingAddress)
 
   const invoiceNumber = invoice?.invoiceNumber || invoice?.orderNumber
-  const orderNumber = invoiceNumber || order?.stripeSessionId || order?._id || cleanInvoiceId || cleanOrderId || 'Order'
+  const orderNumber = invoiceNumber || order?.orderNumber || order?.stripeSessionId || order?._id || cleanInvoiceId || cleanOrderId || 'Order'
   const dateSource = invoice?.invoiceDate || order?.createdAt || invoice?._createdAt
   const orderDate = dateSource ? new Date(dateSource).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
   const customerName =

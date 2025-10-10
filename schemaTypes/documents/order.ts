@@ -8,8 +8,17 @@ export default defineType({
   type: 'document',
   fields: [
     defineField({ name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string' }),
+    defineField({
+      name: 'orderNumber',
+      title: 'Order Number',
+      type: 'string',
+      description: 'Customer-facing order number shared across Stripe emails, invoices, and Studio.',
+      readOnly: true,
+    }),
     defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
     defineField({ name: 'customerRef', title: 'Customer Reference', type: 'reference', to: [{ type: 'customer' }] }),
+    defineField({ name: 'customer', title: 'Customer (legacy)', type: 'reference', to: [{ type: 'customer' }], hidden: true, options: { disableNew: true } }),
+    defineField({ name: 'customerName', title: 'Customer Name', type: 'string', readOnly: true }),
     defineField({ name: 'invoiceRef', title: 'Linked Invoice', type: 'reference', to: [{ type: 'invoice' }] }),
     defineField({
       name: 'slug',
@@ -30,6 +39,7 @@ export default defineType({
       hidden: true,
     }),
     defineField({ name: 'cart', title: 'Cart Items', type: 'array', of: [ { type: 'orderCartItem' } ] }),
+    defineField({ name: 'lineItems', title: 'Line Items (legacy)', type: 'array', of: [ { type: 'orderCartItem' } ], hidden: true, readOnly: true }),
     defineField({ name: 'totalAmount', title: 'Total Amount (USD)', type: 'number' }),
     // Stripe/Payment details (added to match existing data and avoid unknown fields)
     defineField({ name: 'amountSubtotal', title: 'Subtotal Amount', type: 'number', description: 'Order subtotal before shipping/tax' }),
@@ -96,17 +106,23 @@ export default defineType({
       email: 'customerEmail',
       total: 'totalAmount',
       status: 'status',
+      orderNumber: 'orderNumber',
+      customerName: 'customerName',
+      shippingName: 'shippingAddress.name',
     },
-    prepare({ stripeSessionId, email, total, status }) {
+    prepare({ stripeSessionId, email, total, status, orderNumber, customerName, shippingName }) {
       const badge =
         status === 'fulfilled' ? '✅' :
         status === 'paid' ? '💵' :
         status === 'cancelled' ? '❌' :
         '🕒'
-    
+
+      const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'N/A')
+      const name = customerName || shippingName || email || 'Customer'
+      const amount = typeof total === 'number' ? ` – $${Number(total).toFixed(2)}` : ''
       return {
-        title: `${email || 'No Email'} - $${total ?? 0}`,
-        subtitle: `${badge} #${stripeSessionId?.slice(-6) || 'N/A'} • ${status || 'pending'}`
+        title: `${name}${amount}`,
+        subtitle: `${badge} ${ref} • ${status || 'pending'}${email ? ` • ${email}` : ''}`
       }
     }
   },
