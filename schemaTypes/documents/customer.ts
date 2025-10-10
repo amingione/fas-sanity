@@ -44,6 +44,18 @@ export default defineType({
       validation: Rule => Rule.required().email()
     }),
     defineField({
+      name: 'stripeCustomerId',
+      title: 'Stripe Customer ID',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Stripe Last Synced',
+      type: 'datetime',
+      readOnly: true,
+    }),
+    defineField({
       name: 'roles',
       title: 'Roles',
       type: 'array',

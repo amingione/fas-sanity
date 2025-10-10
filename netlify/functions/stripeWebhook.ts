@@ -121,6 +121,509 @@ const renderAddressText = (address?: any): string => {
   return lines.join('\n')
 }
 
+const PRODUCT_METADATA_ID_KEYS = [
+  'sanity_id',
+  'sanityId',
+  'sanity_document_id',
+  'sanityDocId',
+  'sanity_doc_id',
+  'sanityProductId',
+  'sanity_product_id',
+  'sanityDocumentId',
+  'document_id',
+  'documentId',
+  'product_document_id',
+  'productDocumentId',
+]
+
+const PRODUCT_METADATA_SKU_KEYS = ['sku', 'SKU', 'product_sku', 'productSku', 'sanity_sku']
+const PRODUCT_METADATA_SLUG_KEYS = ['sanity_slug', 'slug', 'product_slug', 'productSlug']
+const INVOICE_METADATA_ID_KEYS = ['sanity_invoice_id', 'invoice_id', 'sanityInvoiceId', 'invoiceId']
+
+function normalizeSanityId(value?: string | null): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.toString().trim()
+  if (!trimmed) return undefined
+  return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
+}
+
+function slugifyValue(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
+}
+
+async function ensureUniqueProductSlug(baseSlug: string): Promise<string> {
+  let slug = baseSlug || 'product'
+  let suffix = 1
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const exists = await sanity.fetch<number>('count(*[_type == "product" && slug.current == $slug])', { slug })
+    if (!Number(exists)) return slug
+    suffix += 1
+    slug = `${baseSlug}-${suffix}`.slice(0, 96)
+    if (suffix > 20) {
+      return `${baseSlug}-${Date.now()}`.slice(0, 96)
+    }
+  }
+}
+
+function toMajorUnits(amount?: number | null): number | undefined {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return undefined
+  return amount / 100
+}
+
+function unixToIso(timestamp?: number | null): string | undefined {
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0) return undefined
+  return new Date(timestamp * 1000).toISOString()
+}
+
+async function findProductDocumentId(opts: {
+  metadata?: Record<string, string>
+  stripeProductId?: string
+  sku?: string
+  slug?: string
+}): Promise<string | null> {
+  const meta = opts.metadata || {}
+
+  const idCandidates = PRODUCT_METADATA_ID_KEYS
+    .map((key) => normalizeSanityId(meta[key]))
+    .filter(Boolean) as string[]
+
+  if (idCandidates.length > 0) {
+    const variants = idCandidates.flatMap((id) => idVariants(id))
+    const docId = await sanity.fetch<string | null>(`*[_type == "product" && _id in $ids][0]._id`, { ids: variants })
+    if (docId) return docId
+  }
+
+  if (opts.stripeProductId) {
+    const docId = await sanity.fetch<string | null>(`*[_type == "product" && stripeProductId == $pid][0]._id`, { pid: opts.stripeProductId })
+    if (docId) return docId
+  }
+
+  const skuCandidates = [opts.sku, ...PRODUCT_METADATA_SKU_KEYS.map((key) => meta[key])]
+    .map((value) => (value || '').toString().trim())
+    .filter(Boolean)
+  if (skuCandidates.length > 0) {
+    const docId = await sanity.fetch<string | null>(`*[_type == "product" && sku in $skus][0]._id`, { skus: skuCandidates })
+    if (docId) return docId
+  }
+
+  const slugCandidates = [opts.slug, ...PRODUCT_METADATA_SLUG_KEYS.map((key) => meta[key])]
+    .map((value) => (value || '').toString().trim())
+    .filter(Boolean)
+  if (slugCandidates.length > 0) {
+    const docId = await sanity.fetch<string | null>(`*[_type == "product" && slug.current in $slugs][0]._id`, { slugs: slugCandidates })
+    if (docId) return docId
+  }
+
+  return null
+}
+
+async function ensureProductDocument(stripeProductId: string, metadata?: Record<string, string>): Promise<string | null> {
+  let docId = await findProductDocumentId({ stripeProductId, metadata })
+  if (docId) return docId
+
+  try {
+    const product = await stripe.products.retrieve(stripeProductId)
+    docId = await syncStripeProduct(product)
+    return docId
+  } catch (err) {
+    console.warn('stripeWebhook: failed to retrieve Stripe product', err)
+    return null
+  }
+}
+
+function buildPriceSnapshot(price: Stripe.Price) {
+  return {
+    priceId: price.id,
+    nickname: price.nickname || undefined,
+    currency: price.currency ? price.currency.toUpperCase() : undefined,
+    unitAmount: toMajorUnits(price.unit_amount),
+    unitAmountRaw: typeof price.unit_amount === 'number' ? price.unit_amount : undefined,
+    type: price.type,
+    billingScheme: price.billing_scheme,
+    recurringInterval: price.recurring?.interval || undefined,
+    recurringIntervalCount: price.recurring?.interval_count ?? undefined,
+    active: price.active,
+    livemode: price.livemode,
+    createdAt: unixToIso(price.created) || new Date().toISOString(),
+  }
+}
+
+async function syncStripeProduct(product: Stripe.Product): Promise<string | null> {
+  const metadata = (product.metadata || {}) as Record<string, string>
+  const skuCandidates = [metadata.sku, metadata.SKU, metadata.product_sku, metadata.productSku].map((value) => (value || '').toString().trim()).filter(Boolean)
+  const slugMeta = metadata.sanity_slug || metadata.slug || metadata.product_slug || metadata.productSlug
+
+  const existingId = await findProductDocumentId({ metadata, stripeProductId: product.id, sku: skuCandidates[0], slug: slugMeta })
+  const updatedAt = unixToIso(product.updated) || new Date().toISOString()
+  const defaultPriceId = typeof product.default_price === 'string' ? product.default_price : product.default_price?.id
+  const sku = skuCandidates.find(Boolean)
+
+  const setOps: Record<string, any> = {
+    stripeProductId: product.id,
+    stripeActive: product.active,
+    stripeUpdatedAt: updatedAt,
+  }
+  if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
+
+  if (existingId) {
+    const existing = await sanity.fetch<{ title?: string; sku?: string }>(`*[_id == $id][0]{title, sku}`, { id: existingId })
+    let patch = sanity.patch(existingId).set(setOps)
+    if (sku && !existing?.sku) patch = patch.set({ sku })
+    if (product.name && !existing?.title) patch = patch.set({ title: product.name })
+    try {
+      await patch.commit({ autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to patch product', err)
+    }
+    return existingId
+  }
+
+  const title = product.name || metadata.title || 'Stripe Product'
+  const baseSlug = slugifyValue(slugMeta || title)
+  const slug = await ensureUniqueProductSlug(baseSlug)
+
+  const payload: Record<string, any> = {
+    _type: 'product',
+    title,
+    slug: { _type: 'slug', current: slug },
+    availability: 'in_stock',
+    stripeProductId: product.id,
+    stripeActive: product.active,
+    stripeUpdatedAt: updatedAt,
+  }
+  if (defaultPriceId) payload.stripeDefaultPriceId = defaultPriceId
+  if (sku) payload.sku = sku
+
+  try {
+    const created = await sanity.create(payload, { autoGenerateArrayKeys: true })
+    return created?._id || null
+  } catch (err) {
+    console.warn('stripeWebhook: failed to create product doc from Stripe product', err)
+    return null
+  }
+}
+
+async function syncStripePrice(price: Stripe.Price): Promise<void> {
+  const productId = typeof price.product === 'string' ? price.product : price.product?.id
+  if (!productId) return
+
+  const combinedMeta: Record<string, string> = {
+    ...(typeof price.product !== 'string' ? ((price.product?.metadata || {}) as Record<string, string>) : {}),
+    ...(price.metadata || {}),
+  }
+
+  const docId = await ensureProductDocument(productId, combinedMeta)
+  if (!docId) return
+
+  const existing = await sanity.fetch<{ stripePrices?: any[] }>(`*[_id == $id][0]{stripePrices}`, { id: docId })
+  const currentPrices = Array.isArray(existing?.stripePrices) ? existing!.stripePrices : []
+  const snapshot = buildPriceSnapshot(price)
+  const filtered = currentPrices.filter((entry: any) => entry?.priceId !== snapshot.priceId && entry?._key !== snapshot.priceId)
+  filtered.push({ _type: 'stripePriceSnapshot', _key: snapshot.priceId, ...snapshot })
+
+  const setOps: Record<string, any> = {
+    stripePrices: filtered,
+    stripeProductId: productId,
+    stripeUpdatedAt: new Date().toISOString(),
+  }
+
+  if (typeof price.active === 'boolean' && price.type === 'one_time' && typeof price.unit_amount === 'number') {
+    const major = toMajorUnits(price.unit_amount)
+    if (typeof major === 'number') setOps.price = major
+  }
+
+  if (typeof price.product !== 'string' && price.product?.default_price) {
+    const defaultPriceId = typeof price.product.default_price === 'string'
+      ? price.product.default_price
+      : price.product.default_price?.id
+    if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
+  }
+
+  try {
+    await sanity.patch(docId).set(setOps).commit({ autoGenerateArrayKeys: true })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to upsert Stripe price snapshot', err)
+  }
+}
+
+async function removeStripePrice(priceId: string, productId?: string): Promise<void> {
+  if (!priceId) return
+  let docId: string | null = null
+  if (productId) docId = await findProductDocumentId({ stripeProductId: productId })
+  if (!docId) {
+    docId = await sanity.fetch<string | null>(`*[_type == "product" && stripePrices[].priceId == $pid][0]._id`, { pid: priceId })
+  }
+  if (!docId) return
+
+  const existing = await sanity.fetch<{ stripePrices?: any[]; stripeDefaultPriceId?: string }>(`*[_id == $id][0]{stripePrices, stripeDefaultPriceId}`, { id: docId })
+  const currentPrices = Array.isArray(existing?.stripePrices) ? existing!.stripePrices : []
+  const filtered = currentPrices.filter((entry: any) => entry?.priceId !== priceId && entry?._key !== priceId)
+
+  const setOps: Record<string, any> = {
+    stripePrices: filtered,
+    stripeUpdatedAt: new Date().toISOString(),
+  }
+
+  if (existing?.stripeDefaultPriceId === priceId) {
+    setOps.stripeDefaultPriceId = filtered[0]?.priceId || undefined
+  }
+
+  try {
+    await sanity.patch(docId).set(setOps).commit({ autoGenerateArrayKeys: true })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to remove Stripe price snapshot', err)
+  }
+}
+
+function mapInvoiceStatus(stripeStatus?: string | null): string | undefined {
+  switch (stripeStatus) {
+    case 'draft':
+    case 'open':
+    case 'unpaid':
+      return 'pending'
+    case 'paid':
+      return 'paid'
+    case 'uncollectible':
+    case 'void':
+    case 'canceled':
+      return 'cancelled'
+    default:
+      return undefined
+  }
+}
+
+async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
+  const metadata = (invoice.metadata || {}) as Record<string, string>
+  const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(Boolean)
+
+  let docId: string | null = null
+
+  if (metaId) {
+    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(metaId) })
+  }
+
+  if (!docId && invoice.id) {
+    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && stripeInvoiceId == $id][0]._id`, { id: invoice.id })
+  }
+
+  if (!docId && invoice.number) {
+    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && invoiceNumber == $num][0]._id`, { num: invoice.number })
+  }
+
+  if (!docId) return
+
+  const setOps: Record<string, any> = {
+    stripeInvoiceId: invoice.id,
+    stripeInvoiceStatus: invoice.status || undefined,
+    stripeHostedInvoiceUrl: invoice.hosted_invoice_url || undefined,
+    stripeInvoicePdf: invoice.invoice_pdf || undefined,
+    stripeLastSyncedAt: new Date().toISOString(),
+  }
+
+  const subtotal = toMajorUnits(invoice.amount_subtotal || undefined)
+  if (typeof subtotal === 'number') setOps.amountSubtotal = subtotal
+  const tax = toMajorUnits(invoice.amount_tax || undefined)
+  if (typeof tax === 'number') setOps.amountTax = tax
+  const total = typeof invoice.total === 'number' ? toMajorUnits(invoice.total) : undefined
+  if (typeof total === 'number') setOps.total = total
+  if (invoice.currency) setOps.currency = invoice.currency.toUpperCase()
+
+  const mappedStatus = mapInvoiceStatus(invoice.status)
+  if (mappedStatus) setOps.status = mappedStatus
+
+  const email = invoice.customer_email || invoice.customer_details?.email || undefined
+  if (email) setOps.customerEmail = email
+
+  if (invoice.payment_intent) {
+    setOps.paymentIntentId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id
+  }
+
+  if (invoice.hosted_invoice_url) setOps.receiptUrl = invoice.hosted_invoice_url
+
+  if (typeof invoice.due_date === 'number' && Number.isFinite(invoice.due_date)) {
+    setOps.dueDate = new Date(invoice.due_date * 1000).toISOString().slice(0, 10)
+  }
+
+  if (typeof invoice.created === 'number' && Number.isFinite(invoice.created)) {
+    setOps.invoiceDate = new Date(invoice.created * 1000).toISOString().slice(0, 10)
+  }
+
+  try {
+    await sanity.patch(docId).set(setOps).commit({ autoGenerateArrayKeys: true })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to sync invoice doc', err)
+  }
+}
+
+function splitName(fullName?: string | null): { firstName?: string; lastName?: string } {
+  if (!fullName) return {}
+  const name = fullName.toString().trim()
+  if (!name) return {}
+  const parts = name.split(/\s+/)
+  if (parts.length === 1) return { firstName: parts[0] }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+}
+
+function formatShippingAddress(shipping?: Stripe.Customer.Shipping | null): string | undefined {
+  if (!shipping?.address) return undefined
+  const lines: string[] = []
+  if (shipping.name) lines.push(shipping.name)
+  if (shipping.address.line1) lines.push(shipping.address.line1)
+  if (shipping.address.line2) lines.push(shipping.address.line2)
+  const cityLine = [shipping.address.city, shipping.address.state, shipping.address.postal_code].filter(Boolean).join(', ')
+  if (cityLine) lines.push(cityLine)
+  if (shipping.address.country) lines.push(shipping.address.country)
+  return lines.filter(Boolean).join('\n') || undefined
+}
+
+function buildBillingAddress(address?: Stripe.Address | null, name?: string | null) {
+  if (!address) return undefined
+  const hasContent = address.line1 || address.line2 || address.city || address.state || address.postal_code || address.country
+  if (!hasContent) return undefined
+  const street = [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
+  return {
+    _type: 'customerBillingAddress',
+    name: name || undefined,
+    street,
+    city: address.city || undefined,
+    state: address.state || undefined,
+    postalCode: address.postal_code || undefined,
+    country: address.country || undefined,
+  }
+}
+
+async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
+  const emailRaw = (customer.email || (customer.metadata as Record<string, string> | undefined)?.email || '').toString().trim()
+  if (!emailRaw) return
+  const email = emailRaw.toLowerCase()
+
+  const existing = await sanity.fetch<{ _id: string; firstName?: string; lastName?: string; roles?: string[] }>(
+    `*[_type == "customer" && defined(email) && lower(email) == $email][0]{_id, firstName, lastName, roles}`,
+    { email }
+  )
+
+  const { firstName, lastName } = splitName(customer.name || customer.shipping?.name)
+  const shippingText = formatShippingAddress(customer.shipping)
+  const billingAddress = buildBillingAddress(customer.address, customer.name || customer.shipping?.name)
+
+  const setOps: Record<string, any> = {
+    stripeCustomerId: customer.id,
+    stripeLastSyncedAt: new Date().toISOString(),
+  }
+
+  if (shippingText) setOps.address = shippingText
+  if (billingAddress) setOps.billingAddress = billingAddress
+  if (customer.phone) setOps.phone = customer.phone
+  if (firstName && !existing?.firstName) setOps.firstName = firstName
+  if (lastName && !existing?.lastName) setOps.lastName = lastName
+
+  if (existing?._id) {
+    if (!Array.isArray(existing.roles) || existing.roles.length === 0) setOps.roles = ['customer']
+    try {
+      await sanity.patch(existing._id).set(setOps).commit({ autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update customer doc', err)
+    }
+  } else {
+    const payload: Record<string, any> = {
+      _type: 'customer',
+      email,
+      roles: ['customer'],
+      stripeCustomerId: customer.id,
+      stripeLastSyncedAt: new Date().toISOString(),
+    }
+    if (firstName) payload.firstName = firstName
+    if (lastName) payload.lastName = lastName
+    if (customer.phone) payload.phone = customer.phone
+    if (shippingText) payload.address = shippingText
+    if (billingAddress) payload.billingAddress = billingAddress
+
+    try {
+      await sanity.create(payload, { autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to create customer doc from Stripe customer', err)
+    }
+  }
+}
+
+async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void> {
+  const orderId = await sanity.fetch<string | null>(
+    `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]._id`,
+    { pid: pi.id }
+  )
+
+  const failure = pi.last_payment_error
+
+  if (orderId) {
+    const setOps: Record<string, any> = {
+      paymentStatus: pi.status || 'failed',
+      status: 'pending',
+      stripeLastSyncedAt: new Date().toISOString(),
+      paymentFailureCode: failure?.code || undefined,
+      paymentFailureMessage: failure?.message || pi.cancellation_reason || undefined,
+    }
+    try {
+      await sanity.patch(orderId).set(setOps).commit({ autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to mark payment failure on order', err)
+    }
+  }
+
+  const meta = (pi.metadata || {}) as Record<string, string>
+  const invoiceMetaId = normalizeSanityId(meta['sanity_invoice_id'] || meta['invoice_id'])
+  if (invoiceMetaId) {
+    const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
+    if (invoiceId) {
+      try {
+        await sanity.patch(invoiceId).set({
+          status: 'pending',
+          stripeInvoiceStatus: 'payment_intent.payment_failed',
+          stripeLastSyncedAt: new Date().toISOString(),
+        }).commit({ autoGenerateArrayKeys: true })
+      } catch (err) {
+        console.warn('stripeWebhook: failed to update invoice after payment failure', err)
+      }
+    }
+  }
+}
+
+async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<void> {
+  const orderId = await sanity.fetch<string | null>(`*[_type == "order" && stripeSessionId == $sid][0]._id`, { sid: session.id })
+  if (orderId) {
+    try {
+      await sanity.patch(orderId).set({
+        status: 'cancelled',
+        paymentStatus: session.payment_status || 'expired',
+        stripeLastSyncedAt: new Date().toISOString(),
+      }).commit({ autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update order after checkout expiration', err)
+    }
+  }
+
+  const meta = (session.metadata || {}) as Record<string, string>
+  const invoiceMetaId = normalizeSanityId(meta['sanity_invoice_id'])
+  if (invoiceMetaId) {
+    const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
+    if (invoiceId) {
+      try {
+        await sanity.patch(invoiceId).set({
+          status: 'cancelled',
+          stripeInvoiceStatus: 'checkout.session.expired',
+          stripeLastSyncedAt: new Date().toISOString(),
+        }).commit({ autoGenerateArrayKeys: true })
+      } catch (err) {
+        console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)
+      }
+    }
+  }
+}
+
 async function sendOrderConfirmationEmail(opts: {
   to: string
   orderNumber: string
@@ -307,6 +810,105 @@ export const handler: Handler = async (event) => {
 
   try {
     switch (webhookEvent.type) {
+      case 'product.created':
+      case 'product.updated': {
+        try {
+          const product = webhookEvent.data.object as Stripe.Product
+          await syncStripeProduct(product)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync product event', err)
+        }
+        break
+      }
+
+      case 'product.deleted': {
+        try {
+          const product = webhookEvent.data.object as Stripe.DeletedProduct
+          const docId = await findProductDocumentId({ stripeProductId: product.id })
+          if (docId) {
+            await sanity.patch(docId).set({
+              stripeActive: false,
+              stripeUpdatedAt: new Date().toISOString(),
+            }).commit({ autoGenerateArrayKeys: true })
+          }
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle product.deleted', err)
+        }
+        break
+      }
+
+      case 'price.created':
+      case 'price.updated': {
+        try {
+          const price = webhookEvent.data.object as Stripe.Price
+          await syncStripePrice(price)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync price event', err)
+        }
+        break
+      }
+
+      case 'price.deleted': {
+        try {
+          const deleted = webhookEvent.data.object as Stripe.DeletedPrice & { product?: string | Stripe.Product }
+          const productId = typeof deleted.product === 'string' ? deleted.product : undefined
+          await removeStripePrice(deleted.id, productId)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle price.deleted', err)
+        }
+        break
+      }
+
+      case 'customer.created':
+      case 'customer.updated': {
+        try {
+          const customer = webhookEvent.data.object as Stripe.Customer
+          if (!customer.deleted) {
+            await syncStripeCustomer(customer)
+          }
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync customer', err)
+        }
+        break
+      }
+
+      case 'customer.deleted': {
+        try {
+          const deleted = webhookEvent.data.object as Stripe.DeletedCustomer
+          const docId = await sanity.fetch<string | null>(`*[_type == "customer" && stripeCustomerId == $id][0]._id`, { id: deleted.id })
+          if (docId) {
+            await sanity.patch(docId).set({ stripeLastSyncedAt: new Date().toISOString() }).commit({ autoGenerateArrayKeys: true })
+          }
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle customer.deleted', err)
+        }
+        break
+      }
+
+      case 'invoice.finalized':
+      case 'invoice.paid':
+      case 'invoice.payment_failed':
+      case 'invoice.voided':
+      case 'invoice.updated': {
+        try {
+          const invoice = webhookEvent.data.object as Stripe.Invoice
+          await syncStripeInvoice(invoice)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync invoice', err)
+        }
+        break
+      }
+
+      case 'payment_intent.payment_failed': {
+        try {
+          const pi = webhookEvent.data.object as Stripe.PaymentIntent
+          await markPaymentIntentFailure(pi)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to mark payment failure', err)
+        }
+        break
+      }
+
       case 'checkout.session.completed': {
         const session = webhookEvent.data.object as Stripe.Checkout.Session
         const email = session.customer_details?.email || session.customer_email || ''
@@ -450,6 +1052,7 @@ export const handler: Handler = async (event) => {
             cardBrand,
             cardLast4,
             receiptUrl,
+            stripeLastSyncedAt: new Date().toISOString(),
             ...(shippingAddress ? { shippingAddress } : {}),
             ...(userIdMeta ? { userId: userIdMeta } : {}),
             ...(cart.length ? { cart } : {}),
@@ -471,6 +1074,7 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
+                patch = patch.set({ stripeLastSyncedAt: new Date().toISOString() })
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch (e) {
@@ -706,6 +1310,7 @@ export const handler: Handler = async (event) => {
             cardBrand,
             cardLast4,
             receiptUrl,
+            stripeLastSyncedAt: new Date().toISOString(),
             ...(userIdMeta ? { userId: userIdMeta } : {}),
             ...(shippingAddr ? {
               shippingAddress: {
@@ -733,6 +1338,7 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
+                patch = patch.set({ stripeLastSyncedAt: new Date().toISOString() })
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch {}
@@ -787,7 +1393,12 @@ export const handler: Handler = async (event) => {
         break
       }
       case 'checkout.session.expired':
-        // Optional: mark related pending orders/invoices as cancelled
+        try {
+          const session = webhookEvent.data.object as Stripe.Checkout.Session
+          await handleCheckoutExpired(session)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle checkout.session.expired', err)
+        }
         break
       default:
         // Ignore other events quietly
