@@ -770,6 +770,11 @@ export default defineType({
     defineField({ name: 'paymentIntentId', title: 'Payment Intent ID', type: 'string' }),
     defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
     defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
+    defineField({ name: 'stripeInvoiceId', title: 'Stripe Invoice ID', type: 'string', readOnly: true }),
+    defineField({ name: 'stripeInvoiceStatus', title: 'Stripe Invoice Status', type: 'string', readOnly: true }),
+    defineField({ name: 'stripeHostedInvoiceUrl', title: 'Stripe Hosted Invoice URL', type: 'url', readOnly: true }),
+    defineField({ name: 'stripeInvoicePdf', title: 'Stripe Invoice PDF', type: 'url', readOnly: true }),
+    defineField({ name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true }),
     defineField({
       name: 'userId',
       title: 'User ID (Portal)',

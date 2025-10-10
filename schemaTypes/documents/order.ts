@@ -52,6 +52,9 @@ export default defineType({
     defineField({ name: 'cardLast4', title: 'Card Last4', type: 'string' }),
     defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
     defineField({ name: 'paymentStatus', title: 'Payment Status', type: 'string', description: 'Raw Stripe payment status (e.g. succeeded, processing)'}),
+    defineField({ name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true }),
+    defineField({ name: 'paymentFailureCode', title: 'Payment Failure Code', type: 'string', readOnly: true }),
+    defineField({ name: 'paymentFailureMessage', title: 'Payment Failure Message', type: 'text', readOnly: true }),
     defineField({
       name: 'userId',
       title: 'User ID (Portal)',

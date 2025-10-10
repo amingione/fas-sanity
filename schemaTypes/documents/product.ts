@@ -199,6 +199,42 @@ const product = defineType({
       { type: 'pricingTier' }
     ], group: 'pricing' }),
     defineField({
+      name: 'stripeProductId',
+      title: 'Stripe Product ID',
+      type: 'string',
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeDefaultPriceId',
+      title: 'Stripe Default Price ID',
+      type: 'string',
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeActive',
+      title: 'Stripe Active',
+      type: 'boolean',
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeUpdatedAt',
+      title: 'Stripe Updated At',
+      type: 'datetime',
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripePrices',
+      title: 'Stripe Prices',
+      type: 'array',
+      of: [{ type: 'stripePriceSnapshot' }],
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
       name: 'availability',
       title: 'Availability',
       type: 'string',
