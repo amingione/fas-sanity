@@ -24,6 +24,51 @@ const sanity = createClient({
   useCdn: false,
 })
 
+const ORDER_NUMBER_PREFIX = 'FAS'
+
+function sanitizeOrderNumber(value?: string | null): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.toString().trim().toUpperCase()
+  if (!trimmed) return undefined
+  if (/^FAS-\d{6}$/.test(trimmed)) return trimmed
+  const digits = trimmed.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+function candidateFromSessionId(id?: string | null): string | undefined {
+  if (!id) return undefined
+  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
+  const digits = core.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+async function generateUniqueInvoiceNumber(existingCandidates: Array<string | null | undefined> = []): Promise<string> {
+  for (const candidate of existingCandidates) {
+    const sanitized = sanitizeOrderNumber(candidate)
+    if (!sanitized) continue
+    const exists = await sanity.fetch<number>(
+      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      { num: sanitized }
+    )
+    if (!Number(exists)) return sanitized
+  }
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const randomCandidate = `${ORDER_NUMBER_PREFIX}-${Math.floor(Math.random() * 1_000_000)
+      .toString()
+      .padStart(6, '0')}`
+    const exists = await sanity.fetch<number>(
+      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      { num: randomCandidate }
+    )
+    if (!Number(exists)) return randomCandidate
+  }
+
+  return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -53,7 +98,15 @@ export const handler: Handler = async (event) => {
     while (true) {
       const docs: any[] = await sanity.fetch(
         `*[_type == "invoice" && _id > $cursor] | order(_id) {
-          _id, lineItems, customerRef, customer, orderRef, order
+          _id,
+          lineItems,
+          customerRef,
+          customer,
+          orderRef,
+          order,
+          invoiceNumber,
+          orderNumber,
+          stripeSessionId
         }[0...$limit]`,
         { cursor, limit: pageSize }
       )
@@ -62,6 +115,19 @@ export const handler: Handler = async (event) => {
         total++
         const setOps: Record<string, any> = {}
         const unsetOps: string[] = []
+
+        const orderRefId = d?.orderRef?._ref || d?.order?._ref
+        let orderDoc: any = null
+        if (orderRefId) {
+          try {
+            orderDoc = await sanity.fetch(
+              `*[_type == "order" && _id == $id][0]{orderNumber, cart}`,
+              { id: orderRefId }
+            )
+          } catch {
+            orderDoc = null
+          }
+        }
 
         if (!d.customerRef && d.customer?. _ref) { setOps.customerRef = { _type: 'reference', _ref: d.customer._ref }; unsetOps.push('customer') }
         else if (d.customer) unsetOps.push('customer')
@@ -73,15 +139,8 @@ export const handler: Handler = async (event) => {
           const hasMissing = d.lineItems.some((it: any) => it && typeof it === 'object' && !it._key)
           const hasLegacy = d.lineItems.some((it: any) => it && typeof it === 'object' && it._type === 'lineItem')
           if (hasLegacy) {
-            // Fetch order cart for better mapping
-            let orderCart: any[] = []
-            try {
-              const orderId = (d as any)?.orderRef?._ref || (d as any)?.order?._ref
-              if (orderId) {
-                const od = await sanity.fetch(`*[_type == "order" && _id == $id][0]{ cart }`, { id: orderId })
-                orderCart = Array.isArray(od?.cart) ? od.cart : []
-              }
-            } catch {}
+            // Use order cart for better mapping when we have it
+            const orderCart: any[] = Array.isArray(orderDoc?.cart) ? orderDoc.cart : []
 
             const mapped = await Promise.all(
               d.lineItems.map(async (li: any) => {
@@ -118,6 +177,27 @@ export const handler: Handler = async (event) => {
           } else if (hasMissing) {
             setOps.lineItems = d.lineItems
           }
+        }
+
+        const invoiceCandidates = [
+          d.invoiceNumber,
+          d.orderNumber,
+          orderDoc?.orderNumber,
+          candidateFromSessionId(d.stripeSessionId),
+          candidateFromSessionId(d?.order?.stripeSessionId),
+          orderRefId,
+          d._id,
+        ]
+        const desiredInvoiceNumber = await generateUniqueInvoiceNumber(invoiceCandidates)
+        if (desiredInvoiceNumber && desiredInvoiceNumber !== d.invoiceNumber) {
+          setOps.invoiceNumber = desiredInvoiceNumber
+        }
+
+        const desiredOrderNumberFromOrder = sanitizeOrderNumber(orderDoc?.orderNumber)
+        if (desiredOrderNumberFromOrder && desiredOrderNumberFromOrder !== d.orderNumber) {
+          setOps.orderNumber = desiredOrderNumberFromOrder
+        } else if (!desiredOrderNumberFromOrder && setOps.invoiceNumber && d.orderNumber !== setOps.invoiceNumber && orderRefId) {
+          setOps.orderNumber = setOps.invoiceNumber
         }
 
         if (Object.keys(setOps).length || unsetOps.length) {
