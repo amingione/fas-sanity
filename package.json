@@ -9,7 +9,9 @@
     "start": "sanity start",
     "build": "sanity build",
     "deploy": "sanity deploy",
-    "deploy-graphql": "sanity graphql deploy"
+    "deploy-graphql": "sanity graphql deploy",
+    "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
+    "backfill:shipping": "tsx scripts/backfill-order-shipping.ts"
   },
   "keywords": [
     "sanity"
@@ -25,11 +27,11 @@
     "@sanity/vision": "4.10.2",
     "astro": "^5.7.5",
     "axios": "^1.11.0",
-    "googleapis": "^131.0.0",
     "bcryptjs": "^2.4.3",
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "get-stream": "^5.2.0",
+    "googleapis": "^131.0.0",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.1",
     "lodash.get": "^4.4.2",
@@ -63,6 +65,7 @@
     "canvas": "^2.11.2",
     "eslint": "^9.9.0",
     "prettier": "^3.0.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.1.6"
   },
   "prettier": {

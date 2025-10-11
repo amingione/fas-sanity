@@ -2,6 +2,8 @@ import type { Handler } from '@netlify/functions'
 import Stripe from 'stripe'
 import { createClient } from '@sanity/client'
 import { randomUUID } from 'crypto'
+import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip'
+import { syncOrderToShipStation } from '../lib/shipstation'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -1003,7 +1005,7 @@ export const handler: Handler = async (event) => {
         const currency = ((session as any)?.currency || (paymentIntent as any)?.currency || '').toString().toLowerCase() || undefined
         const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal)) ? Number((session as any)?.amount_subtotal) / 100 : undefined
         const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax)) ? Number((session as any)?.total_details?.amount_tax) / 100 : undefined
-        const amountShipping = (() => {
+        let amountShipping = (() => {
           const a = Number((session as any)?.shipping_cost?.amount_total)
           if (Number.isFinite(a)) return a / 100
           const b = Number((session as any)?.total_details?.amount_shipping)
@@ -1030,6 +1032,23 @@ export const handler: Handler = async (event) => {
         const metadataInvoiceNumber = (metadata['sanity_invoice_number'] || metadata['invoice_number'] || '')
           .toString()
           .trim()
+        const metadataShippingAmountRaw = (metadata['shipping_amount'] || metadata['shippingAmount'] || '').toString().trim()
+        const metadataShippingCarrier = (metadata['shipping_carrier'] || metadata['shippingCarrier'] || '').toString().trim() || undefined
+        const metadataShippingServiceCode = (metadata['shipping_service_code'] || metadata['shipping_service'] || metadata['shippingService'] || '').toString().trim() || undefined
+        const metadataShippingServiceName = (metadata['shipping_service_name'] || '').toString().trim() || undefined
+        const metadataShippingCarrierId = (metadata['shipping_carrier_id'] || '').toString().trim() || undefined
+        const metadataShippingCurrency = (metadata['shipping_currency'] || metadata['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
+        const shippingAmountFromMetadata = (() => {
+          if (!metadataShippingAmountRaw) return undefined
+          const parsed = Number(metadataShippingAmountRaw)
+          if (Number.isFinite(parsed)) return parsed
+          const cleaned = metadataShippingAmountRaw.replace(/[^0-9.]/g, '')
+          const fallback = Number(cleaned)
+          return Number.isFinite(fallback) ? fallback : undefined
+        })()
+        if (amountShipping === undefined && shippingAmountFromMetadata !== undefined) {
+          amountShipping = shippingAmountFromMetadata
+        }
         const orderNumber = await resolveOrderNumber({
           metadataOrderNumber: metadataOrderNumberRaw,
           invoiceNumber: metadataInvoiceNumber,
@@ -1094,10 +1113,11 @@ export const handler: Handler = async (event) => {
 
         // 3) Upsert an Order doc for visibility/fulfillment
         try {
-          const existingId = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]._id`,
+          const existingOrder = await sanity.fetch(
+            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
             { sid: stripeSessionId }
           )
+          const existingId = existingOrder?._id || null
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
           const shouldSendConfirmation = !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
 
@@ -1124,6 +1144,20 @@ export const handler: Handler = async (event) => {
             ...(shippingAddress ? { shippingAddress } : {}),
             ...(userIdMeta ? { userId: userIdMeta } : {}),
             ...(cart.length ? { cart } : {}),
+          }
+
+          if (metadataShippingCarrier) {
+            baseDoc.shippingCarrier = metadataShippingCarrier
+          }
+          if (metadataShippingServiceCode || metadataShippingServiceName || shippingAmountFromMetadata !== undefined) {
+            baseDoc.selectedService = {
+              carrierId: metadataShippingCarrierId || undefined,
+              carrier: metadataShippingCarrier || undefined,
+              service: metadataShippingServiceName || metadataShippingServiceCode || undefined,
+              serviceCode: metadataShippingServiceCode || metadataShippingServiceName || undefined,
+              amount: shippingAmountFromMetadata !== undefined ? shippingAmountFromMetadata : amountShipping,
+              currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+            }
           }
 
           const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
@@ -1187,6 +1221,28 @@ export const handler: Handler = async (event) => {
           } else {
             const created = await sanity.create({ ...baseDoc, webhookNotified: true }, { autoGenerateArrayKeys: true })
             orderId = created?._id
+          }
+
+          if (orderId) {
+            try {
+              if (!existingOrder?.packingSlipUrl) {
+                const packingSlipUrl = await generatePackingSlipAsset({
+                  sanity,
+                  orderId,
+                  invoiceId,
+                })
+                if (packingSlipUrl) {
+                  await sanity.patch(orderId).set({ packingSlipUrl }).commit({ autoGenerateArrayKeys: true })
+                }
+              }
+            } catch (err) {
+              console.warn('stripeWebhook: packing slip auto upload failed', err)
+            }
+            try {
+              await syncOrderToShipStation(sanity, orderId)
+            } catch (err) {
+              console.warn('stripeWebhook: ShipStation sync failed', err)
+            }
           }
 
           if (shouldSendConfirmation && orderId) {
@@ -1368,6 +1424,20 @@ export const handler: Handler = async (event) => {
           const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '')
             .toString()
             .trim()
+          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
+          const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
+          const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
+          const metadataShippingServiceName = (meta['shipping_service_name'] || '').toString().trim() || undefined
+          const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '').toString().trim() || undefined
+          const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
+          const shippingAmountFromMetadata = (() => {
+            if (!metadataShippingAmountRaw) return undefined
+            const parsed = Number(metadataShippingAmountRaw)
+            if (Number.isFinite(parsed)) return parsed
+            const cleaned = metadataShippingAmountRaw.replace(/[^0-9.]/g, '')
+            const fallback = Number(cleaned)
+            return Number.isFinite(fallback) ? fallback : undefined
+          })()
           const orderNumber = await resolveOrderNumber({
             metadataOrderNumber: metadataOrderNumberRaw,
             invoiceNumber: metadataInvoiceNumber,
@@ -1375,10 +1445,11 @@ export const handler: Handler = async (event) => {
           })
           const customerName = ((pi as any)?.shipping?.name || meta['bill_to_name'] || email || '').toString().trim() || undefined
 
-          const existingId = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]._id`,
+          const existingOrder = await sanity.fetch(
+            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
             { sid: pi.id }
           )
+          const existingId = existingOrder?._id || null
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
           const shouldSendConfirmation = !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
           const baseDoc: any = {
@@ -1412,6 +1483,22 @@ export const handler: Handler = async (event) => {
               }
             } : {}),
           }
+          if (shippingAmountFromMetadata !== undefined) {
+            baseDoc.amountShipping = shippingAmountFromMetadata
+          }
+          if (metadataShippingCarrier) {
+            baseDoc.shippingCarrier = metadataShippingCarrier
+          }
+          if (metadataShippingServiceCode || metadataShippingServiceName || shippingAmountFromMetadata !== undefined) {
+            baseDoc.selectedService = {
+              carrierId: metadataShippingCarrierId || undefined,
+              carrier: metadataShippingCarrier || undefined,
+              service: metadataShippingServiceName || metadataShippingServiceCode || undefined,
+              serviceCode: metadataShippingServiceCode || metadataShippingServiceName || undefined,
+              amount: shippingAmountFromMetadata,
+              currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+            }
+          }
           const intentSlug = createOrderSlug(orderNumber, pi.id)
           if (intentSlug) baseDoc.slug = { _type: 'slug', current: intentSlug }
           if (invoiceId) baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
@@ -1438,6 +1525,28 @@ export const handler: Handler = async (event) => {
           } else {
             const created = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
             orderId = created?._id
+          }
+
+          if (orderId) {
+            try {
+              if (!existingOrder?.packingSlipUrl) {
+                const packingSlipUrl = await generatePackingSlipAsset({
+                  sanity,
+                  orderId,
+                  invoiceId,
+                })
+                if (packingSlipUrl) {
+                  await sanity.patch(orderId).set({ packingSlipUrl }).commit({ autoGenerateArrayKeys: true })
+                }
+              }
+            } catch (err) {
+              console.warn('stripeWebhook: packing slip auto upload failed', err)
+            }
+            try {
+              await syncOrderToShipStation(sanity, orderId)
+            } catch (err) {
+              console.warn('stripeWebhook: ShipStation sync failed', err)
+            }
           }
 
           if (shouldSendConfirmation && orderId) {

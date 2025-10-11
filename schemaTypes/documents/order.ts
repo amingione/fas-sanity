@@ -121,6 +121,8 @@ export default defineType({
         defineField({ name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number' }),
       ],
     }),
+    defineField({ name: 'shipStationOrderId', title: 'ShipStation Order ID', type: 'string', readOnly: true }),
+    defineField({ name: 'shipStationLabelId', title: 'ShipStation Label ID', type: 'string', readOnly: true }),
     defineField({ name: 'fulfilledAt', title: 'Fulfilled Date', type: 'datetime' }),
     defineField({ name: 'webhookNotified', title: 'Webhook Notification Sent', type: 'boolean', initialValue: false }),
 
