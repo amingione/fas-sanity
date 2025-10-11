@@ -82,6 +82,18 @@ export default defineType({
     }),
     defineField({ name: 'shippingAddress', title: 'Shipping Address', type: 'shippingAddress' }),
     defineField({
+      name: 'weight',
+      title: 'Package Weight',
+      type: 'shipmentWeight',
+      description: 'Auto-calculated from cart items; adjust if needed.',
+    }),
+    defineField({
+      name: 'dimensions',
+      title: 'Package Dimensions',
+      type: 'packageDimensions',
+      description: 'Auto-filled using product defaults; update if the package differs.',
+    }),
+    defineField({
       name: 'shippingCarrier',
       title: 'Shipping Carrier',
       type: 'string',
@@ -93,6 +105,22 @@ export default defineType({
     defineField({ name: 'shippingLabelUrl', title: 'Shipping Label URL', type: 'url' }),
     defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string' }),
     defineField({ name: 'packingSlipUrl', title: 'Packing Slip PDF URL', type: 'url' }),
+    defineField({
+      name: 'selectedService',
+      title: 'Selected Shipping Rate',
+      type: 'object',
+      readOnly: true,
+      options: { columns: 2 },
+      fields: [
+        defineField({ name: 'carrierId', title: 'Carrier ID', type: 'string' }),
+        defineField({ name: 'carrier', title: 'Carrier', type: 'string' }),
+        defineField({ name: 'service', title: 'Service Name', type: 'string' }),
+        defineField({ name: 'serviceCode', title: 'Service Code', type: 'string' }),
+        defineField({ name: 'amount', title: 'Rate Amount', type: 'number' }),
+        defineField({ name: 'currency', title: 'Currency', type: 'string' }),
+        defineField({ name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number' }),
+      ],
+    }),
     defineField({ name: 'fulfilledAt', title: 'Fulfilled Date', type: 'datetime' }),
     defineField({ name: 'webhookNotified', title: 'Webhook Notification Sent', type: 'boolean', initialValue: false }),
 
