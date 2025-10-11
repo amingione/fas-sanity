@@ -24,6 +24,51 @@ if (!projectId || !dataset || !token) {
 
 const client = createClient({ projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false })
 
+const ORDER_NUMBER_PREFIX = 'FAS'
+
+function sanitizeOrderNumber(value) {
+  if (!value) return undefined
+  const trimmed = value.toString().trim().toUpperCase()
+  if (!trimmed) return undefined
+  if (/^FAS-\d{6}$/.test(trimmed)) return trimmed
+  const digits = trimmed.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+function candidateFromSessionId(id) {
+  if (!id) return undefined
+  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
+  const digits = core.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+async function generateUniqueInvoiceNumber(existingCandidates = []) {
+  for (const candidate of existingCandidates) {
+    const sanitized = sanitizeOrderNumber(candidate)
+    if (!sanitized) continue
+    const exists = await client.fetch(
+      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      { num: sanitized }
+    )
+    if (!Number(exists)) return sanitized
+  }
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const randomCandidate = `${ORDER_NUMBER_PREFIX}-${Math.floor(Math.random() * 1_000_000)
+      .toString()
+      .padStart(6, '0')}`
+    const exists = await client.fetch(
+      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      { num: randomCandidate }
+    )
+    if (!Number(exists)) return randomCandidate
+  }
+
+  return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
+}
+
 async function run() {
   const dry = process.argv.includes('--dry-run') || process.env.DRY_RUN === '1'
   const limit = 100
@@ -33,7 +78,15 @@ async function run() {
   while (true) {
     const docs = await client.fetch(
       `*[_type == "invoice" && _id > $cursor] | order(_id) {
-        _id, lineItems, customerRef, customer, orderRef, order
+        _id,
+        lineItems,
+        customerRef,
+        customer,
+        orderRef,
+        order,
+        invoiceNumber,
+        orderNumber,
+        stripeSessionId
       }[0...$limit]`,
       { cursor, limit }
     )
@@ -43,6 +96,16 @@ async function run() {
       total++
       const setOps = {}
       const unsetOps = []
+
+      const orderRefId = d?.orderRef?._ref || d?.order?._ref
+      let orderDoc = null
+      if (orderRefId) {
+        try {
+          orderDoc = await client.fetch(`*[_type == "order" && _id == $id][0]{orderNumber, cart}`, { id: orderRefId })
+        } catch {
+          orderDoc = null
+        }
+      }
 
       // Migrate refs
       if (!d.customerRef && d.customer?. _ref) { setOps.customerRef = { _type: 'reference', _ref: d.customer._ref }; unsetOps.push('customer') }
@@ -56,14 +119,7 @@ async function run() {
         const hasLegacy = d.lineItems.some((it) => it && typeof it === 'object' && it._type === 'lineItem')
         if (hasLegacy) {
           // Try to link products via order cart when available
-          let orderCart = []
-          try {
-            const orderId = d.orderRef?. _ref || d.order?. _ref
-            if (orderId) {
-              const od = await client.fetch(`*[_type == "order" && _id == $id][0]{ cart }`, { id: orderId })
-              orderCart = Array.isArray(od?.cart) ? od.cart : []
-            }
-          } catch {}
+          const orderCart = Array.isArray(orderDoc?.cart) ? orderDoc.cart : []
 
           const mapped = await Promise.all(d.lineItems.map(async (li) => {
             if (!li || typeof li !== 'object') return li
@@ -101,6 +157,27 @@ async function run() {
         } else if (hasMissingKeys) {
           setOps.lineItems = d.lineItems
         }
+      }
+
+      const invoiceCandidates = [
+        d.invoiceNumber,
+        d.orderNumber,
+        orderDoc?.orderNumber,
+        candidateFromSessionId(d.stripeSessionId),
+        candidateFromSessionId(d?.order?.stripeSessionId),
+        orderRefId,
+        d._id,
+      ]
+      const desiredInvoiceNumber = await generateUniqueInvoiceNumber(invoiceCandidates)
+      if (desiredInvoiceNumber && desiredInvoiceNumber !== d.invoiceNumber) {
+        setOps.invoiceNumber = desiredInvoiceNumber
+      }
+
+      const desiredOrderNumberFromOrder = sanitizeOrderNumber(orderDoc?.orderNumber)
+      if (desiredOrderNumberFromOrder && desiredOrderNumberFromOrder !== d.orderNumber) {
+        setOps.orderNumber = desiredOrderNumberFromOrder
+      } else if (!desiredOrderNumberFromOrder && setOps.invoiceNumber && d.orderNumber !== setOps.invoiceNumber && orderRefId) {
+        setOps.orderNumber = setOps.invoiceNumber
       }
 
       if (Object.keys(setOps).length || unsetOps.length) {
