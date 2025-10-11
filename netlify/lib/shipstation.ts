@@ -75,9 +75,12 @@ async function shipStationRequest<T = any>(path: string, init: RequestInit): Pro
   }
 
   if (!response.ok) {
+    const serialized = typeof data === 'string' ? data : data ? JSON.stringify(data) : ''
+    const snippet = serialized.slice(0, 200)
     const error = new Error(
-      `ShipStation request failed (${response.status} ${response.statusText}) ${typeof data === 'string' ? data.slice(0, 200) : ''}`
+      `ShipStation request failed (${response.status} ${response.statusText}) ${snippet}`
     )
+    ;(error as any).status = response.status
     ;(error as any).data = data
     throw error
   }
@@ -237,3 +240,42 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
 
   return shipStationOrderId || undefined
 }
+
+type ShipStationWebhookPayload = {
+  userId?: string
+  event?: string
+  resource_url?: string
+  resource_type?: string
+  resource_action?: string
+  resource_id?: number | string
+  occurred_at?: string
+}
+
+function toRelativePath(url: string): string {
+  const parsed = new URL(url)
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`
+}
+
+export async function fetchShipStationResource<T = any>(url: string): Promise<T> {
+  const path = toRelativePath(url)
+  return shipStationRequest<T>(path, { method: 'GET' })
+}
+
+export async function resolveOrderIdFromShipment(shipment: any): Promise<{ orderId: string | null; orderNumber?: string }> {
+  const customId = shipment?.advancedOptions?.customField1
+  if (typeof customId === 'string' && customId.trim()) {
+    return { orderId: customId.trim(), orderNumber: shipment?.orderNumber }
+  }
+
+  const orderNumber = shipment?.orderNumber || shipment?.orderKey
+  if (!orderNumber) return { orderId: null, orderNumber: undefined }
+
+  return { orderId: null, orderNumber }
+}
+
+export async function findOrderIdByOrderNumber(sanity: SanityClient, orderNumber?: string | null) {
+  if (!orderNumber) return null
+  return sanity.fetch<string | null>(`*[_type == "order" && orderNumber == $orderNumber][0]._id`, { orderNumber })
+}
+
+export type ShipStationWebhookEvent = ShipStationWebhookPayload

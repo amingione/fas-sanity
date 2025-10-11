@@ -46,10 +46,15 @@ export const handler: Handler = async (event) => {
     }
   } catch (err: any) {
     console.error('shipstation-sync error', err)
+    const details = err?.data
+      ? typeof err.data === 'string'
+        ? err.data
+        : JSON.stringify(err.data)
+      : undefined
     return {
-      statusCode: 500,
+      statusCode: typeof err?.status === 'number' ? err.status : 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err?.message || 'ShipStation sync failed' }),
+      body: JSON.stringify({ error: err?.message || 'ShipStation sync failed', details }),
     }
   }
 }
