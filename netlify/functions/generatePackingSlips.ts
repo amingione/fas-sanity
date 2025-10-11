@@ -430,9 +430,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         detailsParts.push(li.product.title)
       }
       if (li?.sku) detailsParts.push(`SKU ${li.sku}`)
-      if (typeof li?.unitPrice === 'number') {
-        detailsParts.push(`$${Number(li.unitPrice).toFixed(2)} each`)
-      }
       items.push({
         title,
         details: detailsParts.filter(Boolean).join(' • ') || undefined,
