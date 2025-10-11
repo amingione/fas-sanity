@@ -71,7 +71,7 @@ export default defineType({
       },
       initialValue: 'pending',
       components: {
-        input: FulfillmentBadge, // ✅ Shows badge in Studio
+        input: FulfillmentBadge as any, // cast to satisfy TS typings
       }
     }),
     defineField({
@@ -130,7 +130,13 @@ export default defineType({
     defineField({ name: 'shippingLog', title: 'Shipping History', type: 'array', of: [ { type: 'shippingLogEntry' } ] }),
 
     // Actions to create packing slips and labels directly from the order
-    defineField({ name: 'shippingActions', title: 'Shipping', type: 'string', readOnly: true, components: { input: OrderShippingActions } }),
+    defineField({
+      name: 'shippingActions',
+      title: 'Shipping',
+      type: 'string',
+      readOnly: true,
+      components: { input: OrderShippingActions as any },
+    }),
     defineField({ name: 'confirmationEmailSent', title: 'Confirmation Email Sent', type: 'boolean', readOnly: true, initialValue: false }),
   ],
 
