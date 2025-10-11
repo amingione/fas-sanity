@@ -69,6 +69,76 @@ async function generateUniqueInvoiceNumber(existingCandidates: Array<string | nu
   return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
 }
 
+function pickString(...values: Array<any>): string | undefined {
+  for (const value of values) {
+    if (value === undefined || value === null) continue
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) return trimmed
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      const asString = String(value)
+      if (asString.trim()) return asString.trim()
+    }
+  }
+  return undefined
+}
+
+function buildAddress(
+  source: any,
+  type: 'billTo' | 'shipTo',
+  opts: { fallbackEmail?: string; fallbackName?: string } = {}
+): Record<string, any> | undefined {
+  if (!source || typeof source !== 'object') return undefined
+  const name = pickString(source.name, source.fullName, opts.fallbackName)
+  const email = pickString(source.email, opts.fallbackEmail)
+  const phone = pickString(source.phone, source.phoneNumber)
+  const address_line1 = pickString(source.address_line1, source.addressLine1, source.line1)
+  const address_line2 = pickString(source.address_line2, source.addressLine2, source.line2)
+  const city_locality = pickString(source.city_locality, source.city)
+  const state_province = pickString(source.state_province, source.state, source.region)
+  const postal_code = pickString(source.postal_code, source.postalCode, source.zip)
+  const country_code = pickString(source.country_code, source.country)
+
+  if (!name && !email && !phone && !address_line1 && !address_line2 && !city_locality && !state_province && !postal_code && !country_code) {
+    return undefined
+  }
+
+  const base: Record<string, any> = { _type: type }
+  if (name) base.name = name
+  if (email) base.email = email
+  if (phone) base.phone = phone
+  if (address_line1) base.address_line1 = address_line1
+  if (address_line2) base.address_line2 = address_line2
+  if (city_locality) base.city_locality = city_locality
+  if (state_province) base.state_province = state_province
+  if (postal_code) base.postal_code = postal_code
+  if (country_code) base.country_code = country_code.toUpperCase()
+  return base
+}
+
+function computeTaxRateFromAmounts(amountSubtotal?: any, amountTax?: any): number | undefined {
+  const sub = Number(amountSubtotal)
+  const tax = Number(amountTax)
+  if (!Number.isFinite(sub) || sub <= 0) {
+    if (Number.isFinite(tax) && tax === 0) return 0
+    return undefined
+  }
+  if (!Number.isFinite(tax) || tax < 0) return undefined
+  const pct = (tax / sub) * 100
+  return Math.round(pct * 100) / 100
+}
+
+function dateStringFrom(value?: any): string | undefined {
+  if (!value) return undefined
+  try {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return undefined
+    return date.toISOString().slice(0, 10)
+  } catch {
+    return undefined
+  }
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -93,6 +163,11 @@ export const handler: Handler = async (event) => {
   let migratedOrder = 0
   let itemsFixed = 0
   let legacyConverted = 0
+  let billToFilled = 0
+  let shipToFilled = 0
+  let taxRateUpdated = 0
+  let titleUpdated = 0
+  let datesUpdated = 0
 
   try {
     while (true) {
@@ -106,7 +181,17 @@ export const handler: Handler = async (event) => {
           order,
           invoiceNumber,
           orderNumber,
-          stripeSessionId
+          stripeSessionId,
+          billTo,
+          shipTo,
+          taxRate,
+          title,
+          customerEmail,
+          amountSubtotal,
+          amountTax,
+          invoiceDate,
+          dueDate,
+          _createdAt
         }[0...$limit]`,
         { cursor, limit: pageSize }
       )
@@ -121,7 +206,18 @@ export const handler: Handler = async (event) => {
         if (orderRefId) {
           try {
             orderDoc = await sanity.fetch(
-              `*[_type == "order" && _id == $id][0]{orderNumber, cart}`,
+              `*[_type == "order" && _id == $id][0]{
+                orderNumber,
+                cart,
+                shippingAddress,
+                customerName,
+                customerEmail,
+                amountSubtotal,
+                amountTax,
+                createdAt,
+                stripeSessionId,
+                totalAmount
+              }`,
               { id: orderRefId }
             )
           } catch {
@@ -179,12 +275,12 @@ export const handler: Handler = async (event) => {
           }
         }
 
-        const invoiceCandidates = [
+        const invoiceCandidates: Array<string | null | undefined> = [
           d.invoiceNumber,
           d.orderNumber,
           orderDoc?.orderNumber,
           candidateFromSessionId(d.stripeSessionId),
-          candidateFromSessionId(d?.order?.stripeSessionId),
+          candidateFromSessionId(orderDoc?.stripeSessionId),
           orderRefId,
           d._id,
         ]
@@ -198,6 +294,69 @@ export const handler: Handler = async (event) => {
           setOps.orderNumber = desiredOrderNumberFromOrder
         } else if (!desiredOrderNumberFromOrder && setOps.invoiceNumber && d.orderNumber !== setOps.invoiceNumber && orderRefId) {
           setOps.orderNumber = setOps.invoiceNumber
+        }
+
+        const fallbackEmail = pickString(d.customerEmail, orderDoc?.customerEmail)
+        const fallbackName = pickString(
+          d?.billTo?.name,
+          orderDoc?.customerName,
+          orderDoc?.shippingAddress?.name
+        )
+        const shippingSource = orderDoc?.shippingAddress
+
+        if (!d.billTo && shippingSource) {
+          const billFromOrder = buildAddress(shippingSource, 'billTo', { fallbackEmail, fallbackName })
+          if (billFromOrder) {
+            setOps.billTo = billFromOrder
+            billToFilled++
+          }
+        }
+
+        if (!d.shipTo && shippingSource) {
+          const shipFromOrder = buildAddress(shippingSource, 'shipTo', { fallbackEmail, fallbackName })
+          if (shipFromOrder) {
+            setOps.shipTo = shipFromOrder
+            shipToFilled++
+          } else if (setOps.billTo) {
+            setOps.shipTo = { ...setOps.billTo, _type: 'shipTo' }
+            shipToFilled++
+          }
+        }
+
+        const currentTaxRate = typeof d.taxRate === 'number' && !Number.isNaN(d.taxRate) ? d.taxRate : undefined
+        const computedTaxRate =
+          computeTaxRateFromAmounts(d.amountSubtotal ?? orderDoc?.amountSubtotal, d.amountTax ?? orderDoc?.amountTax)
+        if (typeof computedTaxRate === 'number') {
+          if (currentTaxRate === undefined || Math.abs(currentTaxRate - computedTaxRate) > 0.01) {
+            setOps.taxRate = computedTaxRate
+            taxRateUpdated++
+          }
+        }
+
+        const orderDate = dateStringFrom(orderDoc?.createdAt)
+        const invoiceDateCandidate = orderDate || dateStringFrom(d._createdAt)
+        if (!d.invoiceDate && invoiceDateCandidate) {
+          setOps.invoiceDate = invoiceDateCandidate
+          datesUpdated++
+        }
+        if (!d.dueDate && invoiceDateCandidate) {
+          setOps.dueDate = invoiceDateCandidate
+          datesUpdated++
+        }
+
+        const orderNumberForTitle =
+          sanitizeOrderNumber(setOps.orderNumber || d.orderNumber || orderDoc?.orderNumber || setOps.invoiceNumber || d.invoiceNumber) || ''
+        const nameForTitle = pickString(
+          d?.billTo?.name,
+          (setOps.billTo as any)?.name,
+          orderDoc?.customerName,
+          orderDoc?.shippingAddress?.name,
+          fallbackEmail
+        )
+        const desiredTitle = orderNumberForTitle ? `${nameForTitle || 'Invoice'} • ${orderNumberForTitle}` : nameForTitle || d.title
+        if (desiredTitle && desiredTitle !== d.title) {
+          setOps.title = desiredTitle
+          titleUpdated++
         }
 
         if (Object.keys(setOps).length || unsetOps.length) {

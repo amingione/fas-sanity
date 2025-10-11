@@ -44,6 +44,72 @@ function candidateFromSessionId(id) {
   return undefined
 }
 
+function pickString(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null) continue
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) return trimmed
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      const trimmed = String(value).trim()
+      if (trimmed) return trimmed
+    }
+  }
+  return undefined
+}
+
+function buildAddress(source, type, opts = {}) {
+  if (!source || typeof source !== 'object') return undefined
+  const name = pickString(source.name, source.fullName, opts.fallbackName)
+  const email = pickString(source.email, opts.fallbackEmail)
+  const phone = pickString(source.phone, source.phoneNumber)
+  const address_line1 = pickString(source.address_line1, source.addressLine1, source.line1)
+  const address_line2 = pickString(source.address_line2, source.addressLine2, source.line2)
+  const city_locality = pickString(source.city_locality, source.city)
+  const state_province = pickString(source.state_province, source.state, source.region)
+  const postal_code = pickString(source.postal_code, source.postalCode, source.zip)
+  const country_code = pickString(source.country_code, source.country)
+
+  if (!name && !email && !phone && !address_line1 && !address_line2 && !city_locality && !state_province && !postal_code && !country_code) {
+    return undefined
+  }
+
+  const base = { _type: type }
+  if (name) base.name = name
+  if (email) base.email = email
+  if (phone) base.phone = phone
+  if (address_line1) base.address_line1 = address_line1
+  if (address_line2) base.address_line2 = address_line2
+  if (city_locality) base.city_locality = city_locality
+  if (state_province) base.state_province = state_province
+  if (postal_code) base.postal_code = postal_code
+  if (country_code) base.country_code = country_code.toUpperCase()
+  return base
+}
+
+function computeTaxRateFromAmounts(amountSubtotal, amountTax) {
+  const sub = Number(amountSubtotal)
+  const tax = Number(amountTax)
+  if (!Number.isFinite(sub) || sub <= 0) {
+    if (Number.isFinite(tax) && tax === 0) return 0
+    return undefined
+  }
+  if (!Number.isFinite(tax) || tax < 0) return undefined
+  const pct = (tax / sub) * 100
+  return Math.round(pct * 100) / 100
+}
+
+function dateStringFrom(value) {
+  if (!value) return undefined
+  try {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return undefined
+    return date.toISOString().slice(0, 10)
+  } catch {
+    return undefined
+  }
+}
+
 async function generateUniqueInvoiceNumber(existingCandidates = []) {
   for (const candidate of existingCandidates) {
     const sanitized = sanitizeOrderNumber(candidate)
@@ -73,7 +139,17 @@ async function run() {
   const dry = process.argv.includes('--dry-run') || process.env.DRY_RUN === '1'
   const limit = 100
   let cursor = ''
-  let total = 0, changed = 0, migratedCustomer = 0, migratedOrder = 0, itemsFixed = 0, legacyConverted = 0
+  let total = 0,
+    changed = 0,
+    migratedCustomer = 0,
+    migratedOrder = 0,
+    itemsFixed = 0,
+    legacyConverted = 0,
+    billToFilled = 0,
+    shipToFilled = 0,
+    taxRateUpdated = 0,
+    titleUpdated = 0,
+    datesUpdated = 0
 
   while (true) {
     const docs = await client.fetch(
@@ -86,7 +162,17 @@ async function run() {
         order,
         invoiceNumber,
         orderNumber,
-        stripeSessionId
+        stripeSessionId,
+        billTo,
+        shipTo,
+        taxRate,
+        title,
+        customerEmail,
+        amountSubtotal,
+        amountTax,
+        invoiceDate,
+        dueDate,
+        _createdAt
       }[0...$limit]`,
       { cursor, limit }
     )
@@ -101,7 +187,21 @@ async function run() {
       let orderDoc = null
       if (orderRefId) {
         try {
-          orderDoc = await client.fetch(`*[_type == "order" && _id == $id][0]{orderNumber, cart}`, { id: orderRefId })
+          orderDoc = await client.fetch(
+            `*[_type == "order" && _id == $id][0]{
+              orderNumber,
+              cart,
+              shippingAddress,
+              customerName,
+              customerEmail,
+              amountSubtotal,
+              amountTax,
+              createdAt,
+              stripeSessionId,
+              totalAmount
+            }`,
+            { id: orderRefId }
+          )
         } catch {
           orderDoc = null
         }
@@ -164,7 +264,7 @@ async function run() {
         d.orderNumber,
         orderDoc?.orderNumber,
         candidateFromSessionId(d.stripeSessionId),
-        candidateFromSessionId(d?.order?.stripeSessionId),
+        candidateFromSessionId(orderDoc?.stripeSessionId),
         orderRefId,
         d._id,
       ]
@@ -178,6 +278,71 @@ async function run() {
         setOps.orderNumber = desiredOrderNumberFromOrder
       } else if (!desiredOrderNumberFromOrder && setOps.invoiceNumber && d.orderNumber !== setOps.invoiceNumber && orderRefId) {
         setOps.orderNumber = setOps.invoiceNumber
+      }
+
+      const fallbackEmail = pickString(d.customerEmail, orderDoc?.customerEmail)
+      const fallbackName = pickString(
+        d?.billTo?.name,
+        orderDoc?.customerName,
+        orderDoc?.shippingAddress?.name
+      )
+      const shippingSource = orderDoc?.shippingAddress
+
+      if (!d.billTo && shippingSource) {
+        const billFromOrder = buildAddress(shippingSource, 'billTo', { fallbackEmail, fallbackName })
+        if (billFromOrder) {
+          setOps.billTo = billFromOrder
+          billToFilled++
+        }
+      }
+
+      if (!d.shipTo && shippingSource) {
+        const shipFromOrder = buildAddress(shippingSource, 'shipTo', { fallbackEmail, fallbackName })
+        if (shipFromOrder) {
+          setOps.shipTo = shipFromOrder
+          shipToFilled++
+        } else if (setOps.billTo) {
+          setOps.shipTo = { ...setOps.billTo, _type: 'shipTo' }
+          shipToFilled++
+        }
+      }
+
+      const currentTaxRate = typeof d.taxRate === 'number' && !Number.isNaN(d.taxRate) ? d.taxRate : undefined
+      const computedTaxRate = computeTaxRateFromAmounts(
+        d.amountSubtotal ?? orderDoc?.amountSubtotal,
+        d.amountTax ?? orderDoc?.amountTax
+      )
+      if (typeof computedTaxRate === 'number') {
+        if (currentTaxRate === undefined || Math.abs(currentTaxRate - computedTaxRate) > 0.01) {
+          setOps.taxRate = computedTaxRate
+          taxRateUpdated++
+        }
+      }
+
+      const orderDate = dateStringFrom(orderDoc?.createdAt)
+      const invoiceDateCandidate = orderDate || dateStringFrom(d._createdAt)
+      if (!d.invoiceDate && invoiceDateCandidate) {
+        setOps.invoiceDate = invoiceDateCandidate
+        datesUpdated++
+      }
+      if (!d.dueDate && invoiceDateCandidate) {
+        setOps.dueDate = invoiceDateCandidate
+        datesUpdated++
+      }
+
+      const orderNumberForTitle =
+        sanitizeOrderNumber(setOps.orderNumber || d.orderNumber || orderDoc?.orderNumber || setOps.invoiceNumber || d.invoiceNumber) || ''
+      const nameForTitle = pickString(
+        d?.billTo?.name,
+        (setOps.billTo || {}).name,
+        orderDoc?.customerName,
+        orderDoc?.shippingAddress?.name,
+        fallbackEmail
+      )
+      const desiredTitle = orderNumberForTitle ? `${nameForTitle || 'Invoice'} • ${orderNumberForTitle}` : nameForTitle || d.title
+      if (desiredTitle && desiredTitle !== d.title) {
+        setOps.title = desiredTitle
+        titleUpdated++
       }
 
       if (Object.keys(setOps).length || unsetOps.length) {
@@ -199,7 +364,25 @@ async function run() {
     if (docs.length < limit) break
   }
 
-  console.log(JSON.stringify({ total, changed, migratedCustomer, migratedOrder, itemsFixed, legacyConverted }, null, 2))
+  console.log(
+    JSON.stringify(
+      {
+        total,
+        changed,
+        migratedCustomer,
+        migratedOrder,
+        itemsFixed,
+        legacyConverted,
+        billToFilled,
+        shipToFilled,
+        taxRateUpdated,
+        titleUpdated,
+        datesUpdated,
+      },
+      null,
+      2
+    )
+  )
 }
 
 run().catch((e) => { console.error(e); process.exit(1) })

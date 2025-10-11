@@ -82,6 +82,74 @@ async function resolveOrderNumber(options: {
   return generateRandomOrderNumber()
 }
 
+function pickString(...values: Array<any>): string | undefined {
+  for (const value of values) {
+    if (value === undefined || value === null) continue
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) return trimmed
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      const trimmed = String(value).trim()
+      if (trimmed) return trimmed
+    }
+  }
+  return undefined
+}
+
+function buildStudioAddress(
+  source: any,
+  type: 'billTo' | 'shipTo',
+  opts: { fallbackEmail?: string; fallbackName?: string } = {}
+): Record<string, any> | undefined {
+  if (!source || typeof source !== 'object') return undefined
+  const name = pickString(source.name, source.fullName, opts.fallbackName)
+  const email = pickString(source.email, opts.fallbackEmail)
+  const phone = pickString(source.phone, source.phoneNumber)
+  const address_line1 = pickString(source.address_line1, source.addressLine1, source.line1)
+  const address_line2 = pickString(source.address_line2, source.addressLine2, source.line2)
+  const city_locality = pickString(source.city_locality, source.city)
+  const state_province = pickString(source.state_province, source.state, source.region)
+  const postal_code = pickString(source.postal_code, source.postalCode, source.zip)
+  const country_code = pickString(source.country_code, source.country)
+  if (!name && !email && !phone && !address_line1 && !address_line2 && !city_locality && !state_province && !postal_code && !country_code) {
+    return undefined
+  }
+  const base: Record<string, any> = { _type: type }
+  if (name) base.name = name
+  if (email) base.email = email
+  if (phone) base.phone = phone
+  if (address_line1) base.address_line1 = address_line1
+  if (address_line2) base.address_line2 = address_line2
+  if (city_locality) base.city_locality = city_locality
+  if (state_province) base.state_province = state_province
+  if (postal_code) base.postal_code = postal_code
+  if (country_code) base.country_code = country_code.toUpperCase()
+  return base
+}
+
+function computeTaxRateFromAmounts(amountSubtotal?: any, amountTax?: any): number | undefined {
+  const sub = Number(amountSubtotal)
+  const tax = Number(amountTax)
+  if (!Number.isFinite(sub) || sub <= 0) {
+    if (Number.isFinite(tax) && tax === 0) return 0
+    return undefined
+  }
+  if (!Number.isFinite(tax) || tax < 0) return undefined
+  const pct = (tax / sub) * 100
+  return Math.round(pct * 100) / 100
+}
+
+function dateStringFrom(value?: any): string | undefined {
+  if (!value) return undefined
+  try {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return undefined
+    return date.toISOString().slice(0, 10)
+  } catch {
+    return undefined
+  }
+}
+
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
 const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
@@ -1068,13 +1136,32 @@ export const handler: Handler = async (event) => {
           if (invoiceId) {
             const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
             const ids = idVariants(invoiceId)
+            const billToUpdate = buildStudioAddress(shippingAddress, 'billTo', { fallbackEmail: email, fallbackName: customerName })
+            const shipToUpdate =
+              buildStudioAddress(shippingAddress, 'shipTo', { fallbackEmail: email, fallbackName: customerName }) ||
+              (billToUpdate ? { ...billToUpdate, _type: 'shipTo' } : undefined)
+            const createdAtIso = (() => {
+              try {
+                const ts = (session as any)?.created || (paymentIntent as any)?.created
+                if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
+              } catch {}
+              return new Date().toISOString()
+            })()
+            const invoiceDateValue = dateStringFrom(createdAtIso)
+            const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
+            const baseTitleName = pickString(customerName, billToUpdate?.name, shipToUpdate?.name, email) || 'Invoice'
+            const titleValue = invoiceNumberToSet ? `${baseTitleName} • ${invoiceNumberToSet}` : baseTitleName
+
             for (const id of ids) {
               try {
-                let patch = sanity.patch(id).set({ status: 'paid' })
-                if (orderNumber) patch = patch.setIfMissing({ orderNumber })
-                if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
-                if (customerName) patch = patch.setIfMissing({ title: customerName })
-                patch = patch.set({ stripeLastSyncedAt: new Date().toISOString() })
+                let patch = sanity.patch(id).set({ status: 'paid', stripeLastSyncedAt: new Date().toISOString() })
+                if (orderNumber) patch = patch.set({ orderNumber })
+                if (invoiceNumberToSet) patch = patch.set({ invoiceNumber: invoiceNumberToSet })
+                if (titleValue) patch = patch.set({ title: titleValue })
+                if (billToUpdate) patch = patch.set({ billTo: billToUpdate })
+                if (shipToUpdate) patch = patch.set({ shipTo: shipToUpdate })
+                if (invoiceDateValue) patch = patch.set({ invoiceDate: invoiceDateValue, dueDate: invoiceDateValue })
+                if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch (e) {
