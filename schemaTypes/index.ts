@@ -66,6 +66,7 @@ import { customerAddressType } from './objects/customerAddressType'
 import { vendorOrderSummaryType } from './objects/vendorOrderSummaryType'
 import { vendorQuoteSummaryType } from './objects/vendorQuoteSummaryType'
 import { orderCartItemType } from './objects/orderCartItemType'
+import { orderCartItemMetaType } from './objects/orderCartItemMetaType'
 import { shippingAddressType } from './objects/shippingAddressType'
 import { shippingLogEntryType } from './objects/shippingLogEntryType'
 import { shippingOptionCustomerAddressType } from './objects/shippingOptionCustomerAddressType'
@@ -147,6 +148,7 @@ const objects = [
   vendorOrderSummaryType,
   vendorQuoteSummaryType,
   orderCartItemType,
+  orderCartItemMetaType,
   shippingAddressType,
   shippingLogEntryType,
   shippingOptionCustomerAddressType,

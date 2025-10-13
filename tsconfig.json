@@ -29,6 +29,7 @@
     "sanity.config.ts",
     "src",
     "netlify/functions",
+    "netlify/lib",
     "types",
     "schemaTypes",
     "desk",

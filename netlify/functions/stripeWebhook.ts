@@ -4,6 +4,8 @@ import { createClient } from '@sanity/client'
 import { randomUUID } from 'crypto'
 import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip'
 import { syncOrderToShipStation } from '../lib/shipstation'
+import { mapStripeLineItem } from '../lib/stripeCartItem'
+import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -1059,29 +1061,21 @@ export const handler: Handler = async (event) => {
         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '').toString().trim()
 
         // 2) Gather enriched data: line items + shipping
-        let cart: Array<{ id?: string; name?: string; price?: number; quantity?: number; categories?: string[] }> = []
+        let cart: Array<Record<string, any>> = []
         try {
           const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
             limit: 100,
             expand: ['data.price.product'],
           })
-          cart = (items?.data || []).map((li: any) => {
-            const qty = Number(li.quantity || 0)
-            const unitAmount = Number((li.price as any)?.unit_amount || 0) / 100
-            const productObj: any = (li.price as any)?.product
+          cart = (items?.data || []).map((li: Stripe.LineItem) => {
+            const mapped = mapStripeLineItem(li, { sessionMetadata: metadata })
             return {
               _type: 'orderCartItem',
               _key: randomUUID(),
-              id: (li.price?.id || productObj?.id || '').toString() || undefined,
-              name: (productObj?.name || li.description || '').toString() || undefined,
-              sku: (productObj?.metadata?.sku || (li as any)?.metadata?.sku || '').toString() || undefined,
-              price: Number.isFinite(unitAmount) ? unitAmount : undefined,
-              quantity: Number.isFinite(qty) ? qty : undefined,
-              categories: Array.isArray(productObj?.metadata?.categories)
-                ? productObj.metadata.categories
-                : (productObj?.metadata?.category ? [productObj.metadata.category] : undefined),
+              ...mapped,
             }
           })
+          cart = await enrichCartItemsFromSanity(cart, sanity)
         } catch (e) {
           console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
         }
