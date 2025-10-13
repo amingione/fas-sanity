@@ -19,6 +19,7 @@ function toUsAbbr(val?: string) {
   return ab || s.toUpperCase()
 }
 import type { Handler } from '@netlify/functions'
+import { getShipEngineFromAddress } from '../lib/ship-from'
 
 const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY
 const SHIPENGINE_API_URL = 'https://api.shipengine.com/v1/rates/estimate'
@@ -84,13 +85,14 @@ export const handler: Handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || '{}')
-    const { ship_to, ship_from, package_details, carrier_ids: bodyCarrierIds } = body
+    const { ship_to, package_details, carrier_ids: bodyCarrierIds } = body
+    const ship_from = getShipEngineFromAddress()
 
-    if (!ship_to || !ship_from || !package_details) {
+    if (!ship_to || !package_details) {
       return {
         statusCode: 400,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing required fields' }),
+        body: JSON.stringify({ error: 'Missing required fields (ship_to, package_details).' }),
       }
     }
 

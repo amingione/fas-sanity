@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import { getShipEngineFromAddress } from '../lib/ship-from'
 
 const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY || ''
 const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
@@ -76,16 +77,7 @@ export const handler: Handler = async (event) => {
       country_code: to.country,
     }
 
-    const fromAddress = {
-      name: process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports LLC',
-      phone: process.env.SHIP_FROM_PHONE || '(812) 200-9012',
-      address_line1: process.env.SHIP_FROM_ADDRESS1 || '6161 Riverside Dr',
-      address_line2: process.env.SHIP_FROM_ADDRESS2 || undefined,
-      city_locality: process.env.SHIP_FROM_CITY || 'Punta Gorda',
-      state_province: process.env.SHIP_FROM_STATE || 'FL',
-      postal_code: process.env.SHIP_FROM_POSTAL_CODE || '33982',
-      country_code: process.env.SHIP_FROM_COUNTRY || 'US',
-    }
+    const fromAddress = getShipEngineFromAddress()
 
     // Compute package plan from product data (weights/dims)
     type CartItem = { sku?: string; name?: string; quantity?: number }

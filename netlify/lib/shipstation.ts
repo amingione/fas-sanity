@@ -1,4 +1,5 @@
 import type { SanityClient } from '@sanity/client'
+import { getShipStationFromAddress } from './ship-from'
 
 const SHIPSTATION_API_BASE = process.env.SHIPSTATION_API_BASE || 'https://ssapi.shipstation.com'
 const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || ''
@@ -168,6 +169,7 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
   if (!shipTo || !shipTo.street1) {
     throw new Error('Order missing shipping address; cannot sync to ShipStation')
   }
+  const shipFrom = getShipStationFromAddress()
 
   const items = Array.isArray(order.cart) && order.cart.length > 0
     ? order.cart.map((item, idx) => ({
@@ -207,6 +209,7 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
     serviceCode: order.selectedService?.serviceCode || undefined,
     billTo: shipTo,
     shipTo,
+    shipFrom,
     items,
     weight: normalizeWeight(order.weight),
     dimensions: order.dimensions
