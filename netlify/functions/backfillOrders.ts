@@ -1,6 +1,9 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
 import { randomUUID } from 'crypto'
+import Stripe from 'stripe'
+import { mapStripeLineItem } from '../lib/stripeCartItem'
+import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
 function makeCORS(origin?: string) {
@@ -42,6 +45,9 @@ const sanity = createClient({
   useCdn: false,
 })
 
+const stripeSecret = process.env.STRIPE_SECRET_KEY
+const stripe = stripeSecret ? new Stripe(stripeSecret) : null
+
 function toOrderCartItem(it: any) {
   if (!it || typeof it !== 'object') return null
 
@@ -73,6 +79,75 @@ function fixCart(arr: any[]) {
     .filter((it): it is Record<string, any> => Boolean(it))
 
   return transformed
+}
+
+function cloneCart(arr: any[]): any[] {
+  if (!Array.isArray(arr)) return []
+  return arr.map((item) => {
+    if (!item || typeof item !== 'object') return item
+    const cloned = JSON.parse(JSON.stringify(item))
+    if (item._key && typeof item._key === 'string') cloned._key = item._key
+    return cloned
+  })
+}
+
+function normalizeCartItems(existing: any[], next: any[]): any[] {
+  return next.map((item, index) => {
+    const candidate = item && typeof item === 'object' ? { ...item } : { _type: 'orderCartItem' }
+    const existingKey = existing?.[index]?._key
+    const key = typeof candidate._key === 'string' && candidate._key
+      ? candidate._key
+      : typeof existingKey === 'string' && existingKey
+        ? existingKey
+        : randomUUID()
+    return {
+      _type: 'orderCartItem',
+      ...candidate,
+      _key: key,
+    }
+  })
+}
+
+function hasCartChanged(original: any[], next: any[]): boolean {
+  if (!Array.isArray(original) && Array.isArray(next)) return true
+  if (original.length !== next.length) return true
+  for (let i = 0; i < next.length; i += 1) {
+    const before = original[i]
+    const after = next[i]
+    if (JSON.stringify(before ?? null) !== JSON.stringify(after ?? null)) return true
+  }
+  return false
+}
+
+function cartNeedsEnrichment(cart: any[]): boolean {
+  if (!Array.isArray(cart) || cart.length === 0) return false
+  return cart.some((item) => {
+    if (!item || typeof item !== 'object') return true
+    const hasProductPointer = Boolean(item.sku || item.productSlug || item.stripeProductId || item.stripePriceId)
+    const hasMetadata = Array.isArray(item.metadata) && item.metadata.length > 0
+    return !hasProductPointer || !hasMetadata
+  })
+}
+
+async function loadCartFromStripe(sessionId: string): Promise<any[] | null> {
+  if (!stripe || !sessionId) return null
+  try {
+    const result = await stripe.checkout.sessions.listLineItems(sessionId, {
+      limit: 100,
+      expand: ['data.price.product'],
+    })
+    let mapped: any[] = (result?.data || []).map((li: Stripe.LineItem) => ({
+      _type: 'orderCartItem',
+      _key: randomUUID(),
+      ...mapStripeLineItem(li),
+    }))
+    if (!mapped.length) return []
+    mapped = await enrichCartItemsFromSanity(mapped, sanity)
+    return mapped
+  } catch (err) {
+    console.warn('backfillOrders: failed to load Stripe cart', err)
+    return null
+  }
 }
 
 function createOrderSlug(source?: string | null, fallback?: string | null): string | null {
@@ -202,6 +277,30 @@ export const handler: Handler = async (event) => {
               return typeof i._key !== 'string' || i._key.length === 0
             })
           if (needs) setOps.cart = fixedCart
+        }
+
+        const workingCart = Array.isArray(setOps.cart) ? setOps.cart : Array.isArray(doc.cart) ? doc.cart : []
+        if (cartNeedsEnrichment(workingCart)) {
+          let enrichedCart: any[] | null = null
+
+          if (doc.stripeSessionId) {
+            const stripeCart = await loadCartFromStripe(doc.stripeSessionId)
+            if (Array.isArray(stripeCart) && stripeCart.length > 0) {
+              enrichedCart = normalizeCartItems(workingCart, stripeCart)
+            }
+          }
+
+          if (!enrichedCart) {
+            const cloned = cloneCart(workingCart)
+            const fallback = await enrichCartItemsFromSanity(cloned as any, sanity)
+            if (hasCartChanged(workingCart, fallback)) {
+              enrichedCart = normalizeCartItems(workingCart, fallback)
+            }
+          }
+
+          if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
+            setOps.cart = enrichedCart
+          }
         }
 
         if (!doc.customerName) {
