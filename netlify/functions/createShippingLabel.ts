@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import { getShipEngineFromAddress } from '../lib/ship-from'
 
 const ALLOW_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3333'
 const CORS_HEADERS = {
@@ -38,7 +39,6 @@ export const handler: Handler = async (event) => {
   // A) From shippingLabel doc: { ship_to, ship_from, service_code, package_details }
   // B) From orders UI: { orderId, serviceCode, carrier, weight, dimensions }
   const ship_to = body.ship_to
-  const ship_from = body.ship_from
   const service_code = body.service_code || body.serviceCode
   const package_details = body.package_details
 
@@ -75,9 +75,9 @@ export const handler: Handler = async (event) => {
   try {
     // Derive addresses depending on payload
     let toAddress = ship_to
-    let fromAddress = ship_from
+    const fromAddress = getShipEngineFromAddress()
 
-    if (!toAddress || !fromAddress) {
+    if (!toAddress) {
       // Try derive from order or invoice
       if (orderId) {
         const order = await sanity.fetch(`*[_type == "order" && _id == $id][0]{ shippingAddress }`, { id: orderId })
@@ -105,17 +105,6 @@ export const handler: Handler = async (event) => {
           postal_code: st?.postal_code,
           country_code: st?.country_code || 'US',
         }
-      }
-      // From address from env with fallbacks
-      fromAddress = {
-        name: process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports LLC',
-        phone: process.env.SHIP_FROM_PHONE || '(812) 200-9012',
-        address_line1: process.env.SHIP_FROM_ADDRESS1 || '6161 Riverside Dr',
-        address_line2: process.env.SHIP_FROM_ADDRESS2 || undefined,
-        city_locality: process.env.SHIP_FROM_CITY || 'Punta Gorda',
-        state_province: process.env.SHIP_FROM_STATE || 'FL',
-        postal_code: process.env.SHIP_FROM_POSTAL_CODE || '33982',
-        country_code: process.env.SHIP_FROM_COUNTRY || 'US',
       }
     }
 

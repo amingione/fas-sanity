@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import { getShipEngineFromAddress } from '../lib/ship-from'
 
 // CORS helper (uses CORS_ALLOW like other functions)
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
@@ -106,16 +107,7 @@ export const handler: Handler = async (event) => {
     country_code: (dest.country || dest.country_code) as string,
   }
 
-  const fromAddress = {
-    name: process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports LLC',
-    phone: process.env.SHIP_FROM_PHONE || '(812) 200-9012',
-    address_line1: process.env.SHIP_FROM_ADDRESS1 || '6161 Riverside Dr',
-    address_line2: process.env.SHIP_FROM_ADDRESS2 || undefined,
-    city_locality: process.env.SHIP_FROM_CITY || 'Punta Gorda',
-    state_province: process.env.SHIP_FROM_STATE || 'FL',
-    postal_code: process.env.SHIP_FROM_POSTAL_CODE || '33982',
-    country_code: process.env.SHIP_FROM_COUNTRY || 'US',
-  }
+  const fromAddress = getShipEngineFromAddress()
 
   try {
     const normalizeId = (value?: string) => {
