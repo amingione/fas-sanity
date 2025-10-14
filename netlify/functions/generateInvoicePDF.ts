@@ -42,7 +42,53 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
     dueDate,
     billTo,
     shipTo,
-    lineItems,
+    lineItems[]{
+      _key,
+      kind,
+      product->{_id, title, sku},
+      description,
+      sku,
+      quantity,
+      unitPrice,
+      lineTotal,
+      optionSummary,
+      optionDetails,
+      upgrades
+    },
+    orderRef->{
+      _id,
+      orderNumber,
+      cart[]{
+        _key,
+        name,
+        productName,
+        sku,
+        quantity,
+        price,
+        lineTotal,
+        total,
+        optionSummary,
+        optionDetails,
+        upgrades
+      }
+    },
+    order->{
+      _id,
+      orderNumber,
+      cart[]{
+        _key,
+        name,
+        productName,
+        sku,
+        quantity,
+        price,
+        lineTotal,
+        total,
+        optionSummary,
+        optionDetails,
+        upgrades
+      }
+    },
     discountType,
     discountValue,
     taxRate,

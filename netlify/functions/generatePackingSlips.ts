@@ -129,6 +129,25 @@ function wrapText(text: string, maxWidth: number, font: any, fontSize: number): 
   return lines.length ? lines : ['']
 }
 
+function toStringArray(value: any): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value.map((item) => String(item ?? '').trim()).filter(Boolean)
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => String(item ?? '').trim()).filter(Boolean)
+        }
+      } catch {}
+    }
+    return trimmed.split(/[,;|]/g).map((part) => part.trim()).filter(Boolean)
+  }
+  return [String(value ?? '').trim()].filter(Boolean)
+}
+
 async function buildPdf(data: PackingData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create()
   let page = pdfDoc.addPage([612, 792]) // 8.5" x 11"
@@ -454,11 +473,11 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
       if (!ci) continue
       const title = ci.name || ci.sku || 'Item'
       const detailsParts: string[] = []
-      if (ci.optionSummary) detailsParts.push(ci.optionSummary)
-      if (Array.isArray(ci.optionDetails) && ci.optionDetails.length)
-        detailsParts.push(ci.optionDetails.join(', '))
-      if (Array.isArray(ci.upgrades) && ci.upgrades.length)
-        detailsParts.push(`Upgrades: ${ci.upgrades.join(', ')}`)
+      if (ci.optionSummary) detailsParts.push(String(ci.optionSummary))
+      const optionDetails = toStringArray(ci.optionDetails)
+      if (optionDetails.length) detailsParts.push(optionDetails.join(', '))
+      const upgrades = toStringArray(ci.upgrades)
+      if (upgrades.length) detailsParts.push(`Upgrades: ${upgrades.join(', ')}`)
       if (ci.sku) detailsParts.push(`SKU ${ci.sku}`)
       const quantity = Number(ci.quantity || 1)
       items.push({
@@ -475,6 +494,12 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
       if (li?.product?.title && li?.description && li.description !== li.product.title) {
         detailsParts.push(li.product.title)
       }
+      const optionSummary = (li as any)?.optionSummary
+      if (optionSummary) detailsParts.push(String(optionSummary))
+      const optionDetails = toStringArray((li as any)?.optionDetails)
+      if (optionDetails.length) detailsParts.push(optionDetails.join(', '))
+      const upgrades = toStringArray((li as any)?.upgrades)
+      if (upgrades.length) detailsParts.push(`Upgrades: ${upgrades.join(', ')}`)
       if (li?.sku) detailsParts.push(`SKU ${li.sku}`)
       items.push({
         title,
