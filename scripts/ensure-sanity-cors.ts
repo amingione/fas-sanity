@@ -11,15 +11,12 @@ class SanityCorsPermissionError extends Error {
 }
 
 async function getRequiredOrigins() {
-  const configured = (process.env.SANITY_REQUIRED_CORS_ORIGINS || '').split(',')
-    .map(origin => origin.trim())
+  const configured = (process.env.SANITY_REQUIRED_CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
     .filter(Boolean)
 
-  const defaults = [
-    'http://localhost:3333',
-    'http://localhost:8888',
-    'http://localhost:48752',
-  ]
+  const defaults = ['http://localhost:3333', 'http://localhost:8888', 'http://localhost:48752']
 
   const fusionOrigin = process.env.FUSION_ENV_ORIGIN || ''
 
@@ -27,14 +24,11 @@ async function getRequiredOrigins() {
 }
 
 async function fetchExistingOrigins() {
-  const response = await fetch(
-    `https://api.sanity.io/v2023-03-01/projects/${projectId}/cors`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  )
+  const response = await fetch(`https://api.sanity.io/v2023-03-01/projects/${projectId}/cors`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
 
   const status = typeof response.status === 'number' ? response.status : Number(response.status)
 
@@ -52,17 +46,14 @@ async function fetchExistingOrigins() {
 }
 
 async function addOrigin(origin: string) {
-  const response = await fetch(
-    `https://api.sanity.io/v2023-03-01/projects/${projectId}/cors`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({origin, allowCredentials: true}),
-    }
-  )
+  const response = await fetch(`https://api.sanity.io/v2023-03-01/projects/${projectId}/cors`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({origin, allowCredentials: true}),
+  })
 
   const status = typeof response.status === 'number' ? response.status : Number(response.status)
 
@@ -90,7 +81,9 @@ async function ensureCors() {
 
   let existingOrigins: Set<string>
   try {
-    existingOrigins = new Set((await fetchExistingOrigins()).map(entry => entry.origin.toLowerCase()))
+    existingOrigins = new Set(
+      (await fetchExistingOrigins()).map((entry) => entry.origin.toLowerCase()),
+    )
   } catch (error) {
     if (error instanceof SanityCorsPermissionError) {
       console.warn(`${error.message} — skipping automatic Sanity CORS updates.`)
@@ -120,7 +113,7 @@ async function ensureCors() {
   }
 }
 
-ensureCors().catch(error => {
+ensureCors().catch((error) => {
   if (error instanceof SanityCorsPermissionError) {
     console.warn(`${error.message} — skipping automatic Sanity CORS updates.`)
     return

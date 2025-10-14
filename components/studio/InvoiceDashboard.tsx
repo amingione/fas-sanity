@@ -57,7 +57,11 @@ const DATE_OPTIONS: Array<{value: string; label: string; days?: number}> = [
 ]
 
 const currency = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'})
-const shortDate = new Intl.DateTimeFormat('en-US', {month: 'numeric', day: 'numeric', year: '2-digit'})
+const shortDate = new Intl.DateTimeFormat('en-US', {
+  month: 'numeric',
+  day: 'numeric',
+  year: '2-digit',
+})
 
 function normalizeAmount(document: RawInvoice): number {
   const direct = Number(document.total ?? document.amount)
@@ -148,7 +152,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
           amountTax,
           billTo{ name, email },
           customerRef->{ name, email, firstName, lastName }
-        } | order(coalesce(dueDate, invoiceDate, _createdAt) desc)`
+        } | order(coalesce(dueDate, invoiceDate, _createdAt) desc)`,
       )
 
       const now = Date.now()
@@ -313,16 +317,36 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
       <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="-mx-1 flex gap-3 overflow-x-auto pb-2 sm:-mx-2 lg:pb-0">
           <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
-            <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} tone="amber" />
+            <SummaryCard
+              title="Unpaid"
+              subtitle="Last 12 months"
+              amount={metrics.unpaidYear}
+              tone="amber"
+            />
           </div>
           <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
-            <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} tone="rose" />
+            <SummaryCard
+              title="Overdue"
+              subtitle="Outstanding now"
+              amount={metrics.overdue}
+              tone="rose"
+            />
           </div>
           <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
-            <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} tone="sky" />
+            <SummaryCard
+              title="Not due yet"
+              subtitle="Pending invoices"
+              amount={metrics.notDue}
+              tone="sky"
+            />
           </div>
           <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
-            <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} tone="emerald" />
+            <SummaryCard
+              title="Paid"
+              subtitle="Last 30 days"
+              amount={metrics.paidRecent}
+              tone="emerald"
+            />
           </div>
         </div>
         <div className="mt-4">
@@ -435,12 +459,18 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                         }}
                       >
                         <td className="px-4 py-3 text-slate-600">
-                          {invoice.invoiceDateIso ? shortDate.format(new Date(invoice.invoiceDateIso)) : '—'}
+                          {invoice.invoiceDateIso
+                            ? shortDate.format(new Date(invoice.invoiceDateIso))
+                            : '—'}
                         </td>
                         <td className="px-4 py-3 text-slate-600">
-                          {invoice.dueDateIso ? shortDate.format(new Date(invoice.dueDateIso)) : '—'}
+                          {invoice.dueDateIso
+                            ? shortDate.format(new Date(invoice.dueDateIso))
+                            : '—'}
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-800">{invoice.invoiceNumber}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800">
+                          {invoice.invoiceNumber}
+                        </td>
                         <td className="px-4 py-3 text-slate-700">{invoice.customerName}</td>
                         <td className="px-4 py-3 text-right font-medium text-slate-900">
                           {currency.format(invoice.amount || 0)}
@@ -448,7 +478,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(
-                              invoice
+                              invoice,
                             )}`}
                           >
                             {invoice.isOverdue ? 'Overdue' : invoice.statusLabel}
@@ -494,7 +524,9 @@ const SummaryCard: React.FC<{
   return (
     <div className="flex h-full min-h-[132px] flex-col justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{subtitle}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {subtitle}
+        </p>
         <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
       </div>
       <div>
