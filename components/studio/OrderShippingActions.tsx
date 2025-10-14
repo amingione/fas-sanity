@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Button, Flex } from '@sanity/ui'
-import { useFormValue } from 'sanity'
-import { createClient } from '@sanity/client'
+import { useClient, useFormValue } from 'sanity'
 import ShippingLabelActions from './ShippingLabelActions'
 
 function getFnBase(): string {
@@ -18,19 +17,10 @@ function getFnBase(): string {
   return ''
 }
 
-const getSanityClient = () =>
-  createClient({
-    projectId: 'r4og35qd',
-    dataset: 'production',
-    apiVersion: '2024-04-10',
-    token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
-    useCdn: false,
-  })
-
 export default function OrderShippingActions() {
   const doc = useFormValue([]) as any
   const base = getFnBase() || 'https://fassanity.fasmotorsports.com'
-  const client = useMemo(() => getSanityClient(), [])
+  const client = useClient({ apiVersion: '2024-04-10' })
 
   const [isGenerating, setIsGenerating] = useState(false)
   const packingSlipUrl = typeof doc?.packingSlipUrl === 'string' ? doc.packingSlipUrl : ''

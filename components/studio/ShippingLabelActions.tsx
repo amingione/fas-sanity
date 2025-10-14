@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Button, Flex, Text, useToast } from '@sanity/ui'
-import { useFormValue } from 'sanity'
-import { createClient } from '@sanity/client'
+import { useClient, useFormValue } from 'sanity'
 
 interface Props {
   doc: Record<string, any>
@@ -91,17 +90,8 @@ function getFnBase(): string {
   return ''
 }
 
-const getSanityClient = () =>
-  createClient({
-    projectId: 'r4og35qd',
-    dataset: 'production',
-    apiVersion: '2024-04-10',
-    token: process.env.PUBLIC_SANITY_WRITE_TOKEN,
-    useCdn: false
-  })
-
 export default function ShippingLabelActions({ doc }: Props) {
-  const client = useMemo(() => getSanityClient(), [])
+  const client = useClient({ apiVersion: '2024-04-10' })
 
   const saveSelectedRate = async (rate: {
     carrierId: string
