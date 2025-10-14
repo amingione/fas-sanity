@@ -36,8 +36,8 @@ type MetadataCollection = {
   entries: CartMetadataEntry[]
 }
 
-const OPTION_KEYWORDS = ['option', 'vehicle', 'fitment', 'model', 'variant', 'trim', 'package']
-const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addOn']
+const OPTION_KEYWORDS = ['option', 'vehicle', 'fitment', 'model', 'variant', 'trim', 'package', 'selection', 'config']
+const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addOn', 'accessory']
 const IGNORE_OPTION_KEYS = ['shipping_option', 'shipping_options', 'shippingoption']
 
 function toStringValue(value: unknown): string | undefined {
@@ -81,6 +81,19 @@ function collectMetadata(sources: Array<{ source: MetadataSource; data?: Record<
   }
 
   return { map: combined, entries }
+}
+
+function metadataEntriesToMap(entries?: Array<{ key?: string | null; value?: unknown }> | null): Record<string, string> {
+  const map: Record<string, string> = {}
+  if (!Array.isArray(entries)) return map
+  for (const entry of entries) {
+    if (!entry) continue
+    const key = toStringValue(entry.key)?.trim()
+    const value = toStringValue(entry.value)
+    if (!key || !value) continue
+    if (!map[key]) map[key] = value
+  }
+  return map
 }
 
 function pickFirst(map: Record<string, string>, keys: string[]): string | undefined {
@@ -134,6 +147,91 @@ function extractCategories(product: Stripe.Product | null, metadataMap: Record<s
   return categories.length ? Array.from(new Set(categories)) : undefined
 }
 
+function parseOptionValue(value: string): string[] {
+  const trimmed = value.trim()
+  if (!trimmed) return []
+  if (/^[\[{]/.test(trimmed)) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        const segments: string[] = []
+        for (const item of parsed) {
+          if (!item) continue
+          if (typeof item === 'string') {
+            const v = item.trim()
+            if (v) segments.push(v)
+            continue
+          }
+          if (typeof item === 'object') {
+            const name = toStringValue((item as any).name)?.trim()
+            const val = toStringValue((item as any).value)?.trim()
+            if (name && val) {
+              segments.push(`${name}: ${val}`)
+              continue
+            }
+            const label = toStringValue((item as any).label)?.trim()
+            if (label && val) {
+              segments.push(`${label}: ${val}`)
+              continue
+            }
+            const fallback = toStringValue(item)?.trim()
+            if (fallback) segments.push(fallback)
+            continue
+          }
+        }
+        if (segments.length) return segments
+      } else if (parsed && typeof parsed === 'object') {
+        const segments: string[] = []
+        for (const [k, v] of Object.entries(parsed)) {
+          const label = humanize(k)
+          const val = toStringValue(v)
+          if (!val) continue
+          segments.push(label ? `${label}: ${val}` : val)
+        }
+        if (segments.length) return segments
+      }
+    } catch {
+      // ignore JSON parse errors
+    }
+  }
+  return [trimmed]
+}
+
+function parseListValue(value: string): string[] {
+  const trimmed = value.trim()
+  if (!trimmed) return []
+  if (/^[\[{]/.test(trimmed)) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        const segments: string[] = []
+        for (const item of parsed) {
+          if (!item) continue
+          if (typeof item === 'string') {
+            const v = item.trim()
+            if (v) segments.push(v)
+            continue
+          }
+          if (typeof item === 'object') {
+            const valueCandidate = toStringValue((item as any).name) || toStringValue((item as any).value)
+            if (valueCandidate) {
+              const trimmedCandidate = valueCandidate.trim()
+              if (trimmedCandidate) segments.push(trimmedCandidate)
+            }
+          }
+        }
+        if (segments.length) return segments
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return trimmed
+    .split(/[,;|]/g)
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
 function extractOptionDetails(metadataMap: Record<string, string>): { summary?: string; details: string[] } {
   const pairs = new Map<string, { name?: string; value?: string }>()
   const consumedKeys = new Set<string>()
@@ -168,7 +266,17 @@ function extractOptionDetails(metadataMap: Record<string, string>): { summary?: 
     if (IGNORE_OPTION_KEYS.some((ignore) => lowerKey.includes(ignore))) continue
     if (!OPTION_KEYWORDS.some((kw) => lowerKey.includes(kw))) continue
     const label = humanize(key)
-    details.push(`${label}: ${value}`)
+    const segments = parseOptionValue(value)
+    if (segments.length) {
+      segments.forEach((segment) => {
+        const normalized = segment.trim()
+        if (!normalized) return
+        const hasLabel = normalized.includes(':')
+        details.push(hasLabel || !label ? normalized : `${label}: ${normalized}`)
+      })
+    } else {
+      details.push(`${label}: ${value}`)
+    }
   }
 
   const uniqueDetails = Array.from(new Set(details.map((d) => d.trim()).filter(Boolean)))
@@ -183,13 +291,29 @@ function extractUpgrades(metadataMap: Record<string, string>): string[] | undefi
   for (const [key, value] of Object.entries(metadataMap)) {
     const lowerKey = key.toLowerCase()
     if (!UPGRADE_KEYWORDS.some((kw) => lowerKey.includes(kw))) continue
-    const tokens = value.split(/[,;|]/g).map((part) => part.trim()).filter(Boolean)
+    const tokens = parseListValue(value)
     if (tokens.length) upgrades.push(...tokens)
-    else upgrades.push(value.trim())
   }
 
   const unique = Array.from(new Set(upgrades.filter(Boolean)))
   return unique.length ? unique : undefined
+}
+
+export function deriveOptionsFromMetadata(
+  metadata: Array<{ key?: string | null; value?: unknown }> | Record<string, string> | null | undefined
+): {
+  optionSummary?: string
+  optionDetails: string[]
+  upgrades: string[]
+} {
+  const map = Array.isArray(metadata) ? metadataEntriesToMap(metadata) : { ...(metadata || {}) }
+  const { summary, details } = extractOptionDetails(map)
+  const upgrades = extractUpgrades(map) ?? []
+  return {
+    optionSummary: summary,
+    optionDetails: details,
+    upgrades,
+  }
 }
 
 export function mapStripeLineItem(
@@ -257,14 +381,16 @@ export function mapStripeLineItem(
     toStringValue(metadata.map.name)
 
   const baseName = description || fallbackName || productName
-  const { summary: optionSummary, details: optionDetails } = extractOptionDetails(metadata.map)
-  const upgrades = extractUpgrades(metadata.map)
+  const derivedOptions = deriveOptionsFromMetadata(metadata.entries)
+  const optionSummary = derivedOptions.optionSummary
+  const optionDetails = derivedOptions.optionDetails
+  const upgrades = derivedOptions.upgrades
   const extraParts: string[] = []
 
   if (optionSummary && (!baseName || !baseName.toLowerCase().includes(optionSummary.toLowerCase()))) {
     extraParts.push(optionSummary)
   }
-  if (upgrades && upgrades.length) {
+  if (upgrades.length) {
     const label = `Upgrades: ${upgrades.join(', ')}`
     if (!baseName || !baseName.toLowerCase().includes(label.toLowerCase())) {
       extraParts.push(label)
@@ -285,7 +411,7 @@ export function mapStripeLineItem(
     description,
     optionSummary,
     optionDetails: optionDetails.length ? optionDetails : undefined,
-    upgrades,
+    upgrades: upgrades.length ? upgrades : undefined,
     price,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,
     categories,

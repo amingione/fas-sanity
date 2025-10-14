@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import Stripe from 'stripe'
+import type { CartItem } from '../lib/cartEnrichment'
 import { createClient } from '@sanity/client'
 import { randomUUID } from 'crypto'
 import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip'
@@ -213,6 +214,14 @@ const PRODUCT_METADATA_SKU_KEYS = ['sku', 'SKU', 'product_sku', 'productSku', 's
 const PRODUCT_METADATA_SLUG_KEYS = ['sanity_slug', 'slug', 'product_slug', 'productSlug']
 const INVOICE_METADATA_ID_KEYS = ['sanity_invoice_id', 'invoice_id', 'sanityInvoiceId', 'invoiceId']
 
+function isStripeProduct(product: Stripe.Product | Stripe.DeletedProduct | string | null | undefined): product is Stripe.Product {
+  return Boolean(
+    product &&
+      typeof product === 'object' &&
+      !('deleted' in product && (product as Stripe.DeletedProduct).deleted)
+  )
+}
+
 function normalizeSanityId(value?: string | null): string | undefined {
   if (!value) return undefined
   const trimmed = value.toString().trim()
@@ -301,6 +310,7 @@ async function ensureProductDocument(stripeProductId: string, metadata?: Record<
 
   try {
     const product = await stripe.products.retrieve(stripeProductId)
+    if (!isStripeProduct(product)) return null
     docId = await syncStripeProduct(product)
     return docId
   } catch (err) {
@@ -373,7 +383,7 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
   if (sku) payload.sku = sku
 
   try {
-    const created = await sanity.create(payload, { autoGenerateArrayKeys: true })
+    const created = await sanity.create(payload as any, { autoGenerateArrayKeys: true })
     return created?._id || null
   } catch (err) {
     console.warn('stripeWebhook: failed to create product doc from Stripe product', err)
@@ -385,8 +395,9 @@ async function syncStripePrice(price: Stripe.Price): Promise<void> {
   const productId = typeof price.product === 'string' ? price.product : price.product?.id
   if (!productId) return
 
+  const productObject = typeof price.product === 'string' ? null : price.product
   const combinedMeta: Record<string, string> = {
-    ...(typeof price.product !== 'string' ? ((price.product?.metadata || {}) as Record<string, string>) : {}),
+    ...(isStripeProduct(productObject) ? ((productObject.metadata || {}) as Record<string, string>) : {}),
     ...(price.metadata || {}),
   }
 
@@ -410,10 +421,10 @@ async function syncStripePrice(price: Stripe.Price): Promise<void> {
     if (typeof major === 'number') setOps.price = major
   }
 
-  if (typeof price.product !== 'string' && price.product?.default_price) {
-    const defaultPriceId = typeof price.product.default_price === 'string'
-      ? price.product.default_price
-      : price.product.default_price?.id
+  if (isStripeProduct(productObject) && productObject.default_price) {
+    const defaultPriceId = typeof productObject.default_price === 'string'
+      ? productObject.default_price
+      : productObject.default_price?.id
     if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
   }
 
@@ -471,6 +482,13 @@ function mapInvoiceStatus(stripeStatus?: string | null): string | undefined {
 }
 
 async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
+  const invoiceRecord = invoice as Stripe.Invoice & {
+    amount_subtotal?: number
+    amount_tax?: number
+    customer_details?: { email?: string | null }
+    payment_intent?: string | Stripe.PaymentIntent
+  }
+
   const metadata = (invoice.metadata || {}) as Record<string, string>
   const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(Boolean)
 
@@ -498,9 +516,9 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
     stripeLastSyncedAt: new Date().toISOString(),
   }
 
-  const subtotal = toMajorUnits(invoice.amount_subtotal || undefined)
+  const subtotal = toMajorUnits(invoiceRecord.amount_subtotal || undefined)
   if (typeof subtotal === 'number') setOps.amountSubtotal = subtotal
-  const tax = toMajorUnits(invoice.amount_tax || undefined)
+  const tax = toMajorUnits(invoiceRecord.amount_tax || undefined)
   if (typeof tax === 'number') setOps.amountTax = tax
   const total = typeof invoice.total === 'number' ? toMajorUnits(invoice.total) : undefined
   if (typeof total === 'number') setOps.total = total
@@ -509,11 +527,11 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   const mappedStatus = mapInvoiceStatus(invoice.status)
   if (mappedStatus) setOps.status = mappedStatus
 
-  const email = invoice.customer_email || invoice.customer_details?.email || undefined
+  const email = invoice.customer_email || invoiceRecord.customer_details?.email || undefined
   if (email) setOps.customerEmail = email
 
-  if (invoice.payment_intent) {
-    setOps.paymentIntentId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id
+  if (invoiceRecord.payment_intent) {
+    setOps.paymentIntentId = typeof invoiceRecord.payment_intent === 'string' ? invoiceRecord.payment_intent : invoiceRecord.payment_intent.id
   }
 
   if (invoice.hosted_invoice_url) setOps.receiptUrl = invoice.hosted_invoice_url
@@ -617,7 +635,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
     if (billingAddress) payload.billingAddress = billingAddress
 
     try {
-      await sanity.create(payload, { autoGenerateArrayKeys: true })
+      await sanity.create(payload as any, { autoGenerateArrayKeys: true })
     } catch (err) {
       console.warn('stripeWebhook: failed to create customer doc from Stripe customer', err)
     }
@@ -994,7 +1012,7 @@ export const handler: Handler = async (event) => {
 
       case 'product.deleted': {
         try {
-          const product = webhookEvent.data.object as Stripe.DeletedProduct
+          const product = webhookEvent.data.object as { id: string }
           const docId = await findProductDocumentId({ stripeProductId: product.id })
           if (docId) {
             await sanity.patch(docId).set({
@@ -1021,8 +1039,8 @@ export const handler: Handler = async (event) => {
 
       case 'price.deleted': {
         try {
-          const deleted = webhookEvent.data.object as Stripe.DeletedPrice & { product?: string | Stripe.Product }
-          const productId = typeof deleted.product === 'string' ? deleted.product : undefined
+          const deleted = webhookEvent.data.object as { id: string; product?: string | { id?: string } }
+          const productId = typeof deleted.product === 'string' ? deleted.product : deleted.product?.id
           await removeStripePrice(deleted.id, productId)
         } catch (err) {
           console.warn('stripeWebhook: failed to handle price.deleted', err)
@@ -1045,7 +1063,7 @@ export const handler: Handler = async (event) => {
 
       case 'customer.deleted': {
         try {
-          const deleted = webhookEvent.data.object as Stripe.DeletedCustomer
+          const deleted = webhookEvent.data.object as { id: string }
           const docId = await sanity.fetch<string | null>(`*[_type == "customer" && stripeCustomerId == $id][0]._id`, { id: deleted.id })
           if (docId) {
             await sanity.patch(docId).set({ stripeLastSyncedAt: new Date().toISOString() }).commit({ autoGenerateArrayKeys: true })
@@ -1207,7 +1225,7 @@ export const handler: Handler = async (event) => {
         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '').toString().trim()
 
         // 2) Gather enriched data: line items + shipping
-        let cart: Array<Record<string, any>> = []
+        let cart: CartItem[] = []
         try {
           const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
             limit: 100,
@@ -1219,7 +1237,7 @@ export const handler: Handler = async (event) => {
               _type: 'orderCartItem',
               _key: randomUUID(),
               ...mapped,
-            }
+            } as CartItem
           })
           cart = await enrichCartItemsFromSanity(cart, sanity)
         } catch (e) {

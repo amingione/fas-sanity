@@ -8,6 +8,7 @@ import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerat
 import FinancialDashboard from './components/studio/FinancialDashboard'
 import FinancialReports from './components/studio/FinancialReports'
 import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
+import SalesTransactions from './components/studio/SalesTransactions'
 import OrderStatusPreview from './components/inputs/FulfillmentBadge'
 import VendorStatusBadge from './components/inputs/VendorStatusBadge'
 
@@ -27,7 +28,7 @@ const getPreviewViews = (S: any, schema: string) => [
     .title('Preview')
     .id('preview'),
   schema === 'order' &&
-    S.view.component(OrderStatusPreview).title('Fulfillment Status').id('fulfillment-status'),
+    S.view.component(OrderStatusPreview as any).title('Fulfillment Status').id('fulfillment-status'),
 ].filter(Boolean)
 
 export const deskStructure: StructureResolver = (S, context) => {
@@ -83,22 +84,25 @@ export const deskStructure: StructureResolver = (S, context) => {
       S.divider(),
 
       S.listItem().id('bulk-label-generator').title('📦 Bulk Label Generator').child(
-        S.component().title('Bulk Label Generator').component(BulkLabelGenerator)
+        S.component().title('Bulk Label Generator').component(BulkLabelGenerator as any)
       ),
       S.listItem().id('packing-slip-generator').title('📄 Packing Slip Generator').child(
-        S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)
+        S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator as any)
+      ),
+      S.listItem().id('sales-transactions').title('💰 Sales Transactions').child(
+        S.component().title('Sales Transactions').component(SalesTransactions as any)
       ),
       S.listItem().id('financial-dashboard').title('📊 Financial Dashboard').child(
-        S.component().title('Finance').component(FinancialDashboard)
+        S.component().title('Finance').component(FinancialDashboard as any)
       ),
       S.listItem().id('financial-reports').title('📥 Financial Reports').child(
-        S.component().title('Reports').component(FinancialReports)
+        S.component().title('Reports').component(FinancialReports as any)
       ),
       S.listItem().id('fulfillment-console').title('🧾 Fulfillment Console').child(
-        S.component().title('Console').component(BulkFulfillmentConsole)
+        S.component().title('Console').component(BulkFulfillmentConsole as any)
       ),
       S.listItem().id('customer-dashboard').title('👤 Customer Dashboard').child(
-        S.component().title('Customers').component(CustomerDashboard)
+        S.component().title('Customers').component(CustomerDashboard as any)
       ),
 
       S.listItem().id('admin-tools')
@@ -122,7 +126,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                         .schemaType('vendor')
                         .views([
                           S.view.form().id('form'),
-                          S.view.component(VendorStatusBadge).title('Status Badge').id('status-badge'),
+                          S.view.component(VendorStatusBadge as any).title('Status Badge').id('status-badge'),
                         ])
                     )
                 ),
@@ -141,7 +145,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                         .schemaType('vendor')
                         .views([
                           S.view.form().id('form'),
-                          S.view.component(VendorStatusBadge).title('Status Badge').id('status-badge'),
+                          S.view.component(VendorStatusBadge as any).title('Status Badge').id('status-badge'),
                         ])
                     )
                 ),

@@ -20,7 +20,10 @@ export default function FilterDeleteTag({ tag }: Props) {
     setBusy(true)
     setMsg('')
     try {
-      const c = await client.fetch('count(*[_type=="product" && defined(filters) && $tag in filters])', { tag: normTag })
+      const c = await client.fetch<number>(
+        'count(*[_type=="product" && defined(filters) && $tag in filters])' as any,
+        { tag: normTag } as any
+      )
       setCount(Number(c) || 0)
     } catch (e: any) {
       setMsg(String(e?.message || e))
@@ -36,7 +39,10 @@ export default function FilterDeleteTag({ tag }: Props) {
     setBusy(true)
     setMsg('')
     try {
-      const ids: string[] = await client.fetch('*[_type=="product" && defined(filters) && $tag in filters][]._id', { tag: normTag })
+      const ids = await client.fetch<string[]>(
+        '*[_type=="product" && defined(filters) && $tag in filters][]._id' as any,
+        { tag: normTag } as any
+      )
       if (ids.length === 0) {
         setMsg('No products currently have this filter.')
         setCount(0)

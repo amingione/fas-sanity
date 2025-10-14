@@ -37,6 +37,8 @@ interface CalComBooking {
   title?: string
   startTime: string
   endTime: string
+  start_time?: string
+  end_time?: string
   attendees?: CalComAttendee[]
   location?: string
   description?: string | null
