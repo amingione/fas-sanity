@@ -36,14 +36,16 @@ async function fetchExistingOrigins() {
     }
   )
 
-  if (response.status === 401 || response.status === 403) {
+  const status = typeof response.status === 'number' ? response.status : Number(response.status)
+
+  if (status === 401 || status === 403) {
     const message = await response.text()
-    throw new SanityCorsPermissionError(response.status, message)
+    throw new SanityCorsPermissionError(status, message)
   }
 
   if (!response.ok) {
     const message = await response.text()
-    throw new Error(`Failed to load existing CORS origins: ${response.status} ${message}`)
+    throw new Error(`Failed to load existing CORS origins: ${status} ${message}`)
   }
 
   return (await response.json()) as {origin: string}[]
@@ -62,14 +64,16 @@ async function addOrigin(origin: string) {
     }
   )
 
-  if (response.status === 401 || response.status === 403) {
+  const status = typeof response.status === 'number' ? response.status : Number(response.status)
+
+  if (status === 401 || status === 403) {
     const message = await response.text()
-    throw new SanityCorsPermissionError(response.status, message)
+    throw new SanityCorsPermissionError(status, message)
   }
 
   if (!response.ok) {
     const message = await response.text()
-    throw new Error(`Failed to add CORS origin ${origin}: ${response.status} ${message}`)
+    throw new Error(`Failed to add CORS origin ${origin}: ${status} ${message}`)
   }
 }
 
