@@ -5,7 +5,7 @@
   "main": "package.json",
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "sanity dev",
+    "dev": "tsx scripts/ensure-sanity-cors.ts && sanity dev",
     "start": "sanity start",
     "build": "sanity build",
     "deploy": "sanity deploy",
