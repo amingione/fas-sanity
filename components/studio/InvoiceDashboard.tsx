@@ -1,7 +1,7 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
-import {Spinner} from '@sanity/ui'
+import {Spinner, useToast} from '@sanity/ui'
 
 type RawInvoice = {
   _id: string
@@ -120,6 +120,7 @@ function statusLabel(status: InvoiceRecord['status']): string {
 const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const router = useRouter()
+  const toast = useToast()
 
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,6 +128,10 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('12m')
   const [search, setSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchLoading, setBatchLoading] = useState(false)
+  const selectAllRef = useRef<HTMLInputElement | null>(null)
+  const [compactHeader, setCompactHeader] = useState(false)
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -262,6 +267,93 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
       })
   }, [invoices, statusFilter, dateFilter, search])
 
+  const handleSelect = useCallback((invoiceId: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(invoiceId)
+      else next.delete(invoiceId)
+      return next
+    })
+  }, [])
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (!checked) {
+        setSelectedIds(new Set())
+        return
+      }
+      setSelectedIds(new Set(filteredInvoices.map((invoice) => invoice.id)))
+    },
+    [filteredInvoices]
+  )
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const allowed = new Set(filteredInvoices.map((invoice) => invoice.id))
+      const next = new Set<string>()
+      prev.forEach((id) => {
+        if (allowed.has(id)) next.add(id)
+      })
+      return next
+    })
+  }, [filteredInvoices])
+
+  useEffect(() => {
+    if (!selectAllRef.current) return
+    const total = filteredInvoices.length
+    const selected = selectedIds.size
+    selectAllRef.current.indeterminate = selected > 0 && selected < total
+    if (total === 0) {
+      selectAllRef.current.checked = false
+    } else {
+      selectAllRef.current.checked = selected > 0 && selected === total
+    }
+  }, [filteredInvoices, selectedIds])
+
+  const runBatchMarkPaid = useCallback(async () => {
+    if (selectedIds.size === 0) {
+      toast.push({status: 'warning', title: 'Select invoices first'})
+      return
+    }
+    if (
+      !window.confirm(`Mark ${selectedIds.size} invoice${selectedIds.size === 1 ? '' : 's'} as paid?`)
+    ) {
+      return
+    }
+
+    try {
+      setBatchLoading(true)
+      const tx = client.transaction()
+      selectedIds.forEach((id) => {
+        tx.patch(id, {set: {status: 'paid'}})
+      })
+      await tx.commit({autoGenerateArrayKeys: true})
+      toast.push({status: 'success', title: 'Invoices updated'})
+      setSelectedIds(new Set())
+      await fetchInvoices()
+    } catch (err: any) {
+      console.error('InvoiceDashboard batch mark paid failed', err)
+      toast.push({
+        status: 'error',
+        title: 'Could not update invoices',
+        description: err?.message || 'Check console for details',
+      })
+    } finally {
+      setBatchLoading(false)
+    }
+  }, [client, fetchInvoices, selectedIds, toast])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const handleScroll = () => {
+      const offset = window.scrollY || 0
+      setCompactHeader(offset > 80)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, {passive: true})
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const openInvoice = (invoiceId: string) => {
     router.navigateIntent('edit', {id: invoiceId, type: 'invoice'})
   }
@@ -280,24 +372,47 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
 
   return (
     <div ref={ref} className="flex h-full flex-col overflow-hidden bg-slate-100">
-      <div className="border-b border-slate-200 bg-white px-6 py-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <div
+        className={`sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur transition-all duration-200 ${
+          compactHeader ? 'shadow-sm' : ''
+        }`}
+      >
+        <div
+          className={`flex flex-col gap-4 px-6 transition-all duration-200 ${
+            compactHeader ? 'py-3 sm:flex-row sm:items-center sm:justify-between' : 'py-5 sm:flex-row sm:items-start sm:justify-between'
+          }`}
+        >
+          <div className="min-w-0">
+            <p
+              className={`text-xs font-semibold uppercase tracking-wide text-slate-500 transition-all duration-200 ${
+                compactHeader ? 'opacity-80' : ''
+              }`}
+            >
               Sales &amp; Payments
             </p>
-            <h1 className="text-2xl font-bold text-slate-900">Invoices</h1>
-            <p className="text-sm text-slate-500">
+            <h1
+              className={`font-bold text-slate-900 transition-all duration-200 ${
+                compactHeader ? 'text-xl' : 'text-2xl'
+              }`}
+            >
+              Invoices
+            </h1>
+            <p
+              className={`text-slate-500 transition-all duration-200 ${
+                compactHeader ? 'hidden text-xs sm:block' : 'text-sm'
+              }`}
+            >
               Track overdue balances and jump straight into any invoice.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              disabled
-              className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-500 shadow-sm"
+              onClick={runBatchMarkPaid}
+              disabled={batchLoading || selectedIds.size === 0}
+              className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Batch actions
+              {batchLoading ? 'Updating…' : 'Mark selected paid'}
             </button>
             <button
               type="button"
@@ -308,15 +423,18 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-4 border-b border-slate-200 bg-white px-6 py-5 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} tone="amber" />
-        <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} tone="rose" />
-        <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} tone="sky" />
-        <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} tone="emerald" />
-        <div className="md:col-span-2 lg:col-span-4">
-          <ProgressBar overdue={metrics.overdue} notDue={metrics.notDue} />
+        <div
+          className={`grid gap-4 border-t border-slate-200 bg-white px-6 transition-all duration-200 md:grid-cols-2 lg:grid-cols-4 ${
+            compactHeader ? 'max-h-0 overflow-hidden py-0 opacity-0 pointer-events-none' : 'py-5 opacity-100'
+          }`}
+        >
+          <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} tone="amber" />
+          <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} tone="rose" />
+          <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} tone="sky" />
+          <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} tone="emerald" />
+          <div className="md:col-span-2 lg:col-span-4">
+            <ProgressBar overdue={metrics.overdue} notDue={metrics.notDue} />
+          </div>
         </div>
       </div>
 
@@ -386,6 +504,14 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
               <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-700">
                 <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
+                    <th className="px-4 py-3 text-left">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        onChange={(event) => handleSelectAll(event.currentTarget.checked)}
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left">Date</th>
                     <th className="px-4 py-3 text-left">Due</th>
                     <th className="px-4 py-3 text-left">Invoice #</th>
@@ -398,19 +524,19 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                 <tbody className="divide-y divide-slate-100">
                   {error ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-rose-600">
+                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-rose-600">
                         {error}
                       </td>
                     </tr>
                   ) : loading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-500">
+                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
                         Loading invoices…
                       </td>
                     </tr>
                   ) : filteredInvoices.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-500">
+                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
                         No invoices match the current filters.
                       </td>
                     </tr>
@@ -420,10 +546,19 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                         key={invoice.id}
                         className="hover:bg-slate-50"
                         onClick={(event) => {
-                          if ((event.target as HTMLElement).closest('button')) return
+                          const target = event.target as HTMLElement
+                          if (target.closest('button') || target.closest('input[type="checkbox"]')) return
                           openInvoice(invoice.id)
                         }}
                       >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            checked={selectedIds.has(invoice.id)}
+                            onChange={(event) => handleSelect(invoice.id, event.currentTarget.checked)}
+                          />
+                        </td>
                         <td className="px-4 py-3 text-slate-600">
                           {invoice.invoiceDateIso ? shortDate.format(new Date(invoice.invoiceDateIso)) : '—'}
                         </td>
