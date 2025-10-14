@@ -26,10 +26,10 @@ export default function FilterBulkAssign({ tag }: Props) {
     setMsg('')
     try {
       const term = q.trim()
-      const result: any[] = await client.fetch(
-        `*[_type == "product" && !( $tag in (defined(filters) ? filters : []) ) ${term ? ' && (title match $m || sku match $m)' : ''}][0...200]{ _id, title, sku }`,
-        { tag: normTag, m: `${term}*` }
-      )
+      const query = `*[_type == "product" && !( $tag in (defined(filters) ? filters : []) ) ${term ? ' && (title match $m || sku match $m)' : ''}][0...200]{ _id, title, sku }`
+      const params: Record<string, unknown> = { tag: normTag }
+      if (term) params.m = `${term}*`
+      const result: any[] = await client.fetch(query, params)
       setItems(Array.isArray(result) ? result : [])
     } catch (e: any) {
       setMsg(String(e?.message || e))
@@ -103,4 +103,3 @@ export default function FilterBulkAssign({ tag }: Props) {
     </div>
   )
 }
-

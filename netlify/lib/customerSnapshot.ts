@@ -18,6 +18,7 @@ type ShippingLike = {
   country_code?: string | null
   email?: string | null
   phone?: string | null
+  label?: string | null
 }
 
 type UpdateCustomerArgs = {
@@ -182,7 +183,7 @@ export async function updateCustomerProfileForOrder({
       updatedAt: new Date().toISOString(),
     }
     try {
-      const created = await sanity.create(payload, { autoGenerateArrayKeys: true })
+      const created = await sanity.create(payload as any, { autoGenerateArrayKeys: true })
       if (created?._id) {
         customerId = created._id
         customerDoc = { ...payload, _id: created._id }
@@ -273,9 +274,9 @@ export async function updateCustomerProfileForOrder({
   const addressesSet = new Map<string, CustomerAddressEntry>()
 
   const existingAddresses: CustomerAddressEntry[] = Array.isArray(customerDoc?.addresses)
-    ? (customerDoc.addresses as any[]).map((addr) =>
-        toCustomerAddressEntry(addr, addr?.label || undefined)
-      )
+    ? (customerDoc.addresses as any[])
+        .map((addr) => toCustomerAddressEntry(addr, addr?.label || undefined))
+        .filter((entry): entry is CustomerAddressEntry => Boolean(entry))
     : []
   existingAddresses.forEach((entry) => {
     const key = addressKey(entry)

@@ -60,7 +60,22 @@ async function shipStationRequest<T = any>(path: string, init: RequestInit): Pro
   const headers: Record<string, string> = {
     Authorization: `Basic ${auth}`,
     'Content-Type': 'application/json',
-    ...(init.headers || {}),
+  }
+
+  if (init.headers) {
+    if (init.headers instanceof Headers) {
+      init.headers.forEach((value, key) => {
+        headers[key] = value
+      })
+    } else if (Array.isArray(init.headers)) {
+      init.headers.forEach(([key, value]) => {
+        headers[key] = String(value)
+      })
+    } else if (typeof init.headers === 'object') {
+      Object.entries(init.headers).forEach(([key, value]) => {
+        headers[key] = String(value)
+      })
+    }
   }
   const response = await fetch(`${SHIPSTATION_API_BASE}${path}`, {
     ...init,

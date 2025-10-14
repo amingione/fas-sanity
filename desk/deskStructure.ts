@@ -12,6 +12,7 @@ import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenera
 import FinancialDashboard from '../components/studio/FinancialDashboard'
 import FinancialReports from '../components/studio/FinancialReports'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
+import SalesTransactions from '../components/studio/SalesTransactions'
 import OrderStatusPreview from '../components/inputs/FulfillmentBadge' // shows <FulfillmentBadge />
 import EnvSelfCheck from '../components/studio/EnvSelfCheck'
 import BookingCalendar from '../components/studio/BookingCalendar'
@@ -21,6 +22,8 @@ import FilterBulkRemove from '../components/studio/FilterBulkRemove'
 import FilterDeleteTag from '../components/studio/FilterDeleteTag'
 import VendorAdminDashboard from '../components/studio/VendorAdminDashboard'
 import VendorStatusBadge from '../components/inputs/VendorStatusBadge'
+import InvoiceVisualEditor from '../components/studio/InvoiceVisualEditor'
+import InvoiceDashboard from '../components/studio/InvoiceDashboard'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -43,20 +46,37 @@ const CustomerDashboardPane: UserComponent = function CustomerDashboardPane(
   return React.createElement(CustomerDashboard, props as any)
 }
 
-const getPreviewViews = (S: any, schema: string) => [
-  S.view.form().id('form'),
-  S.view
-    .component((props: any) =>
-      DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' })
-    )
-    .title('Preview')
-    .id('preview'),
-  schema === 'order' &&
+const getPreviewViews = (S: any, schema: string) => {
+  const views = [
+    S.view.form().id('form'),
     S.view
-      .component(OrderStatusPreview)
-      .title('Fulfillment Status')
-      .id('fulfillment-status')
-].filter(Boolean)
+      .component((props: any) =>
+        DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' })
+      )
+      .title('Preview')
+      .id('preview'),
+  ]
+
+  if (schema === 'invoice') {
+    views.push(
+      S.view
+        .component(InvoiceVisualEditor as any)
+        .title('Visual Editor')
+        .id('visual-editor')
+    )
+  }
+
+  if (schema === 'order') {
+    views.push(
+      S.view
+        .component(OrderStatusPreview as any)
+        .title('Fulfillment Status')
+        .id('fulfillment-status')
+    )
+  }
+
+  return views.filter(Boolean)
+}
 
 export const deskStructure: StructureResolver = (S, context) =>
   S.list()
@@ -181,16 +201,34 @@ export const deskStructure: StructureResolver = (S, context) =>
 
       S.listItem()
         .title('Invoices')
+        .id('invoice-root')
         .schemaType('invoice')
         .child(
-          S.documentTypeList('invoice')
+          S.list()
+            .id('invoice-dashboard-list')
             .title('Invoices')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('invoice')
-                .views(getPreviewViews(S, 'invoice'))
-            )
+            .items([
+              S.listItem()
+                .title('Dashboard')
+                .child(
+                  S.component()
+                    .id('invoice-dashboard')
+                    .title('Invoice Dashboard')
+                    .component(InvoiceDashboard as any)
+                ),
+              S.listItem()
+                .title('All Invoices')
+                .child(
+                  S.documentTypeList('invoice')
+                    .title('All Invoices')
+                    .child((id: string) =>
+                      S.document()
+                        .documentId(id)
+                        .schemaType('invoice')
+                        .views(getPreviewViews(S, 'invoice'))
+                    )
+                ),
+            ])
         ),
 
       S.listItem()
@@ -211,23 +249,27 @@ export const deskStructure: StructureResolver = (S, context) =>
 
       S.listItem()
         .title('Bulk Label Generator')
-        .child(S.component().title('Bulk Label Generator').component(BulkLabelGenerator)),
+        .child(S.component().title('Bulk Label Generator').component(BulkLabelGenerator as any)),
 
       S.listItem()
         .title('Packing Slip Generator')
-        .child(S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator)),
+        .child(S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator as any)),
+
+      S.listItem()
+        .title('Sales Transactions')
+        .child(S.component().title('Sales Transactions').component(SalesTransactions as any)),
 
       S.listItem()
         .title('Financial Dashboard')
-        .child(S.component().title('Finance').component(FinancialDashboard)),
+        .child(S.component().title('Finance').component(FinancialDashboard as any)),
 
       S.listItem()
         .title('Financial Reports')
-        .child(S.component().title('Reports').component(FinancialReports)),
+        .child(S.component().title('Reports').component(FinancialReports as any)),
 
       S.listItem()
         .title('Fulfillment Console')
-        .child(S.component().title('Console').component(BulkFulfillmentConsole)),
+        .child(S.component().title('Console').component(BulkFulfillmentConsole as any)),
 
       S.listItem()
         .title('Customer Dashboard')
@@ -236,12 +278,12 @@ export const deskStructure: StructureResolver = (S, context) =>
       ,
       S.listItem()
         .title('Product Bulk Editor')
-        .child(S.component().title('Bulk Editor').component(ProductBulkEditor))
+        .child(S.component().title('Bulk Editor').component(ProductBulkEditor as any))
 
       ,
       S.listItem()
         .title('Booking Calendar')
-        .child(S.component().title('Bookings').component(BookingCalendar))
+        .child(S.component().title('Bookings').component(BookingCalendar as any))
 
       ,
       S.listItem()
@@ -272,7 +314,7 @@ export const deskStructure: StructureResolver = (S, context) =>
                         .views([
                           S.view.form().id('form'),
                           S.view
-                            .component(VendorStatusBadge)
+                            .component(VendorStatusBadge as any)
                             .title('Status Badge')
                             .id('status-badge'),
                         ])
@@ -295,7 +337,7 @@ export const deskStructure: StructureResolver = (S, context) =>
                         .views([
                           S.view.form().id('form'),
                           S.view
-                            .component(VendorStatusBadge)
+                            .component(VendorStatusBadge as any)
                             .title('Status Badge')
                             .id('status-badge'),
                         ])
@@ -306,7 +348,7 @@ export const deskStructure: StructureResolver = (S, context) =>
                 .child(
                   S.component()
                     .title('Vendor Admin Dashboard')
-                    .component(VendorAdminDashboard)
+                    .component(VendorAdminDashboard as any)
                 ),
             ])
         )
