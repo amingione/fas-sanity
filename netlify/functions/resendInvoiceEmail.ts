@@ -127,48 +127,51 @@ const handler: Handler = async (event) => {
           kind,
           product->{_id, title, sku},
           description,
-          sku,
+        sku,
+        quantity,
+        unitPrice,
+        lineTotal,
+        optionSummary,
+        optionDetails,
+        upgrades,
+        metadata[]{key, value}
+      },
+      orderRef->{
+        _id,
+        orderNumber,
+        cart[]{
+            _key,
+            name,
+            productName,
+            sku,
           quantity,
-          unitPrice,
+          price,
           lineTotal,
+          total,
           optionSummary,
           optionDetails,
-          upgrades
-        },
-        orderRef->{
-          _id,
-          orderNumber,
+          upgrades,
+          metadata[]{key, value}
+        }
+      },
+      order->{
+        _id,
+        orderNumber,
           cart[]{
             _key,
             name,
             productName,
             sku,
-            quantity,
-            price,
-            lineTotal,
-            total,
-            optionSummary,
-            optionDetails,
-            upgrades
-          }
-        },
-        order->{
-          _id,
-          orderNumber,
-          cart[]{
-            _key,
-            name,
-            productName,
-            sku,
-            quantity,
-            price,
-            lineTotal,
-            total,
-            optionSummary,
-            optionDetails,
-            upgrades
-          }
-        },
+          quantity,
+          price,
+          lineTotal,
+          total,
+          optionSummary,
+          optionDetails,
+          upgrades,
+          metadata[]{key, value}
+        }
+      },
         discountType,
         discountValue,
         taxRate,
