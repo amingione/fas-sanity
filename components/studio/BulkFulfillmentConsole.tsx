@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useClient } from 'sanity';
 import { useToast } from '@sanity/ui';
 import { Button, Card, Checkbox, Stack, Text } from '@sanity/ui';
@@ -10,12 +10,15 @@ const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order';
 
 interface Order {
   _id: string;
+  orderNumber?: string;
   customerEmail: string;
   totalAmount?: number;
   status: string;
 }
 
-export default function BulkFulfillmentConsole() {
+const BulkFulfillmentConsole = forwardRef<HTMLDivElement, {}>(function BulkFulfillmentConsole(_props, ref) {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
   const client = useClient({ apiVersion: '2023-10-01' });
   const toast = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -24,7 +27,7 @@ export default function BulkFulfillmentConsole() {
   const [ordersLoading, setOrdersLoading] = useState<boolean>(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
-  const query = `*[_type == "order" && status != "fulfilled"]{_id, customerEmail, totalAmount, status}`;
+  const query = `*[_type == "order" && status != "fulfilled"]{_id, orderNumber, customerEmail, totalAmount, status}`;
 
   const fetchOrders = async () => {
     setOrdersLoading(true);
@@ -142,8 +145,10 @@ export default function BulkFulfillmentConsole() {
     }
   };
 
+  useImperativeHandle(ref, () => rootRef.current as HTMLDivElement, [])
+
   return (
-    <Card padding={4}>
+    <Card padding={4} ref={rootRef}>
       <Stack space={4}>
         <Text size={2} weight="bold">
           Bulk Fulfillment Console
@@ -184,7 +189,7 @@ export default function BulkFulfillmentConsole() {
                   onChange={() => toggleSelection(order._id)}
                 />
                 <Text size={1} muted>
-                  {order._id}
+                  {order.orderNumber || order._id}
                 </Text>
               </label>
               <Text>{order.customerEmail}</Text>
@@ -213,4 +218,6 @@ export default function BulkFulfillmentConsole() {
       </Stack>
     </Card>
   );
-}
+})
+
+export default BulkFulfillmentConsole

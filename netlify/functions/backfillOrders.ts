@@ -6,7 +6,13 @@ import Stripe from 'stripe'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (() => {
+  const entries = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+  return entries.length > 0 ? entries : ['http://localhost:3333']
+})()
 function makeCORS(origin?: string) {
   let o = DEFAULT_ORIGINS[0]
   if (origin) {
