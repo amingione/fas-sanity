@@ -38,7 +38,6 @@ export const orderCartItemType = defineType({
       title: 'Raw Metadata',
       type: 'array',
       of: [{ type: 'orderCartItemMeta' }],
-      options: { collapsible: true, collapsed: true },
       readOnly: true,
     }),
   ],

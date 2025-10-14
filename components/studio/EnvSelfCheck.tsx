@@ -105,10 +105,16 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(function 
             onClick={async () => {
               try {
                 const text = JSON.stringify(data, null, 2)
+                let copied = false
                 if (navigator?.clipboard?.writeText) {
-                  await navigator.clipboard.writeText(text)
-                } else {
-                  // Fallback
+                  try {
+                    await navigator.clipboard.writeText(text)
+                    copied = true
+                  } catch {
+                    // Fall back below
+                  }
+                }
+                if (!copied) {
                   const ta = document.createElement('textarea')
                   ta.value = text
                   document.body.appendChild(ta)

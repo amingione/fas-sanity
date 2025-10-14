@@ -6,6 +6,7 @@ import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip
 import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
+import type { CartItem } from '../lib/cartEnrichment'
 import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
 
 // CORS helper (same pattern used elsewhere)
@@ -297,7 +298,7 @@ export const handler: Handler = async (event) => {
     ).toString().trim() || undefined
 
     // Gather line items if we have a Checkout Session
-    let cart: Array<Record<string, any>> = []
+    let cart: CartItem[] = []
     if (session?.id) {
       try {
         const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100, expand: ['data.price.product'] })
@@ -307,7 +308,7 @@ export const handler: Handler = async (event) => {
             _type: 'orderCartItem',
             _key: randomUUID(),
             ...mapped,
-          }
+          } as CartItem
         })
         cart = await enrichCartItemsFromSanity(cart, sanity)
       } catch (e) {

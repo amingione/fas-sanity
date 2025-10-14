@@ -65,8 +65,8 @@ export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
         const doc = await client.fetch('*[_id == $id][0]', {id: r._id})
         if (!doc) continue
         const {node: next, removed} = deepRemoveRefs(doc, ids)
-        if (removed > 0 && next) {
-          await client.createOrReplace(next)
+        if (removed > 0 && next && next._type) {
+          await client.createOrReplace(next as any)
         }
       }
 
@@ -100,7 +100,7 @@ export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
     },
     dialog: isOpen
       ? {
-          type: 'modal' as const,
+          type: 'dialog' as const,
           onClose: close,
           content: (
             <Box padding={4}>

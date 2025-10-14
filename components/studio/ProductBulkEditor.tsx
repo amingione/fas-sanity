@@ -5,6 +5,12 @@ import {googleProductCategories} from '../../schemaTypes/constants/googleProduct
 import type {DerivedProductFeedFields, ProductAttribute, ProductOptionSet, ProductSpecification} from '../../utils/productFeed'
 import {deriveProductFeedFields, detailsToStrings} from '../../utils/productFeed'
 
+declare global {
+  interface Window {
+    __SITE_BASE_URL__?: string
+  }
+}
+
 type ProductDoc = {
   _id: string
   title?: string
