@@ -280,8 +280,8 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
 
   return (
     <div ref={ref} className="flex h-full flex-col overflow-hidden bg-slate-100">
-      <div className="border-b border-slate-200 bg-white px-6 py-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-wrap items-start gap-4 sm:flex-nowrap sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Sales &amp; Payments
@@ -310,12 +310,22 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
         </div>
       </div>
 
-      <div className="grid gap-4 border-b border-slate-200 bg-white px-6 py-5 md:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} tone="amber" />
-        <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} tone="rose" />
-        <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} tone="sky" />
-        <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} tone="emerald" />
-        <div className="md:col-span-2 lg:col-span-4">
+      <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <div className="-mx-1 flex gap-3 overflow-x-auto pb-2 sm:-mx-2 lg:pb-0">
+          <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
+            <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} tone="amber" />
+          </div>
+          <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
+            <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} tone="rose" />
+          </div>
+          <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
+            <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} tone="sky" />
+          </div>
+          <div className="min-w-[168px] flex-shrink-0 sm:min-w-[190px]">
+            <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} tone="emerald" />
+          </div>
+        </div>
+        <div className="mt-4">
           <ProgressBar overdue={metrics.overdue} notDue={metrics.notDue} />
         </div>
       </div>
@@ -475,18 +485,26 @@ const SummaryCard: React.FC<{
   tone: 'amber' | 'rose' | 'sky' | 'emerald'
 }> = ({title, subtitle, amount, tone}) => {
   const toneMap: Record<string, string> = {
-    amber: 'bg-amber-50 text-amber-600 border-amber-100',
-    rose: 'bg-rose-50 text-rose-600 border-rose-100',
-    sky: 'bg-sky-50 text-sky-600 border-sky-100',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    amber: 'bg-amber-400',
+    rose: 'bg-rose-400',
+    sky: 'bg-sky-400',
+    emerald: 'bg-emerald-400',
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{subtitle}</p>
-      <h3 className="mt-1 text-lg font-semibold text-slate-900">{title}</h3>
-      <div className={`mt-3 inline-flex rounded-lg border px-3 py-2 text-sm font-semibold ${toneMap[tone]}`}>
-        {currency.format(amount || 0)}
+    <div className="flex h-full min-h-[132px] flex-col justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{subtitle}</p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
+      </div>
+      <div>
+        <div className="flex items-baseline gap-2">
+          <p className="text-xl font-semibold text-slate-900">{currency.format(amount || 0)}</p>
+          <span className="text-sm text-slate-400">—</span>
+        </div>
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+          <div className={`h-full rounded-full ${toneMap[tone]}`} style={{width: '100%'}} />
+        </div>
       </div>
     </div>
   )
