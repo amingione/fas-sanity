@@ -68,6 +68,11 @@ interface PackingData {
   notes?: string
 }
 
+function cleanIdentifier(value?: string | null): string {
+  if (!value) return ''
+  return String(value).replace(/^drafts\./, '').trim()
+}
+
 function normalizeAddress(raw: any | null | undefined): NormalizedAddress | null {
   if (!raw || typeof raw !== 'object') return null
   const lower = Object.keys(raw).reduce<Record<string, any>>((acc, key) => {
@@ -176,27 +181,36 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
   }
 
   // Header
-  page.drawText(SHOP_NAME.toUpperCase(), { x: margin, y, font: helveticaBold, size: 20 })
+  const headerTop = y
+  page.drawText(SHOP_NAME.toUpperCase(), { x: margin, y: headerTop, font: helveticaBold, size: 20 })
 
-  const orderMeta: string[] = [
-    `Order ${data.orderNumber}`,
-    data.orderDate,
-    data.customerName,
-  ].filter(Boolean)
+  const orderNumberLabel = data.orderNumber ? `Order #${data.orderNumber}` : ''
+  const orderLabelY = headerTop - 22
+  if (orderNumberLabel) {
+    page.drawText(orderNumberLabel, {
+      x: margin,
+      y: orderLabelY,
+      font: helveticaBold,
+      size: 13,
+    })
+  }
 
+  const orderMeta: string[] = [data.orderDate, data.customerName].filter(Boolean)
   orderMeta.forEach((line, idx) => {
-    const fontToUse = idx === 0 ? helveticaBold : helvetica
+    const fontToUse = helvetica
     const size = idx === 0 ? 12 : 11
     const textWidth = fontToUse.widthOfTextAtSize(line, size)
     page.drawText(line, {
       x: width - margin - textWidth,
-      y: y - idx * 14,
+      y: headerTop - idx * 14,
       font: fontToUse,
       size,
     })
   })
 
-  y -= 40
+  const leftBottom = orderNumberLabel ? orderLabelY - 20 : headerTop - 28
+  const rightBottom = orderMeta.length ? headerTop - orderMeta.length * 14 - 18 : headerTop - 28
+  y = Math.min(leftBottom, rightBottom) - 4
 
   // Addresses
   const columnGap = 32
@@ -351,7 +365,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           stripeSessionId,
           customerEmail,
           shippingAddress,
-          cart[]{ name, sku, quantity },
+          cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades },
         }
       }`,
       { id: cleanInvoiceId }
@@ -370,7 +384,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         customerEmail,
         shippingAddress,
         billingAddress,
-        cart[]{ name, sku, quantity },
+        cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades },
         notes,
         invoiceRef
       }`,
@@ -409,8 +423,22 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   const shippingAddress = normalizeAddress(invoice?.shipTo || order?.shippingAddress)
   const billingAddress = normalizeAddress(invoice?.billTo || order?.billingAddress || shippingAddress)
 
-  const invoiceNumber = invoice?.invoiceNumber || invoice?.orderNumber
-  const orderNumber = invoiceNumber || order?.orderNumber || order?.stripeSessionId || order?._id || cleanInvoiceId || cleanOrderId || 'Order'
+  const invoiceNumber = cleanIdentifier(invoice?.invoiceNumber || invoice?.orderNumber)
+  const primaryOrderNumber = cleanIdentifier(order?.orderNumber)
+  const orderInvoiceRefId =
+    order && typeof order.invoiceRef === 'object' && order.invoiceRef
+      ? cleanIdentifier((order.invoiceRef as any)._ref)
+      : ''
+  const fallbackId =
+    cleanIdentifier(order?._id) ||
+    cleanIdentifier(cleanOrderId) ||
+    orderInvoiceRefId ||
+    cleanIdentifier(cleanInvoiceId)
+  const orderNumber =
+    invoiceNumber ||
+    primaryOrderNumber ||
+    fallbackId ||
+    ''
   const dateSource = invoice?.invoiceDate || order?.createdAt || invoice?._createdAt
   const orderDate = dateSource ? new Date(dateSource).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
   const customerName =
@@ -421,7 +449,25 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
     'Customer'
 
   const items: PackingItem[] = []
-  if (Array.isArray(invoice?.lineItems) && invoice.lineItems.length > 0) {
+  if (Array.isArray(order?.cart) && order.cart.length > 0) {
+    for (const ci of order.cart) {
+      if (!ci) continue
+      const title = ci.name || ci.sku || 'Item'
+      const detailsParts: string[] = []
+      if (ci.optionSummary) detailsParts.push(ci.optionSummary)
+      if (Array.isArray(ci.optionDetails) && ci.optionDetails.length)
+        detailsParts.push(ci.optionDetails.join(', '))
+      if (Array.isArray(ci.upgrades) && ci.upgrades.length)
+        detailsParts.push(`Upgrades: ${ci.upgrades.join(', ')}`)
+      if (ci.sku) detailsParts.push(`SKU ${ci.sku}`)
+      const quantity = Number(ci.quantity || 1)
+      items.push({
+        title,
+        details: detailsParts.filter(Boolean).join(' • ') || undefined,
+        quantity,
+      })
+    }
+  } else if (Array.isArray(invoice?.lineItems) && invoice.lineItems.length > 0) {
     for (const li of invoice.lineItems) {
       const quantity = Number(li?.quantity || 1)
       const title = li?.description || li?.product?.title || li?.sku || 'Item'
@@ -435,16 +481,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         details: detailsParts.filter(Boolean).join(' • ') || undefined,
         quantity,
       })
-    }
-  }
-
-  if (items.length === 0 && Array.isArray(order?.cart)) {
-    for (const ci of order.cart) {
-      if (!ci) continue
-      const title = ci.name || ci.sku || 'Item'
-      const details = ci.sku ? `SKU ${ci.sku}` : undefined
-      const quantity = Number(ci.quantity || 1)
-      items.push({ title, details, quantity })
     }
   }
 
