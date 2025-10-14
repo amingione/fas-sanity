@@ -117,7 +117,7 @@ export function createBackfillAction({label, functionName, resultSummary}: Backf
       },
       dialog: isOpen
         ? {
-            type: 'modal' as const,
+            type: 'dialog' as const,
             onClose: close,
             content: (
               <Box padding={4}>

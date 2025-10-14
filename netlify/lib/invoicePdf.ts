@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import type { PDFFont, PDFImage, PDFPage } from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
+import { deriveOptionsFromMetadata } from './stripeCartItem'
 
 export type InvoiceAddress = {
   name?: string | null
@@ -49,6 +50,7 @@ export type OrderCartItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
+  metadata?: Array<{ key?: string | null; value?: unknown }> | null
 }
 
 export type InvoiceLike = {
@@ -263,22 +265,34 @@ function combineLineItems(
   )
   if (lineTotal !== undefined) merged.lineTotal = lineTotal
 
+  const collectedMetadata: Array<{ key?: string | null; value?: unknown }> = []
+  if (Array.isArray((invoiceItem as any)?.metadata)) {
+    collectedMetadata.push(...((invoiceItem as any)?.metadata as Array<{ key?: string | null; value?: unknown }>))
+  }
+  if (Array.isArray(cartItem?.metadata)) {
+    collectedMetadata.push(...(cartItem?.metadata as Array<{ key?: string | null; value?: unknown }>))
+  }
+  const derived = deriveOptionsFromMetadata(collectedMetadata.length ? collectedMetadata : null)
+
   const optionSummary = coalesceString(
     (invoiceItem as any)?.optionSummary,
     (invoiceItem as any)?.optionsSummary,
-    cartItem?.optionSummary
+    cartItem?.optionSummary,
+    derived.optionSummary
   )
 
   const optionDetails = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.optionDetails),
     toStringArray((invoiceItem as any)?.options),
-    toStringArray(cartItem?.optionDetails)
+    toStringArray(cartItem?.optionDetails),
+    derived.optionDetails
   )
 
   const upgrades = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.upgrades),
     toStringArray((invoiceItem as any)?.upgradeOptions),
-    toStringArray(cartItem?.upgrades)
+    toStringArray(cartItem?.upgrades),
+    derived.upgrades
   )
 
   if (optionSummary) merged.optionSummary = optionSummary

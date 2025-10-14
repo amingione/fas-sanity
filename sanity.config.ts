@@ -1,5 +1,6 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
 import { defineConfig } from 'sanity';
+import './styles/tailwind.css';
 // Desk Tool import is different across Sanity versions; support both named and default
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore

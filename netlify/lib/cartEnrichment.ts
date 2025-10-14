@@ -1,7 +1,7 @@
 import type { SanityClient } from '@sanity/client'
 import type { CartMetadataEntry } from './stripeCartItem'
 
-type CartItem = {
+export type CartItem = {
   _type: 'orderCartItem'
   _key?: string
   id?: string
@@ -11,6 +11,10 @@ type CartItem = {
   productSlug?: string
   stripeProductId?: string
   stripePriceId?: string
+  quantity?: number
+  price?: number
+  lineTotal?: number
+  total?: number
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
