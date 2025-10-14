@@ -6,6 +6,7 @@ import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip
 import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
+import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
 
 // CORS helper (same pattern used elsewhere)
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
@@ -449,6 +450,21 @@ export const handler: Handler = async (event) => {
         await syncOrderToShipStation(sanity, orderId)
       } catch (err) {
         console.warn('reprocessStripeSession: ShipStation sync failed', err)
+      }
+
+      try {
+        await updateCustomerProfileForOrder({
+          sanity,
+          orderId,
+          customerId: (baseDoc as any)?.customerRef?._ref,
+          email,
+          shippingAddress,
+          stripeCustomerId: typeof paymentIntent?.customer === 'string' ? paymentIntent.customer : undefined,
+          stripeSyncTimestamp: new Date().toISOString(),
+          customerName,
+        })
+      } catch (err) {
+        console.warn('reprocessStripeSession: failed to refresh customer profile', err)
       }
     }
 

@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
 import { randomUUID } from 'crypto'
 import Stripe from 'stripe'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
@@ -241,6 +242,7 @@ export const handler: Handler = async (event) => {
           cart,
           customerRef,
           customer,
+          customerEmail,
           slug,
           stripeSessionId,
           orderNumber,
@@ -337,6 +339,25 @@ export const handler: Handler = async (event) => {
           }
           if (setOps.customerRef) migratedCustomer++
           if (setOps.cart) cartFixed++
+        }
+        if (!dryRun) {
+          const resultingCustomerRef =
+            (setOps.customerRef && setOps.customerRef._ref) ||
+            (doc.customerRef && doc.customerRef._ref) ||
+            (doc.customer && doc.customer._ref) ||
+            null
+          const customerEmail = (doc.customerEmail || doc.shippingAddress?.email || '').toString().trim() || undefined
+          try {
+            await updateCustomerProfileForOrder({
+              sanity,
+              orderId: doc._id,
+              customerId: resultingCustomerRef,
+              email: customerEmail,
+              shippingAddress: doc.shippingAddress,
+            })
+          } catch (err) {
+            console.warn('backfillOrders: failed to refresh customer profile', err)
+          }
         }
         cursor = doc._id
       }
