@@ -26,6 +26,29 @@ export type InvoiceLineItem = {
   unitPrice?: number | null
   lineTotal?: number | null
   amount?: number | null
+  name?: string | null
+  productName?: string | null
+  price?: number | null
+  total?: number | null
+  optionSummary?: string | null
+  optionDetails?: Array<string | null> | string | null
+  upgrades?: Array<string | null> | string | null
+  metadata?: Array<Record<string, unknown>> | null
+  _key?: string | null
+}
+
+export type OrderCartItem = {
+  _key?: string | null
+  name?: string | null
+  productName?: string | null
+  sku?: string | null
+  quantity?: number | null
+  price?: number | null
+  lineTotal?: number | null
+  total?: number | null
+  optionSummary?: string | null
+  optionDetails?: Array<string | null> | string | null
+  upgrades?: Array<string | null> | string | null
 }
 
 export type InvoiceLike = {
@@ -40,6 +63,8 @@ export type InvoiceLike = {
   taxRate?: number | null
   customerNotes?: string | null
   terms?: string | null
+  order?: { cart?: OrderCartItem[] | null } | null
+  orderRef?: { cart?: OrderCartItem[] | null } | null
   [key: string]: unknown
 }
 
@@ -109,9 +134,14 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
 
   const subtotal = items.reduce((sum, li) => {
     const qty = Number(li?.quantity ?? 1)
-    const unit = Number(li?.unitPrice ?? li?.amount ?? 0)
-    const override =
-      typeof li?.lineTotal === 'number' && Number.isFinite(li?.lineTotal) ? Number(li?.lineTotal) : undefined
+    const unit = Number(li?.unitPrice ?? li?.amount ?? li?.price ?? 0)
+    const overrideCandidate =
+      typeof li?.lineTotal === 'number' && Number.isFinite(li?.lineTotal)
+        ? Number(li?.lineTotal)
+        : typeof (li as any)?.total === 'number' && Number.isFinite((li as any)?.total)
+          ? Number((li as any)?.total)
+          : undefined
+    const override = overrideCandidate
     const line = typeof override === 'number' ? override : qty * unit
     return sum + (Number.isFinite(line) ? line : 0)
   }, 0)
@@ -122,6 +152,218 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
   const total = Math.max(0, taxableBase + taxAmount)
 
   return { subtotal, discountAmt, taxAmount, total }
+}
+
+function prepareInvoice(invoice: InvoiceLike | null | undefined): InvoiceLike {
+  const clone: InvoiceLike = { ...(invoice || {}) }
+  clone.lineItems = normalizeInvoiceLineItems(invoice)
+  return clone
+}
+
+export function normalizeInvoiceLineItems(invoice: InvoiceLike | null | undefined): InvoiceLineItem[] {
+  const invoiceItems = Array.isArray(invoice?.lineItems) ? (invoice?.lineItems || []).filter(Boolean) : []
+  const cartItems = extractCartItems(invoice)
+  const usedIndices = new Set<number>()
+  const normalized: InvoiceLineItem[] = []
+
+  for (const item of invoiceItems) {
+    const matchIdx = findMatchingCartItem(item, cartItems, usedIndices)
+    const merged = combineLineItems(item, matchIdx >= 0 ? cartItems[matchIdx] : undefined)
+    if (merged) normalized.push(merged)
+    if (matchIdx >= 0) usedIndices.add(matchIdx)
+  }
+
+  for (let index = 0; index < cartItems.length; index += 1) {
+    if (usedIndices.has(index)) continue
+    const merged = combineLineItems(undefined, cartItems[index])
+    if (merged) normalized.push(merged)
+  }
+
+  return normalized
+}
+
+function extractCartItems(invoice: InvoiceLike | null | undefined): OrderCartItem[] {
+  const lists: Array<OrderCartItem[] | null | undefined> = [
+    (invoice as any)?.orderRef?.cart,
+    (invoice as any)?.order?.cart,
+  ]
+  const seen = new Set<string>()
+  const items: OrderCartItem[] = []
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue
+    for (const raw of list) {
+      if (!raw) continue
+      const sku = normalizeString(raw.sku)
+      const key = normalizeString(raw._key) || ''
+      const signature = `${key}|${sku}|${normalizeString(raw.name)}`
+      if (seen.has(signature)) continue
+      seen.add(signature)
+      items.push(raw)
+    }
+  }
+  return items
+}
+
+function findMatchingCartItem(
+  lineItem: InvoiceLineItem,
+  cartItems: OrderCartItem[],
+  used: Set<number>
+): number {
+  const sku = normalizeString(lineItem?.sku)
+  if (sku) {
+    for (let index = 0; index < cartItems.length; index += 1) {
+      if (used.has(index)) continue
+      if (normalizeString(cartItems[index]?.sku) === sku) return index
+    }
+  }
+
+  const name = normalizeString((lineItem as any)?.name || lineItem?.description)
+  if (name) {
+    for (let index = 0; index < cartItems.length; index += 1) {
+      if (used.has(index)) continue
+      const cartName = normalizeString(cartItems[index]?.name || cartItems[index]?.productName)
+      if (cartName && cartName === name) return index
+    }
+  }
+
+  return -1
+}
+
+function combineLineItems(
+  invoiceItem?: InvoiceLineItem | null,
+  cartItem?: OrderCartItem | null
+): InvoiceLineItem | null {
+  const source = invoiceItem || cartItem
+  if (!source) return null
+
+  const merged: Record<string, any> = {}
+  if (cartItem && typeof cartItem === 'object') Object.assign(merged, cartItem)
+  if (invoiceItem && typeof invoiceItem === 'object') Object.assign(merged, invoiceItem)
+
+  const quantity = coalesceNumber(
+    invoiceItem?.quantity,
+    (invoiceItem as any)?.qty,
+    cartItem?.quantity
+  )
+  if (quantity !== undefined) merged.quantity = quantity
+
+  const unitPrice = coalesceNumber(
+    invoiceItem?.unitPrice,
+    (invoiceItem as any)?.amount,
+    cartItem?.price
+  )
+  if (unitPrice !== undefined) merged.unitPrice = unitPrice
+
+  const lineTotal = coalesceNumber(
+    invoiceItem?.lineTotal,
+    (invoiceItem as any)?.total,
+    cartItem?.lineTotal,
+    cartItem?.total,
+    typeof unitPrice === 'number' && typeof quantity === 'number' ? unitPrice * quantity : undefined
+  )
+  if (lineTotal !== undefined) merged.lineTotal = lineTotal
+
+  const optionSummary = coalesceString(
+    (invoiceItem as any)?.optionSummary,
+    (invoiceItem as any)?.optionsSummary,
+    cartItem?.optionSummary
+  )
+
+  const optionDetails = mergeUniqueStrings(
+    toStringArray((invoiceItem as any)?.optionDetails),
+    toStringArray((invoiceItem as any)?.options),
+    toStringArray(cartItem?.optionDetails)
+  )
+
+  const upgrades = mergeUniqueStrings(
+    toStringArray((invoiceItem as any)?.upgrades),
+    toStringArray((invoiceItem as any)?.upgradeOptions),
+    toStringArray(cartItem?.upgrades)
+  )
+
+  if (optionSummary) merged.optionSummary = optionSummary
+  if (optionDetails.length) merged.optionDetails = optionDetails
+  if (upgrades.length) merged.upgrades = upgrades
+
+  if (!merged.sku) merged.sku = coalesceString(invoiceItem?.sku, cartItem?.sku)
+
+  const nameCandidate = coalesceString(
+    (invoiceItem as any)?.name,
+    cartItem?.name,
+    cartItem?.productName
+  )
+  if (!normalizeString(merged.description) && nameCandidate) {
+    merged.description = nameCandidate
+  }
+
+  if (cartItem?._key && !merged._key) merged._key = cartItem._key
+
+  return merged
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeString(typeof item === 'string' ? item : toStringValue(item)))
+      .filter(Boolean) as string[]
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return []
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) return toStringArray(parsed)
+      } catch {
+        // ignore parse error
+      }
+    }
+    return trimmed
+      .split(/[,;|]/g)
+      .map((part) => normalizeString(part))
+      .filter(Boolean) as string[]
+  }
+  return [normalizeString(toStringValue(value))].filter(Boolean) as string[]
+}
+
+function toStringValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return ''
+  }
+}
+
+function mergeUniqueStrings(...arrays: string[][]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const array of arrays) {
+    for (const value of array) {
+      if (!value || seen.has(value)) continue
+      seen.add(value)
+      result.push(value)
+    }
+  }
+  return result
+}
+
+function coalesceString(...values: Array<string | null | undefined>): string | undefined {
+  for (const value of values) {
+    const normalized = normalizeString(value)
+    if (normalized) return normalized
+  }
+  return undefined
+}
+
+function coalesceNumber(...values: Array<number | null | undefined>): number | undefined {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+  }
+  return undefined
 }
 
 export async function renderInvoicePdf(
@@ -137,20 +379,21 @@ export async function renderInvoicePdf(
     boldItalic: await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
   }
   const logo = await loadLogo(pdf, brandTheme.logoPath)
-  const totals = computeInvoiceTotals(invoice)
+  const normalizedInvoice = prepareInvoice(invoice)
+  const totals = computeInvoiceTotals(normalizedInvoice)
 
   const invoiceNumber = normalizeString(
-    options.invoiceNumber ?? invoice?.invoiceNumber ?? options.invoiceNumber ?? ''
+    options.invoiceNumber ?? normalizedInvoice?.invoiceNumber ?? options.invoiceNumber ?? ''
   ) || '—'
-  const invoiceDate = normalizeDate(options.invoiceDate ?? invoice?.invoiceDate)
-  const dueDate = normalizeDate(options.dueDate ?? invoice?.dueDate)
+  const invoiceDate = normalizeDate(options.invoiceDate ?? normalizedInvoice?.invoiceDate)
+  const dueDate = normalizeDate(options.dueDate ?? normalizedInvoice?.dueDate)
 
   drawInvoice({
     page,
     fonts,
     logo,
     brand: brandTheme,
-    invoice: invoice ?? {},
+    invoice: normalizedInvoice,
     invoiceNumber,
     invoiceDate,
     dueDate,
@@ -269,7 +512,7 @@ function drawInvoice({
     label: 'Ship To:',
     x: shipX,
     startY: detailTop,
-    address: (invoice.shipTo as InvoiceAddress) ?? invoice.billTo ?? undefined,
+    address: ((invoice.shipTo as InvoiceAddress) ?? invoice.billTo ?? undefined),
     textColor,
     labelColor: headingColor,
   })
@@ -686,18 +929,41 @@ function clipText(text: string, font: PDFFont, size: number, maxWidth: number): 
 }
 
 function resolveItemName(item: InvoiceLineItem, index: number): string {
-  const fromSku = normalizeString(item.sku || item.itemCode || item.itemName)
-  if (fromSku) return fromSku
-  const description = normalizeString(item.description)
-  if (description) return description.split(' ').slice(0, 4).join(' ')
+  const candidates = [
+    (item as any)?.name,
+    item.productName,
+    item.description,
+    item.itemName,
+    item.itemCode,
+    item.sku,
+  ]
+  for (const candidate of candidates) {
+    const normalized = normalizeString(candidate)
+    if (normalized) return normalized
+  }
   return `Item ${index + 1}`
 }
 
 function resolveDescription(item: InvoiceLineItem): string {
-  const description = normalizeString(item.description)
-  if (description) return description
-  const sku = normalizeString(item.sku || item.itemCode || item.itemName)
-  return sku || ''
+  const segments: string[] = []
+  const summary = normalizeString((item as any)?.optionSummary)
+  if (summary) segments.push(summary)
+  const detailSegments = toStringArray((item as any)?.optionDetails)
+  if (detailSegments.length) segments.push(...detailSegments)
+  const upgrades = toStringArray((item as any)?.upgrades)
+  if (upgrades.length) segments.push(`Upgrades: ${upgrades.join(', ')}`)
+
+  if (!segments.length) {
+    const description = normalizeString(item.description)
+    if (description) segments.push(description)
+  }
+
+  const sku = normalizeString(item.sku || (item as any)?.productSlug || item.itemCode)
+  if (sku && !segments.some((segment) => segment.includes(sku))) {
+    segments.push(`SKU ${sku}`)
+  }
+
+  return segments.join(' • ')
 }
 
 function truncate(text: string, font: PDFFont, size: number, maxWidth: number): string {
@@ -713,17 +979,24 @@ function formatQuantity(quantity: number | null | undefined): string {
 }
 
 function resolveUnitPrice(item: InvoiceLineItem): string {
-  const value = Number(item.unitPrice ?? item.amount ?? 0)
+  const value = Number(item.unitPrice ?? (item as any)?.amount ?? (item as any)?.price ?? 0)
   if (!Number.isFinite(value)) return money(0)
   return money(value)
 }
 
 function resolveLineTotal(item: InvoiceLineItem): string {
-  if (typeof item.lineTotal === 'number' && Number.isFinite(item.lineTotal)) {
-    return money(item.lineTotal)
+  const totalCandidate =
+    typeof item.lineTotal === 'number' && Number.isFinite(item.lineTotal)
+      ? item.lineTotal
+      : typeof (item as any)?.total === 'number' && Number.isFinite((item as any)?.total)
+        ? (item as any)?.total
+        : undefined
+
+  if (typeof totalCandidate === 'number') {
+    return money(totalCandidate)
   }
   const qty = Number(item.quantity ?? 1)
-  const unit = Number(item.unitPrice ?? item.amount ?? 0)
+  const unit = Number(item.unitPrice ?? (item as any)?.amount ?? (item as any)?.price ?? 0)
   const total = Number.isFinite(qty) && Number.isFinite(unit) ? qty * unit : 0
   return money(total)
 }
