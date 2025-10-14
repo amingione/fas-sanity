@@ -80,10 +80,17 @@ export default defineType({
     }),
     defineField({ name: 'phone', title: 'Phone Number', type: 'string' }),
     defineField({
-      name: 'address',
+      name: 'shippingAddress',
       title: 'Shipping Address',
+      type: 'customerBillingAddress',
+      fieldset: 'shippingInfo',
+    }),
+    defineField({
+      name: 'address',
+      title: 'Shipping Address (legacy)',
       type: 'text',
       fieldset: 'shippingInfo',
+      hidden: true,
     }),
     defineField({
       name: 'billingAddress',

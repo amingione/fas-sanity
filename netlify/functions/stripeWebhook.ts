@@ -6,6 +6,7 @@ import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip
 import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
+import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -686,12 +687,12 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     session: stripeSessionId || '',
   }
 
-  const order = await sanity.fetch<{ _id: string; orderNumber?: string; invoiceRef?: { _id: string } } | null>(
+  const order = await sanity.fetch<{ _id: string; orderNumber?: string; invoiceRef?: { _id: string }; customerRef?: { _ref: string }; customerEmail?: string } | null>(
     `*[_type == "order" && (
       ($pi != '' && paymentIntentId == $pi) ||
       ($charge != '' && chargeId == $charge) ||
       ($session != '' && stripeSessionId == $session)
-    )][0]{ _id, orderNumber, invoiceRef->{ _id } }`,
+    )][0]{ _id, orderNumber, customerRef, customerEmail, invoiceRef->{ _id } }`,
     params
   )
 
@@ -746,6 +747,17 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     } catch (err) {
       console.warn('stripeWebhook: failed to update invoice after payment status change', err)
     }
+  }
+
+  try {
+    await updateCustomerProfileForOrder({
+      sanity,
+      orderId: order?._id,
+      customerId: order?.customerRef?._ref,
+      email: order?.customerEmail,
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to refresh customer profile after payment status update', err)
   }
 
   return true
@@ -1371,6 +1383,21 @@ export const handler: Handler = async (event) => {
             } catch (err) {
               console.warn('stripeWebhook: ShipStation sync failed', err)
             }
+          }
+
+          try {
+            await updateCustomerProfileForOrder({
+              sanity,
+              orderId,
+              customerId: (baseDoc as any)?.customerRef?._ref,
+              email: normalizedEmail || email || undefined,
+              shippingAddress,
+              stripeCustomerId: typeof paymentIntent?.customer === 'string' ? paymentIntent.customer : undefined,
+              stripeSyncTimestamp: new Date().toISOString(),
+              customerName,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to refresh customer profile', err)
           }
 
           if (shouldSendConfirmation && orderId) {
