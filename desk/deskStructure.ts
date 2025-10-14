@@ -24,6 +24,7 @@ import VendorAdminDashboard from '../components/studio/VendorAdminDashboard'
 import VendorStatusBadge from '../components/inputs/VendorStatusBadge'
 import InvoiceVisualEditor from '../components/studio/InvoiceVisualEditor'
 import InvoiceDashboard from '../components/studio/InvoiceDashboard'
+import OrderDetailView from '../components/studio/OrderDetailView'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -47,15 +48,29 @@ const CustomerDashboardPane: UserComponent = function CustomerDashboardPane(
 }
 
 const getPreviewViews = (S: any, schema: string) => {
-  const views = [
-    S.view.form().id('form'),
+  const views: any[] = []
+
+  if (schema === 'order') {
+    views.push(
+      S.view
+        .component(OrderDetailView as any)
+        .title('Summary')
+        .id('summary')
+    )
+  }
+
+  views.push(
+    S.view.form().id('form')
+  )
+
+  views.push(
     S.view
       .component((props: any) =>
         DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' })
       )
       .title('Preview')
-      .id('preview'),
-  ]
+      .id('preview')
+  )
 
   if (schema === 'invoice') {
     views.push(

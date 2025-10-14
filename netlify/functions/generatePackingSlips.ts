@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { deriveOptionsFromMetadata } from '../lib/stripeCartItem'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888').split(',')
 
@@ -376,7 +377,8 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           sku,
           kind,
           product->{ title, sku },
-          unitPrice
+          unitPrice,
+          metadata[]{key, value}
         },
         orderRef->{
           _id,
@@ -384,7 +386,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           stripeSessionId,
           customerEmail,
           shippingAddress,
-          cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades },
+          cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades, metadata[]{key, value} },
         }
       }`,
       { id: cleanInvoiceId }
@@ -403,7 +405,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         customerEmail,
         shippingAddress,
         billingAddress,
-        cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades },
+        cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades, metadata[]{key, value} },
         notes,
         invoiceRef
       }`,
@@ -430,7 +432,8 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           sku,
           kind,
           product->{ title, sku },
-          unitPrice
+          unitPrice,
+          metadata[]{key, value}
         }
       }`,
       { id: order.invoiceRef._ref }
@@ -473,10 +476,22 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
       if (!ci) continue
       const title = ci.name || ci.sku || 'Item'
       const detailsParts: string[] = []
-      if (ci.optionSummary) detailsParts.push(String(ci.optionSummary))
-      const optionDetails = toStringArray(ci.optionDetails)
+      const derived = deriveOptionsFromMetadata(Array.isArray((ci as any)?.metadata) ? (ci as any).metadata : null)
+      const optionSummary = ci.optionSummary || derived.optionSummary
+      if (optionSummary) detailsParts.push(String(optionSummary))
+      const optionDetails = Array.from(
+        new Set([
+          ...toStringArray(ci.optionDetails),
+          ...derived.optionDetails,
+        ])
+      )
       if (optionDetails.length) detailsParts.push(optionDetails.join(', '))
-      const upgrades = toStringArray(ci.upgrades)
+      const upgrades = Array.from(
+        new Set([
+          ...toStringArray(ci.upgrades),
+          ...derived.upgrades,
+        ])
+      )
       if (upgrades.length) detailsParts.push(`Upgrades: ${upgrades.join(', ')}`)
       if (ci.sku) detailsParts.push(`SKU ${ci.sku}`)
       const quantity = Number(ci.quantity || 1)
@@ -494,11 +509,22 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
       if (li?.product?.title && li?.description && li.description !== li.product.title) {
         detailsParts.push(li.product.title)
       }
-      const optionSummary = (li as any)?.optionSummary
+      const derived = deriveOptionsFromMetadata(Array.isArray((li as any)?.metadata) ? (li as any).metadata : null)
+      const optionSummary = (li as any)?.optionSummary || derived.optionSummary
       if (optionSummary) detailsParts.push(String(optionSummary))
-      const optionDetails = toStringArray((li as any)?.optionDetails)
+      const optionDetails = Array.from(
+        new Set([
+          ...toStringArray((li as any)?.optionDetails),
+          ...derived.optionDetails,
+        ])
+      )
       if (optionDetails.length) detailsParts.push(optionDetails.join(', '))
-      const upgrades = toStringArray((li as any)?.upgrades)
+      const upgrades = Array.from(
+        new Set([
+          ...toStringArray((li as any)?.upgrades),
+          ...derived.upgrades,
+        ])
+      )
       if (upgrades.length) detailsParts.push(`Upgrades: ${upgrades.join(', ')}`)
       if (li?.sku) detailsParts.push(`SKU ${li.sku}`)
       items.push({

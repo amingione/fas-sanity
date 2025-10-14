@@ -6,21 +6,27 @@ import Stripe from 'stripe'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 
+function normalizeOrigin(value?: string | null): string {
+  if (!value) return ''
+  return value.trim().replace(/\/+$/, '')
+}
+
 const DEFAULT_ORIGINS = (() => {
   const entries = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333')
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => normalizeOrigin(origin))
     .filter(Boolean)
   return entries.length > 0 ? entries : ['http://localhost:3333']
 })()
 function makeCORS(origin?: string) {
-  let o = DEFAULT_ORIGINS[0]
-  if (origin) {
-    if (/^http:\/\/localhost:\d+$/i.test(origin)) o = origin
-    else if (DEFAULT_ORIGINS.includes(origin)) o = origin
+  const normalizedOrigin = normalizeOrigin(origin)
+  let allowed = DEFAULT_ORIGINS[0]
+  if (normalizedOrigin) {
+    if (/^http:\/\/localhost:\d+$/i.test(normalizedOrigin)) allowed = normalizedOrigin
+    else if (DEFAULT_ORIGINS.includes(normalizedOrigin)) allowed = normalizedOrigin
   }
   return {
-    'Access-Control-Allow-Origin': o,
+    'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
