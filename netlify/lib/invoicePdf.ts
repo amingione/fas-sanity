@@ -65,8 +65,33 @@ export type InvoiceLike = {
   taxRate?: number | null
   customerNotes?: string | null
   terms?: string | null
-  order?: { cart?: OrderCartItem[] | null } | null
-  orderRef?: { cart?: OrderCartItem[] | null } | null
+  amountSubtotal?: number | null
+  amountTax?: number | null
+  amountShipping?: number | null
+  shippingAmount?: number | null
+  shippingCarrier?: string | null
+  trackingNumber?: string | null
+  shippingLabelUrl?: string | null
+  order?: {
+    cart?: OrderCartItem[] | null
+    amountSubtotal?: number | null
+    amountTax?: number | null
+    amountShipping?: number | null
+    shippingCarrier?: string | null
+    trackingNumber?: string | null
+    shippingLabelUrl?: string | null
+    selectedService?: { carrier?: string | null; service?: string | null; amount?: number | null } | null
+  } | null
+  orderRef?: {
+    cart?: OrderCartItem[] | null
+    amountSubtotal?: number | null
+    amountTax?: number | null
+    amountShipping?: number | null
+    shippingCarrier?: string | null
+    trackingNumber?: string | null
+    shippingLabelUrl?: string | null
+    selectedService?: { carrier?: string | null; service?: string | null; amount?: number | null } | null
+  } | null
   [key: string]: unknown
 }
 
@@ -74,6 +99,7 @@ export type InvoiceTotals = {
   subtotal: number
   discountAmt: number
   taxAmount: number
+  shipping: number
   total: number
 }
 
@@ -133,6 +159,7 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
   const discountType = doc?.discountType === 'percent' ? 'percent' : 'amount'
   const discountValue = Number(doc?.discountValue || 0)
   const taxRate = Number(doc?.taxRate || 0)
+  const shipping = extractShippingAmount(doc)
 
   const subtotal = items.reduce((sum, li) => {
     const qty = Number(li?.quantity ?? 1)
@@ -151,14 +178,15 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
   const discountAmt = discountType === 'percent' ? subtotal * (discountValue / 100) : discountValue
   const taxableBase = Math.max(0, subtotal - discountAmt)
   const taxAmount = taxableBase * (taxRate / 100)
-  const total = Math.max(0, taxableBase + taxAmount)
+  const total = Math.max(0, taxableBase + taxAmount + shipping)
 
-  return { subtotal, discountAmt, taxAmount, total }
+  return { subtotal, discountAmt, taxAmount, shipping, total }
 }
 
 function prepareInvoice(invoice: InvoiceLike | null | undefined): InvoiceLike {
   const clone: InvoiceLike = { ...(invoice || {}) }
   clone.lineItems = normalizeInvoiceLineItems(invoice)
+  clone.amountShipping = extractShippingAmount(clone)
   return clone
 }
 
@@ -380,6 +408,27 @@ function coalesceNumber(...values: Array<number | null | undefined>): number | u
   return undefined
 }
 
+function extractShippingAmount(invoice: InvoiceLike | null | undefined): number {
+  const rawCandidates: Array<number | string | null | undefined> = [
+    (invoice as any)?.amountShipping,
+    (invoice as any)?.shippingAmount,
+    (invoice as any)?.orderRef?.amountShipping,
+    (invoice as any)?.order?.amountShipping,
+    (invoice as any)?.orderRef?.selectedService?.amount,
+    (invoice as any)?.order?.selectedService?.amount,
+  ]
+
+  for (const raw of rawCandidates) {
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+    if (typeof raw === 'string') {
+      const parsed = Number(raw)
+      if (Number.isFinite(parsed)) return parsed
+    }
+  }
+
+  return 0
+}
+
 export async function renderInvoicePdf(
   invoice: InvoiceLike | null | undefined,
   options: InvoiceRenderOptions = {}
@@ -520,6 +569,8 @@ function drawInvoice({
     labelColor: headingColor,
   })
 
+  const shippingLines = collectShippingLines(invoice, totals.shipping)
+
   const shipBottom = drawAddressBlock({
     page,
     fonts,
@@ -529,6 +580,7 @@ function drawInvoice({
     address: ((invoice.shipTo as InvoiceAddress) ?? invoice.billTo ?? undefined),
     textColor,
     labelColor: headingColor,
+    extraLines: shippingLines,
   })
 
   const metaBottom = drawMetaBlock({
@@ -601,6 +653,7 @@ type AddressBlockOptions = {
   address?: InvoiceAddress | null
   textColor: ReturnType<typeof rgb>
   labelColor: ReturnType<typeof rgb>
+  extraLines?: string[]
 }
 
 function drawAddressBlock({
@@ -612,6 +665,7 @@ function drawAddressBlock({
   address,
   textColor,
   labelColor,
+  extraLines = [],
 }: AddressBlockOptions): number {
   let y = startY
   page.drawText(label, {
@@ -632,7 +686,44 @@ function drawAddressBlock({
       y -= 12
     }
   }
+  if (extraLines.length) {
+    if (lines.length) y -= 4
+    for (const line of extraLines) {
+      const content = line.trim()
+      if (!content) continue
+      page.drawText(content, { x, y, size: 10, font: fonts.regular, color: textColor })
+      y -= 12
+    }
+  }
   return y
+}
+
+function collectShippingLines(invoice: InvoiceLike, shippingAmount: number): string[] {
+  const lines: string[] = []
+  lines.push(`Shipping: ${money(shippingAmount)}`)
+
+  const carrier = coalesceString(
+    invoice.shippingCarrier,
+    (invoice as any)?.orderRef?.shippingCarrier,
+    (invoice as any)?.order?.shippingCarrier,
+    (invoice as any)?.orderRef?.selectedService?.carrier,
+    (invoice as any)?.order?.selectedService?.carrier
+  )
+  const service = coalesceString(
+    (invoice as any)?.orderRef?.selectedService?.service,
+    (invoice as any)?.order?.selectedService?.service
+  )
+  const method = [carrier, service].filter(Boolean).join(' – ')
+  if (method) lines.push(`Method: ${method}`)
+
+  const tracking = coalesceString(
+    invoice.trackingNumber,
+    (invoice as any)?.orderRef?.trackingNumber,
+    (invoice as any)?.order?.trackingNumber
+  )
+  if (tracking) lines.push(`Tracking: ${tracking}`)
+
+  return lines
 }
 
 type MetaBlockOptions = {
@@ -703,6 +794,24 @@ type TableOptions = {
   taxRate: number
 }
 
+type LineItemRow = {
+  item: string
+  upgrades: string
+  options: string
+  extras: string
+  description: string
+  quantity: string
+  price: string
+  total: string
+}
+
+type ColumnDefinition = {
+  key: keyof LineItemRow
+  width: number
+  align: 'left' | 'right'
+  title: string
+}
+
 function drawInvoiceTable({
   page,
   fonts,
@@ -720,16 +829,43 @@ function drawInvoiceTable({
   taxRate,
 }: TableOptions): number {
   const tableWidth = right - left
-  const headerHeight = 24
+  const headerHeight = 26
   const rowHeight = 24
   const maxLineItems = 14
-  const columns = [
-    { key: 'item', width: 80 },
-    { key: 'description', width: 220 },
-    { key: 'quantity', width: 60 },
-    { key: 'price', width: 80 },
-    { key: 'total', width: tableWidth - (80 + 220 + 60 + 80) },
+
+  const baseColumns: ColumnDefinition[] = [
+    { key: 'item', width: 90, align: 'left', title: 'Item' },
+    { key: 'upgrades', width: 70, align: 'left', title: 'Upgrades' },
+    { key: 'options', width: 70, align: 'left', title: 'Options' },
+    { key: 'extras', width: 70, align: 'left', title: 'Extras' },
+    { key: 'description', width: 120, align: 'left', title: 'Description' },
+    { key: 'quantity', width: 35, align: 'right', title: 'Qty' },
+    { key: 'price', width: 45, align: 'right', title: 'Price' },
   ]
+
+  let usedWidth = baseColumns.reduce((sum, column) => sum + column.width, 0)
+  let remaining = tableWidth - usedWidth
+
+  if (remaining < 60) {
+    const deficit = 60 - remaining
+    const descriptionIndex = baseColumns.findIndex((column) => column.key === 'description')
+    if (descriptionIndex >= 0) {
+      const currentWidth = baseColumns[descriptionIndex].width
+      const adjustedWidth = Math.max(90, currentWidth - deficit)
+      const delta = currentWidth - adjustedWidth
+      baseColumns[descriptionIndex].width = adjustedWidth
+      usedWidth -= delta
+      remaining = tableWidth - usedWidth
+    } else {
+      remaining = 60
+    }
+  }
+
+  const columns: ColumnDefinition[] = [
+    ...baseColumns,
+    { key: 'total', width: Math.max(60, remaining), align: 'right', title: 'Total' },
+  ]
+
   const columnPositions: number[] = [left]
   for (const column of columns) {
     const prev = columnPositions[columnPositions.length - 1]
@@ -738,7 +874,6 @@ function drawInvoiceTable({
 
   let y = startY
 
-  // Table frame lines
   page.drawLine({
     start: { x: left, y },
     end: { x: right, y },
@@ -746,7 +881,6 @@ function drawInvoiceTable({
     thickness: 1,
   })
 
-  // Header background
   page.drawRectangle({
     x: left,
     y: y - headerHeight,
@@ -755,12 +889,19 @@ function drawInvoiceTable({
     color: headerBg,
   })
 
-  const headerBaseline = y - 16
-  drawColumnText(page, fonts.bold, 'Item', headerBaseline, columnPositions[0], columnPositions[1], headerColor, 'left')
-  drawColumnText(page, fonts.bold, 'Description', headerBaseline, columnPositions[1], columnPositions[2], headerColor, 'left')
-  drawColumnText(page, fonts.bold, 'Qty', headerBaseline, columnPositions[2], columnPositions[3], headerColor, 'right')
-  drawColumnText(page, fonts.bold, 'Price', headerBaseline, columnPositions[3], columnPositions[4], headerColor, 'right')
-  drawColumnText(page, fonts.bold, 'Total', headerBaseline, columnPositions[4], columnPositions[5], headerColor, 'right')
+  const headerBaseline = y - 17
+  columns.forEach((column, idx) => {
+    drawColumnText(
+      page,
+      fonts.bold,
+      column.title,
+      headerBaseline,
+      columnPositions[idx],
+      columnPositions[idx + 1],
+      headerColor,
+      column.align
+    )
+  })
 
   y -= headerHeight
   page.drawLine({
@@ -772,7 +913,7 @@ function drawInvoiceTable({
 
   const normalizedItems = Array.isArray(items) ? items.filter(Boolean) : []
   const displayItems = normalizedItems.slice(0, maxLineItems)
-  const remaining = normalizedItems.length - displayItems.length
+  const remainingCount = normalizedItems.length - displayItems.length
 
   if (displayItems.length === 0) {
     const baseline = y - 16
@@ -782,7 +923,7 @@ function drawInvoiceTable({
       'No line items recorded.',
       baseline,
       columnPositions[1],
-      columnPositions[4],
+      columnPositions[columnPositions.length - 2],
       textColor,
       'left'
     )
@@ -806,18 +947,20 @@ function drawInvoiceTable({
         })
       }
       const baseline = y - 16
-
-      const itemName = resolveItemName(li, idx)
-      const description = truncate(resolveDescription(li), fonts.regular, 10, columnPositions[2] - columnPositions[1] - 12)
-      const quantity = formatQuantity(li.quantity)
-      const unitPrice = resolveUnitPrice(li)
-      const lineTotal = resolveLineTotal(li)
-
-      drawColumnText(page, fonts.regular, itemName, baseline, columnPositions[0], columnPositions[1], textColor, 'left')
-      drawColumnText(page, fonts.regular, description, baseline, columnPositions[1], columnPositions[2], textColor, 'left')
-      drawColumnText(page, fonts.regular, quantity, baseline, columnPositions[2], columnPositions[3], textColor, 'right')
-      drawColumnText(page, fonts.regular, unitPrice, baseline, columnPositions[3], columnPositions[4], textColor, 'right')
-      drawColumnText(page, fonts.regular, lineTotal, baseline, columnPositions[4], columnPositions[5], textColor, 'right')
+      const row = resolveLineItemRow(li, idx)
+      columns.forEach((column, colIdx) => {
+        const value = row[column.key] ?? '—'
+        drawColumnText(
+          page,
+          fonts.regular,
+          value,
+          baseline,
+          columnPositions[colIdx],
+          columnPositions[colIdx + 1],
+          textColor,
+          column.align
+        )
+      })
 
       y = rowBottom
       page.drawLine({
@@ -829,11 +972,20 @@ function drawInvoiceTable({
     })
   }
 
-  if (remaining > 0) {
+  if (remainingCount > 0) {
     const rowBottom = y - rowHeight
     const baseline = y - 16
-    const summary = `+ ${remaining} additional item${remaining === 1 ? '' : 's'} not shown`
-    drawColumnText(page, fonts.italic, summary, baseline, columnPositions[1], columnPositions[4], textColor, 'left')
+    const summary = `+ ${remainingCount} additional item${remainingCount === 1 ? '' : 's'} not shown`
+    drawColumnText(
+      page,
+      fonts.italic,
+      summary,
+      baseline,
+      columnPositions[1],
+      columnPositions[columnPositions.length - 2],
+      textColor,
+      'left'
+    )
     y = rowBottom
     page.drawLine({
       start: { x: left, y },
@@ -843,30 +995,37 @@ function drawInvoiceTable({
     })
   }
 
-  // Totals
   const totalsRows: Array<{ label: string; value: string; bold?: boolean }> = [
     { label: 'Subtotal', value: money(totals.subtotal) },
   ]
 
   if (totals.discountAmt > 0) {
-    totalsRows.push({ label: 'Discount', value: `-${money(totals.discountAmt).replace('-', '').replace('$-', '$')}` })
+    totalsRows.push({
+      label: 'Discount',
+      value: `-${money(totals.discountAmt).replace('-', '').replace('$-', '$')}`,
+    })
   }
 
   const hasTax = totals.taxAmount > 0 || taxRate > 0
   if (hasTax) {
-    const rateForLabel = Number.isFinite(taxRate) && taxRate > 0 ? ` (${taxRate.toFixed(2).replace(/\.00$/, '')}%)` : ''
+    const rateForLabel =
+      Number.isFinite(taxRate) && taxRate > 0 ? ` (${taxRate.toFixed(2).replace(/\.00$/, '')}%)` : ''
     totalsRows.push({ label: `Tax${rateForLabel}`, value: money(totals.taxAmount) })
   }
 
+  totalsRows.push({ label: 'Shipping', value: money(totals.shipping) })
   totalsRows.push({ label: 'Total Due', value: money(totals.total), bold: true })
+
+  const totalValueStart = columnPositions[columnPositions.length - 2]
+  const totalValueEnd = columnPositions[columnPositions.length - 1]
 
   for (const row of totalsRows) {
     const rowBottom = y - rowHeight
     if (row.bold) {
       page.drawRectangle({
-        x: columnPositions[4],
+        x: totalValueStart,
         y: rowBottom,
-        width: columnPositions[5] - columnPositions[4],
+        width: totalValueEnd - totalValueStart,
         height: rowHeight,
         color: totalsHighlight,
       })
@@ -876,8 +1035,17 @@ function drawInvoiceTable({
     const labelFont = row.bold ? fonts.bold : fonts.regular
     const valueFont = row.bold ? fonts.bold : fonts.regular
 
-    drawColumnText(page, labelFont, row.label, baseline, columnPositions[0], columnPositions[4], headerColor, 'right')
-    drawColumnText(page, valueFont, row.value, baseline, columnPositions[4], columnPositions[5], headerColor, 'right')
+    drawColumnText(
+      page,
+      labelFont,
+      row.label,
+      baseline,
+      columnPositions[0],
+      totalValueStart,
+      headerColor,
+      'right'
+    )
+    drawColumnText(page, valueFont, row.value, baseline, totalValueStart, totalValueEnd, headerColor, 'right')
 
     y = rowBottom
     page.drawLine({
@@ -888,17 +1056,121 @@ function drawInvoiceTable({
     })
   }
 
-  // Vertical lines
-  for (const x of columnPositions) {
+  for (const xPos of columnPositions) {
     page.drawLine({
-      start: { x, y: startY },
-      end: { x, y },
+      start: { x: xPos, y: startY },
+      end: { x: xPos, y },
       color: borderColor,
       thickness: 1,
     })
   }
 
   return y
+}
+
+const EXTRA_SKIP_KEYWORDS = [
+  'option',
+  'upgrade',
+  'addon',
+  'add-on',
+  'add_on',
+  'shipping',
+  'tax',
+  'subtotal',
+  'total',
+  'price',
+  'amount',
+  'sku',
+  'quantity',
+  'qty',
+  'product',
+  'name',
+  'description',
+]
+
+function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
+  const itemName = resolveItemName(item, index)
+  const upgradesList = mergeUniqueStrings(
+    toStringArray((item as any)?.upgrades),
+    toStringArray((item as any)?.upgradeOptions)
+  )
+
+  const optionSummary = normalizeString((item as any)?.optionSummary)
+  const optionDetails = mergeUniqueStrings(
+    toStringArray((item as any)?.optionDetails),
+    optionSummary ? [optionSummary] : []
+  )
+
+  const extrasList = collectMetadataExtras(
+    Array.isArray((item as any)?.metadata)
+      ? ((item as any)?.metadata as Array<{ key?: string | null; value?: unknown }>)
+      : undefined,
+    [...upgradesList, ...optionDetails]
+  )
+
+  const description = resolveDescription(item)
+  const quantity = formatQuantity(item.quantity) || '—'
+  const unitPrice = resolveUnitPrice(item)
+  const lineTotal = resolveLineTotal(item)
+  const skuValue = normalizeString(item.sku || (item as any)?.itemCode)
+  if (skuValue && !itemName.toLowerCase().includes(skuValue.toLowerCase())) {
+    const hasSku = extrasList.some((entry) => entry.toLowerCase().includes(skuValue.toLowerCase()))
+    if (!hasSku) {
+      extrasList.push(`SKU: ${skuValue}`)
+    }
+  }
+
+  return {
+    item: itemName,
+    upgrades: upgradesList.join(', ') || '—',
+    options: optionDetails.join(', ') || '—',
+    extras: extrasList.join(', ') || '—',
+    description: description || '—',
+    quantity,
+    price: unitPrice,
+    total: lineTotal,
+  }
+}
+
+function collectMetadataExtras(
+  metadata: Array<{ key?: string | null; value?: unknown }> | null | undefined,
+  excludeValues: string[] = []
+): string[] {
+  if (!Array.isArray(metadata) || metadata.length === 0) return []
+  const extras: string[] = []
+  const seen = new Set<string>()
+  const excludeSet = new Set(excludeValues.map((value) => value.toLowerCase()))
+
+  for (const entry of metadata) {
+    if (!entry) continue
+    const keyRaw = typeof entry.key === 'string' ? entry.key : ''
+    const value = normalizeString(toStringValue(entry.value))
+    if (!value) continue
+    if (excludeSet.has(value.toLowerCase())) continue
+
+    const lowerKey = keyRaw.toLowerCase()
+    if (lowerKey && EXTRA_SKIP_KEYWORDS.some((keyword) => lowerKey.includes(keyword))) continue
+
+    const label = humanizeKey(keyRaw)
+    const combined = label ? `${label}: ${value}` : value
+    const signature = combined.toLowerCase()
+    if (seen.has(signature)) continue
+    seen.add(signature)
+    extras.push(combined)
+  }
+
+  return extras
+}
+
+function humanizeKey(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/[_\-.]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, (_, a: string, b: string) => `${a} ${b}`)
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function drawColumnText(
@@ -959,25 +1231,19 @@ function resolveItemName(item: InvoiceLineItem, index: number): string {
 }
 
 function resolveDescription(item: InvoiceLineItem): string {
-  const segments: string[] = []
-  const summary = normalizeString((item as any)?.optionSummary)
-  if (summary) segments.push(summary)
-  const detailSegments = toStringArray((item as any)?.optionDetails)
-  if (detailSegments.length) segments.push(...detailSegments)
-  const upgrades = toStringArray((item as any)?.upgrades)
-  if (upgrades.length) segments.push(`Upgrades: ${upgrades.join(', ')}`)
+  const explicit = normalizeString(item.description)
+  if (explicit) return explicit
 
-  if (!segments.length) {
-    const description = normalizeString(item.description)
-    if (description) segments.push(description)
-  }
+  const productName = normalizeString((item as any)?.productName)
+  if (productName) return productName
 
-  const sku = normalizeString(item.sku || (item as any)?.productSlug || item.itemCode)
-  if (sku && !segments.some((segment) => segment.includes(sku))) {
-    segments.push(`SKU ${sku}`)
-  }
+  const fallback = normalizeString((item as any)?.name)
+  if (fallback) return fallback
 
-  return segments.join(' • ')
+  const optionSummary = normalizeString((item as any)?.optionSummary)
+  if (optionSummary) return optionSummary
+
+  return ''
 }
 
 function truncate(text: string, font: PDFFont, size: number, maxWidth: number): string {

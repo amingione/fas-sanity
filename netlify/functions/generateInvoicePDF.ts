@@ -40,6 +40,13 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
     invoiceNumber,
     invoiceDate,
     dueDate,
+    amountSubtotal,
+    amountTax,
+    amountShipping,
+    total,
+    shippingCarrier,
+    trackingNumber,
+    shippingLabelUrl,
     billTo,
     shipTo,
     lineItems[]{
@@ -59,6 +66,13 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
     orderRef->{
       _id,
       orderNumber,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      shippingCarrier,
+      trackingNumber,
+      shippingLabelUrl,
+      selectedService->{carrier, service, amount},
       cart[]{
         _key,
         name,
@@ -77,6 +91,13 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
     order->{
       _id,
       orderNumber,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      shippingCarrier,
+      trackingNumber,
+      shippingLabelUrl,
+      selectedService->{carrier, service, amount},
       cart[]{
         _key,
         name,
