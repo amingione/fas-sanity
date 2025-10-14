@@ -3,6 +3,13 @@ import fetch from 'node-fetch'
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
 const token = process.env.SANITY_API_TOKEN
 
+class SanityCorsPermissionError extends Error {
+  constructor(status: number, body: string) {
+    super(`Missing Sanity CORS permission (${status}): ${body}`)
+    this.name = 'SanityCorsPermissionError'
+  }
+}
+
 async function getRequiredOrigins() {
   const configured = (process.env.SANITY_REQUIRED_CORS_ORIGINS || '').split(',')
     .map(origin => origin.trim())
@@ -29,6 +36,11 @@ async function fetchExistingOrigins() {
     }
   )
 
+  if (response.status === 401 || response.status === 403) {
+    const message = await response.text()
+    throw new SanityCorsPermissionError(response.status, message)
+  }
+
   if (!response.ok) {
     const message = await response.text()
     throw new Error(`Failed to load existing CORS origins: ${response.status} ${message}`)
@@ -50,6 +62,11 @@ async function addOrigin(origin: string) {
     }
   )
 
+  if (response.status === 401 || response.status === 403) {
+    const message = await response.text()
+    throw new SanityCorsPermissionError(response.status, message)
+  }
+
   if (!response.ok) {
     const message = await response.text()
     throw new Error(`Failed to add CORS origin ${origin}: ${response.status} ${message}`)
@@ -67,22 +84,44 @@ async function ensureCors() {
     return
   }
 
-  const existingOrigins = new Set(
-    (await fetchExistingOrigins()).map(entry => entry.origin.toLowerCase())
-  )
+  let existingOrigins: Set<string>
+  try {
+    existingOrigins = new Set((await fetchExistingOrigins()).map(entry => entry.origin.toLowerCase()))
+  } catch (error) {
+    if (error instanceof SanityCorsPermissionError) {
+      console.warn(`${error.message} — skipping automatic Sanity CORS updates.`)
+      return
+    }
+
+    throw error
+  }
 
   for (const origin of requiredOrigins) {
     if (existingOrigins.has(origin.toLowerCase())) {
       continue
     }
 
-    await addOrigin(origin)
-    // eslint-disable-next-line no-console
-    console.log(`Added missing Sanity CORS origin: ${origin}`)
+    try {
+      await addOrigin(origin)
+      // eslint-disable-next-line no-console
+      console.log(`Added missing Sanity CORS origin: ${origin}`)
+    } catch (error) {
+      if (error instanceof SanityCorsPermissionError) {
+        console.warn(`${error.message} — unable to add ${origin}.`)
+        return
+      }
+
+      throw error
+    }
   }
 }
 
 ensureCors().catch(error => {
+  if (error instanceof SanityCorsPermissionError) {
+    console.warn(`${error.message} — skipping automatic Sanity CORS updates.`)
+    return
+  }
+
   console.error(error)
   process.exitCode = 1
 })

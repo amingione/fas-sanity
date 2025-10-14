@@ -1,0 +1,5 @@
+ignoredBuiltDependencies:
+  - canvas
+  - core-js
+  - esbuild
+  - sharp
