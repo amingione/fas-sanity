@@ -664,6 +664,93 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
   }
 }
 
+type OrderPaymentStatusInput = {
+  paymentStatus: string
+  orderStatus?: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
+  invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
+  invoiceStripeStatus?: string
+  paymentIntentId?: string
+  chargeId?: string
+  stripeSessionId?: string
+  additionalOrderFields?: Record<string, any>
+  additionalInvoiceFields?: Record<string, any>
+}
+
+async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<boolean> {
+  const { paymentStatus, orderStatus, invoiceStatus, invoiceStripeStatus, paymentIntentId, chargeId, stripeSessionId, additionalInvoiceFields, additionalOrderFields } = opts
+  if (!paymentIntentId && !chargeId && !stripeSessionId) return false
+
+  const params = {
+    pi: paymentIntentId || '',
+    charge: chargeId || '',
+    session: stripeSessionId || '',
+  }
+
+  const order = await sanity.fetch<{ _id: string; orderNumber?: string; invoiceRef?: { _id: string } } | null>(
+    `*[_type == "order" && (
+      ($pi != '' && paymentIntentId == $pi) ||
+      ($charge != '' && chargeId == $charge) ||
+      ($session != '' && stripeSessionId == $session)
+    )][0]{ _id, orderNumber, invoiceRef->{ _id } }`,
+    params
+  )
+
+  if (!order?._id) return false
+
+  const orderPatch: Record<string, any> = {
+    paymentStatus,
+    stripeLastSyncedAt: new Date().toISOString(),
+  }
+  if (orderStatus) orderPatch.status = orderStatus
+  if (additionalOrderFields && typeof additionalOrderFields === 'object') {
+    Object.assign(orderPatch, additionalOrderFields)
+  }
+
+  try {
+    await sanity.patch(order._id).set(orderPatch).commit({ autoGenerateArrayKeys: true })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to update order payment status', err)
+  }
+
+  const fetchInvoiceId = async (): Promise<string | null> => {
+    if (order.invoiceRef?._id) return order.invoiceRef._id
+    if (paymentIntentId) {
+      const byPI = await sanity.fetch<string | null>(
+        `*[_type == "invoice" && paymentIntentId == $pi][0]._id`,
+        { pi: paymentIntentId }
+      )
+      if (byPI) return byPI
+    }
+    if (order.orderNumber) {
+      const byOrderNumber = await sanity.fetch<string | null>(
+        `*[_type == "invoice" && (orderNumber == $orderNumber || orderRef._ref == $orderId || orderRef->_ref == $orderId)][0]._id`,
+        { orderNumber: order.orderNumber, orderId: order._id }
+      )
+      if (byOrderNumber) return byOrderNumber
+    }
+    return null
+  }
+
+  const invoiceId = await fetchInvoiceId()
+  if (invoiceId) {
+    const invoicePatch: Record<string, any> = {
+      stripeLastSyncedAt: new Date().toISOString(),
+    }
+    if (invoiceStatus) invoicePatch.status = invoiceStatus
+    if (invoiceStripeStatus) invoicePatch.stripeInvoiceStatus = invoiceStripeStatus
+    if (additionalInvoiceFields && typeof additionalInvoiceFields === 'object') {
+      Object.assign(invoicePatch, additionalInvoiceFields)
+    }
+    try {
+      await sanity.patch(invoiceId).set(invoicePatch).commit({ autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update invoice after payment status change', err)
+    }
+  }
+
+  return true
+}
+
 async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<void> {
   const orderId = await sanity.fetch<string | null>(`*[_type == "order" && stripeSessionId == $sid][0]._id`, { sid: session.id })
   if (orderId) {
@@ -977,6 +1064,53 @@ export const handler: Handler = async (event) => {
           await markPaymentIntentFailure(pi)
         } catch (err) {
           console.warn('stripeWebhook: failed to mark payment failure', err)
+        }
+        break
+      }
+
+      case 'payment_intent.canceled': {
+        try {
+          const pi = webhookEvent.data.object as Stripe.PaymentIntent
+          await updateOrderPaymentStatus({
+            paymentIntentId: pi.id,
+            stripeSessionId: typeof pi.metadata?.checkout_session_id === 'string' ? pi.metadata?.checkout_session_id : undefined,
+            paymentStatus: pi.status || 'canceled',
+            orderStatus: 'cancelled',
+            invoiceStatus: 'cancelled',
+            invoiceStripeStatus: 'payment_intent.canceled',
+            additionalOrderFields: {
+              paymentFailureCode: pi.cancellation_reason || undefined,
+              paymentFailureMessage: pi.last_payment_error?.message || undefined,
+            },
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to mark payment cancellation', err)
+        }
+        break
+      }
+
+      case 'charge.refunded':
+      case 'charge.refund.updated': {
+        try {
+          const charge = webhookEvent.data.object as Stripe.Charge
+          const totalAmount = Number(charge.amount || 0)
+          const refundedAmount = Number(charge.amount_refunded || 0)
+          const isFullRefund = charge.refunded || (totalAmount > 0 && refundedAmount >= totalAmount)
+          const paymentStatus = isFullRefund ? 'refunded' : 'partially_refunded'
+          const paymentIntentId =
+            typeof charge.payment_intent === 'string'
+              ? charge.payment_intent
+              : (charge.payment_intent as Stripe.PaymentIntent | null)?.id
+          await updateOrderPaymentStatus({
+            paymentIntentId,
+            chargeId: charge.id,
+            paymentStatus,
+            orderStatus: isFullRefund ? 'cancelled' : undefined,
+            invoiceStatus: isFullRefund ? 'refunded' : undefined,
+            invoiceStripeStatus: webhookEvent.type,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle charge refund', err)
         }
         break
       }
