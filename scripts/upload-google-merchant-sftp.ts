@@ -40,15 +40,37 @@ type SanityProduct = {
   google_product_category?: string | null
 }
 
-const SFTP_HOST = process.env.GOOGLE_MERCHANT_SFTP_HOST || 'partnerupload.google.com'
-const SFTP_PORT = Number(process.env.GOOGLE_MERCHANT_SFTP_PORT || 19321)
-const SFTP_USERNAME = process.env.GOOGLE_MERCHANT_SFTP_USERNAME
-const SFTP_PASSWORD = process.env.GOOGLE_MERCHANT_SFTP_PASSWORD
-const SFTP_REMOTE_DIR = (process.env.GOOGLE_MERCHANT_SFTP_REMOTE_DIR || '/').replace(/\/?$/, '/')
-const SFTP_FILENAME = process.env.GOOGLE_MERCHANT_SFTP_FILENAME || 'products.txt'
-const FEED_CURRENCY = process.env.GOOGLE_MERCHANT_FEED_CURRENCY || 'USD'
-const SITE_BASE_URL = (process.env.SITE_BASE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '')
-const OUTPUT_DIR = process.env.GOOGLE_MERCHANT_FEED_OUTPUT_DIR || path.resolve(process.cwd(), 'tmp')
+const SFTP_HOST =
+  process.env.GOOGLE_MERCHANT_SFTP_HOST ||
+  process.env.GMC_SFTP_HOST ||
+  'partnerupload.google.com'
+const SFTP_PORT = Number(
+  process.env.GOOGLE_MERCHANT_SFTP_PORT || process.env.GMC_SFTP_PORT || 19321
+)
+const SFTP_USERNAME =
+  process.env.GOOGLE_MERCHANT_SFTP_USERNAME || process.env.GMC_SFTP_USERNAME
+const SFTP_PASSWORD =
+  process.env.GOOGLE_MERCHANT_SFTP_PASSWORD || process.env.GMC_SFTP_PASSWORD
+const SFTP_REMOTE_DIR = (
+  process.env.GOOGLE_MERCHANT_SFTP_REMOTE_DIR || process.env.GMC_SFTP_REMOTE_DIR || '/'
+).replace(/\/?$/, '/')
+const SFTP_FILENAME =
+  process.env.GOOGLE_MERCHANT_SFTP_FILENAME ||
+  process.env.GMC_SFTP_FEED_FILENAME ||
+  'products.txt'
+const FEED_CURRENCY =
+  process.env.GOOGLE_MERCHANT_FEED_CURRENCY || process.env.GMC_FEED_CURRENCY || 'USD'
+const SITE_BASE_URL = (
+  process.env.GOOGLE_MERCHANT_FEED_BASE_URL ||
+  process.env.GMC_FEED_BASE_URL ||
+  process.env.SITE_BASE_URL ||
+  process.env.PUBLIC_SITE_URL ||
+  ''
+).replace(/\/$/, '')
+const OUTPUT_DIR =
+  process.env.GOOGLE_MERCHANT_FEED_OUTPUT_DIR ||
+  process.env.GMC_FEED_OUTPUT_DIR ||
+  path.resolve(process.cwd(), 'tmp')
 
 const REQUIRED_ENV = [
   ['GOOGLE_MERCHANT_SFTP_USERNAME', SFTP_USERNAME],
