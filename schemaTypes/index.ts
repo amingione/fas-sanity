@@ -59,6 +59,7 @@ import { shipmentWeightType } from './objects/shipmentWeightType'
 import { packageDimensionsType } from './objects/packageDimensionsType'
 import { modListItemType } from './objects/modListItemType'
 import { invoiceLineItemType } from './objects/invoiceLineItemType'
+import { checkLineItemType } from './objects/checkLineItemType'
 import { customerBillingAddressType } from './objects/customerBillingAddressType'
 import { customerOrderSummaryType } from './objects/customerOrderSummaryType'
 import { customerQuoteSummaryType } from './objects/customerQuoteSummaryType'
@@ -141,6 +142,7 @@ const objects = [
   packageDimensionsType,
   modListItemType,
   invoiceLineItemType,
+  checkLineItemType,
   customerBillingAddressType,
   customerOrderSummaryType,
   customerQuoteSummaryType,
@@ -203,6 +205,8 @@ import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
 import freightQuote from './documents/freightQuote'
+import {bankAccountType} from './documents/bankAccount'
+import {checkType} from './documents/check'
 
 const documents = [
   collectionType,
@@ -218,6 +222,8 @@ const documents = [
   order,
   category,
   productBundle,
+  bankAccountType,
+  checkType,
   customer,
   shippingOption,
   freightQuote,

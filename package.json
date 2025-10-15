@@ -11,7 +11,8 @@
     "deploy": "sanity deploy",
     "deploy-graphql": "sanity graphql deploy",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
-    "backfill:shipping": "tsx scripts/backfill-order-shipping.ts"
+    "backfill:shipping": "tsx scripts/backfill-order-shipping.ts",
+    "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
   },
   "keywords": [
     "sanity"
@@ -25,6 +26,7 @@
     "@sanity/icons": "^3.7.0",
     "@sanity/ui": "^3.1.0",
     "@sanity/vision": "^4.10.3",
+    "@stripe/stripe-js": "^3.2.0",
     "astro": "^5.7.5",
     "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
@@ -49,6 +51,7 @@
     "sanity-plugin-hotspot-array": "^3.0.1",
     "sanity-plugin-media": "^4.0.0",
     "shipengine": "^1.0.7",
+    "ssh2-sftp-client": "^10.0.1",
     "slug": "^8.2.2",
     "stripe": "^18.0.0",
     "styled-components": "^6.1.19"

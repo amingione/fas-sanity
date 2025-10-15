@@ -18,6 +18,7 @@ import FinancialReports from '../components/studio/FinancialReports'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
 import EnvSelfCheck from '../components/studio/EnvSelfCheck'
 import ProductBulkEditor from '../components/studio/ProductBulkEditor'
+import ProductListDashboard from '../components/studio/ProductListDashboard'
 import FilterBulkAssignPane from '../components/studio/FilterBulkAssignPane'
 import FilterBulkRemovePane from '../components/studio/FilterBulkRemovePane'
 import FilterDeleteTagPane from '../components/studio/FilterDeleteTagPane'
@@ -28,6 +29,9 @@ import OrderStatusPreview from '../components/inputs/FulfillmentBadge'
 import OrderDetailView from '../components/studio/OrderDetailView'
 import SalesHub from '../components/studio/SalesHub'
 import CustomersHub from '../components/studio/CustomersHub'
+import BankAccountsTool from '../components/studio/BankAccountsTool'
+import CheckComposer from '../components/studio/CheckComposer'
+import ProfitLossDashboard from '../components/studio/ProfitLossDashboard'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -143,6 +147,7 @@ export const deskStructure: StructureResolver = (S) =>
           S.list()
             .title('Products & Content')
             .items([
+              componentPane(S, 'product-overview', 'Product Overview', ProductListDashboard),
               documentListWithPreview(S, 'product', 'Products'),
               documentListWithPreview(S, 'category', 'Categories'),
               documentListWithPreview(S, 'vehicleModel', 'Vehicles'),
@@ -186,6 +191,11 @@ export const deskStructure: StructureResolver = (S) =>
             .items([
               componentPane(S, 'financial-dashboard', 'Financial Dashboard', FinancialDashboard),
               componentPane(S, 'financial-reports', 'Financial Reports', FinancialReports),
+              componentPane(S, 'profit-loss-dashboard', 'Profit & Loss', ProfitLossDashboard),
+              componentPane(S, 'bank-accounts', 'Bank Accounts', BankAccountsTool),
+              documentListWithPreview(S, 'bankAccount', 'Bank Accounts'),
+              componentPane(S, 'check-composer', 'Write Check', CheckComposer),
+              documentListWithPreview(S, 'check', 'Checks'),
               componentPane(S, 'env-self-check', 'Environment Status', EnvSelfCheck),
               componentPane(S, 'vendor-admin-dashboard', 'Vendor Admin Dashboard', VendorAdminDashboard),
               S.listItem()
