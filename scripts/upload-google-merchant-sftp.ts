@@ -1,9 +1,17 @@
-import 'dotenv/config'
 import fs from 'node:fs/promises'
+import {existsSync} from 'node:fs'
 import path from 'node:path'
 import {createClient} from '@sanity/client'
 import SftpClient from 'ssh2-sftp-client'
 import {deriveProductFeedFields} from '../utils/productFeed'
+import dotenv from 'dotenv'
+
+const dotenvPaths = ['.env', '.env.local', '.env.development']
+dotenvPaths.forEach((configPath) => {
+  if (existsSync(configPath)) {
+    dotenv.config({path: configPath, override: false})
+  }
+})
 
 type SanityProduct = {
   _id: string
@@ -72,9 +80,9 @@ const OUTPUT_DIR =
   process.env.GMC_FEED_OUTPUT_DIR ||
   path.resolve(process.cwd(), 'tmp')
 
-const REQUIRED_ENV = [
-  ['GOOGLE_MERCHANT_SFTP_USERNAME', SFTP_USERNAME],
-  ['GOOGLE_MERCHANT_SFTP_PASSWORD', SFTP_PASSWORD],
+const REQUIRED_ENV: Array<[string, string | undefined]> = [
+  ['GOOGLE_MERCHANT_SFTP_USERNAME / GMC_SFTP_USERNAME', SFTP_USERNAME],
+  ['GOOGLE_MERCHANT_SFTP_PASSWORD / GMC_SFTP_PASSWORD', SFTP_PASSWORD],
 ] as const
 
 function assertEnv() {
