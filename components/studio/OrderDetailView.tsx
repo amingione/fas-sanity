@@ -106,6 +106,7 @@ type OrderDocument = {
   amountShipping?: number
   shippingCarrier?: string
   trackingNumber?: string
+  trackingUrl?: string
   shippingLabelUrl?: string
   packingSlipUrl?: string
   shipStationOrderId?: string
@@ -217,6 +218,7 @@ const badgeTone = (status?: string) => {
     case 'label_created':
       return 'caution'
     case 'cancelled':
+    case 'canceled':
     case 'failed':
     case 'refunded':
       return 'critical'
@@ -323,6 +325,7 @@ function OrderDetailView(props: DocumentViewProps) {
           amountShipping,
           shippingCarrier,
           trackingNumber,
+          trackingUrl,
           shippingLabelUrl,
           packingSlipUrl,
           fulfilledAt,
@@ -435,6 +438,9 @@ function OrderDetailView(props: DocumentViewProps) {
     return {subtotal, shipping, tax, total: grandTotal}
   }, [lineItems, order?.amountShipping, order?.amountSubtotal, order?.amountTax, order?.totalAmount])
 
+  const hasTracking = Boolean(order?.trackingNumber)
+  const isFulfilled = Boolean(order?.fulfilledAt)
+
   const statusBadges = useMemo(() => {
     if (!order) return []
     const badges: Array<{label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}> = []
@@ -522,7 +528,10 @@ function OrderDetailView(props: DocumentViewProps) {
       const res = await fetch(fulfillmentEndpoint, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({orderId}),
+        body: JSON.stringify({
+          orderId,
+          useExistingTracking: hasTracking,
+        }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok || (json && json.success === false)) {
@@ -530,9 +539,10 @@ function OrderDetailView(props: DocumentViewProps) {
       }
       toast.push({
         status: 'success',
-        title: 'Fulfillment in progress',
-        description:
-          'Shipping label generation started. This view will refresh automatically once processing finishes.',
+        title: hasTracking ? 'Order fulfilled' : 'Fulfillment in progress',
+        description: hasTracking
+          ? 'Marked as fulfilled and sent tracking details to the customer.'
+          : 'Shipping label generation started. This view will refresh automatically once processing finishes.',
       })
       await refreshOrder()
     } catch (err: any) {
@@ -545,7 +555,7 @@ function OrderDetailView(props: DocumentViewProps) {
     } finally {
       setFulfillmentLoading(false)
     }
-  }, [fulfillmentEndpoint, orderId, refreshOrder, toast])
+  }, [fulfillmentEndpoint, hasTracking, orderId, refreshOrder, toast])
 
   const handleDownloadPackingSlip = useCallback(async () => {
     if (!orderId) return
@@ -560,14 +570,8 @@ function OrderDetailView(props: DocumentViewProps) {
         const text = await res.text().catch(() => '')
         throw new Error(text || 'Packing slip generation failed')
       }
-      const base64 = await res.text()
-      const binary = typeof window !== 'undefined' ? window.atob(base64) : Buffer.from(base64, 'base64').toString('binary')
-      const len = binary.length
-      const bytes = new Uint8Array(len)
-      for (let i = 0; i < len; i += 1) {
-        bytes[i] = binary.charCodeAt(i)
-      }
-      const blob = new Blob([bytes], {type: 'application/pdf'})
+      const arrayBuffer = await res.arrayBuffer()
+      const blob = new Blob([arrayBuffer], {type: res.headers.get('content-type') || 'application/pdf'})
       const url = URL.createObjectURL(blob)
       try {
         window.open(url, '_blank', 'noopener')
@@ -846,7 +850,15 @@ function OrderDetailView(props: DocumentViewProps) {
               <Stack space={3}>
                 <Heading size={2}>Fulfillment actions</Heading>
                 <Button
-                  text={order.shippingLabelUrl ? 'Regenerate label & notify customer' : 'Create shipping label & notify customer'}
+                  text={
+                    hasTracking
+                      ? isFulfilled
+                        ? 'Resend tracking email'
+                        : 'Mark fulfilled & notify customer'
+                      : order.shippingLabelUrl
+                      ? 'Regenerate label & notify customer'
+                      : 'Create shipping label & notify customer'
+                  }
                   tone="primary"
                   onClick={handleFulfillOrder}
                   disabled={fulfillmentLoading}

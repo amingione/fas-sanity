@@ -124,15 +124,33 @@ const BulkFulfillmentConsole = forwardRef<HTMLDivElement, {}>(function BulkFulfi
     if (!selected.size) return;
     setLoading(true);
     const ids = Array.from(selected);
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      _type: 'shippingLogEntry' as const,
+      status: 'cancelled_bulk',
+      message: 'Order cancelled via Bulk Fulfillment Console',
+      createdAt: timestamp,
+    };
     try {
-      const tx = client.transaction();
-      ids.forEach((id) => tx.patch(id, { set: { status: 'cancelled' } }));
-      await tx.commit();
+      let tx = client.transaction();
+      ids.forEach((id) => {
+        tx = tx.patch(id, (patch) =>
+          patch
+            .set({
+              status: 'cancelled',
+              paymentStatus: 'cancelled',
+              fulfilledAt: null,
+            })
+            .setIfMissing({ shippingLog: [] })
+            .append('shippingLog', [logEntry]),
+        );
+      });
+      await tx.commit({ autoGenerateArrayKeys: true });
 
       toast.push({
         status: 'warning',
         title: 'Orders cancelled',
-        description: `${ids.length} order(s) were cancelled.`,
+        description: `${ids.length} order(s) were cancelled and moved to the archive.`,
       });
 
       setSelected(new Set());

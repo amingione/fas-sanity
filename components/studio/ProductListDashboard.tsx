@@ -1,4 +1,14 @@
-import {ChangeEvent, Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {
+  ChangeEvent,
+  Dispatch,
+  SetStateAction,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Badge,
   Box,
@@ -552,7 +562,10 @@ const inventoryFilterLabels: Record<InventoryStatus, string> = {
   in: 'In stock',
 }
 
-export default function ProductListDashboard() {
+const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, never>>(function ProductListDashboard(
+  _props,
+  ref
+) {
   const client = useClient({apiVersion: '2024-10-01'})
   const router = useRouter()
   const toast = useToast()
@@ -940,7 +953,7 @@ export default function ProductListDashboard() {
   const partiallySelected = selectedIds.size > 0 && !allSelected
 
   return (
-    <Flex direction="column" height="fill" style={{background: '#f8fafc'}}>
+    <Flex ref={ref} direction="column" height="fill" style={{background: '#f8fafc'}}>
       <input
         ref={importInputRef}
         type="file"
@@ -1105,7 +1118,7 @@ export default function ProductListDashboard() {
               </Flex>
 
               {activeFilters && (
-                <Inline space={2} wrap>
+                <Inline space={2} style={{flexWrap: 'wrap'}}>
                   {Array.from(vendorFilters).map((vendor) => (
                     <Card key={`vendor-${vendor}`} paddingX={2} paddingY={1} tone="primary" radius={3} border>
                       <Inline space={2} align="center">
@@ -1389,7 +1402,7 @@ export default function ProductListDashboard() {
                             {product.sku ? ` · ${product.sku}` : ''}
                           </Text>
                           {product.tags.length > 0 && (
-                            <Inline space={1} wrap>
+                            <Inline space={1} style={{flexWrap: 'wrap'}}>
                               {product.tags.slice(0, 3).map((tag) => (
                                 <Card key={tag} paddingX={2} paddingY={1} radius={2} tone="transparent" border>
                                   <Text size={0}>{tag}</Text>
@@ -1479,4 +1492,6 @@ export default function ProductListDashboard() {
       </Box>
     </Flex>
   )
-}
+})
+
+export default ProductListDashboard

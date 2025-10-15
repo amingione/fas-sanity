@@ -13,6 +13,7 @@ const fulfillmentColors: Record<string, 'positive' | 'caution' | 'critical' | 'd
   unfulfilled: 'caution',
   'in progress': 'default',
   cancelled: 'critical',
+  canceled: 'critical',
   paid: 'caution',
   pending: 'default'
 }
