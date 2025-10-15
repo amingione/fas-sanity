@@ -1,7 +1,49 @@
-import React, {useMemo, useState} from 'react'
-import {Badge, Box, Button, Card, Flex, Heading, Stack, Text, useToast} from '@sanity/ui'
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import {
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Menu,
+  MenuButton,
+  MenuItem,
+  Spinner,
+  Stack,
+  Text,
+  useToast,
+} from '@sanity/ui'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
+
+const API_VERSION = '2024-10-01'
+
+function getFnBase(): string {
+  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as
+    | string
+    | undefined
+  if (envBase) return envBase
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = window.localStorage?.getItem('NLFY_BASE')
+      if (stored) return stored
+    } catch {
+      // ignore storage access issues
+    }
+    const origin = window.location?.origin
+    if (origin && /^https?:/i.test(origin)) return origin
+  }
+  return ''
+}
 
 type DocumentViewProps = {
   document?: {
@@ -39,6 +81,18 @@ type OrderCartItem = {
   optionSummary?: string
   optionDetails?: string[] | string | null
   upgrades?: string[] | string | null
+  metadata?: Array<{key?: string; value?: string}>
+}
+
+type ShippingLogEntry = {
+  _key?: string
+  status?: string
+  message?: string
+  labelUrl?: string
+  trackingUrl?: string
+  trackingNumber?: string
+  weight?: number
+  createdAt?: string
 }
 
 type OrderDocument = {
@@ -53,6 +107,7 @@ type OrderDocument = {
   shippingCarrier?: string
   trackingNumber?: string
   shippingLabelUrl?: string
+  packingSlipUrl?: string
   shipStationOrderId?: string
   fulfilledAt?: string
   createdAt?: string
@@ -61,6 +116,16 @@ type OrderDocument = {
   shippingAddress?: OrderAddress
   cart?: OrderCartItem[]
   invoiceRef?: SanityReference | {_ref?: string}
+  shippingLog?: ShippingLogEntry[]
+  selectedService?: {
+    serviceCode?: string
+    carrierId?: string
+    carrier?: string
+    service?: string
+    amount?: number
+    currency?: string
+    deliveryDays?: number
+  }
 }
 
 type InvoiceDocument = {
@@ -69,21 +134,13 @@ type InvoiceDocument = {
   status?: string
 }
 
-const badgeTone = (status?: string) => {
-  if (!status) return 'default'
-  switch (status.toLowerCase()) {
-    case 'paid':
-    case 'fulfilled':
-      return 'positive'
-    case 'processing':
-    case 'pending':
-      return 'caution'
-    case 'cancelled':
-    case 'failed':
-      return 'critical'
-    default:
-      return 'default'
-  }
+type TimelineEntry = {
+  id: string
+  title: string
+  subtitle?: string
+  timestampLabel?: string
+  tone: 'default' | 'positive' | 'critical' | 'caution'
+  href?: string
 }
 
 const money = (value?: number | null) => {
@@ -91,11 +148,20 @@ const money = (value?: number | null) => {
   return `$${value.toFixed(2)}`
 }
 
+const preferValue = <T,>(...values: Array<T | null | undefined>): T | undefined => {
+  for (const value of values) {
+    if (value !== null && value !== undefined) return value
+  }
+  return undefined
+}
+
 const toStringArray = (input: unknown): string[] => {
   if (!input) return []
   if (Array.isArray(input)) {
     return input
-      .map((item) => (typeof item === 'string' ? item : typeof item === 'number' ? String(item) : ''))
+      .map((item) =>
+        typeof item === 'string' ? item : typeof item === 'number' ? String(item) : ''
+      )
       .map((item) => item.trim())
       .filter(Boolean)
   }
@@ -118,13 +184,6 @@ const toStringArray = (input: unknown): string[] => {
   return []
 }
 
-const preferValue = <T,>(...values: Array<T | null | undefined>): T | undefined => {
-  for (const value of values) {
-    if (value !== null && value !== undefined) return value
-  }
-  return undefined
-}
-
 const normalizeAddress = (source?: OrderAddress | null): string[] | null => {
   if (!source) {
     return null
@@ -145,44 +204,190 @@ const normalizeAddress = (source?: OrderAddress | null): string[] | null => {
   return cleanLines.length ? cleanLines : null
 }
 
-const dateLabel = (value?: string) => {
-  if (!value) return 'Not set'
+const badgeTone = (status?: string) => {
+  if (!status) return 'default'
+  switch (status.toLowerCase()) {
+    case 'paid':
+    case 'fulfilled':
+    case 'succeeded':
+    case 'delivered':
+      return 'positive'
+    case 'processing':
+    case 'pending':
+    case 'label_created':
+      return 'caution'
+    case 'cancelled':
+    case 'failed':
+    case 'refunded':
+      return 'critical'
+    default:
+      return 'default'
+  }
+}
+
+const formatDate = (value?: string | null, opts?: Intl.DateTimeFormatOptions) => {
+  if (!value) return null
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return value
-  return parsed.toLocaleString()
+  return parsed.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: opts?.timeStyle ?? 'short',
+    ...(opts || {}),
+  })
 }
+
+const normalizeStatusLabel = (value?: string | null) => {
+  if (!value) return 'Pending'
+  return value
+    .split(/\s+/)
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const orderFromProps = (props: DocumentViewProps['document']): OrderDocument | null => {
+  if (!props) return null
+  return (
+    (props.displayed as OrderDocument | undefined) ||
+    (props.draft as OrderDocument | undefined) ||
+    (props.published as OrderDocument | undefined) ||
+    null
+  )
+}
+
+const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order'
+const PACKING_SLIP_ENDPOINT = '/.netlify/functions/generatePackingSlips'
 
 function OrderDetailView(props: DocumentViewProps) {
   const toast = useToast()
-  const client = useClient({apiVersion: '2024-10-01'})
+  const client = useClient({apiVersion: API_VERSION})
   const router = useRouter()
+  const fnBaseRef = useRef<string>(getFnBase())
+
+  const initialOrder = useMemo(() => orderFromProps(props.document), [props.document])
+  const [order, setOrder] = useState<OrderDocument | null>(initialOrder)
+  const [invoiceDoc, setInvoiceDoc] = useState<InvoiceDocument | null>(null)
   const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [fulfillmentLoading, setFulfillmentLoading] = useState(false)
+  const [packingLoading, setPackingLoading] = useState(false)
 
-  const order = useMemo<OrderDocument | null>(() => {
-    return (
-      (props.document?.displayed as OrderDocument | undefined) ||
-      (props.document?.draft as OrderDocument | undefined) ||
-      (props.document?.published as OrderDocument | undefined) ||
-      null
-    )
-  }, [props.document])
+  useEffect(() => {
+    setOrder(initialOrder)
+  }, [initialOrder])
 
-  const invoiceRefId = order?.invoiceRef && typeof order.invoiceRef === 'object' ? order.invoiceRef._ref : undefined
+  const orderId = useMemo(
+    () => (order?._id ? order._id.replace(/^drafts\./, '') : undefined),
+    [order?._id]
+  )
 
-  const headerTitle = order?.orderNumber
-    ? `Order ${order.orderNumber}`
-    : order?._id
-    ? `Order ${order._id.slice(-6)}`
-    : 'Order'
+  useEffect(() => {
+    let cancelled = false
+    const invoiceRefId = order?.invoiceRef && typeof order.invoiceRef === 'object' ? order.invoiceRef._ref : undefined
+    if (!invoiceRefId) {
+      setInvoiceDoc(null)
+      return () => {
+        cancelled = true
+      }
+    }
 
-  const statusBadges = useMemo(() => {
-    if (!order) return []
-    return [
-      order.status ? {label: order.status, tone: badgeTone(order.status)} : null,
-      order.paymentStatus ? {label: `Payment: ${order.paymentStatus}`, tone: badgeTone(order.paymentStatus)} : null,
-      order.fulfilledAt ? {label: 'Fulfilled', tone: 'positive'} : null,
-    ].filter(Boolean) as {label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}[]
-  }, [order])
+    client
+      .fetch<InvoiceDocument>(
+        `*[_type == "invoice" && _id == $id][0]{_id, invoiceNumber, status}`,
+        {id: invoiceRefId}
+      )
+      .then((doc) => {
+        if (!cancelled) setInvoiceDoc(doc || null)
+      })
+      .catch(() => {
+        if (!cancelled) setInvoiceDoc(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [client, order?.invoiceRef])
+
+  const refreshOrder = useCallback(async () => {
+    if (!orderId) return
+    setRefreshing(true)
+    try {
+      const next = await client.fetch<OrderDocument>(
+        `*[_type == "order" && _id == $id][0]{
+          _id,
+          orderNumber,
+          status,
+          paymentStatus,
+          totalAmount,
+          amountSubtotal,
+          amountTax,
+          amountShipping,
+          shippingCarrier,
+          trackingNumber,
+          shippingLabelUrl,
+          packingSlipUrl,
+          fulfilledAt,
+          createdAt,
+          customerEmail,
+          customerName,
+          shippingAddress,
+          cart[]{
+            _key,
+            name,
+            sku,
+            quantity,
+            price,
+            lineTotal,
+            optionSummary,
+            optionDetails,
+            upgrades,
+            metadata[]{key,value}
+          },
+          invoiceRef,
+          shippingLog[]{_key,status,message,labelUrl,trackingUrl,trackingNumber,weight,createdAt},
+          selectedService{
+            serviceCode,
+            carrierId,
+            carrier,
+            service,
+            amount,
+            currency,
+            deliveryDays
+          }
+        }`,
+        {id: orderId}
+      )
+      setOrder(next || null)
+    } catch (err: any) {
+      console.error('OrderDetailView refresh failed', err)
+      toast.push({
+        status: 'error',
+        title: 'Failed to refresh order',
+        description: err?.message || 'Unable to fetch the latest order data.',
+      })
+    } finally {
+      setRefreshing(false)
+    }
+  }, [client, orderId, toast])
+
+  useEffect(() => {
+    if (!orderId) return
+    const subscription = client
+      .listen(
+        `*[_type == "order" && _id == $id]`,
+        {id: orderId},
+        {visibility: 'query', tag: 'order-detail-view'}
+      )
+      .subscribe(() => {
+        refreshOrder()
+      })
+    return () => {
+      try {
+        subscription.unsubscribe()
+      } catch {
+        // ignore unsubscribe errors
+      }
+    }
+  }, [client, orderId, refreshOrder])
 
   const lineItems = useMemo(() => {
     if (!order?.cart || !Array.isArray(order.cart) || order.cart.length === 0) return []
@@ -201,6 +406,11 @@ function OrderDetailView(props: DocumentViewProps) {
       const upgrades = toStringArray(item.upgrades)
       if (upgrades.length) detailParts.push(`Upgrades: ${upgrades.join(', ')}`)
       if (item.sku) detailParts.push(`SKU ${item.sku}`)
+      const metadata = Array.isArray(item.metadata) ? item.metadata : []
+      const metaLabels = metadata
+        .map((entry) => entry?.value || entry?.key)
+        .filter(Boolean)
+        .map((value) => value!.toString())
       return {
         _key: item._key || item.sku || item.name || Math.random().toString(36).slice(2),
         name: item.name || item.sku || 'Item',
@@ -208,6 +418,7 @@ function OrderDetailView(props: DocumentViewProps) {
         unitPrice,
         total,
         details: detailParts.filter(Boolean),
+        metaLabels,
       }
     })
   }, [order?.cart])
@@ -224,29 +435,164 @@ function OrderDetailView(props: DocumentViewProps) {
     return {subtotal, shipping, tax, total: grandTotal}
   }, [lineItems, order?.amountShipping, order?.amountSubtotal, order?.amountTax, order?.totalAmount])
 
-  const handleOpenInvoice = (invoiceId: string) => {
-    router.navigateIntent('edit', {id: invoiceId, type: 'invoice'})
-  }
+  const statusBadges = useMemo(() => {
+    if (!order) return []
+    const badges: Array<{label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}> = []
+    if (order.status) badges.push({label: normalizeStatusLabel(order.status), tone: badgeTone(order.status)})
+    if (order.paymentStatus)
+      badges.push({label: `Payment: ${normalizeStatusLabel(order.paymentStatus)}`, tone: badgeTone(order.paymentStatus)})
+    if (order.fulfilledAt) badges.push({label: 'Fulfilled', tone: 'positive'})
+    return badges
+  }, [order])
 
-type InvoiceCreatePayload = {
-  _type: 'invoice'
-  status: 'pending' | 'paid' | 'refunded' | 'cancelled'
-  orderNumber?: string
-  orderRef: SanityReference
-  billTo?: Record<string, any>
-  shipTo?: Record<string, any>
-  customerEmail?: string
-  lineItems: Array<Record<string, any>>
-  taxRate: number
-  discountType: 'amount' | 'percent'
-  discountValue: number
-}
+  const locationLabel = useMemo(() => {
+    if (!order?.shippingAddress) return null
+    const {city, state, country} = order.shippingAddress
+    const pieces = [city, state, country].filter(Boolean)
+    return pieces.length ? pieces.join(', ') : null
+  }, [order?.shippingAddress])
 
-  const createInvoiceFromOrder = async () => {
+  const timelineEntries = useMemo<TimelineEntry[]>(() => {
+    const entries: TimelineEntry[] = []
+    const logItems = Array.isArray(order?.shippingLog) ? order!.shippingLog : []
+    logItems
+      .map((entry) => ({
+        ...entry,
+        createdAt: entry?.createdAt || null,
+        status: entry?.status || '',
+      }))
+      .sort((a, b) => {
+        const aTime = a.createdAt ? Date.parse(a.createdAt) : 0
+        const bTime = b.createdAt ? Date.parse(b.createdAt) : 0
+        return bTime - aTime
+      })
+      .forEach((entry, index) => {
+        const statusLabel = normalizeStatusLabel(entry.status)
+        const tone = badgeTone(entry.status)
+        const label = entry.message ? `${statusLabel} • ${entry.message}` : statusLabel
+        entries.push({
+          id: entry._key || `${entry.status || 'event'}-${index}`,
+          title: label,
+          subtitle: entry.trackingNumber ? `Tracking ${entry.trackingNumber}` : undefined,
+          timestampLabel: formatDate(entry.createdAt) || undefined,
+          tone,
+          href: entry.trackingUrl || entry.labelUrl || undefined,
+        })
+      })
+
+    if (order?.fulfilledAt) {
+      const exists = entries.some((entry) => entry.title.toLowerCase().includes('fulfilled'))
+      if (!exists) {
+        entries.unshift({
+          id: 'fulfilled-at',
+          title: 'Order fulfilled',
+          timestampLabel: formatDate(order.fulfilledAt) || undefined,
+          tone: 'positive',
+        })
+      }
+    }
+
+    if (order?.createdAt) {
+      entries.push({
+        id: 'created-at',
+        title: 'Order placed',
+        timestampLabel: formatDate(order.createdAt) || undefined,
+        tone: 'default',
+      })
+    }
+
+    return entries
+  }, [order?.createdAt, order?.fulfilledAt, order?.shippingLog])
+
+  const baseUrl = fnBaseRef.current || ''
+  const fulfillmentEndpoint = baseUrl ? `${baseUrl}${FULFILL_ENDPOINT}` : FULFILL_ENDPOINT
+  const packingEndpoint = baseUrl ? `${baseUrl}${PACKING_SLIP_ENDPOINT}` : PACKING_SLIP_ENDPOINT
+
+  const headerTitle = useMemo(() => {
+    if (!order) return 'Order'
+    if (order.orderNumber) return `Order ${order.orderNumber}`
+    if (order._id) return `Order ${order._id.slice(-6)}`
+    return 'Order'
+  }, [order])
+
+  const handleFulfillOrder = useCallback(async () => {
+    if (!orderId) return
+    setFulfillmentLoading(true)
+    try {
+      const res = await fetch(fulfillmentEndpoint, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({orderId}),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || (json && json.success === false)) {
+        throw new Error(json?.error || 'Fulfillment request failed')
+      }
+      toast.push({
+        status: 'success',
+        title: 'Fulfillment in progress',
+        description:
+          'Shipping label generation started. This view will refresh automatically once processing finishes.',
+      })
+      await refreshOrder()
+    } catch (err: any) {
+      console.error('Fulfill order failed', err)
+      toast.push({
+        status: 'error',
+        title: 'Could not generate label',
+        description: err?.message || 'Check the browser console or Netlify logs for details.',
+      })
+    } finally {
+      setFulfillmentLoading(false)
+    }
+  }, [fulfillmentEndpoint, orderId, refreshOrder, toast])
+
+  const handleDownloadPackingSlip = useCallback(async () => {
+    if (!orderId) return
+    setPackingLoading(true)
+    try {
+      const res = await fetch(packingEndpoint, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({orderId}),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || 'Packing slip generation failed')
+      }
+      const base64 = await res.text()
+      const binary = typeof window !== 'undefined' ? window.atob(base64) : Buffer.from(base64, 'base64').toString('binary')
+      const len = binary.length
+      const bytes = new Uint8Array(len)
+      for (let i = 0; i < len; i += 1) {
+        bytes[i] = binary.charCodeAt(i)
+      }
+      const blob = new Blob([bytes], {type: 'application/pdf'})
+      const url = URL.createObjectURL(blob)
+      try {
+        window.open(url, '_blank', 'noopener')
+      } catch {
+        window.location.href = url
+      }
+    } catch (err: any) {
+      console.error('Packing slip download failed', err)
+      toast.push({
+        status: 'error',
+        title: 'Packing slip unavailable',
+        description: err?.message || 'Unable to generate packing slip.',
+      })
+    } finally {
+      setPackingLoading(false)
+    }
+  }, [orderId, packingEndpoint, toast])
+
+  const invoiceRefId = order?.invoiceRef && typeof order.invoiceRef === 'object' ? order.invoiceRef._ref : undefined
+
+  const createInvoiceFromOrder = useCallback(async () => {
     if (!order) return
     if (creatingInvoice) return
     if (invoiceRefId) {
-      handleOpenInvoice(invoiceRefId)
+      router.navigateIntent('edit', {id: invoiceRefId, type: 'invoice'})
       return
     }
     setCreatingInvoice(true)
@@ -269,7 +615,7 @@ type InvoiceCreatePayload = {
         return {
           name: addr.name || '',
           phone: addr.phone || '',
-          email: addr.email || order?.customerEmail || '',
+          email: addr.email || order.customerEmail || '',
           address_line1: addr.addressLine1 || '',
           address_line2: addr.addressLine2 || '',
           city_locality: addr.city || '',
@@ -279,7 +625,7 @@ type InvoiceCreatePayload = {
         }
       }
 
-      const payload: InvoiceCreatePayload = {
+      const payload = {
         _type: 'invoice',
         status: 'pending',
         orderNumber: order.orderNumber || '',
@@ -289,7 +635,7 @@ type InvoiceCreatePayload = {
         customerEmail: order.customerEmail || '',
         lineItems: lineItemsForInvoice,
         taxRate: 0,
-        discountType: 'amount',
+        discountType: 'amount' as const,
         discountValue: 0,
       }
 
@@ -317,48 +663,28 @@ type InvoiceCreatePayload = {
     } finally {
       setCreatingInvoice(false)
     }
-  }
-
-  const [invoiceDoc, setInvoiceDoc] = useState<InvoiceDocument | null>(null)
-
-  React.useEffect(() => {
-    let cancelled = false
-    if (!invoiceRefId) {
-      setInvoiceDoc(null)
-      return () => {
-        cancelled = true
-      }
-    }
-    client
-      .fetch<InvoiceDocument>(
-        `*[_type == "invoice" && _id == $id][0]{_id, invoiceNumber, status}`,
-        {id: invoiceRefId}
-      )
-      .then((doc) => {
-        if (!cancelled) setInvoiceDoc(doc || null)
-      })
-      .catch(() => {
-        if (!cancelled) setInvoiceDoc(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [client, invoiceRefId])
+  }, [client, creatingInvoice, invoiceRefId, order, router, toast])
 
   if (!order) {
     return (
-      <Card padding={4}>
+      <Card padding={4} margin={4} tone="transparent">
         <Text size={2}>Order data not available.</Text>
       </Card>
     )
   }
 
+  const selectedServiceSummary = order.selectedService
+    ? [order.selectedService.carrier, order.selectedService.service]
+        .filter(Boolean)
+        .join(' • ')
+    : null
+
   return (
-    <Box padding={4} style={{backgroundColor: '#f8fafc', height: '100%', overflow: 'auto'}}>
+    <Box padding={4} style={{backgroundColor: '#f3f4f6', height: '100%', overflow: 'auto'}}>
       <Stack space={4}>
-        <Card padding={4} radius={3} shadow={1} tone="transparent" style={{backgroundColor: '#ffffff'}}>
-          <Flex align="flex-start" justify="space-between" wrap="wrap" gap={4}>
-            <Stack space={3}>
+        <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
+          <Flex align={['stretch', 'center']} justify="space-between" wrap="wrap" gap={4}>
+            <Stack space={3} style={{minWidth: '260px'}}>
               <Heading size={3}>{headerTitle}</Heading>
               <Flex gap={2} wrap="wrap">
                 {statusBadges.map((badge) => (
@@ -366,119 +692,138 @@ type InvoiceCreatePayload = {
                     {badge.label}
                   </Badge>
                 ))}
+                {locationLabel && (
+                  <Badge tone="primary" padding={2} mode="outline">
+                    {locationLabel}
+                  </Badge>
+                )}
               </Flex>
               <Stack space={1}>
-                <Text size={1} muted>
-                  Placed {dateLabel(order.createdAt)}
-                </Text>
+                {order.createdAt && (
+                  <Text size={1} muted>
+                    Placed {formatDate(order.createdAt)}
+                  </Text>
+                )}
                 {order.fulfilledAt && (
                   <Text size={1} muted>
-                    Fulfilled {dateLabel(order.fulfilledAt)}
+                    Fulfilled {formatDate(order.fulfilledAt)}
                   </Text>
                 )}
               </Stack>
             </Stack>
-            <Stack space={3} style={{minWidth: '220px'}}>
-              {invoiceDoc ? (
-                <Button
-                  mode="default"
-                  tone="primary"
-                  text={`Open invoice ${invoiceDoc.invoiceNumber || ''}`.trim()}
-                  onClick={() => handleOpenInvoice(invoiceDoc._id)}
-                />
-              ) : (
-                <Button
-                  tone="primary"
-                  text="Create invoice"
-                  loading={creatingInvoice}
-                  disabled={creatingInvoice}
-                  onClick={createInvoiceFromOrder}
-                />
+            <Flex gap={3} align="center" wrap="wrap">
+              {refreshing && (
+                <Flex align="center" gap={2}>
+                  <Spinner muted />
+                  <Text size={1} muted>
+                    Updating…
+                  </Text>
+                </Flex>
               )}
-              <Box paddingX={1}>
-                <Text size={1} muted>
-                  Need to edit customer-facing totals? Use an invoice – this keeps orders focused on
-                  fulfillment.
-                </Text>
-              </Box>
-            </Stack>
+              <Button text="Refresh" mode="ghost" onClick={refreshOrder} disabled={refreshing} />
+              <MenuButton
+                id="order-detail-menu"
+                button={<Button text="More actions" mode="ghost" />}
+                menu={
+                  <Menu>
+                    <MenuItem
+                      text="Open editable form"
+                      onClick={() =>
+                        router.navigateIntent('edit', {
+                          id: order._id,
+                          type: 'order',
+                        })
+                      }
+                    />
+                    {order.shipStationOrderId && (
+                      <MenuItem
+                        text="Open ShipStation"
+                        onClick={() => {
+                          const url = `https://ss3.shipstation.com/orders/${order.shipStationOrderId}`
+                          window.open(url, '_blank', 'noopener')
+                        }}
+                      />
+                    )}
+                  </Menu>
+                }
+              />
+            </Flex>
           </Flex>
         </Card>
 
-        <Flex direction={['column', 'row']} gap={4}>
-          <Card flex={2} padding={4} radius={3} shadow={1} style={{backgroundColor: '#ffffff'}}>
-            <Stack space={4}>
-              <Heading size={2}>Items</Heading>
-              {lineItems.length === 0 ? (
-                <Text size={1} muted>
-                  No cart items recorded for this order.
-                </Text>
-              ) : (
-                <Stack space={3}>
-                  {lineItems.map((item) => (
-                    <Card
-                      key={item._key}
-                      padding={3}
-                      radius={2}
-                      tone="transparent"
-                      style={{backgroundColor: '#f1f5f9'}}
-                    >
-                      <Flex justify="space-between" align="flex-start" gap={4}>
-                        <Stack space={2} style={{flex: 1}}>
-                          <Text weight="semibold">{item.name}</Text>
-                          {item.details.length > 0 && (
+        <Flex direction={['column', 'column', 'row']} gap={4} align="stretch">
+          <Stack space={4} flex={2} style={{minWidth: 0}}>
+            <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
+              <Stack space={3}>
+                <Flex justify="space-between" align="center">
+                  <Heading size={2}>Fulfillment timeline</Heading>
+                  {order.trackingNumber && (
+                    <Badge tone="primary" padding={2} mode="outline">
+                      Tracking {order.trackingNumber}
+                    </Badge>
+                  )}
+                </Flex>
+                {timelineEntries.length === 0 ? (
+                  <Text size={1} muted>
+                    No fulfillment updates yet.
+                  </Text>
+                ) : (
+                  <Stack space={3}>
+                    {timelineEntries.map((entry) => (
+                      <Flex key={entry.id} gap={3} align="flex-start">
+                        <Box
+                          style={{
+                            marginTop: 4,
+                            width: 16,
+                            display: 'flex',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Box
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: '999px',
+                              backgroundColor:
+                                entry.tone === 'positive'
+                                  ? '#10b981'
+                                  : entry.tone === 'critical'
+                                  ? '#ef4444'
+                                  : entry.tone === 'caution'
+                                  ? '#facc15'
+                                  : '#cbd5f5',
+                            }}
+                          />
+                        </Box>
+                        <Stack space={1} style={{flex: 1}}>
+                          <Text weight="semibold">{entry.title}</Text>
+                          {entry.subtitle && (
                             <Text size={1} muted>
-                              {item.details.join(' • ')}
+                              {entry.subtitle}
                             </Text>
                           )}
-                        </Stack>
-                        <Stack space={1} style={{minWidth: '160px', textAlign: 'right'}}>
-                          <Text size={1} muted>
-                            Qty {item.quantity}
-                          </Text>
-                          {typeof item.unitPrice === 'number' && (
+                          {entry.timestampLabel && (
                             <Text size={1} muted>
-                              Unit {money(item.unitPrice)}
+                              {entry.timestampLabel}
                             </Text>
                           )}
-                          {typeof item.total === 'number' && (
-                            <Text weight="semibold">{money(item.total)}</Text>
+                          {entry.href && (
+                            <Button
+                              text="View details"
+                              tone="primary"
+                              mode="bleed"
+                              onClick={() => window.open(entry.href, '_blank', 'noopener')}
+                            />
                           )}
                         </Stack>
                       </Flex>
-                    </Card>
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-          </Card>
-
-          <Stack flex={1} space={4} style={{minWidth: '260px'}}>
-            <Card padding={4} radius={3} shadow={1} style={{backgroundColor: '#ffffff'}}>
-              <Stack space={3}>
-                <Heading size={2}>Totals</Heading>
-                <Flex justify="space-between">
-                  <Text muted>Subtotal</Text>
-                  <Text>{money(totals.subtotal)}</Text>
-                </Flex>
-                <Flex justify="space-between">
-                  <Text muted>Shipping</Text>
-                  <Text>{money(totals.shipping)}</Text>
-                </Flex>
-                <Flex justify="space-between">
-                  <Text muted>Tax</Text>
-                  <Text>{money(totals.tax)}</Text>
-                </Flex>
-                <Box paddingTop={3} style={{borderTop: '1px solid #e2e8f0'}}>
-                  <Flex justify="space-between">
-                    <Text weight="semibold">Total</Text>
-                    <Text weight="bold">{money(totals.total)}</Text>
-                  </Flex>
-                </Box>
+                    ))}
+                  </Stack>
+                )}
               </Stack>
             </Card>
 
-            <Card padding={4} radius={3} shadow={1} style={{backgroundColor: '#ffffff'}}>
+            <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
               <Stack space={3}>
                 <Heading size={2}>Customer</Heading>
                 {order.customerName && <Text weight="semibold">{order.customerName}</Text>}
@@ -487,41 +832,151 @@ type InvoiceCreatePayload = {
                     {order.customerEmail}
                   </Text>
                 )}
-                {normalizeAddress(order.shippingAddress)?.map((line: string) => (
+                {normalizeAddress(order.shippingAddress)?.map((line) => (
                   <Text key={line} size={1} muted>
                     {line}
                   </Text>
                 ))}
               </Stack>
             </Card>
+          </Stack>
 
-            <Card padding={4} radius={3} shadow={1} style={{backgroundColor: '#ffffff'}}>
+          <Stack space={4} flex={1} style={{minWidth: '260px'}}>
+            <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
               <Stack space={3}>
-                <Heading size={2}>Shipping</Heading>
-                <Text size={1} muted>
-                  Carrier: {order.shippingCarrier || 'Not set'}
-                </Text>
-                {order.trackingNumber ? (
-                  <Text size={1} muted>Tracking: {order.trackingNumber}</Text>
-                ) : (
-                  <Text size={1} muted>Tracking: Not assigned</Text>
-                )}
+                <Heading size={2}>Fulfillment actions</Heading>
+                <Button
+                  text={order.shippingLabelUrl ? 'Regenerate label & notify customer' : 'Create shipping label & notify customer'}
+                  tone="primary"
+                  onClick={handleFulfillOrder}
+                  disabled={fulfillmentLoading}
+                  loading={fulfillmentLoading}
+                />
+                <Button
+                  text={packingLoading ? 'Generating packing slip…' : 'Download packing slip'}
+                  mode="ghost"
+                  tone="primary"
+                  onClick={handleDownloadPackingSlip}
+                  disabled={packingLoading}
+                />
                 {order.shippingLabelUrl && (
-                  <Box>
-                    <a
-                      href={order.shippingLabelUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{fontSize: '0.875rem', color: '#0ea5e9'}}
-                    >
-                      View shipping label
-                    </a>
-                  </Box>
+                  <Button
+                    text="Open shipping label"
+                    tone="primary"
+                    mode="bleed"
+                    onClick={() => window.open(order.shippingLabelUrl!, '_blank', 'noopener')}
+                  />
                 )}
+                {invoiceDoc ? (
+                  <Button
+                    text={`Open invoice ${invoiceDoc.invoiceNumber || ''}`.trim()}
+                    tone="default"
+                    onClick={() => router.navigateIntent('edit', {id: invoiceDoc._id, type: 'invoice'})}
+                  />
+                ) : (
+                  <Button
+                    text="Create invoice"
+                    tone="default"
+                    onClick={createInvoiceFromOrder}
+                    disabled={creatingInvoice}
+                    loading={creatingInvoice}
+                  />
+                )}
+              </Stack>
+            </Card>
+
+            <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
+              <Stack space={3}>
+                <Heading size={2}>Order summary</Heading>
+                <Grid columns={2} gap={2}>
+                  <Text size={1} muted>
+                    Subtotal
+                  </Text>
+                  <Text style={{textAlign: 'right'}}>{money(totals.subtotal)}</Text>
+                  <Text size={1} muted>
+                    Shipping
+                  </Text>
+                  <Text style={{textAlign: 'right'}}>{money(totals.shipping)}</Text>
+                  <Text size={1} muted>
+                    Tax
+                  </Text>
+                  <Text style={{textAlign: 'right'}}>{money(totals.tax)}</Text>
+                </Grid>
+                <Box paddingTop={3} style={{borderTop: '1px solid #e2e8f0'}}>
+                  <Flex justify="space-between" align="center">
+                    <Text weight="semibold">Total</Text>
+                    <Text weight="bold">{money(totals.total)}</Text>
+                  </Flex>
+                </Box>
+                <Stack space={1}>
+                  <Text size={1} muted>
+                    Carrier: {order.shippingCarrier || 'Not set'}
+                  </Text>
+                  {selectedServiceSummary && (
+                    <Text size={1} muted>
+                      Rate: {selectedServiceSummary}
+                    </Text>
+                  )}
+                </Stack>
               </Stack>
             </Card>
           </Stack>
         </Flex>
+
+        <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
+          <Stack space={3}>
+            <Heading size={2}>Items</Heading>
+            {lineItems.length === 0 ? (
+              <Text size={1} muted>
+                No cart items recorded for this order.
+              </Text>
+            ) : (
+              <Stack space={3}>
+                {lineItems.map((item) => (
+                  <Flex
+                    key={item._key}
+                    align="center"
+                    gap={4}
+                    style={{
+                      padding: '12px 0',
+                      borderBottom: '1px solid #f1f5f9',
+                    }}
+                  >
+                    <Avatar initials={item.name.slice(0, 2).toUpperCase()} size={3} />
+                    <Stack space={2} style={{flex: 1, minWidth: 0}}>
+                      <Text weight="semibold">{item.name}</Text>
+                      {item.details.length > 0 && (
+                        <Text size={1} muted>
+                          {item.details.join(' • ')}
+                        </Text>
+                      )}
+                      {item.metaLabels.length > 0 && (
+                        <Flex gap={2} wrap="wrap">
+                          {item.metaLabels.map((meta) => (
+                            <Badge key={meta} tone="primary" mode="outline">
+                              {meta}
+                            </Badge>
+                          ))}
+                        </Flex>
+                      )}
+                    </Stack>
+                    <Stack space={1} style={{minWidth: 120, textAlign: 'right'}}>
+                      <Text size={1} muted>
+                        Qty {item.quantity}
+                      </Text>
+                      {typeof item.unitPrice === 'number' && (
+                        <Text size={1} muted>
+                          Unit {money(item.unitPrice)}
+                        </Text>
+                      )}
+                      {typeof item.total === 'number' && <Text weight="semibold">{money(item.total)}</Text>}
+                    </Stack>
+                  </Flex>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </Card>
       </Stack>
     </Box>
   )
