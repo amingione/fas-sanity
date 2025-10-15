@@ -267,6 +267,14 @@ const product = defineType({
       initialValue: 'new',
       group: 'inventory',
     }),
+    defineField({
+      name: 'manualInventoryCount',
+      title: 'Manual Inventory Count',
+      type: 'number',
+      description: 'Optional stock quantity for products tracked outside connected systems.',
+      validation: (Rule) => Rule.min(0).warning('Inventory cannot be negative.'),
+      group: 'inventory',
+    }),
 
     // VARIANTS & RELATIONS
     // PRODUCT OPTIONS (embedded; does not create new product docs)

@@ -36,6 +36,7 @@ const PRODUCT_LIST_QUERY = `*[_type == "product"]{
   salePrice,
   availability,
   installOnly,
+  manualInventoryCount,
   "categories": coalesce(category[]->title, []),
   "filterTags": coalesce(filters[]->title, []),
   "previewImageUrl": coalesce(store.previewImageUrl, images[0].asset->url),
@@ -65,12 +66,15 @@ const PRODUCT_LIST_QUERY = `*[_type == "product"]{
   }
 }`
 
-const GRID_TEMPLATE_COLUMNS = '40px minmax(280px, 2.1fr) 140px 220px 200px 120px 120px 120px'
-const GRID_COLUMN_GAP = 16
-const HEADER_BACKGROUND = 'var(--card-background-color)'
-const ROW_BACKGROUND = 'var(--card-background-color)'
-const ROW_SELECTED_BACKGROUND = 'rgba(37, 99, 235, 0.08)'
-const STICKY_PRODUCT_LEFT = 40 + GRID_COLUMN_GAP
+const GRID_TEMPLATE_COLUMNS = '56px minmax(320px, 2.2fr) 150px 220px 190px 120px 120px 120px'
+const GRID_COLUMN_GAP = 20
+const TABLE_MIN_WIDTH = 1120
+const ROW_MIN_HEIGHT = 64
+const HEADER_BACKGROUND = 'var(--card-muted-bg-color, #f3f4f6)'
+const ROW_BACKGROUND = '#ffffff'
+const ROW_SELECTED_BACKGROUND = 'rgba(37, 99, 235, 0.12)'
+const STICKY_COLUMN_BACKGROUND = '#ffffff'
+const STICKY_PRODUCT_LEFT = 56 + GRID_COLUMN_GAP
 
 type VariantStore = {
   id?: string | number | null
@@ -107,6 +111,7 @@ type RawProduct = {
   salePrice?: number | string | null
   availability?: string | null
   installOnly?: boolean | null
+  manualInventoryCount?: number | string | null
   categories?: string[] | null
   filterTags?: string[] | null
   previewImageUrl?: string | null
@@ -244,7 +249,11 @@ function summarizeCategories(categories: string[]): string {
   return `${categories[0]} +${categories.length - 1} more`
 }
 
-function computeInventoryDescription(totalInventory: number | null, tracked: boolean): {
+function computeInventoryDescription(
+  totalInventory: number | null,
+  tracked: boolean,
+  source: 'manual' | 'automatic' | null = null
+): {
   description: string
   status: InventoryStatus
 } {
@@ -252,12 +261,19 @@ function computeInventoryDescription(totalInventory: number | null, tracked: boo
     return {description: 'Inventory not tracked', status: 'not_tracked'}
   }
   if (totalInventory <= 0) {
-    return {description: 'Out of stock', status: 'out'}
+    const description = source === 'manual' ? 'Manual count: Out of stock' : 'Out of stock'
+    return {description, status: 'out'}
   }
   if (totalInventory <= 5) {
-    return {description: `${totalInventory} in stock (Low)`, status: 'low'}
+    const description =
+      source === 'manual'
+        ? `Manual count: ${totalInventory} (Low)`
+        : `${totalInventory} in stock (Low)`
+    return {description, status: 'low'}
   }
-  return {description: `${totalInventory} in stock`, status: 'in'}
+  const description =
+    source === 'manual' ? `Manual count: ${totalInventory}` : `${totalInventory} in stock`
+  return {description, status: 'in'}
 }
 
 function normalizeProduct(raw: RawProduct): ProductRow {
@@ -288,9 +304,21 @@ function normalizeProduct(raw: RawProduct): ProductRow {
     {total: null, hasQuantity: false, availableCount: 0, prices: []}
   )
 
+  const manualInventory = parseNumber(raw.manualInventoryCount)
   const explicitTotal = parseNumber(store.totalInventory)
-  const totalInventory = explicitTotal ?? (variantInventory.hasQuantity ? variantInventory.total ?? 0 : null)
-  const tracksInventory = Boolean(store.tracksInventory) || variantInventory.hasQuantity || explicitTotal !== null
+  const computedTotal = variantInventory.hasQuantity ? variantInventory.total ?? 0 : null
+  const totalInventory = manualInventory ?? explicitTotal ?? computedTotal
+  const totalInventorySource: 'manual' | 'automatic' | null =
+    manualInventory !== null
+      ? 'manual'
+      : totalInventory !== null
+      ? 'automatic'
+      : null
+  const tracksInventory =
+    manualInventory !== null ||
+    Boolean(store.tracksInventory) ||
+    variantInventory.hasQuantity ||
+    explicitTotal !== null
 
   const salePrice = parseNumber(raw.salePrice)
   const listPrice = parseNumber(raw.price)
@@ -299,7 +327,8 @@ function normalizeProduct(raw: RawProduct): ProductRow {
 
   const {description: inventoryDescription, status: inventoryStatus} = computeInventoryDescription(
     totalInventory,
-    tracksInventory
+    tracksInventory,
+    totalInventorySource
   )
 
   const normalizedStatus = normalizeStatus(store.status || null, Boolean(store.isDeleted))
@@ -1196,7 +1225,13 @@ export default function ProductListDashboard() {
               <Text muted>No products match the current filters.</Text>
             </Card>
           ) : (
-            <Card padding={0} radius={4} shadow={1} tone="transparent" style={{overflowX: 'auto', border: '1px solid var(--card-border-color)'}}>
+            <Card
+              padding={0}
+              radius={4}
+              shadow={1}
+              tone="transparent"
+              style={{overflowX: 'auto', border: '1px solid var(--card-border-color)', background: ROW_BACKGROUND}}
+            >
               <Box style={{borderBottom: '1px solid var(--card-border-color)'}}>
                 <Flex
                   style={{
@@ -1208,8 +1243,10 @@ export default function ProductListDashboard() {
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     color: 'var(--card-muted-fg-color)',
-                    width: 'max-content',
+                    width: '100%',
+                    minWidth: `${TABLE_MIN_WIDTH}px`,
                     background: HEADER_BACKGROUND,
+                    alignItems: 'center',
                   }}
                 >
                   <span
@@ -1217,10 +1254,12 @@ export default function ProductListDashboard() {
                       position: 'sticky',
                       left: 0,
                       zIndex: 4,
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       height: '100%',
-                      background: HEADER_BACKGROUND,
+                      background: STICKY_COLUMN_BACKGROUND,
+                      boxShadow: 'inset -1px 0 0 rgba(148, 163, 184, 0.24)',
                     }}
                   >
                     <Checkbox
@@ -1234,38 +1273,46 @@ export default function ProductListDashboard() {
                       position: 'sticky',
                       left: STICKY_PRODUCT_LEFT,
                       zIndex: 3,
-                      background: HEADER_BACKGROUND,
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: '100%',
+                      background: STICKY_COLUMN_BACKGROUND,
+                      boxShadow: 'inset -1px 0 0 rgba(148, 163, 184, 0.24)',
                     }}
                   >
                     Product
                   </span>
-                  <span>Status</span>
-                  <span>Inventory</span>
-                  <span>Category</span>
-                  <span>Channels</span>
-                  <span>Catalogs</span>
-                  <span>Restrictions</span>
+                  <span style={{display: 'flex', alignItems: 'center', height: '100%'}}>Status</span>
+                  <span style={{display: 'flex', alignItems: 'center', height: '100%'}}>Inventory</span>
+                  <span style={{display: 'flex', alignItems: 'center', height: '100%'}}>Category</span>
+                  <span style={{display: 'flex', alignItems: 'center', height: '100%'}}>Channels</span>
+                  <span style={{display: 'flex', alignItems: 'center', height: '100%'}}>Catalogs</span>
+                  <span style={{display: 'flex', alignItems: 'center', height: '100%'}}>Restrictions</span>
                 </Flex>
               </Box>
               <Box>
                 {filteredProducts.map((product) => {
                   const isSelected = selectedIds.has(product.id)
                   const rowBackground = isSelected ? ROW_SELECTED_BACKGROUND : ROW_BACKGROUND
+                  const rowBoxShadow = isSelected ? 'inset 0 0 0 1px rgba(37, 99, 235, 0.25)' : 'none'
 
                   return (
                     <Flex
                       key={product.id}
                       onClick={() => handleOpenProduct(product.id)}
                       style={{
-                        padding: '14px 16px',
+                        padding: '16px',
                         display: 'grid',
                         gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
                         gap: `${GRID_COLUMN_GAP}px`,
-                        alignItems: 'center',
+                        alignItems: 'stretch',
                         cursor: 'pointer',
                         borderBottom: '1px solid var(--card-border-color)',
-                        width: 'max-content',
+                        width: '100%',
+                        minWidth: `${TABLE_MIN_WIDTH}px`,
+                        minHeight: ROW_MIN_HEIGHT,
                         background: rowBackground,
+                        boxShadow: rowBoxShadow,
                         transition: 'background-color 120ms ease',
                       }}
                     >
@@ -1277,10 +1324,12 @@ export default function ProductListDashboard() {
                           position: 'sticky',
                           left: 0,
                           zIndex: 4,
-                          display: 'inline-flex',
+                          display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'center',
                           height: '100%',
-                          background: rowBackground,
+                          background: STICKY_COLUMN_BACKGROUND,
+                          boxShadow: 'inset -1px 0 0 rgba(148, 163, 184, 0.24)',
                         }}
                       >
                         <Checkbox
@@ -1293,10 +1342,13 @@ export default function ProductListDashboard() {
                           position: 'sticky',
                           left: STICKY_PRODUCT_LEFT,
                           zIndex: 3,
-                          display: 'inline-flex',
+                          display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'flex-start',
                           gap: 12,
-                          background: rowBackground,
+                          background: STICKY_COLUMN_BACKGROUND,
+                          padding: '4px 0',
+                          boxShadow: 'inset -1px 0 0 rgba(148, 163, 184, 0.24)',
                         }}
                       >
                         <span
@@ -1347,35 +1399,70 @@ export default function ProductListDashboard() {
                           )}
                         </span>
                       </span>
-                      <span>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start',
+                          minHeight: ROW_MIN_HEIGHT,
+                        }}
+                      >
                         <Badge tone={product.statusTone} mode="outline">
                           {product.status}
                         </Badge>
                       </span>
-                      <span>
-                        <Stack space={2}>
-                          <Text size={1}>{product.inventoryDescription}</Text>
-                          {!product.inventoryTracked && (
-                            <Text size={0} muted>
-                              Tracking disabled
-                            </Text>
-                          )}
-                        </Stack>
+                      <span
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <Text size={1}>{product.inventoryDescription}</Text>
+                        {!product.inventoryTracked && (
+                          <Text size={0} muted>
+                            Tracking disabled
+                          </Text>
+                        )}
                       </span>
-                      <span>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          minHeight: ROW_MIN_HEIGHT,
+                        }}
+                      >
                         <Text size={1}>{product.categoryLabel}</Text>
                       </span>
-                      <span>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          minHeight: ROW_MIN_HEIGHT,
+                        }}
+                      >
                         <Text size={1}>{product.channelCount}</Text>
                       </span>
-                      <span>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          minHeight: ROW_MIN_HEIGHT,
+                        }}
+                      >
                         <Text size={1}>{product.catalogCount}</Text>
                       </span>
-                      <span>
-                        <Flex align="center" gap={2}>
-                          <Text size={1}>{product.restrictionCount}</Text>
-                          {product.installOnly && <Badge tone="caution">Install only</Badge>}
-                        </Flex>
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          minHeight: ROW_MIN_HEIGHT,
+                        }}
+                      >
+                        <Text size={1}>{product.restrictionCount}</Text>
+                        {product.installOnly && <Badge tone="caution">Install only</Badge>}
                       </span>
                     </Flex>
                   )

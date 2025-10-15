@@ -54,6 +54,10 @@ Make sure to run the tagged release! (`@sanity/cli`)
 npm run dev
 ```
 
+### Google Merchant SFTP feed
+
+See [`docs/merchant-sftp.md`](docs/merchant-sftp.md) for configuring the automated SFTP feed upload.
+
 ### Deploying the studio
 
 ```sh
