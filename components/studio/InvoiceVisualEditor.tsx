@@ -866,8 +866,8 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
     }
 
     return (
-      <tr className="border-b border-slate-200 last:border-b-0">
-        <td className="px-3 py-4 align-top text-sm text-slate-500">{index + 1}</td>
+      <tr className="border-b border-[var(--studio-border)] last:border-b-0">
+        <td className="px-3 py-4 align-top text-sm text-[var(--studio-muted)]">{index + 1}</td>
         <td className="relative px-3 py-3 align-top">
           <input
             type="text"
@@ -880,27 +880,27 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
               setTimeout(() => setDropdownVisible(false), 150)
             }}
             onChange={(event) => setQuery(event.currentTarget.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
           {loadingOptions ? (
-            <div className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" />
+            <div className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-[var(--studio-border-strong)] border-t-slate-500" />
           ) : null}
           {dropdownVisible && results.length > 0 ? (
-            <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white shadow-xl">
+            <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-56 overflow-auto rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-xl">
               {results.map((product) => (
                 <button
                   key={product._id}
                   type="button"
-                  className="flex w-full flex-col gap-1 px-3 py-2 text-left hover:bg-slate-100"
+                  className="flex w-full flex-col gap-1 px-3 py-2 text-left hover:bg-[var(--studio-surface-soft)]"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => handleProductSelect(product)}
                 >
-                  <span className="text-sm font-semibold text-slate-900">{product.title}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-sm font-semibold text-[var(--studio-text)]">{product.title}</span>
+                  <span className="text-xs text-[var(--studio-muted)]">
                     {product.sku ? `SKU: ${product.sku}` : 'No SKU'} · ${fmt(product.price)}
                   </span>
                   {product.shortPlain ? (
-                    <span className="text-xs text-slate-500">{product.shortPlain}</span>
+                    <span className="text-xs text-[var(--studio-muted)]">{product.shortPlain}</span>
                   ) : null}
                 </button>
               ))}
@@ -910,7 +910,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           !loadingOptions &&
           results.length === 0 &&
           query.trim().length >= 2 ? (
-            <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-xl">
+            <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-sm text-[var(--studio-muted)] shadow-xl">
               No products found.
             </div>
           ) : null}
@@ -920,7 +920,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             type="text"
             value={item.sku || ''}
             onChange={(event) => onUpdate(index, 'sku', event.currentTarget.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="SKU"
           />
         </td>
@@ -929,7 +929,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             value={item.description || ''}
             onChange={(event) => onUpdate(index, 'description', event.currentTarget.value)}
             rows={2}
-            className="h-full w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="h-full w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="Description"
           />
         </td>
@@ -942,7 +942,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             onChange={(event) =>
               onUpdate(index, 'quantity', sanitizeNumber(event.currentTarget.value, 0))
             }
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-right text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="Qty"
           />
         </td>
@@ -954,7 +954,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             onChange={(event) =>
               onUpdate(index, 'unitPrice', sanitizeNumber(event.currentTarget.value, 0))
             }
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-right text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="Rate"
           />
         </td>
@@ -964,27 +964,27 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             step="0.01"
             value={Number.isFinite(amount) ? amount : ''}
             onChange={handleAmountChange}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-right text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="Amount"
           />
           {taxRate > 0 ? (
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-[var(--studio-muted)]">
               Est. tax ({taxRate.toFixed(2)}%): ${fmt(estimatedTax)}
             </p>
           ) : null}
         </td>
-        <td className="px-3 py-3 align-top text-right text-sm font-semibold text-slate-700">
+        <td className="px-3 py-3 align-top text-right text-sm font-semibold text-[var(--studio-text)]">
           {taxRate > 0 ? `$${fmt(estimatedTax)}` : '—'}
         </td>
         <td className="px-3 py-3 align-top">
           <div className="flex flex-col items-stretch gap-2">
-            <div className="flex overflow-hidden rounded-md border border-slate-300">
+            <div className="flex overflow-hidden rounded-md border border-[var(--studio-border-strong)]">
               <button
                 type="button"
                 className={`flex-1 px-3 py-1 text-xs font-semibold transition ${
                   item.kind === 'product'
                     ? 'bg-slate-900 text-white'
-                    : 'bg-white text-slate-600 hover:bg-slate-100'
+                    : 'bg-[var(--studio-surface-strong)] text-[var(--studio-muted)] hover:bg-[var(--studio-surface-soft)]'
                 }`}
                 onClick={() => onKindChange(index, 'product')}
               >
@@ -995,7 +995,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 className={`flex-1 px-3 py-1 text-xs font-semibold transition ${
                   item.kind === 'custom'
                     ? 'bg-slate-900 text-white'
-                    : 'bg-white text-slate-600 hover:bg-slate-100'
+                    : 'bg-[var(--studio-surface-strong)] text-[var(--studio-muted)] hover:bg-[var(--studio-surface-soft)]'
                 }`}
                 onClick={() => onKindChange(index, 'custom')}
               >
@@ -1017,25 +1017,25 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
 
   if (!displayed) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-100 text-slate-600">
+      <div className="flex h-full items-center justify-center bg-[var(--studio-surface-soft)] text-[var(--studio-muted)]">
         <p>No invoice data available.</p>
       </div>
     )
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-100 p-6">
+    <div className="h-full overflow-y-auto bg-[var(--studio-surface-soft)] p-6">
       <div className="mx-auto grid max-w-6xl gap-6">
-        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+        <div className="overflow-hidden rounded-xl bg-[var(--studio-surface-strong)] shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-6 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Invoice</p>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Invoice</p>
+              <h1 className="text-2xl font-bold text-[var(--studio-text)]">
                 {displayed.invoiceNumber || 'Untitled Invoice'}
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--studio-muted)]">
                 Status:{' '}
-                <span className="font-medium text-slate-700">{displayed.status || 'Pending'}</span>
+                <span className="font-medium text-[var(--studio-text)]">{displayed.status || 'Pending'}</span>
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -1043,7 +1043,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 type="button"
                 onClick={resetChanges}
                 disabled={!isDirty || isSaving}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-[var(--studio-border-strong)] px-4 py-2 text-sm font-medium text-[var(--studio-text)] transition hover:bg-[var(--studio-surface-soft)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Reset
               </button>
@@ -1058,34 +1058,34 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             </div>
           </div>
 
-          <div className="grid gap-6 border-b border-slate-200 px-6 py-6 lg:grid-cols-2">
+          <div className="grid gap-6 border-b border-[var(--studio-border)] px-6 py-6 lg:grid-cols-2">
             <div className="grid gap-4">
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                 Invoice Date
                 <input
                   type="date"
                   value={state.invoiceDate}
                   onChange={(event) => updateState('invoiceDate', event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                 Due Date
                 <input
                   type="date"
                   value={state.dueDate}
                   onChange={(event) => updateState('dueDate', event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                 Payment Terms
                 <input
                   type="text"
                   value={state.paymentTerms}
                   onChange={(event) => updateState('paymentTerms', event.currentTarget.value)}
                   list="invoice-payment-terms"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="Due on receipt"
                 />
                 <datalist id="invoice-payment-terms">
@@ -1094,22 +1094,22 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   ))}
                 </datalist>
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                 Service Rendered By
                 <input
                   type="text"
                   value={state.serviceRenderedBy}
                   onChange={(event) => updateState('serviceRenderedBy', event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="Technician name"
                 />
               </label>
             </div>
             <div>
-              <dl className="space-y-2 text-sm text-slate-600">
+              <dl className="space-y-2 text-sm text-[var(--studio-muted)]">
                 <div className="flex justify-between">
                   <dt>Subtotal</dt>
-                  <dd className="font-medium text-slate-900">${totals.subtotal.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">${totals.subtotal.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>
@@ -1118,25 +1118,25 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                       ? ` (${sanitizeNumber(state.discountValue, 0).toFixed(2)}%)`
                       : ''}
                   </dt>
-                  <dd className="font-medium text-slate-900">-${totals.discount.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">-${totals.discount.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Taxable Subtotal</dt>
-                  <dd className="font-medium text-slate-900">${totals.taxableBase.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">${totals.taxableBase.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Shipping</dt>
-                  <dd className="font-medium text-slate-900">${totals.shipping.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">${totals.shipping.toFixed(2)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Tax ({sanitizeNumber(state.taxRate, 0).toFixed(2)}%)</dt>
-                  <dd className="font-medium text-slate-900">${totals.tax.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">${totals.tax.toFixed(2)}</dd>
                 </div>
-                <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold text-slate-900">
+                <div className="flex justify-between border-t border-[var(--studio-border)] pt-2 text-base font-semibold text-[var(--studio-text)]">
                   <dt>Total</dt>
                   <dd>${totals.total.toFixed(2)}</dd>
                 </div>
-                <div className="flex justify-between text-base font-semibold text-slate-900">
+                <div className="flex justify-between text-base font-semibold text-[var(--studio-text)]">
                   <dt>Deposit</dt>
                   <dd>-${depositValue.toFixed(2)}</dd>
                 </div>
@@ -1149,20 +1149,20 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           </div>
 
           <div className="grid gap-4 px-6 pb-6 lg:grid-cols-2">
-            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
               Discount Type
               <select
                 value={state.discountType}
                 onChange={(event) =>
                   updateState('discountType', event.currentTarget.value as 'amount' | 'percent')
                 }
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="amount">Amount ($)</option>
                 <option value="percent">Percent (%)</option>
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
               Discount Value
               <input
                 type="number"
@@ -1171,10 +1171,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 onChange={(event) =>
                   updateState('discountValue', sanitizeNumber(event.currentTarget.value, 0))
                 }
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
               Tax Rate (%)
               <input
                 type="number"
@@ -1183,10 +1183,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 onChange={(event) =>
                   updateState('taxRate', sanitizeNumber(event.currentTarget.value, 0))
                 }
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
               Deposit Received
               <input
                 type="number"
@@ -1195,17 +1195,17 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 onChange={(event) =>
                   updateState('depositAmount', sanitizeNumber(event.currentTarget.value, 0))
                 }
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 placeholder="0.00"
               />
             </label>
-            <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
               Payment Instructions
               <textarea
                 value={state.paymentInstructions}
                 onChange={(event) => updateState('paymentInstructions', event.currentTarget.value)}
                 rows={3}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 placeholder="Tell your customer how to pay (e.g., card, bank, Venmo)."
               />
             </label>
@@ -1213,9 +1213,9 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         </div>
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Bill To</h2>
+              <h2 className="text-lg font-semibold text-[var(--studio-text)]">Bill To</h2>
               <button
                 type="button"
                 className="text-sm font-semibold text-blue-600 hover:text-blue-500"
@@ -1224,7 +1224,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 Copy to Ship To
               </button>
             </div>
-            <div className="mt-4 grid gap-3 text-sm text-slate-700">
+            <div className="mt-4 grid gap-3 text-sm text-[var(--studio-text)]">
               {(
                 [
                   ['name', 'Full Name'],
@@ -1239,23 +1239,23 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 ] as Array<[keyof InvoiceAddress, string]>
               ).map(([field, label]) => (
                 <label key={field} className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <span className="text-xs font-medium uppercase tracking-wide text-[var(--studio-muted)]">
                     {label}
                   </span>
                   <input
                     type="text"
                     value={state.billTo[field] || ''}
                     onChange={(event) => updateAddress('billTo', field, event.currentTarget.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   />
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Ship To</h2>
-            <div className="mt-4 grid gap-3 text-sm text-slate-700">
+          <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Ship To</h2>
+            <div className="mt-4 grid gap-3 text-sm text-[var(--studio-text)]">
               {(
                 [
                   ['name', 'Full Name'],
@@ -1270,14 +1270,14 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 ] as Array<[keyof InvoiceAddress, string]>
               ).map(([field, label]) => (
                 <label key={field} className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <span className="text-xs font-medium uppercase tracking-wide text-[var(--studio-muted)]">
                     {label}
                   </span>
                   <input
                     type="text"
                     value={state.shipTo[field] || ''}
                     onChange={(event) => updateAddress('shipTo', field, event.currentTarget.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   />
                 </label>
               ))}
@@ -1286,10 +1286,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Shipping Charge & Tracking</h2>
+          <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Shipping Charge & Tracking</h2>
             <div className="mt-4 grid gap-4">
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                 Shipping Amount (USD)
                 <input
                   type="number"
@@ -1298,41 +1298,41 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   onChange={(event) =>
                     updateState('amountShipping', sanitizeNumber(event.currentTarget.value, 0))
                   }
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="0.00"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                 Carrier
                 <input
                   type="text"
                   value={state.shippingCarrier}
                   onChange={(event) => updateState('shippingCarrier', event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="UPS, USPS, FedEx…"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                 Tracking Number
                 <input
                   type="text"
                   value={state.trackingNumber}
                   onChange={(event) => updateState('trackingNumber', event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="1Z…"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                 Tracking URL
                 <input
                   type="url"
                   value={state.trackingUrl}
                   onChange={(event) => updateState('trackingUrl', event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="https://tracking.example.com/…"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                 Shipping Label URL
                 <input
                   type="url"
@@ -1340,33 +1340,33 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   onChange={(event) =>
                     updateState('shippingLabelUrl', event.currentTarget.value)
                   }
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="https://label.example.com/…"
                 />
               </label>
             </div>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Package Details</h2>
+          <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Package Details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 sm:col-span-1">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)] sm:col-span-1">
                 Weight
                 <input
                   type="number"
                   step="0.01"
                   value={state.weight?.value ?? 0}
                   onChange={(event) => updateWeightValue(event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="5"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 sm:col-span-1">
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)] sm:col-span-1">
                 Unit
                 <select
                   value={state.weight?.unit || 'pound'}
                   onChange={(event) => updateWeightUnit(event.currentTarget.value)}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
                   <option value="pound">Pounds</option>
                   <option value="ounce">Ounces</option>
@@ -1383,39 +1383,39 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   ['height', 'Height (in)'],
                 ] as Array<[keyof PackageDimensions, string]>
               ).map(([field, label]) => (
-                <label key={field} className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                <label key={field} className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                   {label}
                   <input
                     type="number"
                     step="0.01"
                     value={(state.dimensions?.[field] as number | undefined) ?? 0}
                     onChange={(event) => updateDimension(field, event.currentTarget.value)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     placeholder="0"
                   />
                 </label>
               ))}
             </div>
 
-            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-              <h3 className="text-sm font-semibold text-slate-900">Selected Rate</h3>
+            <div className="mt-6 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] p-4 text-sm text-[var(--studio-text)]">
+              <h3 className="text-sm font-semibold text-[var(--studio-text)]">Selected Rate</h3>
               {state.selectedService ? (
                 <dl className="mt-3 space-y-1.5">
                   <div className="flex justify-between gap-4">
                     <dt>Service</dt>
-                    <dd className="font-medium text-slate-900">
+                    <dd className="font-medium text-[var(--studio-text)]">
                       {state.selectedService.service || state.selectedService.serviceCode || '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4">
                     <dt>Carrier</dt>
-                    <dd className="font-medium text-slate-900">
+                    <dd className="font-medium text-[var(--studio-text)]">
                       {state.selectedService.carrier || state.selectedService.carrierId || '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4">
                     <dt>Amount</dt>
-                    <dd className="font-medium text-slate-900">
+                    <dd className="font-medium text-[var(--studio-text)]">
                       {typeof state.selectedService.amount === 'number'
                         ? `$${fmt(state.selectedService.amount)}`
                         : '—'}
@@ -1424,7 +1424,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   {typeof state.selectedService.deliveryDays === 'number' ? (
                     <div className="flex justify-between gap-4">
                       <dt>Est. Days</dt>
-                      <dd className="font-medium text-slate-900">
+                      <dd className="font-medium text-[var(--studio-text)]">
                         {state.selectedService.deliveryDays}
                       </dd>
                     </div>
@@ -1432,14 +1432,14 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   {state.selectedService.estimatedDeliveryDate ? (
                     <div className="flex justify-between gap-4">
                       <dt>Est. Delivery</dt>
-                      <dd className="font-medium text-slate-900">
+                      <dd className="font-medium text-[var(--studio-text)]">
                         {formatDate(state.selectedService.estimatedDeliveryDate)}
                       </dd>
                     </div>
                   ) : null}
                 </dl>
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-[var(--studio-muted)]">
                   Shipping rate details appear once a rate is selected or a label is generated.
                 </p>
               )}
@@ -1447,27 +1447,27 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           </div>
         </section>
 
-        <section className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Shipping History</h2>
+        <section className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-[var(--studio-text)]">Shipping History</h2>
           {state.shippingLog.length > 0 ? (
             <ul className="mt-4 space-y-3">
               {state.shippingLog.map((entry, index) => (
                 <li
                   key={entry._key || `${entry.status || 'event'}-${index}`}
-                  className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm"
+                  className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] p-4 text-sm text-[var(--studio-text)] shadow-sm"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                     <span>{trimString(entry.status) || 'Update'}</span>
                     <span>{formatDateTime(entry.createdAt)}</span>
                   </div>
                   {trimString(entry.message) ? (
-                    <p className="mt-2 text-sm text-slate-700">{entry.message}</p>
+                    <p className="mt-2 text-sm text-[var(--studio-text)]">{entry.message}</p>
                   ) : null}
-                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
+                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-[var(--studio-muted)]">
                     {trimString(entry.trackingNumber) ? (
                       <span>
                         Tracking:{' '}
-                        <span className="font-medium text-slate-700">
+                        <span className="font-medium text-[var(--studio-text)]">
                           {entry.trackingNumber}
                         </span>
                       </span>
@@ -1502,15 +1502,15 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-slate-500">No shipping events recorded yet.</p>
+            <p className="mt-4 text-sm text-[var(--studio-muted)]">No shipping events recorded yet.</p>
           )}
         </section>
 
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Products & Services</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-lg font-semibold text-[var(--studio-text)]">Products & Services</h2>
+              <p className="text-sm text-[var(--studio-muted)]">
                 Add each line exactly as it should appear on the printed invoice.
               </p>
             </div>
@@ -1526,16 +1526,16 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 type="button"
                 onClick={clearLineItems}
                 disabled={state.lineItems.length === 0}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-lg border border-[var(--studio-border-strong)] px-4 py-2 text-sm font-semibold text-[var(--studio-text)] transition hover:bg-[var(--studio-surface-soft)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Clear all lines
               </button>
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-xl border border-slate-200">
+          <div className="mt-6 overflow-hidden rounded-xl border border-[var(--studio-border)]">
             <table className="min-w-full table-fixed">
-              <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="bg-[var(--studio-surface-soft)] text-[11px] font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                 <tr>
                   <th className="w-12 px-3 py-2 text-left">#</th>
                   <th className="w-64 px-3 py-2 text-left">Product / Service</th>
@@ -1548,10 +1548,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   <th className="w-40 px-3 py-2 text-right">Type</th>
                 </tr>
               </thead>
-              <tbody className="bg-white">
+              <tbody className="bg-[var(--studio-surface-strong)]">
                 {state.lineItems.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center text-sm text-slate-500">
+                    <td colSpan={9} className="px-6 py-10 text-center text-sm text-[var(--studio-muted)]">
                       No line items yet. Click “Add product or service” to get started.
                     </td>
                   </tr>
@@ -1576,25 +1576,25 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Customer Notes</h2>
+          <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Customer Notes</h2>
             <textarea
               value={state.customerNotes}
               onChange={(event) => updateState('customerNotes', event.currentTarget.value)}
               rows={6}
               placeholder="Visible to the customer on the invoice."
-              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="mt-4 w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Internal Notes</h2>
+          <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Internal Notes</h2>
             <textarea
               value={state.internalNotes}
               onChange={(event) => updateState('internalNotes', event.currentTarget.value)}
               rows={6}
               placeholder="Private notes for your team."
-              className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="mt-4 w-full rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
           </div>
         </section>

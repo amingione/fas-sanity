@@ -447,22 +447,26 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
     if (invoice.isOverdue) return 'text-rose-600 bg-rose-50 border border-rose-100'
     if (invoice.status === 'paid') return 'text-emerald-600 bg-emerald-50 border border-emerald-100'
     if (invoice.status === 'refunded') return 'text-sky-600 bg-sky-50 border border-sky-100'
-    if (invoice.status === 'cancelled') return 'text-slate-500 bg-slate-100 border border-slate-200'
+    if (invoice.status === 'cancelled') return 'text-[var(--studio-muted)] bg-[var(--studio-surface-soft)] border border-[var(--studio-border)]'
     return 'text-amber-600 bg-amber-50 border border-amber-100'
   }
 
   return (
-    <div ref={ref} className="flex h-full min-h-0 flex-col bg-slate-100">
-      <div className="border-b border-slate-200 bg-white">
+    <div ref={ref} className="studio-surface flex h-full min-h-0 flex-col rounded-3xl">
+      <div
+        className="border-b border-[var(--studio-border)] backdrop-blur"
+        style={{background: 'var(--studio-surface-strong)'}}
+      >
         <div
-          className={`sticky top-0 z-20 flex flex-col gap-4 bg-white px-4 transition-all duration-200 sm:px-6 ${
+          className={`sticky top-0 z-20 flex flex-col gap-4 px-4 transition-all duration-200 backdrop-blur sm:px-6 ${
             compactHeader ? 'py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between' : 'py-5 sm:flex-row sm:items-start sm:justify-between'
           }`}
+          style={{background: 'var(--studio-surface-strong)'}}
         >
           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h1
-                className={`text-xs font-semibold uppercase tracking-wide text-slate-600 transition-all duration-200 ${
+                className={`text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)] transition-all duration-200 ${
                   compactHeader ? 'opacity-80' : ''
                 }`}
               >
@@ -488,9 +492,9 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                   disabled={batchLoading}
                   aria-haspopup="menu"
                   aria-expanded={batchMenuOpen}
-                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 ${
-                    hasSelections ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-400 hover:bg-white'
-                  } ${batchMenuOpen ? 'bg-slate-100' : ''} disabled:cursor-not-allowed disabled:opacity-60`}
+                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-[var(--studio-border-strong)] px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 ${
+                    hasSelections ? 'text-[var(--studio-muted)] hover:bg-[var(--studio-surface-soft)]' : 'text-[rgba(148,163,184,0.7)] hover:bg-[var(--studio-surface-strong)]'
+                  } ${batchMenuOpen ? 'bg-[var(--studio-surface-soft)]' : ''} disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {batchLoading ? 'Working…' : 'Batch actions'}
                 </button>
@@ -499,17 +503,17 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                     ref={batchMenuRef}
                     role="menu"
                     aria-label="Batch actions"
-                    className="absolute right-0 top-full z-30 mt-2 w-44 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+                    className="absolute right-0 top-full z-30 mt-2 w-44 overflow-hidden rounded-md border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-lg"
                   >
                     <button
                       type="button"
                       onClick={handleBatchMarkPaidClick}
                       role="menuitem"
                       disabled={!hasSelections || batchLoading}
-                      className="flex w-full items-center justify-between px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+                      className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--studio-text)] transition hover:bg-[var(--studio-surface-soft)] disabled:cursor-not-allowed disabled:text-[rgba(148,163,184,0.7)]"
                     >
                       <span>Mark selected paid</span>
-                      {hasSelections ? <span className="text-xs text-slate-400">{selectedIds.size}</span> : null}
+                      {hasSelections ? <span className="text-xs text-[rgba(148,163,184,0.7)]">{selectedIds.size}</span> : null}
                     </button>
                   </div>
                 ) : null}
@@ -519,7 +523,10 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
         </div>
       </div>
 
-      <div className="border-b border-slate-200 bg-white">
+      <div
+        className="border-b border-[var(--studio-border)]"
+        style={{background: 'var(--studio-surface-strong)'}}
+      >
         <div className="-mx-2 flex gap-3 overflow-x-auto px-4 pb-4 pt-4 sm:-mx-3 sm:px-6 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-visible lg:px-6 lg:pb-6 lg:pt-6">
           <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
             <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} />
@@ -539,7 +546,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
               subtitle="Current balance"
               amount={metrics.overdue + metrics.notDue}
               footer={
-                <div className="mt-2 space-y-1 text-[11px] text-slate-500">
+                <div className="mt-2 space-y-1 text-[11px] text-[var(--studio-muted)]">
                   <div>Overdue {currency.format(metrics.overdue)}</div>
                   <div>Not due {currency.format(metrics.notDue)}</div>
                 </div>
@@ -550,15 +557,18 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
       </div>
 
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-        <div className="border-b border-slate-200 bg-white px-6 py-4">
+        <div
+          className="border-b border-[var(--studio-border)] px-6 py-4 backdrop-blur"
+          style={{background: 'var(--studio-surface-strong)'}}
+        >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-              <label className="flex items-center gap-2 text-sm text-slate-600">
+              <label className="flex items-center gap-2 text-sm text-[var(--studio-muted)]">
                 Status
                 <select
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.currentTarget.value)}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-md border border-[var(--studio-border-strong)] px-2 py-1 text-sm text-[var(--studio-text)] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -568,12 +578,12 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                 </select>
               </label>
 
-              <label className="flex items-center gap-2 text-sm text-slate-600">
+              <label className="flex items-center gap-2 text-sm text-[var(--studio-muted)]">
                 Date
                 <select
                   value={dateFilter}
                   onChange={(event) => setDateFilter(event.currentTarget.value)}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="rounded-md border border-[var(--studio-border-strong)] px-2 py-1 text-sm text-[var(--studio-text)] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
                   {DATE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -590,17 +600,17 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                 placeholder="Search number or customer…"
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 lg:w-64"
+                className="w-full rounded-md border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 lg:w-64"
               />
               {loading ? (
-                <div className="flex items-center justify-center rounded-md border border-slate-200 px-3 py-2">
+                <div className="flex items-center justify-center rounded-md border border-[var(--studio-border)] px-3 py-2">
                   <Spinner />
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={fetchInvoices}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-600 shadow-sm"
+                  className="rounded-md border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-muted)] shadow-sm"
                 >
                   Refresh
                 </button>
@@ -609,9 +619,9 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-auto bg-slate-50">
+        <div className="flex-1 min-h-0 overflow-auto" style={{background: 'var(--studio-surface-overlay)'}}>
           <div className="px-6 py-4">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
               <div style={{overflowX: 'auto'}}>
                 <div style={{borderBottom: '1px solid var(--card-border-color)'}}>
                   <div
@@ -632,7 +642,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                       <input
                         ref={selectAllRef}
                         type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-emerald-600 focus:ring-emerald-500"
                         onChange={(event) => handleSelectAll(event.currentTarget.checked)}
                       />
                     </span>
@@ -664,14 +674,14 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                     </div>
                   ) : loading ? (
                     <div
-                      className="text-sm text-slate-500"
+                      className="text-sm text-[var(--studio-muted)]"
                       style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
                     >
                       Loading invoices…
                     </div>
                   ) : filteredInvoices.length === 0 ? (
                     <div
-                      className="text-sm text-slate-500"
+                      className="text-sm text-[var(--studio-muted)]"
                       style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
                     >
                       No invoices match the current filters.
@@ -696,7 +706,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                             width: 'max-content',
                             backgroundColor: rowBackground,
                           }}
-                          className="hover:bg-slate-100/60"
+                          className="hover:bg-[var(--studio-surface-overlay)]"
                         >
                           <span
                             onClick={(event) => {
@@ -706,7 +716,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                           >
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-emerald-600 focus:ring-emerald-500"
                               checked={isSelected}
                               onChange={(event) => {
                                 event.stopPropagation()
@@ -724,14 +734,14 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                           >
                             {invoice.invoiceNumber}
                           </span>
-                          <span className="text-slate-600">
+                          <span className="text-[var(--studio-muted)]">
                             {invoice.invoiceDateIso ? shortDate.format(new Date(invoice.invoiceDateIso)) : '—'}
                           </span>
-                          <span className="text-slate-600">
+                          <span className="text-[var(--studio-muted)]">
                             {invoice.dueDateIso ? shortDate.format(new Date(invoice.dueDateIso)) : '—'}
                           </span>
-                          <span className="text-slate-700">{invoice.customerName}</span>
-                          <span style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}} className="font-medium text-slate-900">
+                          <span className="text-[var(--studio-text)]">{invoice.customerName}</span>
+                          <span style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}} className="font-medium text-[var(--studio-text)]">
                             {currency.format(invoice.amount || 0)}
                           </span>
                           <span>
@@ -778,10 +788,10 @@ const SummaryCard: React.FC<{
   footer?: React.ReactNode
 }> = ({title, subtitle, amount, footer}) => {
   return (
-    <div className="flex h-full min-h-[115px] flex-col justify-between rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+    <div className="flex h-full min-h-[115px] flex-col justify-between rounded-md border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2.5 shadow-sm">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{subtitle}</p>
-        <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--studio-muted)]">{subtitle}</p>
+        <h3 className="mt-1 text-sm font-semibold text-[var(--studio-text)]">{title}</h3>
       </div>
       <div>
         <p className="text-base font-semibold text-slate-800">{currency.format(amount || 0)}</p>
