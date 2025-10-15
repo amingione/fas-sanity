@@ -10,6 +10,7 @@ import {
   useClient,
   useFormValue
 } from 'sanity'
+import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 
 import ConvertToInvoiceButton from '../../components/studio/ConvertToInvoiceButton'
 import QuoteStatusWithTimeline from '../../components/inputs/QuoteStatusWithTimeline'
@@ -399,16 +400,12 @@ function QuoteActions() {
       } catch {}
     }
 
-    const base64 = await response.text()
-    if (base64.trim().startsWith('{')) {
+    const base64 = (await response.text()).trim()
+    if (base64.startsWith('{')) {
       throw new Error(base64)
     }
     const clean = base64.replace(/^"|"$/g, '')
-    const bytes = atob(clean)
-    const buffer = new Uint8Array(bytes.length)
-    for (let index = 0; index < bytes.length; index += 1) {
-      buffer[index] = bytes.charCodeAt(index)
-    }
+    const buffer = decodeBase64ToArrayBuffer(clean)
     return new Blob([buffer], {type: 'application/pdf'})
   }
 

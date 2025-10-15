@@ -222,8 +222,16 @@ async function patchSanityProduct(docId: string, setOps: Record<string, any>): P
       await sanity.patch(id).set(setOps).commit({ autoGenerateArrayKeys: true })
     } catch (err: any) {
       const code = err?.response?.body?.error?.code
-      if (code === 'DOCUMENT_NOT_FOUND' || code === 'mutationError.notFound') continue
-      console.warn('syncStripeCatalog: failed to patch product', { id, error: err?.message || err })
+      const description =
+        err?.response?.body?.error?.description ||
+        err?.response?.body?.error?.message ||
+        err?.message
+      const notFound =
+        code === 'DOCUMENT_NOT_FOUND' ||
+        code === 'mutationError.notFound' ||
+        (typeof description === 'string' && /was not found/i.test(description))
+      if (notFound) continue
+      console.warn('syncStripeCatalog: failed to patch product', { id, error: description || err })
     }
   }
 }

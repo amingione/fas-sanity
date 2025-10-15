@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Button, Flex } from '@sanity/ui'
 import { useClient, useFormValue } from 'sanity'
+import { decodeBase64ToArrayBuffer } from '../../utils/base64'
 import ShippingLabelActions from './ShippingLabelActions'
 
 function getFnBase(): string {
@@ -59,12 +60,7 @@ export default function OrderShippingActions() {
         arrayBuffer = await res.arrayBuffer()
       } else {
         const base64 = (await res.text()).replace(/^\"|\"$/g, '')
-        const binary = atob(base64)
-        const bytes = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i += 1) {
-          bytes[i] = binary.charCodeAt(i)
-        }
-        arrayBuffer = bytes.buffer
+        arrayBuffer = decodeBase64ToArrayBuffer(base64)
       }
 
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' })

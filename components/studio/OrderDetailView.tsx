@@ -24,6 +24,13 @@ import {
 } from '@sanity/ui'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
+import {
+  coerceStringArray,
+  deriveOptionsFromMetadata,
+  normalizeMetadataEntries,
+  remainingMetadataEntries,
+  uniqueStrings,
+} from '../../utils/cartItemDetails'
 
 const API_VERSION = '2024-10-01'
 
@@ -156,32 +163,61 @@ const preferValue = <T,>(...values: Array<T | null | undefined>): T | undefined 
   return undefined
 }
 
-const toStringArray = (input: unknown): string[] => {
-  if (!input) return []
-  if (Array.isArray(input)) {
-    return input
-      .map((item) =>
-        typeof item === 'string' ? item : typeof item === 'number' ? String(item) : ''
-      )
-      .map((item) => item.trim())
-      .filter(Boolean)
-  }
-  if (typeof input === 'string') {
-    const trimmed = input.trim()
+const formatKeyLabel = (label: string): string =>
+  label
+    .replace(/[_-]+/g, ' ')
+    .replace(/\w\S*/g, (segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+
+const formatMetadataSegments = (value: unknown): string[] => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
     if (!trimmed) return []
-    if (/^[\[{]/.test(trimmed)) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        if (Array.isArray(parsed)) return toStringArray(parsed)
-      } catch {
-        // ignore parse errors
-      }
-    }
-    return trimmed
-      .split(/[,;|]/g)
-      .map((part) => part.trim())
-      .filter(Boolean)
+    return coerceStringArray(trimmed)
   }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => formatMetadataSegments(entry))
+  }
+
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+
+    const hasLineItemKeys = ['n', 'q', 'p'].some((key) => key in obj)
+    if (hasLineItemKeys) {
+      const lines: string[] = []
+      if (typeof obj.n === 'string' && obj.n.trim()) {
+        lines.push(`Name: ${obj.n.trim()}`)
+      }
+      if (typeof obj.q === 'number' && Number.isFinite(obj.q)) {
+        lines.push(`Quantity: ${obj.q}`)
+      } else if (typeof obj.q === 'string' && obj.q.trim()) {
+        lines.push(`Quantity: ${obj.q.trim()}`)
+      }
+      const priceValue =
+        typeof obj.p === 'number'
+          ? obj.p
+          : typeof obj.p === 'string' && obj.p.trim()
+            ? Number(obj.p)
+            : null
+      if (priceValue !== null && Number.isFinite(priceValue)) {
+        lines.push(`Price: ${money(Number(priceValue))}`)
+      }
+      return lines
+    }
+
+    return Object.entries(obj).flatMap(([key, val]) => {
+      if (val === undefined || val === null || val === '') return []
+      const label = formatKeyLabel(key)
+      if (typeof val === 'number') return [`${label}: ${val}`]
+      if (typeof val === 'string') return [`${label}: ${val}`]
+      const nested = formatMetadataSegments(val)
+      return nested.length ? [`${label}: ${nested.join(', ')}`] : []
+    })
+  }
+
+  if (typeof value === 'number') return [String(value)]
+  if (typeof value === 'boolean') return [value ? 'Yes' : 'No']
+
   return []
 }
 
@@ -284,30 +320,57 @@ function OrderDetailView(props: DocumentViewProps) {
 
   useEffect(() => {
     let cancelled = false
-    const invoiceRefId = order?.invoiceRef && typeof order.invoiceRef === 'object' ? order.invoiceRef._ref : undefined
-    if (!invoiceRefId) {
+    if (!order) {
       setInvoiceDoc(null)
       return () => {
         cancelled = true
       }
     }
 
-    client
-      .fetch<InvoiceDocument>(
-        `*[_type == "invoice" && _id == $id][0]{_id, invoiceNumber, status}`,
-        {id: invoiceRefId}
-      )
-      .then((doc) => {
-        if (!cancelled) setInvoiceDoc(doc || null)
-      })
-      .catch(() => {
+    const invoiceRefId =
+      order.invoiceRef && typeof order.invoiceRef === 'object' ? order.invoiceRef._ref : undefined
+    const payload = {
+      invoiceId: invoiceRefId || '',
+      orderId: orderId || '',
+      orderNumber: order.orderNumber || '',
+    }
+
+    async function loadInvoice() {
+      if (!payload.invoiceId && !payload.orderId && !payload.orderNumber) {
+        setInvoiceDoc(null)
+        return
+      }
+      try {
+        const doc = await client.fetch<InvoiceDocument | null>(
+          `*[_type == "invoice" && (
+            (_id == $invoiceId && $invoiceId != '') ||
+            (orderRef._ref == $orderId && $orderId != '') ||
+            (orderNumber == $orderNumber && $orderNumber != '') ||
+            (invoiceNumber == $orderNumber && $orderNumber != '')
+          )] | order(_updatedAt desc)[0]{_id, invoiceNumber, status}`,
+          payload
+        )
+        if (!cancelled) {
+          setInvoiceDoc(doc || null)
+          if (!invoiceRefId && doc?._id && order?._id) {
+            client
+              .patch(order._id)
+              .set({invoiceRef: {_type: 'reference', _ref: doc._id}})
+              .commit({autoGenerateArrayKeys: true})
+              .catch(() => undefined)
+          }
+        }
+      } catch {
         if (!cancelled) setInvoiceDoc(null)
-      })
+      }
+    }
+
+    loadInvoice()
 
     return () => {
       cancelled = true
     }
-  }, [client, order?.invoiceRef])
+  }, [client, order, orderId])
 
   const refreshOrder = useCallback(async () => {
     if (!orderId) return
@@ -402,18 +465,35 @@ function OrderDetailView(props: DocumentViewProps) {
       )
       const explicitTotal = typeof item.lineTotal === 'number' ? item.lineTotal : undefined
       const total = explicitTotal ?? (typeof unitPrice === 'number' ? unitPrice * quantity : undefined)
+
+      const metadataEntries = normalizeMetadataEntries(item.metadata || [])
+      const derived = deriveOptionsFromMetadata(metadataEntries)
+      const summary = item.optionSummary?.trim() || derived.optionSummary
       const detailParts: string[] = []
-      if (item.optionSummary) detailParts.push(item.optionSummary.trim())
-      const optionDetails = toStringArray(item.optionDetails)
+      if (summary) detailParts.push(summary)
+
+      const optionDetails = uniqueStrings([
+        ...coerceStringArray(item.optionDetails),
+        ...derived.optionDetails,
+      ])
       if (optionDetails.length) detailParts.push(optionDetails.join(' • '))
-      const upgrades = toStringArray(item.upgrades)
+
+      const upgrades = uniqueStrings([
+        ...coerceStringArray(item.upgrades),
+        ...derived.upgrades,
+      ])
       if (upgrades.length) detailParts.push(`Upgrades: ${upgrades.join(', ')}`)
+
       if (item.sku) detailParts.push(`SKU ${item.sku}`)
-      const metadata = Array.isArray(item.metadata) ? item.metadata : []
-      const metaLabels = metadata
-        .map((entry) => entry?.value || entry?.key)
-        .filter(Boolean)
-        .map((value) => value!.toString())
+
+      const remainingMeta = remainingMetadataEntries(metadataEntries, derived.consumedKeys)
+      const metaLabels = remainingMeta.flatMap((entry) => {
+        const segments = formatMetadataSegments(entry.value)
+        const label = formatKeyLabel(entry.key)
+        if (segments.length === 0) return label ? [label] : []
+        return segments.map((segment) => (label ? `${label}: ${segment}` : segment))
+      })
+
       return {
         _key: item._key || item.sku || item.name || Math.random().toString(36).slice(2),
         name: item.name || item.sku || 'Item',
