@@ -62,9 +62,18 @@ function assertEnv() {
   }
 }
 
+const SANITY_PROJECT_ID =
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
+const SANITY_DATASET =
+  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+
+if (!SANITY_PROJECT_ID || !SANITY_DATASET) {
+  throw new Error('Sanity projectId and dataset must be configured')
+}
+
 const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID,
-  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET,
+  projectId: SANITY_PROJECT_ID,
+  dataset: SANITY_DATASET,
   apiVersion: '2024-04-10',
   useCdn: false,
   token: process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN,
@@ -324,4 +333,3 @@ main().catch((error) => {
   console.error(error)
   process.exitCode = 1
 })
-
