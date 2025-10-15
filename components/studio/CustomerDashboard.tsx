@@ -797,30 +797,30 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   const activeEmail = activeProfile?.email ?? activeSummary?.email ?? ''
 
   return (
-    <div ref={ref} className="flex h-full min-h-0 flex-col bg-slate-100">
+    <div ref={ref} className="studio-surface flex h-full min-h-0 flex-col rounded-3xl">
       <div className="flex-1 overflow-hidden px-6 py-6">
         <div className="mx-auto flex h-full max-w-7xl flex-col gap-6 lg:flex-row">
           <div className="flex flex-col gap-4 lg:w-[420px] xl:w-[460px]">
-            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 bg-white px-6 py-5">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+              <div className="border-b border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-6 py-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h1 className="text-xl font-semibold text-slate-900">Customers</h1>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h1 className="text-xl font-semibold text-[var(--studio-text)]">Customers</h1>
+                    <p className="mt-1 text-sm text-[var(--studio-muted)]">
                       {customerCount.toLocaleString()} customers · {customerCount > 0 ? '100% of your customer base' : 'No customers yet'}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                      className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-4 py-2 text-sm font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                       onClick={() => console.info('Export customers action not yet connected')}
                     >
                       Export
                     </button>
                     <button
                       type="button"
-                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                      className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-4 py-2 text-sm font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                       onClick={() => console.info('Import customers action not yet connected')}
                     >
                       Import
@@ -839,17 +839,17 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                 )}
               </div>
 
-              <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+              <div className="border-b border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-6 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="relative flex-1 min-w-[220px]">
                     <input
                       type="search"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-10 py-2 text-sm text-slate-700 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+                      className="w-full rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-10 py-2 text-sm text-[var(--studio-text)] shadow-inner outline-none transition placeholder:text-[rgba(148,163,184,0.7)] focus:border-[var(--studio-border-strong)] focus:ring-2 focus:ring-slate-200"
                       placeholder="Search customers"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                     />
-                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[rgba(148,163,184,0.7)]">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                         <path
                           fillRule="evenodd"
@@ -862,7 +862,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                      className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-sm font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                       onClick={() => console.info('Filter menu not yet connected')}
                     >
                       Add filter
@@ -873,19 +873,22 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
               <div className="relative flex-1 min-h-0">
                 {loading && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+                  <div
+                    className="absolute inset-0 z-10 flex items-center justify-center"
+                    style={{background: 'var(--studio-backdrop)'}}
+                  >
                     <Spinner muted size={4} />
                   </div>
                 )}
                 <div className="h-full overflow-x-auto overflow-y-auto">
                   <table className="min-w-full table-fixed divide-y divide-slate-200">
-                    <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <thead className="sticky top-0 z-10 bg-[var(--studio-surface-soft)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                       <tr>
                         <th className="w-12 px-6 py-3">
                           <label className="inline-flex items-center">
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                              className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-[var(--studio-text)] focus:ring-slate-400"
                               checked={allSelected}
                               onChange={toggleSelectAll}
                               aria-label="Select all customers"
@@ -899,10 +902,10 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         <th className="w-32 px-6 py-3 text-right">Amount spent</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 text-sm text-slate-700">
+                    <tbody className="divide-y divide-slate-200 text-sm text-[var(--studio-text)]">
                       {filteredCustomers.length === 0 && !loading ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
+                          <td colSpan={6} className="px-6 py-10 text-center text-sm text-[var(--studio-muted)]">
                             No customers match your filters.
                           </td>
                         </tr>
@@ -914,7 +917,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                             <tr
                               key={customer._id}
                               className={`group cursor-pointer transition ${
-                                isActive ? 'bg-slate-100' : 'bg-white hover:bg-slate-50'
+                                isActive ? 'bg-[var(--studio-surface-soft)]' : 'bg-[var(--studio-surface-strong)] hover:bg-[var(--studio-surface-soft)]'
                               }`}
                               onClick={() => setActiveCustomerId(customer._id)}
                               onDoubleClick={() => handleRowNavigate(customer._id)}
@@ -924,7 +927,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                 <label className="inline-flex items-center">
                                   <input
                                     type="checkbox"
-                                    className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                                    className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-[var(--studio-text)] focus:ring-slate-400"
                                     checked={isSelected}
                                     onChange={(event) => {
                                       event.stopPropagation()
@@ -935,17 +938,17 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                 </label>
                               </td>
                               <td className="px-3 py-4">
-                                <div className="font-medium text-slate-900 group-hover:text-slate-900">{customer.displayName}</div>
-                                {customer.email && <div className="text-xs text-slate-500">{customer.email}</div>}
+                                <div className="font-medium text-[var(--studio-text)] group-hover:text-[var(--studio-text)]">{customer.displayName}</div>
+                                {customer.email && <div className="text-xs text-[var(--studio-muted)]">{customer.email}</div>}
                               </td>
                               <td className="px-3 py-4">
-                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
                                   {getSubscriptionStatus(customer)}
                                 </span>
                               </td>
-                              <td className="px-3 py-4 text-slate-600">{customer.location}</td>
-                              <td className="px-3 py-4 text-slate-600">{formatOrders(customer.orderCount ?? 0)}</td>
-                              <td className="px-6 py-4 text-right font-medium text-slate-900">
+                              <td className="px-3 py-4 text-[var(--studio-muted)]">{customer.location}</td>
+                              <td className="px-3 py-4 text-[var(--studio-muted)]">{formatOrders(customer.orderCount ?? 0)}</td>
+                              <td className="px-6 py-4 text-right font-medium text-[var(--studio-text)]">
                                 {formatCurrency(customer.lifetimeSpend ?? 0)}
                               </td>
                             </tr>
@@ -959,34 +962,34 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
             </div>
           </div>
 
-          <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex-1 overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
             {profileLoading ? (
               <div className="flex h-full items-center justify-center"><Spinner muted size={4} /></div>
             ) : activeCustomerId ? (
               <div className="flex h-full flex-col">
-                <header className="border-b border-slate-200 bg-white px-6 py-5">
+                <header className="border-b border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-6 py-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-col gap-3">
-                      <nav className="flex items-center gap-2 text-sm text-slate-500">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold text-slate-600">C</span>
-                        <span className="text-slate-400">/</span>
-                        <span className="truncate font-medium text-slate-500">Customers</span>
-                        <span className="text-slate-400">/</span>
-                        <span className="truncate font-semibold text-slate-900" title={activeDisplayName}>
+                      <nav className="flex items-center gap-2 text-sm text-[var(--studio-muted)]">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--studio-surface-soft)] text-sm font-semibold text-[var(--studio-muted)]">C</span>
+                        <span className="text-[rgba(148,163,184,0.7)]">/</span>
+                        <span className="truncate font-medium text-[var(--studio-muted)]">Customers</span>
+                        <span className="text-[rgba(148,163,184,0.7)]">/</span>
+                        <span className="truncate font-semibold text-[var(--studio-text)]" title={activeDisplayName}>
                           {activeDisplayName}
                         </span>
                       </nav>
                       <div className="min-w-0">
-                        <h2 className="truncate text-2xl font-semibold text-slate-900" title={activeDisplayName}>
+                        <h2 className="truncate text-2xl font-semibold text-[var(--studio-text)]" title={activeDisplayName}>
                           {activeDisplayName}
                         </h2>
-                        {activeEmail && <p className="truncate text-sm text-slate-500">{activeEmail}</p>}
+                        {activeEmail && <p className="truncate text-sm text-[var(--studio-muted)]">{activeEmail}</p>}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                        className="inline-flex items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-4 py-2 text-sm font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                         onClick={handleOpenInStudio}
                       >
                         More actions
@@ -994,13 +997,13 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           <path d="M6 6.75a.75.75 0 111.5 0A.75.75 0 016 6.75zM9.25 6.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM13.5 6.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" />
                         </svg>
                       </button>
-                      <div className="flex items-center overflow-hidden rounded-lg border border-slate-200">
+                      <div className="flex items-center overflow-hidden rounded-lg border border-[var(--studio-border)]">
                         <button
                           type="button"
                           onClick={goToPrevious}
                           disabled={!canGoPrevious}
-                          className={`flex h-9 w-10 items-center justify-center text-slate-600 transition ${
-                            canGoPrevious ? 'hover:bg-slate-100' : 'cursor-not-allowed opacity-40'
+                          className={`flex h-9 w-10 items-center justify-center text-[var(--studio-muted)] transition ${
+                            canGoPrevious ? 'hover:bg-[var(--studio-surface-soft)]' : 'cursor-not-allowed opacity-40'
                           }`}
                           aria-label="Previous customer"
                         >
@@ -1013,8 +1016,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           type="button"
                           onClick={goToNext}
                           disabled={!canGoNext}
-                          className={`flex h-9 w-10 items-center justify-center text-slate-600 transition ${
-                            canGoNext ? 'hover:bg-slate-100' : 'cursor-not-allowed opacity-40'
+                          className={`flex h-9 w-10 items-center justify-center text-[var(--studio-muted)] transition ${
+                            canGoNext ? 'hover:bg-[var(--studio-surface-soft)]' : 'cursor-not-allowed opacity-40'
                           }`}
                           aria-label="Next customer"
                         >
@@ -1030,17 +1033,21 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                   )}
                 </header>
 
-                <div className="flex-1 overflow-auto bg-slate-50">
+                <div className="flex-1 overflow-auto" style={{background: 'var(--studio-surface-overlay)'}}>
                   <div className="flex flex-col gap-6 px-6 py-6">
-                    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:justify-between">
                         <div className="flex flex-1 flex-wrap gap-4">
                           {metrics.map((metric) => (
-                            <div key={metric.label} className="flex min-w-[160px] flex-1 flex-col rounded-lg border border-slate-200 bg-slate-50/60 p-4">
-                              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            <div
+                              key={metric.label}
+                              className="flex min-w-[160px] flex-1 flex-col rounded-lg border border-[var(--studio-border)] p-4"
+                              style={{background: 'var(--studio-surface-overlay)'}}
+                            >
+                              <span className="text-xs font-medium uppercase tracking-wide text-[var(--studio-muted)]">
                                 {metric.label}
                               </span>
-                              <span className="mt-2 text-lg font-semibold text-slate-900">{metric.value}</span>
+                              <span className="mt-2 text-lg font-semibold text-[var(--studio-text)]">{metric.value}</span>
                             </div>
                           ))}
                         </div>
@@ -1049,13 +1056,13 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
                     <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                       <div className="flex flex-col gap-6">
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex flex-wrap items-center justify-between gap-4">
                               <div>
-                                <h3 className="text-lg font-semibold text-slate-900">Last order placed</h3>
+                                <h3 className="text-lg font-semibold text-[var(--studio-text)]">Last order placed</h3>
                                 {latestOrderDate && (
-                                  <p className="text-sm text-slate-500">
+                                  <p className="text-sm text-[var(--studio-muted)]">
                                     {format(latestOrderDate, "MMMM d, yyyy 'at' h:mm a")}
                                   </p>
                                 )}
@@ -1063,7 +1070,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
-                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                                  className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-xs font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                                   onClick={handleOpenInStudio}
                                 >
                                   View all orders
@@ -1083,9 +1090,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-wrap items-center gap-3">
                                   {latestOrder.orderNumber ? (
-                                    <span className="text-base font-semibold text-slate-900">#{latestOrder.orderNumber}</span>
+                                    <span className="text-base font-semibold text-[var(--studio-text)]">#{latestOrder.orderNumber}</span>
                                   ) : (
-                                    <span className="text-base font-semibold text-slate-900">Order</span>
+                                    <span className="text-base font-semibold text-[var(--studio-text)]">Order</span>
                                   )}
                                   {latestOrder.status && (
                                     <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
@@ -1093,49 +1100,49 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     </span>
                                   )}
                                   {latestOrderDate && (
-                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                    <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
                                       {formatDistanceToNow(latestOrderDate, {addSuffix: true})}
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex flex-wrap items-baseline justify-between gap-4 text-slate-700">
+                                <div className="flex flex-wrap items-baseline justify-between gap-4 text-[var(--studio-text)]">
                                   <div>
-                                    <p className="text-sm text-slate-500">Order total</p>
-                                    <p className="text-xl font-semibold text-slate-900">
+                                    <p className="text-sm text-[var(--studio-muted)]">Order total</p>
+                                    <p className="text-xl font-semibold text-[var(--studio-text)]">
                                       {formatCurrency(latestOrder.total ?? 0)}
                                     </p>
                                   </div>
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-sm text-slate-500">This customer has not placed any orders yet.</p>
+                              <p className="text-sm text-[var(--studio-muted)]">This customer has not placed any orders yet.</p>
                             )}
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
-                            <h3 className="text-lg font-semibold text-slate-900">Timeline</h3>
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Timeline</h3>
                           </div>
                           <div className="px-6 py-5">
                             {timelineSections.length === 0 ? (
-                              <p className="text-sm text-slate-500">Order activity will appear here once this customer places an order.</p>
+                              <p className="text-sm text-[var(--studio-muted)]">Order activity will appear here once this customer places an order.</p>
                             ) : (
                               <div className="space-y-6">
                                 {timelineSections.map((section) => (
                                   <div key={section.dateLabel}>
-                                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                       {section.dateLabel}
                                     </h4>
-                                    <ul className="mt-3 space-y-4 border-l border-slate-200 pl-5">
+                                    <ul className="mt-3 space-y-4 border-l border-[var(--studio-border)] pl-5">
                                       {section.entries.map((entry) => (
                                         <li key={entry.id} className="relative">
                                           <span className="absolute -left-[29px] mt-1 h-2.5 w-2.5 rounded-full bg-slate-400" aria-hidden="true" />
                                           <div className="flex flex-col gap-1">
-                                            <p className="text-sm font-medium text-slate-900">{entry.title}</p>
-                                            <p className="text-sm text-slate-500">{entry.description}</p>
+                                            <p className="text-sm font-medium text-[var(--studio-text)]">{entry.title}</p>
+                                            <p className="text-sm text-[var(--studio-muted)]">{entry.description}</p>
                                             {entry.timeLabel && (
-                                              <p className="text-xs text-slate-400">{entry.timeLabel}</p>
+                                              <p className="text-xs text-[rgba(148,163,184,0.7)]">{entry.timeLabel}</p>
                                             )}
                                           </div>
                                         </li>
@@ -1150,14 +1157,14 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                       </div>
 
                       <div className="flex flex-col gap-6">
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold text-slate-900">Customer</h3>
+                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">Customer</h3>
                               <button
                                 type="button"
                                 onClick={handleOpenInStudio}
-                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                className="rounded-md p-1.5 text-[var(--studio-muted)] transition hover:bg-[var(--studio-surface-soft)] hover:text-[var(--studio-text)]"
                                 aria-label="Open customer document"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -1166,15 +1173,15 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               </button>
                             </div>
                           </div>
-                          <div className="space-y-6 px-6 py-5 text-sm text-slate-700">
+                          <div className="space-y-6 px-6 py-5 text-sm text-[var(--studio-text)]">
                             <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contact information</h4>
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Contact information</h4>
                               <div className="flex flex-wrap items-center gap-2">
                                 {activeEmail ? (
                                   <button
                                     type="button"
                                     onClick={() => handleCopyToClipboard(activeEmail)}
-                                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-sm font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                                   >
                                     {activeEmail}
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -1183,31 +1190,31 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     </svg>
                                   </button>
                                 ) : (
-                                  <span className="text-slate-500">No email on file</span>
+                                  <span className="text-[var(--studio-muted)]">No email on file</span>
                                 )}
                               </div>
                               {activeProfile?.phone && (
-                                <div className="text-slate-600">{activeProfile.phone}</div>
+                                <div className="text-[var(--studio-muted)]">{activeProfile.phone}</div>
                               )}
                             </div>
 
                             <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Default address</h4>
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Default address</h4>
                               {shippingLines.length > 0 ? (
-                                <address className="not-italic leading-relaxed text-slate-700">
+                                <address className="not-italic leading-relaxed text-[var(--studio-text)]">
                                   {shippingLines.map((line) => (
                                     <div key={line}>{line}</div>
                                   ))}
                                 </address>
                               ) : (
-                                <p className="text-slate-500">No shipping address stored.</p>
+                                <p className="text-[var(--studio-muted)]">No shipping address stored.</p>
                               )}
                             </div>
 
                             {billingLines.length > 0 && (
                               <div className="space-y-2">
-                                <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Billing address</h4>
-                                <address className="not-italic leading-relaxed text-slate-700">
+                                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Billing address</h4>
+                                <address className="not-italic leading-relaxed text-[var(--studio-text)]">
                                   {billingLines.map((line) => (
                                     <div key={line}>{line}</div>
                                   ))}
@@ -1217,21 +1224,21 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
-                            <h3 className="text-lg font-semibold text-slate-900">Marketing</h3>
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Marketing</h3>
                           </div>
                           <div className="space-y-3 px-6 py-5 text-sm">
                             {marketingStatuses.map((status) => (
-                              <div key={status.label} className="flex items-center gap-2 text-slate-700">
+                              <div key={status.label} className="flex items-center gap-2 text-[var(--studio-text)]">
                                 <span
                                   className={`h-2.5 w-2.5 rounded-full ${
                                     status.subscribed ? 'bg-emerald-500' : 'bg-slate-300'
                                   }`}
                                   aria-hidden="true"
                                 />
-                                <span className="font-medium text-slate-900">{status.label}</span>
-                                <span className="text-slate-500">
+                                <span className="font-medium text-[var(--studio-text)]">{status.label}</span>
+                                <span className="text-[var(--studio-muted)]">
                                   {status.subscribed ? 'Subscribed' : 'Not subscribed'}
                                 </span>
                               </div>
@@ -1239,58 +1246,58 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
-                            <h3 className="text-lg font-semibold text-slate-900">Payment method</h3>
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Payment method</h3>
                           </div>
                           <div className="px-6 py-5 text-sm">
                             {paymentMethods.length > 0 ? (
-                              <ul className="space-y-3 text-slate-700">
+                              <ul className="space-y-3 text-[var(--studio-text)]">
                                 {paymentMethods.slice(0, 3).map((method) => (
                                   <li key={method.key} className="flex items-center justify-between gap-3">
                                     <div>
-                                      <div className="font-medium text-slate-900">
+                                      <div className="font-medium text-[var(--studio-text)]">
                                         {method.last4 ? `${method.brand} •••• ${method.last4}` : method.brand}
                                       </div>
-                                      <div className="text-xs text-slate-500">
+                                      <div className="text-xs text-[var(--studio-muted)]">
                                         {method.lastUsed
                                           ? `Last used ${formatDistanceToNow(method.lastUsed, {addSuffix: true})}`
                                           : 'Usage date unavailable'}
                                       </div>
                                     </div>
-                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                    <span className="rounded-full bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
                                       {method.orderCount} {method.orderCount === 1 ? 'order' : 'orders'}
                                     </span>
                                   </li>
                                 ))}
                               </ul>
                             ) : (
-                              <p className="text-slate-500">We haven’t recorded any card payments for this customer yet.</p>
+                              <p className="text-[var(--studio-muted)]">We haven’t recorded any card payments for this customer yet.</p>
                             )}
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
-                            <h3 className="text-lg font-semibold text-slate-900">Store credit</h3>
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Store credit</h3>
                           </div>
                           <div className="px-6 py-5 text-sm">
                             {storeCreditSummary.transactions.length > 0 ? (
-                              <div className="space-y-4 text-slate-700">
+                              <div className="space-y-4 text-[var(--studio-text)]">
                                 <div className="flex flex-wrap gap-6">
                                   <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                       Total redeemed
                                     </div>
-                                    <div className="text-base font-semibold text-slate-900">
+                                    <div className="text-base font-semibold text-[var(--studio-text)]">
                                       {formatCurrency(storeCreditSummary.totalRedeemed)}
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                       Transactions
                                     </div>
-                                    <div className="text-base font-semibold text-slate-900">
+                                    <div className="text-base font-semibold text-[var(--studio-text)]">
                                       {storeCreditSummary.transactions.length.toLocaleString()}
                                     </div>
                                   </div>
@@ -1299,14 +1306,14 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                   {storeCreditSummary.transactions.slice(0, 5).map((transaction) => (
                                     <li key={transaction.id} className="flex flex-col gap-0.5">
                                       <div className="flex items-center justify-between text-sm">
-                                        <span className="font-medium text-slate-900">
+                                        <span className="font-medium text-[var(--studio-text)]">
                                           Redeemed {formatCurrency(transaction.amount)}
                                         </span>
                                         {transaction.orderNumber ? (
-                                          <span className="text-xs text-slate-500">Order {transaction.orderNumber}</span>
+                                          <span className="text-xs text-[var(--studio-muted)]">Order {transaction.orderNumber}</span>
                                         ) : null}
                                       </div>
-                                      <span className="text-xs text-slate-500">
+                                      <span className="text-xs text-[var(--studio-muted)]">
                                         {transaction.occurredAt
                                           ? `${format(transaction.occurredAt, 'MMM d, yyyy')} • ${formatDistanceToNow(transaction.occurredAt, {addSuffix: true})}`
                                           : 'Date unavailable'}
@@ -1315,25 +1322,25 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                   ))}
                                 </ul>
                                 {storeCreditSummary.transactions.length > 5 ? (
-                                  <p className="text-xs text-slate-500">
+                                  <p className="text-xs text-[var(--studio-muted)]">
                                     Showing the 5 most recent credits out of {storeCreditSummary.transactions.length}.
                                   </p>
                                 ) : null}
                               </div>
                             ) : (
-                              <p className="text-slate-500">No store credit usage found in recent orders.</p>
+                              <p className="text-[var(--studio-muted)]">No store credit usage found in recent orders.</p>
                             )}
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex items-center justify-between gap-2">
-                              <h3 className="text-lg font-semibold text-slate-900">Tags</h3>
+                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">Tags</h3>
                               <button
                                 type="button"
                                 onClick={handleOpenInStudio}
-                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                className="rounded-md p-1.5 text-[var(--studio-muted)] transition hover:bg-[var(--studio-surface-soft)] hover:text-[var(--studio-text)]"
                                 aria-label="Manage tags"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -1342,23 +1349,23 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               </button>
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-2 px-6 py-5 text-sm text-slate-700">
+                          <div className="flex flex-wrap gap-2 px-6 py-5 text-sm text-[var(--studio-text)]">
                             {roleTags.map((tag) => (
-                              <span key={tag} className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                              <span key={tag} className="inline-flex items-center rounded-full bg-[var(--studio-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--studio-muted)]">
                                 {tag}
                               </span>
                             ))}
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                          <div className="border-b border-slate-200 px-6 py-4">
+                        <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
+                          <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold text-slate-900">Notes</h3>
+                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">Notes</h3>
                               <button
                                 type="button"
                                 onClick={handleOpenInStudio}
-                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                className="rounded-md p-1.5 text-[var(--studio-muted)] transition hover:bg-[var(--studio-surface-soft)] hover:text-[var(--studio-text)]"
                                 aria-label="Edit notes"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -1368,7 +1375,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               </button>
                             </div>
                           </div>
-                          <div className="px-6 py-5 text-sm text-slate-600">No notes recorded for this customer.</div>
+                          <div className="px-6 py-5 text-sm text-[var(--studio-muted)]">No notes recorded for this customer.</div>
                         </section>
                       </div>
                     </div>
@@ -1376,7 +1383,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                 </div>
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center px-6 py-10 text-center text-sm text-slate-500">
+              <div className="flex h-full items-center justify-center px-6 py-10 text-center text-sm text-[var(--studio-muted)]">
                 Select a customer from the list to view their profile.
               </div>
             )}
