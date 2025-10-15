@@ -36,6 +36,7 @@ Thumbs.db
 .env
 .env.*.local
 *.local
+.env.development
 
 
 # Vite/Next.js cache (if using)

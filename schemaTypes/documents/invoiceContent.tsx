@@ -2,6 +2,7 @@ import { defineType, defineField, set, useClient, useFormValue } from 'sanity'
 import { createClient } from '@sanity/client'
 import React, {useEffect, useMemo, useState} from 'react'
 import {TextInput} from '@sanity/ui'
+import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 
 import './invoiceStyles.css'
 
@@ -559,16 +560,12 @@ function InvoiceActions() {
       }
     }
 
-    const base64String = await response.text()
-    if (base64String.trim().startsWith('{')) {
+    const base64String = (await response.text()).trim()
+    if (base64String.startsWith('{')) {
       throw new Error(base64String)
     }
     const clean = base64String.replace(/^"|"$/g, '')
-    const bytes = atob(clean)
-    const buffer = new Uint8Array(bytes.length)
-    for (let index = 0; index < bytes.length; index += 1) {
-      buffer[index] = bytes.charCodeAt(index)
-    }
+    const buffer = decodeBase64ToArrayBuffer(clean)
     return new Blob([buffer], {type: 'application/pdf'})
   }
 

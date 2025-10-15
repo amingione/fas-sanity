@@ -83,6 +83,7 @@ export default defineConfig({
       // Ensure only a single instance of these packages end up in the bundle.
       // With pnpm, multiple peer variants can otherwise create duplicate contexts.
       dedupe: ['sanity', '@sanity/ui', 'react', 'react-dom', 'styled-components'],
+      preserveSymlinks: true,
       alias: {
         ...workspaceModuleAliases,
         // Work around occasional CJS/ESM interop glitches with react-refractor in dev.
@@ -97,7 +98,22 @@ export default defineConfig({
       },
     },
     // Remove custom Vite transforms that monkey‑patch @sanity/ui to avoid input regressions
-    optimizeDeps: undefined,
+    optimizeDeps: {
+      exclude: [
+        'sanity',
+        '@sanity/ui',
+        'sanity/desk',
+        'sanity/router',
+        'react',
+        'react-dom',
+        'styled-components',
+      ],
+    },
+    server: {
+      fs: {
+        allow: [projectRoot].filter(Boolean),
+      },
+    },
     plugins: [],
     build: {
       rollupOptions: {

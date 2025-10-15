@@ -21,6 +21,13 @@ import {
   useToast,
 } from '@sanity/ui'
 import {SearchIcon} from '@sanity/icons'
+import {
+  coerceStringArray,
+  deriveOptionsFromMetadata,
+  normalizeMetadataEntries,
+  remainingMetadataEntries,
+  uniqueStrings,
+} from '../../utils/cartItemDetails'
 
 type RawCartItem = {
   quantity?: number | null
@@ -220,23 +227,6 @@ function isClosedPaymentStatus(value: string | null | undefined): boolean {
   return CLOSED_PAYMENT_STATUSES.has(value.toLowerCase())
 }
 
-function toStringArray(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => {
-        if (typeof item === 'string') return item.trim()
-        if (item && typeof item === 'object' && 'value' in item) {
-          return String((item as any).value ?? '').trim()
-        }
-        return typeof item === 'number' || typeof item === 'boolean' ? String(item) : ''
-      })
-      .filter((entry): entry is string => Boolean(entry))
-  }
-  if (typeof value === 'string') return [value.trim()].filter(Boolean)
-  if (typeof value === 'number' || typeof value === 'boolean') return [String(value)]
-  return []
-}
-
 const formatKeyLabel = (label: string): string =>
   label
     .replace(/[_-]+/g, ' ')
@@ -246,12 +236,7 @@ function formatMetadataSegments(value: unknown): string[] {
   if (typeof value === 'string') {
     const trimmed = value.trim()
     if (!trimmed) return []
-    try {
-      const parsed = JSON.parse(trimmed)
-      return formatMetadataSegments(parsed)
-    } catch {
-      return [trimmed]
-    }
+    return coerceStringArray(trimmed)
   }
 
   if (Array.isArray(value)) {
@@ -272,26 +257,26 @@ function formatMetadataSegments(value: unknown): string[] {
       } else if (typeof obj.q === 'string' && obj.q.trim()) {
         lines.push(`Quantity: ${obj.q.trim()}`)
       }
-      const priceValue = typeof obj.p === 'number'
-        ? obj.p
-        : typeof obj.p === 'string' && obj.p.trim()
-          ? Number(obj.p)
-          : null
+      const priceValue =
+        typeof obj.p === 'number'
+          ? obj.p
+          : typeof obj.p === 'string' && obj.p.trim()
+            ? Number(obj.p)
+            : null
       if (priceValue !== null && Number.isFinite(priceValue)) {
         lines.push(`Price: ${currencyFormatter.format(Number(priceValue))}`)
       }
       return lines
     }
 
-    return Object.entries(obj)
-      .flatMap(([key, val]) => {
-        if (val === undefined || val === null || val === '') return []
-        const label = formatKeyLabel(key)
-        if (typeof val === 'number') return [`${label}: ${val}`]
-        if (typeof val === 'string') return [`${label}: ${val}`]
-        const nested = formatMetadataSegments(val)
-        return nested.length ? [`${label}: ${nested.join(', ')}`] : []
-      })
+    return Object.entries(obj).flatMap(([key, val]) => {
+      if (val === undefined || val === null || val === '') return []
+      const label = formatKeyLabel(key)
+      if (typeof val === 'number') return [`${label}: ${val}`]
+      if (typeof val === 'string') return [`${label}: ${val}`]
+      const nested = formatMetadataSegments(val)
+      return nested.length ? [`${label}: ${nested.join(', ')}`] : []
+    })
   }
 
   if (typeof value === 'number') return [String(value)]
@@ -1235,28 +1220,27 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
             ? item.price * quantity
             : null
         const details: string[] = []
-        if (item.optionSummary) details.push(item.optionSummary)
-        const optionDetails = toStringArray(item.optionDetails)
+        const metadataEntries = normalizeMetadataEntries(item.metadata || [])
+        const derived = deriveOptionsFromMetadata(metadataEntries)
+        const summary = item.optionSummary?.trim() || derived.optionSummary
+        if (summary) details.push(summary)
+        const optionDetails = uniqueStrings([
+          ...coerceStringArray(item.optionDetails),
+          ...derived.optionDetails,
+        ])
         if (optionDetails.length) details.push(optionDetails.join(' • '))
-        const upgrades = toStringArray(item.upgrades)
+        const upgrades = uniqueStrings([
+          ...coerceStringArray(item.upgrades),
+          ...derived.upgrades,
+        ])
         if (upgrades.length) details.push(`Upgrades: ${upgrades.join(', ')}`)
-        const metadataInfo = Array.isArray(item.metadata)
-          ? item.metadata.flatMap((entry) => {
-              if (!entry) return []
-              if (typeof entry === 'object' && 'key' in entry && 'value' in entry) {
-                const keyLabelRaw = String((entry as any).key || '')
-                const keyLabel = keyLabelRaw ? formatKeyLabel(keyLabelRaw) : ''
-                const valSegments = formatMetadataSegments((entry as any).value)
-                if (valSegments.length === 0) return keyLabel ? [keyLabel] : []
-                if (keyLabel) {
-                  return valSegments.map((segment) => `${keyLabel}: ${segment}`)
-                }
-                return valSegments
-              }
-              if (typeof entry === 'object' && 'value' in entry) {
-                return formatMetadataSegments((entry as any).value)
-              }
-              return formatMetadataSegments(entry)
+        const remainingMeta = remainingMetadataEntries(metadataEntries, derived.consumedKeys)
+        const metadataInfo = remainingMeta.length
+          ? remainingMeta.flatMap((entry) => {
+              const segments = formatMetadataSegments(entry.value)
+              const label = formatKeyLabel(entry.key)
+              if (segments.length === 0) return label ? [label] : []
+              return segments.map((segment) => (label ? `${label}: ${segment}` : segment))
             })
           : []
         return {
