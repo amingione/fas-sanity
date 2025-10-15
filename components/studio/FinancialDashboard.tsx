@@ -294,7 +294,18 @@ const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never
   const handleCreateOrder = () => router.navigateIntent('create', {type: 'order'})
 
   return (
-    <Box ref={ref} padding={[3, 4, 5]} style={{background: '#f3f4f6', minHeight: '100%'}}>
+    <Box
+      ref={ref}
+      padding={[3, 4, 5]}
+      style={{
+        background: 'var(--studio-surface-overlay)',
+        minHeight: '100%',
+        borderRadius: '28px',
+        border: '1px solid var(--studio-border)',
+        boxShadow: 'var(--studio-shadow)',
+        backdropFilter: 'blur(18px)',
+      }}
+    >
       <Stack space={4}>
         <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
           <Stack space={1}>
@@ -321,7 +332,7 @@ const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never
         </Flex>
 
         {loading ? (
-          <Card padding={6} radius={4} shadow={1} style={{background: '#ffffff'}}>
+          <Card padding={6} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
             <Flex align="center" justify="center" direction="column" gap={3}>
               <Spinner muted />
               <Text muted>Preparing your financial insights…</Text>
@@ -390,7 +401,7 @@ function ProfitLossCard({summary, range}: {summary: Summary; range: RangePreset}
   const expenseShare = income + expenses > 0 ? (expenses / (income + expenses)) * 100 : 0
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
@@ -441,7 +452,7 @@ function ExpensesCard({summary}: {summary: Summary}) {
   const categories = buildCategorySegments(summary.expenseCategories)
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
@@ -487,7 +498,7 @@ function CashFlowCard({summary}: {summary: Summary}) {
   const moneyOut = summary.cashflowSeries.reduce((acc, point) => acc + point.expense, 0)
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
@@ -521,7 +532,7 @@ function InvoicesCard({summary, range}: {summary: Summary; range: RangePreset}) 
   const paidPct = summary.paidLast30 + summary.unpaidLast30 > 0 ? (summary.paidLast30 / (summary.paidLast30 + summary.unpaidLast30)) * 100 : 0
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
@@ -573,7 +584,7 @@ function SalesCard({summary}: {summary: Summary}) {
   const average = summary.salesSeries.length > 0 ? totalSales / summary.salesSeries.length : 0
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Stack space={1}>
           <Heading size={2}>Sales</Heading>
@@ -645,7 +656,7 @@ function IntegrationsCard({
   ]
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={3}>
         <Heading size={2}>My integrations</Heading>
         <Stack space={2}>
@@ -657,7 +668,7 @@ function IntegrationsCard({
               shadow={0}
               tone="transparent"
               style={{
-                background: '#f8fafc',
+                background: 'var(--studio-surface-soft)',
                 cursor: 'pointer',
               }}
               role="button"
@@ -776,7 +787,7 @@ function OrdersIntegrationSection({
           <StatusList title="Payment status" items={paymentBreakdown} />
         </Flex>
 
-        <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc'}}>
+        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={3}>
             <Heading size={2}>Recent orders</Heading>
             <Stack space={2}>
@@ -820,7 +831,7 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
         description="Connect Stripe to track deposits, balances, and payout schedules."
         onBack={onBack}
       >
-        <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc'}}>
+        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={2}>
             <Text weight="semibold">No payout data available</Text>
             <Text size={1} muted>
@@ -854,7 +865,7 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
           />
         </Flex>
 
-        <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc'}}>
+        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={3}>
             <Heading size={2}>Recent payouts</Heading>
             <Stack space={2}>
@@ -899,7 +910,7 @@ function AnalyticsIntegrationSection({
         description="Connect your analytics source to track traffic alongside revenue."
         onBack={onBack}
       >
-        <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc'}}>
+        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={2}>
             <Text weight="semibold">No analytics data available</Text>
             <Text size={1} muted>
@@ -929,7 +940,7 @@ function AnalyticsIntegrationSection({
         </Flex>
 
         {hasTrend ? (
-          <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc'}}>
+          <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
             <Stack space={3}>
               <Heading size={2}>Session trend</Heading>
               <LineChart
@@ -943,7 +954,7 @@ function AnalyticsIntegrationSection({
           </Card>
         ) : null}
 
-        <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc'}}>
+        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={3}>
             <Heading size={2}>Recent daily metrics</Heading>
             <Stack space={2}>
@@ -981,7 +992,7 @@ function IntegrationShell({
   children: React.ReactNode
 }) {
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
           <Stack space={1}>
@@ -1006,7 +1017,7 @@ function DetailStatCard({
   helper?: string
 }) {
   return (
-    <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc', flex: '1 1 220px'}}>
+    <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)', flex: '1 1 220px'}}>
       <Stack space={1}>
         <Text size={1} muted>{label}</Text>
         <Text weight="semibold">{value}</Text>
@@ -1028,7 +1039,7 @@ function StatusList({
   items: Array<{label: string; count: number}>
 }) {
   return (
-    <Card padding={4} radius={3} shadow={0} style={{background: '#f8fafc', flex: '1 1 240px'}}>
+    <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)', flex: '1 1 240px'}}>
       <Stack space={2}>
         <Heading size={2}>{title}</Heading>
         <Stack space={1}>
@@ -1081,7 +1092,7 @@ function AccountsReceivableCard({summary}: {summary: Summary}) {
   ]
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: '#ffffff'}}>
+    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Heading size={2}>Accounts receivable</Heading>
@@ -1222,7 +1233,7 @@ function DonutChart({
           position: 'absolute',
           inset: thickness,
           borderRadius: '50%',
-          background: '#ffffff',
+          background: 'var(--studio-surface-strong)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
