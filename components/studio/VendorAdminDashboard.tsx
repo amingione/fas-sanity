@@ -14,7 +14,7 @@ interface Vendor {
 }
 
 export default function VendorAdminDashboard() {
-  const client = useClient()
+  const client = useClient({apiVersion: '2024-10-01'})
   const [vendors, setVendors] = useState<Vendor[]>([])
 
   const fetchVendors = () => {

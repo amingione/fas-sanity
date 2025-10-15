@@ -51,8 +51,8 @@
     "sanity-plugin-hotspot-array": "^3.0.1",
     "sanity-plugin-media": "^4.0.0",
     "shipengine": "^1.0.7",
-    "ssh2-sftp-client": "^10.0.1",
     "slug": "^8.2.2",
+    "ssh2-sftp-client": "^10.0.1",
     "stripe": "^18.0.0",
     "styled-components": "^6.1.19"
   },
@@ -66,6 +66,7 @@
     "@types/pdfkit": "^0.13.9",
     "@types/react": "^18.0.25",
     "@types/slug": "^5.0.3",
+    "@types/ssh2-sftp-client": "^9.0.5",
     "autoprefixer": "^10.4.21",
     "canvas": "^2.11.2",
     "eslint": "^9.9.0",
