@@ -51,6 +51,23 @@ const product = defineType({
       group: 'general'
     }),
     defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      description: 'Controls where the product appears in internal tools and feeds.',
+      options: {
+        layout: 'radio',
+        list: [
+          {title: 'Active', value: 'active'},
+          {title: 'Draft', value: 'draft'},
+          {title: 'Paused', value: 'paused'},
+          {title: 'Archived', value: 'archived'},
+        ],
+      },
+      initialValue: 'active',
+      group: 'general',
+    }),
+    defineField({
       name: 'productType',
       title: 'Product Type',
       type: 'string',

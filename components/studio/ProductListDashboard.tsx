@@ -36,6 +36,7 @@ const PRODUCT_LIST_QUERY = `*[_type == "product"]{
   salePrice,
   availability,
   installOnly,
+  status,
   manualInventoryCount,
   "categories": coalesce(category[]->title, []),
   "filterTags": coalesce(filters[]->title, []),
@@ -111,6 +112,7 @@ type RawProduct = {
   salePrice?: number | string | null
   availability?: string | null
   installOnly?: boolean | null
+  status?: string | null
   manualInventoryCount?: number | string | null
   categories?: string[] | null
   filterTags?: string[] | null
@@ -214,7 +216,7 @@ function toStringArray(value: unknown): string[] {
 
 function normalizeStatus(rawStatus: string | null | undefined, isDeleted: boolean): string {
   if (isDeleted) return 'Deleted'
-  if (!rawStatus) return 'Draft'
+  if (!rawStatus) return 'Active'
   const normalized = rawStatus.trim().toLowerCase()
   switch (normalized) {
     case 'active':
@@ -223,6 +225,8 @@ function normalizeStatus(rawStatus: string | null | undefined, isDeleted: boolea
       return 'Archived'
     case 'draft':
       return 'Draft'
+    case 'paused':
+      return 'Paused'
     case 'sold_out':
       return 'Sold out'
     default:
@@ -238,7 +242,7 @@ function statusTone(status: string): 'positive' | 'primary' | 'caution' | 'criti
   const normalized = status.toLowerCase()
   if (normalized === 'active') return 'positive'
   if (normalized === 'draft') return 'primary'
-  if (normalized === 'archived') return 'caution'
+  if (normalized === 'archived' || normalized === 'paused') return 'caution'
   if (normalized === 'deleted' || normalized === 'sold out') return 'critical'
   return 'primary'
 }
@@ -331,7 +335,8 @@ function normalizeProduct(raw: RawProduct): ProductRow {
     totalInventorySource
   )
 
-  const normalizedStatus = normalizeStatus(store.status || null, Boolean(store.isDeleted))
+  const statusSource = raw.status || store.status || null
+  const normalizedStatus = normalizeStatus(statusSource, Boolean(store.isDeleted))
 
   const categories = (raw.categories || []).filter((entry): entry is string => Boolean(entry))
   const filterTags = (raw.filterTags || []).filter((entry): entry is string => Boolean(entry))
