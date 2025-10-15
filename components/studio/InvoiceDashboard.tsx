@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {Spinner, useToast} from '@sanity/ui'
@@ -62,6 +62,34 @@ const shortDate = new Intl.DateTimeFormat('en-US', {
   day: 'numeric',
   year: '2-digit',
 })
+
+const GRID_TEMPLATE_COLUMNS =
+  '40px 160px 140px 160px minmax(220px, 1fr) 140px 160px 140px'
+const GRID_COLUMN_GAP = 12
+const INVOICE_STICKY_LEFT = 40 + GRID_COLUMN_GAP
+const HEADER_BACKGROUND_COLOR = '#ffffff'
+const ROW_BACKGROUND_COLOR = '#ffffff'
+const ROW_SELECTED_BACKGROUND = 'rgba(16, 185, 129, 0.12)'
+const STICKY_INVOICE_BOX_SHADOW = '2px 0 0 rgba(15, 23, 42, 0.08)'
+
+const STICKY_CHECKBOX_BASE: CSSProperties = {
+  position: 'sticky',
+  left: 0,
+  zIndex: 3,
+  display: 'inline-flex',
+  alignItems: 'center',
+  height: '100%',
+}
+
+const STICKY_INVOICE_BASE: CSSProperties = {
+  position: 'sticky',
+  left: INVOICE_STICKY_LEFT,
+  zIndex: 2,
+  display: 'inline-flex',
+  alignItems: 'center',
+  height: '100%',
+  boxShadow: STICKY_INVOICE_BOX_SHADOW,
+}
 
 function normalizeAmount(document: RawInvoice): number {
   const direct = Number(document.total ?? document.amount)
@@ -134,8 +162,13 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchLoading, setBatchLoading] = useState(false)
+  const [batchMenuOpen, setBatchMenuOpen] = useState(false)
   const selectAllRef = useRef<HTMLInputElement | null>(null)
+  const batchButtonRef = useRef<HTMLButtonElement | null>(null)
+  const batchMenuRef = useRef<HTMLDivElement | null>(null)
   const [compactHeader, setCompactHeader] = useState(false)
+
+  const hasSelections = selectedIds.size > 0
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true)
@@ -347,6 +380,11 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
     }
   }, [client, fetchInvoices, selectedIds, toast])
 
+  const handleBatchMarkPaidClick = useCallback(() => {
+    setBatchMenuOpen(false)
+    void runBatchMarkPaid()
+  }, [runBatchMarkPaid])
+
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
     const handleScroll = () => {
@@ -357,6 +395,45 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
     window.addEventListener('scroll', handleScroll, {passive: true})
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    if (!batchMenuOpen) return undefined
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (batchButtonRef.current?.contains(target) || batchMenuRef.current?.contains(target)) {
+        return
+      }
+      setBatchMenuOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setBatchMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [batchMenuOpen])
+
+  useEffect(() => {
+    if (!hasSelections) {
+      setBatchMenuOpen(false)
+    }
+  }, [hasSelections])
+
+  useEffect(() => {
+    if (batchLoading) {
+      setBatchMenuOpen(false)
+    }
+  }, [batchLoading])
 
   const openInvoice = (invoiceId: string) => {
     router.navigateIntent('edit', {id: invoiceId, type: 'invoice'})
@@ -375,84 +452,104 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
   }
 
   return (
-    <div ref={ref} className="flex h-full flex-col overflow-hidden bg-slate-100">
-      <div
-        className={`sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur transition-all duration-200 ${
-          compactHeader ? 'shadow-sm' : ''
-        }`}
-      >
+    <div ref={ref} className="flex h-full min-h-0 flex-col bg-slate-100">
+      <div className="border-b border-slate-200 bg-white">
         <div
-          className={`flex flex-col gap-4 px-4 transition-all duration-200 sm:px-6 ${
-            compactHeader ? 'py-3 sm:flex-row sm:items-center sm:justify-between' : 'py-5 sm:flex-row sm:items-start sm:justify-between'
+          className={`sticky top-0 z-20 flex flex-col gap-4 bg-white px-4 transition-all duration-200 sm:px-6 ${
+            compactHeader ? 'py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between' : 'py-5 sm:flex-row sm:items-start sm:justify-between'
           }`}
         >
-          <div className="min-w-0">
-            <p
-              className={`text-xs font-semibold uppercase tracking-wide text-slate-500 transition-all duration-200 ${
-                compactHeader ? 'opacity-80' : ''
-              }`}
-            >
-              Sales &amp; Payments
-            </p>
-            <h1
-              className={`font-bold text-slate-900 transition-all duration-200 ${
-                compactHeader ? 'text-xl' : 'text-2xl'
-              }`}
-            >
-              Invoices
-            </h1>
-            <p
-              className={`text-slate-500 transition-all duration-200 ${
-                compactHeader ? 'hidden text-xs sm:block' : 'text-sm'
-              }`}
-            >
-              Track overdue balances and jump straight into any invoice.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={runBatchMarkPaid}
-              disabled={batchLoading || selectedIds.size === 0}
-              className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {batchLoading ? 'Updating…' : 'Mark selected paid'}
-            </button>
-            <button
-              type="button"
-              onClick={createInvoice}
-              className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
-            >
-              Create invoice
-            </button>
-          </div>
-        </div>
-        <div
-          className={`border-t border-slate-200 bg-white transition-all duration-200 ${
-            compactHeader ? 'max-h-0 overflow-hidden opacity-0' : 'opacity-100'
-          }`}
-        >
-          <div className="-mx-2 flex gap-3 overflow-x-auto px-4 pb-3 pt-4 sm:-mx-3 sm:px-6 lg:grid lg:grid-cols-4 lg:gap-4 lg:overflow-visible lg:px-6 lg:pb-5 lg:pt-5">
-            <div className="min-w-[170px] flex-shrink-0 sm:min-w-[190px] lg:min-w-0 lg:flex-shrink">
-              <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} tone="amber" />
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h1
+                className={`text-xs font-semibold uppercase tracking-wide text-slate-600 transition-all duration-200 ${
+                  compactHeader ? 'opacity-80' : ''
+                }`}
+              >
+                Invoices
+              </h1>
             </div>
-            <div className="min-w-[170px] flex-shrink-0 sm:min-w-[190px] lg:min-w-0 lg:flex-shrink">
-              <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} tone="rose" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={createInvoice}
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+              >
+                Create Invoice
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  ref={batchButtonRef}
+                  onClick={() => {
+                    if (batchLoading) return
+                    setBatchMenuOpen((prev) => !prev)
+                  }}
+                  disabled={batchLoading}
+                  aria-haspopup="menu"
+                  aria-expanded={batchMenuOpen}
+                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 ${
+                    hasSelections ? 'text-slate-600 hover:bg-slate-100' : 'text-slate-400 hover:bg-white'
+                  } ${batchMenuOpen ? 'bg-slate-100' : ''} disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {batchLoading ? 'Working…' : 'Batch actions'}
+                </button>
+                {batchMenuOpen ? (
+                  <div
+                    ref={batchMenuRef}
+                    role="menu"
+                    aria-label="Batch actions"
+                    className="absolute right-0 top-full z-30 mt-2 w-44 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+                  >
+                    <button
+                      type="button"
+                      onClick={handleBatchMarkPaidClick}
+                      role="menuitem"
+                      disabled={!hasSelections || batchLoading}
+                      className="flex w-full items-center justify-between px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+                    >
+                      <span>Mark selected paid</span>
+                      {hasSelections ? <span className="text-xs text-slate-400">{selectedIds.size}</span> : null}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div className="min-w-[170px] flex-shrink-0 sm:min-w-[190px] lg:min-w-0 lg:flex-shrink">
-              <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} tone="sky" />
-            </div>
-            <div className="min-w-[170px] flex-shrink-0 sm:min-w-[190px] lg:min-w-0 lg:flex-shrink">
-              <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} tone="emerald" />
-            </div>
-          </div>
-          <div className="px-4 pb-5 sm:px-6 lg:px-6">
-            <ProgressBar overdue={metrics.overdue} notDue={metrics.notDue} />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="-mx-2 flex gap-3 overflow-x-auto px-4 pb-4 pt-4 sm:-mx-3 sm:px-6 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-visible lg:px-6 lg:pb-6 lg:pt-6">
+          <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
+            <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} />
+          </div>
+          <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
+            <SummaryCard title="Overdue" subtitle="Outstanding now" amount={metrics.overdue} />
+          </div>
+          <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
+            <SummaryCard title="Not due yet" subtitle="Pending invoices" amount={metrics.notDue} />
+          </div>
+          <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
+            <SummaryCard title="Paid" subtitle="Last 30 days" amount={metrics.paidRecent} />
+          </div>
+          <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
+            <SummaryCard
+              title="Outstanding"
+              subtitle="Current balance"
+              amount={metrics.overdue + metrics.notDue}
+              footer={
+                <div className="mt-2 space-y-1 text-[11px] text-slate-500">
+                  <div>Overdue {currency.format(metrics.overdue)}</div>
+                  <div>Not due {currency.format(metrics.notDue)}</div>
+                </div>
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
         <div className="border-b border-slate-200 bg-white px-6 py-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -512,107 +609,158 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-slate-50">
+        <div className="flex-1 min-h-0 overflow-auto bg-slate-50">
           <div className="px-6 py-4">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-700">
-                <thead className="bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3 text-left">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div style={{overflowX: 'auto'}}>
+                <div style={{borderBottom: '1px solid var(--card-border-color)'}}>
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      display: 'grid',
+                      gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
+                      gap: `${GRID_COLUMN_GAP}px`,
+                      fontSize: 12,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                      color: 'var(--card-muted-fg-color)',
+                      width: 'max-content',
+                      background: HEADER_BACKGROUND_COLOR,
+                    }}
+                  >
+                    <span style={{...STICKY_CHECKBOX_BASE, background: HEADER_BACKGROUND_COLOR, zIndex: 4}}>
                       <input
                         ref={selectAllRef}
                         type="checkbox"
                         className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                         onChange={(event) => handleSelectAll(event.currentTarget.checked)}
                       />
-                    </th>
-                    <th className="px-4 py-3 text-left">Date</th>
-                    <th className="px-4 py-3 text-left">Due</th>
-                    <th className="px-4 py-3 text-left">Invoice #</th>
-                    <th className="px-4 py-3 text-left">Customer</th>
-                    <th className="px-4 py-3 text-right">Amount</th>
-                    <th className="px-4 py-3 text-left">Status</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+                    </span>
+                    <span
+                      style={{
+                        ...STICKY_INVOICE_BASE,
+                        background: HEADER_BACKGROUND_COLOR,
+                        zIndex: 3,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Invoice
+                    </span>
+                    <span>Date</span>
+                    <span>Due</span>
+                    <span>Customer</span>
+                    <span style={{textAlign: 'right'}}>Amount</span>
+                    <span>Status</span>
+                    <span style={{textAlign: 'right'}}>Action</span>
+                  </div>
+                </div>
+                <div>
                   {error ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-rose-600">
-                        {error}
-                      </td>
-                    </tr>
+                    <div
+                      className="text-sm text-rose-600"
+                      style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
+                    >
+                      {error}
+                    </div>
                   ) : loading ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
-                        Loading invoices…
-                      </td>
-                    </tr>
+                    <div
+                      className="text-sm text-slate-500"
+                      style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
+                    >
+                      Loading invoices…
+                    </div>
                   ) : filteredInvoices.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">
-                        No invoices match the current filters.
-                      </td>
-                    </tr>
+                    <div
+                      className="text-sm text-slate-500"
+                      style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
+                    >
+                      No invoices match the current filters.
+                    </div>
                   ) : (
-                    filteredInvoices.map((invoice) => (
-                      <tr
-                        key={invoice.id}
-                        className="hover:bg-slate-50"
-                        onClick={(event) => {
-                          const target = event.target as HTMLElement
-                          if (target.closest('button') || target.closest('input[type="checkbox"]')) return
-                          openInvoice(invoice.id)
-                        }}
-                      >
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            checked={selectedIds.has(invoice.id)}
-                            onChange={(event) => handleSelect(invoice.id, event.currentTarget.checked)}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {invoice.invoiceDateIso
-                            ? shortDate.format(new Date(invoice.invoiceDateIso))
-                            : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {invoice.dueDateIso
-                            ? shortDate.format(new Date(invoice.dueDateIso))
-                            : '—'}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-slate-800">
-                          {invoice.invoiceNumber}
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">{invoice.customerName}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-900">
-                          {currency.format(invoice.amount || 0)}
-                        </td>
-                        <td className="px-4 py-3">
+                    filteredInvoices.map((invoice) => {
+                      const isSelected = selectedIds.has(invoice.id)
+                      const rowBackground = isSelected ? ROW_SELECTED_BACKGROUND : ROW_BACKGROUND_COLOR
+
+                      return (
+                        <div
+                          key={invoice.id}
+                          onClick={() => openInvoice(invoice.id)}
+                          style={{
+                            padding: '14px 16px',
+                            display: 'grid',
+                            gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
+                            gap: `${GRID_COLUMN_GAP}px`,
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid var(--card-border-color)',
+                            width: 'max-content',
+                            backgroundColor: rowBackground,
+                          }}
+                          className="hover:bg-slate-100/60"
+                        >
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(
-                              invoice,
-                            )}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                            }}
+                            style={{...STICKY_CHECKBOX_BASE, background: rowBackground}}
                           >
-                            {invoice.isOverdue ? 'Overdue' : invoice.statusLabel}
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              checked={isSelected}
+                              onChange={(event) => {
+                                event.stopPropagation()
+                                handleSelect(invoice.id, event.currentTarget.checked)
+                              }}
+                            />
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => openInvoice(invoice.id)}
-                            className="text-sm font-semibold text-blue-600 hover:text-blue-500"
+                          <span
+                            style={{
+                              ...STICKY_INVOICE_BASE,
+                              background: rowBackground,
+                              fontWeight: 600,
+                              color: '#0f172a',
+                            }}
                           >
-                            View / Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                            {invoice.invoiceNumber}
+                          </span>
+                          <span className="text-slate-600">
+                            {invoice.invoiceDateIso ? shortDate.format(new Date(invoice.invoiceDateIso)) : '—'}
+                          </span>
+                          <span className="text-slate-600">
+                            {invoice.dueDateIso ? shortDate.format(new Date(invoice.dueDateIso)) : '—'}
+                          </span>
+                          <span className="text-slate-700">{invoice.customerName}</span>
+                          <span style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}} className="font-medium text-slate-900">
+                            {currency.format(invoice.amount || 0)}
+                          </span>
+                          <span>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(
+                                invoice,
+                              )}`}
+                            >
+                              {invoice.isOverdue ? 'Overdue' : invoice.statusLabel}
+                            </span>
+                          </span>
+                          <span style={{textAlign: 'right'}}>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openInvoice(invoice.id)
+                              }}
+                              className="text-sm font-semibold text-blue-600 hover:text-blue-500"
+                            >
+                              View / Edit
+                            </button>
+                          </span>
+                        </div>
+                      )
+                    })
                   )}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -627,58 +775,17 @@ const SummaryCard: React.FC<{
   title: string
   subtitle: string
   amount: number
-  tone: 'amber' | 'rose' | 'sky' | 'emerald'
-}> = ({title, subtitle, amount, tone}) => {
-  const toneMap: Record<string, string> = {
-    amber: 'bg-amber-400',
-    rose: 'bg-rose-400',
-    sky: 'bg-sky-400',
-    emerald: 'bg-emerald-400',
-  }
-
+  footer?: React.ReactNode
+}> = ({title, subtitle, amount, footer}) => {
   return (
-    <div className="flex h-full min-h-[132px] flex-col justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="flex h-full min-h-[115px] flex-col justify-between rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-          {subtitle}
-        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{subtitle}</p>
         <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
       </div>
       <div>
-        <div className="flex items-baseline gap-2">
-          <p className="text-xl font-semibold text-slate-900">{currency.format(amount || 0)}</p>
-          <span className="text-sm text-slate-400">—</span>
-        </div>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-          <div className={`h-full rounded-full ${toneMap[tone]}`} style={{width: '100%'}} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const ProgressBar: React.FC<{overdue: number; notDue: number}> = ({overdue, notDue}) => {
-  const sum = overdue + notDue
-  const safeTotal = sum > 0 ? sum : 1
-  const overduePct = Math.min(Math.max(overdue / safeTotal, 0), 1)
-  const notDuePct = Math.min(Math.max(notDue / safeTotal, 0), 1)
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm font-semibold text-slate-700">Outstanding balance</p>
-      <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-slate-200">
-        <div className="flex h-full w-full">
-          <div className="h-full bg-rose-500" style={{width: `${overduePct * 100}%`}} />
-          <div className="h-full bg-emerald-500" style={{width: `${notDuePct * 100}%`}} />
-        </div>
-      </div>
-      <div className="mt-3 flex justify-between text-xs font-medium uppercase tracking-wide text-slate-500">
-        <span>
-          Overdue {currency.format(overdue || 0)} ({Math.round(overduePct * 100)}%)
-        </span>
-        <span>
-          Not due {currency.format(notDue || 0)} ({Math.round(notDuePct * 100)}%)
-        </span>
+        <p className="text-base font-semibold text-slate-800">{currency.format(amount || 0)}</p>
+        {footer ? footer : null}
       </div>
     </div>
   )

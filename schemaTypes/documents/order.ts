@@ -104,6 +104,7 @@ export default defineType({
     }),
     defineField({ name: 'shippingLabelUrl', title: 'Shipping Label URL', type: 'url' }),
     defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string' }),
+    defineField({ name: 'trackingUrl', title: 'Tracking URL', type: 'url' }),
     defineField({ name: 'packingSlipUrl', title: 'Packing Slip PDF URL', type: 'url' }),
     defineField({
       name: 'selectedService',
@@ -119,6 +120,7 @@ export default defineType({
         defineField({ name: 'amount', title: 'Rate Amount', type: 'number' }),
         defineField({ name: 'currency', title: 'Currency', type: 'string' }),
         defineField({ name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number' }),
+        defineField({ name: 'estimatedDeliveryDate', title: 'Est. Delivery Date', type: 'datetime' }),
       ],
     }),
     defineField({ name: 'shipStationOrderId', title: 'ShipStation Order ID', type: 'string', readOnly: true }),

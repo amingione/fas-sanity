@@ -8,7 +8,8 @@ import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerat
 import FinancialDashboard from './components/studio/FinancialDashboard'
 import FinancialReports from './components/studio/FinancialReports'
 import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
-import SalesTransactions from './components/studio/SalesTransactions'
+import OrdersDashboard from './components/studio/OrdersDashboard'
+import ProductListDashboard from './components/studio/ProductListDashboard'
 import OrderStatusPreview from './components/inputs/FulfillmentBadge'
 import VendorStatusBadge from './components/inputs/VendorStatusBadge'
 
@@ -50,6 +51,11 @@ export const deskStructure: StructureResolver = (S, context) => {
   }
 
   const productListItems = [
+    S.listItem()
+      .id('product-overview')
+      .title('Overview')
+      .icon(MdViewList)
+      .child(S.component().title('Product Overview').component(ProductListDashboard as any)),
     safeListItem('product', 'All Products', MdViewList),
     safeListItem('category', 'Categories', MdCategory),
     safeListItem('productFilterDoc', 'Filters', MdFilterList),
@@ -89,8 +95,8 @@ export const deskStructure: StructureResolver = (S, context) => {
       S.listItem().id('packing-slip-generator').title('📄 Packing Slip Generator').child(
         S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator as any)
       ),
-      S.listItem().id('sales-transactions').title('💰 Sales Transactions').child(
-        S.component().title('Sales Transactions').component(SalesTransactions as any)
+      S.listItem().id('orders-dashboard').title('📦 Orders Dashboard').child(
+        S.component().title('Orders Dashboard').component(OrdersDashboard as any)
       ),
       S.listItem().id('financial-dashboard').title('📊 Financial Dashboard').child(
         S.component().title('Finance').component(FinancialDashboard as any)

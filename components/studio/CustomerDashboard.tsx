@@ -1,511 +1,1390 @@
-import React, { useEffect, useState } from 'react'
-import { Card, Heading, Text, Stack, Flex, Spinner, TabList, Tab, Button } from '@sanity/ui'
-import { useClient } from 'sanity'
-import { useRouter } from 'sanity/router'
+import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import {Spinner} from '@sanity/ui'
+import {useClient} from 'sanity'
+import {useRouter} from 'sanity/router'
+import {format, formatDistanceToNow, parseISO} from 'date-fns'
 
-const DAY = 24 * 60 * 60 * 1000
+type BasicAddress = {
+  name?: string | null
+  street?: string | null
+  city?: string | null
+  state?: string | null
+  postalCode?: string | null
+  country?: string | null
+}
+
+type CustomerOrderSummary = {
+  orderNumber?: string | null
+  status?: string | null
+  orderDate?: string | null
+  total?: number | null
+}
+
+type CustomerQuoteSummary = {
+  quoteNumber?: string | null
+  status?: string | null
+  createdAt?: string | null
+}
+
+type OrderCartItemMeta = {
+  key?: string | null
+  value?: string | null
+  source?: string | null
+}
+
+type OrderCartItem = {
+  _key?: string
+  name?: string | null
+  quantity?: number | null
+  price?: number | null
+  lineTotal?: number | null
+  metadata?: OrderCartItemMeta[] | null
+}
+
+type OrderDocumentLite = {
+  _id: string
+  orderNumber?: string | null
+  status?: string | null
+  paymentStatus?: string | null
+  createdAt?: string | null
+  _createdAt?: string | null
+  totalAmount?: number | null
+  amountSubtotal?: number | null
+  amountTax?: number | null
+  amountShipping?: number | null
+  cardBrand?: string | null
+  cardLast4?: string | null
+  cart?: OrderCartItem[] | null
+}
+
+type PaymentMethodSummary = {
+  key: string
+  brand: string
+  last4: string
+  orderCount: number
+  lastUsed: Date | null
+}
+
+type StoreCreditTransaction = {
+  id: string
+  orderNumber?: string | null
+  amount: number
+  occurredAt: Date | null
+}
+
+type StoreCreditSummary = {
+  totalRedeemed: number
+  transactions: StoreCreditTransaction[]
+}
+
+type CustomerRecord = {
+  _id: string
+  firstName?: string
+  lastName?: string
+  name?: string
+  email?: string
+  emailOptIn?: boolean
+  marketingOptIn?: boolean
+  shippingAddress?: {
+    city?: string
+    state?: string
+    country?: string
+  } | null
+  address?: string | null
+  orderCount?: number | null
+  lifetimeSpend?: number | null
+  displayName?: string
+  location?: string
+}
+
+type CustomerDetail = CustomerRecord & {
+  phone?: string | null
+  textOptIn?: boolean | null
+  shippingAddress?: BasicAddress | null
+  billingAddress?: BasicAddress | null
+  orders?: CustomerOrderSummary[] | null
+  quotes?: CustomerQuoteSummary[] | null
+  roles?: string[] | null
+  quoteCount?: number | null
+  updatedAt?: string | null
+  _createdAt?: string | null
+  orderDocuments?: OrderDocumentLite[] | null
+}
+
+type CustomerResponse = {
+  stats: {
+    customerCount: number
+  }
+  customers: CustomerRecord[]
+}
+
+type TimelineEntry = {
+  id: string
+  title: string
+  description: string
+  timeLabel?: string | null
+}
+
+type TimelineSection = {
+  dateLabel: string
+  entries: TimelineEntry[]
+}
+
+const CUSTOMER_QUERY = `{
+  "stats": {
+    "customerCount": count(*[_type == "customer"])
+  },
+  "customers": *[_type == "customer"] | order(coalesce(name, firstName + " " + lastName, email) asc)[0...250]{
+    _id,
+    firstName,
+    lastName,
+    name,
+    email,
+    emailOptIn,
+    marketingOptIn,
+    shippingAddress{
+      city,
+      state,
+      country
+    },
+    address,
+    orderCount,
+    lifetimeSpend
+  }
+}`
+
+const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
+  _id,
+  firstName,
+  lastName,
+  name,
+  email,
+  phone,
+  emailOptIn,
+  marketingOptIn,
+  textOptIn,
+  shippingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  billingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  address,
+  roles,
+  orders[]{
+    orderNumber,
+    status,
+    orderDate,
+    total
+  },
+  quotes[]{
+    quoteNumber,
+    status,
+    createdAt
+  },
+  "orderDocuments": *[
+    _type == "order" &&
+    (
+      customerRef._ref == ^._id ||
+      customer._ref == ^._id ||
+      (defined(^.email) && defined(customerEmail) && lower(customerEmail) == lower(^.email))
+    )
+  ] | order(coalesce(createdAt, _createdAt) desc)[0...50]{
+    _id,
+    orderNumber,
+    status,
+    paymentStatus,
+    createdAt,
+    _createdAt,
+    totalAmount,
+    amountSubtotal,
+    amountTax,
+    amountShipping,
+    cardBrand,
+    cardLast4,
+    cart[]{
+      _key,
+      name,
+      quantity,
+      price,
+      lineTotal,
+      metadata[]{
+        key,
+        value,
+        source
+      }
+    }
+  },
+  orderCount,
+  quoteCount,
+  lifetimeSpend,
+  updatedAt,
+  _createdAt
+}`
+
+const buildDisplayName = (customer: CustomerRecord) => {
+  const legacy = customer.name?.trim()
+  const composed = [customer.firstName, customer.lastName].filter(Boolean).join(' ').trim()
+  return legacy || composed || customer.email || 'Unnamed customer'
+}
+
+const buildLocation = (customer: CustomerRecord) => {
+  const address = customer.shippingAddress
+  const parts = [address?.city, address?.state, address?.country].filter(Boolean)
+  if (parts.length > 0) {
+    return parts.join(', ')
+  }
+  if (customer.address) {
+    const condensed = customer.address.split(/\n|,/).map((piece) => piece.trim()).filter(Boolean)
+    if (condensed.length > 0) {
+      return condensed[0]
+    }
+  }
+  return '—'
+}
+
+const formatOrders = (value: number | null | undefined) => {
+  if (value === null || value === undefined) return '0 orders'
+  if (value === 1) return '1 order'
+  return `${value} orders`
+}
+
+const formatCurrency = (value: number | null | undefined) => {
+  const amount = value ?? 0
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+const getSubscriptionStatus = (customer: CustomerRecord) => {
+  if (customer.marketingOptIn || customer.emailOptIn) {
+    return 'Subscribed'
+  }
+  return 'Not subscribed'
+}
+
+const safeParseDate = (value?: string | null) => {
+  if (!value) return null
+  try {
+    const parsed = parseISO(value)
+    if (Number.isNaN(parsed.getTime())) {
+      return null
+    }
+    return parsed
+  } catch (error) {
+    console.warn('Failed to parse date', value, error)
+    return null
+  }
+}
+
+const formatAddressLines = (address?: BasicAddress | null, legacy?: string | null) => {
+  if (!address) {
+    if (legacy) {
+      return legacy
+        .split(/\n|,/)
+        .map((piece) => piece.trim())
+        .filter(Boolean)
+    }
+    return []
+  }
+
+  const lines: string[] = []
+  if (address.name) lines.push(address.name)
+  if (address.street) lines.push(address.street)
+
+  const localityParts = [address.city, address.state, address.postalCode].filter(Boolean)
+  if (localityParts.length > 0) {
+    lines.push(localityParts.join(', '))
+  }
+
+  if (address.country) {
+    lines.push(address.country)
+  }
+
+  if (lines.length === 0 && legacy) {
+    return legacy
+      .split(/\n|,/)
+      .map((piece) => piece.trim())
+      .filter(Boolean)
+  }
+
+  return lines
+}
+
+const sumOrderTotals = (orders: CustomerOrderSummary[]) => {
+  return orders.reduce((total, order) => total + (order.total ?? 0), 0)
+}
+
+const classifyRfmGroup = (orderCount: number, recencyDays: number | null, lifetimeSpend: number) => {
+  if (orderCount === 0) return 'Prospect'
+  if (recencyDays !== null && recencyDays <= 45 && orderCount >= 3 && lifetimeSpend >= 150) return 'Champion'
+  if (recencyDays !== null && recencyDays <= 90 && orderCount >= 2) return 'Loyal'
+  if (recencyDays !== null && recencyDays <= 180) return 'Active'
+  if (recencyDays !== null && recencyDays > 365) return 'At risk'
+  return 'Needs attention'
+}
+
+const capitalizeFirst = (value: string) => {
+  if (!value) return value
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+const normalizeMonetaryAmount = (value: number | null | undefined) => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0
+  if (Math.abs(value) >= 100000) return value / 100
+  return value
+}
+
+const matchStoreCreditText = (text?: string | null) => {
+  if (!text) return false
+  const normalized = text.toLowerCase()
+  return (
+    normalized.includes('store credit') ||
+    normalized.includes('store_credit') ||
+    normalized.includes('account credit') ||
+    normalized.includes('account_credit') ||
+    normalized.includes('customer credit') ||
+    normalized.includes('credit redemption') ||
+    normalized.includes('credit_applied') ||
+    normalized.includes('credit applied')
+  )
+}
+
+const isStoreCreditItem = (item?: OrderCartItem | null) => {
+  if (!item) return false
+  const name = item.name?.toLowerCase() || ''
+  if (matchStoreCreditText(name)) return true
+  if (!Array.isArray(item.metadata)) return false
+  for (const entry of item.metadata) {
+    if (!entry) continue
+    if (matchStoreCreditText(entry.value)) return true
+    if (matchStoreCreditText(entry.key)) return true
+    if ((entry.key || '').toLowerCase() === 'type' && (entry.value || '').toLowerCase() === 'store_credit') {
+      return true
+    }
+  }
+  return false
+}
+
+const computeCartItemAmount = (item?: OrderCartItem | null) => {
+  if (!item) return null
+  const lineTotal = Number(item.lineTotal)
+  if (Number.isFinite(lineTotal) && lineTotal !== 0) {
+    return normalizeMonetaryAmount(lineTotal)
+  }
+  const price = Number(item.price)
+  const quantity = Number(item.quantity || 1)
+  if (Number.isFinite(price) && Number.isFinite(quantity) && quantity !== 0) {
+    return normalizeMonetaryAmount(price * quantity)
+  }
+  if (Number.isFinite(price)) {
+    return normalizeMonetaryAmount(price)
+  }
+  return null
+}
+
+const CARD_BRAND_LABELS: Record<string, string> = {
+  visa: 'Visa',
+  mastercard: 'Mastercard',
+  master_card: 'Mastercard',
+  americanexpress: 'American Express',
+  american_express: 'American Express',
+  amex: 'American Express',
+  diners: 'Diners Club',
+  dinersclub: 'Diners Club',
+  discover: 'Discover',
+  jcb: 'JCB',
+  unionpay: 'UnionPay',
+  union_pay: 'UnionPay',
+  maestro: 'Maestro',
+}
+
+const normalizeCardBrand = (brand?: string | null) => {
+  const raw = brand?.trim()
+  if (!raw) return 'Card on file'
+  const condensed = raw.toLowerCase().replace(/[\s_-]+/g, '')
+  const lookup = CARD_BRAND_LABELS[condensed]
+  if (lookup) return lookup
+  const words = raw
+    .split(/\s+/g)
+    .map((part) => capitalizeFirst(part.toLowerCase()))
+    .filter(Boolean)
+  const formatted = words.join(' ')
+  if (formatted) return formatted
+  return 'Card on file'
+}
+
+const computePaymentMethods = (orders?: OrderDocumentLite[] | null): PaymentMethodSummary[] => {
+  if (!orders || orders.length === 0) return []
+  const summary = new Map<string, PaymentMethodSummary>()
+  for (const order of orders) {
+    if (!order) continue
+    const brand = normalizeCardBrand(order.cardBrand)
+    const rawLast4 = (order.cardLast4 || '').replace(/\s+/g, '')
+    const last4 = rawLast4 ? rawLast4.slice(-4) : ''
+    if (!last4 && brand === 'Card on file') continue
+    const key = `${brand.toLowerCase()}-${last4 || 'unknown'}`
+    const lastUsed = safeParseDate(order.createdAt) ?? safeParseDate(order._createdAt)
+    const existing = summary.get(key)
+    if (existing) {
+      existing.orderCount += 1
+      if (lastUsed && (!existing.lastUsed || lastUsed > existing.lastUsed)) {
+        existing.lastUsed = lastUsed
+      }
+    } else {
+      summary.set(key, {
+        key,
+        brand,
+        last4,
+        orderCount: 1,
+        lastUsed: lastUsed ?? null,
+      })
+    }
+  }
+  return Array.from(summary.values()).sort((a, b) => {
+    const aTime = a.lastUsed ? a.lastUsed.getTime() : 0
+    const bTime = b.lastUsed ? b.lastUsed.getTime() : 0
+    return bTime - aTime
+  })
+}
+
+const computeStoreCreditSummary = (orders?: OrderDocumentLite[] | null): StoreCreditSummary => {
+  const summary: StoreCreditSummary = { totalRedeemed: 0, transactions: [] }
+  if (!orders || orders.length === 0) return summary
+  for (const order of orders) {
+    if (!order) continue
+    const cart = Array.isArray(order.cart) ? order.cart : []
+    const occurredAt = safeParseDate(order.createdAt) ?? safeParseDate(order._createdAt)
+    cart.forEach((item, index) => {
+      if (!isStoreCreditItem(item)) return
+      const amount = computeCartItemAmount(item)
+      if (amount === null || amount >= 0) return
+      const normalized = Math.abs(amount)
+      summary.totalRedeemed += normalized
+      const id = `${order._id || order.orderNumber || 'order'}-${item?._key || index}`
+      summary.transactions.push({
+        id,
+        orderNumber: order.orderNumber,
+        amount: normalized,
+        occurredAt,
+      })
+    })
+  }
+  summary.transactions.sort((a, b) => {
+    const aTime = a.occurredAt ? a.occurredAt.getTime() : 0
+    const bTime = b.occurredAt ? b.occurredAt.getTime() : 0
+    return bTime - aTime
+  })
+  return summary
+}
 
 const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
-    const client = useClient({ apiVersion: '2024-04-10' })
-    const router = useRouter()
+  const client = useClient({apiVersion: '2024-04-10'})
+  const router = useRouter()
 
-    const [data, setData] = useState<{
-        quoteCount: number
-        invoiceCount: number
-        customerCount: number
-      } | null>(null)
-    const [recentCustomers, setRecentCustomers] = useState<any[]>([])
-    const [openQuotes, setOpenQuotes] = useState<number | null>(null)
-    const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null)
-    const [recentQuotes, setRecentQuotes] = useState<any[]>([])
-    const [recentInvoices, setRecentInvoices] = useState<any[]>([])
-    const [sendingQuoteIds, setSendingQuoteIds] = useState<string[]>([])
-    const [sendingInvoiceIds, setSendingInvoiceIds] = useState<string[]>([])
-    const [sendingCustomerIds, setSendingCustomerIds] = useState<string[]>([])
-    // Collapsible cards state and toast message state
-    const [expandedCustomerIds, setExpandedCustomerIds] = useState<string[]>([])
-    const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [customers, setCustomers] = useState<CustomerRecord[]>([])
+  const [customerCount, setCustomerCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [activeProfile, setActiveProfile] = useState<CustomerDetail | null>(null)
 
-    const [tabIndex, setTabIndex] = useState(0)
-    // Customer search state
-    const [customerSearch, setCustomerSearch] = useState('')
+  useEffect(() => {
+    let cancelled = false
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const customersQuery = `*[_type == "customer"] | order(_createdAt desc)[0...12]{
-                  _id,
-                  _createdAt,
-                  email,
-                  phone,
-                  notes,
-                  address,
-                  firstName,
-                  lastName,
-                  name,
-                  lifetimeSpend,
-                  orderCount,
-                  quoteCount
-                }`
+    const fetchCustomers = async () => {
+      setLoading(true)
+      setError(null)
 
-                const thirtyDaysAgo = new Date(Date.now() - 30 * DAY).toISOString()
+      try {
+        const response = await client.fetch<CustomerResponse>(CUSTOMER_QUERY)
+        if (cancelled) return
 
-                const [quotes, invoices, customers, recent, openQ, recentInvoiceTotals, recentQuotes, recentInvoices] = await Promise.all([
-                    client.fetch('count(*[_type == "quote"])'),
-                    client.fetch('count(*[_type == "invoice"])'),
-                    client.fetch('count(*[_type == "customer"])'),
-                    client.fetch(customersQuery),
-                    client.fetch('count(*[_type == "quote" && conversionStatus == "Open"])'),
-                    client.fetch(`*[_type == "invoice" && defined(total) && dateTime(_createdAt) >= dateTime($from)]{total}` , { from: thirtyDaysAgo }),
-                    client.fetch(`*[_type == "quote"] | order(_createdAt desc)[0...5]{
-                      _id,
-                      customer->{
-                        name,
-                        email,
-                        firstName,
-                        lastName
-                      }
-                    }`),
-                    client.fetch(`*[_type == "invoice"] | order(_createdAt desc)[0...5]{
-                      _id,
-                      customer->{
-                        name,
-                        email,
-                        firstName,
-                        lastName
-                      },
-                      customerRef->{
-                        name,
-                        email,
-                        firstName,
-                        lastName
-                      }
-                    }`)
-                ])
+        const normalized = (response.customers || []).map((customer) => ({
+          ...customer,
+          displayName: buildDisplayName(customer),
+          location: buildLocation(customer),
+        }))
 
-                setData({
-                    quoteCount: quotes,
-                    invoiceCount: invoices,
-                    customerCount: customers
-                })
+        setCustomers(normalized)
+        setCustomerCount(response.stats?.customerCount || normalized.length)
 
-                // Enrich recent customers with order/quote counts and spend
-                const customerIds = recent.map((c: any) => c._id)
-                const enriched = await Promise.all(customerIds.map(async (id: string) => {
-                  const [orderCount, quoteCount, invoiceTotals] = await Promise.all([
-                    client.fetch(`count(*[_type == "invoice" && coalesce(customer._ref, customerRef._ref) == $id])`, { id }),
-                    client.fetch(`count(*[_type == "quote" && customer._ref == $id])`, { id }),
-                    client.fetch(`*[_type == "invoice" && coalesce(customer._ref, customerRef._ref) == $id && defined(total)]{total}`, { id }),
-                  ])
-                  const c = recent.find((c: any) => c._id === id)
-                  const displayName = (c?.name || '').trim() ||
-                    [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() ||
-                    c?.email ||
-                    'Unnamed Customer'
-                  const totalSpend = (Array.isArray(invoiceTotals) ? invoiceTotals : [])
-                    .reduce((sum: number, item: any) => sum + Number(item?.total || 0), 0)
-                  return { ...c, name: displayName, orderCount, quoteCount, lifetimeSpend: totalSpend }
-                }))
-
-                setRecentCustomers(enriched)
-                setOpenQuotes(openQ)
-                const monthly = (Array.isArray(recentInvoiceTotals) ? recentInvoiceTotals : [])
-                  .reduce((sum: number, item: any) => sum + Number(item?.total || 0), 0)
-                setMonthlyRevenue(monthly)
-                const normalizePerson = (entity: any) => {
-                  if (!entity) return { name: 'Unknown', email: 'N/A' }
-                  const full = (entity.name || '').trim() ||
-                    [entity.firstName, entity.lastName].filter(Boolean).join(' ').trim()
-                  return {
-                    name: full || entity.email || 'Unknown',
-                    email: entity.email || 'N/A'
-                  }
-                }
-
-                const normalizedQuotes = recentQuotes.map((quote: any) => ({
-                  ...quote,
-                  customerSummary: normalizePerson(quote.customer)
-                }))
-
-                const normalizedInvoices = recentInvoices.map((invoice: any) => {
-                  const primary = normalizePerson(invoice.customer)
-                  const fallback = normalizePerson(invoice.customerRef)
-                  const merged = primary.name === 'Unknown' && fallback.name !== 'Unknown' ? fallback : primary
-                  return {
-                    ...invoice,
-                    customerSummary: merged
-                  }
-                })
-
-                setRecentQuotes(normalizedQuotes)
-                setRecentInvoices(normalizedInvoices)
-            } catch (err) {
-                console.error('❌ Failed to fetch dashboard data:', err)
-            }
+        setActiveCustomerId((previous) => {
+          if (previous && normalized.some((customer) => customer._id === previous)) {
+            return previous
+          }
+          return normalized[0]?._id ?? null
+        })
+      } catch (err) {
+        console.error('Failed to load customers', err)
+        if (!cancelled) {
+          setError('Unable to load customers right now. Please try again shortly.')
         }
-        fetchData()
-    }, [client])
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
 
-    return (
-      <div ref={ref}>
-        {/* Toast message for confirmation */}
-        {toastMsg && (
-          <Card padding={3} radius={2} shadow={1} tone="positive" style={{ marginBottom: '1rem' }}>
-            <Text>{toastMsg}</Text>
-          </Card>
-        )}
-        <div>
-          <TabList
-            space={2}
-            style={{
-              display: 'flex',
-              gap: '8px',
-              paddingBottom: '1rem',
-              borderBottom: '1px solid #333',
-              marginBottom: '1rem'
-            }}
-          >
-            <Tab
-              id="customers"
-              selected={tabIndex === 0}
-              onClick={() => setTabIndex(0)}
-              aria-controls="customers-panel"
-              style={{
-                backgroundColor: tabIndex === 0 ? '#222' : '#111',
-                color: tabIndex === 0 ? '#fff' : '#aaa',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: 'none',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Customers
-            </Tab>
-            <Tab
-              id="orders"
-              selected={tabIndex === 1}
-              onClick={() => setTabIndex(1)}
-              aria-controls="orders-panel"
-              style={{
-                backgroundColor: tabIndex === 1 ? '#222' : '#111',
-                color: tabIndex === 1 ? '#fff' : '#aaa',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: 'none',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Orders
-            </Tab>
-            <Tab
-              id="invoices"
-              selected={tabIndex === 2}
-              onClick={() => setTabIndex(2)}
-              aria-controls="invoices-panel"
-              style={{
-                backgroundColor: tabIndex === 2 ? '#222' : '#111',
-                color: tabIndex === 2 ? '#fff' : '#aaa',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: 'none',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Invoices
-            </Tab>
-            <Tab
-              id="quotes"
-              selected={tabIndex === 3}
-              onClick={() => setTabIndex(3)}
-              aria-controls="quotes-panel"
-              style={{
-                backgroundColor: tabIndex === 3 ? '#222' : '#111',
-                color: tabIndex === 3 ? '#fff' : '#aaa',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: 'none',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Quotes
-            </Tab>
-          </TabList>
-          <div>
-            {tabIndex === 0 && (
-              <div id="customers-panel" aria-labelledby="customers">
-                <Stack space={4}>
-                  <Heading size={1}>Recent Customers</Heading>
-                  <Text size={1} muted>Tap to expand a customer card for details and editing.</Text>
-                  {/* Search input for filtering customers */}
-                  <input
-                    type="text"
-                    placeholder="Search by name or email..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    style={{
-                      padding: '8px',
-                      width: '100%',
-                      borderRadius: '6px',
-                      border: '1px solid #ccc',
-                      marginBottom: '1rem',
-                      fontSize: '0.9rem'
-                    }}
-                  />
-                  {recentCustomers.length === 0 ? (
-                    <Text muted style={{ marginBottom: '2rem' }}>No recent customers found.</Text>
-                  ) : (
-                    recentCustomers
-                      .filter((cust) =>
-                        cust.name?.toLowerCase().includes(customerSearch.toLowerCase()) ||
-                        cust.email?.toLowerCase().includes(customerSearch.toLowerCase())
-                      )
-                      .map((cust, idx) => (
-                      <Card
-                        key={idx}
-                        padding={3}
-                        radius={2}
-                        shadow={1}
-                        tone="default"
-                        style={{ backgroundColor: '#ecececff' }}
-                      >
-                        <Flex justify="space-between" align="center" style={{ cursor: 'pointer' }} onClick={() => {
-                          setExpandedCustomerIds((prev) =>
-                            prev.includes(cust._id) ? prev.filter(id => id !== cust._id) : [...prev, cust._id]
+    fetchCustomers()
+
+    return () => {
+      cancelled = true
+    }
+  }, [client])
+
+  const filteredCustomers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return customers
+    return customers.filter((customer) => {
+      const haystack = [customer.displayName, customer.email, customer.location]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(term)
+    })
+  }, [customers, searchTerm])
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)))
+  }, [filteredCustomers])
+
+  useEffect(() => {
+    if (filteredCustomers.length === 0) {
+      setActiveCustomerId(null)
+      return
+    }
+
+    setActiveCustomerId((previous) => {
+      if (previous && filteredCustomers.some((customer) => customer._id === previous)) {
+        return previous
+      }
+      return filteredCustomers[0]._id
+    })
+  }, [filteredCustomers])
+
+  const activeSummary = useMemo(() => {
+    if (!activeCustomerId) return null
+    return customers.find((customer) => customer._id === activeCustomerId) ?? null
+  }, [customers, activeCustomerId])
+
+  useEffect(() => {
+    if (!activeCustomerId) {
+      setActiveProfile(null)
+      setProfileError(null)
+      return
+    }
+
+    let cancelled = false
+
+    const fetchProfile = async () => {
+      setProfileLoading(true)
+      setProfileError(null)
+
+      try {
+        const detail = await client.fetch<CustomerDetail | null>(CUSTOMER_DETAIL_QUERY, {id: activeCustomerId})
+        if (cancelled) return
+
+        if (detail) {
+          setActiveProfile({
+            ...detail,
+            displayName: buildDisplayName(detail),
+            location: buildLocation(detail),
+          })
+        } else {
+          setActiveProfile(null)
+        }
+      } catch (err) {
+        console.error('Failed to load customer profile', err)
+        if (!cancelled) {
+          setProfileError('Unable to load this profile right now. Please try again shortly.')
+          setActiveProfile(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false)
+        }
+      }
+    }
+
+    fetchProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [client, activeCustomerId])
+
+  const sortedOrders = useMemo(() => {
+    if (!activeProfile?.orders?.length) return []
+    return [...activeProfile.orders]
+      .filter((order): order is CustomerOrderSummary => Boolean(order && (order.orderNumber || order.orderDate || order.total)))
+      .sort((a, b) => {
+        const dateA = safeParseDate(a.orderDate)
+        const dateB = safeParseDate(b.orderDate)
+        if (!dateA && !dateB) return 0
+        if (!dateA) return 1
+        if (!dateB) return -1
+        return dateB.getTime() - dateA.getTime()
+      })
+  }, [activeProfile?.orders])
+
+  const latestOrder = sortedOrders[0] ?? null
+  const earliestOrder = sortedOrders[sortedOrders.length - 1] ?? null
+
+  const latestOrderDate = safeParseDate(latestOrder?.orderDate)
+  const earliestOrderDate = safeParseDate(earliestOrder?.orderDate)
+  const createdAtDate = safeParseDate(activeProfile?._createdAt)
+  const customerSinceDate = earliestOrderDate ?? createdAtDate
+
+  const orderCountValue = activeProfile?.orderCount ?? sortedOrders.length
+  const lifetimeSpendValue = activeProfile?.lifetimeSpend ?? sumOrderTotals(sortedOrders)
+  const recencyDays = latestOrderDate ? Math.floor((Date.now() - latestOrderDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+  const rfmGroup = classifyRfmGroup(orderCountValue, recencyDays, lifetimeSpendValue)
+  const customerSinceText = customerSinceDate
+    ? capitalizeFirst(formatDistanceToNow(customerSinceDate, {addSuffix: false}))
+    : 'Not yet ordered'
+
+  const metrics = useMemo(
+    () => [
+      {label: 'Amount spent', value: formatCurrency(lifetimeSpendValue)},
+      {label: 'Orders', value: orderCountValue.toLocaleString()},
+      {label: 'Customer since', value: customerSinceText},
+      {label: 'RFM group', value: rfmGroup},
+    ],
+    [lifetimeSpendValue, orderCountValue, customerSinceText, rfmGroup],
+  )
+
+  const paymentMethods = useMemo(
+    () => computePaymentMethods(activeProfile?.orderDocuments),
+    [activeProfile?.orderDocuments],
+  )
+
+  const storeCreditSummary = useMemo(
+    () => computeStoreCreditSummary(activeProfile?.orderDocuments),
+    [activeProfile?.orderDocuments],
+  )
+
+  const timelineSections = useMemo<TimelineSection[]>(() => {
+    if (!sortedOrders.length) return []
+
+    type TimelineAccumulator = TimelineSection & {sortKey: number}
+    const groups = new Map<string, TimelineAccumulator>()
+
+    sortedOrders.forEach((order, index) => {
+      const orderDate = safeParseDate(order.orderDate)
+      const dateKey = orderDate ? format(orderDate, 'yyyy-MM-dd') : `undated-${index}`
+      const timeLabel = orderDate ? format(orderDate, 'p') : null
+
+      const statusText = order.status ? `Status: ${order.status}` : null
+      const totalText = typeof order.total === 'number' ? `Total: ${formatCurrency(order.total)}` : null
+      const descriptionParts = [statusText, totalText].filter(Boolean)
+      const description = descriptionParts.length > 0 ? descriptionParts.join(' · ') : 'Order recorded'
+
+      const entry: TimelineEntry = {
+        id: `${order.orderNumber ?? 'order'}-${index}`,
+        title: order.orderNumber ? `Order ${order.orderNumber}` : 'Order placed',
+        description,
+        timeLabel,
+      }
+
+      const existing = groups.get(dateKey)
+      if (existing) {
+        existing.entries.push(entry)
+      } else {
+        groups.set(dateKey, {
+          dateLabel: orderDate ? format(orderDate, 'MMMM d, yyyy') : 'Date unavailable',
+          entries: [entry],
+          sortKey: orderDate ? orderDate.getTime() : -(index + 1),
+        })
+      }
+    })
+
+    return Array.from(groups.values())
+      .sort((a, b) => b.sortKey - a.sortKey)
+      .map((section) => ({
+        dateLabel: section.dateLabel,
+        entries: section.entries.sort((a, b) => {
+          if (!a.timeLabel || !b.timeLabel) return 0
+          return b.timeLabel.localeCompare(a.timeLabel)
+        }),
+      }))
+  }, [sortedOrders])
+
+  const shippingLines = formatAddressLines(activeProfile?.shippingAddress, activeProfile?.address)
+  const billingLines = formatAddressLines(activeProfile?.billingAddress)
+  const roleTags = activeProfile?.roles && activeProfile.roles.length > 0 ? activeProfile.roles : ['customer']
+
+  const marketingStatuses = [
+    {label: 'Email', subscribed: Boolean(activeProfile?.emailOptIn)},
+    {label: 'Marketing email', subscribed: Boolean(activeProfile?.marketingOptIn)},
+    {label: 'SMS', subscribed: Boolean(activeProfile?.textOptIn)},
+  ]
+
+  const allSelected = filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(filteredCustomers.map((customer) => customer._id))
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]))
+  }
+
+  const handleRowNavigate = (id: string) => {
+    router.navigateIntent('edit', {id, type: 'customer'})
+  }
+
+  const filteredActiveIndex = filteredCustomers.findIndex((customer) => customer._id === activeCustomerId)
+  const canGoPrevious = filteredActiveIndex > 0
+  const canGoNext = filteredActiveIndex !== -1 && filteredActiveIndex < filteredCustomers.length - 1
+
+  const goToPrevious = () => {
+    if (!canGoPrevious) return
+    const previousCustomer = filteredCustomers[filteredActiveIndex - 1]
+    if (previousCustomer) {
+      setActiveCustomerId(previousCustomer._id)
+    }
+  }
+
+  const goToNext = () => {
+    if (!canGoNext) return
+    const nextCustomer = filteredCustomers[filteredActiveIndex + 1]
+    if (nextCustomer) {
+      setActiveCustomerId(nextCustomer._id)
+    }
+  }
+
+  const handleOpenInStudio = useCallback(() => {
+    if (!activeCustomerId) return
+    router.navigateIntent('edit', {id: activeCustomerId, type: 'customer'})
+  }, [router, activeCustomerId])
+
+  const handleCreateOrder = useCallback(() => {
+    router.navigateIntent('create', {type: 'order'})
+  }, [router])
+
+  const handleCopyToClipboard = useCallback((value?: string | null) => {
+    if (!value) return
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(value).catch((err) => {
+        console.warn('Copy failed', err)
+      })
+    }
+  }, [])
+
+  const activeDisplayName = activeProfile?.displayName ?? activeSummary?.displayName ?? 'Select a customer'
+  const activeEmail = activeProfile?.email ?? activeSummary?.email ?? ''
+
+  return (
+    <div ref={ref} className="flex h-full min-h-0 flex-col bg-slate-100">
+      <div className="flex-1 overflow-hidden px-6 py-6">
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-6 lg:flex-row">
+          <div className="flex flex-col gap-4 lg:w-[420px] xl:w-[460px]">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 bg-white px-6 py-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h1 className="text-xl font-semibold text-slate-900">Customers</h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {customerCount.toLocaleString()} customers · {customerCount > 0 ? '100% of your customer base' : 'No customers yet'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                      onClick={() => console.info('Export customers action not yet connected')}
+                    >
+                      Export
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                      onClick={() => console.info('Import customers action not yet connected')}
+                    >
+                      Import
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                      onClick={() => router.navigateIntent('create', {type: 'customer'})}
+                    >
+                      Add customer
+                    </button>
+                  </div>
+                </div>
+                {error && (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+                )}
+              </div>
+
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="relative flex-1 min-w-[220px]">
+                    <input
+                      type="search"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-10 py-2 text-sm text-slate-700 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+                      placeholder="Search customers"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path
+                          fillRule="evenodd"
+                          d="M9 3.5a5.5 5.5 0 013.74 9.54l3.61 3.61a.75.75 0 11-1.06 1.06l-3.61-3.61A5.5 5.5 0 119 3.5zm0 1.5a4 4 0 100 8 4 4 0 000-8z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                      onClick={() => console.info('Filter menu not yet connected')}
+                    >
+                      Add filter
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative flex-1 min-h-0">
+                {loading && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+                    <Spinner muted size={4} />
+                  </div>
+                )}
+                <div className="h-full overflow-x-auto overflow-y-auto">
+                  <table className="min-w-full table-fixed divide-y divide-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="w-12 px-6 py-3">
+                          <label className="inline-flex items-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                              checked={allSelected}
+                              onChange={toggleSelectAll}
+                              aria-label="Select all customers"
+                            />
+                          </label>
+                        </th>
+                        <th className="w-1/4 px-3 py-3">Customer name</th>
+                        <th className="w-48 px-3 py-3">Email subscription</th>
+                        <th className="w-1/4 px-3 py-3">Location</th>
+                        <th className="w-32 px-3 py-3">Orders</th>
+                        <th className="w-32 px-6 py-3 text-right">Amount spent</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-sm text-slate-700">
+                      {filteredCustomers.length === 0 && !loading ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">
+                            No customers match your filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCustomers.map((customer) => {
+                          const isSelected = selectedIds.includes(customer._id)
+                          const isActive = customer._id === activeCustomerId
+                          return (
+                            <tr
+                              key={customer._id}
+                              className={`group cursor-pointer transition ${
+                                isActive ? 'bg-slate-100' : 'bg-white hover:bg-slate-50'
+                              }`}
+                              onClick={() => setActiveCustomerId(customer._id)}
+                              onDoubleClick={() => handleRowNavigate(customer._id)}
+                              aria-selected={isActive}
+                            >
+                              <td className="px-6 py-4">
+                                <label className="inline-flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                                    checked={isSelected}
+                                    onChange={(event) => {
+                                      event.stopPropagation()
+                                      toggleSelect(customer._id)
+                                    }}
+                                    aria-label={`Select customer ${customer.displayName}`}
+                                  />
+                                </label>
+                              </td>
+                              <td className="px-3 py-4">
+                                <div className="font-medium text-slate-900 group-hover:text-slate-900">{customer.displayName}</div>
+                                {customer.email && <div className="text-xs text-slate-500">{customer.email}</div>}
+                              </td>
+                              <td className="px-3 py-4">
+                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                  {getSubscriptionStatus(customer)}
+                                </span>
+                              </td>
+                              <td className="px-3 py-4 text-slate-600">{customer.location}</td>
+                              <td className="px-3 py-4 text-slate-600">{formatOrders(customer.orderCount ?? 0)}</td>
+                              <td className="px-6 py-4 text-right font-medium text-slate-900">
+                                {formatCurrency(customer.lifetimeSpend ?? 0)}
+                              </td>
+                            </tr>
                           )
-                        }}>
-                          <Text size={2} weight="bold">👤 {cust.name}</Text>
-                          <Text size={1} muted>{expandedCustomerIds.includes(cust._id) ? '▲ Collapse' : '▼ Expand'}</Text>
-                        </Flex>
-                        {expandedCustomerIds.includes(cust._id) && (
-                          <Stack space={2} style={{ marginTop: '1rem' }}>
-                            <Text size={1} muted>Joined: {new Date(cust._createdAt).toLocaleDateString()}</Text>
-                            {/* Customer summary stats */}
-                            <Flex gap={4}>
-                              <Text size={1}>🛒 Orders: <b>{cust.orderCount ?? '—'}</b></Text>
-                              <Text size={1}>💬 Quotes: <b>{cust.quoteCount ?? '—'}</b></Text>
-                              <Text size={1}>💰 Lifetime Spend: <b>{typeof cust.lifetimeSpend === 'number' ? `$${cust.lifetimeSpend.toLocaleString()}` : '—'}</b></Text>
-                            </Flex>
-
-                            <Text size={1} weight="semibold">📧 Email</Text>
-                            <input
-                              defaultValue={cust.email || ''}
-                              placeholder="Enter email..."
-                              style={{ width: '100%', padding: '6px 8px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #ccc' }}
-                              onBlur={async (e) => {
-                                await client.patch(cust._id).set({ email: e.target.value.trim() }).commit()
-                                setToastMsg('✅ Email updated')
-                                setTimeout(() => setToastMsg(null), 2000)
-                              }}
-                            />
-
-                            <Text size={1} weight="semibold">📞 Phone</Text>
-                            <input
-                              defaultValue={cust.phone || ''}
-                              placeholder="Enter phone..."
-                              style={{ width: '100%', padding: '6px 8px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #ccc' }}
-                              onBlur={async (e) => {
-                                await client.patch(cust._id).set({ phone: e.target.value.trim() }).commit()
-                                setToastMsg('✅ Phone updated')
-                                setTimeout(() => setToastMsg(null), 2000)
-                              }}
-                            />
-
-                            <Text size={1} weight="semibold">📍 Address</Text>
-                            <textarea
-                              defaultValue={cust.address || ''}
-                              placeholder="Enter customer address..."
-                              style={{ width: '100%', minHeight: '50px', padding: '8px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #ccc' }}
-                              onBlur={async (e) => {
-                                await client.patch(cust._id).set({ address: e.target.value }).commit()
-                                setToastMsg('✅ Address updated')
-                                setTimeout(() => setToastMsg(null), 2000)
-                              }}
-                            />
-
-                            <Text size={1} weight="semibold">🗒 Notes</Text>
-                            <textarea
-                              defaultValue={cust.notes || ''}
-                              placeholder="Enter customer notes..."
-                              style={{ width: '100%', minHeight: '60px', padding: '8px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid #ccc' }}
-                              onBlur={async (e) => {
-                                await client.patch(cust._id).set({ notes: e.target.value }).commit()
-                                setToastMsg('✅ Notes updated')
-                                setTimeout(() => setToastMsg(null), 2000)
-                              }}
-                            />
-
-                            <Flex justify="flex-end" gap={2}>
-                              <Button
-                                text={sendingCustomerIds.includes(cust._id) ? '📧 Sending...' : '📧 Contact Customer'}
-                                tone="positive"
-                                padding={2}
-                                fontSize={1}
-                                disabled={!cust.email || sendingCustomerIds.includes(cust._id)}
-                                onClick={async (e) => {
-                                  e.stopPropagation && e.stopPropagation()
-                                  setSendingCustomerIds((prev) => [...prev, cust._id])
-                                  try {
-                                    const res = await fetch('/.netlify/functions/sendEmail', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ email: cust.email })
-                                    })
-                                    if (!res.ok) throw new Error(await res.text())
-                                    setToastMsg('✅ Email sent')
-                                    setTimeout(() => setToastMsg(null), 2000)
-                                  } catch (err) {
-                                    alert(`❌ Failed to send email: ${err}`)
-                                  } finally {
-                                    setSendingCustomerIds((prev) => prev.filter(id => id !== cust._id))
-                                  }
-                                }}
-                              />
-                              <Button
-                                text="👁️ View Details"
-                                tone="primary"
-                                padding={2}
-                                fontSize={1}
-                                onClick={(e) => {
-                                  e.stopPropagation && e.stopPropagation()
-                                  router.navigateIntent('edit', { id: cust._id, type: 'customer' })
-                                }}
-                              />
-                            </Flex>
-                          </Stack>
-                        )}
-                      </Card>
-                    ))
-                  )}
-                </Stack>
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            )}
-            {tabIndex === 1 && (
-              <div id="orders-panel" aria-labelledby="orders">
-                <Stack space={4}>
-                  <Heading size={1}>Recent Orders</Heading>
-                  <Text size={1} muted>Track order fulfillment and payment status below.</Text>
-                  {recentInvoices.length === 0 ? (
-                    <Text muted style={{ marginBottom: '2rem' }}>No recent orders found.</Text>
-                  ) : (
-                    recentInvoices.map((inv, idx) => (
-                      <Card key={idx} padding={3} radius={2} shadow={1} tone="default">
-                        <Stack space={2}>
-                          <Text size={2}>Invoice #{inv._id}</Text>
-                          <Text size={1} muted>
-                            Customer: {inv.customerSummary?.name || 'Unknown'} — {inv.customerSummary?.email || 'N/A'}
-                          </Text>
-                          <Flex align="center" justify="space-between">
-                            <Stack space={1}>
-                              <Text size={1}>Status:</Text>
-                              <select
-                                value={inv.status || 'pending'}
-                                onChange={(e) => {
-                                  const newStatus = e.target.value
-                                  client.patch(inv._id).set({ status: newStatus }).commit()
-                                }}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {profileLoading ? (
+              <div className="flex h-full items-center justify-center"><Spinner muted size={4} /></div>
+            ) : activeCustomerId ? (
+              <div className="flex h-full flex-col">
+                <header className="border-b border-slate-200 bg-white px-6 py-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex min-w-0 flex-col gap-3">
+                      <nav className="flex items-center gap-2 text-sm text-slate-500">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold text-slate-600">C</span>
+                        <span className="text-slate-400">/</span>
+                        <span className="truncate font-medium text-slate-500">Customers</span>
+                        <span className="text-slate-400">/</span>
+                        <span className="truncate font-semibold text-slate-900" title={activeDisplayName}>
+                          {activeDisplayName}
+                        </span>
+                      </nav>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-2xl font-semibold text-slate-900" title={activeDisplayName}>
+                          {activeDisplayName}
+                        </h2>
+                        {activeEmail && <p className="truncate text-sm text-slate-500">{activeEmail}</p>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                        onClick={handleOpenInStudio}
+                      >
+                        More actions
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                          <path d="M6 6.75a.75.75 0 111.5 0A.75.75 0 016 6.75zM9.25 6.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM13.5 6.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" />
+                        </svg>
+                      </button>
+                      <div className="flex items-center overflow-hidden rounded-lg border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={goToPrevious}
+                          disabled={!canGoPrevious}
+                          className={`flex h-9 w-10 items-center justify-center text-slate-600 transition ${
+                            canGoPrevious ? 'hover:bg-slate-100' : 'cursor-not-allowed opacity-40'
+                          }`}
+                          aria-label="Previous customer"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                            <path d="M11.03 5.47a.75.75 0 010 1.06L8.56 9l2.47 2.47a.75.75 0 11-1.06 1.06l-3-3a.75.75 0 010-1.06l3-3a.75.75 0 011.06 0z" />
+                          </svg>
+                        </button>
+                        <div className="h-9 w-px bg-slate-200" aria-hidden="true" />
+                        <button
+                          type="button"
+                          onClick={goToNext}
+                          disabled={!canGoNext}
+                          className={`flex h-9 w-10 items-center justify-center text-slate-600 transition ${
+                            canGoNext ? 'hover:bg-slate-100' : 'cursor-not-allowed opacity-40'
+                          }`}
+                          aria-label="Next customer"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                            <path d="M8.97 5.47a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06L11.44 9 8.97 6.53a.75.75 0 010-1.06z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  {profileError && (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{profileError}</div>
+                  )}
+                </header>
+
+                <div className="flex-1 overflow-auto bg-slate-50">
+                  <div className="flex flex-col gap-6 px-6 py-6">
+                    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:justify-between">
+                        <div className="flex flex-1 flex-wrap gap-4">
+                          {metrics.map((metric) => (
+                            <div key={metric.label} className="flex min-w-[160px] flex-1 flex-col rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                {metric.label}
+                              </span>
+                              <span className="mt-2 text-lg font-semibold text-slate-900">{metric.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </section>
+
+                    <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                      <div className="flex flex-col gap-6">
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div>
+                                <h3 className="text-lg font-semibold text-slate-900">Last order placed</h3>
+                                {latestOrderDate && (
+                                  <p className="text-sm text-slate-500">
+                                    {format(latestOrderDate, "MMMM d, yyyy 'at' h:mm a")}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                                  onClick={handleOpenInStudio}
+                                >
+                                  View all orders
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                                  onClick={handleCreateOrder}
+                                >
+                                  Create order
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="px-6 py-5">
+                            {latestOrder ? (
+                              <div className="flex flex-col gap-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  {latestOrder.orderNumber ? (
+                                    <span className="text-base font-semibold text-slate-900">#{latestOrder.orderNumber}</span>
+                                  ) : (
+                                    <span className="text-base font-semibold text-slate-900">Order</span>
+                                  )}
+                                  {latestOrder.status && (
+                                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                      {latestOrder.status}
+                                    </span>
+                                  )}
+                                  {latestOrderDate && (
+                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                      {formatDistanceToNow(latestOrderDate, {addSuffix: true})}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap items-baseline justify-between gap-4 text-slate-700">
+                                  <div>
+                                    <p className="text-sm text-slate-500">Order total</p>
+                                    <p className="text-xl font-semibold text-slate-900">
+                                      {formatCurrency(latestOrder.total ?? 0)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-slate-500">This customer has not placed any orders yet.</p>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Timeline</h3>
+                          </div>
+                          <div className="px-6 py-5">
+                            {timelineSections.length === 0 ? (
+                              <p className="text-sm text-slate-500">Order activity will appear here once this customer places an order.</p>
+                            ) : (
+                              <div className="space-y-6">
+                                {timelineSections.map((section) => (
+                                  <div key={section.dateLabel}>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                      {section.dateLabel}
+                                    </h4>
+                                    <ul className="mt-3 space-y-4 border-l border-slate-200 pl-5">
+                                      {section.entries.map((entry) => (
+                                        <li key={entry.id} className="relative">
+                                          <span className="absolute -left-[29px] mt-1 h-2.5 w-2.5 rounded-full bg-slate-400" aria-hidden="true" />
+                                          <div className="flex flex-col gap-1">
+                                            <p className="text-sm font-medium text-slate-900">{entry.title}</p>
+                                            <p className="text-sm text-slate-500">{entry.description}</p>
+                                            {entry.timeLabel && (
+                                              <p className="text-xs text-slate-400">{entry.timeLabel}</p>
+                                            )}
+                                          </div>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </section>
+                      </div>
+
+                      <div className="flex flex-col gap-6">
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold text-slate-900">Customer</h3>
+                              <button
+                                type="button"
+                                onClick={handleOpenInStudio}
+                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                aria-label="Open customer document"
                               >
-                                <option value="pending">Pending</option>
-                                <option value="paid">Paid</option>
-                                <option value="fulfilled">Fulfilled</option>
-                                <option value="cancelled">Cancelled</option>
-                              </select>
-                            </Stack>
-                            <Button
-                              text="Send Email"
-                              tone="positive"
-                              padding={2}
-                              fontSize={1}
-                              style={{ marginTop: '1rem' }}
-                              onClick={async () => {
-                                setSendingInvoiceIds((prev) => [...prev, inv._id])
-                                try {
-                                  const res = await fetch('/.netlify/functions/resendInvoiceEmail', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      invoiceId: inv._id,
-                                      email: inv.customer?.email
-                                    })
-                                  })
-                                  if (!res.ok) throw new Error(await res.text())
-                                  alert('📧 Email sent successfully!')
-                                } catch (err) {
-                                  alert(`❌ Failed to send email: ${err}`)
-                                } finally {
-                                  setSendingInvoiceIds((prev) => prev.filter(id => id !== inv._id))
-                                }
-                              }}
-                            />
-                          </Flex>
-                          <Flex justify="flex-end">
-                            <Button
-                              text="View Details"
-                              tone="primary"
-                              padding={2}
-                              style={{ fontSize: '0.85rem' }}
-                              onClick={() => router.navigateIntent('edit', { id: inv._id, type: 'invoice' })}
-                            />
-                          </Flex>
-                        </Stack>
-                      </Card>
-                    ))
-                  )}
-                </Stack>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                  <path d="M10 3a1 1 0 01.894.553l.382.764a1 1 0 00.724.547l.843.13a1 1 0 01.554 1.706l-.61.595a1 1 0 00-.287.885l.144.84a1 1 0 01-1.451 1.054l-.755-.397a1 1 0 00-.931 0l-.755.397a1 1 0 01-1.451-1.054l.144-.84a1 1 0 00-.287-.885l-.61-.595a1 1 0 01.554-1.706l.843-.13a1 1 0 00.724-.547l.382-.764A1 1 0 0110 3z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-6 px-6 py-5 text-sm text-slate-700">
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contact information</h4>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {activeEmail ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyToClipboard(activeEmail)}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+                                  >
+                                    {activeEmail}
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                      <path d="M5 6a2 2 0 012-2h4a2 2 0 012 2v1h-1.5V6a.5.5 0 00-.5-.5H7A.5.5 0 006.5 6v8a.5.5 0 00.5.5h4a.5.5 0 00.5-.5v-1H13v1a2 2 0 01-2 2H7a2 2 0 01-2-2V6z" />
+                                      <path d="M9 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-6a1 1 0 01-1-1V8z" />
+                                    </svg>
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-500">No email on file</span>
+                                )}
+                              </div>
+                              {activeProfile?.phone && (
+                                <div className="text-slate-600">{activeProfile.phone}</div>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Default address</h4>
+                              {shippingLines.length > 0 ? (
+                                <address className="not-italic leading-relaxed text-slate-700">
+                                  {shippingLines.map((line) => (
+                                    <div key={line}>{line}</div>
+                                  ))}
+                                </address>
+                              ) : (
+                                <p className="text-slate-500">No shipping address stored.</p>
+                              )}
+                            </div>
+
+                            {billingLines.length > 0 && (
+                              <div className="space-y-2">
+                                <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Billing address</h4>
+                                <address className="not-italic leading-relaxed text-slate-700">
+                                  {billingLines.map((line) => (
+                                    <div key={line}>{line}</div>
+                                  ))}
+                                </address>
+                              </div>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Marketing</h3>
+                          </div>
+                          <div className="space-y-3 px-6 py-5 text-sm">
+                            {marketingStatuses.map((status) => (
+                              <div key={status.label} className="flex items-center gap-2 text-slate-700">
+                                <span
+                                  className={`h-2.5 w-2.5 rounded-full ${
+                                    status.subscribed ? 'bg-emerald-500' : 'bg-slate-300'
+                                  }`}
+                                  aria-hidden="true"
+                                />
+                                <span className="font-medium text-slate-900">{status.label}</span>
+                                <span className="text-slate-500">
+                                  {status.subscribed ? 'Subscribed' : 'Not subscribed'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Payment method</h3>
+                          </div>
+                          <div className="px-6 py-5 text-sm">
+                            {paymentMethods.length > 0 ? (
+                              <ul className="space-y-3 text-slate-700">
+                                {paymentMethods.slice(0, 3).map((method) => (
+                                  <li key={method.key} className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <div className="font-medium text-slate-900">
+                                        {method.last4 ? `${method.brand} •••• ${method.last4}` : method.brand}
+                                      </div>
+                                      <div className="text-xs text-slate-500">
+                                        {method.lastUsed
+                                          ? `Last used ${formatDistanceToNow(method.lastUsed, {addSuffix: true})}`
+                                          : 'Usage date unavailable'}
+                                      </div>
+                                    </div>
+                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                      {method.orderCount} {method.orderCount === 1 ? 'order' : 'orders'}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-slate-500">We haven’t recorded any card payments for this customer yet.</p>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <h3 className="text-lg font-semibold text-slate-900">Store credit</h3>
+                          </div>
+                          <div className="px-6 py-5 text-sm">
+                            {storeCreditSummary.transactions.length > 0 ? (
+                              <div className="space-y-4 text-slate-700">
+                                <div className="flex flex-wrap gap-6">
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                      Total redeemed
+                                    </div>
+                                    <div className="text-base font-semibold text-slate-900">
+                                      {formatCurrency(storeCreditSummary.totalRedeemed)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                      Transactions
+                                    </div>
+                                    <div className="text-base font-semibold text-slate-900">
+                                      {storeCreditSummary.transactions.length.toLocaleString()}
+                                    </div>
+                                  </div>
+                                </div>
+                                <ul className="space-y-3">
+                                  {storeCreditSummary.transactions.slice(0, 5).map((transaction) => (
+                                    <li key={transaction.id} className="flex flex-col gap-0.5">
+                                      <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium text-slate-900">
+                                          Redeemed {formatCurrency(transaction.amount)}
+                                        </span>
+                                        {transaction.orderNumber ? (
+                                          <span className="text-xs text-slate-500">Order {transaction.orderNumber}</span>
+                                        ) : null}
+                                      </div>
+                                      <span className="text-xs text-slate-500">
+                                        {transaction.occurredAt
+                                          ? `${format(transaction.occurredAt, 'MMM d, yyyy')} • ${formatDistanceToNow(transaction.occurredAt, {addSuffix: true})}`
+                                          : 'Date unavailable'}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                                {storeCreditSummary.transactions.length > 5 ? (
+                                  <p className="text-xs text-slate-500">
+                                    Showing the 5 most recent credits out of {storeCreditSummary.transactions.length}.
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p className="text-slate-500">No store credit usage found in recent orders.</p>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-lg font-semibold text-slate-900">Tags</h3>
+                              <button
+                                type="button"
+                                onClick={handleOpenInStudio}
+                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                aria-label="Manage tags"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                  <path d="M5 10a1 1 0 011-1h3V6a1 1 0 112 0v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 01-1-1z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 px-6 py-5 text-sm text-slate-700">
+                            {roleTags.map((tag) => (
+                              <span key={tag} className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </section>
+
+                        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                          <div className="border-b border-slate-200 px-6 py-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold text-slate-900">Notes</h3>
+                              <button
+                                type="button"
+                                onClick={handleOpenInStudio}
+                                className="rounded-md p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                aria-label="Edit notes"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                  <path d="M5.433 13.917l-.318 1.59a.75.75 0 00.884.884l1.59-.318a5.75 5.75 0 002.742-1.503l5.06-5.06a2.25 2.25 0 00-3.182-3.182l-5.06 5.06a5.75 5.75 0 00-1.503 2.742z" />
+                                  <path d="M3.5 5.75a2.25 2.25 0 012.25-2.25h4a.75.75 0 010 1.5h-4a.75.75 0 00-.75.75v10a.75.75 0 00.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0114.25 17h-8.5A2.25 2.25 0 013.5 14.75v-9z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="px-6 py-5 text-sm text-slate-600">No notes recorded for this customer.</div>
+                        </section>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-            {tabIndex === 2 && (
-              <div id="invoices-panel" aria-labelledby="invoices">
-                <Stack space={4}>
-                  <Heading size={1}>Recent Invoices</Heading>
-                  <Text size={1} muted>Quick access to invoice records and statuses.</Text>
-                  {recentInvoices.length === 0 ? (
-                    <Text muted style={{ marginBottom: '2rem' }}>No invoices found.</Text>
-                  ) : (
-                    recentInvoices.map((inv, idx) => (
-                      <Card key={idx} padding={3} radius={2} shadow={1} tone="default">
-                        <Stack space={2}>
-                          <Text size={2}>Invoice #{inv._id}</Text>
-                          <Text size={1} muted>
-                            Customer: {inv.customerSummary?.name || 'Unknown'} — {inv.customerSummary?.email || 'N/A'}
-                          </Text>
-                          <Flex justify="flex-end">
-                            <Button
-                              text="View Details"
-                              tone="primary"
-                              padding={2}
-                              style={{ fontSize: '0.85rem' }}
-                              onClick={() => router.navigateIntent('edit', { id: inv._id, type: 'invoice' })}
-                            />
-                          </Flex>
-                        </Stack>
-                      </Card>
-                    ))
-                  )}
-                </Stack>
-              </div>
-            )}
-            {tabIndex === 3 && (
-              <div id="quotes-panel" aria-labelledby="quotes">
-                {/* existing Quotes tab content */}
-                {/* TODO: Add quotes tab content here if needed */}
+            ) : (
+              <div className="flex h-full items-center justify-center px-6 py-10 text-center text-sm text-slate-500">
+                Select a customer from the list to view their profile.
               </div>
             )}
           </div>
         </div>
       </div>
-    )
+    </div>
+  )
 })
 
 CustomerDashboard.displayName = 'CustomerDashboard'

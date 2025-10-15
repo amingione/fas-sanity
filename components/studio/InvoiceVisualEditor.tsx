@@ -31,6 +31,48 @@ type InvoiceLineItem = {
   lineTotal?: number
 }
 
+type ShipmentWeight = {
+  value?: number
+  unit?: string
+}
+
+type PackageDimensions = {
+  length?: number
+  width?: number
+  height?: number
+}
+
+type SelectedService = {
+  carrierId?: string
+  carrier?: string
+  service?: string
+  serviceCode?: string
+  amount?: number
+  currency?: string
+  deliveryDays?: number
+  estimatedDeliveryDate?: string
+}
+
+type ShippingLogEntry = {
+  _key?: string
+  status?: string
+  message?: string
+  labelUrl?: string
+  trackingUrl?: string
+  trackingNumber?: string
+  weight?: number
+  createdAt?: string
+}
+
+type OrderShippingLike = {
+  amountShipping?: number
+  shippingCarrier?: string
+  trackingNumber?: string
+  trackingUrl?: string
+  shippingLabelUrl?: string
+  selectedService?: SelectedService | null
+} | null
+
 type InvoiceDocument = {
   _id: string
   invoiceNumber?: string
@@ -45,8 +87,23 @@ type InvoiceDocument = {
   taxRate?: number
   customerNotes?: string
   internalNotes?: string
+  paymentTerms?: string
+  serviceRenderedBy?: string
+  paymentInstructions?: string
+  depositAmount?: number
   subtotal?: number
   total?: number
+  amountShipping?: number
+  shippingCarrier?: string
+  trackingNumber?: string
+  trackingUrl?: string
+  shippingLabelUrl?: string
+  weight?: ShipmentWeight | null
+  dimensions?: PackageDimensions | null
+  selectedService?: SelectedService | null
+  shippingLog?: ShippingLogEntry[] | null
+  orderRef?: OrderShippingLike
+  order?: OrderShippingLike
 }
 
 type DocumentViewProps = {
@@ -75,6 +132,19 @@ type EditorState = {
   taxRate: number
   customerNotes: string
   internalNotes: string
+  paymentTerms: string
+  serviceRenderedBy: string
+  paymentInstructions: string
+  depositAmount: number
+  amountShipping: number
+  shippingCarrier: string
+  trackingNumber: string
+  trackingUrl: string
+  shippingLabelUrl: string
+  weight: ShipmentWeight
+  dimensions: PackageDimensions
+  selectedService: SelectedService | null
+  shippingLog: ShippingLogEntry[]
 }
 
 type ProductSearchResult = {
@@ -91,7 +161,9 @@ type Totals = {
   discount: number
   taxableBase: number
   tax: number
+  shipping: number
   total: number
+  balanceDue: number
 }
 
 const emptyAddress: InvoiceAddress = {
@@ -117,6 +189,19 @@ const defaultEditorState: EditorState = {
   taxRate: 0,
   customerNotes: '',
   internalNotes: '',
+  paymentTerms: '',
+  serviceRenderedBy: '',
+  paymentInstructions: '',
+  depositAmount: 0,
+  amountShipping: 0,
+  shippingCarrier: '',
+  trackingNumber: '',
+  trackingUrl: '',
+  shippingLabelUrl: '',
+  weight: {value: 0, unit: 'pound'},
+  dimensions: {length: 0, width: 0, height: 0},
+  selectedService: null,
+  shippingLog: [],
 }
 
 const sanitizeNumber = (value: unknown, fallback?: number): number => {
@@ -150,6 +235,20 @@ function fmt(n?: number): string {
   return typeof n === 'number' && !Number.isNaN(n) ? Number(n).toFixed(2) : '0.00'
 }
 
+function formatDate(value?: string): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString()
+}
+
+function formatDateTime(value?: string): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
+}
+
 const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorState => {
   const invoiceDate = toDateInput(doc?.invoiceDate) || new Date().toISOString().slice(0, 10)
   const dueDate = toDateInput(doc?.dueDate) || ''
@@ -173,7 +272,10 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
     ? doc?.lineItems?.filter(Boolean).map((item) => ({
         _key: item?._key || generateKey(),
         _type: 'invoiceLineItem',
-        kind: item?.kind === 'product' ? 'product' : 'custom',
+        kind:
+          item?.kind === 'product' || (!item?.kind && item?.product?._ref)
+            ? 'product'
+            : 'custom',
         product: item?.product ?? null,
         description: trimString(item?.description),
         sku: trimString(item?.sku),
@@ -181,6 +283,91 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
         unitPrice: sanitizeNumber(item?.unitPrice, 0),
         lineTotal: typeof item?.lineTotal === 'number' ? item?.lineTotal : undefined,
       }))
+    : []
+
+  const paymentTerms = trimString(doc?.paymentTerms)
+  const serviceRenderedBy = trimString(doc?.serviceRenderedBy)
+  const paymentInstructions = trimString(doc?.paymentInstructions)
+  const depositAmount = sanitizeNumber(doc?.depositAmount, 0)
+
+  const pickNumber = (...values: Array<number | string | null | undefined>): number => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === '') continue
+      const num = Number(value)
+      if (Number.isFinite(num)) return num
+    }
+    return 0
+  }
+
+  const normalizeWeight = (input?: ShipmentWeight | null): ShipmentWeight => {
+    return {
+      value: sanitizeNumber(input?.value, 0),
+      unit: trimString(input?.unit) || 'pound',
+    }
+  }
+
+  const normalizeDimensions = (input?: PackageDimensions | null): PackageDimensions => ({
+    length: sanitizeNumber(input?.length, 0),
+    width: sanitizeNumber(input?.width, 0),
+    height: sanitizeNumber(input?.height, 0),
+  })
+
+  const normalizeService = (input?: SelectedService | null): SelectedService | null => {
+    if (!input) return null
+    const normalized: SelectedService = {}
+    if (trimString(input.carrierId)) normalized.carrierId = trimString(input.carrierId)
+    if (trimString(input.carrier)) normalized.carrier = trimString(input.carrier)
+    if (trimString(input.service)) normalized.service = trimString(input.service)
+    if (trimString(input.serviceCode)) normalized.serviceCode = trimString(input.serviceCode)
+    const amount = Number(input.amount)
+    if (Number.isFinite(amount)) normalized.amount = amount
+    if (trimString(input.currency)) normalized.currency = trimString(input.currency)
+    const days = Number(input.deliveryDays)
+    if (Number.isFinite(days)) normalized.deliveryDays = days
+    if (trimString(input.estimatedDeliveryDate))
+      normalized.estimatedDeliveryDate = trimString(input.estimatedDeliveryDate)
+    return normalized
+  }
+
+  const selectedService =
+    normalizeService(doc?.selectedService) ||
+    normalizeService(doc?.orderRef?.selectedService) ||
+    normalizeService(doc?.order?.selectedService) ||
+    null
+
+  const amountShipping = pickNumber(
+    doc?.amountShipping,
+    doc?.orderRef?.amountShipping,
+    doc?.order?.amountShipping,
+    selectedService?.amount
+  )
+
+  const shippingCarrier =
+    trimString(doc?.shippingCarrier) ||
+    trimString(doc?.orderRef?.shippingCarrier) ||
+    trimString(doc?.order?.shippingCarrier) ||
+    ''
+
+  const trackingNumber =
+    trimString(doc?.trackingNumber) ||
+    trimString(doc?.orderRef?.trackingNumber) ||
+    trimString(doc?.order?.trackingNumber) ||
+    ''
+
+  const trackingUrl =
+    trimString(doc?.trackingUrl) ||
+    trimString(doc?.orderRef?.trackingUrl) ||
+    trimString(doc?.order?.trackingUrl) ||
+    ''
+
+  const shippingLabelUrl =
+    trimString(doc?.shippingLabelUrl) ||
+    trimString(doc?.orderRef?.shippingLabelUrl) ||
+    trimString(doc?.order?.shippingLabelUrl) ||
+    ''
+
+  const shippingLog: ShippingLogEntry[] = Array.isArray(doc?.shippingLog)
+    ? (doc?.shippingLog || []).filter(Boolean)
     : []
 
   return {
@@ -194,6 +381,19 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
     taxRate: sanitizeNumber(doc?.taxRate, 0),
     customerNotes: trimString(doc?.customerNotes),
     internalNotes: trimString(doc?.internalNotes),
+    paymentTerms,
+    serviceRenderedBy,
+    paymentInstructions,
+    depositAmount,
+    amountShipping,
+    shippingCarrier,
+    trackingNumber,
+    trackingUrl,
+    shippingLabelUrl,
+    weight: normalizeWeight(doc?.weight),
+    dimensions: normalizeDimensions(doc?.dimensions),
+    selectedService,
+    shippingLog,
   }
 }
 
@@ -213,9 +413,12 @@ const computeTotals = (state: EditorState): Totals => {
 
   const taxableBase = Math.max(0, subtotal - discount)
   const tax = taxableBase * (sanitizeNumber(state.taxRate, 0) / 100)
-  const total = Math.max(0, taxableBase + tax)
+  const shipping = sanitizeNumber(state.amountShipping, 0)
+  const total = Math.max(0, taxableBase + tax + shipping)
+  const deposit = sanitizeNumber(state.depositAmount, 0)
+  const balanceDue = Math.max(0, total - deposit)
 
-  return {subtotal, discount, taxableBase, tax, total}
+  return {subtotal, discount, taxableBase, tax, shipping, total, balanceDue}
 }
 
 const toDraftId = (id?: string): string => {
@@ -266,6 +469,57 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
       [key]: {
         ...(prev[key] || {...emptyAddress}),
         [field]: value,
+      },
+    }))
+    setIsDirty(true)
+  }
+
+  const copyBillToToShipTo = () => {
+    setState((prev) => ({
+      ...prev,
+      shipTo: {...prev.billTo},
+    }))
+    setIsDirty(true)
+  }
+
+  const clearLineItems = () => {
+    setState((prev) => {
+      if (prev.lineItems.length === 0) {
+        return prev
+      }
+      setIsDirty(true)
+      return {...prev, lineItems: []}
+    })
+  }
+
+  const updateWeightValue = (value: string) => {
+    setState((prev) => ({
+      ...prev,
+      weight: {
+        value: sanitizeNumber(value, 0),
+        unit: trimString(prev.weight?.unit) || 'pound',
+      },
+    }))
+    setIsDirty(true)
+  }
+
+  const updateWeightUnit = (unit: string) => {
+    setState((prev) => ({
+      ...prev,
+      weight: {
+        value: sanitizeNumber(prev.weight?.value, 0),
+        unit: unit || 'pound',
+      },
+    }))
+    setIsDirty(true)
+  }
+
+  const updateDimension = (field: keyof PackageDimensions, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      dimensions: {
+        ...(prev.dimensions || {length: 0, width: 0, height: 0}),
+        [field]: sanitizeNumber(value, 0),
       },
     }))
     setIsDirty(true)
@@ -331,7 +585,8 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         {
           _key: generateKey(),
           _type: 'invoiceLineItem',
-          kind: 'custom',
+          kind: 'product',
+          product: null,
           description: '',
           quantity: 1,
           unitPrice: 0,
@@ -400,6 +655,30 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             : undefined,
       }))
 
+      const paymentTermsValue = trimString(state.paymentTerms)
+      const serviceRenderedValue = trimString(state.serviceRenderedBy)
+      const paymentInstructionsValue = trimString(state.paymentInstructions)
+      const depositAmountValue = sanitizeNumber(state.depositAmount, 0)
+
+      const shippingAmount = sanitizeNumber(state.amountShipping, 0)
+      const weightValue = sanitizeNumber(state.weight?.value, 0)
+      const sanitizedWeight =
+        Number.isFinite(weightValue) && weightValue > 0
+          ? {
+              value: weightValue,
+              unit: trimString(state.weight?.unit) || 'pound',
+            }
+          : null
+      const length = sanitizeNumber(state.dimensions?.length, 0)
+      const width = sanitizeNumber(state.dimensions?.width, 0)
+      const height = sanitizeNumber(state.dimensions?.height, 0)
+      const hasDimensions = length > 0 && width > 0 && height > 0
+      const sanitizedDimensions = hasDimensions ? {length, width, height} : null
+      const shippingCarrier = trimString(state.shippingCarrier)
+      const trackingNumber = trimString(state.trackingNumber)
+      const trackingUrl = trimString(state.trackingUrl)
+      const shippingLabelUrl = trimString(state.shippingLabelUrl)
+
       await client
         .patch(draftId)
         .setIfMissing({_type: 'invoice'})
@@ -414,10 +693,21 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           taxRate: sanitizeNumber(state.taxRate, 0),
           customerNotes: state.customerNotes || '',
           internalNotes: state.internalNotes || '',
+          paymentTerms: paymentTermsValue || null,
+          serviceRenderedBy: serviceRenderedValue || null,
+          paymentInstructions: paymentInstructionsValue,
+          depositAmount: depositAmountValue,
           subtotal: totals.subtotal,
           total: totals.total,
           amountSubtotal: totals.subtotal,
           amountTax: totals.tax,
+          amountShipping: shippingAmount,
+          shippingCarrier: shippingCarrier || null,
+          trackingNumber: trackingNumber || null,
+          trackingUrl: trackingUrl || null,
+          shippingLabelUrl: shippingLabelUrl || null,
+          weight: sanitizedWeight,
+          dimensions: sanitizedDimensions,
         })
         .commit({autoGenerateArrayKeys: true})
 
@@ -441,6 +731,8 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
   }
 
   const taxRateValue = sanitizeNumber(state.taxRate, 0)
+  const depositValue = sanitizeNumber(state.depositAmount, 0)
+  const paymentTermSuggestions = ['Due on receipt', 'Net 15', 'Net 30', 'Net 45', 'Net 60']
 
   type LineItemRowProps = {
     item: EditorLineItem
@@ -487,7 +779,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         return
       }
       const term = query.trim()
-      if (term.length < 2) {
+      if (term.length === 0) {
         setResults([])
         return
       }
@@ -574,71 +866,74 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
     }
 
     return (
-      <div className="grid grid-cols-12 gap-3 px-4 py-4">
-        <div className="col-span-12 md:col-span-3">
-          <div className="relative">
-            <input
-              type="text"
-              value={query}
-              placeholder="Search product or SKU…"
-              onFocus={() => {
-                if (results.length > 0) setDropdownVisible(true)
-              }}
-              onBlur={() => {
-                setTimeout(() => setDropdownVisible(false), 150)
-              }}
-              onChange={(event) => setQuery(event.currentTarget.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            />
-            {loadingOptions ? (
-              <div className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" />
-            ) : null}
-            {dropdownVisible && results.length > 0 ? (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white shadow-xl">
-                {results.map((product) => (
-                  <button
-                    key={product._id}
-                    type="button"
-                    className="flex w-full flex-col gap-1 px-3 py-2 text-left hover:bg-slate-100"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => handleProductSelect(product)}
-                  >
-                    <span className="text-sm font-semibold text-slate-900">{product.title}</span>
-                    <span className="text-xs text-slate-500">
-                      {product.sku ? `SKU: ${product.sku}` : 'No SKU'} · ${fmt(product.price)}
-                    </span>
-                    {product.shortPlain ? (
-                      <span className="text-xs text-slate-500">{product.shortPlain}</span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {dropdownVisible &&
-            !loadingOptions &&
-            results.length === 0 &&
-            query.trim().length >= 2 ? (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-xl">
-                No products found.
-              </div>
-            ) : null}
-          </div>
-          {item.kind === 'product' && item.sku ? (
-            <p className="mt-2 text-xs text-slate-500">SKU: {item.sku}</p>
+      <tr className="border-b border-slate-200 last:border-b-0">
+        <td className="px-3 py-4 align-top text-sm text-slate-500">{index + 1}</td>
+        <td className="relative px-3 py-3 align-top">
+          <input
+            type="text"
+            value={query}
+            placeholder="Search product or SKU…"
+            onFocus={() => {
+              if (results.length > 0) setDropdownVisible(true)
+            }}
+            onBlur={() => {
+              setTimeout(() => setDropdownVisible(false), 150)
+            }}
+            onChange={(event) => setQuery(event.currentTarget.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          />
+          {loadingOptions ? (
+            <div className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" />
           ) : null}
-        </div>
-
-        <div className="col-span-12 md:col-span-3">
+          {dropdownVisible && results.length > 0 ? (
+            <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white shadow-xl">
+              {results.map((product) => (
+                <button
+                  key={product._id}
+                  type="button"
+                  className="flex w-full flex-col gap-1 px-3 py-2 text-left hover:bg-slate-100"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => handleProductSelect(product)}
+                >
+                  <span className="text-sm font-semibold text-slate-900">{product.title}</span>
+                  <span className="text-xs text-slate-500">
+                    {product.sku ? `SKU: ${product.sku}` : 'No SKU'} · ${fmt(product.price)}
+                  </span>
+                  {product.shortPlain ? (
+                    <span className="text-xs text-slate-500">{product.shortPlain}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {dropdownVisible &&
+          !loadingOptions &&
+          results.length === 0 &&
+          query.trim().length >= 2 ? (
+            <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 shadow-xl">
+              No products found.
+            </div>
+          ) : null}
+        </td>
+        <td className="px-3 py-3 align-top">
+          <input
+            type="text"
+            value={item.sku || ''}
+            onChange={(event) => onUpdate(index, 'sku', event.currentTarget.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            placeholder="SKU"
+          />
+        </td>
+        <td className="px-3 py-3 align-top">
           <textarea
             value={item.description || ''}
             onChange={(event) => onUpdate(index, 'description', event.currentTarget.value)}
             rows={2}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            placeholder="Short description for customer"
+            className="h-full w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            placeholder="Description"
           />
-        </div>
-
-        <div className="col-span-6 md:col-span-1">
+        </td>
+        <td className="px-3 py-3 align-top">
           <input
             type="number"
             min={0}
@@ -650,9 +945,8 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="Qty"
           />
-        </div>
-
-        <div className="col-span-6 md:col-span-2">
+        </td>
+        <td className="px-3 py-3 align-top">
           <input
             type="number"
             step="0.01"
@@ -663,9 +957,8 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             placeholder="Rate"
           />
-        </div>
-
-        <div className="col-span-6 md:col-span-2">
+        </td>
+        <td className="px-3 py-3 align-top">
           <input
             type="number"
             step="0.01"
@@ -676,45 +969,49 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           />
           {taxRate > 0 ? (
             <p className="mt-2 text-xs text-slate-500">
-              Tax ({taxRate.toFixed(2)}%): ${fmt(estimatedTax)}
+              Est. tax ({taxRate.toFixed(2)}%): ${fmt(estimatedTax)}
             </p>
           ) : null}
-        </div>
-
-        <div className="col-span-6 flex flex-col gap-2 md:col-span-1 md:items-end">
-          <div className="flex rounded-full bg-slate-200 p-1">
+        </td>
+        <td className="px-3 py-3 align-top text-right text-sm font-semibold text-slate-700">
+          {taxRate > 0 ? `$${fmt(estimatedTax)}` : '—'}
+        </td>
+        <td className="px-3 py-3 align-top">
+          <div className="flex flex-col items-stretch gap-2">
+            <div className="flex overflow-hidden rounded-md border border-slate-300">
+              <button
+                type="button"
+                className={`flex-1 px-3 py-1 text-xs font-semibold transition ${
+                  item.kind === 'product'
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-white text-slate-600 hover:bg-slate-100'
+                }`}
+                onClick={() => onKindChange(index, 'product')}
+              >
+                Product
+              </button>
+              <button
+                type="button"
+                className={`flex-1 px-3 py-1 text-xs font-semibold transition ${
+                  item.kind === 'custom'
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-white text-slate-600 hover:bg-slate-100'
+                }`}
+                onClick={() => onKindChange(index, 'custom')}
+              >
+                Custom
+              </button>
+            </div>
             <button
               type="button"
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                item.kind === 'product'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600'
-              }`}
-              onClick={() => onKindChange(index, 'product')}
+              onClick={() => onRemove(index)}
+              className="text-sm font-semibold text-rose-600 hover:text-rose-500"
             >
-              Product
-            </button>
-            <button
-              type="button"
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                item.kind === 'custom'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600'
-              }`}
-              onClick={() => onKindChange(index, 'custom')}
-            >
-              Custom
+              Remove
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            className="text-sm font-semibold text-rose-600 hover:text-rose-500"
-          >
-            Remove
-          </button>
-        </div>
-      </div>
+        </td>
+      </tr>
     )
   }
 
@@ -729,43 +1026,41 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
   return (
     <div className="h-full overflow-y-auto bg-slate-100 p-6">
       <div className="mx-auto grid max-w-6xl gap-6">
-        <div className="flex flex-col justify-between gap-4 rounded-xl bg-white p-6 shadow-sm sm:flex-row sm:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Invoice
-            </p>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {displayed.invoiceNumber || 'Untitled Invoice'}
-            </h1>
-            <p className="text-sm text-slate-500">
-              Status: <span className="font-medium text-slate-700">{displayed.status || 'Pending'}</span>
-            </p>
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-6 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Invoice</p>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {displayed.invoiceNumber || 'Untitled Invoice'}
+              </h1>
+              <p className="text-sm text-slate-500">
+                Status:{' '}
+                <span className="font-medium text-slate-700">{displayed.status || 'Pending'}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={resetChanges}
+                disabled={!isDirty || isSaving}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={!isDirty || isSaving}
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-300"
+              >
+                {isSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={resetChanges}
-              disabled={!isDirty || isSaving}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={!isDirty || isSaving}
-              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-300"
-            >
-              {isSaving ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Invoice Details</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+          <div className="grid gap-6 border-b border-slate-200 px-6 py-6 lg:grid-cols-2">
+            <div className="grid gap-4">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Invoice Date
                 <input
                   type="date"
@@ -774,7 +1069,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Due Date
                 <input
                   type="date"
@@ -783,83 +1078,152 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Payment Terms
+                <input
+                  type="text"
+                  value={state.paymentTerms}
+                  onChange={(event) => updateState('paymentTerms', event.currentTarget.value)}
+                  list="invoice-payment-terms"
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="Due on receipt"
+                />
+                <datalist id="invoice-payment-terms">
+                  {paymentTermSuggestions.map((term) => (
+                    <option key={term} value={term} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Service Rendered By
+                <input
+                  type="text"
+                  value={state.serviceRenderedBy}
+                  onChange={(event) => updateState('serviceRenderedBy', event.currentTarget.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="Technician name"
+                />
+              </label>
+            </div>
+            <div>
+              <dl className="space-y-2 text-sm text-slate-600">
+                <div className="flex justify-between">
+                  <dt>Subtotal</dt>
+                  <dd className="font-medium text-slate-900">${totals.subtotal.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>
+                    Discount
+                    {state.discountType === 'percent'
+                      ? ` (${sanitizeNumber(state.discountValue, 0).toFixed(2)}%)`
+                      : ''}
+                  </dt>
+                  <dd className="font-medium text-slate-900">-${totals.discount.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Taxable Subtotal</dt>
+                  <dd className="font-medium text-slate-900">${totals.taxableBase.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Shipping</dt>
+                  <dd className="font-medium text-slate-900">${totals.shipping.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Tax ({sanitizeNumber(state.taxRate, 0).toFixed(2)}%)</dt>
+                  <dd className="font-medium text-slate-900">${totals.tax.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold text-slate-900">
+                  <dt>Total</dt>
+                  <dd>${totals.total.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between text-base font-semibold text-slate-900">
+                  <dt>Deposit</dt>
+                  <dd>-${depositValue.toFixed(2)}</dd>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-emerald-600">
+                  <dt>Balance Due</dt>
+                  <dd>${totals.balanceDue.toFixed(2)}</dd>
+                </div>
+              </dl>
             </div>
           </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Totals</h2>
-            <dl className="mt-4 space-y-3 text-sm text-slate-600">
-              <div className="flex justify-between">
-                <dt>Subtotal</dt>
-                <dd className="font-medium text-slate-900">${totals.subtotal.toFixed(2)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>
-                  Discount
-                  {state.discountType === 'percent'
-                    ? ` (${sanitizeNumber(state.discountValue, 0).toFixed(2)}%)`
-                    : ''}
-                </dt>
-                <dd className="font-medium text-slate-900">-${totals.discount.toFixed(2)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Taxable Amount</dt>
-                <dd className="font-medium text-slate-900">${totals.taxableBase.toFixed(2)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Tax ({sanitizeNumber(state.taxRate, 0).toFixed(2)}%)</dt>
-                <dd className="font-medium text-slate-900">${totals.tax.toFixed(2)}</dd>
-              </div>
-              <div className="flex justify-between text-base font-semibold text-slate-900">
-                <dt>Total</dt>
-                <dd>${totals.total.toFixed(2)}</dd>
-              </div>
-            </dl>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-                Discount Type
-                <select
-                  value={state.discountType}
-                  onChange={(event) =>
-                    updateState('discountType', event.currentTarget.value as 'amount' | 'percent')
-                  }
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="amount">Amount ($)</option>
-                  <option value="percent">Percent (%)</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-                Discount Value
-                <input
-                  type="number"
-                  step="0.01"
-                  value={state.discountValue}
-                  onChange={(event) =>
-                    updateState('discountValue', sanitizeNumber(event.currentTarget.value, 0))
-                  }
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 sm:col-span-2">
-                Tax Rate (%)
-                <input
-                  type="number"
-                  step="0.01"
-                  value={state.taxRate}
-                  onChange={(event) =>
-                    updateState('taxRate', sanitizeNumber(event.currentTarget.value, 0))
-                  }
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-              </label>
-            </div>
+          <div className="grid gap-4 px-6 pb-6 lg:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Discount Type
+              <select
+                value={state.discountType}
+                onChange={(event) =>
+                  updateState('discountType', event.currentTarget.value as 'amount' | 'percent')
+                }
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="amount">Amount ($)</option>
+                <option value="percent">Percent (%)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Discount Value
+              <input
+                type="number"
+                step="0.01"
+                value={state.discountValue}
+                onChange={(event) =>
+                  updateState('discountValue', sanitizeNumber(event.currentTarget.value, 0))
+                }
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Tax Rate (%)
+              <input
+                type="number"
+                step="0.01"
+                value={state.taxRate}
+                onChange={(event) =>
+                  updateState('taxRate', sanitizeNumber(event.currentTarget.value, 0))
+                }
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Deposit Received
+              <input
+                type="number"
+                step="0.01"
+                value={state.depositAmount}
+                onChange={(event) =>
+                  updateState('depositAmount', sanitizeNumber(event.currentTarget.value, 0))
+                }
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="0.00"
+              />
+            </label>
+            <label className="lg:col-span-2 flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Payment Instructions
+              <textarea
+                value={state.paymentInstructions}
+                onChange={(event) => updateState('paymentInstructions', event.currentTarget.value)}
+                rows={3}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="Tell your customer how to pay (e.g., card, bank, Venmo)."
+              />
+            </label>
           </div>
-        </section>
+        </div>
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Bill To</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Bill To</h2>
+              <button
+                type="button"
+                className="text-sm font-semibold text-blue-600 hover:text-blue-500"
+                onClick={copyBillToToShipTo}
+              >
+                Copy to Ship To
+              </button>
+            </div>
             <div className="mt-4 grid gap-3 text-sm text-slate-700">
               {(
                 [
@@ -890,16 +1254,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           </div>
 
           <div className="rounded-xl bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Ship To</h2>
-              <button
-                type="button"
-                className="text-sm font-semibold text-blue-600 hover:text-blue-500"
-                onClick={() => updateState('shipTo', {...state.billTo})}
-              >
-                Copy Bill To
-              </button>
-            </div>
+            <h2 className="text-lg font-semibold text-slate-900">Ship To</h2>
             <div className="mt-4 grid gap-3 text-sm text-slate-700">
               {(
                 [
@@ -930,40 +1285,278 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           </div>
         </section>
 
-        <section className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Line Items</h2>
-              <p className="text-sm text-slate-500">
-                Edit descriptions, quantities, and rates. Product-linked items retain references.
-              </p>
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Shipping Charge & Tracking</h2>
+            <div className="mt-4 grid gap-4">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                Shipping Amount (USD)
+                <input
+                  type="number"
+                  step="0.01"
+                  value={state.amountShipping}
+                  onChange={(event) =>
+                    updateState('amountShipping', sanitizeNumber(event.currentTarget.value, 0))
+                  }
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="0.00"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                Carrier
+                <input
+                  type="text"
+                  value={state.shippingCarrier}
+                  onChange={(event) => updateState('shippingCarrier', event.currentTarget.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="UPS, USPS, FedEx…"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                Tracking Number
+                <input
+                  type="text"
+                  value={state.trackingNumber}
+                  onChange={(event) => updateState('trackingNumber', event.currentTarget.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="1Z…"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                Tracking URL
+                <input
+                  type="url"
+                  value={state.trackingUrl}
+                  onChange={(event) => updateState('trackingUrl', event.currentTarget.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="https://tracking.example.com/…"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                Shipping Label URL
+                <input
+                  type="url"
+                  value={state.shippingLabelUrl}
+                  onChange={(event) =>
+                    updateState('shippingLabelUrl', event.currentTarget.value)
+                  }
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="https://label.example.com/…"
+                />
+              </label>
             </div>
-            <button
-              type="button"
-              onClick={addLineItem}
-              className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
-            >
-              Add Item
-            </button>
           </div>
 
-          <div className="mt-6">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <div className="hidden border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-12 md:gap-3">
-                <div className="col-span-3">Product / Service</div>
-                <div className="col-span-3">Description</div>
-                <div className="col-span-1 text-right">Qty</div>
-                <div className="col-span-2 text-right">Rate</div>
-                <div className="col-span-2 text-right">Amount</div>
-                <div className="col-span-1 text-right">Type</div>
-              </div>
-              {state.lineItems.length === 0 ? (
-                <div className="px-4 py-10 text-center text-sm text-slate-500">
-                  No line items yet. Click “Add Item” to get started.
-                </div>
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Package Details</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 sm:col-span-1">
+                Weight
+                <input
+                  type="number"
+                  step="0.01"
+                  value={state.weight?.value ?? 0}
+                  onChange={(event) => updateWeightValue(event.currentTarget.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  placeholder="5"
+                />
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 sm:col-span-1">
+                Unit
+                <select
+                  value={state.weight?.unit || 'pound'}
+                  onChange={(event) => updateWeightUnit(event.currentTarget.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="pound">Pounds</option>
+                  <option value="ounce">Ounces</option>
+                  <option value="kilogram">Kilograms</option>
+                  <option value="gram">Grams</option>
+                </select>
+              </label>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {(
+                [
+                  ['length', 'Length (in)'],
+                  ['width', 'Width (in)'],
+                  ['height', 'Height (in)'],
+                ] as Array<[keyof PackageDimensions, string]>
+              ).map(([field, label]) => (
+                <label key={field} className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                  {label}
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={(state.dimensions?.[field] as number | undefined) ?? 0}
+                    onChange={(event) => updateDimension(field, event.currentTarget.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    placeholder="0"
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <h3 className="text-sm font-semibold text-slate-900">Selected Rate</h3>
+              {state.selectedService ? (
+                <dl className="mt-3 space-y-1.5">
+                  <div className="flex justify-between gap-4">
+                    <dt>Service</dt>
+                    <dd className="font-medium text-slate-900">
+                      {state.selectedService.service || state.selectedService.serviceCode || '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Carrier</dt>
+                    <dd className="font-medium text-slate-900">
+                      {state.selectedService.carrier || state.selectedService.carrierId || '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt>Amount</dt>
+                    <dd className="font-medium text-slate-900">
+                      {typeof state.selectedService.amount === 'number'
+                        ? `$${fmt(state.selectedService.amount)}`
+                        : '—'}
+                    </dd>
+                  </div>
+                  {typeof state.selectedService.deliveryDays === 'number' ? (
+                    <div className="flex justify-between gap-4">
+                      <dt>Est. Days</dt>
+                      <dd className="font-medium text-slate-900">
+                        {state.selectedService.deliveryDays}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {state.selectedService.estimatedDeliveryDate ? (
+                    <div className="flex justify-between gap-4">
+                      <dt>Est. Delivery</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatDate(state.selectedService.estimatedDeliveryDate)}
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
               ) : (
-                <div className="divide-y divide-slate-200">
-                  {state.lineItems.map((item, index) => (
+                <p className="text-sm text-slate-500">
+                  Shipping rate details appear once a rate is selected or a label is generated.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Shipping History</h2>
+          {state.shippingLog.length > 0 ? (
+            <ul className="mt-4 space-y-3">
+              {state.shippingLog.map((entry, index) => (
+                <li
+                  key={entry._key || `${entry.status || 'event'}-${index}`}
+                  className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <span>{trimString(entry.status) || 'Update'}</span>
+                    <span>{formatDateTime(entry.createdAt)}</span>
+                  </div>
+                  {trimString(entry.message) ? (
+                    <p className="mt-2 text-sm text-slate-700">{entry.message}</p>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
+                    {trimString(entry.trackingNumber) ? (
+                      <span>
+                        Tracking:{' '}
+                        <span className="font-medium text-slate-700">
+                          {entry.trackingNumber}
+                        </span>
+                      </span>
+                    ) : null}
+                    {typeof entry.weight === 'number' && Number.isFinite(entry.weight) ? (
+                      <span>Weight: {entry.weight} lb</span>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold">
+                    {trimString(entry.trackingUrl) ? (
+                      <a
+                        href={entry.trackingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:text-blue-500"
+                      >
+                        Tracking Link
+                      </a>
+                    ) : null}
+                    {trimString(entry.labelUrl) ? (
+                      <a
+                        href={entry.labelUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:text-blue-500"
+                      >
+                        Label PDF
+                      </a>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">No shipping events recorded yet.</p>
+          )}
+        </section>
+
+        <section className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Products & Services</h2>
+              <p className="text-sm text-slate-500">
+                Add each line exactly as it should appear on the printed invoice.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={addLineItem}
+                className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+              >
+                Add product or service
+              </button>
+              <button
+                type="button"
+                onClick={clearLineItems}
+                disabled={state.lineItems.length === 0}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear all lines
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-xl border border-slate-200">
+            <table className="min-w-full table-fixed">
+              <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="w-12 px-3 py-2 text-left">#</th>
+                  <th className="w-64 px-3 py-2 text-left">Product / Service</th>
+                  <th className="w-40 px-3 py-2 text-left">SKU</th>
+                  <th className="px-3 py-2 text-left">Description</th>
+                  <th className="w-28 px-3 py-2 text-right">Qty</th>
+                  <th className="w-32 px-3 py-2 text-right">Rate</th>
+                  <th className="w-32 px-3 py-2 text-right">Amount</th>
+                  <th className="w-24 px-3 py-2 text-right">Tax</th>
+                  <th className="w-40 px-3 py-2 text-right">Type</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {state.lineItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-10 text-center text-sm text-slate-500">
+                      No line items yet. Click “Add product or service” to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  state.lineItems.map((item, index) => (
                     <LineItemRow
                       key={item._key || index}
                       item={item}
@@ -975,10 +1568,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                       onProductPick={applyProductSelection}
                       client={client}
                     />
-                  ))}
-                </div>
-              )}
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 

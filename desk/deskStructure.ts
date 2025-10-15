@@ -1,30 +1,33 @@
 // desk/deskStructure.ts
 
-type StructureResolver = import('sanity/structure').StructureResolver
-type UserComponent = import('sanity/structure').UserComponent
-
+import type {StructureResolver} from 'sanity/structure'
 import React from 'react'
+import {
+  MdPointOfSale,
+  MdGroups,
+  MdStorefront,
+  MdLocalShipping,
+  MdAdminPanelSettings,
+} from 'react-icons/md'
 
 import DocumentIframePreview from '../components/studio/DocumentIframePreview'
-import CustomerDashboard from '../components/studio/CustomerDashboard'
 import BulkLabelGenerator from '../components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenerator'
 import FinancialDashboard from '../components/studio/FinancialDashboard'
 import FinancialReports from '../components/studio/FinancialReports'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
-import SalesTransactions from '../components/studio/SalesTransactions'
-import OrderStatusPreview from '../components/inputs/FulfillmentBadge' // shows <FulfillmentBadge />
 import EnvSelfCheck from '../components/studio/EnvSelfCheck'
-import BookingCalendar from '../components/studio/BookingCalendar'
 import ProductBulkEditor from '../components/studio/ProductBulkEditor'
-import FilterBulkAssign from '../components/studio/FilterBulkAssign'
-import FilterBulkRemove from '../components/studio/FilterBulkRemove'
-import FilterDeleteTag from '../components/studio/FilterDeleteTag'
+import FilterBulkAssignPane from '../components/studio/FilterBulkAssignPane'
+import FilterBulkRemovePane from '../components/studio/FilterBulkRemovePane'
+import FilterDeleteTagPane from '../components/studio/FilterDeleteTagPane'
 import VendorAdminDashboard from '../components/studio/VendorAdminDashboard'
 import VendorStatusBadge from '../components/inputs/VendorStatusBadge'
 import InvoiceVisualEditor from '../components/studio/InvoiceVisualEditor'
-import InvoiceDashboard from '../components/studio/InvoiceDashboard'
+import OrderStatusPreview from '../components/inputs/FulfillmentBadge'
 import OrderDetailView from '../components/studio/OrderDetailView'
+import SalesHub from '../components/studio/SalesHub'
+import CustomersHub from '../components/studio/CustomersHub'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -32,19 +35,8 @@ const previewPaths: Record<string, string> = {
   invoice: '/invoice',
   shippingLabel: '/label',
   quote: '/quote',
-  order: '/order'
-}
-
-const EnvSelfCheckPane: UserComponent = function EnvSelfCheckPane(
-  _props: React.ComponentProps<UserComponent>
-) {
-  return React.createElement(EnvSelfCheck)
-}
-
-const CustomerDashboardPane: UserComponent = function CustomerDashboardPane(
-  props: React.ComponentProps<UserComponent>
-) {
-  return React.createElement(CustomerDashboard, props as any)
+  order: '/order',
+  category: '/category',
 }
 
 const getPreviewViews = (S: any, schema: string) => {
@@ -59,14 +51,12 @@ const getPreviewViews = (S: any, schema: string) => {
     )
   }
 
-  views.push(
-    S.view.form().id('form')
-  )
+  views.push(S.view.form().id('form'))
 
   views.push(
     S.view
       .component((props: any) =>
-        DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' })
+        DocumentIframePreview({...props, basePath: previewPaths[schema] || ''})
       )
       .title('Preview')
       .id('preview')
@@ -93,278 +83,133 @@ const getPreviewViews = (S: any, schema: string) => {
   return views.filter(Boolean)
 }
 
-export const deskStructure: StructureResolver = (S, context) =>
-  S.list()
-    .title('F.A.S. Motorsports')
-    .items([
-      S.listItem()
-        .title('All Products')
-        .schemaType('product')
-        .child(
-          S.documentTypeList('product')
-            .title('All Products')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('product')
-                .views([S.view.form().id('form')])
-            )
-        ),
-
-      // Categories (document type)
-      S.listItem()
-        .title('Categories')
-        .schemaType('category')
-        .child(
-          S.documentTypeList('category')
-            .title('Categories')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('category')
-            )
-        ),
-
-      // Vehicles (document type)
-      S.listItem()
-        .title('Vehicles')
-        .schemaType('vehicleModel')
-        .child(
-          S.documentTypeList('vehicleModel')
-            .title('Vehicles')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('vehicleModel')
-            )
-        ),
-
-      // Removed curated Filters panel to keep things simple. Use Product Filters (auto) instead.
-
-  // Filters (document type, like Categories)
+const hubListItem = (S: any, id: string, title: string, icon: any, component: React.ComponentType) =>
   S.listItem()
-    .title('Filters')
-    .schemaType('filterTag')
+    .id(id)
+    .title(title)
+    .icon(icon)
     .child(
-      S.documentTypeList('filterTag')
-        .title('Filters')
-        .child((id: string) =>
-          S.list()
-            .title('Filter')
-            .items([
-              S.listItem()
-                .title('Edit Filter')
-                .child(
-                  S.document().documentId(id).schemaType('filterTag')
-                ),
-              S.listItem()
-                .title('Products with this filter')
-                .child(
-                  S.documentList()
-                    .title('Products')
-                    .schemaType('product')
-                    .filter('references($id)')
-                    .params({ id })
-                ),
-            ])
+      S.component()
+        .id(`${id}-pane`)
+        .title(title)
+        .component(component as any)
+    )
+
+const componentPane = (S: any, id: string, title: string, component: React.ComponentType) =>
+  S.listItem()
+    .id(id)
+    .title(title)
+    .child(
+      S.component()
+        .id(`${id}-component`)
+        .title(title)
+        .component(component as any)
+    )
+
+const documentListWithPreview = (
+  S: any,
+  schemaType: string,
+  title: string,
+  options?: {hidden?: boolean}
+) =>
+  S.listItem({
+    hidden: options?.hidden,
+  })
+    .id(`${schemaType}-list`)
+    .title(title)
+    .schemaType(schemaType)
+    .child(
+      S.documentTypeList(schemaType)
+        .title(title)
+        .child((documentId: string) =>
+          S.document()
+            .documentId(documentId)
+            .schemaType(schemaType)
+            .views(getPreviewViews(S, schemaType))
         )
-    ),
+    )
 
-      S.divider(),
-
+export const deskStructure: StructureResolver = (S) =>
+  S.list()
+    .title('F.A.S. Studio')
+    .items([
+      hubListItem(S, 'sales-hub', 'Sales & Get Paid', MdPointOfSale, SalesHub),
+      hubListItem(S, 'customers-hub', 'Customer Hub', MdGroups, CustomersHub),
       S.listItem()
-        .title('Quote Requests')
-        .schemaType('quote')
-        .child(
-          S.documentTypeList('quote')
-            .title('Quote Requests')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('quote')
-                .views(getPreviewViews(S, 'quote'))
-            )
-        ),
-
-      S.listItem()
-        .title('Shipping Labels')
-        .schemaType('shippingLabel')
-        .child(
-          S.documentTypeList('shippingLabel')
-            .title('Shipping Labels')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('shippingLabel')
-                .views(getPreviewViews(S, 'shippingLabel'))
-            )
-        ),
-
-      S.listItem()
-        .title('Orders')
-        .schemaType('order')
-        .child(
-          S.documentTypeList('order')
-            .title('Orders')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('order')
-                .views(getPreviewViews(S, 'order'))
-            )
-        ),
-
-      S.listItem()
-        .title('Invoices')
-        .id('invoice-root')
-        .schemaType('invoice')
+        .id('catalog')
+        .title('Products & Content')
+        .icon(MdStorefront)
         .child(
           S.list()
-            .id('invoice-dashboard-list')
-            .title('Invoices')
+            .title('Products & Content')
             .items([
+              documentListWithPreview(S, 'product', 'Products'),
+              documentListWithPreview(S, 'category', 'Categories'),
+              documentListWithPreview(S, 'vehicleModel', 'Vehicles'),
+              documentListWithPreview(S, 'filterTag', 'Filters'),
               S.listItem()
-                .title('Dashboard')
+                .id('catalog-tools')
+                .title('Catalog Tools')
                 .child(
-                  S.component()
-                    .id('invoice-dashboard')
-                    .title('Invoice Dashboard')
-                    .component(InvoiceDashboard as any)
-                ),
-              S.listItem()
-                .title('All Invoices')
-                .child(
-                  S.documentTypeList('invoice')
-                    .title('All Invoices')
-                    .child((id: string) =>
-                      S.document()
-                        .documentId(id)
-                        .schemaType('invoice')
-                        .views(getPreviewViews(S, 'invoice'))
-                    )
+                  S.list()
+                    .title('Catalog Tools')
+                    .items([
+                      componentPane(S, 'product-bulk-editor', 'Product Bulk Editor', ProductBulkEditor),
+                      componentPane(S, 'filter-bulk-assign', 'Filter Bulk Assign', FilterBulkAssignPane),
+                      componentPane(S, 'filter-bulk-remove', 'Filter Bulk Remove', FilterBulkRemovePane),
+                      componentPane(S, 'filter-delete-tag', 'Filter Delete Tag', FilterDeleteTagPane),
+                    ])
                 ),
             ])
         ),
-
       S.listItem()
-        .title('Customers')
-        .schemaType('customer')
-        .child(
-          S.documentTypeList('customer')
-            .title('Customers')
-            .child((id: string) =>
-              S.document()
-                .documentId(id)
-                .schemaType('customer')
-                .views(getPreviewViews(S, 'customer'))
-            )
-        ),
-
-      S.divider(),
-
-      S.listItem()
-        .title('Bulk Label Generator')
-        .child(S.component().title('Bulk Label Generator').component(BulkLabelGenerator as any)),
-
-      S.listItem()
-        .title('Packing Slip Generator')
-        .child(S.component().title('Bulk Packing Slips').component(BulkPackingSlipGenerator as any)),
-
-      S.listItem()
-        .title('Sales Transactions')
-        .child(S.component().title('Sales Transactions').component(SalesTransactions as any)),
-
-      S.listItem()
-        .title('Financial Dashboard')
-        .child(S.component().title('Finance').component(FinancialDashboard as any)),
-
-      S.listItem()
-        .title('Financial Reports')
-        .child(S.component().title('Reports').component(FinancialReports as any)),
-
-      S.listItem()
-        .title('Fulfillment Console')
-        .child(S.component().title('Console').component(BulkFulfillmentConsole as any)),
-
-      S.listItem()
-        .title('Customer Dashboard')
-        .child(S.component().title('Customers').component(CustomerDashboardPane))
-
-      ,
-      S.listItem()
-        .title('Product Bulk Editor')
-        .child(S.component().title('Bulk Editor').component(ProductBulkEditor as any))
-
-      ,
-      S.listItem()
-        .title('Booking Calendar')
-        .child(S.component().title('Bookings').component(BookingCalendar as any))
-
-      ,
-      S.listItem()
-        .title('Env Self‑Check')
-        .child(S.component().title('Environment Status').component(EnvSelfCheckPane))
-
-      ,
-      S.listItem()
-        .title('🛠 Admin Tools')
+        .id('operations')
+        .title('Operations')
+        .icon(MdLocalShipping)
         .child(
           S.list()
-            .title('Admin Tools')
+            .title('Operations')
             .items([
+              documentListWithPreview(S, 'shippingLabel', 'Shipping Labels'),
+              componentPane(S, 'bulk-label-generator', 'Bulk Label Generator', BulkLabelGenerator),
+              componentPane(S, 'packing-slip-generator', 'Packing Slip Generator', BulkPackingSlipGenerator),
+              componentPane(S, 'fulfillment-console', 'Fulfillment Console', BulkFulfillmentConsole),
+            ])
+        ),
+      S.listItem()
+        .id('admin')
+        .title('Admin & Finance')
+        .icon(MdAdminPanelSettings)
+        .child(
+          S.list()
+            .title('Admin & Finance')
+            .items([
+              componentPane(S, 'financial-dashboard', 'Financial Dashboard', FinancialDashboard),
+              componentPane(S, 'financial-reports', 'Financial Reports', FinancialReports),
+              componentPane(S, 'env-self-check', 'Environment Status', EnvSelfCheck),
+              componentPane(S, 'vendor-admin-dashboard', 'Vendor Admin Dashboard', VendorAdminDashboard),
               S.listItem()
-                .title('Vendor Applications')
+                .id('vendors')
+                .title('Vendors')
                 .child(
                   S.documentTypeList('vendor')
-                    .title('Vendor Applications')
                     .apiVersion('2024-10-01')
-                    .filter(
-                      '_type == "vendor" && coalesce(status, select(approved == true => "Approved", "Pending")) == $status'
-                    )
-                    .params({status: 'Pending'})
+                    .title('Vendors')
                     .child((id: string) =>
                       S.document()
                         .documentId(id)
                         .schemaType('vendor')
                         .views([
                           S.view.form().id('form'),
-                          S.view
-                            .component(VendorStatusBadge as any)
-                            .title('Status Badge')
-                            .id('status-badge'),
+                          S.view.component(VendorStatusBadge as any).title('Status Badge').id('status-badge'),
                         ])
                     )
-                ),
-              S.listItem()
-                .title('Vendor Profiles')
-                .child(
-                  S.documentTypeList('vendor')
-                    .title('Vendor Profiles')
-                    .apiVersion('2024-10-01')
-                    .filter(
-                      '_type == "vendor" && coalesce(status, select(approved == true => "Approved", "Pending")) == $status'
-                    )
-                    .params({status: 'Approved'})
-                    .child((id: string) =>
-                      S.document()
-                        .documentId(id)
-                        .schemaType('vendor')
-                        .views([
-                          S.view.form().id('form'),
-                          S.view
-                            .component(VendorStatusBadge as any)
-                            .title('Status Badge')
-                            .id('status-badge'),
-                        ])
-                    )
-                ),
-              S.listItem()
-                .title('Vendor Admin')
-                .child(
-                  S.component()
-                    .title('Vendor Admin Dashboard')
-                    .component(VendorAdminDashboard as any)
                 ),
             ])
-        )
+        ),
+
+      // Hidden foundational lists to keep intents (edit/create) working with custom views.
+      documentListWithPreview(S, 'invoice', 'Invoices', {hidden: true}),
+      documentListWithPreview(S, 'order', 'Orders', {hidden: true}),
+      documentListWithPreview(S, 'quote', 'Quote Requests', {hidden: true}),
     ])

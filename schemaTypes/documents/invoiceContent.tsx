@@ -37,27 +37,47 @@ function getFnBase(): string {
 
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
 function InvoiceNumberInput(props: any) {
-  const {value, onChange} = props
+  const {value, onChange, readOnly: readOnlyProp} = props
+  const client = useClient({apiVersion: '2024-10-01'})
+  const documentId = (useFormValue(['_id']) as string) || ''
   const orderNumber = (useFormValue(['orderNumber']) as string) || ''
   const status = (useFormValue(['status']) as string) || 'pending'
 
-  useEffect(() => {
-    if (value) return
-    if (orderNumber) {
-      onChange(set(String(orderNumber)))
-    } else {
-      const rand = Math.floor(Math.random() * 1_000_000)
-      onChange(set(`FAS-${rand.toString().padStart(6, '0')}`))
-    }
-  }, [orderNumber, onChange, value])
+  const locked = Boolean(readOnlyProp ?? (status !== 'pending' || !!orderNumber))
 
-  const readOnly = status !== 'pending' || !!orderNumber
+  useEffect(() => {
+    if (orderNumber) {
+      const next = String(orderNumber)
+      if (value === next) return
+      if (locked && documentId) {
+        client
+          .patch(documentId)
+          .set({invoiceNumber: next})
+          .commit({autoGenerateArrayKeys: true})
+          .catch(() => undefined)
+        return
+      }
+      if (!locked) {
+        onChange(set(next))
+      }
+      return
+    }
+
+    if (value || locked) return
+
+    const rand = Math.floor(Math.random() * 1_000_000)
+    const generated = `FAS-${rand.toString().padStart(6, '0')}`
+    onChange(set(generated))
+  }, [client, documentId, locked, onChange, orderNumber, value])
 
   return (
     <TextInput
-      readOnly={readOnly}
+      readOnly={locked}
       value={value || ''}
-      onChange={(event) => onChange(set(event.currentTarget.value))}
+      onChange={(event) => {
+        if (locked) return
+        onChange(set(event.currentTarget.value))
+      }}
     />
   )
 }
@@ -447,6 +467,11 @@ function TotalsPanel() {
   const discountType = (useFormValue(['discountType']) as string) || 'amount'
   const discountValue = Number(useFormValue(['discountValue']) as any) || 0
   const taxRate = Number(useFormValue(['taxRate']) as any) || 0
+  const amountShippingRaw = useFormValue(['amountShipping']) as any
+  const selectedService = (useFormValue(['selectedService']) as any) || {}
+  const selectedServiceAmount = Number(
+    selectedService?.amount ?? (selectedService?.rateAmount || selectedService?.price || 0)
+  )
 
   const subtotal = useMemo(() => {
     return lineItems.reduce((sum: number, item: any) => {
@@ -466,13 +491,24 @@ function TotalsPanel() {
 
   const taxableBase = Math.max(0, subtotal - discountAmount)
   const taxAmount = taxableBase * (taxRate / 100)
-  const total = Math.max(0, taxableBase + taxAmount)
+  const shippingAmount = useMemo(() => {
+    const direct =
+      typeof amountShippingRaw === 'number'
+        ? amountShippingRaw
+        : Number(amountShippingRaw)
+    if (Number.isFinite(direct) && direct !== 0) return direct
+    const fallback = Number(selectedServiceAmount)
+    return Number.isFinite(fallback) ? fallback : 0
+  }, [amountShippingRaw, selectedServiceAmount])
+  const total = Math.max(0, taxableBase + taxAmount + shippingAmount)
 
   return (
     <div className="invoice-totals-card">
       <div className="invoice-totals-card__grid">
         <span className="invoice-totals-card__label">Subtotal</span>
         <span className="invoice-totals-card__value">${fmt(subtotal)}</span>
+        <span className="invoice-totals-card__label">Shipping</span>
+        <span className="invoice-totals-card__value">${fmt(shippingAmount)}</span>
         <span className="invoice-totals-card__label">Discount</span>
         <span className="invoice-totals-card__value">-${fmt(discountAmount)}</span>
         <span className="invoice-totals-card__label">Tax</span>
@@ -481,7 +517,7 @@ function TotalsPanel() {
         <span className="invoice-totals-card__value invoice-totals-card__total">${fmt(total)}</span>
       </div>
       <p className="invoice-totals-card__note">
-        All values auto-calculated from line items, discount, and tax rate.
+        All values auto-calculated from line items plus shipping, discount, and tax rate.
       </p>
     </div>
   )
@@ -777,6 +813,57 @@ export default defineType({
     defineField({ name: 'billTo', title: 'Bill To', type: 'billTo', components: { input: BillToInput } }),
 
     defineField({ name: 'shipTo', title: 'Ship To', type: 'shipTo', components: { input: ShipToInput } }),
+    defineField({
+      name: 'weight',
+      title: 'Package Weight',
+      type: 'shipmentWeight',
+      description: 'Auto-calculated from linked order items; adjust if the packed weight differs.',
+    }),
+    defineField({
+      name: 'dimensions',
+      title: 'Package Dimensions',
+      type: 'packageDimensions',
+      description: 'Auto-filled using product defaults; update if the package differs.',
+    }),
+    defineField({
+      name: 'amountShipping',
+      title: 'Shipping Amount',
+      type: 'number',
+      description: 'Shipping charge billed to the customer (adds to the invoice total).',
+    }),
+    defineField({
+      name: 'shippingCarrier',
+      title: 'Shipping Carrier',
+      type: 'string',
+      description: 'Carrier or service provider (e.g., UPS, USPS Priority).',
+    }),
+    defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string' }),
+    defineField({ name: 'trackingUrl', title: 'Tracking URL', type: 'url' }),
+    defineField({ name: 'shippingLabelUrl', title: 'Shipping Label URL', type: 'url' }),
+    defineField({
+      name: 'selectedService',
+      title: 'Selected Shipping Rate',
+      type: 'object',
+      readOnly: true,
+      options: { columns: 2 },
+      fields: [
+        defineField({ name: 'carrierId', title: 'Carrier ID', type: 'string' }),
+        defineField({ name: 'carrier', title: 'Carrier', type: 'string' }),
+        defineField({ name: 'service', title: 'Service Name', type: 'string' }),
+        defineField({ name: 'serviceCode', title: 'Service Code', type: 'string' }),
+        defineField({ name: 'amount', title: 'Rate Amount', type: 'number' }),
+        defineField({ name: 'currency', title: 'Currency', type: 'string' }),
+        defineField({ name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number' }),
+        defineField({ name: 'estimatedDeliveryDate', title: 'Est. Delivery Date', type: 'datetime' }),
+      ],
+    }),
+    defineField({
+      name: 'shippingLog',
+      title: 'Shipping History',
+      type: 'array',
+      of: [{ type: 'shippingLogEntry' }],
+      description: 'System-recorded shipping events (labels, updates, notifications).',
+    }),
 
     // Line Items with product link or custom rows
     defineField({ name: 'lineItems', title: 'Line Items', type: 'array', of: [ { type: 'invoiceLineItem' } ] }),
@@ -807,6 +894,30 @@ export default defineType({
     }),
     defineField({ name: 'invoiceDate', title: 'Invoice Date', type: 'date', initialValue: () => new Date().toISOString().slice(0,10) }),
     defineField({ name: 'dueDate', title: 'Due Date', type: 'date' }),
+    defineField({
+      name: 'paymentTerms',
+      title: 'Payment Terms',
+      type: 'string',
+      description: 'e.g., Due on receipt, Net 30, Net 60.',
+    }),
+    defineField({
+      name: 'serviceRenderedBy',
+      title: 'Service Rendered By',
+      type: 'string',
+      description: 'Who performed the work or provided the service.',
+    }),
+    defineField({
+      name: 'paymentInstructions',
+      title: 'Payment Instructions',
+      type: 'text',
+      description: 'Guidance for the customer on how to pay this invoice.',
+    }),
+    defineField({
+      name: 'depositAmount',
+      title: 'Deposit Received',
+      type: 'number',
+      description: 'Amount already collected that should be applied toward the total.',
+    }),
 
     defineField({ name: 'paymentLinkUrl', title: 'Payment Link URL', type: 'url' }),
 

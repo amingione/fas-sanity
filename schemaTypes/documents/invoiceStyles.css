@@ -28,7 +28,7 @@
 }
 
 .invoice-section-card__toggle {
-  background: none;
+  background: white;
   border: none;
   font-size: 0.75rem;
   font-weight: 600;
@@ -126,7 +126,7 @@
   text-align: left;
   padding: 12px 16px;
   border: none;
-  background: none;
+  background: white;
   border-bottom: 1px solid #eceff3;
   cursor: pointer;
   display: grid;
@@ -230,7 +230,7 @@
 .invoice-line-item__product-result {
   width: 100%;
   border: none;
-  background: none;
+  background: white;
   text-align: left;
   padding: 10px 14px;
   font-size: 0.9rem;
