@@ -467,7 +467,7 @@ export default function ShippingLabelActions({ doc }: Props) {
           value={selectedRate?.serviceCode || ''}
         >
           {availableRates.map((rate, idx) => (
-            <option key={`${rate.serviceCode}-${idx}`} value={rate.serviceCode}>
+            <option key={`${rate.serviceCode || 'unknown'}-${rate.carrierId || 'carrier'}-${idx}`} value={rate.serviceCode}>
               {rate.carrier} — {rate.service} ({rate.serviceCode}) — ${rate.amount.toFixed(2)}{rate.deliveryDays ? ` • ${rate.deliveryDays}d` : ''}
             </option>
           ))}

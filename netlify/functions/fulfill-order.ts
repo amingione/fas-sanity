@@ -5,6 +5,32 @@ import { getShipEngineFromAddress } from '../lib/ship-from'
 const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY || ''
 const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
 
+const configuredOrigins = [
+  process.env.CORS_ALLOW,
+  process.env.SANITY_STUDIO_NETLIFY_BASE,
+  process.env.PUBLIC_SITE_URL,
+  process.env.SITE_BASE_URL,
+]
+  .filter(Boolean)
+  .flatMap((value) => value!.split(','))
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+const DEFAULT_ORIGINS = Array.from(
+  new Set([
+    ...configuredOrigins,
+    'http://localhost:3333',
+    'http://localhost:8888',
+  ])
+)
+
+function pickOrigin(origin?: string): string {
+  if (!origin) return DEFAULT_ORIGINS[0] || '*'
+  if (DEFAULT_ORIGINS.includes(origin)) return origin
+  if (/^http:\/\/localhost:\d+$/i.test(origin)) return origin
+  return DEFAULT_ORIGINS[0] || origin
+}
+
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
@@ -53,16 +79,27 @@ function formatOrderNumberForDisplay(opts: { orderNumber?: string | null; stripe
 }
 
 export const handler: Handler = async (event) => {
-  try {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, body: '' }
-    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' }
+  const originHeader = event.headers?.origin || event.headers?.Origin
+  const baseHeaders = {
+    'Access-Control-Allow-Origin': pickOrigin(originHeader),
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  }
 
-    const { orderId } = JSON.parse(event.body || '{}')
-    if (!orderId) return { statusCode: 400, body: 'Missing orderId' }
+  try {
+    if (event.httpMethod === 'OPTIONS') {
+      return {statusCode: 200, headers: baseHeaders, body: ''}
+    }
+    if (event.httpMethod !== 'POST') {
+      return {statusCode: 405, headers: baseHeaders, body: 'Method Not Allowed'}
+    }
+
+    const { orderId, useExistingTracking } = JSON.parse(event.body || '{}')
+    if (!orderId) return { statusCode: 400, headers: baseHeaders, body: 'Missing orderId' }
 
     const order = await sanity.fetch(`*[_type == "order" && _id == $id][0]`, { id: orderId })
     if (!order || !order.shippingAddress) {
-      return { statusCode: 400, body: 'Invalid or missing order or shipping address' }
+      return { statusCode: 400, headers: baseHeaders, body: 'Invalid or missing order or shipping address' }
     }
 
     const to = order.shippingAddress
@@ -78,6 +115,238 @@ export const handler: Handler = async (event) => {
     }
 
     const fromAddress = getShipEngineFromAddress()
+
+    async function sendTrackingEmail(trackingNumber: string, trackingUrl?: string, packingSlipBase64?: string) {
+      if (!RESEND_API_KEY) return
+      const emailTo = to?.email || order.customerEmail
+      if (!emailTo) return
+
+      const orderNumber = formatOrderNumberForDisplay({
+        orderNumber: order.orderNumber,
+        stripeSessionId: order.stripeSessionId,
+        fallbackId: (order as any)?._id || orderId,
+      })
+
+      const rawName = (
+        order.customerName ||
+        order.shippingAddress?.name ||
+        (order.customerEmail ? order.customerEmail.split('@')[0] : '') ||
+        ''
+      ).toString()
+      const trimmedName = rawName.trim()
+      const greetingLine = trimmedName
+        ? `Hi ${trimmedName}, we just handed your package to the carrier.`
+        : 'We just handed your package to the carrier.'
+      const salutationPlain = trimmedName ? `Hi ${trimmedName}` : 'Hi there'
+
+      const items = Array.isArray(order.cart) ? order.cart : []
+      const formatCurrency = (value?: number) => {
+        return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : ''
+      }
+      const shippingLines = [
+        order.shippingAddress?.name,
+        order.shippingAddress?.addressLine1,
+        order.shippingAddress?.addressLine2,
+        [order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.postalCode]
+          .filter(Boolean)
+          .join(', '),
+        order.shippingAddress?.country,
+      ].filter((line) => Boolean(line && String(line).trim()))
+
+      const itemsHtml = items.length
+        ? `<table role="presentation" style="width:100%;border-collapse:collapse;margin:24px 0;">
+              <thead>
+                <tr>
+                  <th align="left" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;">Item</th>
+                  <th align="center" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;width:70px;">Qty</th>
+                  <th align="right" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;width:90px;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items
+                  .map((item: any) => `
+                    <tr>
+                      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+                        <div style="font-size:14px;color:#111827;font-weight:600;">${item?.name || item?.sku || 'Item'}</div>
+                        ${item?.sku ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">SKU ${item.sku}</div>` : ''}
+                      </td>
+                      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:center;font-size:14px;color:#374151;">${Number(item?.quantity || 1)}</td>
+                      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:14px;color:#374151;">${formatCurrency(Number(item?.price))}</td>
+                    </tr>
+                  `)
+                  .join('')}
+              </tbody>
+            </table>`
+        : ''
+
+      const shippingHtml = shippingLines.length
+        ? `<div style="margin:24px 0 12px;">
+                <h3 style="margin:0 0 6px;font-size:15px;color:#111827;">Shipping to</h3>
+                <div style="font-size:14px;color:#374151;line-height:1.5;">
+                  ${shippingLines.map((line) => `<div>${line}</div>`).join('')}
+                </div>
+              </div>`
+        : ''
+
+      const trackingHtml = trackingNumber
+        ? `<div style="margin:0 0 18px;padding:16px 20px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;">
+                <p style="margin:0;font-size:13px;color:#52525b;">Tracking number</p>
+                <p style="margin:6px 0 0;font-size:18px;font-weight:600;color:#111827;">${trackingNumber}</p>
+                ${trackingUrl ? `<p style="margin:12px 0 0;"><a href="${trackingUrl}" style="display:inline-block;padding:12px 18px;background:#dc2626;color:#ffffff;font-weight:600;text-decoration:none;border-radius:6px;">Track your package</a></p>` : ''}
+              </div>`
+        : `<div style="margin:0 0 18px;padding:16px 20px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;font-size:14px;color:#52525b;">Your label is ready and tracking details will be shared shortly.</div>`
+
+      const html = `
+          <div style="margin:0;padding:24px 12px;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;border-collapse:collapse;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
+              <tr>
+                <td style="background:#0f172a;color:#ffffff;padding:24px 28px;">
+                  <h1 style="margin:0;font-size:22px;font-weight:700;">${orderNumber ? `Order <span style=\"color:#f97316\">#${orderNumber}</span>` : 'Your order'} is on the way</h1>
+                  <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${greetingLine}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:28px 28px 24px;color:#111827;">
+                  <p style="margin:0 0 16px;font-size:15px;">Good news—your order is moving. You can keep an eye on it using the details below.</p>
+                  ${trackingHtml}
+                  ${itemsHtml}
+                  ${shippingHtml}
+                  <div style="margin:28px 0 0;padding:16px 20px;border-radius:10px;background:#f9fafb;color:#4b5563;font-size:13px;border:1px solid #e4e4e7;">
+                    Need anything? Reply to this email or call us at (812) 200-9012 and we’ll be happy to help.
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:18px 28px;border-top:1px solid #e4e4e7;background:#f4f4f5;font-size:12px;color:#6b7280;text-align:center;">
+                  F.A.S. Motorsports LLC • 6161 Riverside Dr • Punta Gorda, FL 33982
+                </td>
+              </tr>
+            </table>
+          </div>
+        `
+
+      const textItems =
+        items
+          .map((item: any) => `- ${Number(item?.quantity || 1)} × ${item?.name || item?.sku || 'Item'} ${formatCurrency(Number(item?.price))}`)
+          .join('\n') || '- (details unavailable)'
+
+      const textLines: string[] = []
+      textLines.push(`${salutationPlain},`)
+      textLines.push('')
+      textLines.push(`Good news—your order${orderNumber ? ` #${orderNumber}` : ''} is on its way.`)
+      if (trackingNumber) textLines.push(`Tracking number: ${trackingNumber}`)
+      if (trackingUrl) textLines.push(`Track your package: ${trackingUrl}`)
+      textLines.push('')
+      textLines.push('Items:')
+      textLines.push(textItems)
+      if (shippingLines.length) {
+        textLines.push('')
+        textLines.push('Shipping to:')
+        textLines.push(shippingLines.join('\n'))
+      }
+      textLines.push('')
+      textLines.push('Need anything? Reply to this email or call (812) 200-9012.')
+      textLines.push('')
+      textLines.push('— F.A.S. Motorsports')
+
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'FAS Motorsports <support@updates.fasmotorsports.com>',
+          to: [emailTo],
+          subject: orderNumber ? `Order #${orderNumber} is on the way` : 'Your order is on the way',
+          html,
+          text: textLines.join('\n'),
+          attachments: packingSlipBase64
+            ? [
+                {
+                  filename: 'PackingSlip.pdf',
+                  content: packingSlipBase64,
+                  contentType: 'application/pdf',
+                },
+              ]
+            : [],
+        }),
+      })
+    }
+
+    const existingTrackingNumber = order.trackingNumber ? String(order.trackingNumber).trim() : ''
+    const existingTrackingUrl = order.trackingUrl || (Array.isArray(order.shippingLog) ? order.shippingLog.find((entry: any) => entry?.trackingNumber === existingTrackingNumber)?.trackingUrl : undefined)
+
+    if (useExistingTracking && existingTrackingNumber) {
+      const now = new Date().toISOString()
+      const existingLog = Array.isArray(order.shippingLog)
+        ? order.shippingLog.find((entry: any) => entry?.status === 'fulfilled_manual' && entry?.trackingNumber === existingTrackingNumber)
+        : null
+
+      const patch = sanity.patch(orderId)
+        .set({
+          status: 'fulfilled',
+          fulfilledAt: order.fulfilledAt || now,
+          trackingNumber: existingTrackingNumber,
+          ...(existingTrackingUrl ? {trackingUrl: existingTrackingUrl} : {}),
+        })
+        .setIfMissing({ shippingLog: [] })
+
+      if (!existingLog) {
+        patch.append('shippingLog', [
+          {
+            _type: 'shippingLogEntry',
+            status: 'fulfilled_manual',
+            message: 'Order marked fulfilled with existing tracking number.',
+            trackingNumber: existingTrackingNumber,
+            trackingUrl: existingTrackingUrl,
+            createdAt: now,
+          },
+        ])
+      }
+
+      await patch.commit({ autoGenerateArrayKeys: true })
+
+      try {
+        const draftPatch = sanity
+          .patch(`drafts.${orderId}`)
+          .set({
+            status: 'fulfilled',
+            fulfilledAt: order.fulfilledAt || now,
+            trackingNumber: existingTrackingNumber,
+            ...(existingTrackingUrl ? {trackingUrl: existingTrackingUrl} : {}),
+          })
+          .setIfMissing({shippingLog: []})
+
+        if (!existingLog) {
+          draftPatch.append('shippingLog', [
+            {
+              _type: 'shippingLogEntry',
+              status: 'fulfilled_manual',
+              message: 'Order marked fulfilled with existing tracking number.',
+              trackingNumber: existingTrackingNumber,
+              trackingUrl: existingTrackingUrl,
+              createdAt: now,
+            },
+          ])
+        }
+
+        await draftPatch.commit({autoGenerateArrayKeys: true})
+      } catch (draftErr: any) {
+        const statusCode = draftErr?.statusCode || draftErr?.response?.statusCode
+        if (statusCode && statusCode !== 404) {
+          console.warn('fulfill-order: failed to update draft with tracking info', draftErr)
+        }
+      }
+
+      await sendTrackingEmail(existingTrackingNumber, existingTrackingUrl)
+
+      return {
+        statusCode: 200,
+        headers: baseHeaders,
+        body: JSON.stringify({ success: true, fulfilled: true, trackingNumber: existingTrackingNumber }),
+      }
+    }
 
     // Compute package plan from product data (weights/dims)
     type CartItem = { sku?: string; name?: string; quantity?: number }
@@ -190,8 +459,29 @@ export const handler: Handler = async (event) => {
         console.warn('fulfill-order: failed to log install-only status', e)
       }
 
+      try {
+        await sanity
+          .patch(`drafts.${orderId}`)
+          .setIfMissing({shippingLog: []})
+          .append('shippingLog', [
+            {
+              _type: 'shippingLogEntry',
+              status: 'install_only',
+              message: 'Order contains install-only items — no shipping label required.',
+              createdAt: new Date().toISOString(),
+            },
+          ])
+          .commit({autoGenerateArrayKeys: true})
+      } catch (draftErr: any) {
+        const statusCode = draftErr?.statusCode || draftErr?.response?.statusCode
+        if (statusCode && statusCode !== 404) {
+          console.warn('fulfill-order: failed to update draft install-only log', draftErr)
+        }
+      }
+
       return {
         statusCode: 200,
+        headers: baseHeaders,
         body: JSON.stringify({ success: true, installOnly: true, message: 'Install-only order. Schedule installation instead of shipping.', installOnlySkus }),
       }
     }
@@ -225,6 +515,27 @@ export const handler: Handler = async (event) => {
         ])
         .commit({ autoGenerateArrayKeys: true })
 
+      try {
+        await sanity
+          .patch(`drafts.${orderId}`)
+          .setIfMissing({shippingLog: []})
+          .append('shippingLog', [
+            {
+              _type: 'shippingLogEntry',
+              status: 'needs_freight_quote',
+              message: 'Freight required due to weight/dimensions or product class.',
+              createdAt: new Date().toISOString(),
+              weight: combinedWeight || (soloPackages[0]?.weight ?? 0),
+            },
+          ])
+          .commit({autoGenerateArrayKeys: true})
+      } catch (draftErr: any) {
+        const statusCode = draftErr?.statusCode || draftErr?.response?.statusCode
+        if (statusCode && statusCode !== 404) {
+          console.warn('fulfill-order: failed to update draft freight log', draftErr)
+        }
+      }
+
       // Open a freight quote task in Studio
       try {
         const baseUrl = makeBaseUrl()
@@ -239,7 +550,7 @@ export const handler: Handler = async (event) => {
         console.warn('fulfill-order: requestFreightQuote failed', e)
       }
 
-      return { statusCode: 200, body: JSON.stringify({ success: true, freight: true }) }
+      return { statusCode: 200, headers: baseHeaders, body: JSON.stringify({ success: true, freight: true }) }
     }
 
     // Choose service
@@ -321,7 +632,7 @@ export const handler: Handler = async (event) => {
     }
 
     if (createdLabels.length === 0) {
-      return { statusCode: 500, body: 'Failed to generate any labels' }
+      return { statusCode: 500, headers: baseHeaders, body: 'Failed to generate any labels' }
     }
 
     // Generate packing slip via our function
@@ -374,188 +685,64 @@ export const handler: Handler = async (event) => {
     }))
 
     // Update order in Sanity
+    const fulfillmentTimestamp = new Date().toISOString()
+
     await sanity.patch(orderId)
       .set({
         shippingLabelUrl: createdLabels[0]?.url,
         trackingNumber: createdLabels[0]?.tracking,
+        trackingUrl: createdLabels[0]?.trackingUrl,
         ...(packingSlipUrl ? { packingSlipUrl } : {}),
         status: 'fulfilled',
-        fulfilledAt: new Date().toISOString(),
+        fulfilledAt: fulfillmentTimestamp,
       })
       .setIfMissing({ shippingLog: [] })
       .append('shippingLog', logEntries)
       .commit({ autoGenerateArrayKeys: true })
 
-    // Optional: send email via Resend
-    if (RESEND_API_KEY && to?.email) {
-      try {
-        const orderNumber = formatOrderNumberForDisplay({
-          orderNumber: order.orderNumber,
-          stripeSessionId: order.stripeSessionId,
-          fallbackId: (order as any)?._id || orderId,
+    try {
+      const draftPatch = sanity
+        .patch(`drafts.${orderId}`)
+        .set({
+          shippingLabelUrl: createdLabels[0]?.url,
+          trackingNumber: createdLabels[0]?.tracking,
+          trackingUrl: createdLabels[0]?.trackingUrl,
+          ...(packingSlipUrl ? {packingSlipUrl} : {}),
+          status: 'fulfilled',
+          fulfilledAt: fulfillmentTimestamp,
         })
+        .setIfMissing({shippingLog: []})
 
-        const rawName = (
-          order.customerName ||
-          order.shippingAddress?.name ||
-          (order.customerEmail ? order.customerEmail.split('@')[0] : '') ||
-          ''
-        ).toString()
-        const trimmedName = rawName.trim()
-        const greetingLine = trimmedName
-          ? `Hi ${trimmedName}, we just handed your package to the carrier.`
-          : 'We just handed your package to the carrier.'
-        const salutationPlain = trimmedName ? `Hi ${trimmedName}` : 'Hi there'
+      if (logEntries.length) {
+        draftPatch.append('shippingLog', logEntries)
+      }
 
-        const items = Array.isArray(order.cart) ? order.cart : []
-        const formatCurrency = (value?: number) => {
-          return typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : ''
-        }
-        const shippingLines = [
-          order.shippingAddress?.name,
-          order.shippingAddress?.addressLine1,
-          order.shippingAddress?.addressLine2,
-          [order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.postalCode].filter(Boolean).join(', '),
-          order.shippingAddress?.country,
-        ].filter((line) => Boolean(line && String(line).trim()))
+      await draftPatch.commit({autoGenerateArrayKeys: true})
+    } catch (draftErr: any) {
+      const statusCode = draftErr?.statusCode || draftErr?.response?.statusCode
+      if (statusCode && statusCode !== 404) {
+        console.warn('fulfill-order: failed to update draft after label generation', draftErr)
+      }
+    }
 
-        const itemsHtml = items.length
-          ? `<table role="presentation" style="width:100%;border-collapse:collapse;margin:24px 0;">
-              <thead>
-                <tr>
-                  <th align="left" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;">Item</th>
-                  <th align="center" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;width:70px;">Qty</th>
-                  <th align="right" style="font-size:13px;color:#52525b;padding:0 0 8px;border-bottom:1px solid #e4e4e7;width:90px;">Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${items
-                  .map((item: any) => `
-                    <tr>
-                      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
-                        <div style="font-size:14px;color:#111827;font-weight:600;">${item?.name || item?.sku || 'Item'}</div>
-                        ${item?.sku ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;">SKU ${item.sku}</div>` : ''}
-                      </td>
-                      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:center;font-size:14px;color:#374151;">${Number(item?.quantity || 1)}</td>
-                      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:14px;color:#374151;">${formatCurrency(Number(item?.price))}</td>
-                    </tr>
-                  `)
-                  .join('')}
-              </tbody>
-            </table>`
-          : ''
-
-        const shippingHtml = shippingLines.length
-          ? `<div style="margin:24px 0 12px;">
-                <h3 style="margin:0 0 6px;font-size:15px;color:#111827;">Shipping to</h3>
-                <div style="font-size:14px;color:#374151;line-height:1.5;">
-                  ${shippingLines.map((line) => `<div>${line}</div>`).join('')}
-                </div>
-              </div>`
-          : ''
-
+    // Optional: send email via Resend
+    if (RESEND_API_KEY) {
+      try {
         const primaryLabel = createdLabels[0] || {}
         const trackingNumber = primaryLabel?.tracking ? String(primaryLabel.tracking) : ''
         const trackingUrl = primaryLabel?.trackingUrl ? String(primaryLabel.trackingUrl) : undefined
-
-        const trackingHtml = trackingNumber
-          ? `<div style="margin:0 0 18px;padding:16px 20px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;">
-                <p style="margin:0;font-size:13px;color:#52525b;">Tracking number</p>
-                <p style="margin:6px 0 0;font-size:18px;font-weight:600;color:#111827;">${trackingNumber}</p>
-                ${trackingUrl ? `<p style="margin:12px 0 0;"><a href="${trackingUrl}" style="display:inline-block;padding:12px 18px;background:#dc2626;color:#ffffff;font-weight:600;text-decoration:none;border-radius:6px;">Track your package</a></p>` : ''}
-              </div>`
-          : `<div style="margin:0 0 18px;padding:16px 20px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;font-size:14px;color:#52525b;">Your label is ready and tracking details will be shared shortly.</div>`
-
-        const html = `
-          <div style="margin:0;padding:24px 12px;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;border-collapse:collapse;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
-              <tr>
-                <td style="background:#0f172a;color:#ffffff;padding:24px 28px;">
-                  <h1 style="margin:0;font-size:22px;font-weight:700;">${orderNumber ? `Order <span style=\"color:#f97316\">#${orderNumber}</span>` : 'Your order'} is on the way</h1>
-                  <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${greetingLine}</p>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:28px 28px 24px;color:#111827;">
-                  <p style="margin:0 0 16px;font-size:15px;">Good news—your order is moving. You can keep an eye on it using the details below.</p>
-                  ${trackingHtml}
-                  ${itemsHtml}
-                  ${shippingHtml}
-                  <div style="margin:28px 0 0;padding:16px 20px;border-radius:10px;background:#f9fafb;color:#4b5563;font-size:13px;border:1px solid #e4e4e7;">
-                    Need anything? Reply to this email or call us at (812) 200-9012 and we’ll be happy to help.
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:18px 28px;border-top:1px solid #e4e4e7;background:#f4f4f5;font-size:12px;color:#6b7280;text-align:center;">
-                  F.A.S. Motorsports LLC • 6161 Riverside Dr • Punta Gorda, FL 33982
-                </td>
-              </tr>
-            </table>
-          </div>
-        `
-
-        const textItems = items
-          .map((item: any) => `- ${Number(item?.quantity || 1)} × ${item?.name || item?.sku || 'Item'} ${formatCurrency(Number(item?.price))}`)
-          .join('\n') || '- (details unavailable)'
-
-        const textLines: string[] = []
-        textLines.push(`${salutationPlain},`)
-        textLines.push('')
-        textLines.push(`Good news—your order${orderNumber ? ` #${orderNumber}` : ''} is on its way.`)
-        if (trackingNumber) textLines.push(`Tracking number: ${trackingNumber}`)
-        if (trackingUrl) textLines.push(`Track your package: ${trackingUrl}`)
-        textLines.push('')
-        textLines.push('Items:')
-        textLines.push(textItems)
-        if (shippingLines.length) {
-          textLines.push('')
-          textLines.push('Shipping to:')
-          textLines.push(shippingLines.join('\n'))
+        if (trackingNumber) {
+          await sendTrackingEmail(trackingNumber, trackingUrl, pdfBase64 || undefined)
         }
-        textLines.push('')
-        textLines.push('Need anything? Reply to this email or call (812) 200-9012.')
-        textLines.push('')
-        textLines.push('— F.A.S. Motorsports')
-
-        const text = textLines.join('\n')
-
-        const subject = orderNumber
-          ? `Your F.A.S. Motorsports Order #${orderNumber} Is On The Way`
-          : 'Your F.A.S. Motorsports Order Is On The Way'
-
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: 'orders@fasmotorsports.com',
-            to: to.email,
-            subject,
-            html,
-            text,
-            attachments: pdfBase64
-              ? [
-                  {
-                    filename: 'PackingSlip.pdf',
-                    content: pdfBase64,
-                    contentType: 'application/pdf',
-                  },
-                ]
-              : [],
-          }),
-        })
       } catch (e) {
         console.warn('Resend email failed:', e)
       }
     }
 
-    return { statusCode: 200, body: JSON.stringify({ success: true }) }
+    return { statusCode: 200, headers: baseHeaders, body: JSON.stringify({ success: true }) }
   } catch (err: any) {
     console.error('fulfill-order error:', err)
-    return { statusCode: 500, body: JSON.stringify({ error: err?.message || 'Server error' }) }
+    return { statusCode: 500, headers: baseHeaders, body: JSON.stringify({ error: err?.message || 'Server error' }) }
   }
 }
 

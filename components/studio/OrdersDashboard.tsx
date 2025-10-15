@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState, type CSSProperties} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {
@@ -18,6 +18,7 @@ import {
   Stack,
   Text,
   TextInput,
+  useToast,
 } from '@sanity/ui'
 import {SearchIcon} from '@sanity/icons'
 
@@ -204,6 +205,21 @@ const STICKY_ORDER_BASE: CSSProperties = {
   boxShadow: STICKY_ORDER_BOX_SHADOW,
 }
 
+const CANCELLED_STATUSES = new Set(['cancelled', 'canceled'])
+const CLOSED_PAYMENT_STATUSES = new Set(['cancelled', 'canceled', 'refunded', 'void', 'failed'])
+const OPEN_FULFILLMENT_STATUSES = new Set(['pending', 'processing', 'paid'])
+const OPEN_PAYMENT_STATUSES = new Set(['pending', 'processing'])
+
+function isCancelledStatus(value: string | null | undefined): boolean {
+  if (!value) return false
+  return CANCELLED_STATUSES.has(value.toLowerCase())
+}
+
+function isClosedPaymentStatus(value: string | null | undefined): boolean {
+  if (!value) return false
+  return CLOSED_PAYMENT_STATUSES.has(value.toLowerCase())
+}
+
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
@@ -296,11 +312,12 @@ function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'prima
   const normalized = status.toLowerCase()
   if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
   if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
-  if (['cancelled', 'returned', 'refunded', 'failed', 'exception'].includes(normalized)) return 'critical'
+  if (['cancelled', 'canceled', 'returned', 'refunded', 'failed', 'exception', 'void'].includes(normalized)) return 'critical'
   return 'primary'
 }
 
 function deriveDeliveryStatus(order: RawOrder, shippingStatuses: string[]): string {
+  if (isCancelledStatus(order.status)) return 'Cancelled'
   if (!shippingStatuses.length && order.fulfilledAt) return 'Delivered'
   const latest = shippingStatuses[0] || ''
   if (shippingStatuses.some((status) => status.includes('deliver'))) return 'Delivered'
@@ -314,11 +331,12 @@ function deriveDeliveryStatus(order: RawOrder, shippingStatuses: string[]): stri
 function deriveTags(order: RawOrder, shippingStatuses: string[]): string[] {
   const tags = new Set<string>()
   const payment = (order.paymentStatus || '').toLowerCase()
-  const fulfillment = (order.status || '').toLowerCase()
 
   if (payment.includes('refund')) tags.add('Refunded')
   if (payment.includes('failed')) tags.add('Payment failed')
-  if (fulfillment === 'cancelled') tags.add('Cancelled')
+  if (isCancelledStatus(order.status) || payment.includes('cancel') || isClosedPaymentStatus(order.paymentStatus)) {
+    tags.add('Cancelled')
+  }
   if (shippingStatuses.some((status) => status.includes('return'))) tags.add('Return')
   if (shippingStatuses.some((status) => status.includes('exception'))) tags.add('Exception')
 
@@ -389,17 +407,20 @@ function normalizeOrder(raw: RawOrder): OrderRow {
 function matchesTab(order: OrderRow, key: TabKey): boolean {
   const fulfillment = order.fulfillmentStatus.toLowerCase()
   const payment = order.paymentStatus.toLowerCase()
+  const fulfillmentCancelled = isCancelledStatus(order.fulfillmentStatus)
+  const paymentClosed = isClosedPaymentStatus(order.paymentStatus)
   switch (key) {
     case 'all':
       return true
     case 'unfulfilled':
-      return fulfillment !== 'fulfilled' && fulfillment !== 'cancelled'
+      return fulfillment !== 'fulfilled' && !fulfillmentCancelled
     case 'unpaid':
-      return !['paid', 'succeeded'].includes(payment)
+      return !['paid', 'succeeded'].includes(payment) && !paymentClosed
     case 'open':
-      return ['pending', 'processing', 'paid'].includes(fulfillment) || ['pending', 'processing'].includes(payment)
+      if (fulfillmentCancelled || paymentClosed) return false
+      return OPEN_FULFILLMENT_STATUSES.has(fulfillment) || OPEN_PAYMENT_STATUSES.has(payment)
     case 'archived':
-      return fulfillment === 'cancelled'
+      return fulfillmentCancelled || paymentClosed
     case 'returns':
       return order.tags.some((tag) => tag.toLowerCase().includes('return'))
     default:
@@ -423,6 +444,7 @@ function formatAverageDuration(milliseconds: number | null): string {
 export default function OrdersDashboard() {
   const client = useClient({apiVersion: '2024-10-01'})
   const router = useRouter()
+  const toast = useToast()
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -432,6 +454,8 @@ export default function OrdersDashboard() {
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionInProgress, setActionInProgress] = useState<'fulfill' | 'archive' | null>(null)
   const fetchControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -581,6 +605,182 @@ export default function OrdersDashboard() {
     return counts
   }, [orders])
 
+  const markSelectedFulfilled = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    setActionInProgress('fulfill')
+    setActionLoading(true)
+    const ids = Array.from(selectedIds)
+    const timestamp = new Date().toISOString()
+
+    try {
+      let tx = client.transaction()
+      const buildLogEntry = () => ({
+        _type: 'shippingLogEntry' as const,
+        status: 'fulfilled_manual',
+        message: 'Order marked fulfilled in Orders dashboard',
+        createdAt: timestamp,
+      })
+
+      ids.forEach((id) => {
+        tx = tx.patch(id, (patch) =>
+          patch
+            .set({
+              status: 'fulfilled',
+              fulfilledAt: timestamp,
+            })
+            .setIfMissing({shippingLog: []})
+            .append('shippingLog', [buildLogEntry()])
+        )
+      })
+
+      await tx.commit({autoGenerateArrayKeys: true})
+
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            await client
+              .patch(`drafts.${id}`)
+              .set({
+                status: 'fulfilled',
+                fulfilledAt: timestamp,
+              })
+              .setIfMissing({shippingLog: []})
+              .append('shippingLog', [buildLogEntry()])
+              .commit({autoGenerateArrayKeys: true})
+          } catch (err: any) {
+            const statusCode = err?.statusCode || err?.response?.statusCode
+            if (statusCode && statusCode !== 404) {
+              console.warn(`Orders dashboard: failed to update draft ${id}`, err)
+            }
+          }
+        })
+      )
+
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (!selectedIds.has(order.id)) return order
+          const normalizedDelivery = (order.deliveryStatus || '').toLowerCase()
+          const deliveryStatus = normalizedDelivery.includes('deliver') ? order.deliveryStatus : 'Fulfilled'
+          return {
+            ...order,
+            fulfillmentStatus: 'Fulfilled',
+            fulfilledAtValue: Date.parse(timestamp),
+            deliveryStatus,
+          }
+        })
+      )
+
+      setSelectedIds(new Set())
+
+      toast.push({
+        status: 'success',
+        title: 'Orders fulfilled',
+        description: `Updated ${ids.length} order${ids.length === 1 ? '' : 's'}.`,
+      })
+    } catch (err: any) {
+      console.error('orders-dashboard: failed to mark fulfilled', err)
+      toast.push({
+        status: 'error',
+        title: 'Could not mark fulfilled',
+        description: err?.message || 'Unable to update selected orders. Please try again.',
+      })
+    } finally {
+      setActionLoading(false)
+      setActionInProgress(null)
+    }
+  }, [client, selectedIds, toast])
+
+  const archiveSelected = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    setActionInProgress('archive')
+    setActionLoading(true)
+    const ids = Array.from(selectedIds)
+    const selectedSet = new Set(ids)
+    const timestamp = new Date().toISOString()
+
+    const buildLogEntry = () => ({
+      _type: 'shippingLogEntry' as const,
+      status: 'cancelled_manual',
+      message: 'Order archived in Orders dashboard',
+      createdAt: timestamp,
+    })
+
+    try {
+      let tx = client.transaction()
+
+      ids.forEach((id) => {
+        tx = tx.patch(id, (patch) =>
+          patch
+            .set({
+              status: 'cancelled',
+              paymentStatus: 'cancelled',
+              fulfilledAt: null,
+            })
+            .setIfMissing({shippingLog: []})
+            .append('shippingLog', [buildLogEntry()])
+        )
+      })
+
+      await tx.commit({autoGenerateArrayKeys: true})
+
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            await client
+              .patch(`drafts.${id}`)
+              .set({
+                status: 'cancelled',
+                paymentStatus: 'cancelled',
+                fulfilledAt: null,
+              })
+              .setIfMissing({shippingLog: []})
+              .append('shippingLog', [buildLogEntry()])
+              .commit({autoGenerateArrayKeys: true})
+          } catch (err: any) {
+            const statusCode = err?.statusCode || err?.response?.statusCode
+            if (statusCode && statusCode !== 404) {
+              console.warn(`Orders dashboard: failed to update draft ${id}`, err)
+            }
+          }
+        })
+      )
+
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (!selectedSet.has(order.id)) return order
+          const updatedTags = new Set(order.tags)
+          updatedTags.add('Cancelled')
+          return {
+            ...order,
+            fulfillmentStatus: 'Cancelled',
+            paymentStatus: 'Cancelled',
+            deliveryStatus: 'Cancelled',
+            fulfilledAtValue: null,
+            tags: Array.from(updatedTags),
+          }
+        })
+      )
+
+      setSelectedIds(new Set())
+
+      toast.push({
+        status: 'success',
+        title: 'Orders archived',
+        description: `Moved ${ids.length} order${ids.length === 1 ? '' : 's'} to the archived list.`,
+      })
+    } catch (err: any) {
+      console.error('orders-dashboard: failed to archive orders', err)
+      toast.push({
+        status: 'error',
+        title: 'Could not archive orders',
+        description: err?.message || 'Unable to archive selected orders. Please try again.',
+      })
+    } finally {
+      setActionLoading(false)
+      setActionInProgress(null)
+    }
+  }, [client, selectedIds, toast])
+
   function handleSelect(id: string, next: boolean) {
     setSelectedIds((prev) => {
       const updated = new Set(prev)
@@ -642,12 +842,20 @@ export default function OrdersDashboard() {
               <Button text="Export" mode="ghost" disabled={filteredOrders.length === 0} />
               <MenuButton
                 id="orders-dashboard-more-actions"
-                button={<Button text="More actions" mode="ghost" disabled={selectedIds.size === 0} />}
+                button={<Button text="More actions" mode="ghost" disabled={selectedIds.size === 0 || actionLoading} />}
                 menu={
                   <Menu>
-                    <MenuItem text="Mark as fulfilled" disabled={selectedIds.size === 0} />
-                    <MenuItem text="Send receipt" disabled={selectedIds.size === 0} />
-                    <MenuItem text="Archive" disabled={selectedIds.size === 0} />
+                    <MenuItem
+                      text={actionInProgress === 'fulfill' ? 'Marking as fulfilled…' : 'Mark as fulfilled'}
+                      disabled={selectedIds.size === 0 || actionLoading}
+                      onClick={markSelectedFulfilled}
+                    />
+                    <MenuItem text="Send receipt" disabled={selectedIds.size === 0 || actionLoading} />
+                    <MenuItem
+                      text={actionInProgress === 'archive' ? 'Archiving…' : 'Archive'}
+                      disabled={selectedIds.size === 0 || actionLoading}
+                      onClick={archiveSelected}
+                    />
                   </Menu>
                 }
               />
