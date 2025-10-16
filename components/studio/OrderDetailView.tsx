@@ -7,7 +7,6 @@ import React, {
 } from 'react'
 import {
   Avatar,
-  Badge,
   Box,
   Button,
   Card,
@@ -150,6 +149,68 @@ type TimelineEntry = {
   timestampLabel?: string
   tone: 'default' | 'positive' | 'critical' | 'caution'
   href?: string
+}
+
+type SummaryTokenTone = 'default' | 'positive' | 'critical' | 'caution'
+
+const CODE_FONT_FAMILY =
+  "var(--font-family-code, var(--font-family-mono, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace))"
+
+const SUMMARY_TOKEN_BASE_STYLE: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '6px 10px',
+  borderRadius: 4,
+  border: '1px solid var(--card-border-color)',
+  backgroundColor: 'var(--card-muted-bg-color)',
+  color: 'var(--card-fg-color)',
+  fontFamily: CODE_FONT_FAMILY,
+  fontSize: 12,
+  lineHeight: 1.4,
+  boxSizing: 'border-box',
+  maxWidth: '100%',
+  minWidth: 0,
+  wordBreak: 'break-word',
+  gap: 6,
+}
+
+const SUMMARY_TONE_ACCENTS: Record<SummaryTokenTone, string | null> = {
+  default: null,
+  positive: 'var(--card-badge-positive-bg-color, var(--card-border-color))',
+  critical: 'var(--card-badge-critical-bg-color, var(--card-border-color))',
+  caution: 'var(--card-badge-caution-bg-color, var(--card-border-color))',
+}
+
+function SummaryToken({
+  children,
+  tone = 'default',
+}: {
+  children: React.ReactNode
+  tone?: SummaryTokenTone
+}) {
+  const accent = SUMMARY_TONE_ACCENTS[tone]
+  const style = accent
+    ? {...SUMMARY_TOKEN_BASE_STYLE, boxShadow: `inset 3px 0 0 0 ${accent}`}
+    : SUMMARY_TOKEN_BASE_STYLE
+
+  return (
+    <Box style={style}>
+      <Text
+        size={1}
+        weight="medium"
+        style={{
+          fontFamily: 'inherit',
+          color: 'inherit',
+          display: 'inline',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {children}
+      </Text>
+    </Box>
+  )
 }
 
 const money = (value?: number | null) => {
@@ -897,15 +958,11 @@ function OrderDetailView(props: DocumentViewProps) {
               <Heading size={3}>{headerTitle}</Heading>
               <Flex gap={2} wrap="wrap">
                 {statusBadges.map((badge) => (
-                  <Badge key={badge.label} tone={badge.tone} padding={2} mode="outline">
+                  <SummaryToken key={badge.label} tone={badge.tone}>
                     {badge.label}
-                  </Badge>
+                  </SummaryToken>
                 ))}
-                {locationLabel && (
-                  <Badge tone="primary" padding={2} mode="outline">
-                    {locationLabel}
-                  </Badge>
-                )}
+                {locationLabel && <SummaryToken>{locationLabel}</SummaryToken>}
               </Flex>
               <Stack space={1}>
                 {order.createdAt && (
@@ -967,9 +1024,7 @@ function OrderDetailView(props: DocumentViewProps) {
                 <Flex justify="space-between" align="center">
                   <Heading size={2}>Fulfillment timeline</Heading>
                   {order.trackingNumber && (
-                    <Badge tone="primary" padding={2} mode="outline">
-                      Tracking {order.trackingNumber}
-                    </Badge>
+                    <SummaryToken tone="positive">Tracking {order.trackingNumber}</SummaryToken>
                   )}
                 </Flex>
                 {timelineEntries.length === 0 ? (
@@ -1179,9 +1234,7 @@ function OrderDetailView(props: DocumentViewProps) {
                       {item.metaLabels.length > 0 && (
                         <Flex gap={2} wrap="wrap">
                           {item.metaLabels.map((meta) => (
-                            <Badge key={meta} tone="primary" mode="outline">
-                              {meta}
-                            </Badge>
+                            <SummaryToken key={meta}>{meta}</SummaryToken>
                           ))}
                         </Flex>
                       )}
