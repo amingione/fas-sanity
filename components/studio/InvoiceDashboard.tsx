@@ -794,7 +794,7 @@ const SummaryCard: React.FC<{
         <h3 className="mt-1 text-sm font-semibold text-[var(--studio-text)]">{title}</h3>
       </div>
       <div>
-        <p className="text-base font-semibold text-slate-800">{currency.format(amount || 0)}</p>
+        <p className="text-base font-semibold text-[var(--studio-text)]">{currency.format(amount || 0)}</p>
         {footer ? footer : null}
       </div>
     </div>
