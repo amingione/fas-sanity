@@ -975,13 +975,24 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         <span className="text-[rgba(148,163,184,0.7)]">/</span>
                         <span className="truncate font-medium text-[var(--studio-muted)]">Customers</span>
                         <span className="text-[rgba(148,163,184,0.7)]">/</span>
-                        <span className="truncate font-semibold text-[var(--studio-text)]" title={activeDisplayName}>
+                        <button
+                          type="button"
+                          onClick={handleOpenInStudio}
+                          className="truncate border-0 bg-transparent p-0 text-left font-semibold text-[var(--studio-text)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-surface-strong)]"
+                          title={activeDisplayName}
+                        >
                           {activeDisplayName}
-                        </span>
+                        </button>
                       </nav>
                       <div className="min-w-0">
                         <h2 className="truncate text-2xl font-semibold text-[var(--studio-text)]" title={activeDisplayName}>
-                          {activeDisplayName}
+                          <button
+                            type="button"
+                            onClick={handleOpenInStudio}
+                            className="block w-full truncate border-0 bg-transparent p-0 text-left text-[inherit] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--studio-surface-strong)]"
+                          >
+                            {activeDisplayName}
+                          </button>
                         </h2>
                         {activeEmail && <p className="truncate text-sm text-[var(--studio-muted)]">{activeEmail}</p>}
                       </div>
