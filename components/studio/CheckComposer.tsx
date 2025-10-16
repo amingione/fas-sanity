@@ -100,6 +100,11 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
     setForm((prev) => ({...prev, [name]: value}))
   }
 
+  const handleBankAccountChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const {value} = event.currentTarget
+    setForm((prev) => ({...prev, bankAccountId: value}))
+  }
+
   const handleLineItemChange = (index: number, key: keyof LineItem, value: string) => {
     setLineItems((prev) => {
       const next = [...prev]
@@ -430,7 +435,3 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
 CheckComposer.displayName = 'CheckComposer'
 
 export default CheckComposer
-  const handleBankAccountChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const {value} = event.currentTarget
-    setForm((prev) => ({...prev, bankAccountId: value}))
-  }

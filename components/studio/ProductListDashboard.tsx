@@ -1118,56 +1118,56 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
               </Flex>
 
               {activeFilters && (
-                <Inline space={2} style={{flexWrap: 'wrap'}}>
+                <Flex gap={2} wrap="wrap">
                   {Array.from(vendorFilters).map((vendor) => (
                     <Card key={`vendor-${vendor}`} paddingX={2} paddingY={1} tone="primary" radius={3} border>
-                      <Inline space={2} align="center">
+                      <Flex align="center" gap={2}>
                         <Text size={1}>Vendor: {vendor}</Text>
                         <Button
                           icon={CloseIcon}
                           mode="bleed"
                           onClick={() => toggleSetValue(setVendorFilters, vendor)}
                         />
-                      </Inline>
+                      </Flex>
                     </Card>
                   ))}
                   {Array.from(tagFilters).map((tag) => (
                     <Card key={`tag-${tag}`} paddingX={2} paddingY={1} tone="primary" radius={3} border>
-                      <Inline space={2} align="center">
+                      <Flex align="center" gap={2}>
                         <Text size={1}>Tag: {tag}</Text>
                         <Button
                           icon={CloseIcon}
                           mode="bleed"
                           onClick={() => toggleSetValue(setTagFilters, tag)}
                         />
-                      </Inline>
+                      </Flex>
                     </Card>
                   ))}
                   {Array.from(statusFilters).map((status) => (
                     <Card key={`status-${status}`} paddingX={2} paddingY={1} tone="primary" radius={3} border>
-                      <Inline space={2} align="center">
+                      <Flex align="center" gap={2}>
                         <Text size={1}>Status: {status}</Text>
                         <Button
                           icon={CloseIcon}
                           mode="bleed"
                           onClick={() => toggleSetValue(setStatusFilters, status)}
                         />
-                      </Inline>
+                      </Flex>
                     </Card>
                   ))}
                   {Array.from(inventoryFilters).map((status) => (
                     <Card key={`inventory-${status}`} paddingX={2} paddingY={1} tone="primary" radius={3} border>
-                      <Inline space={2} align="center">
+                      <Flex align="center" gap={2}>
                         <Text size={1}>{inventoryFilterLabels[status]}</Text>
                         <Button
                           icon={CloseIcon}
                           mode="bleed"
                           onClick={() => toggleSetValue(setInventoryFilters, status)}
                         />
-                      </Inline>
+                      </Flex>
                     </Card>
                   ))}
-                </Inline>
+                </Flex>
               )}
 
               <Grid columns={[1, 1, 3]} gap={3}>

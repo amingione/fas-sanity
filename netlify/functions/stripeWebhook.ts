@@ -14,7 +14,7 @@ import {
   normalizeMetadataEntries,
   shouldDisplayMetadataSegment,
   uniqueStrings,
-} from '../utils/cartItemDetails.ts'
+} from '../../utils/cartItemDetails'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {

@@ -184,7 +184,16 @@ const ProfitLossDashboard = React.forwardRef<HTMLDivElement, Record<string, neve
                 <Text size={1} weight="semibold">
                   Net Profit
                 </Text>
-                <Text size={2} weight="bold" tone={totals.net >= 0 ? 'positive' : 'critical'}>
+                <Text
+                  size={2}
+                  weight="bold"
+                  style={{
+                    color:
+                      totals.net >= 0
+                        ? 'var(--uui-color-positive-plain-enabled-fg, #15803d)'
+                        : 'var(--uui-color-critical-plain-enabled-fg, #b91c1c)',
+                  }}
+                >
                   {formatCurrency(totals.net)}
                 </Text>
               </Stack>

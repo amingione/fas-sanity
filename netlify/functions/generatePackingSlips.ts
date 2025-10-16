@@ -7,7 +7,7 @@ import {
   normalizeMetadataEntries,
   shouldDisplayMetadataSegment,
   uniqueStrings,
-} from '../utils/cartItemDetails.ts'
+} from '../../utils/cartItemDetails'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888').split(',')
 

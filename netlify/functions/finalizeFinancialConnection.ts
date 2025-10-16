@@ -7,7 +7,7 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
   })
 
 const projectId =
@@ -74,7 +74,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const session = await stripe.financialConnections.sessions.retrieve(sessionId)
+    const session = (await stripe.financialConnections.sessions.retrieve(sessionId)) as any
     const accountId = session.accounts?.data?.[0]?.id
 
     if (!accountId) {
@@ -85,9 +85,9 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const account = await stripe.financialConnections.accounts.retrieve(accountId, {
+    const account = (await stripe.financialConnections.accounts.retrieve(accountId, {
       expand: ['account_numbers'],
-    })
+    } as any)) as any
 
     const usBank = account.account_numbers?.us_bank_account
 

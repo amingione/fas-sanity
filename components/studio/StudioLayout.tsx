@@ -1,7 +1,7 @@
 import {useEffect} from 'react'
-import type {StudioLayoutProps} from 'sanity'
+import type {LayoutProps} from 'sanity'
 
-export default function StudioLayout(props: StudioLayoutProps) {
+export default function StudioLayout(props: LayoutProps) {
   useEffect(() => {
     if (typeof document === 'undefined') {
       return undefined

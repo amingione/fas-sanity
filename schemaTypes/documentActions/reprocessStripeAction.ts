@@ -1,18 +1,5 @@
 import type { DocumentActionComponent } from 'sanity'
-
-function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    try {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    } catch {}
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+import { getNetlifyFnBase } from './netlifyFnBase'
 
 export const reprocessStripeSessionAction: DocumentActionComponent = (props) => {
   const { published, onComplete } = props
@@ -24,7 +11,7 @@ export const reprocessStripeSessionAction: DocumentActionComponent = (props) => 
       try {
         const id = typeof window !== 'undefined' ? (window.prompt('Enter Stripe id (cs_… or pi_…):') || '').trim() : ''
         if (!id) return onComplete()
-        const base = getFnBase().replace(/\/$/, '')
+        const base = getNetlifyFnBase().replace(/\/$/, '')
         const res = await fetch(`${base}/.netlify/functions/reprocessStripeSession`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -44,4 +31,3 @@ export const reprocessStripeSessionAction: DocumentActionComponent = (props) => 
     },
   }
 }
-
