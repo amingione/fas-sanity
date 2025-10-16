@@ -305,22 +305,25 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
   }
 
   return (
-    <div ref={ref} className="flex h-full min-h-0 flex-col bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+    <div ref={ref} className="studio-surface flex h-full min-h-0 flex-col rounded-3xl">
+      <header
+        className="border-b border-[var(--studio-border)] backdrop-blur"
+        style={{background: 'var(--studio-surface-strong)'}}
+      >
+        <div className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Quotes &amp; Estimates</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Quotes &amp; Estimates</h2>
+            <p className="text-sm text-[var(--studio-muted)]">
               Track drafts, send proposals, and convert accepted quotes to invoices.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
+            <label className="flex items-center gap-2 text-sm text-[var(--studio-muted)]">
               Status
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.currentTarget.value)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] bg-[var(--studio-surface)] px-2 py-1 text-sm text-[var(--studio-text)] shadow-sm transition focus:border-[var(--studio-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(37,99,235,0.25)]"
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option} value={option}>
@@ -329,12 +332,12 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                 ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
+            <label className="flex items-center gap-2 text-sm text-[var(--studio-muted)]">
               Date
               <select
                 value={dateFilter}
                 onChange={(event) => setDateFilter(event.currentTarget.value)}
-                className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="rounded-lg border border-[var(--studio-border-strong)] bg-[var(--studio-surface)] px-2 py-1 text-sm text-[var(--studio-text)] shadow-sm transition focus:border-[var(--studio-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(37,99,235,0.25)]"
               >
                 {DATE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -349,12 +352,12 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                 placeholder="Search quote or customer…"
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 lg:w-64"
+                className="w-full rounded-xl border border-[var(--studio-border-strong)] bg-[var(--studio-surface)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm transition focus:border-[var(--studio-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(37,99,235,0.25)] lg:w-64"
               />
               <button
                 type="button"
                 onClick={() => router.navigateIntent('create', {type: 'quote'})}
-                className="inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+                className="inline-flex items-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
               >
                 Create quote
               </button>
@@ -363,9 +366,12 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
         </div>
       </header>
 
-      <main className="flex flex-1 min-h-0 flex-col bg-slate-50">
+      <main
+        className="flex flex-1 min-h-0 flex-col"
+        style={{background: 'var(--studio-surface-overlay)'}}
+      >
         <div className="px-6 py-4">
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-lg">
             <div style={{overflowX: 'auto'}}>
               <div style={{borderBottom: '1px solid var(--card-border-color)'}}>
                 <div
@@ -385,7 +391,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                   <span style={{...STICKY_CHECKBOX_STYLE, background: HEADER_BACKGROUND, zIndex: 4}}>
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-emerald-600 focus:ring-emerald-500"
                       checked={hasSelections && selectedIds.size === filteredQuotes.length}
                       indeterminate={hasSelections && selectedIds.size < filteredQuotes.length}
                       onChange={(event) => handleSelectAll(event.currentTarget.checked)}
@@ -420,14 +426,14 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                   </div>
                 ) : loading ? (
                   <div
-                    className="flex items-center gap-2 text-sm text-slate-500"
+                    className="flex items-center gap-2 text-sm text-[var(--studio-muted)]"
                     style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND}}
                   >
                     <Spinner muted /> Loading quotes…
                   </div>
                 ) : filteredQuotes.length === 0 ? (
                   <div
-                    className="text-sm text-slate-500"
+                    className="text-sm text-[var(--studio-muted)]"
                     style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND}}
                   >
                     No quotes match the current filters.
@@ -453,7 +459,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                           width: 'max-content',
                           backgroundColor: rowBackground,
                         }}
-                        className="hover:bg-slate-100/60"
+                        className="hover:bg-[var(--studio-surface-overlay)]"
                       >
                         <span
                           onClick={(event) => {
@@ -463,7 +469,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                         >
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-emerald-600 focus:ring-emerald-500"
                             checked={isSelected}
                             onChange={(event) => {
                               event.stopPropagation()
@@ -481,16 +487,16 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                         >
                           {quote.quoteNumber}
                         </span>
-                        <span className="text-slate-600">
+                        <span className="text-[var(--studio-muted)]">
                           {quote.quoteDateIso ? shortDate.format(new Date(quote.quoteDateIso)) : '—'}
                         </span>
-                        <span className="text-slate-600">
+                        <span className="text-[var(--studio-muted)]">
                           {quote.expirationDateIso ? shortDate.format(new Date(quote.expirationDateIso)) : '—'}
                         </span>
-                        <span className="text-slate-700">{quote.customerName}</span>
+                        <span className="text-[var(--studio-text)]">{quote.customerName}</span>
                         <span
                           style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}}
-                          className="font-medium text-slate-900"
+                          className="font-medium text-[var(--studio-text)]"
                         >
                           {currency.format(quote.amount || 0)}
                         </span>
@@ -503,7 +509,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                                   ? 'text-sky-600 bg-sky-50 border border-sky-100'
                                   : quote.status.toLowerCase() === 'approved'
                                     ? 'text-emerald-600 bg-emerald-50 border border-emerald-100'
-                                    : 'text-slate-600 bg-slate-100 border border-slate-200'
+                                    : 'text-[var(--studio-muted)] bg-[var(--studio-surface-soft)] border border-[var(--studio-border)]'
                             }`}
                           >
                             {quote.isConverted ? 'Converted' : quote.statusLabel || 'Draft'}
@@ -530,7 +536,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                               disabled={quote.isConverted || isConverting}
                               className={`text-sm font-semibold ${
                                 quote.isConverted
-                                  ? 'text-slate-400'
+                                  ? 'text-[rgba(148,163,184,0.7)]'
                                   : 'text-emerald-600 hover:text-emerald-500'
                               } disabled:cursor-not-allowed`}
                             >
