@@ -1,10 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Flex, Text, useToast } from '@sanity/ui'
 import { useClient, useFormValue } from 'sanity'
-
-interface Props {
-  doc: Record<string, any>
-}
 
 function asShipEngineAddress(raw?: any) {
   if (!raw) return null
@@ -18,6 +14,21 @@ function asShipEngineAddress(raw?: any) {
     postal_code: raw.postal_code || raw.postalCode || undefined,
     country_code: raw.country_code || raw.country || 'US',
   }
+}
+
+function resolvePatchTargets(rawId?: string | null): string[] {
+  if (!rawId) return []
+  const id = String(rawId).trim()
+  if (!id) return []
+  const published = id.replace(/^drafts\./, '')
+  const set = new Set<string>()
+  set.add(id)
+  if (published && published !== id) set.add(published)
+  return Array.from(set)
+}
+
+interface Props {
+  doc: Record<string, any>
 }
 
 function getDefaultShipFrom(): Record<string, any> {
@@ -92,6 +103,26 @@ function getFnBase(): string {
 
 export default function ShippingLabelActions({ doc }: Props) {
   const client = useClient({ apiVersion: '2024-04-10' })
+  const rawDocId = typeof doc?._id === 'string' ? doc._id : ''
+  const patchTargets = useMemo(() => resolvePatchTargets(rawDocId), [rawDocId])
+  const publishedOrderId = useMemo(() => (rawDocId ? rawDocId.replace(/^drafts\./, '') : ''), [rawDocId])
+
+  const commitPatch = useCallback(
+    async (apply: (patch: any) => any) => {
+      for (const targetId of patchTargets) {
+        try {
+          const patch = apply(client.patch(targetId))
+          await patch.commit({ autoGenerateArrayKeys: true })
+        } catch (patchErr: any) {
+          const statusCode = patchErr?.statusCode || patchErr?.response?.statusCode
+          if (!statusCode || statusCode !== 404) {
+            throw patchErr
+          }
+        }
+      }
+    },
+    [client, patchTargets]
+  )
 
   const saveSelectedRate = async (rate: {
     carrierId: string
@@ -104,9 +135,8 @@ export default function ShippingLabelActions({ doc }: Props) {
     deliveryDays: number | null
     estimatedDeliveryDate: string | null
   }) => {
-    await client
-      .patch(doc._id)
-      .set({
+    await commitPatch((patch) =>
+      patch.set({
         selectedService: {
           serviceCode: rate.serviceCode,
           carrierId: rate.carrierId,
@@ -117,7 +147,7 @@ export default function ShippingLabelActions({ doc }: Props) {
           deliveryDays: rate.deliveryDays ?? null,
         },
       })
-      .commit()
+    )
   }
 
   const labelUrl = useFormValue(['labelUrl']) as string | undefined
@@ -344,11 +374,9 @@ export default function ShippingLabelActions({ doc }: Props) {
       : undefined
 
     const logEvent = async (entry: Record<string, any>) => {
-      await client
-        .patch(doc._id)
-        .setIfMissing({ shippingLog: [] })
-        .append('shippingLog', [entry])
-        .commit({ autoGenerateArrayKeys: true })
+      await commitPatch((patch) =>
+        patch.setIfMissing({ shippingLog: [] }).append('shippingLog', [entry])
+      )
     }
 
     try {
@@ -384,6 +412,18 @@ export default function ShippingLabelActions({ doc }: Props) {
         return
       }
 
+      const normalizedOrderId = publishedOrderId || rawDocId
+      if (!normalizedOrderId) {
+        toast.push({
+          status: 'warning',
+          title: 'Missing order reference',
+          description: 'Save the order before creating a label so an ID is available.',
+          closable: true,
+        })
+        setIsLoading(false)
+        return
+      }
+
       const res = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -393,7 +433,7 @@ export default function ShippingLabelActions({ doc }: Props) {
           carrier: selectedRate.carrierId,
           weight: weightPayload,
           dimensions: dimensionsPayload,
-          orderId: doc._id,
+          orderId: normalizedOrderId,
         })
       })
 
@@ -401,26 +441,38 @@ export default function ShippingLabelActions({ doc }: Props) {
 
       if (!res.ok) throw new Error(result.error)
 
-      await client.patch(doc._id).set({
-        trackingUrl: result.trackingUrl,
-        labelUrl: result.labelUrl
-      }).commit()
+      const patchData: Record<string, any> = {}
+      if (result.trackingUrl) patchData.trackingUrl = result.trackingUrl
+      if (result.labelUrl) patchData.labelUrl = result.labelUrl
+      if (result.trackingNumber) patchData.trackingNumber = result.trackingNumber
 
-      await logEvent({
-        _type: 'shippingLogEntry',
-        status: 'created',
-        labelUrl: result.labelUrl,
-        trackingUrl: result.trackingUrl,
-        trackingNumber: result.trackingNumber,
-        createdAt: new Date().toISOString(),
-        weight: weightPayload.value,
-        dimensions: dimensionsPayload,
-        carrier
-      })
+      if (Object.keys(patchData).length > 0) {
+        await commitPatch((patch) => patch.set(patchData))
+      }
+
+      try {
+        await logEvent({
+          _type: 'shippingLogEntry',
+          status: 'created',
+          labelUrl: result.labelUrl,
+          trackingUrl: result.trackingUrl,
+          trackingNumber: result.trackingNumber,
+          createdAt: new Date().toISOString(),
+          weight: weightPayload.value,
+          dimensions: dimensionsPayload,
+          carrier
+        })
+      } catch (logErr) {
+        console.warn('Failed to append shipping log entry', logErr)
+      }
 
       toast.push({
         status: 'success',
         title: 'Shipping label created!',
+        description:
+          typeof result?.message === 'string' && result.message.trim()
+            ? result.message.trim()
+            : undefined,
         closable: true
       })
 
@@ -429,12 +481,16 @@ export default function ShippingLabelActions({ doc }: Props) {
     } catch (error: any) {
       console.error(error)
 
-      await logEvent({
-        _type: 'shippingLogEntry',
-        status: 'error',
-        message: error.message || 'Label generation failed',
-        createdAt: new Date().toISOString()
-      })
+      try {
+        await logEvent({
+          _type: 'shippingLogEntry',
+          status: 'error',
+          message: error.message || 'Label generation failed',
+          createdAt: new Date().toISOString()
+        })
+      } catch (logErr) {
+        console.warn('Failed to record shipping error entry', logErr)
+      }
 
       toast.push({
         status: 'error',

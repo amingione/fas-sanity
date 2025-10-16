@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Flex } from '@sanity/ui'
 import { useClient, useFormValue } from 'sanity'
 import { decodeBase64ToArrayBuffer } from '../../utils/base64'
@@ -18,6 +18,17 @@ function getFnBase(): string {
   return ''
 }
 
+function resolvePatchTargets(rawId?: string | null): string[] {
+  if (!rawId) return []
+  const id = String(rawId).trim()
+  if (!id) return []
+  const published = id.replace(/^drafts\./, '')
+  const set = new Set<string>()
+  set.add(id)
+  if (published && published !== id) set.add(published)
+  return Array.from(set)
+}
+
 export default function OrderShippingActions() {
   const doc = useFormValue([]) as any
   const base = getFnBase() || 'https://fassanity.fasmotorsports.com'
@@ -28,6 +39,7 @@ export default function OrderShippingActions() {
   const orderId = ((doc?._id || '') as string).replace(/^drafts\./, '')
   const invoiceId = ((doc?.invoiceRef?._ref || '') as string).replace(/^drafts\./, '')
   const autoAttemptedRef = useRef(false)
+  const patchTargets = useMemo(() => resolvePatchTargets(doc?._id), [doc?._id])
 
   async function generateSlip(options: { silent?: boolean } = {}) {
     if (isGenerating) return
@@ -74,7 +86,16 @@ export default function OrderShippingActions() {
       const url = (asset as any)?.url
       if (!url) throw new Error('Unable to upload packing slip asset')
 
-      await client.patch(doc._id).set({ packingSlipUrl: url }).commit({ autoGenerateArrayKeys: true })
+      for (const targetId of patchTargets) {
+        try {
+          await client.patch(targetId).set({ packingSlipUrl: url }).commit({ autoGenerateArrayKeys: true })
+        } catch (patchErr: any) {
+          const statusCode = patchErr?.statusCode || patchErr?.response?.statusCode
+          if (!statusCode || statusCode !== 404) {
+            throw patchErr
+          }
+        }
+      }
 
       if (!options.silent) {
         try {
