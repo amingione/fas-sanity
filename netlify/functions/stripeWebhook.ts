@@ -611,6 +611,12 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
 
   if (!docId) return
 
+  const existingInvoice = await sanity.fetch<{ status?: string } | null>(
+    `*[_type == "invoice" && _id == $id][0]{status}`,
+    { id: docId }
+  )
+  const existingStatus = existingInvoice?.status
+
   const setOps: Record<string, any> = {
     stripeInvoiceId: invoice.id,
     stripeInvoiceStatus: invoice.status || undefined,
@@ -628,7 +634,13 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   if (invoice.currency) setOps.currency = invoice.currency.toUpperCase()
 
   const mappedStatus = mapInvoiceStatus(invoice.status)
-  if (mappedStatus) setOps.status = mappedStatus
+  if (mappedStatus) {
+    const isTerminalStatus = existingStatus === 'refunded' || existingStatus === 'cancelled'
+    const isStatusChange = mappedStatus !== existingStatus
+    if (!isTerminalStatus || !isStatusChange) {
+      setOps.status = mappedStatus
+    }
+  }
 
   const email = invoice.customer_email || invoiceRecord.customer_details?.email || undefined
   if (email) setOps.customerEmail = email
