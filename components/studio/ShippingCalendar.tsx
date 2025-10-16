@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useClient } from 'sanity'
 import { Card, Heading, Text, Stack, Box } from '@sanity/ui'
+import { useWorkspaceClient } from '../../utils/useWorkspaceClient'
 
 type RawShippingLabel = {
   _id: string
@@ -39,7 +39,7 @@ const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
 };
 
 export default function ShippingCalendar() {
-  const client = useClient({ apiVersion: '2024-04-10' })
+  const client = useWorkspaceClient({ apiVersion: '2024-04-10' })
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const calcomEmbedUrl = useMemo(
