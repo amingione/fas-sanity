@@ -29,6 +29,7 @@ import {
   deriveOptionsFromMetadata,
   normalizeMetadataEntries,
   remainingMetadataEntries,
+  shouldDisplayMetadataSegment,
   uniqueStrings,
 } from '../../utils/cartItemDetails'
 
@@ -294,6 +295,7 @@ const orderFromProps = (props: DocumentViewProps['document']): OrderDocument | n
 
 const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order'
 const PACKING_SLIP_ENDPOINT = '/.netlify/functions/generatePackingSlips'
+const INVOICE_PDF_ENDPOINT = '/.netlify/functions/generateInvoicePDF'
 
 function OrderDetailView(props: DocumentViewProps) {
   const toast = useToast()
@@ -308,6 +310,7 @@ function OrderDetailView(props: DocumentViewProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [fulfillmentLoading, setFulfillmentLoading] = useState(false)
   const [packingLoading, setPackingLoading] = useState(false)
+  const [invoiceLoading, setInvoiceLoading] = useState(false)
 
   useEffect(() => {
     setOrder(initialOrder)
@@ -467,36 +470,86 @@ function OrderDetailView(props: DocumentViewProps) {
       const total = explicitTotal ?? (typeof unitPrice === 'number' ? unitPrice * quantity : undefined)
 
       const metadataEntries = normalizeMetadataEntries(item.metadata || [])
+      const rawName = (item.name || item.sku || 'Item').toString()
+      const displayName = rawName.split('•')[0]?.trim() || rawName
       const derived = deriveOptionsFromMetadata(metadataEntries)
       const summary = item.optionSummary?.trim() || derived.optionSummary
       const detailParts: string[] = []
-      if (summary) detailParts.push(summary)
+      const detailSeen = new Set<string>()
+      const canonicalDetailKey = (input: string) => {
+        const trimmed = input.trim()
+        if (!trimmed) return null
+        const [rawLabel, ...rest] = trimmed.split(':')
+        if (rest.length === 0) return trimmed.toLowerCase()
+        const value = rest.join(':').trim().toLowerCase()
+        let label = rawLabel.toLowerCase()
+        label = label.replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+        label = label.replace(/[^a-z0-9]+/g, ' ').trim()
+        if (label && label === value) return null
+        if (!label) return value ? `value:${value}` : trimmed.toLowerCase()
+        return `label:${label}|value:${value}`
+      }
+      const addDetail = (text: string) => {
+        if (!shouldDisplayMetadataSegment(text)) return
+        const key = canonicalDetailKey(text)
+        if (!key) return
+        if (detailSeen.has(key)) return
+        detailSeen.add(key)
+        detailParts.push(text)
+      }
+      if (summary) {
+        summary
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .forEach((part) => addDetail(part))
+      }
 
       const optionDetails = uniqueStrings([
         ...coerceStringArray(item.optionDetails),
         ...derived.optionDetails,
       ])
-      if (optionDetails.length) detailParts.push(optionDetails.join(' • '))
+      optionDetails.forEach((detail) => {
+        detail
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .forEach((part) => addDetail(part))
+      })
 
       const upgrades = uniqueStrings([
         ...coerceStringArray(item.upgrades),
         ...derived.upgrades,
       ])
-      if (upgrades.length) detailParts.push(`Upgrades: ${upgrades.join(', ')}`)
+      if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
 
-      if (item.sku) detailParts.push(`SKU ${item.sku}`)
+      if (item.sku) addDetail(`SKU ${item.sku}`)
 
       const remainingMeta = remainingMetadataEntries(metadataEntries, derived.consumedKeys)
-      const metaLabels = remainingMeta.flatMap((entry) => {
-        const segments = formatMetadataSegments(entry.value)
+      const metaLabels: string[] = []
+      const metaSeen = new Set<string>()
+      const addMeta = (text: string) => {
+        const normalized = text.replace(/\s+/g, ' ').trim().toLowerCase()
+        if (!normalized) return
+        if (detailSeen.has(normalized)) return
+        if (metaSeen.has(normalized)) return
+        metaSeen.add(normalized)
+        metaLabels.push(text)
+      }
+      remainingMeta.forEach((entry) => {
+        const rawSegments = formatMetadataSegments(entry.value)
         const label = formatKeyLabel(entry.key)
-        if (segments.length === 0) return label ? [label] : []
-        return segments.map((segment) => (label ? `${label}: ${segment}` : segment))
+        rawSegments.forEach((segment) => {
+          const display =
+            label && !segment.includes(':') ? `${label}: ${segment}` : segment
+          if (shouldDisplayMetadataSegment(display)) addMeta(display)
+        })
       })
 
       return {
         _key: item._key || item.sku || item.name || Math.random().toString(36).slice(2),
-        name: item.name || item.sku || 'Item',
+        name: rawName,
+        displayName,
         quantity,
         unitPrice,
         total,
@@ -669,6 +722,38 @@ function OrderDetailView(props: DocumentViewProps) {
       setPackingLoading(false)
     }
   }, [orderId, packingEndpoint, toast])
+
+  const handleDownloadInvoice = useCallback(async () => {
+    if (!invoiceDoc?._id) return
+    setInvoiceLoading(true)
+    try {
+      const res = await fetch(INVOICE_PDF_ENDPOINT, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ invoiceId: invoiceDoc._id }),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || 'Invoice generation failed')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      try {
+        window.open(url, '_blank', 'noopener')
+      } catch {
+        window.location.href = url
+      }
+    } catch (err: any) {
+      console.error('Invoice download failed', err)
+      toast.push({
+        status: 'error',
+        title: 'Invoice unavailable',
+        description: err?.message || 'Unable to generate invoice PDF.',
+      })
+    } finally {
+      setInvoiceLoading(false)
+    }
+  }, [invoiceDoc?._id, toast])
 
   const invoiceRefId = order?.invoiceRef && typeof order.invoiceRef === 'object' ? order.invoiceRef._ref : undefined
 
@@ -960,14 +1045,23 @@ function OrderDetailView(props: DocumentViewProps) {
                   />
                 )}
                 {invoiceDoc ? (
-                  <Button
-                    text={`Open invoice ${invoiceDoc.invoiceNumber || ''}`.trim()}
-                    tone="default"
-                    onClick={() => router.navigateIntent('edit', {id: invoiceDoc._id, type: 'invoice'})}
-                  />
+                  <Stack space={2}>
+                    <Button
+                      text="View invoice"
+                      tone="default"
+                      onClick={() => router.navigateIntent('edit', {id: invoiceDoc._id, type: 'invoice'})}
+                    />
+                    <Button
+                      text={invoiceLoading ? 'Preparing invoice…' : 'Download invoice'}
+                      tone="default"
+                      mode="ghost"
+                      disabled={invoiceLoading}
+                      onClick={handleDownloadInvoice}
+                    />
+                  </Stack>
                 ) : (
                   <Button
-                    text="Create invoice"
+                    text={creatingInvoice ? 'Creating invoice…' : 'Create invoice'}
                     tone="default"
                     onClick={createInvoiceFromOrder}
                     disabled={creatingInvoice}
@@ -1034,9 +1128,9 @@ function OrderDetailView(props: DocumentViewProps) {
                       borderBottom: '1px solid #f1f5f9',
                     }}
                   >
-                    <Avatar initials={item.name.slice(0, 2).toUpperCase()} size={3} />
+                    <Avatar initials={(item.displayName || item.name).slice(0, 2).toUpperCase()} size={3} />
                     <Stack space={2} style={{flex: 1, minWidth: 0}}>
-                      <Text weight="semibold">{item.name}</Text>
+                      <Text weight="semibold">{item.displayName || item.name}</Text>
                       {item.details.length > 0 && (
                         <Text size={1} muted>
                           {item.details.join(' • ')}

@@ -200,19 +200,7 @@ export function mapStripeLineItem(
   const optionSummary = derivedOptions.optionSummary
   const optionDetails = derivedOptions.optionDetails
   const upgrades = derivedOptions.upgrades
-  const extraParts: string[] = []
-
-  if (optionSummary && (!baseName || !baseName.toLowerCase().includes(optionSummary.toLowerCase()))) {
-    extraParts.push(optionSummary)
-  }
-  if (upgrades.length) {
-    const label = `Upgrades: ${upgrades.join(', ')}`
-    if (!baseName || !baseName.toLowerCase().includes(label.toLowerCase())) {
-      extraParts.push(label)
-    }
-  }
-
-  const name = [baseName, ...extraParts].filter(Boolean).join(' • ') || undefined
+  const name = baseName || undefined
   const categories = extractCategories(productObj, metadata.map)
 
   return {

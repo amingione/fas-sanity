@@ -8,6 +8,13 @@ import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
+import {
+  coerceStringArray,
+  deriveOptionsFromMetadata as deriveCartOptions,
+  normalizeMetadataEntries,
+  shouldDisplayMetadataSegment,
+  uniqueStrings,
+} from '../utils/cartItemDetails'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -143,6 +150,102 @@ function computeTaxRateFromAmounts(amountSubtotal?: any, amountTax?: any): numbe
   if (!Number.isFinite(tax) || tax < 0) return undefined
   const pct = (tax / sub) * 100
   return Math.round(pct * 100) / 100
+}
+
+const canonicalDetailKey = (input: string): string | null => {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const [rawLabel, ...rest] = trimmed.split(':')
+  if (rest.length === 0) return trimmed.toLowerCase()
+  const value = rest.join(':').trim().toLowerCase()
+  let label = rawLabel.toLowerCase()
+  label = label.replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+  label = label.replace(/[^a-z0-9]+/g, ' ').trim()
+  if (label && label === value) return null
+  if (!label) return value ? `value:${value}` : trimmed.toLowerCase()
+  return `label:${label}|value:${value}`
+}
+
+const buildDetailList = (opts: {
+  summary?: string | null
+  optionDetails?: string[]
+  upgrades?: string[]
+  sku?: string | null
+}): string[] => {
+  const details: string[] = []
+  const seen = new Set<string>()
+  const addDetail = (text: string) => {
+    if (!text) return
+    if (!shouldDisplayMetadataSegment(text)) return
+    const key = canonicalDetailKey(text)
+    if (!key) return
+    if (seen.has(key)) return
+    seen.add(key)
+    details.push(text)
+  }
+
+  if (opts.summary) {
+    opts.summary
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach(addDetail)
+  }
+
+  if (opts.optionDetails?.length) {
+    uniqueStrings(opts.optionDetails)
+      .forEach((detail) => {
+        detail
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .forEach(addDetail)
+      })
+  }
+
+  if (opts.upgrades?.length) {
+    const upgrades = uniqueStrings(opts.upgrades)
+    if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
+  }
+
+  if (opts.sku) {
+    addDetail(`SKU ${opts.sku}`)
+  }
+
+  return details
+}
+
+const prepareItemPresentation = (source: {
+  name?: unknown
+  productName?: unknown
+  description?: unknown
+  title?: unknown
+  sku?: unknown
+  optionSummary?: unknown
+  optionDetails?: unknown
+  upgrades?: unknown
+  metadata?: unknown
+}): { title: string; details: string[] } => {
+  const metadataEntries = normalizeMetadataEntries(source.metadata as any)
+  const derived = deriveCartOptions(metadataEntries)
+  const rawName = (source?.name || source?.description || source?.productName || source?.title || source?.sku || 'Item').toString()
+  const title = rawName.split('•')[0]?.trim() || rawName
+  const summary = (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
+  const optionDetails = uniqueStrings([
+    ...coerceStringArray(source.optionDetails),
+    ...derived.optionDetails,
+  ])
+  const upgrades = uniqueStrings([
+    ...coerceStringArray(source.upgrades),
+    ...derived.upgrades,
+  ])
+  const details = buildDetailList({
+    summary,
+    optionDetails,
+    upgrades,
+    sku: source?.sku ? String(source.sku) : undefined,
+  })
+  return { title, details }
 }
 
 function dateStringFrom(value?: any): string | undefined {
@@ -1269,6 +1372,98 @@ export const handler: Handler = async (event) => {
 
         const customerName = (shippingAddress?.name || metadataCustomerName || session.customer_details?.name || email || '').toString().trim() || undefined
 
+        // Prepare invoice scaffolding (line items, addresses, etc.) for reuse
+        let productSummaries: Array<{ _id?: string; title?: string; sku?: string }> = []
+        if (cart.length) {
+          const skus = cart.map((c) => (c?.sku || '').toString().trim()).filter(Boolean)
+          const titles = cart.map((c) => (c?.name || c?.productName || '').toString().trim()).filter(Boolean)
+          if (skus.length || titles.length) {
+            try {
+              productSummaries = await sanity.fetch(
+                `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`,
+                { skus, titles }
+              )
+            } catch (err) {
+              console.warn('stripeWebhook: failed to fetch product summaries for invoice', err)
+            }
+          }
+        }
+
+        const findInvoiceProductRef = (ci: any): string | null => {
+          if (!productSummaries?.length) return null
+          const sku = (ci?.sku || '').toString().trim()
+          if (sku) {
+            const match = productSummaries.find((p) => (p?.sku || '').trim() === sku)
+            if (match?._id) return match._id
+          }
+          const title = (ci?.name || ci?.productName || ci?.description || '').toString().trim()
+          if (title) {
+            const match = productSummaries.find((p) => (p?.title || '').trim() === title)
+            if (match?._id) return match._id
+          }
+          return null
+        }
+
+        const invoiceLineItems = cart.map((ci: any) => {
+          const presentation = prepareItemPresentation({
+            name: ci.name,
+            productName: ci.productName,
+            description: ci.description,
+            sku: ci.sku,
+            optionSummary: ci.optionSummary,
+            optionDetails: ci.optionDetails,
+            upgrades: ci.upgrades,
+            metadata: ci.metadata,
+          })
+          const quantityRaw = Number(ci?.quantity || 1)
+          const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1
+          let unit = Number(ci?.price ?? ci?.unitPrice)
+          if (!Number.isFinite(unit) || unit <= 0) {
+            const lineFromItem = Number(ci?.lineTotal)
+            if (Number.isFinite(lineFromItem) && quantity > 0) {
+              unit = lineFromItem / quantity
+            }
+          }
+          const unitPrice = Number.isFinite(unit) ? unit : undefined
+          const lineSource = Number(ci?.lineTotal)
+          const computedLineTotal = Number.isFinite(lineSource)
+            ? lineSource
+            : unitPrice !== undefined
+            ? unitPrice * quantity
+            : undefined
+          const detailText = presentation.details.length ? ` (${presentation.details.join(', ')})` : ''
+          const description = `${presentation.title}${detailText}`
+          const productRef = findInvoiceProductRef(ci)
+          return {
+            _type: 'invoiceLineItem' as const,
+            _key: randomUUID(),
+            kind: productRef ? 'product' : 'custom',
+            product: productRef ? { _type: 'reference', _ref: productRef } : undefined,
+            description,
+            sku: (ci?.sku || '').toString() || undefined,
+            quantity,
+            unitPrice,
+            lineTotal: Number.isFinite(computedLineTotal || NaN) ? (computedLineTotal as number) : undefined,
+          }
+        })
+
+        const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
+        const billToForInvoice = buildStudioAddress(shippingAddress, 'billTo', { fallbackEmail: email, fallbackName: customerName })
+        const shipToForInvoice =
+          buildStudioAddress(shippingAddress, 'shipTo', { fallbackEmail: email, fallbackName: customerName }) ||
+          (billToForInvoice ? { ...billToForInvoice, _type: 'shipTo' } : undefined)
+        const timestampForInvoice = (() => {
+          try {
+            const ts = (session as any)?.created || (paymentIntent as any)?.created
+            if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
+          } catch {}
+          return new Date().toISOString()
+        })()
+        const invoiceDateValue = dateStringFrom(timestampForInvoice)
+        const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
+        const baseInvoiceTitle = pickString(customerName, billToForInvoice?.name, shipToForInvoice?.name, email) || 'Invoice'
+        const defaultInvoiceTitle = invoiceNumberToSet ? `${baseInvoiceTitle} • ${invoiceNumberToSet}` : baseInvoiceTitle
+
         // 3) Upsert an Order doc for visibility/fulfillment
         try {
           const existingOrder = await sanity.fetch(
@@ -1326,34 +1521,38 @@ export const handler: Handler = async (event) => {
           }
 
           if (invoiceId) {
-            const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
             const ids = idVariants(invoiceId)
-            const billToUpdate = buildStudioAddress(shippingAddress, 'billTo', { fallbackEmail: email, fallbackName: customerName })
-            const shipToUpdate =
-              buildStudioAddress(shippingAddress, 'shipTo', { fallbackEmail: email, fallbackName: customerName }) ||
-              (billToUpdate ? { ...billToUpdate, _type: 'shipTo' } : undefined)
-            const createdAtIso = (() => {
-              try {
-                const ts = (session as any)?.created || (paymentIntent as any)?.created
-                if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
-              } catch {}
-              return new Date().toISOString()
-            })()
-            const invoiceDateValue = dateStringFrom(createdAtIso)
-            const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
-            const baseTitleName = pickString(customerName, billToUpdate?.name, shipToUpdate?.name, email) || 'Invoice'
-            const titleValue = invoiceNumberToSet ? `${baseTitleName} • ${invoiceNumberToSet}` : baseTitleName
+            const titleValue = defaultInvoiceTitle
 
             for (const id of ids) {
               try {
-                let patch = sanity.patch(id).set({ status: 'paid', stripeLastSyncedAt: new Date().toISOString() })
-                if (orderNumber) patch = patch.set({ orderNumber })
-                if (invoiceNumberToSet) patch = patch.set({ invoiceNumber: invoiceNumberToSet })
-                if (titleValue) patch = patch.set({ title: titleValue })
-                if (billToUpdate) patch = patch.set({ billTo: billToUpdate })
-                if (shipToUpdate) patch = patch.set({ shipTo: shipToUpdate })
-                if (invoiceDateValue) patch = patch.set({ invoiceDate: invoiceDateValue, dueDate: invoiceDateValue })
-                if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
+                const patchData: Record<string, any> = {
+                  status: 'paid',
+                  stripeLastSyncedAt: new Date().toISOString(),
+                }
+                if (orderNumber) patchData.orderNumber = orderNumber
+                if (invoiceNumberToSet) patchData.invoiceNumber = invoiceNumberToSet
+                if (titleValue) patchData.title = titleValue
+                const subtotalValue = Number(amountSubtotal)
+                if (Number.isFinite(subtotalValue)) {
+                  patchData.subtotal = subtotalValue
+                  patchData.amountSubtotal = subtotalValue
+                }
+                const totalValue = Number(totalAmount)
+                if (Number.isFinite(totalValue)) patchData.total = totalValue
+                const taxValue = Number(amountTax)
+                if (Number.isFinite(taxValue)) patchData.amountTax = taxValue
+                if (currency) patchData.currency = currency.toUpperCase()
+                if (email) patchData.customerEmail = email
+                if (invoiceLineItems.length) patchData.lineItems = invoiceLineItems
+                if (billToForInvoice) patchData.billTo = billToForInvoice
+                if (shipToForInvoice) patchData.shipTo = shipToForInvoice
+                if (invoiceDateValue) {
+                  patchData.invoiceDate = invoiceDateValue
+                  patchData.dueDate = invoiceDateValue
+                }
+                if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
+                let patch = sanity.patch(id).set(patchData)
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch (e) {
@@ -1440,94 +1639,47 @@ export const handler: Handler = async (event) => {
           // If no invoice was linked, create one from the order so Studio has a full record
           try {
             if (!invoiceId && orderId) {
-              const skus = (cart || []).map((c: any) => (c?.sku || '').toString().trim()).filter(Boolean)
-              const titles = (cart || []).map((c: any) => (c?.name || '').toString().trim()).filter(Boolean)
-              let products: any[] = []
-              if (skus.length || titles.length) {
-                try { products = await sanity.fetch(`*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`, { skus, titles }) } catch {}
-              }
-              const findRef = (ci: any): string | null => {
-                if (!products?.length) return null
-                if (ci?.sku) { const p = products.find((p) => p?.sku === ci.sku); if (p) return p._id }
-                if (ci?.name) { const p = products.find((p) => p?.title === ci.name); if (p) return p._id }
-                return null
-              }
-              const invoiceLineItems = (cart || []).map((ci: any) => {
-                const qty = Number(ci?.quantity || 1)
-                const unit = Number(ci?.price || 0)
-                const line = Number.isFinite(qty * unit) ? qty * unit : undefined
-                const ref = findRef(ci)
-                return {
-                  _type: 'invoiceLineItem' as const,
-                  _key: randomUUID(),
-                  description: (ci?.name || ci?.sku || 'Item').toString(),
-                  sku: (ci?.sku || '').toString() || undefined,
-                  quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
-                  unitPrice: Number.isFinite(unit) ? unit : undefined,
-                  lineTotal: Number.isFinite(line as number) ? (line as number) : undefined,
-                  ...(ref ? { product: { _type: 'reference', _ref: ref } } : {}),
-                }
-              })
-              const taxRatePct = Number.isFinite(amountSubtotal || NaN) && Number.isFinite(amountTax || NaN) && (amountSubtotal as number) > 0
-                ? Math.round(((amountTax as number) / (amountSubtotal as number)) * 10000) / 100
-                : undefined
-              const sa: any = shippingAddress || {}
-              const billTo = sa && (sa.name || sa.addressLine1)
-                ? {
-                    _type: 'billTo',
-                    name: sa.name || undefined,
-                    email: sa.email || email || undefined,
-                    phone: sa.phone || undefined,
-                    address_line1: sa.addressLine1 || undefined,
-                    address_line2: sa.addressLine2 || undefined,
-                    city_locality: sa.city || undefined,
-                    state_province: sa.state || undefined,
-                    postal_code: sa.postalCode || undefined,
-                    country_code: sa.country || undefined,
-                  }
-                : undefined
-              const shipTo = billTo ? { ...billTo, _type: 'shipTo' } : undefined
-              const createdAtIso = (() => {
-                try {
-                  const t = (session as any)?.created || (paymentIntent as any)?.created
-                  if (typeof t === 'number' && t > 0) return new Date(t * 1000).toISOString()
-                } catch {}
-                return new Date().toISOString()
-              })()
-              // Prefer full name from linked customer if available
-              let titleName = customerName || sa?.name || email || 'Invoice'
+              let titleName = defaultInvoiceTitle
               try {
                 const cref = (baseDoc as any)?.customerRef?._ref
                 if (cref) {
                   const cust = await sanity.fetch(`*[_type == "customer" && _id == $id][0]{firstName,lastName,email}`, { id: cref })
                   const full = [cust?.firstName, cust?.lastName].filter(Boolean).join(' ').trim()
-                  if (full) titleName = full
-                  else if (cust?.email) titleName = cust.email
+                  if (full) titleName = invoiceNumberToSet ? `${full} • ${invoiceNumberToSet}` : full
+                  else if (cust?.email) titleName = invoiceNumberToSet ? `${cust.email} • ${invoiceNumberToSet}` : cust.email
                 }
               } catch {}
+
+              const subtotalValue = Number(amountSubtotal)
+              const totalValue = Number(totalAmount)
+              const taxValue = Number(amountTax)
+
               const invBase: any = {
                 _type: 'invoice',
                 title: titleName,
                 orderNumber,
-                invoiceNumber: sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber,
+                invoiceNumber: invoiceNumberToSet || orderNumber,
                 customerRef: baseDoc.customerRef || undefined,
                 orderRef: { _type: 'reference', _ref: orderId },
-                billTo,
-                shipTo,
+                billTo: billToForInvoice,
+                shipTo: shipToForInvoice,
                 lineItems: invoiceLineItems,
                 discountType: 'amount',
                 discountValue: 0,
-                taxRate: taxRatePct || 0,
-                subtotal: Number.isFinite(amountSubtotal || NaN) ? (amountSubtotal as number) : undefined,
-                total: Number.isFinite(totalAmount || NaN) ? totalAmount : undefined,
-                amountSubtotal: Number.isFinite(amountSubtotal || NaN) ? (amountSubtotal as number) : undefined,
-                amountTax: Number.isFinite(amountTax || NaN) ? (amountTax as number) : undefined,
-                currency: currency || 'usd',
+                taxRate: typeof computedTaxRate === 'number' ? computedTaxRate : 0,
+                subtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
+                total: Number.isFinite(totalValue) ? totalValue : undefined,
+                amountSubtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
+                amountTax: Number.isFinite(taxValue) ? taxValue : undefined,
+                currency: (currency || 'usd').toUpperCase(),
                 customerEmail: email || undefined,
                 userId: userIdMeta || undefined,
                 status: 'paid',
-                invoiceDate: createdAtIso.slice(0,10),
-                dueDate: createdAtIso.slice(0,10),
+                invoiceDate: invoiceDateValue,
+                dueDate: invoiceDateValue,
+                stripeSessionId,
+                paymentIntentId: paymentIntent?.id || undefined,
+                stripeLastSyncedAt: new Date().toISOString(),
               }
               const createdInv = await sanity.create(invBase, { autoGenerateArrayKeys: true })
               if (createdInv?._id) {

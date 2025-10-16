@@ -1,7 +1,13 @@
 import { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
-import { deriveOptionsFromMetadata } from '../lib/stripeCartItem'
+import {
+  coerceStringArray,
+  deriveOptionsFromMetadata as deriveCartOptions,
+  normalizeMetadataEntries,
+  shouldDisplayMetadataSegment,
+  uniqueStrings,
+} from '../utils/cartItemDetails'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888').split(',')
 
@@ -130,23 +136,100 @@ function wrapText(text: string, maxWidth: number, font: any, fontSize: number): 
   return lines.length ? lines : ['']
 }
 
-function toStringArray(value: any): string[] {
-  if (!value) return []
-  if (Array.isArray(value)) return value.map((item) => String(item ?? '').trim()).filter(Boolean)
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed) return []
-    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        if (Array.isArray(parsed)) {
-          return parsed.map((item) => String(item ?? '').trim()).filter(Boolean)
-        }
-      } catch {}
-    }
-    return trimmed.split(/[,;|]/g).map((part) => part.trim()).filter(Boolean)
+const canonicalDetailKey = (input: string): string | null => {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+  const [rawLabel, ...rest] = trimmed.split(':')
+  if (rest.length === 0) return trimmed.toLowerCase()
+  const value = rest.join(':').trim().toLowerCase()
+  let label = rawLabel.toLowerCase()
+  label = label.replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+  label = label.replace(/[^a-z0-9]+/g, ' ').trim()
+  if (label && label === value) return null
+  if (!label) return value ? `value:${value}` : trimmed.toLowerCase()
+  return `label:${label}|value:${value}`
+}
+
+const buildDetailList = (opts: {
+  summary?: string | null
+  optionDetails?: string[]
+  upgrades?: string[]
+  sku?: string | null
+}): string[] => {
+  const details: string[] = []
+  const seen = new Set<string>()
+  const addDetail = (text: string) => {
+    if (!text) return
+    if (!shouldDisplayMetadataSegment(text)) return
+    const key = canonicalDetailKey(text)
+    if (!key) return
+    if (seen.has(key)) return
+    seen.add(key)
+    details.push(text)
   }
-  return [String(value ?? '').trim()].filter(Boolean)
+
+  if (opts.summary) {
+    opts.summary
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach(addDetail)
+  }
+
+  if (opts.optionDetails?.length) {
+    uniqueStrings(opts.optionDetails)
+      .forEach((detail) => {
+        detail
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .forEach(addDetail)
+      })
+  }
+
+  if (opts.upgrades?.length) {
+    const upgrades = uniqueStrings(opts.upgrades)
+    if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
+  }
+
+  if (opts.sku) {
+    addDetail(`SKU ${opts.sku}`)
+  }
+
+  return details
+}
+
+const prepareItemPresentation = (source: {
+  name?: unknown
+  productName?: unknown
+  description?: unknown
+  title?: unknown
+  sku?: unknown
+  optionSummary?: unknown
+  optionDetails?: unknown
+  upgrades?: unknown
+  metadata?: unknown
+}): { title: string; details: string[] } => {
+  const metadataEntries = normalizeMetadataEntries(source.metadata as any)
+  const derived = deriveCartOptions(metadataEntries)
+  const rawName = (source?.name || source?.description || source?.productName || source?.title || source?.sku || 'Item').toString()
+  const title = rawName.split('•')[0]?.trim() || rawName
+  const summary = (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
+  const optionDetails = uniqueStrings([
+    ...coerceStringArray(source.optionDetails),
+    ...derived.optionDetails,
+  ])
+  const upgrades = uniqueStrings([
+    ...coerceStringArray(source.upgrades),
+    ...derived.upgrades,
+  ])
+  const details = buildDetailList({
+    summary,
+    optionDetails,
+    upgrades,
+    sku: source?.sku ? String(source.sku) : undefined,
+  })
+  return { title, details }
 }
 
 async function buildPdf(data: PackingData): Promise<Uint8Array> {
@@ -474,62 +557,37 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   if (Array.isArray(order?.cart) && order.cart.length > 0) {
     for (const ci of order.cart) {
       if (!ci) continue
-      const title = ci.name || ci.sku || 'Item'
-      const detailsParts: string[] = []
-      const derived = deriveOptionsFromMetadata(Array.isArray((ci as any)?.metadata) ? (ci as any).metadata : null)
-      const optionSummary = ci.optionSummary || derived.optionSummary
-      if (optionSummary) detailsParts.push(String(optionSummary))
-      const optionDetails = Array.from(
-        new Set([
-          ...toStringArray(ci.optionDetails),
-          ...derived.optionDetails,
-        ])
-      )
-      if (optionDetails.length) detailsParts.push(optionDetails.join(', '))
-      const upgrades = Array.from(
-        new Set([
-          ...toStringArray(ci.upgrades),
-          ...derived.upgrades,
-        ])
-      )
-      if (upgrades.length) detailsParts.push(`Upgrades: ${upgrades.join(', ')}`)
-      if (ci.sku) detailsParts.push(`SKU ${ci.sku}`)
+      const presentation = prepareItemPresentation({
+        name: ci.name,
+        productName: ci.productName,
+        sku: ci.sku,
+        optionSummary: ci.optionSummary,
+        optionDetails: ci.optionDetails,
+        upgrades: ci.upgrades,
+        metadata: ci.metadata,
+      })
       const quantity = Number(ci.quantity || 1)
       items.push({
-        title,
-        details: detailsParts.filter(Boolean).join(' • ') || undefined,
+        title: presentation.title,
+        details: presentation.details.length ? presentation.details.join(' • ') : undefined,
         quantity,
       })
     }
   } else if (Array.isArray(invoice?.lineItems) && invoice.lineItems.length > 0) {
     for (const li of invoice.lineItems) {
       const quantity = Number(li?.quantity || 1)
-      const title = li?.description || li?.product?.title || li?.sku || 'Item'
-      const detailsParts: string[] = []
-      if (li?.product?.title && li?.description && li.description !== li.product.title) {
-        detailsParts.push(li.product.title)
-      }
-      const derived = deriveOptionsFromMetadata(Array.isArray((li as any)?.metadata) ? (li as any).metadata : null)
-      const optionSummary = (li as any)?.optionSummary || derived.optionSummary
-      if (optionSummary) detailsParts.push(String(optionSummary))
-      const optionDetails = Array.from(
-        new Set([
-          ...toStringArray((li as any)?.optionDetails),
-          ...derived.optionDetails,
-        ])
-      )
-      if (optionDetails.length) detailsParts.push(optionDetails.join(', '))
-      const upgrades = Array.from(
-        new Set([
-          ...toStringArray((li as any)?.upgrades),
-          ...derived.upgrades,
-        ])
-      )
-      if (upgrades.length) detailsParts.push(`Upgrades: ${upgrades.join(', ')}`)
-      if (li?.sku) detailsParts.push(`SKU ${li.sku}`)
+      const presentation = prepareItemPresentation({
+        name: li?.description,
+        productName: li?.product?.title,
+        sku: li?.sku,
+        optionSummary: (li as any)?.optionSummary,
+        optionDetails: (li as any)?.optionDetails,
+        upgrades: (li as any)?.upgrades,
+        metadata: (li as any)?.metadata,
+      })
       items.push({
-        title,
-        details: detailsParts.filter(Boolean).join(' • ') || undefined,
+        title: presentation.title,
+        details: presentation.details.length ? presentation.details.join(' • ') : undefined,
         quantity,
       })
     }

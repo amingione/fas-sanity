@@ -9,9 +9,41 @@ export type NormalizedMetadataEntry = {
   value: string
 }
 
-const OPTION_KEYWORDS = ['option', 'vehicle', 'fitment', 'model', 'variant', 'trim', 'package', 'selection', 'config']
-const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addOn', 'accessory']
-const IGNORE_OPTION_KEYS = ['shipping_option', 'shipping_options', 'shippingoption']
+const OPTION_KEYWORDS = ['option', 'vehicle', 'fitment', 'model', 'variant', 'trim', 'package', 'selection', 'config', 'size', 'color']
+const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addon', 'addOn', 'accessory']
+const IGNORE_OPTION_KEYS = [
+  'shipping_option',
+  'shipping_options',
+  'shippingoption',
+  'shipping_amount',
+  'shipping_carrier',
+  'shipping_service',
+  'shipping_service_code',
+  'shipping_service_name',
+  'shipping_currency',
+  'shipping_delivery_days',
+  'shipping_estimated_delivery_date',
+  'option_upcharge',
+  'option_upcharge_display',
+  'optionupcharge',
+  'option_summary',
+  'option_summary_display',
+  'options_readable',
+  'selected_options',
+  'selected_options_json',
+  'option_details_json',
+  'configuration_signature',
+  'option1_name',
+  'option1_value',
+  'option2_name',
+  'option2_value',
+  'option3_name',
+  'option3_value',
+  'base_price',
+  'base_price_display',
+  'baseprice',
+  'display',
+]
 
 const toStringValue = (value: unknown): string | undefined => {
   if (value === null || value === undefined) return undefined
@@ -33,6 +65,21 @@ const humanize = (text: string): string =>
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
+
+const canonicalizeLabel = (label: string): string =>
+  label
+    .toLowerCase()
+    .replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+const shouldSkipValue = (value: string): boolean => {
+  const trimmed = value.trim()
+  if (!trimmed) return true
+  if (/^\$?0+(\.0+)?$/i.test(trimmed)) return true
+  if (/^none$/i.test(trimmed)) return true
+  return false
+}
 
 const parseOptionValue = (value: string): string[] => {
   const trimmed = value.trim()
@@ -170,13 +217,26 @@ const extractOptionDetails = (
     }
   }
 
-  const details: string[] = []
+  const detailOrder: string[] = []
+  const detailMap = new Map<string, {label: string; value: string}>()
+
+  const registerDetail = (label: string, value: string) => {
+    const trimmedValue = value.trim()
+    if (shouldSkipValue(trimmedValue)) return
+    const canonicalLabel = canonicalizeLabel(label)
+    if (canonicalLabel && canonicalLabel === trimmedValue.toLowerCase()) return
+    const uniqueKey = canonicalLabel
+      ? `label:${canonicalLabel}`
+      : `value:${trimmedValue.toLowerCase()}`
+    if (detailMap.has(uniqueKey)) return
+    detailMap.set(uniqueKey, {label: canonicalLabel ? label.trim() : '', value: trimmedValue})
+    detailOrder.push(uniqueKey)
+  }
 
   for (const {name, value, keys} of pairs.values()) {
     const normalized = value?.trim()
     if (!normalized) continue
-    const label = (name || '').trim()
-    details.push(label ? `${label}: ${normalized}` : normalized)
+    registerDetail(name || '', normalized)
     keys.forEach((key) => consumed.add(key))
   }
 
@@ -191,17 +251,34 @@ const extractOptionDetails = (
       segments.forEach((segment) => {
         const normalized = segment.trim()
         if (!normalized) return
-        const hasLabel = normalized.includes(':')
-        details.push(hasLabel || !label ? normalized : `${label}: ${normalized}`)
+        if (normalized.includes(':')) {
+          const [maybeLabel, ...rest] = normalized.split(':')
+          registerDetail(maybeLabel || label, rest.join(':'))
+        } else {
+          registerDetail(label, normalized)
+        }
       })
+      consumed.add(key)
+    } else {
+      registerDetail(label, value)
       consumed.add(key)
     }
   }
 
-  const uniqueDetails = Array.from(new Set(details.map((d) => d.trim()).filter(Boolean)))
-  const summary = uniqueDetails.length ? uniqueDetails.join(', ') : undefined
+  const orderedDetails = detailOrder
+    .map((uniqueKey) => {
+      const detail = detailMap.get(uniqueKey)
+      if (!detail) return ''
+      const {label, value} = detail
+      if (!value) return ''
+      return label ? `${label}: ${value}` : value
+    })
+    .map((detail) => detail.trim())
+    .filter(Boolean)
 
-  return {summary, details: uniqueDetails, consumedKeys: consumed}
+  const summary = orderedDetails.length ? orderedDetails.join(', ') : undefined
+
+  return {summary, details: orderedDetails, consumedKeys: consumed}
 }
 
 const extractUpgrades = (
@@ -315,6 +392,26 @@ export const remainingMetadataEntries = (
   if (!usedKeys.length) return normalizeMetadataEntries(metadata)
   const exclude = new Set(usedKeys.map((key) => key.toLowerCase()))
   return normalizeMetadataEntries(metadata).filter((entry) => !exclude.has(entry.key.toLowerCase()))
+}
+
+const METADATA_EXCLUDE_PATTERNS = [
+  /^base price/i,
+  /^base price display/i,
+  /^option upcharge/i,
+  /^option upcharge display/i,
+  /^product image/i,
+  /^product url/i,
+  /^product name/i,
+  /^sanity /i,
+  /^quantity:/i,
+  /^unit price/i,
+  /^shipping /i,
+]
+
+export const shouldDisplayMetadataSegment = (text: string): boolean => {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+  return !METADATA_EXCLUDE_PATTERNS.some((pattern) => pattern.test(trimmed))
 }
 
 export {normalizeMetadataEntries}
