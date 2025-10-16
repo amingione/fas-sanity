@@ -3,40 +3,110 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --studio-body-background: radial-gradient(circle at 20% -10%, #e2e8f0 0%, #cbd5f5 45%, #94a3b8 100%);
-    --studio-surface: rgba(255, 255, 255, 0.92);
-    --studio-surface-strong: #ffffff;
-    --studio-surface-soft: rgba(248, 250, 252, 0.7);
-    --studio-surface-overlay: rgba(248, 250, 252, 0.55);
-    --studio-border: rgba(148, 163, 184, 0.35);
-    --studio-border-strong: rgba(100, 116, 139, 0.4);
-    --studio-text: #0f172a;
-    --studio-muted: rgba(71, 85, 105, 0.85);
-    --studio-accent: #2563eb;
-    --studio-accent-strong: #1e293b;
-    --studio-accent-muted: rgba(37, 99, 235, 0.12);
-    --studio-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
-    --studio-backdrop: rgba(148, 163, 184, 0.25);
+  :root,
+  body.sanity-studio-theme {
+    --studio-body-background-light: radial-gradient(circle at 20% -10%, #e2e8f0 0%, #cbd5f5 45%, #94a3b8 100%);
+    --studio-surface-light: rgba(255, 255, 255, 0.92);
+    --studio-surface-strong-light: #ffffff;
+    --studio-surface-soft-light: rgba(248, 250, 252, 0.7);
+    --studio-surface-overlay-light: rgba(248, 250, 252, 0.55);
+    --studio-border-light: rgba(148, 163, 184, 0.35);
+    --studio-border-strong-light: rgba(100, 116, 139, 0.4);
+    --studio-text-light: #0f172a;
+    --studio-muted-light: rgba(71, 85, 105, 0.85);
+    --studio-accent-light: #2563eb;
+    --studio-accent-strong-light: #1e293b;
+    --studio-accent-muted-light: rgba(37, 99, 235, 0.12);
+    --studio-shadow-light: 0 18px 45px rgba(15, 23, 42, 0.18);
+    --studio-backdrop-light: rgba(148, 163, 184, 0.25);
+
+    --studio-body-background-dark: radial-gradient(circle at 15% -10%, #1e293b 0%, #0f172a 45%, #020617 100%);
+    --studio-surface-dark: rgba(15, 23, 42, 0.85);
+    --studio-surface-strong-dark: rgba(15, 23, 42, 0.94);
+    --studio-surface-soft-dark: rgba(30, 41, 59, 0.55);
+    --studio-surface-overlay-dark: rgba(15, 23, 42, 0.6);
+    --studio-border-dark: rgba(148, 163, 184, 0.28);
+    --studio-border-strong-dark: rgba(148, 163, 184, 0.4);
+    --studio-text-dark: #f8fafc;
+    --studio-muted-dark: rgba(226, 232, 240, 0.78);
+    --studio-accent-dark: #60a5fa;
+    --studio-accent-strong-dark: #e2e8f0;
+    --studio-accent-muted-dark: rgba(96, 165, 250, 0.22);
+    --studio-shadow-dark: 0 22px 55px rgba(2, 6, 23, 0.55);
+    --studio-backdrop-dark: rgba(2, 6, 23, 0.55);
+
+    --studio-body-background: var(--studio-body-background-light);
+    --studio-surface: var(--studio-surface-light);
+    --studio-surface-strong: var(--studio-surface-strong-light);
+    --studio-surface-soft: var(--studio-surface-soft-light);
+    --studio-surface-overlay: var(--studio-surface-overlay-light);
+    --studio-border: var(--studio-border-light);
+    --studio-border-strong: var(--studio-border-strong-light);
+    --studio-text: var(--studio-text-light);
+    --studio-muted: var(--studio-muted-light);
+    --studio-accent: var(--studio-accent-light);
+    --studio-accent-strong: var(--studio-accent-strong-light);
+    --studio-accent-muted: var(--studio-accent-muted-light);
+    --studio-shadow: var(--studio-shadow-light);
+    --studio-backdrop: var(--studio-backdrop-light);
   }
 
   @media (prefers-color-scheme: dark) {
-    :root {
-      --studio-body-background: radial-gradient(circle at 15% -10%, #1e293b 0%, #0f172a 45%, #020617 100%);
-      --studio-surface: rgba(15, 23, 42, 0.85);
-      --studio-surface-strong: rgba(15, 23, 42, 0.94);
-      --studio-surface-soft: rgba(30, 41, 59, 0.55);
-      --studio-surface-overlay: rgba(15, 23, 42, 0.6);
-      --studio-border: rgba(148, 163, 184, 0.28);
-      --studio-border-strong: rgba(148, 163, 184, 0.4);
-      --studio-text: #f8fafc;
-      --studio-muted: rgba(226, 232, 240, 0.78);
-      --studio-accent: #60a5fa;
-      --studio-accent-strong: #e2e8f0;
-      --studio-accent-muted: rgba(96, 165, 250, 0.22);
-      --studio-shadow: 0 22px 55px rgba(2, 6, 23, 0.55);
-      --studio-backdrop: rgba(2, 6, 23, 0.55);
+    :root:not([data-studio-color-scheme='light']),
+    body.sanity-studio-theme:not([data-studio-color-scheme='light']) {
+      --studio-body-background: var(--studio-body-background-dark);
+      --studio-surface: var(--studio-surface-dark);
+      --studio-surface-strong: var(--studio-surface-strong-dark);
+      --studio-surface-soft: var(--studio-surface-soft-dark);
+      --studio-surface-overlay: var(--studio-surface-overlay-dark);
+      --studio-border: var(--studio-border-dark);
+      --studio-border-strong: var(--studio-border-strong-dark);
+      --studio-text: var(--studio-text-dark);
+      --studio-muted: var(--studio-muted-dark);
+      --studio-accent: var(--studio-accent-dark);
+      --studio-accent-strong: var(--studio-accent-strong-dark);
+      --studio-accent-muted: var(--studio-accent-muted-dark);
+      --studio-shadow: var(--studio-shadow-dark);
+      --studio-backdrop: var(--studio-backdrop-dark);
     }
+  }
+
+  :root[data-studio-color-scheme='dark'],
+  body[data-studio-color-scheme='dark'],
+  body.sanity-studio-theme.sanity-studio-theme-dark {
+    --studio-body-background: var(--studio-body-background-dark);
+    --studio-surface: var(--studio-surface-dark);
+    --studio-surface-strong: var(--studio-surface-strong-dark);
+    --studio-surface-soft: var(--studio-surface-soft-dark);
+    --studio-surface-overlay: var(--studio-surface-overlay-dark);
+    --studio-border: var(--studio-border-dark);
+    --studio-border-strong: var(--studio-border-strong-dark);
+    --studio-text: var(--studio-text-dark);
+    --studio-muted: var(--studio-muted-dark);
+    --studio-accent: var(--studio-accent-dark);
+    --studio-accent-strong: var(--studio-accent-strong-dark);
+    --studio-accent-muted: var(--studio-accent-muted-dark);
+    --studio-shadow: var(--studio-shadow-dark);
+    --studio-backdrop: var(--studio-backdrop-dark);
+  }
+
+  :root[data-studio-color-scheme='light'],
+  body[data-studio-color-scheme='light'],
+  body.sanity-studio-theme.sanity-studio-theme-light {
+    --studio-body-background: var(--studio-body-background-light);
+    --studio-surface: var(--studio-surface-light);
+    --studio-surface-strong: var(--studio-surface-strong-light);
+    --studio-surface-soft: var(--studio-surface-soft-light);
+    --studio-surface-overlay: var(--studio-surface-overlay-light);
+    --studio-border: var(--studio-border-light);
+    --studio-border-strong: var(--studio-border-strong-light);
+    --studio-text: var(--studio-text-light);
+    --studio-muted: var(--studio-muted-light);
+    --studio-accent: var(--studio-accent-light);
+    --studio-accent-strong: var(--studio-accent-strong-light);
+    --studio-accent-muted: var(--studio-accent-muted-light);
+    --studio-shadow: var(--studio-shadow-light);
+    --studio-backdrop: var(--studio-backdrop-light);
   }
 
   *,
@@ -167,42 +237,6 @@
 }
 
 @layer base {
-  body.sanity-studio-theme {
-    --studio-body-background: radial-gradient(circle at 20% -10%, #e2e8f0 0%, #cbd5f5 45%, #94a3b8 100%);
-    --studio-surface: rgba(255, 255, 255, 0.92);
-    --studio-surface-strong: #ffffff;
-    --studio-surface-soft: rgba(248, 250, 252, 0.7);
-    --studio-surface-overlay: rgba(248, 250, 252, 0.55);
-    --studio-border: rgba(148, 163, 184, 0.35);
-    --studio-border-strong: rgba(100, 116, 139, 0.4);
-    --studio-text: #0f172a;
-    --studio-muted: rgba(71, 85, 105, 0.85);
-    --studio-accent: #2563eb;
-    --studio-accent-strong: #1e293b;
-    --studio-accent-muted: rgba(37, 99, 235, 0.12);
-    --studio-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
-    --studio-backdrop: rgba(148, 163, 184, 0.25);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    body.sanity-studio-theme {
-      --studio-body-background: radial-gradient(circle at 15% -10%, #1e293b 0%, #0f172a 45%, #020617 100%);
-      --studio-surface: rgba(15, 23, 42, 0.85);
-      --studio-surface-strong: rgba(15, 23, 42, 0.94);
-      --studio-surface-soft: rgba(30, 41, 59, 0.55);
-      --studio-surface-overlay: rgba(15, 23, 42, 0.6);
-      --studio-border: rgba(148, 163, 184, 0.28);
-      --studio-border-strong: rgba(148, 163, 184, 0.4);
-      --studio-text: #f8fafc;
-      --studio-muted: rgba(226, 232, 240, 0.78);
-      --studio-accent: #60a5fa;
-      --studio-accent-strong: #e2e8f0;
-      --studio-accent-muted: rgba(96, 165, 250, 0.22);
-      --studio-shadow: 0 22px 55px rgba(2, 6, 23, 0.55);
-      --studio-backdrop: rgba(2, 6, 23, 0.55);
-    }
-  }
-
   body.sanity-studio-theme *,
   body.sanity-studio-theme *::before,
   body.sanity-studio-theme *::after {
