@@ -1112,20 +1112,14 @@ function OrderDetailView(props: DocumentViewProps) {
             </Card>
 
             <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
-              <Stack space={3}>
+              <Stack space={4}>
                 <Heading size={2}>Order summary</Heading>
-                <Grid columns={2} gap={2}>
-                  <Text size={1} muted>
-                    Subtotal
-                  </Text>
+                <Grid columns={[1, 1, 2]} gap={3}>
+                  <Text muted>Subtotal</Text>
                   <Text style={{textAlign: 'right'}}>{money(totals.subtotal)}</Text>
-                  <Text size={1} muted>
-                    Shipping
-                  </Text>
+                  <Text muted>Shipping</Text>
                   <Text style={{textAlign: 'right'}}>{money(totals.shipping)}</Text>
-                  <Text size={1} muted>
-                    Tax
-                  </Text>
+                  <Text muted>Tax</Text>
                   <Text style={{textAlign: 'right'}}>{money(totals.tax)}</Text>
                 </Grid>
                 <Box paddingTop={3} style={{borderTop: '1px solid #e2e8f0'}}>
@@ -1134,14 +1128,10 @@ function OrderDetailView(props: DocumentViewProps) {
                     <Text weight="bold">{money(totals.total)}</Text>
                   </Flex>
                 </Box>
-                <Stack space={1}>
-                  <Text size={1} muted>
-                    Carrier: {order.shippingCarrier || 'Not set'}
-                  </Text>
+                <Stack space={2}>
+                  <Text muted>Carrier: {order.shippingCarrier || 'Not set'}</Text>
                   {selectedServiceSummary && (
-                    <Text size={1} muted>
-                      Rate: {selectedServiceSummary}
-                    </Text>
+                    <Text muted>Rate: {selectedServiceSummary}</Text>
                   )}
                 </Stack>
               </Stack>
