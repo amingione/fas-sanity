@@ -68,6 +68,8 @@ type SanityProduct = {
   description?: PortableValue
   stripeProductId?: string
   stripeDefaultPriceId?: string
+  stripePriceId?: string
+  stripeLastSyncedAt?: string
   stripePrices?: SanityStripePriceSnapshot[]
   primaryImage?: string
 }
@@ -386,8 +388,10 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   const setOps: Record<string, any> = {
     stripeProductId,
     stripeDefaultPriceId: defaultPriceId,
+    stripePriceId: defaultPriceId,
     stripeActive: active,
     stripeUpdatedAt: new Date().toISOString(),
+    stripeLastSyncedAt: new Date().toISOString(),
     stripePrices: [priceSnapshot, ...filteredSnapshots],
   }
 

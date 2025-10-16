@@ -230,6 +230,13 @@ const product = defineType({
       group: 'pricing',
     }),
     defineField({
+      name: 'stripePriceId',
+      title: 'Stripe Primary Price ID',
+      type: 'string',
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
       name: 'stripeActive',
       title: 'Stripe Active',
       type: 'boolean',
@@ -239,6 +246,13 @@ const product = defineType({
     defineField({
       name: 'stripeUpdatedAt',
       title: 'Stripe Updated At',
+      type: 'datetime',
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Stripe Last Synced',
       type: 'datetime',
       readOnly: true,
       group: 'pricing',
