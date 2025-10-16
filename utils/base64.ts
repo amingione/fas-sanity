@@ -58,20 +58,26 @@ const decodeManually = (value: string): Uint8Array => {
   return outIndex === output.length ? output : output.slice(0, outIndex)
 }
 
+const toArrayBuffer = (view: ArrayBufferView): ArrayBuffer => {
+  const out = new Uint8Array(view.byteLength)
+  out.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength))
+  return out.buffer
+}
+
 export const decodeBase64ToArrayBuffer = (input: string): ArrayBuffer => {
   const normalized = normalizeBase64(input)
   if (!normalized) return new ArrayBuffer(0)
 
   try {
     const bytes = decodeWithAtob(normalized)
-    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+    return toArrayBuffer(bytes)
   } catch {}
 
   if (typeof Buffer !== 'undefined') {
     const buffer = Buffer.from(normalized, 'base64')
-    return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+    return toArrayBuffer(buffer)
   }
 
   const fallback = decodeManually(normalized)
-  return fallback.buffer.slice(fallback.byteOffset, fallback.byteOffset + fallback.byteLength)
+  return toArrayBuffer(fallback)
 }

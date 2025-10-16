@@ -294,12 +294,12 @@ function normalizeStatusLabel(value: string | null | undefined): string {
     .join(' ')
 }
 
-function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'primary' {
+function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'default' {
   const normalized = status.toLowerCase()
   if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
   if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
   if (['cancelled', 'canceled', 'returned', 'refunded', 'failed', 'exception', 'void'].includes(normalized)) return 'critical'
-  return 'primary'
+  return 'default'
 }
 
 function deriveDeliveryStatus(order: RawOrder, shippingStatuses: string[]): string {
@@ -1156,6 +1156,9 @@ type OrderPreviewDoc = {
   > | null
 }
 
+type CartItem = NonNullable<NonNullable<OrderPreviewDoc['cart']>[number]>
+type ShippingLogEntry = NonNullable<NonNullable<OrderPreviewDoc['shippingLog']>[number]>
+
 function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
   const client = useClient({apiVersion: '2024-10-01'})
   const [order, setOrder] = useState<OrderPreviewDoc | null>(null)
@@ -1211,7 +1214,7 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
   const items = useMemo(() => {
     if (!order?.cart || order.cart.length === 0) return []
     return order.cart
-      .filter((item): item is NonNullable<OrderPreviewDoc['cart']>[number] => Boolean(item))
+      .filter((item): item is CartItem => Boolean(item))
       .map((item) => {
         const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1
         const total =
@@ -1331,7 +1334,7 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
   const timeline = useMemo(() => {
     if (!order?.shippingLog) return []
     return order.shippingLog
-      .filter((entry): entry is NonNullable<OrderPreviewDoc['shippingLog']>[number] => Boolean(entry))
+      .filter((entry): entry is ShippingLogEntry => Boolean(entry))
       .map((entry) => ({
         id: entry._key || entry.createdAt || entry.status || Math.random().toString(36).slice(2),
         status: entry.status || 'update',

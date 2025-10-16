@@ -469,10 +469,10 @@ function ExpensesCard({summary}: {summary: Summary}) {
             segments={categories.map((entry) => ({label: entry.category, value: entry.total, color: entry.color}))}
             total={total}
           >
-            <Stack space={1} align="center">
+            <Flex direction="column" align="center" gap={1}>
               <Text size={1} muted>Total spend</Text>
               <Text weight="semibold">{currency(total)}</Text>
-            </Stack>
+            </Flex>
           </DonutChart>
 
           <Stack space={2} flex={1}>
@@ -1101,10 +1101,10 @@ function AccountsReceivableCard({summary}: {summary: Summary}) {
 
         <Flex align="center" gap={4} wrap="wrap">
           <DonutChart size={140} thickness={28} segments={segments} total={total}>
-            <Stack align="center" space={1}>
+            <Flex direction="column" align="center" gap={1}>
               <Text size={1} muted>Total AR</Text>
               <Text weight="semibold">{currency(total)}</Text>
-            </Stack>
+            </Flex>
           </DonutChart>
 
           <Stack space={2} flex={1}>

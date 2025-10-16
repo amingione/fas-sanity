@@ -6,7 +6,7 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
   })
 
 const BUSINESS_NAME =
@@ -40,20 +40,22 @@ export const handler: Handler = async (event) => {
     const payload = JSON.parse(event.body || '{}')
     const returnUrl = typeof payload?.returnUrl === 'string' ? payload.returnUrl : DEFAULT_RETURN_URL
 
-    const session = await stripe.financialConnections.sessions.create({
-      account_holder: {
-        type: 'company',
-        company: {
-          name: BUSINESS_NAME,
+    const session = await stripe.financialConnections.sessions.create(
+      {
+        account_holder: {
+          type: 'company',
+          company: {
+            name: BUSINESS_NAME,
+          },
         },
-      },
-      permissions: ['account_numbers', 'balances'],
-      filters: {
-        account_subtypes: ['checking', 'savings'],
-      },
-      payment_method_types: ['us_bank_account'],
-      return_url: returnUrl,
-    })
+        permissions: ['account_numbers', 'balances'],
+        filters: {
+          account_subtypes: ['checking', 'savings'],
+        },
+        payment_method_types: ['us_bank_account'],
+        return_url: returnUrl,
+      } as any
+    )
 
     if (!session.client_secret) {
       return {

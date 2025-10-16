@@ -118,6 +118,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [convertingIds, setConvertingIds] = useState<Set<string>>(new Set())
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   const hasSelections = selectedIds.size > 0
 
@@ -207,6 +208,12 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
       return true
     })
   }, [quotes, statusFilter, dateFilter, search])
+
+  useEffect(() => {
+    const checkbox = selectAllRef.current
+    if (!checkbox) return
+    checkbox.indeterminate = hasSelections && selectedIds.size < filteredQuotes.length
+  }, [filteredQuotes.length, hasSelections, selectedIds])
 
   useEffect(() => {
     setSelectedIds(new Set())
@@ -391,9 +398,9 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                   <span style={{...STICKY_CHECKBOX_STYLE, background: HEADER_BACKGROUND, zIndex: 4}}>
                     <input
                       type="checkbox"
+                      ref={selectAllRef}
                       className="h-4 w-4 rounded border-[var(--studio-border-strong)] text-emerald-600 focus:ring-emerald-500"
                       checked={hasSelections && selectedIds.size === filteredQuotes.length}
-                      indeterminate={hasSelections && selectedIds.size < filteredQuotes.length}
                       onChange={(event) => handleSelectAll(event.currentTarget.checked)}
                     />
                   </span>

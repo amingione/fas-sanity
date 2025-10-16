@@ -1,6 +1,5 @@
 import type {Handler} from '@netlify/functions'
 import PDFDocument from 'pdfkit'
-import getStream from 'get-stream'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
 import fs from 'fs'
@@ -36,11 +35,21 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
   })
 
 const MICR_FONT_PATH = path.resolve(process.cwd(), 'public', 'fonts', 'micrenc.ttf')
 const micrFontBuffer = fs.existsSync(MICR_FONT_PATH) ? fs.readFileSync(MICR_FONT_PATH) : null
+
+const pdfDocumentToBuffer = (doc: InstanceType<typeof PDFDocument>): Promise<Buffer> =>
+  new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    doc.on('data', (chunk: Buffer) => {
+      chunks.push(Buffer.from(chunk))
+    })
+    doc.on('end', () => resolve(Buffer.concat(chunks)))
+    doc.on('error', reject)
+  })
 
 const SMALL_NUMBERS = [
   'ZERO',
@@ -160,12 +169,12 @@ async function generateCheckPdf(checkId: string) {
     throw new Error('Invalid check amount')
   }
 
-  const stripeAccount = await stripe.financialConnections.accounts.retrieve(
+  const stripeAccount = (await stripe.financialConnections.accounts.retrieve(
     check.bankAccount.stripeAccountId,
     {
       expand: ['account_numbers'],
-    }
-  )
+    } as any
+  )) as any
 
   const bankDetails = stripeAccount.account_numbers?.us_bank_account
 
@@ -295,7 +304,7 @@ async function generateCheckPdf(checkId: string) {
 
   doc.end()
 
-  const pdfBuffer = await getStream.buffer(doc as unknown as NodeJS.ReadableStream)
+  const pdfBuffer = await pdfDocumentToBuffer(doc)
 
   return {
     statusCode: 200,
@@ -362,7 +371,7 @@ async function generateBillCheck(billId: string) {
 
   doc.end()
 
-  const pdfBuffer = await getStream.buffer(doc as unknown as NodeJS.ReadableStream)
+  const pdfBuffer = await pdfDocumentToBuffer(doc)
 
   return {
     statusCode: 200,
