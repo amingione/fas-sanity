@@ -617,12 +617,52 @@ function OrderDetailView(props: DocumentViewProps) {
       if (!res.ok || (json && json.success === false)) {
         throw new Error(json?.error || 'Fulfillment request failed')
       }
+
+      const message = typeof json?.message === 'string' ? json.message.trim() : ''
+      const installOnly = Boolean(json?.installOnly)
+      const freightRequired = Boolean(json?.freight)
+      const trackingNumber = typeof json?.trackingNumber === 'string' ? json.trackingNumber.trim() : ''
+      const trackingUrl = typeof json?.trackingUrl === 'string' ? json.trackingUrl.trim() : ''
+      const installOnlySkus = Array.isArray(json?.installOnlySkus)
+        ? json.installOnlySkus.map((sku: unknown) => (typeof sku === 'string' ? sku.trim() : '')).filter(Boolean)
+        : []
+
+      const infoSegments: string[] = []
+      if (message) infoSegments.push(message)
+      if (trackingNumber && !message.includes(trackingNumber)) {
+        infoSegments.push(
+          trackingUrl ? `Tracking ${trackingNumber} → ${trackingUrl}` : `Tracking ${trackingNumber}`
+        )
+      }
+      if (installOnlySkus.length) {
+        infoSegments.push(`Install-only SKUs: ${installOnlySkus.join(', ')}`)
+      }
+
+      const descriptionFallback = hasTracking
+        ? 'Marked as fulfilled and sent tracking details to the customer.'
+        : 'Shipping label generation started. This view will refresh automatically once processing finishes.'
+
+      let status: 'success' | 'warning' = 'success'
+      let title = hasTracking ? 'Order fulfilled' : 'Fulfillment in progress'
+
+      if (installOnly) {
+        status = 'warning'
+        title = 'Installation required'
+        if (!infoSegments.length) {
+          infoSegments.push('This order only requires scheduling installation instead of shipping.')
+        }
+      } else if (freightRequired) {
+        status = 'warning'
+        title = 'Freight quote requested'
+        if (!infoSegments.length) {
+          infoSegments.push('Freight is required—check the freight queue for next steps.')
+        }
+      }
+
       toast.push({
-        status: 'success',
-        title: hasTracking ? 'Order fulfilled' : 'Fulfillment in progress',
-        description: hasTracking
-          ? 'Marked as fulfilled and sent tracking details to the customer.'
-          : 'Shipping label generation started. This view will refresh automatically once processing finishes.',
+        status,
+        title,
+        description: infoSegments.length ? infoSegments.join(' • ') : descriptionFallback,
       })
       await refreshOrder()
     } catch (err: any) {
