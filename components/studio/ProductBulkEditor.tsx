@@ -22,6 +22,7 @@ type ProductDoc = {
   onSale?: boolean
   availability?: 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder'
   condition?: 'new' | 'refurbished' | 'used'
+  manualInventoryCount?: number
   taxBehavior?: 'taxable' | 'exempt'
   taxCode?: string
   shippingWeight?: number
@@ -100,8 +101,10 @@ const GOOGLE_FEED_HEADERS = [
   'availability',
   'price',
   'condition',
+  'manual_inventory_count',
   'brand',
   'mpn',
+  'identifier_exists',
   'shipping_weight',
   'product_type',
   'google_product_category',
@@ -213,6 +216,12 @@ function makeUpdate<K extends keyof EditableProduct>(key: K, value: EditableProd
 
 const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
   {
+    header: 'Title',
+    headerKey: 'title',
+    getValue: (product) => product.title || '',
+    setValue: (raw) => makeUpdate('title', raw.trim() as EditableProduct['title']),
+  },
+  {
     header: 'Sanity ID',
     headerKey: 'sanity id',
     getValue: (product) => product._id,
@@ -225,12 +234,6 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
       const next = raw.trim()
       return makeUpdate('sku', (next ? next : undefined) as EditableProduct['sku'])
     },
-  },
-  {
-    header: 'Title',
-    headerKey: 'title',
-    getValue: (product) => product.title || '',
-    setValue: (raw) => makeUpdate('title', raw.trim() as EditableProduct['title']),
   },
   {
     header: 'Price',
@@ -286,6 +289,16 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
     },
   },
   {
+    header: 'Manual Inventory Count',
+    headerKey: 'manual inventory count',
+    getValue: (product) => formatNumberCell(product.manualInventoryCount),
+    setValue: (raw) => {
+      const result = parseNumberCell(raw)
+      if (!result.ok) return {type: 'error', message: result.message}
+      return makeUpdate('manualInventoryCount', result.value as EditableProduct['manualInventoryCount'])
+    },
+  },
+  {
     header: 'Brand',
     headerKey: 'brand',
     getValue: (product) => product.brand || '',
@@ -302,6 +315,11 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
       const next = raw.trim()
       return makeUpdate('mpn', (next || undefined) as EditableProduct['mpn'])
     },
+  },
+  {
+    header: 'Identifier Exists',
+    headerKey: 'identifier exists',
+    getValue: (product) => (product.mpn ? 'TRUE' : 'FALSE'),
   },
   {
     header: 'Tax Behavior',
@@ -371,6 +389,8 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
     },
   },
 ]
+
+const SANITY_ID_COLUMN_INDEX = SPREADSHEET_COLUMNS.findIndex((column) => column.headerKey === 'sanity id')
 
 type ParsedRow = {
   line: number
@@ -513,6 +533,7 @@ export default function ProductBulkEditor() {
             onSale,
             availability,
             condition,
+            manualInventoryCount,
             taxBehavior,
             taxCode,
             installOnly,
@@ -739,8 +760,9 @@ export default function ProductBulkEditor() {
   }
 
   const beginSelection = (row: number, col: number, event: React.PointerEvent<HTMLTableCellElement>) => {
-    if (row === 0 || col === 0) return
+    if (row === 0) return
     if ((event.target as HTMLElement).tagName === 'INPUT') return
+    if (!SPREADSHEET_COLUMNS[col]?.setValue) return
     event.preventDefault()
     setSelection({startRow: row, startCol: col, endRow: row, endCol: col})
     setIsDraggingSelection(true)
@@ -749,7 +771,7 @@ export default function ProductBulkEditor() {
   const extendSelection = (row: number, col: number) => {
     setSelection((prev) => {
       if (!prev || !isDraggingSelection) return prev
-      if (row === 0 || col === 0) return prev
+      if (row === 0 || !SPREADSHEET_COLUMNS[col]?.setValue) return prev
       return {
         startRow: prev.startRow,
         startCol: prev.startCol,
@@ -850,6 +872,9 @@ export default function ProductBulkEditor() {
         onSale: Boolean(product.onSale),
         availability: product.availability || 'in_stock',
         condition: product.condition || 'new',
+        manualInventoryCount: Number.isFinite(product.manualInventoryCount)
+          ? Number(product.manualInventoryCount)
+          : undefined,
         taxBehavior: product.taxBehavior || undefined,
         taxCode: product.taxCode || undefined,
         shippingWeight: Number.isFinite(product.shippingWeight) ? Number(product.shippingWeight) : undefined,
@@ -917,8 +942,12 @@ export default function ProductBulkEditor() {
       const availability = availabilityMap[availabilityValue] || 'in stock'
       const price = toGooglePrice(product.price)
       const condition = product.condition || 'new'
+      const manualInventory = Number.isFinite(product.manualInventoryCount ?? NaN)
+        ? String(product.manualInventoryCount)
+        : ''
       const brand = product.brand || 'F.A.S. Motorsports'
       const mpn = product.mpn || product.sku || product._id
+      const identifierExists = product.mpn ? 'TRUE' : 'FALSE'
       const shippingWeight = product.shippingWeight ? `${product.shippingWeight} lb` : ''
       const productType = Array.isArray(product.categories) ? product.categories.join(' > ') : ''
       const googleCategory = product.googleProductCategory || ''
@@ -942,8 +971,10 @@ export default function ProductBulkEditor() {
         availability,
         price || '',
         condition,
+        manualInventory,
         brand,
         mpn,
+        identifierExists,
         shippingWeight,
         productType,
         googleCategory,
@@ -1025,7 +1056,7 @@ export default function ProductBulkEditor() {
           <Card shadow={1} radius={2} padding={4} style={{background: '#111827'}}>
             <Stack space={3}>
               <Text size={1} style={{color: '#e5e7eb'}}>
-                Spreadsheet view mirrors the Google feed columns. Edit directly, drag to fill, or paste from Excel. The first column (Sanity ID) stays read-only.
+                Spreadsheet view mirrors the Google feed columns. Edit directly, drag to fill, or paste from Excel. Title stays pinned on the left, and the Sanity ID column remains read-only.
               </Text>
               {sheetError && (
                 <Card padding={3} radius={2} tone="critical">
@@ -1038,25 +1069,43 @@ export default function ProductBulkEditor() {
                 >
                   <thead>
                     <tr>
-                      {(sheetRows[0] || SPREADSHEET_COLUMNS.map((column) => column.header)).map((header, columnIndex) => (
-                        <th key={`header-${columnIndex}`} style={headerCellStyle}>
-                          {header || SPREADSHEET_COLUMNS[columnIndex]?.header || ''}
-                        </th>
-                      ))}
+                      {(sheetRows[0] || SPREADSHEET_COLUMNS.map((column) => column.header)).map((header, columnIndex) => {
+                        const columnDef = SPREADSHEET_COLUMNS[columnIndex]
+                        const isStickyColumn = columnDef?.headerKey === 'title'
+                        const stickyStyle = isStickyColumn
+                          ? {
+                              left: 0,
+                              zIndex: 4,
+                              boxShadow: '4px 0 6px -4px rgba(15, 23, 42, 0.8)',
+                              background: '#1f2937',
+                              color: '#f9fafb',
+                            }
+                          : {}
+                        return (
+                          <th key={`header-${columnIndex}`} style={{...headerCellStyle, ...stickyStyle}}>
+                            {header || SPREADSHEET_COLUMNS[columnIndex]?.header || ''}
+                          </th>
+                        )
+                      })}
                     </tr>
                   </thead>
                   <tbody>
                     {sheetRows.slice(1).map((row, dataIndex) => {
                       const sheetRowIndex = dataIndex + 1
-                      const rowKey = row?.[0] || `row-${sheetRowIndex}`
+                      const rowKey =
+                        (SANITY_ID_COLUMN_INDEX >= 0 ? row?.[SANITY_ID_COLUMN_INDEX] : undefined) ||
+                        row?.[0] ||
+                        `row-${sheetRowIndex}`
                       return (
                         <tr key={rowKey}>
                           {row.map((value, columnIndex) => {
                             const sheetColIndex = columnIndex
-                            const editable = sheetColIndex !== 0
+                            const columnDef = SPREADSHEET_COLUMNS[sheetColIndex]
+                            const editable = Boolean(columnDef?.setValue)
                             const selected = isCellSelected(sheetRowIndex, sheetColIndex)
                             const active = activeCell?.row === sheetRowIndex && activeCell?.col === sheetColIndex
-                            const cellStyle = {
+                            const isStickyColumn = columnDef?.headerKey === 'title'
+                            const cellStyle: React.CSSProperties = {
                               ...bodyCellBaseStyle,
                               background: active
                                 ? 'rgba(59, 130, 246, 0.35)'
@@ -1064,6 +1113,15 @@ export default function ProductBulkEditor() {
                                   ? 'rgba(59, 130, 246, 0.18)'
                                   : bodyCellBaseStyle.background,
                               cursor: editable ? 'text' : 'default',
+                            }
+                            if (isStickyColumn) {
+                              cellStyle.position = 'sticky'
+                              cellStyle.left = 0
+                              cellStyle.zIndex = active ? 4 : selected ? 3 : 2
+                              cellStyle.boxShadow = '4px 0 6px -4px rgba(15, 23, 42, 0.9)'
+                              cellStyle.minWidth = 220
+                              cellStyle.background = active ? '#1d4ed8' : selected ? '#1e3a8a' : '#1f2937'
+                              cellStyle.color = '#f9fafb'
                             }
 
                             return (
@@ -1132,6 +1190,7 @@ export default function ProductBulkEditor() {
                     'On Sale?',
                     'Availability',
                     'Condition',
+                    'Manual Inventory Count',
                     'Brand',
                     'MPN',
                     'Tax Behavior',
@@ -1234,6 +1293,23 @@ export default function ProductBulkEditor() {
                         <option value="refurbished">Refurbished</option>
                         <option value="used">Used</option>
                       </select>
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <TextInput
+                        value={
+                          product.manualInventoryCount !== undefined && product.manualInventoryCount !== null
+                            ? product.manualInventoryCount.toString()
+                            : ''
+                        }
+                        onChange={(event) =>
+                          updateProductField(
+                            product._id,
+                            'manualInventoryCount',
+                            sanitizeNumber(event.currentTarget.value, product.manualInventoryCount)
+                          )
+                        }
+                        inputMode="numeric"
+                      />
                     </td>
                     <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <TextInput
