@@ -52,8 +52,12 @@
   }
 
   @media (prefers-color-scheme: dark) {
-    :root:not([data-studio-color-scheme='light']),
-    body.sanity-studio-theme:not([data-studio-color-scheme='light']) {
+    :root:not([data-studio-color-scheme='light']):not([data-sanity-color-scheme='light']):not(
+        [data-color-scheme='light']
+      ):not([data-theme='light']):not([data-mode='light']),
+    body.sanity-studio-theme:not([data-studio-color-scheme='light']):not(
+        [data-sanity-color-scheme='light']
+      ):not([data-color-scheme='light']):not([data-theme='light']):not([data-mode='light']) {
       --studio-body-background: var(--studio-body-background-dark);
       --studio-surface: var(--studio-surface-dark);
       --studio-surface-strong: var(--studio-surface-strong-dark);
@@ -72,7 +76,15 @@
   }
 
   :root[data-studio-color-scheme='dark'],
+  :root[data-sanity-color-scheme='dark'],
+  :root[data-color-scheme='dark'],
+  :root[data-theme='dark'],
+  :root[data-mode='dark'],
   body[data-studio-color-scheme='dark'],
+  body[data-sanity-color-scheme='dark'],
+  body[data-color-scheme='dark'],
+  body[data-theme='dark'],
+  body[data-mode='dark'],
   body.sanity-studio-theme.sanity-studio-theme-dark {
     --studio-body-background: var(--studio-body-background-dark);
     --studio-surface: var(--studio-surface-dark);
@@ -91,7 +103,15 @@
   }
 
   :root[data-studio-color-scheme='light'],
+  :root[data-sanity-color-scheme='light'],
+  :root[data-color-scheme='light'],
+  :root[data-theme='light'],
+  :root[data-mode='light'],
   body[data-studio-color-scheme='light'],
+  body[data-sanity-color-scheme='light'],
+  body[data-color-scheme='light'],
+  body[data-theme='light'],
+  body[data-mode='light'],
   body.sanity-studio-theme.sanity-studio-theme-light {
     --studio-body-background: var(--studio-body-background-light);
     --studio-surface: var(--studio-surface-light);
