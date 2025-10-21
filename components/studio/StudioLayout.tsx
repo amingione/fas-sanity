@@ -3,6 +3,31 @@ import type {LayoutProps} from 'sanity'
 
 type ColorScheme = 'dark' | 'light'
 
+const SCHEME_DATA_ATTRIBUTES = [
+  'mode',
+  'theme',
+  'colorScheme',
+  'uiColorScheme',
+  'sanityColorScheme',
+  'studioColorScheme',
+] as const satisfies readonly (keyof DOMStringMap)[]
+
+const applySchemeAttributes = (element: HTMLElement, scheme: ColorScheme) => {
+  for (const attribute of SCHEME_DATA_ATTRIBUTES) {
+    element.dataset[attribute] = scheme
+  }
+
+  element.style.setProperty('color-scheme', scheme)
+}
+
+const clearSchemeAttributes = (element: HTMLElement) => {
+  for (const attribute of SCHEME_DATA_ATTRIBUTES) {
+    delete element.dataset[attribute]
+  }
+
+  element.style.removeProperty('color-scheme')
+}
+
 function isColorScheme(value: string | null | undefined): value is ColorScheme {
   return value === 'dark' || value === 'light'
 }
@@ -62,8 +87,8 @@ export default function StudioLayout(props: LayoutProps) {
     const applyScheme = () => {
       const scheme = resolveScheme()
 
-      body.dataset.studioColorScheme = scheme
-      documentElement.dataset.studioColorScheme = scheme
+      applySchemeAttributes(body, scheme)
+      applySchemeAttributes(documentElement, scheme)
       body.classList.toggle('sanity-studio-theme-dark', scheme === 'dark')
       body.classList.toggle('sanity-studio-theme-light', scheme === 'light')
     }
@@ -108,8 +133,8 @@ export default function StudioLayout(props: LayoutProps) {
       window.removeEventListener('storage', handleStorage)
       observer.disconnect()
       body.classList.remove('sanity-studio-theme', 'sanity-studio-theme-dark', 'sanity-studio-theme-light')
-      delete body.dataset.studioColorScheme
-      delete documentElement.dataset.studioColorScheme
+      clearSchemeAttributes(body)
+      clearSchemeAttributes(documentElement)
     }
   }, [])
 
