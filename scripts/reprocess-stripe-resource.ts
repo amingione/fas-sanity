@@ -4,7 +4,6 @@ import path from 'node:path'
 import fs from 'node:fs'
 import dotenv from 'dotenv'
 import type { HandlerEvent } from '@netlify/functions'
-import { handler as reprocessHandler } from '../netlify/functions/reprocessStripeSession'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -55,6 +54,16 @@ async function main() {
   }
 
   try {
+    const module = await import('../netlify/functions/reprocessStripeSession')
+    const reprocessHandler = module.handler as (
+      event: HandlerEvent,
+      context: Record<string, unknown>
+    ) => Promise<{ statusCode: number; body?: string }>
+
+    if (!reprocessHandler) {
+      throw new Error('Unable to load reprocessStripeSession handler')
+    }
+
     const response = await reprocessHandler(event, {} as any)
     const status = response?.statusCode ?? 500
     const body = (() => {
