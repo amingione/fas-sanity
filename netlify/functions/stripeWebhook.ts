@@ -2077,7 +2077,6 @@ export const handler: Handler = async (event) => {
           const shippingDetails = await resolveStripeShippingDetails({
             metadata: meta,
             paymentIntent: pi,
-            fallbackAmount: undefined,
             stripe,
           })
           const orderNumber = await resolveOrderNumber({
