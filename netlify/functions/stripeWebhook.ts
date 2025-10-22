@@ -2077,22 +2077,27 @@ export const handler: Handler = async (event) => {
           const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '')
             .toString()
             .trim()
-          const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '')
+          const metadataShippingCarrier = ((meta['shipping_carrier'] || meta['shippingCarrier'] || '')
+            .toString()
+            .trim() || undefined)
+          const metadataShippingServiceCode = ((
+            meta['shipping_service_code'] ||
+            meta['shipping_service'] ||
+            meta['shippingService'] ||
+            ''
+          )
+            .toString()
+            .trim() || undefined)
+          const metadataShippingServiceName = ((meta['shipping_service_name'] || '')
+            .toString()
+            .trim() || undefined)
+          const metadataShippingCarrierId = ((meta['shipping_carrier_id'] || '')
+            .toString()
+            .trim() || undefined)
+          const metadataShippingCurrency = ((meta['shipping_currency'] || meta['shippingCurrency'] || '')
             .toString()
             .trim()
-          const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '')
-            .toString()
-            .trim()
-          const metadataShippingServiceName = (meta['shipping_service_name'] || '')
-            .toString()
-            .trim()
-          const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '')
-            .toString()
-            .trim()
-          const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '')
-            .toString()
-            .trim()
-            .toUpperCase()
+            .toUpperCase() || undefined)
           const shippingDetails = await resolveStripeShippingDetails({
             metadata: meta,
             paymentIntent: pi,
@@ -2108,19 +2113,15 @@ export const handler: Handler = async (event) => {
           })()
           const shippingAmountForDoc =
             shippingDetails.amount !== undefined ? shippingDetails.amount : shippingAmountFromMetadata
-          const shippingCarrierForDoc = shippingDetails.carrier || (metadataShippingCarrier || undefined)
-          const shippingCarrierIdForDoc = shippingDetails.carrierId || (metadataShippingCarrierId || undefined)
+          const shippingCarrierForDoc = shippingDetails.carrier || metadataShippingCarrier
+          const shippingCarrierIdForDoc = shippingDetails.carrierId || metadataShippingCarrierId
           const shippingServiceNameForDoc =
-            shippingDetails.serviceName ||
-            (metadataShippingServiceName || undefined) ||
-            (metadataShippingServiceCode || undefined)
+            shippingDetails.serviceName || metadataShippingServiceName || metadataShippingServiceCode
           const shippingServiceCodeForDoc =
-            shippingDetails.serviceCode ||
-            (metadataShippingServiceCode || undefined) ||
-            (metadataShippingServiceName || undefined)
+            shippingDetails.serviceCode || metadataShippingServiceCode || metadataShippingServiceName
           const shippingCurrencyForDoc =
             shippingDetails.currency ||
-            (metadataShippingCurrency || undefined) ||
+            metadataShippingCurrency ||
             (currency ? currency.toUpperCase() : undefined) ||
             'USD'
           const orderNumber = await resolveOrderNumber({
@@ -2193,7 +2194,7 @@ export const handler: Handler = async (event) => {
             }
           }
           if (shippingDetails.currency || metadataShippingCurrency) {
-            baseDoc.selectedShippingCurrency = shippingDetails.currency || metadataShippingCurrency || undefined
+            baseDoc.selectedShippingCurrency = shippingDetails.currency || metadataShippingCurrency
           }
           if (shippingDetails.deliveryDays !== undefined) {
             baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
