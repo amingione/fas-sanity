@@ -62,22 +62,27 @@ type DayCell = {
   hasBookings: boolean
 }
 
+const safeEnv = (key: string): string | undefined => {
+  const metaEnv =
+    typeof import.meta !== 'undefined' && (import.meta as any)?.env
+      ? ((import.meta as any).env as Record<string, string | undefined>)
+      : undefined
+  return metaEnv?.[key] ?? process.env?.[key]
+}
+
 const CAL_API_BASE =
-  (import.meta.env.SANITY_STUDIO_CALCOM_API_BASE_URL as string | undefined) ||
-  (import.meta.env.VITE_CALCOM_API_BASE_URL as string | undefined) ||
+  safeEnv('SANITY_STUDIO_CALCOM_API_BASE_URL') ||
+  safeEnv('VITE_CALCOM_API_BASE_URL') ||
   'https://api.cal.com/v1'
 
 const CAL_API_KEY =
-  (import.meta.env.SANITY_STUDIO_CALCOM_API_KEY as string | undefined) ||
-  (import.meta.env.VITE_CALCOM_API_KEY as string | undefined)
+  safeEnv('SANITY_STUDIO_CALCOM_API_KEY') || safeEnv('VITE_CALCOM_API_KEY')
 
 const CAL_BOOKING_URL =
-  (import.meta.env.SANITY_STUDIO_CALCOM_BOOKING_URL as string | undefined) ||
-  (import.meta.env.VITE_CALCOM_BOOKING_URL as string | undefined)
+  safeEnv('SANITY_STUDIO_CALCOM_BOOKING_URL') || safeEnv('VITE_CALCOM_BOOKING_URL')
 
 const CAL_EMBED_URL =
-  (import.meta.env.SANITY_STUDIO_CALCOM_EMBED_URL as string | undefined) ||
-  (import.meta.env.VITE_CALCOM_EMBED_URL as string | undefined)
+  safeEnv('SANITY_STUDIO_CALCOM_EMBED_URL') || safeEnv('VITE_CALCOM_EMBED_URL')
 
 function getPrimaryAttendeeName(attendees?: CalComAttendee[]): string {
   if (!attendees || attendees.length === 0) return 'Unnamed attendee'
