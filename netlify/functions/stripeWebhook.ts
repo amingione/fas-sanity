@@ -8,6 +8,7 @@ import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
+import { mapStripeMetadata } from '../lib/stripeMetadata'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -716,6 +717,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
   const { firstName, lastName } = splitName(customer.name || customer.shipping?.name)
   const shippingText = formatShippingAddress(customer.shipping)
   const billingAddress = buildBillingAddress(customer.address, customer.name || customer.shipping?.name)
+  const metadataEntries = mapStripeMetadata(customer.metadata as Record<string, unknown> | null)
 
   const setOps: Record<string, any> = {
     stripeCustomerId: customer.id,
@@ -727,6 +729,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
   if (customer.phone) setOps.phone = customer.phone
   if (firstName && !existing?.firstName) setOps.firstName = firstName
   if (lastName && !existing?.lastName) setOps.lastName = lastName
+  if (metadataEntries) setOps.stripeMetadata = metadataEntries
 
   if (existing?._id) {
     if (!Array.isArray(existing.roles) || existing.roles.length === 0) setOps.roles = ['customer']
@@ -748,6 +751,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
     if (customer.phone) payload.phone = customer.phone
     if (shippingText) payload.address = shippingText
     if (billingAddress) payload.billingAddress = billingAddress
+    if (metadataEntries) payload.stripeMetadata = metadataEntries
 
     try {
       await sanity.create(payload as any, { autoGenerateArrayKeys: true })
@@ -1183,8 +1187,10 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
         limit: 100,
         expand: ['data.price.product'],
       })
-      const mapped = lineItems.data.map((item) => {
-        const mappedItem = mapStripeLineItem(item, { sessionMetadata: session.metadata })
+      const mapped = lineItems.data.map((item: Stripe.LineItem) => {
+        const mappedItem = mapStripeLineItem(item, {
+          sessionMetadata: (session.metadata || undefined) as Record<string, unknown> | undefined,
+        })
         return {
           ...mappedItem,
         } as CartItem
@@ -1296,7 +1302,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
     }
   } else {
     try {
-      const createdDoc = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
+      const createdDoc = await sanity.create(baseDoc as any, { autoGenerateArrayKeys: true })
       orderId = createdDoc?._id || null
     } catch (err) {
       console.warn('stripeWebhook: failed to create order for expired checkout', err)
@@ -1319,6 +1325,25 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
     } catch (err) {
       console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)
     }
+  }
+
+  try {
+    await updateCustomerProfileForOrder({
+      sanity,
+      orderId,
+      email,
+      shippingAddress,
+      stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
+      stripeSyncTimestamp: timestamp,
+      customerName:
+        metadataCustomerName ||
+        (shippingAddress?.name || session.customer_details?.name || email || '').toString().trim() ||
+        undefined,
+      metadata: session.metadata as Record<string, unknown> | null,
+      defaultRoles: typeof session.customer === 'string' && session.customer ? ['customer'] : ['guest'],
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to sync customer profile for expired checkout', err)
   }
 }
 
