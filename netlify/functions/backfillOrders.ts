@@ -231,12 +231,25 @@ export const handler: Handler = async (event) => {
     } catch {}
   }
 
-  const pageSize = 100
-  let cursor = ''
+  const parsedLimit = (() => {
+    const value = event.queryStringParameters?.limit || event.queryStringParameters?.max
+    if (!value) return NaN
+    const num = Number(value)
+    return Number.isFinite(num) ? num : NaN
+  })()
+  const maxRecords = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : Math.floor(parsedLimit), 500))
+  const pageSize = Math.min(100, maxRecords)
+  let cursor = (() => {
+    const value = event.queryStringParameters?.cursor
+    if (!value) return ''
+    return String(value)
+  })()
   let total = 0
   let changed = 0
   let migratedCustomer = 0
   let cartFixed = 0
+
+  let processed = 0
 
   try {
     while (true) {
@@ -259,6 +272,7 @@ export const handler: Handler = async (event) => {
       if (!result || result.length === 0) break
       for (const doc of result) {
         total++
+        processed++
         const setOps: Record<string, any> = {}
         const unsetOps: string[] = []
 
@@ -332,15 +346,15 @@ export const handler: Handler = async (event) => {
           setOps.slug = { _type: 'slug', current: desiredSlug }
         }
 
-          if (Object.keys(setOps).length || unsetOps.length) {
-            changed++
-            if (!dryRun) {
-              try {
-                await sanity.patch(doc._id).set(setOps).unset(unsetOps).commit({ autoGenerateArrayKeys: true })
-              } catch (err) {
-                console.warn('backfillOrders: failed to patch order', doc._id, err)
-              }
+        if (Object.keys(setOps).length || unsetOps.length) {
+          changed++
+          if (!dryRun) {
+            try {
+              await sanity.patch(doc._id).set(setOps).unset(unsetOps).commit({ autoGenerateArrayKeys: true })
+            } catch (err) {
+              console.warn('backfillOrders: failed to patch order', doc._id, err)
             }
+          }
           if (setOps.customerRef) migratedCustomer++
           if (setOps.cart) cartFixed++
         }
@@ -364,7 +378,10 @@ export const handler: Handler = async (event) => {
           }
         }
         cursor = doc._id
+
+        if (processed >= maxRecords) break
       }
+      if (processed >= maxRecords) break
       if (result.length < pageSize) break
     }
   } catch (e: any) {
@@ -379,6 +396,16 @@ export const handler: Handler = async (event) => {
   return {
     statusCode: 200,
     headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ok: true, dryRun, total, changed, migratedCustomer, cartFixed, remainingCustomer }),
+    body: JSON.stringify({
+      ok: true,
+      dryRun,
+      total,
+      changed,
+      migratedCustomer,
+      cartFixed,
+      remainingCustomer,
+      nextCursor: processed >= maxRecords ? cursor : null,
+      limit: maxRecords,
+    }),
   }
 }
