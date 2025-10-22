@@ -770,7 +770,7 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   const docUrl = (failure?.doc_url || '').trim() || undefined
 
   let failureCode = (failure?.code || '').trim() || undefined
-  let failureMessage = (failure?.message || pi.cancellation_reason || '').trim() || undefined
+  let failureMessage = (failure?.message || pi.cancellation_reason)?.trim() || undefined
 
   if (declineCode) {
     if (!failureCode) failureCode = declineCode
