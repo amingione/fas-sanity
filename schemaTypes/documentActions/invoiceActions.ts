@@ -1,15 +1,5 @@
 import type { DocumentActionComponent } from 'sanity'
 
-interface Invoice {
-  _type: 'invoice';
-  quote?: {
-    customer?: {
-      _ref: string;
-    };
-  };
-  fulfillmentStatus?: string;
-}
-
 function getFnBase(): string {
   const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
   if (envBase) return envBase
@@ -28,8 +18,6 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
   const { id, published, onComplete } = props
 
   if (!published || published._type !== 'invoice') return null
-  const invoice = published as Invoice
-
   return {
     label: 'Create Shipping Label',
     onHandle: async () => {

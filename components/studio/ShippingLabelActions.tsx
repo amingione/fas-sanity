@@ -175,9 +175,8 @@ export default function ShippingLabelActions({ doc }: Props) {
       }
     : undefined
   const carrier = useFormValue(['carrier']) as string | undefined
-  const customerEmail = useFormValue(['customerEmail']) as string | undefined
 
-  const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
   const toast = useToast()
 
   const [availableRates, setAvailableRates] = useState<

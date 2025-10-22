@@ -124,8 +124,7 @@ export const handler: Handler = async (event) => {
 
   try {
     const payload: ShipStationWebhookEvent = JSON.parse(rawBody || '{}')
-    const resourceType = (payload.resource_type || '').toUpperCase()
-    const resourceAction = (payload.resource_action || '').toUpperCase()
+      const resourceType = (payload.resource_type || '').toUpperCase()
     const eventType = (payload.event || '').toUpperCase()
 
     if (resourceType.includes('SHIPMENT') || eventType.includes('SHIP')) {

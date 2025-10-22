@@ -439,22 +439,22 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const toast = useToast()
 
-  useEffect(() => {
-    if (!displayed) {
-      setState(defaultEditorState)
-      setLastSnapshot(JSON.stringify(defaultEditorState))
-      setIsDirty(false)
-      return
-    }
-    const nextState = extractStateFromDoc(displayed)
-    const serialized = JSON.stringify(nextState)
-    if (!isDirty) {
-      setState(nextState)
-      setLastSnapshot(serialized)
-    } else if (!lastSnapshot) {
-      setLastSnapshot(serialized)
-    }
-  }, [displayed])
+    useEffect(() => {
+      if (!displayed) {
+        setState(defaultEditorState)
+        setLastSnapshot(JSON.stringify(defaultEditorState))
+        setIsDirty(false)
+        return
+      }
+      const nextState = extractStateFromDoc(displayed)
+      const serialized = JSON.stringify(nextState)
+      if (!isDirty) {
+        setState(nextState)
+        setLastSnapshot(serialized)
+      } else if (!lastSnapshot) {
+        setLastSnapshot(serialized)
+      }
+    }, [displayed, isDirty, lastSnapshot])
 
   const totals = useMemo(() => computeTotals(state), [state])
 

@@ -1,4 +1,5 @@
 import type { SanityClient } from '@sanity/client'
+import { mapStripeMetadata } from './stripeMetadata'
 
 type ShippingLike = {
   name?: string | null
@@ -30,6 +31,8 @@ type UpdateCustomerArgs = {
   stripeCustomerId?: string | null
   stripeSyncTimestamp?: string | null
   customerName?: string | null
+  metadata?: Record<string, unknown> | null
+  defaultRoles?: string[]
 }
 
 function splitName(value?: string | null): { firstName?: string; lastName?: string } {
@@ -52,17 +55,18 @@ function normalizeShippingAddress(address: ShippingLike | null | undefined) {
     address.street ||
     address.street1 ||
     (typeof address === 'object' && 'address' in address ? (address as any).address : undefined)
-  const line2 = address.addressLine2 || address.street2 || undefined
+    const line2 = address.addressLine2 || address.street2 || undefined
   const city = address.city || undefined
   const state = address.state || address.stateProvince || address.region || undefined
   const postalCode = address.postalCode || address.postal_code || address.zip || undefined
   const country = address.country || address.country_code || undefined
   if (!line1 && !city && !postalCode) return undefined
-  return {
-    _type: 'customerBillingAddress' as const,
-    name: address.name || undefined,
-    street: line1 || undefined,
-    city: city || undefined,
+      return {
+        _type: 'customerBillingAddress' as const,
+        name: address.name || undefined,
+        street: line1 || undefined,
+        street2: line2 || undefined,
+        city: city || undefined,
     state: state || undefined,
     postalCode: postalCode || undefined,
     country: country || undefined,
@@ -124,6 +128,8 @@ export async function updateCustomerProfileForOrder({
   stripeCustomerId,
   stripeSyncTimestamp,
   customerName,
+  metadata,
+  defaultRoles,
 }: UpdateCustomerArgs): Promise<void> {
   const email = (rawEmail || '').toLowerCase().trim()
   if (!initialCustomerId && !email) return
@@ -157,10 +163,12 @@ export async function updateCustomerProfileForOrder({
   // Create a customer document if none exists but we have an email.
   if (!customerId && email) {
     const nameParts = splitName(shippingFromOrder?.name || customerName || '')
+    const metadataEntries = mapStripeMetadata(metadata as Record<string, unknown> | null)
+    const roles = Array.isArray(defaultRoles) && defaultRoles.length ? defaultRoles : ['customer']
     const payload: Record<string, any> = {
       _type: 'customer',
       email,
-      roles: ['customer'],
+      roles,
       firstName: nameParts.firstName || undefined,
       lastName: nameParts.lastName || undefined,
       shippingAddress: shippingNormalized,
@@ -180,6 +188,8 @@ export async function updateCustomerProfileForOrder({
         : undefined,
       stripeCustomerId: stripeCustomerId || undefined,
       stripeLastSyncedAt: stripeSyncTimestamp || undefined,
+      ...(shippingFromOrder?.phone ? { phone: shippingFromOrder.phone } : {}),
+      ...(metadataEntries ? { stripeMetadata: metadataEntries } : {}),
       updatedAt: new Date().toISOString(),
     }
     try {
@@ -332,6 +342,14 @@ export async function updateCustomerProfileForOrder({
   if (legacyShippingString) patch.address = legacyShippingString
   if (nameParts.firstName && !customerDoc?.firstName) patch.firstName = nameParts.firstName
   if (nameParts.lastName && !customerDoc?.lastName) patch.lastName = nameParts.lastName
+  if (shippingFromOrder?.phone && !customerDoc?.phone) patch.phone = shippingFromOrder.phone
+
+  const metadataEntries = mapStripeMetadata(metadata as Record<string, unknown> | null)
+  if (metadataEntries) patch.stripeMetadata = metadataEntries
+
+  const roles = Array.isArray(defaultRoles) && defaultRoles.length ? defaultRoles : ['customer']
+  const hasRoles = Array.isArray(customerDoc?.roles) && customerDoc.roles.length
+  if (!hasRoles && roles.length) patch.roles = roles
 
   try {
     await sanity.patch(customerId).set(patch).commit({ autoGenerateArrayKeys: true })

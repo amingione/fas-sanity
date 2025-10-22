@@ -2,18 +2,21 @@
 import { defineConfig } from 'sanity';
 import './styles/tailwind.css';
 // Desk Tool import is different across Sanity versions; support both named and default
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import * as _desk from 'sanity/desk';
-const deskTool = // runtime resolve: prefer named export, then default, then module itself
-  (// eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (_desk as any).deskTool) || (// eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (_desk as any).default) || (_desk as unknown as (opts?: unknown) => unknown);
+type DeskModule = {
+  deskTool?: (opts?: unknown) => unknown;
+  default?: (opts?: unknown) => unknown;
+};
+const deskModule = _desk as DeskModule | ((opts?: unknown) => unknown);
+const deskTool =
+  typeof deskModule === 'function'
+    ? deskModule
+    : deskModule.deskTool || deskModule.default || (_desk as unknown as (opts?: unknown) => unknown);
 import { visionTool } from '@sanity/vision';
 import { codeInput } from '@sanity/code-input';
 import { media } from 'sanity-plugin-media';
 import { schemaTypes } from './schemaTypes';
-import booking from './schemaTypes/documents/booking';
 import { deskStructure } from './desk/deskStructure';
 import resolveDocumentActions from './resolveDocumentActions';
 import ShippingCalendar from './components/studio/ShippingCalendar';

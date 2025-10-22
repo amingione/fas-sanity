@@ -29,7 +29,7 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(function 
   const base = getFnBase().replace(/\/$/, '')
   const toast = useToast()
 
-  async function runSelfCheck(pushToast = false) {
+  const runSelfCheck = React.useCallback(async (pushToast = false) => {
     setLoading(true)
     setErr('')
     try {
@@ -56,7 +56,7 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(function 
     } finally {
       setLoading(false)
     }
-  }
+  }, [base, toast])
 
   React.useEffect(() => {
     let cancelled = false
@@ -66,7 +66,7 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(function 
     return () => {
       cancelled = true
     }
-  }, [base])
+  }, [base, runSelfCheck])
 
   const Section = ({ title, keys }: { title: string; keys: string[] }) => (
     <div style={{ marginBottom: 10 }}>

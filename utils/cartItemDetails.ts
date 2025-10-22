@@ -84,7 +84,7 @@ const shouldSkipValue = (value: string): boolean => {
 const parseOptionValue = (value: string): string[] => {
   const trimmed = value.trim()
   if (!trimmed) return []
-  if (/^[\[{]/.test(trimmed)) {
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed)
       if (Array.isArray(parsed)) {
@@ -134,7 +134,7 @@ const parseOptionValue = (value: string): string[] => {
 const parseListValue = (value: string): string[] => {
   const trimmed = value.trim()
   if (!trimmed) return []
-  if (/^[\[{]/.test(trimmed)) {
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
     try {
       const parsed = JSON.parse(trimmed)
       if (Array.isArray(parsed)) {
@@ -322,7 +322,7 @@ export const coerceStringArray = (input: unknown): string[] => {
   if (typeof input === 'string') {
     const trimmed = input.trim()
     if (!trimmed) return []
-    if (/^[\[{]/.test(trimmed)) {
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
       try {
         const parsed = JSON.parse(trimmed)
         if (Array.isArray(parsed)) {

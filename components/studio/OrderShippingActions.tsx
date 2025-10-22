@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Flex } from '@sanity/ui'
 import { useClient, useFormValue } from 'sanity'
 import { decodeBase64ToArrayBuffer } from '../../utils/base64'
@@ -38,10 +38,11 @@ export default function OrderShippingActions() {
   const packingSlipUrl = typeof doc?.packingSlipUrl === 'string' ? doc.packingSlipUrl : ''
   const orderId = ((doc?._id || '') as string).replace(/^drafts\./, '')
   const invoiceId = ((doc?.invoiceRef?._ref || '') as string).replace(/^drafts\./, '')
+  const stripeSessionId = typeof doc?.stripeSessionId === 'string' ? doc.stripeSessionId : ''
   const autoAttemptedRef = useRef(false)
   const patchTargets = useMemo(() => resolvePatchTargets(doc?._id), [doc?._id])
 
-  async function generateSlip(options: { silent?: boolean } = {}) {
+  const generateSlip = useCallback(async (options: { silent?: boolean } = {}) => {
     if (isGenerating) return
     if (!orderId && !invoiceId) {
       if (!options.silent) alert('Missing order or invoice reference for packing slip generation.')
@@ -71,12 +72,12 @@ export default function OrderShippingActions() {
       if (contentType.includes('application/pdf')) {
         arrayBuffer = await res.arrayBuffer()
       } else {
-        const base64 = (await res.text()).replace(/^\"|\"$/g, '')
+        const base64 = (await res.text()).replace(/^"|"$/g, '')
         arrayBuffer = decodeBase64ToArrayBuffer(base64)
       }
 
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-      const filename = `packing-slip-${orderId || doc?.stripeSessionId || doc?._id || 'order'}.pdf`
+      const filename = `packing-slip-${orderId || stripeSessionId || doc?._id || 'order'}.pdf`
 
       const asset = await client.assets.upload('file', blob, {
         filename,
@@ -110,7 +111,7 @@ export default function OrderShippingActions() {
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [base, client, doc?._id, invoiceId, isGenerating, orderId, patchTargets, stripeSessionId])
 
   useEffect(() => {
     if (packingSlipUrl) return
@@ -118,7 +119,7 @@ export default function OrderShippingActions() {
     if (autoAttemptedRef.current) return
     autoAttemptedRef.current = true
     generateSlip({ silent: true })
-  }, [invoiceId, orderId, packingSlipUrl])
+  }, [generateSlip, invoiceId, orderId, packingSlipUrl])
 
   const hasPackingSlip = Boolean(packingSlipUrl)
 

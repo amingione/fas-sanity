@@ -36,7 +36,7 @@ function deepRemoveRefs(node: any, idSet: Set<string>): {node: any; removed: num
   return {node, removed: 0}
 }
 
-export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
+const ForceDeleteUnlinkAction: DocumentActionComponent = (props) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const toast = useToast()
   const {id, onComplete, type} = props
@@ -122,3 +122,5 @@ export const forceDeleteUnlinkAction: DocumentActionComponent = (props) => {
       : undefined,
   }
 }
+
+export const forceDeleteUnlinkAction = ForceDeleteUnlinkAction

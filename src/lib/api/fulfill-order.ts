@@ -267,9 +267,11 @@ export const POST: APIRoute = async ({ request }) => {
 
     const html = `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f8fafc;padding:24px;">
-        <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.12);">
-          <div style="background:#0f172a;color:#ffffff;padding:24px 28px;">
-            <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;">Your order${orderNumber ? ` <span style=\"color:#f97316\">#${orderNumber}</span>` : ''} is on the way!</h1>
+          <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.12);">
+            <div style="background:#0f172a;color:#ffffff;padding:24px 28px;">
+              <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;">Your order${
+                orderNumber ? ` <span style="color:#f97316">#${orderNumber}</span>` : ''
+              } is on the way!</h1>
             <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.75);">Hi ${customerName}, thanks for shopping with F.A.S. Motorsports.</p>
           </div>
           <div style="padding:28px 28px 8px;color:#0f172a;">
