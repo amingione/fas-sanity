@@ -245,9 +245,9 @@ function resolveCheckoutExpirationDiagnostics(session: Stripe.Checkout.Session):
       code: 'checkout.session.expired',
       message,
     },
-    paymentStatus: (session.payment_status || 'expired') as string,
-    orderStatus: 'cancelled',
-    invoiceStatus: 'cancelled',
+    paymentStatus: 'expired',
+    orderStatus: 'expired',
+    invoiceStatus: 'expired',
     invoiceStripeStatus: 'checkout.session.expired',
   }
 }
@@ -455,8 +455,12 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
 
   if (paymentIntent) {
     diagnostics = await resolvePaymentFailureDiagnostics(paymentIntent)
-    paymentStatus = paymentIntent.status || undefined
-    if (paymentStatus === 'canceled') {
+    const normalizedPiStatus = (paymentIntent.status || '').toLowerCase()
+    paymentStatus =
+      normalizedPiStatus && !['succeeded', 'processing', 'requires_capture'].includes(normalizedPiStatus)
+        ? 'failed'
+        : normalizedPiStatus || undefined
+    if (normalizedPiStatus === 'canceled') {
       orderStatus = 'cancelled'
       invoiceStatus = 'cancelled'
     }

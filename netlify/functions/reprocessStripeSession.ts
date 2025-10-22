@@ -222,7 +222,24 @@ export const handler: Handler = async (event) => {
 
     // Derive core fields
     const email = (session?.customer_details?.email || session?.customer_email || (paymentIntent as any)?.receipt_email || (paymentIntent as any)?.charges?.data?.[0]?.billing_details?.email || '').toString()
-    const paymentStatus = (session?.payment_status || (paymentIntent?.status === 'succeeded' ? 'paid' : 'unpaid')) as string
+    const sessionStatus = (session?.status || '').toString().toLowerCase()
+    const rawPaymentStatus = (session?.payment_status || paymentIntent?.status || '').toString().toLowerCase()
+    let paymentStatus = rawPaymentStatus || (sessionStatus === 'expired' ? 'expired' : 'pending')
+    let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' = 'pending'
+    if (['succeeded', 'paid', 'complete'].includes(paymentStatus)) {
+      paymentStatus = 'paid'
+      derivedOrderStatus = 'paid'
+    } else if (sessionStatus === 'expired' || paymentStatus === 'expired') {
+      paymentStatus = 'expired'
+      derivedOrderStatus = 'expired'
+    } else if (
+      ['requires_payment_method', 'requires_confirmation', 'requires_action', 'canceled', 'cancelled', 'failed'].includes(
+        paymentStatus
+      )
+    ) {
+      paymentStatus = 'failed'
+      derivedOrderStatus = 'cancelled'
+    }
     const totalAmountCents = isCheckout ? Number(session?.amount_total || 0) : Number(paymentIntent?.amount_received || paymentIntent?.amount || 0)
     const totalAmount = totalAmountCents / 100
 
@@ -365,7 +382,7 @@ export const handler: Handler = async (event) => {
       customerName,
       customerEmail: email || undefined,
       totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
-      status: paymentStatus === 'paid' ? 'paid' : 'pending',
+      status: derivedOrderStatus,
       createdAt: new Date().toISOString(),
       paymentStatus: paymentStatus || undefined,
       currency,
@@ -613,10 +630,17 @@ export const handler: Handler = async (event) => {
           currency: currency || 'usd',
           customerEmail: email || undefined,
           userId: userIdMeta || undefined,
-          status: paymentStatus === 'paid' ? 'paid' : 'pending',
+          status: paymentStatus === 'paid' ? 'paid' : paymentStatus === 'expired' ? 'expired' : 'pending',
           invoiceDate: createdAtIso.slice(0,10),
           dueDate: createdAtIso.slice(0,10),
+          stripeLastSyncedAt: new Date().toISOString(),
         }
+        invBase.stripeSummary = buildStripeSummary({
+          session,
+          paymentIntent,
+          eventType: 'reprocessStripeSession',
+          eventCreated: paymentIntent?.created || session?.created || null,
+        })
         try {
           const createdInv = await sanity.create(invBase, { autoGenerateArrayKeys: true })
           if (createdInv?._id) {
@@ -658,6 +682,15 @@ export const handler: Handler = async (event) => {
           if (shipToUpdate) patch = patch.set({ shipTo: shipToUpdate })
           if (invoiceDateValue) patch = patch.set({ invoiceDate: invoiceDateValue, dueDate: invoiceDateValue })
           if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
+          patch = patch.set({
+            stripeLastSyncedAt: new Date().toISOString(),
+            stripeSummary: buildStripeSummary({
+              session,
+              paymentIntent,
+              eventType: 'reprocessStripeSession',
+              eventCreated: paymentIntent?.created || session?.created || null,
+            }),
+          })
           await patch.commit({ autoGenerateArrayKeys: true })
           break
         } catch {}

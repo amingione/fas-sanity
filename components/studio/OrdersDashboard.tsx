@@ -214,7 +214,7 @@ const STICKY_ORDER_BASE: CSSProperties = {
 }
 
 const CANCELLED_STATUSES = new Set(['cancelled', 'canceled'])
-const CLOSED_PAYMENT_STATUSES = new Set(['cancelled', 'canceled', 'refunded', 'void', 'failed'])
+const CLOSED_PAYMENT_STATUSES = new Set(['cancelled', 'canceled', 'refunded', 'void', 'failed', 'expired'])
 const OPEN_FULFILLMENT_STATUSES = new Set(['pending', 'processing', 'paid'])
 const OPEN_PAYMENT_STATUSES = new Set(['pending', 'processing'])
 
@@ -298,7 +298,7 @@ function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'defau
   const normalized = status.toLowerCase()
   if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
   if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
-  if (['cancelled', 'canceled', 'returned', 'refunded', 'failed', 'exception', 'void'].includes(normalized)) return 'critical'
+  if (['cancelled', 'canceled', 'returned', 'refunded', 'failed', 'exception', 'void', 'expired'].includes(normalized)) return 'critical'
   return 'default'
 }
 

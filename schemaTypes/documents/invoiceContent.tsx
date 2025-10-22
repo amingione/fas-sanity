@@ -889,7 +889,7 @@ export default defineType({
       name: 'status',
       title: 'Payment Status',
       type: 'string',
-      options: { list: ['pending', 'paid', 'refunded', 'cancelled'], layout: 'dropdown' },
+      options: { list: ['pending', 'paid', 'refunded', 'cancelled', 'expired'], layout: 'dropdown' },
       initialValue: 'pending',
     }),
     defineField({ name: 'invoiceDate', title: 'Invoice Date', type: 'date', initialValue: () => new Date().toISOString().slice(0,10) }),
