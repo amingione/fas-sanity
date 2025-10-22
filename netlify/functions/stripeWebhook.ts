@@ -1181,8 +1181,10 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
         limit: 100,
         expand: ['data.price.product'],
       })
-      const mapped = lineItems.data.map((item) => {
-        const mappedItem = mapStripeLineItem(item, { sessionMetadata: session.metadata })
+      const mapped = lineItems.data.map((item: Stripe.LineItem) => {
+        const mappedItem = mapStripeLineItem(item, {
+          sessionMetadata: session.metadata ? (session.metadata as Record<string, unknown>) : undefined,
+        })
         return {
           ...mappedItem,
         } as CartItem
