@@ -8,6 +8,7 @@ import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
+import { buildStripeSummary } from '../lib/stripeSummary'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -880,6 +881,13 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
   const derivedOrderStatus: 'pending' | 'cancelled' =
     normalizedStatus === 'canceled' ? 'cancelled' : 'pending'
   const timestamp = new Date().toISOString()
+  const summary = buildStripeSummary({
+    paymentIntent: pi,
+    failureCode,
+    failureMessage,
+    eventType: 'payment_intent.payment_failed',
+    eventCreated: pi.created,
+  })
 
   if (order?._id) {
     const setOps: Record<string, any> = {
@@ -888,6 +896,7 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
       stripeLastSyncedAt: timestamp,
       paymentFailureCode: failureCode,
       paymentFailureMessage: failureMessage,
+      stripeSummary: summary,
     }
     try {
       await sanity.patch(order._id).set(setOps).commit({ autoGenerateArrayKeys: true })
@@ -931,6 +940,7 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
         stripeLastSyncedAt: timestamp,
         paymentFailureCode: failureCode,
         paymentFailureMessage: failureMessage,
+        stripeSummary: summary,
       }).commit({ autoGenerateArrayKeys: true })
     } catch (err) {
       console.warn('stripeWebhook: failed to update invoice after payment failure', err)
@@ -1100,6 +1110,13 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
   if (email) failureMessage = `${failureMessage} Customer: ${email}.`
   if (expiresAt) failureMessage = `${failureMessage} Expired at ${expiresAt}.`
   failureMessage = `${failureMessage} (session ${session.id})`
+  const summary = buildStripeSummary({
+    session,
+    failureCode,
+    failureMessage,
+    eventType: 'checkout.session.expired',
+    eventCreated: session.created || null,
+  })
 
   const orderId = await sanity.fetch<string | null>(`*[_type == "order" && stripeSessionId == $sid][0]._id`, { sid: session.id })
   if (orderId) {
@@ -1110,6 +1127,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
         stripeLastSyncedAt: timestamp,
         paymentFailureCode: failureCode,
         paymentFailureMessage: failureMessage,
+        stripeSummary: summary,
       }).commit({ autoGenerateArrayKeys: true })
     } catch (err) {
       console.warn('stripeWebhook: failed to update order after checkout expiration', err)
@@ -1128,6 +1146,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
           stripeLastSyncedAt: timestamp,
           paymentFailureCode: failureCode,
           paymentFailureMessage: failureMessage,
+          stripeSummary: summary,
         }).commit({ autoGenerateArrayKeys: true })
       } catch (err) {
         console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)
@@ -1411,7 +1430,7 @@ export const handler: Handler = async (event) => {
             (webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible')
 
           if (shouldRecordFailure) {
-            const paymentIntent = await fetchPaymentIntentResource(invoice.payment_intent)
+            const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
             if (paymentIntent) {
               await markPaymentIntentFailure(paymentIntent)
             }
@@ -1735,6 +1754,12 @@ export const handler: Handler = async (event) => {
             ...(userIdMeta ? { userId: userIdMeta } : {}),
             ...(cart.length ? { cart } : {}),
           }
+          baseDoc.stripeSummary = buildStripeSummary({
+            session,
+            paymentIntent,
+            eventType: webhookEvent.type,
+            eventCreated: webhookEvent.created,
+          })
 
           if (metadataShippingCarrier) {
             baseDoc.shippingCarrier = metadataShippingCarrier
@@ -1789,6 +1814,12 @@ export const handler: Handler = async (event) => {
                   patchData.dueDate = invoiceDateValue
                 }
                 if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
+                patchData.stripeSummary = buildStripeSummary({
+                  session,
+                  paymentIntent,
+                  eventType: webhookEvent.type,
+                  eventCreated: webhookEvent.created,
+                })
                 let patch = sanity.patch(id).set(patchData)
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
@@ -2045,6 +2076,11 @@ export const handler: Handler = async (event) => {
               }
             } : {}),
           }
+          baseDoc.stripeSummary = buildStripeSummary({
+            paymentIntent: pi,
+            eventType: webhookEvent.type,
+            eventCreated: webhookEvent.created,
+          })
           if (shippingAmountFromMetadata !== undefined) {
             baseDoc.amountShipping = shippingAmountFromMetadata
           }
@@ -2074,7 +2110,14 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
-                patch = patch.set({ stripeLastSyncedAt: new Date().toISOString() })
+                patch = patch.set({
+                  stripeLastSyncedAt: new Date().toISOString(),
+                  stripeSummary: buildStripeSummary({
+                    paymentIntent: pi,
+                    eventType: webhookEvent.type,
+                    eventCreated: webhookEvent.created,
+                  }),
+                })
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch {}

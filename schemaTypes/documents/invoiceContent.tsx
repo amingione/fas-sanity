@@ -936,6 +936,7 @@ export default defineType({
     defineField({ name: 'stripeHostedInvoiceUrl', title: 'Stripe Hosted Invoice URL', type: 'url', readOnly: true }),
     defineField({ name: 'stripeInvoicePdf', title: 'Stripe Invoice PDF', type: 'url', readOnly: true }),
     defineField({ name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true }),
+    defineField({ name: 'stripeSummary', title: 'Stripe Snapshot', type: 'stripeOrderSummary' }),
     defineField({
       name: 'userId',
       title: 'User ID (Portal)',
