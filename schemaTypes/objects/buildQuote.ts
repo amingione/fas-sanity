@@ -1,5 +1,4 @@
 import { defineType, defineField } from 'sanity';
-import { ComposeIcon } from '@sanity/icons';
 
 export const buildQuote = defineType({
   name: 'buildQuote',

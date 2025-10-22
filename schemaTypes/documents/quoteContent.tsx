@@ -301,7 +301,8 @@ function QuoteShipToInput(props: any) {
 
 function QuoteTotalsPanel(props: any) {
   const {onChange} = props
-  const lineItems = (useFormValue(['lineItems']) as any[]) || []
+  const rawLineItems = useFormValue(['lineItems']) as any[] | null
+  const lineItems = useMemo(() => (Array.isArray(rawLineItems) ? rawLineItems : []), [rawLineItems])
   const discountType = (useFormValue(['discountType']) as string) || 'none'
   const discountValue = Number(useFormValue(['discountValue']) as any) || 0
   const taxRate = Number(useFormValue(['taxRate']) as any) || 0

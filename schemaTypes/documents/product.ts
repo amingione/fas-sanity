@@ -1,5 +1,4 @@
 import { defineType, defineField } from 'sanity'
-import FilterTagsInput from '../../components/studio/FilterTagsInput'
 import { googleProductCategories } from '../constants/googleProductCategories'
 
 const product = defineType({

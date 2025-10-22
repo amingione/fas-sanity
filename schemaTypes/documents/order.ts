@@ -55,7 +55,10 @@ export default defineType({
     defineField({ name: 'cardLast4', title: 'Card Last4', type: 'string' }),
     defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
     defineField({ name: 'paymentStatus', title: 'Payment Status', type: 'string', description: 'Raw Stripe payment status (e.g. succeeded, processing)'}),
+    defineField({ name: 'stripeSessionStatus', title: 'Stripe Session Status', type: 'string', readOnly: true }),
     defineField({ name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true }),
+    defineField({ name: 'stripeCreatedAt', title: 'Stripe Session Created', type: 'datetime', readOnly: true }),
+    defineField({ name: 'stripeExpiresAt', title: 'Stripe Session Expired', type: 'datetime', readOnly: true }),
     defineField({ name: 'paymentFailureCode', title: 'Payment Failure Code', type: 'string', readOnly: true }),
     defineField({ name: 'paymentFailureMessage', title: 'Payment Failure Message', type: 'text', readOnly: true }),
     defineField({
@@ -179,8 +182,22 @@ export default defineType({
       orderNumber: 'orderNumber',
       customerName: 'customerName',
       shippingName: 'shippingAddress.name',
+      paymentStatus: 'paymentStatus',
+      paymentFailureCode: 'paymentFailureCode',
+      stripeSessionStatus: 'stripeSessionStatus',
     },
-    prepare({ stripeSessionId, email, total, status, orderNumber, customerName, shippingName }) {
+    prepare({
+      stripeSessionId,
+      email,
+      total,
+      status,
+      orderNumber,
+      customerName,
+      shippingName,
+      paymentStatus,
+      paymentFailureCode,
+      stripeSessionStatus,
+    }) {
       const badge =
         status === 'fulfilled' ? '✅' :
         status === 'paid' ? '💵' :
@@ -190,9 +207,21 @@ export default defineType({
       const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'N/A')
       const name = customerName || shippingName || email || 'Customer'
       const amount = typeof total === 'number' ? ` – $${Number(total).toFixed(2)}` : ''
+      const statusLabel = status || 'pending'
+      const subtitleParts = [`${badge} ${ref}`, statusLabel]
+      if (paymentStatus && paymentStatus !== statusLabel) subtitleParts.push(paymentStatus)
+      if (
+        stripeSessionStatus &&
+        stripeSessionStatus !== statusLabel &&
+        stripeSessionStatus !== paymentStatus
+      ) {
+        subtitleParts.push(stripeSessionStatus)
+      }
+      if (statusLabel === 'cancelled' && paymentFailureCode) subtitleParts.push(paymentFailureCode)
+      if (email) subtitleParts.push(email)
       return {
         title: `${name}${amount}`,
-        subtitle: `${badge} ${ref} • ${status || 'pending'}${email ? ` • ${email}` : ''}`
+        subtitle: subtitleParts.join(' • '),
       }
     }
   },

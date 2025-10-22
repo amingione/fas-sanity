@@ -652,8 +652,8 @@ function OrderDetailView(props: DocumentViewProps) {
     return pieces.length ? pieces.join(', ') : null
   }, [order?.shippingAddress])
 
-  const timelineEntries = useMemo<TimelineEntry[]>(() => {
-    const entries: TimelineEntry[] = []
+    const timelineEntries = useMemo<TimelineEntry[]>(() => {
+      const entries: TimelineEntry[] = []
     const logItems = Array.isArray(order?.shippingLog) ? order!.shippingLog : []
     logItems
       .map((entry) => ({
@@ -701,8 +701,8 @@ function OrderDetailView(props: DocumentViewProps) {
       })
     }
 
-    return entries
-  }, [order?.createdAt, order?.fulfilledAt, order?.shippingLog])
+      return entries
+    }, [order])
 
   const baseUrl = fnBaseRef.current || ''
   const fulfillmentEndpoint = baseUrl ? `${baseUrl}${FULFILL_ENDPOINT}` : FULFILL_ENDPOINT

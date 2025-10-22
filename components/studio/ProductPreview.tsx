@@ -1,5 +1,4 @@
 import React from 'react'
-import { useDocumentValues } from 'sanity'
 
 export default function ProductPreview({ document }: any) {
   const { displayed } = document || {}

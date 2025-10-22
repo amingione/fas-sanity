@@ -52,17 +52,18 @@ function normalizeShippingAddress(address: ShippingLike | null | undefined) {
     address.street ||
     address.street1 ||
     (typeof address === 'object' && 'address' in address ? (address as any).address : undefined)
-  const line2 = address.addressLine2 || address.street2 || undefined
+    const line2 = address.addressLine2 || address.street2 || undefined
   const city = address.city || undefined
   const state = address.state || address.stateProvince || address.region || undefined
   const postalCode = address.postalCode || address.postal_code || address.zip || undefined
   const country = address.country || address.country_code || undefined
   if (!line1 && !city && !postalCode) return undefined
-  return {
-    _type: 'customerBillingAddress' as const,
-    name: address.name || undefined,
-    street: line1 || undefined,
-    city: city || undefined,
+      return {
+        _type: 'customerBillingAddress' as const,
+        name: address.name || undefined,
+        street: line1 || undefined,
+        street2: line2 || undefined,
+        city: city || undefined,
     state: state || undefined,
     postalCode: postalCode || undefined,
     country: country || undefined,

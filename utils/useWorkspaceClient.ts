@@ -9,16 +9,23 @@ const DEFAULT_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
 const DEFAULT_DATASET = process.env.SANITY_STUDIO_DATASET || 'production'
 const FALLBACK_API_VERSION = '2024-10-01'
 
+function useOptionalStudioClient(options?: UseClientOptions) {
+  try {
+    return useClient(options)
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('useWorkspaceClient: falling back to manual client', err)
+    }
+    return null
+  }
+}
+
 export function useWorkspaceClient(options?: UseClientOptions) {
   const workspace = useContext(WorkspaceContext)
-
-  if (workspace) {
-    return useClient(options)
-  }
-
   const apiVersion = options?.apiVersion
+  const studioClient = useOptionalStudioClient(options)
 
-  return useMemo(
+  const fallbackClient = useMemo(
     () =>
       createClient({
         projectId: DEFAULT_PROJECT_ID,
@@ -31,4 +38,10 @@ export function useWorkspaceClient(options?: UseClientOptions) {
       }),
     [apiVersion],
   )
+
+  if (workspace && studioClient) {
+    return studioClient
+  }
+
+  return fallbackClient
 }
