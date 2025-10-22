@@ -199,6 +199,15 @@ export const deskStructure: StructureResolver = (S) =>
               componentPane(S, 'env-self-check', 'Environment Status', EnvSelfCheck),
               componentPane(S, 'vendor-admin-dashboard', 'Vendor Admin Dashboard', VendorAdminDashboard),
               S.listItem()
+                .id('arenaSyncConfig')
+                .title('Are.na Sync Configuration')
+                .child(
+                  S.document()
+                    .schemaType('arenaSyncConfig')
+                    .documentId('arenaSyncConfig')
+                    .title('Are.na Sync Configuration')
+                ),
+              S.listItem()
                 .id('vendors')
                 .title('Vendors')
                 .child(
