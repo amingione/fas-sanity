@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
-import { syncArenaChannels } from 'arena-sanity-core/dist/index.js'
+import { syncArenaChannels } from 'arena-sanity-core'
 
 type SyncBody = {
   channelSlugs?: string[]
