@@ -250,6 +250,17 @@ export const handler: Handler = async (event) => {
   let cartFixed = 0
 
   let processed = 0
+  const startedAt = Date.now()
+  // Netlify synchronous functions 504 when they run longer than ~10s; enforce a soft cap per invocation.
+  const runtimeBudgetMs = Math.max(
+    1000,
+    (() => {
+      const envBudget = Number(process.env.BACKFILL_RUNTIME_LIMIT_MS)
+      if (Number.isFinite(envBudget) && envBudget > 0) return envBudget
+      return dryRun ? 9000 : 7500
+    })()
+  )
+  let timedOut = false
 
   try {
     while (true) {
@@ -380,8 +391,12 @@ export const handler: Handler = async (event) => {
         cursor = doc._id
 
         if (processed >= maxRecords) break
+        if (Date.now() - startedAt >= runtimeBudgetMs) {
+          timedOut = true
+          break
+        }
       }
-      if (processed >= maxRecords) break
+      if (processed >= maxRecords || timedOut) break
       if (result.length < pageSize) break
     }
   } catch (e: any) {
@@ -404,8 +419,10 @@ export const handler: Handler = async (event) => {
       migratedCustomer,
       cartFixed,
       remainingCustomer,
-      nextCursor: processed >= maxRecords ? cursor : null,
+      nextCursor: processed >= maxRecords || timedOut ? cursor : null,
       limit: maxRecords,
+      runtimeMs: Date.now() - startedAt,
+      timedOut,
     }),
   }
 }
