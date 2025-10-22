@@ -21,8 +21,7 @@
       "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
       "@/*": ["src/*"]
-    },
-    "typeRoots": ["./types", "./node_modules/@types", "./node_modules/@types/node"]
+    }
   },
   "include": [
     "sanity.config.ts",

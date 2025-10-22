@@ -1,18 +1,19 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import { defineConfig } from 'sanity';
+import { defineConfig, type PluginOptions } from 'sanity';
 import './styles/tailwind.css';
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
 import * as _desk from 'sanity/desk';
+type DeskToolFactory = (opts?: unknown) => PluginOptions;
 type DeskModule = {
-  deskTool?: (opts?: unknown) => unknown;
-  default?: (opts?: unknown) => unknown;
+  deskTool?: DeskToolFactory;
+  default?: DeskToolFactory;
 };
-const deskModule = _desk as DeskModule | ((opts?: unknown) => unknown);
-const deskTool =
+const deskModule = _desk as DeskModule | DeskToolFactory;
+const deskTool: DeskToolFactory =
   typeof deskModule === 'function'
     ? deskModule
-    : deskModule.deskTool || deskModule.default || (_desk as unknown as (opts?: unknown) => unknown);
+    : deskModule.deskTool || deskModule.default || (_desk as unknown as DeskToolFactory);
 import { visionTool } from '@sanity/vision';
 import { codeInput } from '@sanity/code-input';
 import { media } from 'sanity-plugin-media';
@@ -68,9 +69,7 @@ const isDev =
       ? nodeEnv !== 'production'
       : false;
 
-const visionEnabled =
-  enableVisionOverride ??
-  (disableVisionOverride !== undefined ? !disableVisionOverride : isDev);
+const visionEnabled = true;
 
 export default defineConfig({
   name: 'default',
@@ -78,6 +77,15 @@ export default defineConfig({
 
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
   dataset: process.env.SANITY_STUDIO_DATASET || 'production',
+  /**
+   * CORS origins must include:
+   *   http://localhost:8888
+   *   https://fassanity.fasmotorsports.com
+   */
+  api: {
+    apiVersion: '2025-10-22',
+    useCdn: false,
+  },
 
   plugins: [
     deskTool({
