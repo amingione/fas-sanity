@@ -644,6 +644,36 @@ export const handler: Handler = async (event) => {
           dueDate: createdAtIso.slice(0,10),
           stripeLastSyncedAt: new Date().toISOString(),
         }
+
+        const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+        if (shippingAmountForInvoice !== undefined) {
+          invBase.amountShipping = shippingAmountForInvoice
+        }
+        if (shippingDetails.carrier) {
+          invBase.shippingCarrier = shippingDetails.carrier
+        }
+        const invoiceSelectedService =
+          shippingDetails.serviceName ||
+          shippingDetails.serviceCode ||
+          shippingAmountForInvoice !== undefined
+            ? {
+                carrierId: shippingDetails.carrierId || undefined,
+                carrier: shippingDetails.carrier || undefined,
+                service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                amount: shippingAmountForInvoice,
+                currency:
+                  shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                deliveryDays: shippingDetails.deliveryDays,
+                estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+              }
+            : undefined
+        if (invoiceSelectedService) {
+          invBase.selectedService = invoiceSelectedService
+        }
+        if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+          invBase.shippingMetadata = shippingDetails.metadata
+        }
         invBase.stripeSummary = buildStripeSummary({
           session,
           paymentIntent,
@@ -691,6 +721,39 @@ export const handler: Handler = async (event) => {
           if (shipToUpdate) patch = patch.set({ shipTo: shipToUpdate })
           if (invoiceDateValue) patch = patch.set({ invoiceDate: invoiceDateValue, dueDate: invoiceDateValue })
           if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
+          const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+          const invoiceSelectedService =
+            shippingDetails.serviceName ||
+            shippingDetails.serviceCode ||
+            shippingAmountForInvoice !== undefined
+              ? {
+                  carrierId: shippingDetails.carrierId || undefined,
+                  carrier: shippingDetails.carrier || undefined,
+                  service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                  serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                  amount: shippingAmountForInvoice,
+                  currency:
+                    shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                  deliveryDays: shippingDetails.deliveryDays,
+                  estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                }
+              : undefined
+          const shippingPatch: Record<string, any> = {}
+          if (shippingAmountForInvoice !== undefined) {
+            shippingPatch.amountShipping = shippingAmountForInvoice
+          }
+          if (shippingDetails.carrier) {
+            shippingPatch.shippingCarrier = shippingDetails.carrier
+          }
+          if (invoiceSelectedService) {
+            shippingPatch.selectedService = invoiceSelectedService
+          }
+          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+            shippingPatch.shippingMetadata = shippingDetails.metadata
+          }
+          if (Object.keys(shippingPatch).length > 0) {
+            patch = patch.set(shippingPatch)
+          }
           patch = patch.set({
             stripeLastSyncedAt: new Date().toISOString(),
             stripeSummary: buildStripeSummary({

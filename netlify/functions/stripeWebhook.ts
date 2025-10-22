@@ -1868,6 +1868,9 @@ export const handler: Handler = async (event) => {
                 if (invoiceSelectedService) {
                   patchData.selectedService = invoiceSelectedService
                 }
+                if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+                  patchData.shippingMetadata = shippingDetails.metadata
+                }
                 if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
                 patchData.stripeSummary = buildStripeSummary({
                   session,
@@ -2003,6 +2006,35 @@ export const handler: Handler = async (event) => {
                 stripeSessionId,
                 paymentIntentId: paymentIntent?.id || undefined,
                 stripeLastSyncedAt: new Date().toISOString(),
+              }
+              const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+              if (shippingAmountForInvoice !== undefined) {
+                invBase.amountShipping = shippingAmountForInvoice
+              }
+              if (shippingDetails.carrier) {
+                invBase.shippingCarrier = shippingDetails.carrier
+              }
+              const invoiceSelectedService =
+                shippingDetails.serviceName ||
+                shippingDetails.serviceCode ||
+                shippingAmountForInvoice !== undefined
+                  ? {
+                      carrierId: shippingDetails.carrierId || undefined,
+                      carrier: shippingDetails.carrier || undefined,
+                      service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                      serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                      amount: shippingAmountForInvoice,
+                      currency:
+                        shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                      deliveryDays: shippingDetails.deliveryDays,
+                      estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                    }
+                  : undefined
+              if (invoiceSelectedService) {
+                invBase.selectedService = invoiceSelectedService
+              }
+              if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+                invBase.shippingMetadata = shippingDetails.metadata
               }
               const createdInv = await sanity.create(invBase, { autoGenerateArrayKeys: true })
               if (createdInv?._id) {
@@ -2219,6 +2251,9 @@ export const handler: Handler = async (event) => {
                 }
                 if (shippingSelectedService) {
                   shippingSet.selectedService = shippingSelectedService
+                }
+                if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+                  shippingSet.shippingMetadata = shippingDetails.metadata
                 }
                 patch = patch.set(shippingSet)
                 await patch.commit({ autoGenerateArrayKeys: true })
