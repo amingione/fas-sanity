@@ -757,17 +757,25 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
   }
 }
 
-async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void> {
-  const orderId = await sanity.fetch<string | null>(
-    `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]._id`,
-    { pid: pi.id }
-  )
+type PaymentFailureDiagnostics = {
+  code?: string
+  message?: string
+}
 
+async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promise<PaymentFailureDiagnostics> {
   const failure = pi.last_payment_error
   const additionalCodes = new Set<string>()
 
+  const declineCode = (failure?.decline_code || '').trim() || undefined
+  const docUrl = (failure?.doc_url || '').trim() || undefined
+
   let failureCode = (failure?.code || '').trim() || undefined
   let failureMessage = (failure?.message || pi.cancellation_reason || '').toString().trim() || undefined
+
+  if (declineCode) {
+    if (!failureCode) failureCode = declineCode
+    else if (failureCode !== declineCode) additionalCodes.add(declineCode)
+  }
 
   const shouldLoadCharge =
     Boolean(stripe) &&
@@ -835,6 +843,11 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
     failureCode = codes.join(' | ')
   }
 
+  if (docUrl) {
+    if (failureMessage) failureMessage = `${failureMessage} (${docUrl})`
+    else failureMessage = docUrl
+  }
+
   if (failureMessage) {
     const lowerMessage = failureMessage.toLowerCase()
     const codesNotMentioned = codes.filter((code) => !lowerMessage.includes(code.toLowerCase()))
@@ -845,10 +858,39 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
     failureMessage = `Payment failed (codes: ${codes.join(', ')})`
   }
 
+  return { code: failureCode, message: failureMessage }
+}
+
+async function markPaymentIntentFailure(
+  pi: Stripe.PaymentIntent,
+  opts: {
+    invoiceStripeStatus?: string
+    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
+    orderStatus?: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
+    paymentStatusOverride?: string
+  } = {}
+): Promise<void> {
+  const orderId = await sanity.fetch<string | null>(
+    `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]._id`,
+    { pid: pi.id }
+  )
+
+  const { code: failureCode, message: failureMessage } = await resolvePaymentFailureDiagnostics(pi)
+
+  const rawStatus = pi.status || 'failed'
+  const normalizedStatus = rawStatus === 'requires_payment_method' ? 'failed' : rawStatus
+  const paymentStatus = opts.paymentStatusOverride || normalizedStatus
+  const derivedOrderStatus =
+    opts.orderStatus !== undefined
+      ? opts.orderStatus
+      : normalizedStatus === 'canceled'
+        ? 'cancelled'
+        : 'pending'
+
   if (orderId) {
     const setOps: Record<string, any> = {
-      paymentStatus: pi.status || 'failed',
-      status: 'pending',
+      paymentStatus,
+      status: derivedOrderStatus,
       stripeLastSyncedAt: new Date().toISOString(),
       paymentFailureCode: failureCode,
       paymentFailureMessage: failureMessage,
@@ -866,9 +908,16 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
     const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
     if (invoiceId) {
       try {
+        const derivedInvoiceStatus =
+          opts.invoiceStatus !== undefined
+            ? opts.invoiceStatus
+            : normalizedStatus === 'canceled'
+              ? 'cancelled'
+              : 'pending'
+
         await sanity.patch(invoiceId).set({
-          status: 'pending',
-          stripeInvoiceStatus: 'payment_intent.payment_failed',
+          status: derivedInvoiceStatus,
+          stripeInvoiceStatus: opts.invoiceStripeStatus || 'payment_intent.payment_failed',
           stripeLastSyncedAt: new Date().toISOString(),
           paymentFailureCode: failureCode,
           paymentFailureMessage: failureMessage,
@@ -877,6 +926,20 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
         console.warn('stripeWebhook: failed to update invoice after payment failure', err)
       }
     }
+  }
+}
+
+async function fetchPaymentIntentResource(
+  resource: string | Stripe.PaymentIntent | null | undefined
+): Promise<Stripe.PaymentIntent | null> {
+  if (!resource) return null
+  if (typeof resource !== 'string') return resource
+  if (!stripe) return null
+  try {
+    return await stripe.paymentIntents.retrieve(resource)
+  } catch (err) {
+    console.warn('stripeWebhook: unable to load payment intent for diagnostics', err)
+    return null
   }
 }
 
@@ -1279,6 +1342,23 @@ export const handler: Handler = async (event) => {
         try {
           const invoice = webhookEvent.data.object as Stripe.Invoice
           await syncStripeInvoice(invoice)
+
+          const shouldRecordFailure =
+            webhookEvent.type === 'invoice.payment_failed' ||
+            (webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible')
+
+          if (shouldRecordFailure) {
+            const paymentIntent = await fetchPaymentIntentResource(invoice.payment_intent)
+            if (paymentIntent) {
+              await markPaymentIntentFailure(paymentIntent, {
+                invoiceStripeStatus: webhookEvent.type,
+                invoiceStatus:
+                  webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible'
+                    ? 'pending'
+                    : undefined,
+              })
+            }
+          }
         } catch (err) {
           console.warn('stripeWebhook: failed to sync invoice', err)
         }
@@ -1298,6 +1378,7 @@ export const handler: Handler = async (event) => {
       case 'payment_intent.canceled': {
         try {
           const pi = webhookEvent.data.object as Stripe.PaymentIntent
+          const diagnostics = await resolvePaymentFailureDiagnostics(pi)
           await updateOrderPaymentStatus({
             paymentIntentId: pi.id,
             stripeSessionId: typeof pi.metadata?.checkout_session_id === 'string' ? pi.metadata?.checkout_session_id : undefined,
@@ -1306,8 +1387,12 @@ export const handler: Handler = async (event) => {
             invoiceStatus: 'cancelled',
             invoiceStripeStatus: 'payment_intent.canceled',
             additionalOrderFields: {
-              paymentFailureCode: pi.cancellation_reason || undefined,
-              paymentFailureMessage: pi.last_payment_error?.message || undefined,
+              paymentFailureCode: diagnostics.code,
+              paymentFailureMessage: diagnostics.message,
+            },
+            additionalInvoiceFields: {
+              paymentFailureCode: diagnostics.code,
+              paymentFailureMessage: diagnostics.message,
             },
           })
         } catch (err) {
