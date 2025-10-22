@@ -42,12 +42,16 @@ export default function ShippingCalendar() {
   const client = useWorkspaceClient({ apiVersion: '2024-04-10' })
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState<boolean>(true)
-  const calcomEmbedUrl = useMemo(
-    () =>
-      (import.meta.env.SANITY_STUDIO_CALCOM_EMBED_URL as string | undefined) ||
-      (import.meta.env.VITE_CALCOM_EMBED_URL as string | undefined),
-    []
-  )
+  const calcomEmbedUrl = useMemo(() => {
+    const metaEnv =
+      typeof import.meta !== 'undefined' && (import.meta as any)?.env
+        ? ((import.meta as any).env as Record<string, string | undefined>)
+        : undefined
+    return metaEnv?.SANITY_STUDIO_CALCOM_EMBED_URL ??
+      metaEnv?.VITE_CALCOM_EMBED_URL ??
+      process.env?.SANITY_STUDIO_CALCOM_EMBED_URL ??
+      process.env?.VITE_CALCOM_EMBED_URL
+  }, [])
 
   useEffect(() => {
     const query = `

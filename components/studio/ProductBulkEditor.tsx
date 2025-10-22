@@ -55,8 +55,20 @@ type EditableProduct = ProductDoc & {
   dirty?: boolean
 }
 
+const readEnv = (key: string): string | undefined => {
+  const metaEnv =
+    typeof import.meta !== 'undefined' && (import.meta as any)?.env
+      ? ((import.meta as any).env as Record<string, string | undefined>)
+      : undefined
+  return (
+    metaEnv?.[key] ||
+    process.env?.[key] ||
+    (typeof window !== 'undefined' ? (window as any)?.__SITE_BASE_URL__ : undefined)
+  )
+}
+
 const SITE_BASE =
-  (import.meta as any)?.env?.SANITY_STUDIO_SITE_BASE_URL ||
+  readEnv('SANITY_STUDIO_SITE_BASE_URL') ||
   (typeof window !== 'undefined' ? window?.__SITE_BASE_URL__ : undefined) ||
   'https://fasmotorsports.com'
 
