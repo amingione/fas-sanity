@@ -2074,11 +2074,55 @@ export const handler: Handler = async (event) => {
           const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '')
             .toString()
             .trim()
+          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '')
+            .toString()
+            .trim()
+          const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '')
+            .toString()
+            .trim()
+          const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '')
+            .toString()
+            .trim()
+          const metadataShippingServiceName = (meta['shipping_service_name'] || '')
+            .toString()
+            .trim()
+          const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '')
+            .toString()
+            .trim()
+          const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '')
+            .toString()
+            .trim()
+            .toUpperCase()
           const shippingDetails = await resolveStripeShippingDetails({
             metadata: meta,
             paymentIntent: pi,
             stripe,
           })
+          const shippingAmountFromMetadata = (() => {
+            if (!metadataShippingAmountRaw) return undefined
+            const parsed = Number(metadataShippingAmountRaw)
+            if (Number.isFinite(parsed)) return parsed
+            const cleaned = metadataShippingAmountRaw.replace(/[^0-9.]/g, '')
+            const fallback = Number(cleaned)
+            return Number.isFinite(fallback) ? fallback : undefined
+          })()
+          const shippingAmountForDoc =
+            shippingDetails.amount !== undefined ? shippingDetails.amount : shippingAmountFromMetadata
+          const shippingCarrierForDoc = shippingDetails.carrier || (metadataShippingCarrier || undefined)
+          const shippingCarrierIdForDoc = shippingDetails.carrierId || (metadataShippingCarrierId || undefined)
+          const shippingServiceNameForDoc =
+            shippingDetails.serviceName ||
+            (metadataShippingServiceName || undefined) ||
+            (metadataShippingServiceCode || undefined)
+          const shippingServiceCodeForDoc =
+            shippingDetails.serviceCode ||
+            (metadataShippingServiceCode || undefined) ||
+            (metadataShippingServiceName || undefined)
+          const shippingCurrencyForDoc =
+            shippingDetails.currency ||
+            (metadataShippingCurrency || undefined) ||
+            (currency ? currency.toUpperCase() : undefined) ||
+            'USD'
           const orderNumber = await resolveOrderNumber({
             metadataOrderNumber: metadataOrderNumberRaw,
             invoiceNumber: metadataInvoiceNumber,
@@ -2129,32 +2173,27 @@ export const handler: Handler = async (event) => {
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
           })
-          const shippingAmountForDoc = shippingDetails.amount
           if (shippingAmountForDoc !== undefined) {
             baseDoc.amountShipping = shippingAmountForDoc
             baseDoc.selectedShippingAmount = shippingAmountForDoc
           }
-          if (shippingDetails.carrier) {
-            baseDoc.shippingCarrier = shippingDetails.carrier
+          if (shippingCarrierForDoc) {
+            baseDoc.shippingCarrier = shippingCarrierForDoc
           }
-          if (
-            shippingDetails.serviceName ||
-            shippingDetails.serviceCode ||
-            shippingAmountForDoc !== undefined
-          ) {
+          if (shippingServiceNameForDoc || shippingServiceCodeForDoc || shippingAmountForDoc !== undefined) {
             baseDoc.selectedService = {
-              carrierId: shippingDetails.carrierId || undefined,
-              carrier: shippingDetails.carrier || undefined,
-              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+              carrierId: shippingCarrierIdForDoc,
+              carrier: shippingCarrierForDoc,
+              service: shippingServiceNameForDoc || shippingServiceCodeForDoc || undefined,
+              serviceCode: shippingServiceCodeForDoc || shippingServiceNameForDoc || undefined,
               amount: shippingAmountForDoc,
-              currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+              currency: shippingCurrencyForDoc,
               deliveryDays: shippingDetails.deliveryDays,
               estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
             }
           }
-          if (shippingDetails.currency) {
-            baseDoc.selectedShippingCurrency = shippingDetails.currency
+          if (shippingDetails.currency || metadataShippingCurrency) {
+            baseDoc.selectedShippingCurrency = shippingDetails.currency || metadataShippingCurrency || undefined
           }
           if (shippingDetails.deliveryDays !== undefined) {
             baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
@@ -2162,11 +2201,11 @@ export const handler: Handler = async (event) => {
           if (shippingDetails.estimatedDeliveryDate) {
             baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
           }
-          if (shippingDetails.serviceCode) {
-            baseDoc.shippingServiceCode = shippingDetails.serviceCode
+          if (shippingServiceCodeForDoc) {
+            baseDoc.shippingServiceCode = shippingServiceCodeForDoc
           }
-          if (shippingDetails.serviceName) {
-            baseDoc.shippingServiceName = shippingDetails.serviceName
+          if (shippingServiceNameForDoc) {
+            baseDoc.shippingServiceName = shippingServiceNameForDoc
           }
           if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
             baseDoc.shippingMetadata = shippingDetails.metadata
@@ -2184,22 +2223,18 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
-                const shippingAmountForInvoice = shippingDetails.amount
+                const shippingAmountForInvoice = shippingAmountForDoc
                 const shippingSelectedService =
-                  shippingDetails.serviceName ||
-                  shippingDetails.serviceCode ||
+                  shippingServiceNameForDoc ||
+                  shippingServiceCodeForDoc ||
                   shippingAmountForInvoice !== undefined
                     ? {
-                        carrierId: shippingDetails.carrierId || undefined,
-                        carrier: shippingDetails.carrier || undefined,
-                        service:
-                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                        serviceCode:
-                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                        carrierId: shippingCarrierIdForDoc,
+                        carrier: shippingCarrierForDoc,
+                        service: shippingServiceNameForDoc || shippingServiceCodeForDoc || undefined,
+                        serviceCode: shippingServiceCodeForDoc || shippingServiceNameForDoc || undefined,
                         amount: shippingAmountForInvoice,
-                        currency:
-                          shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) ||
-                          'USD',
+                        currency: shippingCurrencyForDoc,
                         deliveryDays: shippingDetails.deliveryDays,
                         estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
                       }
@@ -2215,8 +2250,8 @@ export const handler: Handler = async (event) => {
                 if (shippingAmountForInvoice !== undefined) {
                   shippingSet.amountShipping = shippingAmountForInvoice
                 }
-                if (shippingDetails.carrier) {
-                  shippingSet.shippingCarrier = shippingDetails.carrier
+                if (shippingCarrierForDoc) {
+                  shippingSet.shippingCarrier = shippingCarrierForDoc
                 }
                 if (shippingSelectedService) {
                   shippingSet.selectedService = shippingSelectedService
@@ -2267,7 +2302,7 @@ export const handler: Handler = async (event) => {
                 items: [],
                 totalAmount,
                 shippingAmount:
-                  typeof shippingDetails.amount === 'number' ? shippingDetails.amount : undefined,
+                  typeof shippingAmountForDoc === 'number' ? shippingAmountForDoc : undefined,
                 shippingAddress: shippingAddr,
               })
               await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
