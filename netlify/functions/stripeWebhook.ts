@@ -2130,7 +2130,7 @@ export const handler: Handler = async (event) => {
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
           })
-          const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
+          const shippingAmountForDoc = shippingDetails.amount
           if (shippingAmountForDoc !== undefined) {
             baseDoc.amountShipping = shippingAmountForDoc
             baseDoc.selectedShippingAmount = shippingAmountForDoc
@@ -2185,7 +2185,7 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
-                const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+                const shippingAmountForInvoice = shippingDetails.amount
                 const shippingSelectedService =
                   shippingDetails.serviceName ||
                   shippingDetails.serviceCode ||
