@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import { createClient } from '@sanity/client'
+import { buildStripeSummary } from '../netlify/lib/stripeSummary'
 
 type CliOptions = {
   dryRun: boolean
@@ -390,9 +391,11 @@ async function updateInvoice(
     invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
     invoiceStripeStatus?: string
     dryRun?: boolean
+    paymentIntent?: Stripe.PaymentIntent | null
+    session?: Stripe.Checkout.Session | null
   } = {}
 ) {
-  const { paymentStatus, invoiceStatus, invoiceStripeStatus, dryRun } = options
+  const { paymentStatus, invoiceStatus, invoiceStripeStatus, dryRun, paymentIntent, session } = options
   const patch: Record<string, any> = {}
   let hasChanges = false
 
@@ -413,6 +416,16 @@ async function updateInvoice(
   }
   if (invoiceStripeStatus) {
     patch.stripeInvoiceStatus = invoiceStripeStatus
+    hasChanges = true
+  }
+  const summary = buildStripeSummary({
+    paymentIntent,
+    session,
+    failureCode: diagnostics.code,
+    failureMessage: diagnostics.message,
+  })
+  if (Object.keys(summary).length > 0) {
+    patch.stripeSummary = summary
     hasChanges = true
   }
 
@@ -493,6 +506,16 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
     orderPatch.status = orderStatus
     hasChanges = true
   }
+  const summary = buildStripeSummary({
+    paymentIntent,
+    session,
+    failureCode: diagnostics.code,
+    failureMessage: diagnostics.message,
+  })
+  if (Object.keys(summary).length > 0) {
+    orderPatch.stripeSummary = summary
+    hasChanges = true
+  }
 
   if (!hasChanges) {
     console.log('   • No new diagnostics to apply')
@@ -514,6 +537,8 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
       paymentStatus,
       invoiceStatus,
       invoiceStripeStatus,
+      paymentIntent,
+      session,
       dryRun: options.dryRun,
     })
   }

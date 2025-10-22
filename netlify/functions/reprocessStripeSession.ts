@@ -8,6 +8,7 @@ import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 import type { CartItem } from '../lib/cartEnrichment'
 import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
+import { buildStripeSummary } from '../lib/stripeSummary'
 
 // CORS helper (same pattern used elsewhere)
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
@@ -380,6 +381,10 @@ export const handler: Handler = async (event) => {
       ...(shippingAddress ? { shippingAddress } : {}),
       ...(cart.length ? { cart } : {}),
     }
+    baseDoc.stripeSummary = buildStripeSummary({
+      session,
+      paymentIntent,
+    })
 
     if (metadataShippingCarrier) {
       baseDoc.shippingCarrier = metadataShippingCarrier

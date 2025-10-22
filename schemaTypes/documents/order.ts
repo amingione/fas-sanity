@@ -59,6 +59,11 @@ export default defineType({
     defineField({ name: 'paymentFailureCode', title: 'Payment Failure Code', type: 'string', readOnly: true }),
     defineField({ name: 'paymentFailureMessage', title: 'Payment Failure Message', type: 'text', readOnly: true }),
     defineField({
+      name: 'stripeSummary',
+      title: 'Stripe Snapshot',
+      type: 'stripeOrderSummary',
+    }),
+    defineField({
       name: 'userId',
       title: 'User ID (Portal)',
       type: 'string',
