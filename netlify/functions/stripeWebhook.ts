@@ -9,6 +9,7 @@ import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
 import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
 import { buildStripeSummary } from '../lib/stripeSummary'
+import { resolveStripeShippingDetails } from '../lib/stripeShipping'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -1764,22 +1765,48 @@ export const handler: Handler = async (event) => {
             eventCreated: webhookEvent.created,
           })
 
-          if (metadataShippingCarrier) {
-            baseDoc.shippingCarrier = metadataShippingCarrier
+          const shippingAmountForDoc = shippingDetails.amount
+          if (shippingDetails.carrier) {
+            baseDoc.shippingCarrier = shippingDetails.carrier
           }
-          if (metadataShippingServiceCode || metadataShippingServiceName || shippingAmountFromMetadata !== undefined) {
+          if (
+            shippingDetails.serviceName ||
+            shippingDetails.serviceCode ||
+            shippingAmountForDoc !== undefined
+          ) {
             baseDoc.selectedService = {
-              carrierId: metadataShippingCarrierId || undefined,
-              carrier: metadataShippingCarrier || undefined,
-              service: metadataShippingServiceName || metadataShippingServiceCode || undefined,
-              serviceCode: metadataShippingServiceCode || metadataShippingServiceName || undefined,
-              amount: shippingAmountFromMetadata !== undefined ? shippingAmountFromMetadata : amountShipping,
-              currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+              carrierId: shippingDetails.carrierId || undefined,
+              carrier: shippingDetails.carrier || undefined,
+              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+              amount: shippingAmountForDoc,
+              currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+              deliveryDays: shippingDetails.deliveryDays,
+              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
             }
           }
 
-          if (shippingAmountFromMetadata !== undefined) {
-            baseDoc.amountShipping = shippingAmountFromMetadata
+          if (shippingAmountForDoc !== undefined) {
+            baseDoc.amountShipping = shippingAmountForDoc
+            baseDoc.selectedShippingAmount = shippingAmountForDoc
+          }
+          if (shippingDetails.currency) {
+            baseDoc.selectedShippingCurrency = shippingDetails.currency
+          }
+          if (shippingDetails.deliveryDays !== undefined) {
+            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
+          }
+          if (shippingDetails.estimatedDeliveryDate) {
+            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+          }
+          if (shippingDetails.serviceCode) {
+            baseDoc.shippingServiceCode = shippingDetails.serviceCode
+          }
+          if (shippingDetails.serviceName) {
+            baseDoc.shippingServiceName = shippingDetails.serviceName
+          }
+          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+            baseDoc.shippingMetadata = shippingDetails.metadata
           }
 
           const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
@@ -1819,6 +1846,36 @@ export const handler: Handler = async (event) => {
                 if (invoiceDateValue) {
                   patchData.invoiceDate = invoiceDateValue
                   patchData.dueDate = invoiceDateValue
+                }
+                const shippingAmountForInvoice = shippingDetails.amount
+                if (shippingAmountForInvoice !== undefined) {
+                  patchData.amountShipping = shippingAmountForInvoice
+                }
+                if (shippingDetails.carrier) {
+                  patchData.shippingCarrier = shippingDetails.carrier
+                }
+                const invoiceSelectedService =
+                  shippingDetails.serviceName ||
+                  shippingDetails.serviceCode ||
+                  shippingAmountForInvoice !== undefined
+                    ? {
+                        carrierId: shippingDetails.carrierId || undefined,
+                        carrier: shippingDetails.carrier || undefined,
+                        service:
+                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                        serviceCode:
+                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                        amount: shippingAmountForInvoice,
+                        currency:
+                          shippingDetails.currency ||
+                          (currency ? currency.toUpperCase() : undefined) ||
+                          'USD',
+                        deliveryDays: shippingDetails.deliveryDays,
+                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                      }
+                    : undefined
+                if (invoiceSelectedService) {
+                  patchData.selectedService = invoiceSelectedService
                 }
                 if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
                 patchData.stripeSummary = buildStripeSummary({
@@ -2024,12 +2081,35 @@ export const handler: Handler = async (event) => {
           const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '')
             .toString()
             .trim()
-          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
-          const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
-          const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
-          const metadataShippingServiceName = (meta['shipping_service_name'] || '').toString().trim() || undefined
-          const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '').toString().trim() || undefined
-          const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
+          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '')
+            .toString()
+            .trim()
+          const metadataShippingCarrier = ((meta['shipping_carrier'] || meta['shippingCarrier'] || '')
+            .toString()
+            .trim() || undefined)
+          const metadataShippingServiceCode = ((
+            meta['shipping_service_code'] ||
+            meta['shipping_service'] ||
+            meta['shippingService'] ||
+            ''
+          )
+            .toString()
+            .trim() || undefined)
+          const metadataShippingServiceName = ((meta['shipping_service_name'] || '')
+            .toString()
+            .trim() || undefined)
+          const metadataShippingCarrierId = ((meta['shipping_carrier_id'] || '')
+            .toString()
+            .trim() || undefined)
+          const metadataShippingCurrency = ((meta['shipping_currency'] || meta['shippingCurrency'] || '')
+            .toString()
+            .trim()
+            .toUpperCase() || undefined)
+          const shippingDetails = await resolveStripeShippingDetails({
+            metadata: meta,
+            paymentIntent: pi,
+            stripe,
+          })
           const shippingAmountFromMetadata = (() => {
             if (!metadataShippingAmountRaw) return undefined
             const parsed = Number(metadataShippingAmountRaw)
@@ -2038,6 +2118,19 @@ export const handler: Handler = async (event) => {
             const fallback = Number(cleaned)
             return Number.isFinite(fallback) ? fallback : undefined
           })()
+          const shippingAmountForDoc =
+            shippingDetails.amount !== undefined ? shippingDetails.amount : shippingAmountFromMetadata
+          const shippingCarrierForDoc = shippingDetails.carrier || metadataShippingCarrier
+          const shippingCarrierIdForDoc = shippingDetails.carrierId || metadataShippingCarrierId
+          const shippingServiceNameForDoc =
+            shippingDetails.serviceName || metadataShippingServiceName || metadataShippingServiceCode
+          const shippingServiceCodeForDoc =
+            shippingDetails.serviceCode || metadataShippingServiceCode || metadataShippingServiceName
+          const shippingCurrencyForDoc =
+            shippingDetails.currency ||
+            metadataShippingCurrency ||
+            (currency ? currency.toUpperCase() : undefined) ||
+            'USD'
           const orderNumber = await resolveOrderNumber({
             metadataOrderNumber: metadataOrderNumberRaw,
             invoiceNumber: metadataInvoiceNumber,
@@ -2088,21 +2181,42 @@ export const handler: Handler = async (event) => {
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
           })
-          if (shippingAmountFromMetadata !== undefined) {
-            baseDoc.amountShipping = shippingAmountFromMetadata
+          if (shippingAmountForDoc !== undefined) {
+            baseDoc.amountShipping = shippingAmountForDoc
+            baseDoc.selectedShippingAmount = shippingAmountForDoc
           }
-          if (metadataShippingCarrier) {
-            baseDoc.shippingCarrier = metadataShippingCarrier
+          if (shippingCarrierForDoc) {
+            baseDoc.shippingCarrier = shippingCarrierForDoc
           }
-          if (metadataShippingServiceCode || metadataShippingServiceName || shippingAmountFromMetadata !== undefined) {
+          if (shippingServiceNameForDoc || shippingServiceCodeForDoc || shippingAmountForDoc !== undefined) {
             baseDoc.selectedService = {
-              carrierId: metadataShippingCarrierId || undefined,
-              carrier: metadataShippingCarrier || undefined,
-              service: metadataShippingServiceName || metadataShippingServiceCode || undefined,
-              serviceCode: metadataShippingServiceCode || metadataShippingServiceName || undefined,
-              amount: shippingAmountFromMetadata,
-              currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+              carrierId: shippingCarrierIdForDoc,
+              carrier: shippingCarrierForDoc,
+              service: shippingServiceNameForDoc || shippingServiceCodeForDoc || undefined,
+              serviceCode: shippingServiceCodeForDoc || shippingServiceNameForDoc || undefined,
+              amount: shippingAmountForDoc,
+              currency: shippingCurrencyForDoc,
+              deliveryDays: shippingDetails.deliveryDays,
+              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
             }
+          }
+          if (shippingDetails.currency || metadataShippingCurrency) {
+            baseDoc.selectedShippingCurrency = shippingDetails.currency || metadataShippingCurrency
+          }
+          if (shippingDetails.deliveryDays !== undefined) {
+            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
+          }
+          if (shippingDetails.estimatedDeliveryDate) {
+            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+          }
+          if (shippingServiceCodeForDoc) {
+            baseDoc.shippingServiceCode = shippingServiceCodeForDoc
+          }
+          if (shippingServiceNameForDoc) {
+            baseDoc.shippingServiceName = shippingServiceNameForDoc
+          }
+          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+            baseDoc.shippingMetadata = shippingDetails.metadata
           }
           const intentSlug = createOrderSlug(orderNumber, pi.id)
           if (intentSlug) baseDoc.slug = { _type: 'slug', current: intentSlug }
@@ -2117,14 +2231,40 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
-                patch = patch.set({
+                const shippingAmountForInvoice = shippingAmountForDoc
+                const shippingSelectedService =
+                  shippingServiceNameForDoc ||
+                  shippingServiceCodeForDoc ||
+                  shippingAmountForInvoice !== undefined
+                    ? {
+                        carrierId: shippingCarrierIdForDoc,
+                        carrier: shippingCarrierForDoc,
+                        service: shippingServiceNameForDoc || shippingServiceCodeForDoc || undefined,
+                        serviceCode: shippingServiceCodeForDoc || shippingServiceNameForDoc || undefined,
+                        amount: shippingAmountForInvoice,
+                        currency: shippingCurrencyForDoc,
+                        deliveryDays: shippingDetails.deliveryDays,
+                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                      }
+                    : undefined
+                const shippingSet: Record<string, any> = {
                   stripeLastSyncedAt: new Date().toISOString(),
                   stripeSummary: buildStripeSummary({
                     paymentIntent: pi,
                     eventType: webhookEvent.type,
                     eventCreated: webhookEvent.created,
                   }),
-                })
+                }
+                if (shippingAmountForInvoice !== undefined) {
+                  shippingSet.amountShipping = shippingAmountForInvoice
+                }
+                if (shippingCarrierForDoc) {
+                  shippingSet.shippingCarrier = shippingCarrierForDoc
+                }
+                if (shippingSelectedService) {
+                  shippingSet.selectedService = shippingSelectedService
+                }
+                patch = patch.set(shippingSet)
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch {}
@@ -2169,6 +2309,8 @@ export const handler: Handler = async (event) => {
                 customerName,
                 items: [],
                 totalAmount,
+                shippingAmount:
+                  typeof shippingAmountForDoc === 'number' ? shippingAmountForDoc : undefined,
                 shippingAddress: shippingAddr,
               })
               await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
