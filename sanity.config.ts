@@ -43,7 +43,34 @@ const workspaceModuleAliases = hasProcess
     }
   : {};
 
-const isDev = hasProcess ? process.env.NODE_ENV === 'development' : false;
+const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined);
+
+const envFlag = (value?: string | null) => {
+  if (!value) return undefined;
+
+  const normalized = value.trim().toLowerCase();
+
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+
+  return undefined;
+};
+
+const sanityEnv = getEnv('SANITY_STUDIO_ENV');
+const nodeEnv = getEnv('NODE_ENV');
+const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'));
+const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'));
+
+const isDev =
+  sanityEnv !== undefined
+    ? sanityEnv !== 'production'
+    : nodeEnv !== undefined
+      ? nodeEnv !== 'production'
+      : false;
+
+const visionEnabled =
+  enableVisionOverride ??
+  (disableVisionOverride !== undefined ? !disableVisionOverride : isDev);
 
 export default defineConfig({
   name: 'default',
@@ -61,7 +88,7 @@ export default defineConfig({
     media(),
     arenaSyncPlugin(),
     codeInput(),
-    ...(isDev ? [visionTool()] : []),
+    ...(visionEnabled ? [visionTool()] : []),
   ],
 
   tools: [
