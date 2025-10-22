@@ -172,6 +172,8 @@ const sanity = createClient({
   useCdn: false,
 })
 
+const DEBUG_REPROCESS = process.env.DEBUG_REPROCESS === '1'
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -424,12 +426,22 @@ export const handler: Handler = async (event) => {
 
     let orderId = existingId
     if (existingId) {
-      try { await sanity.patch(existingId).set(baseDoc).commit({ autoGenerateArrayKeys: true }) } catch {}
+      try {
+        await sanity.patch(existingId).set(baseDoc).commit({ autoGenerateArrayKeys: true })
+      } catch (err) {
+        if (DEBUG_REPROCESS) {
+          console.warn('reprocessStripeSession: failed to update existing order', err)
+        }
+      }
     } else {
       try {
         const created = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
         orderId = created?._id
-      } catch {}
+      } catch (err) {
+        if (DEBUG_REPROCESS) {
+          console.warn('reprocessStripeSession: failed to create order', err)
+        }
+      }
     }
 
     if (orderId) {
