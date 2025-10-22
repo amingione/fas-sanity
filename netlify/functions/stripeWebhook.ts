@@ -1352,10 +1352,7 @@ export const handler: Handler = async (event) => {
             if (paymentIntent) {
               await markPaymentIntentFailure(paymentIntent, {
                 invoiceStripeStatus: webhookEvent.type,
-                invoiceStatus:
-                  webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible'
-                    ? 'cancelled'
-                    : undefined,
+                invoiceStatus: invoice.status === 'uncollectible' ? 'cancelled' : undefined,
               })
             }
           }
