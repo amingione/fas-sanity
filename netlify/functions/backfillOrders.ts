@@ -186,14 +186,6 @@ function sanitizeOrderNumber(value?: string | null): string | undefined {
   return undefined
 }
 
-function candidateFromSessionId(id?: string | null): string | undefined {
-  if (!id) return undefined
-  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
-  const digits = core.replace(/\D/g, '')
-  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
-  return undefined
-}
-
 async function generateUniqueOrderNumber(existingCandidates: string[] = []): Promise<string> {
   for (const candidate of existingCandidates) {
     const sanitized = sanitizeOrderNumber(candidate)
@@ -340,15 +332,15 @@ export const handler: Handler = async (event) => {
           setOps.slug = { _type: 'slug', current: desiredSlug }
         }
 
-        if (Object.keys(setOps).length || unsetOps.length) {
-          changed++
-          if (!dryRun) {
-            try {
-              await sanity.patch(doc._id).set(setOps).unset(unsetOps).commit({ autoGenerateArrayKeys: true })
-            } catch (e) {
-              // keep going
+          if (Object.keys(setOps).length || unsetOps.length) {
+            changed++
+            if (!dryRun) {
+              try {
+                await sanity.patch(doc._id).set(setOps).unset(unsetOps).commit({ autoGenerateArrayKeys: true })
+              } catch (err) {
+                console.warn('backfillOrders: failed to patch order', doc._id, err)
+              }
             }
-          }
           if (setOps.customerRef) migratedCustomer++
           if (setOps.cart) cartFixed++
         }

@@ -1,12 +1,12 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { useClient } from 'sanity';
-import { useToast } from '@sanity/ui';
-import { Button, Card, Checkbox, Stack, Text } from '@sanity/ui';
-import { Badge } from '@sanity/ui'
+import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState} from 'react'
+import {useClient} from 'sanity'
+import {Badge, Button, Card, Checkbox, Stack, Text, useToast} from '@sanity/ui'
 
 const fmt = (n?: number) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
 
-const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order';
+const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order'
+const ORDER_QUERY =
+  '*[_type == "order" && status != "fulfilled"]{_id, orderNumber, customerEmail, totalAmount, status}'
 
 interface Order {
   _id: string;
@@ -16,24 +16,22 @@ interface Order {
   status: string;
 }
 
-const BulkFulfillmentConsole = forwardRef<HTMLDivElement, {}>(function BulkFulfillmentConsole(_props, ref) {
+const BulkFulfillmentConsole = forwardRef<HTMLDivElement, Record<string, never>>(function BulkFulfillmentConsole(_props, ref) {
   const rootRef = useRef<HTMLDivElement | null>(null)
 
-  const client = useClient({ apiVersion: '2023-10-01' });
-  const toast = useToast();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
-  const [ordersLoading, setOrdersLoading] = useState<boolean>(true);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const client = useClient({apiVersion: '2023-10-01'})
+  const toast = useToast()
+  const [orders, setOrders] = useState<Order[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(false)
+  const [ordersLoading, setOrdersLoading] = useState<boolean>(true)
+  const [ordersError, setOrdersError] = useState<string | null>(null)
 
-  const query = `*[_type == "order" && status != "fulfilled"]{_id, orderNumber, customerEmail, totalAmount, status}`;
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setOrdersLoading(true);
     setOrdersError(null);
     try {
-      const data: Order[] = await client.fetch(query);
+      const data: Order[] = await client.fetch(ORDER_QUERY);
       setOrders(data || []);
       // prune selection when orders change
       setSelected(prev => new Set(Array.from(prev).filter(id => (data || []).some(o => o._id === id))));
@@ -43,7 +41,7 @@ const BulkFulfillmentConsole = forwardRef<HTMLDivElement, {}>(function BulkFulfi
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [client]);
 
   useEffect(() => {
     let sub: { unsubscribe: () => void } | null = null;
@@ -53,7 +51,7 @@ const BulkFulfillmentConsole = forwardRef<HTMLDivElement, {}>(function BulkFulfi
     fetchOrders();
 
     // real-time updates
-    sub = client.listen(query, {}, { visibility: 'query' }).subscribe(() => {
+    sub = client.listen(ORDER_QUERY, {}, { visibility: 'query' }).subscribe(() => {
       if (mounted) fetchOrders();
     });
 
@@ -61,7 +59,7 @@ const BulkFulfillmentConsole = forwardRef<HTMLDivElement, {}>(function BulkFulfi
       mounted = false;
       if (sub) sub.unsubscribe();
     };
-  }, [client]);
+  }, [client, fetchOrders]);
 
   const toggleSelection = (id: string) => {
     setSelected(prev => {

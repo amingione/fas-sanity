@@ -36,7 +36,7 @@ async function safeFetchJson(url: string, init?: RequestInit) {
   }
   try {
     return JSON.parse(text)
-  } catch (e) {
+  } catch {
     const snippet = text.slice(0, 200).replace(/\n/g, ' ')
     throw new Error(`Invalid JSON from ${url}: ${snippet}`)
   }
@@ -55,7 +55,7 @@ async function safeFetchJson(url: string, init?: RequestInit) {
  * Reads sibling fields from the form: ship_to, ship_from, weight, dimensions
  */
 function ServiceRateInput(props: any) {
-  const {value, onChange, schemaType} = props
+  const {value, onChange} = props
   const ship_to = useFormValue(["ship_to"]) as any
   const ship_from = useFormValue(["ship_from"]) as any
   const weight = useFormValue(["weight"]) as any

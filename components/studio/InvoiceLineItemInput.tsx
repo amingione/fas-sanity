@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { set, useClient, useFormValue } from 'sanity'
+import { set, useClient } from 'sanity'
 
 export default function InvoiceLineItemInput(props: any) {
   const { value, onChange } = props
   const client = useClient({ apiVersion: '2024-10-01' })
-  const _id = useFormValue(['_id']) as string
   const [mode, setMode] = useState<'product' | 'custom'>(value?.kind || 'product')
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<any[]>([])
@@ -13,17 +12,21 @@ export default function InvoiceLineItemInput(props: any) {
     if (mode !== 'product') return
     const q = search.trim()
     if (q.length < 2) { setResults([]); return }
-    let t: any = setTimeout(async () => {
+    let t: ReturnType<typeof setTimeout> | null = setTimeout(async () => {
       try {
         const rs = await client.fetch(
           `*[_type == "product" && (title match $q || sku match $q)][0...8]{_id, title, sku, price}`,
           { q: `${q}*` }
         )
         setResults(Array.isArray(rs) ? rs : [])
-      } catch { setResults([]) }
+      } catch {
+        setResults([])
+      }
     }, 200)
-    return () => clearTimeout(t)
-  }, [search, mode])
+    return () => {
+      if (t) clearTimeout(t)
+    }
+  }, [client, search, mode])
 
   function onPickProduct(p: any) {
     const patch: any = {

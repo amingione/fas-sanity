@@ -80,11 +80,11 @@ export async function createShippingLabel(input: CreateLabelInput): Promise<Crea
   })
 
   let data: CreateLabelResult
-  try {
-    data = (await res.json()) as CreateLabelResult
-  } catch (e) {
-    return { success: false, error: 'Invalid JSON from label endpoint' }
-  }
+    try {
+      data = (await res.json()) as CreateLabelResult
+    } catch {
+      return { success: false, error: 'Invalid JSON from label endpoint' }
+    }
 
   if (!res.ok || !data?.success) {
     return { success: false, error: data?.error || 'Failed to create label' }

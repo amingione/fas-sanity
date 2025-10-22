@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import React, {useCallback, useEffect, useState} from 'react'
 import {useClient} from 'sanity'
 import {Badge, Box, Button, Card, Flex, Spinner, Stack, Text, useToast} from '@sanity/ui'
 import {loadStripe, Stripe} from '@stripe/stripe-js'

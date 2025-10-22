@@ -1246,11 +1246,6 @@ function resolveDescription(item: InvoiceLineItem): string {
   return ''
 }
 
-function truncate(text: string, font: PDFFont, size: number, maxWidth: number): string {
-  if (!text) return ''
-  return clipText(text, font, size, maxWidth)
-}
-
 function formatQuantity(quantity: number | null | undefined): string {
   if (quantity === null || quantity === undefined) return ''
   const numeric = Number(quantity)

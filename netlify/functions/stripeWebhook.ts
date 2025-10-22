@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import type { CartItem } from '../lib/cartEnrichment'
 import { createClient } from '@sanity/client'
 import { randomUUID } from 'crypto'
-import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip'
+import { generatePackingSlipAsset } from '../lib/packingSlip'
 import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
@@ -341,20 +341,18 @@ function slugifyValue(value: string): string {
     .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
 }
 
-async function ensureUniqueProductSlug(baseSlug: string): Promise<string> {
-  let slug = baseSlug || 'product'
-  let suffix = 1
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const exists = await sanity.fetch<number>('count(*[_type == "product" && slug.current == $slug])', { slug })
-    if (!Number(exists)) return slug
-    suffix += 1
-    slug = `${baseSlug}-${suffix}`.slice(0, 96)
-    if (suffix > 20) {
-      return `${baseSlug}-${Date.now()}`.slice(0, 96)
+  async function ensureUniqueProductSlug(baseSlug: string): Promise<string> {
+    const normalized = baseSlug || 'product'
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const slugCandidate = attempt === 0 ? normalized : `${normalized}-${attempt}`.slice(0, 96)
+      const exists = await sanity.fetch<number>('count(*[_type == "product" && slug.current == $slug])', {
+        slug: slugCandidate,
+      })
+      if (!Number(exists)) return slugCandidate
     }
+
+    return `${normalized}-${Date.now()}`.slice(0, 96)
   }
-}
 
 function toMajorUnits(amount?: number | null): number | undefined {
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return undefined
@@ -1302,7 +1300,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
     }
   } else {
     try {
-      const createdDoc = await sanity.create(baseDoc as any, { autoGenerateArrayKeys: true })
+      const createdDoc = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
       orderId = createdDoc?._id || null
     } catch (err) {
       console.warn('stripeWebhook: failed to create order for expired checkout', err)
@@ -1437,7 +1435,9 @@ async function sendOrderConfirmationEmail(opts: {
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;border-collapse:collapse;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
         <tr>
           <td style="background:#0f172a;color:#ffffff;padding:24px 28px;">
-            <h1 style="margin:0;font-size:22px;font-weight:700;">Thank you for your order${displayOrderNumber ? ` <span style=\"color:#f97316\">#${displayOrderNumber}</span>` : ''}</h1>
+              <h1 style="margin:0;font-size:22px;font-weight:700;">Thank you for your order${
+                displayOrderNumber ? ` <span style="color:#f97316">#${displayOrderNumber}</span>` : ''
+              }</h1>
             <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${greetingLine}</p>
           </td>
         </tr>
@@ -1700,8 +1700,7 @@ export const handler: Handler = async (event) => {
         const session = webhookEvent.data.object as Stripe.Checkout.Session
         const email = session.customer_details?.email || session.customer_email || ''
         const totalAmount = (Number(session.amount_total || 0) || 0) / 100
-        const stripeSessionId = session.id
-        const mode = session.mode
+          const stripeSessionId = session.id
         const metadata = (session.metadata || {}) as Record<string, string>
         const userIdMeta = (
           metadata['auth0_user_id'] ||
@@ -1791,9 +1790,9 @@ export const handler: Handler = async (event) => {
             } as CartItem
           })
           cart = await enrichCartItemsFromSanity(cart, sanity)
-        } catch (e) {
-          console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
-        }
+          } catch (err) {
+            console.warn('stripeWebhook: listLineItems failed, continuing without cart', err)
+          }
 
         let shippingAddress: any = undefined
         try {
@@ -1814,9 +1813,9 @@ export const handler: Handler = async (event) => {
                 country: (addr as any).country || undefined,
               }
             : undefined
-        } catch (e) {
-          console.warn('stripeWebhook: could not parse shipping address')
-        }
+          } catch (err) {
+            console.warn('stripeWebhook: could not parse shipping address', err)
+          }
 
         const customerName = (shippingAddress?.name || metadataCustomerName || session.customer_details?.name || email || '').toString().trim() || undefined
 
@@ -2011,9 +2010,9 @@ export const handler: Handler = async (event) => {
                 let patch = sanity.patch(id).set(patchData)
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
-              } catch (e) {
-                // try next variant
-              }
+                } catch (err) {
+                  console.warn('stripeWebhook: invoice patch attempt failed', err)
+                }
             }
           }
 
@@ -2142,8 +2141,8 @@ export const handler: Handler = async (event) => {
                 try { await sanity.patch(orderId).set({ invoiceRef: { _type: 'reference', _ref: createdInv._id } }).commit({ autoGenerateArrayKeys: true }) } catch {}
               }
             }
-          } catch (e) {
-            console.warn('stripeWebhook: failed to create invoice from order', e)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to create invoice from order', err)
           }
 
           // 4) Auto-fulfillment: call our Netlify function to generate packing slip, label, and email
@@ -2164,13 +2163,13 @@ export const handler: Handler = async (event) => {
                 })
               }
             }
-          } catch (e) {
-            console.warn('stripeWebhook: auto-fulfillment call failed', e)
+            } catch (err) {
+              console.warn('stripeWebhook: auto-fulfillment call failed', err)
+            }
+          } catch (err) {
+            console.error('stripeWebhook: failed to upsert Order doc:', err)
+            // Do not fail the webhook; Stripe will retry and we may create duplicates otherwise
           }
-        } catch (e) {
-          console.error('stripeWebhook: failed to upsert Order doc:', e)
-          // Do not fail the webhook; Stripe will retry and we may create duplicates otherwise
-        }
 
         break
       }
@@ -2364,9 +2363,9 @@ export const handler: Handler = async (event) => {
               })
             }
           } catch {}
-        } catch (e) {
-          console.warn('stripeWebhook: PI fallback order creation failed', e)
-        }
+          } catch (err) {
+            console.warn('stripeWebhook: PI fallback order creation failed', err)
+          }
         break
       }
       case 'checkout.session.expired':
