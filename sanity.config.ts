@@ -16,7 +16,7 @@ const deskTool =
 import { visionTool } from '@sanity/vision';
 import { codeInput } from '@sanity/code-input';
 import { media } from 'sanity-plugin-media';
-import { arenaSyncPlugin } from 'sanity-plugin-arena-sync';
+import { arenaSyncPlugin } from './plugins/arena-sync';
 import { schemaTypes } from './schemaTypes';
 import { deskStructure } from './desk/deskStructure';
 import resolveDocumentActions from './resolveDocumentActions';
