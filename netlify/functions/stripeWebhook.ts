@@ -890,10 +890,22 @@ type OrderPaymentStatusInput = {
   stripeSessionId?: string
   additionalOrderFields?: Record<string, any>
   additionalInvoiceFields?: Record<string, any>
+  preserveExistingFailureDiagnostics?: boolean
 }
 
 async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<boolean> {
-  const { paymentStatus, orderStatus, invoiceStatus, invoiceStripeStatus, paymentIntentId, chargeId, stripeSessionId, additionalInvoiceFields, additionalOrderFields } = opts
+  const {
+    paymentStatus,
+    orderStatus,
+    invoiceStatus,
+    invoiceStripeStatus,
+    paymentIntentId,
+    chargeId,
+    stripeSessionId,
+    additionalInvoiceFields,
+    additionalOrderFields,
+    preserveExistingFailureDiagnostics,
+  } = opts
   if (!paymentIntentId && !chargeId && !stripeSessionId) return false
 
   const params = {
@@ -902,12 +914,20 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     session: stripeSessionId || '',
   }
 
-  const order = await sanity.fetch<{ _id: string; orderNumber?: string; invoiceRef?: { _id: string }; customerRef?: { _ref: string }; customerEmail?: string } | null>(
+  const order = await sanity.fetch<{
+    _id: string
+    orderNumber?: string
+    invoiceRef?: { _id: string }
+    customerRef?: { _ref: string }
+    customerEmail?: string
+    paymentFailureCode?: string
+    paymentFailureMessage?: string
+  } | null>(
     `*[_type == "order" && (
       ($pi != '' && paymentIntentId == $pi) ||
       ($charge != '' && chargeId == $charge) ||
       ($session != '' && stripeSessionId == $session)
-    )][0]{ _id, orderNumber, customerRef, customerEmail, invoiceRef->{ _id } }`,
+    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, invoiceRef->{ _id } }`,
     params
   )
 
@@ -919,7 +939,28 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   }
   if (orderStatus) orderPatch.status = orderStatus
   if (additionalOrderFields && typeof additionalOrderFields === 'object') {
-    Object.assign(orderPatch, additionalOrderFields)
+    const existingFailureDetails =
+      preserveExistingFailureDiagnostics && order
+        ? {
+            paymentFailureCode:
+              typeof order.paymentFailureCode === 'string' ? order.paymentFailureCode.trim() : '',
+            paymentFailureMessage:
+              typeof order.paymentFailureMessage === 'string' ? order.paymentFailureMessage.trim() : '',
+          }
+        : null
+
+    for (const [field, value] of Object.entries(additionalOrderFields)) {
+      if (
+        existingFailureDetails &&
+        (field === 'paymentFailureCode' || field === 'paymentFailureMessage')
+      ) {
+        const existingValue = existingFailureDetails[field]
+        if (existingValue) {
+          continue
+        }
+      }
+      orderPatch[field] = value
+    }
   }
 
   try {
@@ -1309,6 +1350,7 @@ export const handler: Handler = async (event) => {
               paymentFailureCode: pi.cancellation_reason || undefined,
               paymentFailureMessage: pi.last_payment_error?.message || undefined,
             },
+            preserveExistingFailureDiagnostics: true,
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to mark payment cancellation', err)
