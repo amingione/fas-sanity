@@ -79,6 +79,7 @@ import { shopifyProductType } from './objects/shopify/shopifyProductType'
 import { shopifyProductVariantType } from './objects/shopify/shopifyProductVariantType'
 import { spotType } from './objects/hotspot/spotType'
 import { stripePriceSnapshotType } from './objects/stripePriceSnapshotType'
+import { stripeMetadataEntryType } from './objects/stripeMetadataEntry'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
 
@@ -162,6 +163,7 @@ const objects = [
   shopifyProductVariantType,
   spotType,
   stripePriceSnapshotType,
+  stripeMetadataEntryType,
   {
     name: 'siteSettings',
     type: 'document',
