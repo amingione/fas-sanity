@@ -928,6 +928,8 @@ export default defineType({
     defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
     defineField({ name: 'stripeInvoiceId', title: 'Stripe Invoice ID', type: 'string', readOnly: true }),
     defineField({ name: 'stripeInvoiceStatus', title: 'Stripe Invoice Status', type: 'string', readOnly: true }),
+    defineField({ name: 'paymentFailureCode', title: 'Payment Failure Code', type: 'string', readOnly: true }),
+    defineField({ name: 'paymentFailureMessage', title: 'Payment Failure Message', type: 'text', readOnly: true }),
     defineField({ name: 'stripeHostedInvoiceUrl', title: 'Stripe Hosted Invoice URL', type: 'url', readOnly: true }),
     defineField({ name: 'stripeInvoicePdf', title: 'Stripe Invoice PDF', type: 'url', readOnly: true }),
     defineField({ name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true }),

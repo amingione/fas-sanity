@@ -764,14 +764,94 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
   )
 
   const failure = pi.last_payment_error
+  const additionalCodes = new Set<string>()
+
+  let failureCode = (failure?.code || '').trim() || undefined
+  let failureMessage = (failure?.message || pi.cancellation_reason || '').toString().trim() || undefined
+
+  const shouldLoadCharge =
+    Boolean(stripe) &&
+    (typeof pi.latest_charge === 'string' || !failureCode || !failureMessage)
+
+  if (shouldLoadCharge) {
+    try {
+      let charge: Stripe.Charge | null = null
+      const latestChargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : null
+      if (latestChargeId) {
+        charge = await stripe.charges.retrieve(latestChargeId)
+      } else {
+        const chargeList = await stripe.charges.list({ payment_intent: pi.id, limit: 1 })
+        charge = chargeList?.data?.[0] || null
+      }
+
+      if (charge) {
+        const outcomeReason = (charge.outcome?.reason || '').trim()
+        const chargeFailureCode = (charge.failure_code || '').trim()
+        const networkStatus = (charge.outcome?.network_status || '').trim()
+        const sellerMessage = (charge.outcome?.seller_message || '').trim()
+        const chargeFailureMessage = (charge.failure_message || '').trim()
+
+        if (outcomeReason) {
+          if (failureCode && failureCode !== outcomeReason) {
+            additionalCodes.add(failureCode)
+          }
+          failureCode = outcomeReason
+        } else if (!failureCode && chargeFailureCode) {
+          failureCode = chargeFailureCode
+        } else if (failureCode && chargeFailureCode && failureCode !== chargeFailureCode) {
+          additionalCodes.add(chargeFailureCode)
+        }
+
+        if (networkStatus && networkStatus !== failureCode) {
+          additionalCodes.add(networkStatus)
+        }
+
+        if (!failureMessage && (sellerMessage || chargeFailureMessage)) {
+          failureMessage = sellerMessage || chargeFailureMessage || undefined
+        } else if (failureMessage) {
+          const lowerMessage = failureMessage.toLowerCase()
+          if (sellerMessage && !lowerMessage.includes(sellerMessage.toLowerCase())) {
+            failureMessage = `${failureMessage} (${sellerMessage})`
+          } else if (
+            chargeFailureMessage &&
+            !lowerMessage.includes(chargeFailureMessage.toLowerCase())
+          ) {
+            failureMessage = `${failureMessage} (${chargeFailureMessage})`
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: failed to load charge for payment failure details', err)
+    }
+  }
+
+  const codes = Array.from(
+    new Set([failureCode, ...Array.from(additionalCodes)].filter((code) => Boolean(code?.trim())) as string[])
+  )
+
+  if (codes.length === 0) {
+    failureCode = undefined
+  } else {
+    failureCode = codes.join(' | ')
+  }
+
+  if (failureMessage) {
+    const lowerMessage = failureMessage.toLowerCase()
+    const codesNotMentioned = codes.filter((code) => !lowerMessage.includes(code.toLowerCase()))
+    if (codesNotMentioned.length > 0) {
+      failureMessage = `${failureMessage} (codes: ${codesNotMentioned.join(', ')})`
+    }
+  } else if (codes.length > 0) {
+    failureMessage = `Payment failed (codes: ${codes.join(', ')})`
+  }
 
   if (orderId) {
     const setOps: Record<string, any> = {
       paymentStatus: pi.status || 'failed',
       status: 'pending',
       stripeLastSyncedAt: new Date().toISOString(),
-      paymentFailureCode: failure?.code || undefined,
-      paymentFailureMessage: failure?.message || pi.cancellation_reason || undefined,
+      paymentFailureCode: failureCode,
+      paymentFailureMessage: failureMessage,
     }
     try {
       await sanity.patch(orderId).set(setOps).commit({ autoGenerateArrayKeys: true })
@@ -790,6 +870,8 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
           status: 'pending',
           stripeInvoiceStatus: 'payment_intent.payment_failed',
           stripeLastSyncedAt: new Date().toISOString(),
+          paymentFailureCode: failureCode,
+          paymentFailureMessage: failureMessage,
         }).commit({ autoGenerateArrayKeys: true })
       } catch (err) {
         console.warn('stripeWebhook: failed to update invoice after payment failure', err)
