@@ -21,7 +21,7 @@
 [dev]
   command = "pnpm run dev"
   targetPort = 3333
-  framework = "custom"
+  framework = "#custom"
 
 # Bypass redirect for known static assets
 [[redirects]]
