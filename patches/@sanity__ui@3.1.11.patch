@@ -1,0 +1,52 @@
+diff --git a/src/core/components/toast/toast.tsx b/src/core/components/toast/toast.tsx
+index 950956261d24138b7de7a143e38b6bd7557bb951..b7983524219b447d270ec5917734e42398393b69 100644
+--- a/src/core/components/toast/toast.tsx
++++ b/src/core/components/toast/toast.tsx
+@@ -1,5 +1,6 @@
+ import {CloseIcon} from '@sanity/icons'
+ import {motion, type Variant, type Variants} from 'motion/react'
++import {forwardRef} from 'react'
+ 
+ import {usePrefersReducedMotion} from '../../hooks/usePrefersReducedMotion'
+ import {Box, Button, Flex, Stack, Text} from '../../primitives'
+@@ -45,8 +46,9 @@ const LONG_ENOUGH_BUT_NOT_TOO_LONG = 1000 * 60 * 60 * 24 * 24
+  *
+  * @public
+  */
+-export function Toast(
+-  props: ToastProps &
++export const Toast = forwardRef<
++  HTMLDivElement,
++  ToastProps &
+     Omit<
+       React.HTMLProps<HTMLDivElement>,
+       | 'as'
+@@ -57,7 +59,10 @@ export function Toast(
+       | 'onDragStart'
+       | 'onDragEnd'
+       | 'onDrag'
+-    >,
++    >
++>(function Toast(
++  props,
++  forwardedRef,
+ ): React.JSX.Element {
+   const {
+     closable,
+@@ -88,6 +93,7 @@ export function Toast(
+ 
+   return (
+     <MotionToast
++      ref={forwardedRef}
+       data-ui="Toast"
+       role={role}
+       {...restProps}
+@@ -149,7 +155,7 @@ export function Toast(
+       )}
+     </MotionToast>
+   )
+-}
++})
+ 
+ Toast.displayName = 'Toast'
+ 
