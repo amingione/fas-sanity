@@ -875,8 +875,8 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
 
   if (orderId) {
     const setOps: Record<string, any> = {
-      paymentStatus: pi.status || 'failed',
-      status: 'pending',
+      paymentStatus,
+      status: derivedOrderStatus,
       stripeLastSyncedAt: new Date().toISOString(),
       paymentFailureCode: failureCode,
       paymentFailureMessage: failureMessage,
@@ -894,9 +894,16 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
     const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
     if (invoiceId) {
       try {
+        const derivedInvoiceStatus =
+          opts.invoiceStatus !== undefined
+            ? opts.invoiceStatus
+            : normalizedStatus === 'canceled'
+              ? 'cancelled'
+              : 'pending'
+
         await sanity.patch(invoiceId).set({
-          status: 'pending',
-          stripeInvoiceStatus: 'payment_intent.payment_failed',
+          status: derivedInvoiceStatus,
+          stripeInvoiceStatus: opts.invoiceStripeStatus || 'payment_intent.payment_failed',
           stripeLastSyncedAt: new Date().toISOString(),
           paymentFailureCode: failureCode,
           paymentFailureMessage: failureMessage,
