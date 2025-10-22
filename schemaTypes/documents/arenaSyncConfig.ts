@@ -35,6 +35,12 @@ export const arenaSyncConfigType = defineType({
       readOnly: true,
     }),
     defineField({
+      name: 'lastSyncRunId',
+      title: 'Last Sync Run ID',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
       name: 'lastSuccessfullySyncedSlugs',
       title: 'Last Successfully Synced Channel Slugs',
       description:
