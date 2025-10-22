@@ -834,7 +834,7 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   }
 
   const codes = Array.from(
-    new Set([failureCode, ...Array.from(additionalCodes)].filter((code) => Boolean(code?.trim())) as string[])
+    new Set([failureCode, ...additionalCodes].filter((code) => Boolean(code?.trim())) as string[])
   )
 
   if (codes.length === 0) {
