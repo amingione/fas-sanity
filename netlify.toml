@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "22"
+  NODE_VERSION = "20"
   MISE_DISABLE = "1"
   # Allow specific environment variable names to pass secret scanning since
   # their values are required during builds but are not written to the public build output.
