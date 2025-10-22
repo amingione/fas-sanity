@@ -905,17 +905,22 @@ async function markPaymentIntentFailure(
   const meta = (pi.metadata || {}) as Record<string, string>
   const invoiceMetaId = normalizeSanityId(meta['sanity_invoice_id'] || meta['invoice_id'])
   if (invoiceMetaId) {
-    const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
-    if (invoiceId) {
+    const invoiceDoc = await sanity.fetch<{ _id: string; status?: 'pending' | 'paid' | 'refunded' | 'cancelled' } | null>(
+      `*[_type == "invoice" && _id in $ids][0]{_id, status}`,
+      { ids: idVariants(invoiceMetaId) }
+    )
+    if (invoiceDoc?._id) {
       try {
         const derivedInvoiceStatus =
           opts.invoiceStatus !== undefined
             ? opts.invoiceStatus
+            : invoiceDoc.status === 'cancelled'
+              ? invoiceDoc.status
             : normalizedStatus === 'canceled'
               ? 'cancelled'
               : 'pending'
 
-        await sanity.patch(invoiceId).set({
+        await sanity.patch(invoiceDoc._id).set({
           status: derivedInvoiceStatus,
           stripeInvoiceStatus: opts.invoiceStripeStatus || 'payment_intent.payment_failed',
           stripeLastSyncedAt: new Date().toISOString(),
