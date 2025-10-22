@@ -50,13 +50,13 @@ export async function generatePackingSlipAsset({
 
     const contentType = (response.headers.get('content-type') || '').toLowerCase()
     let buffer: Buffer
-    if (contentType.includes('application/pdf')) {
-      const arrayBuffer = await response.arrayBuffer()
-      buffer = Buffer.from(arrayBuffer)
-    } else {
-      const base64 = (await response.text()).replace(/^\"|\"$/g, '')
-      buffer = Buffer.from(base64, 'base64')
-    }
+      if (contentType.includes('application/pdf')) {
+        const arrayBuffer = await response.arrayBuffer()
+        buffer = Buffer.from(arrayBuffer)
+      } else {
+        const base64 = (await response.text()).replace(/^"|"$/g, '')
+        buffer = Buffer.from(base64, 'base64')
+      }
 
     if (!buffer || buffer.length === 0) return undefined
 

@@ -31,11 +31,11 @@ function main() {
     for (const name of aliases) {
       const aliasPath = path.join(target, `${name}.js`);
       const content = `module.exports = require('./lang/${name}.js');\n`;
-      try {
-        fs.writeFileSync(aliasPath, content);
-      } catch (e) {
-        // ignore individual alias errors
-      }
+        try {
+          fs.writeFileSync(aliasPath, content);
+        } catch {
+          // ignore individual alias errors
+        }
     }
     console.log('[patch-sanity-refractor] patched sanity nested refractor to', srcPkg.version);
   } catch (err) {

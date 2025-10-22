@@ -1,7 +1,6 @@
 // components/studio/DocumentIframePreview.tsx
 
 import React from 'react'
-import { useDocumentValues } from 'sanity'
 
 interface Props {
   basePath: string

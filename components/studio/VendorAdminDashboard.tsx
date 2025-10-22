@@ -1,5 +1,5 @@
 // components/studio/VendorAdminDashboard.tsx
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useClient } from 'sanity'
 
 interface Vendor {
@@ -17,7 +17,7 @@ export default function VendorAdminDashboard() {
   const client = useClient({apiVersion: '2024-10-01'})
   const [vendors, setVendors] = useState<Vendor[]>([])
 
-  const fetchVendors = () => {
+  const fetchVendors = useCallback(() => {
     client
       .fetch(
         `*[_type == "vendor"]{
@@ -32,11 +32,12 @@ export default function VendorAdminDashboard() {
         } | order(_createdAt desc)`
       )
       .then(setVendors)
-  }
+      .catch((err) => console.error('Failed to load vendors', err))
+  }, [client])
 
   useEffect(() => {
     fetchVendors()
-  }, [])
+  }, [fetchVendors])
 
   const handleApproval = async (id: string, approved: boolean) => {
     try {

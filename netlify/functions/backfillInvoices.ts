@@ -376,5 +376,23 @@ export const handler: Handler = async (event) => {
     return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e?.message || 'Backfill invoices failed' }) }
   }
 
-  return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, dryRun, total, changed, migratedCustomer, migratedOrder, itemsFixed, legacyConverted }) }
+  return {
+    statusCode: 200,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ok: true,
+      dryRun,
+      total,
+      changed,
+      migratedCustomer,
+      migratedOrder,
+      itemsFixed,
+      legacyConverted,
+      billToFilled,
+      shipToFilled,
+      taxRateUpdated,
+      titleUpdated,
+      datesUpdated,
+    }),
+  }
 }

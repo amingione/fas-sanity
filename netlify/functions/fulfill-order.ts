@@ -201,7 +201,11 @@ export const handler: Handler = async (event) => {
             <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;border-collapse:collapse;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
               <tr>
                 <td style="background:#0f172a;color:#ffffff;padding:24px 28px;">
-                  <h1 style="margin:0;font-size:22px;font-weight:700;">${orderNumber ? `Order <span style=\"color:#f97316\">#${orderNumber}</span>` : 'Your order'} is on the way</h1>
+                    <h1 style="margin:0;font-size:22px;font-weight:700;">${
+                      orderNumber
+                        ? `Order <span style="color:#f97316">#${orderNumber}</span>`
+                        : 'Your order'
+                    } is on the way</h1>
                   <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${greetingLine}</p>
                 </td>
               </tr>
@@ -378,8 +382,7 @@ export const handler: Handler = async (event) => {
 
     let combinedWeight = 0
     let maxDims = { ...defaultDims }
-    let hasShipsAlone = false
-    let freightRequired = false
+      let freightRequired = false
     let shippableCount = 0
     const installOnlySkus: string[] = []
     const soloPackages: Array<{ weight: number; dims: typeof defaultDims; sku?: string; title?: string }> = []
@@ -424,10 +427,8 @@ export const handler: Handler = async (event) => {
         freightRequired = true
       }
 
-      if (shipsAlone) hasShipsAlone = true
-
-      if (weight > 0) {
-        if (shipsAlone) {
+        if (weight > 0) {
+          if (shipsAlone) {
           for (let i = 0; i < qty; i++) {
             soloPackages.push({ weight, dims: dims || defaultDims, sku: ci.sku, title: ci.name })
           }
@@ -660,7 +661,7 @@ export const handler: Handler = async (event) => {
     let packingSlipUrl: string | undefined
     if (pdfBase64) {
       try {
-        const clean = pdfBase64.replace(/^\"|\"$/g, '')
+          const clean = pdfBase64.replace(/^"|"$/g, '')
         const buf = Buffer.from(clean, 'base64')
         const asset = await sanity.assets.upload('file', buf, {
           filename: `packing-slip-${orderId}.pdf`,

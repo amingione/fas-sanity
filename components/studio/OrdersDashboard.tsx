@@ -9,7 +9,6 @@ import {
   Checkbox,
   Flex,
   Grid,
-  Heading,
   Menu,
   MenuButton,
   MenuItem,
