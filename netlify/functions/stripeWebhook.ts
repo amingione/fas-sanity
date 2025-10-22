@@ -1092,13 +1092,24 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
 }
 
 async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<void> {
+  const timestamp = new Date().toISOString()
+  const failureCode = 'checkout.session.expired'
+  const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
+  const expiresAt = typeof session.expires_at === 'number' ? new Date(session.expires_at * 1000).toISOString() : null
+  let failureMessage = 'Checkout session expired before payment was completed.'
+  if (email) failureMessage = `${failureMessage} Customer: ${email}.`
+  if (expiresAt) failureMessage = `${failureMessage} Expired at ${expiresAt}.`
+  failureMessage = `${failureMessage} (session ${session.id})`
+
   const orderId = await sanity.fetch<string | null>(`*[_type == "order" && stripeSessionId == $sid][0]._id`, { sid: session.id })
   if (orderId) {
     try {
       await sanity.patch(orderId).set({
         status: 'cancelled',
         paymentStatus: session.payment_status || 'expired',
-        stripeLastSyncedAt: new Date().toISOString(),
+        stripeLastSyncedAt: timestamp,
+        paymentFailureCode: failureCode,
+        paymentFailureMessage: failureMessage,
       }).commit({ autoGenerateArrayKeys: true })
     } catch (err) {
       console.warn('stripeWebhook: failed to update order after checkout expiration', err)
@@ -1114,7 +1125,9 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
         await sanity.patch(invoiceId).set({
           status: 'cancelled',
           stripeInvoiceStatus: 'checkout.session.expired',
-          stripeLastSyncedAt: new Date().toISOString(),
+          stripeLastSyncedAt: timestamp,
+          paymentFailureCode: failureCode,
+          paymentFailureMessage: failureMessage,
         }).commit({ autoGenerateArrayKeys: true })
       } catch (err) {
         console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)

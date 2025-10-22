@@ -204,6 +204,53 @@ async function fetchPaymentIntent(order: OrderDoc): Promise<Stripe.PaymentIntent
   return null
 }
 
+async function fetchCheckoutSession(id: string): Promise<Stripe.Checkout.Session | null> {
+  if (!id) return null
+  if (!stripe) return null
+  try {
+    return await stripe.checkout.sessions.retrieve(id, { expand: ['payment_intent'] })
+  } catch (err) {
+    console.warn(`⚠️  Unable to load Checkout session ${id}:`, (err as any)?.message || err)
+    return null
+  }
+}
+
+type SessionFailureResult = {
+  diagnostics: PaymentFailureDiagnostics
+  paymentStatus: string
+  orderStatus: 'cancelled'
+  invoiceStatus: 'cancelled'
+  invoiceStripeStatus: string
+}
+
+function resolveCheckoutExpirationDiagnostics(session: Stripe.Checkout.Session): SessionFailureResult {
+  const email =
+    (session.customer_details?.email ||
+      session.customer_email ||
+      (session.metadata || {})['customer_email'] ||
+      '')?.toString().trim() || ''
+  const expiresAt =
+    typeof session.expires_at === 'number'
+      ? new Date(session.expires_at * 1000).toISOString()
+      : null
+
+  let message = 'Checkout session expired before payment was completed.'
+  if (email) message = `${message} Customer: ${email}.`
+  if (expiresAt) message = `${message} Expired at ${expiresAt}.`
+  message = `${message} (session ${session.id})`
+
+  return {
+    diagnostics: {
+      code: 'checkout.session.expired',
+      message,
+    },
+    paymentStatus: (session.payment_status || 'expired') as string,
+    orderStatus: 'cancelled',
+    invoiceStatus: 'cancelled',
+    invoiceStripeStatus: 'checkout.session.expired',
+  }
+}
+
 async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promise<PaymentFailureDiagnostics> {
   const failure = pi.last_payment_error
   const additionalCodes = new Set<string>()
@@ -338,9 +385,14 @@ async function findInvoiceId(order: OrderDoc, paymentIntentId?: string): Promise
 async function updateInvoice(
   invoiceId: string,
   diagnostics: PaymentFailureDiagnostics,
-  paymentStatus?: string,
-  dryRun?: boolean
+  options: {
+    paymentStatus?: string
+    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
+    invoiceStripeStatus?: string
+    dryRun?: boolean
+  } = {}
 ) {
+  const { paymentStatus, invoiceStatus, invoiceStripeStatus, dryRun } = options
   const patch: Record<string, any> = {}
   let hasChanges = false
 
@@ -352,8 +404,15 @@ async function updateInvoice(
     patch.paymentFailureMessage = diagnostics.message
     hasChanges = true
   }
-  if (paymentStatus === 'canceled') {
+  if (invoiceStatus) {
+    patch.status = invoiceStatus
+    hasChanges = true
+  } else if (paymentStatus === 'canceled') {
     patch.status = 'cancelled'
+    hasChanges = true
+  }
+  if (invoiceStripeStatus) {
+    patch.stripeInvoiceStatus = invoiceStripeStatus
     hasChanges = true
   }
 
@@ -374,12 +433,43 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
   console.log(`Processing ${label}…`)
 
   const paymentIntent = await fetchPaymentIntent(order)
-  if (!paymentIntent) {
-    console.log(`   • Skipped (payment intent not found)`)
+  let session: Stripe.Checkout.Session | null = null
+  let diagnostics: PaymentFailureDiagnostics | null = null
+  let paymentStatus: string | undefined
+  let orderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | undefined
+  let invoiceStatus: 'pending' | 'paid' | 'refunded' | 'cancelled' | undefined
+  let invoiceStripeStatus: string | undefined
+
+  if (paymentIntent) {
+    diagnostics = await resolvePaymentFailureDiagnostics(paymentIntent)
+    paymentStatus = paymentIntent.status || undefined
+    if (paymentStatus === 'canceled') {
+      orderStatus = 'cancelled'
+      invoiceStatus = 'cancelled'
+    }
+    invoiceStripeStatus = 'payment_intent.payment_failed'
+  } else if (order.stripeSessionId) {
+    session = await fetchCheckoutSession(order.stripeSessionId)
+    if (!session) {
+      console.log('   • Skipped (checkout session not found)')
+      return false
+    }
+    const sessionResult = resolveCheckoutExpirationDiagnostics(session)
+    diagnostics = sessionResult.diagnostics
+    paymentStatus = sessionResult.paymentStatus
+    orderStatus = sessionResult.orderStatus
+    invoiceStatus = sessionResult.invoiceStatus
+    invoiceStripeStatus = sessionResult.invoiceStripeStatus
+  } else {
+    console.log('   • Skipped (payment intent not found)')
     return false
   }
 
-  const diagnostics = await resolvePaymentFailureDiagnostics(paymentIntent)
+  if (!diagnostics) {
+    console.log('   • Skipped (no diagnostics available)')
+    return false
+  }
+
   const existingCode = (order.paymentFailureCode || '').trim()
   const existingMessage = (order.paymentFailureMessage || '').trim()
 
@@ -395,13 +485,12 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
     hasChanges = true
   }
 
-  const piStatus = paymentIntent.status || undefined
-  if (piStatus && piStatus !== order.paymentStatus) {
-    orderPatch.paymentStatus = piStatus
+  if (paymentStatus && paymentStatus !== order.paymentStatus) {
+    orderPatch.paymentStatus = paymentStatus
     hasChanges = true
   }
-  if (piStatus === 'canceled' && order.status !== 'cancelled') {
-    orderPatch.status = 'cancelled'
+  if (orderStatus && orderStatus !== order.status) {
+    orderPatch.status = orderStatus
     hasChanges = true
   }
 
@@ -419,9 +508,14 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
     console.log('   • Order updated')
   }
 
-  const invoiceId = await findInvoiceId(order, paymentIntent.id)
+  const invoiceId = await findInvoiceId(order, paymentIntent?.id)
   if (invoiceId) {
-    await updateInvoice(invoiceId, diagnostics, piStatus, options.dryRun)
+    await updateInvoice(invoiceId, diagnostics, {
+      paymentStatus,
+      invoiceStatus,
+      invoiceStripeStatus,
+      dryRun: options.dryRun,
+    })
   }
 
   return true
