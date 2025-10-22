@@ -1561,15 +1561,22 @@ export const handler: Handler = async (event) => {
         const metadataInvoiceNumber = (metadata['sanity_invoice_number'] || metadata['invoice_number'] || '')
           .toString()
           .trim()
-        const shippingDetails = await resolveStripeShippingDetails({
-          metadata,
-          session,
-          paymentIntent,
-          fallbackAmount: amountShipping,
-          stripe,
-        })
-        if (shippingDetails.amount !== undefined) {
-          amountShipping = shippingDetails.amount
+        const metadataShippingAmountRaw = (metadata['shipping_amount'] || metadata['shippingAmount'] || '').toString().trim()
+        const metadataShippingCarrier = (metadata['shipping_carrier'] || metadata['shippingCarrier'] || '').toString().trim() || undefined
+        const metadataShippingServiceCode = (metadata['shipping_service_code'] || metadata['shipping_service'] || metadata['shippingService'] || '').toString().trim() || undefined
+        const metadataShippingServiceName = (metadata['shipping_service_name'] || '').toString().trim() || undefined
+        const metadataShippingCarrierId = (metadata['shipping_carrier_id'] || '').toString().trim() || undefined
+        const metadataShippingCurrency = (metadata['shipping_currency'] || metadata['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
+        const shippingAmountFromMetadata = (() => {
+          if (!metadataShippingAmountRaw) return undefined
+          const parsed = Number(metadataShippingAmountRaw)
+          if (Number.isFinite(parsed)) return parsed
+          const cleaned = metadataShippingAmountRaw.replace(/[^0-9.]/g, '')
+          const fallback = Number(cleaned)
+          return Number.isFinite(fallback) ? fallback : undefined
+        })()
+        if (shippingAmountFromMetadata !== undefined) {
+          amountShipping = shippingAmountFromMetadata
         }
         const orderNumber = await resolveOrderNumber({
           metadataOrderNumber: metadataOrderNumberRaw,
