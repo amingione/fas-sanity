@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useClient } from 'sanity'
 
 type Props = { tag: string }
@@ -21,25 +21,32 @@ export default function FilterBulkAssign({ tag }: Props) {
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  async function load() {
-    setLoading(true)
-    setMsg('')
-    try {
-      const term = q.trim()
-      const query = `*[_type == "product" && !( $tag in (defined(filters) ? filters : []) ) ${term ? ' && (title match $m || sku match $m)' : ''}][0...200]{ _id, title, sku }`
-      const params: Record<string, unknown> = { tag: normTag }
-      if (term) params.m = `${term}*`
-      const result: any[] = await client.fetch(query, params)
-      setItems(Array.isArray(result) ? result : [])
-    } catch (e: any) {
-      setMsg(String(e?.message || e))
-      setItems([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const performLoad = useCallback(
+    async (term: string) => {
+      setLoading(true)
+      setMsg('')
+      try {
+        const trimmed = term.trim()
+        const query = `*[_type == "product" && !( $tag in (defined(filters) ? filters : []) ) ${trimmed ? ' && (title match $m || sku match $m)' : ''}][0...200]{ _id, title, sku }`
+        const params: Record<string, unknown> = { tag: normTag }
+        if (trimmed) params.m = `${trimmed}*`
+        const result: any[] = await client.fetch(query, params)
+        setItems(Array.isArray(result) ? result : [])
+      } catch (e: any) {
+        setMsg(String(e?.message || e))
+        setItems([])
+      } finally {
+        setLoading(false)
+      }
+    },
+    [client, normTag],
+  )
 
-  useEffect(() => { load() }, [])
+  const load = useCallback(() => performLoad(q), [performLoad, q])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   async function apply() {
     const ids = Object.entries(checked).filter(([, v]) => v).map(([id]) => id)

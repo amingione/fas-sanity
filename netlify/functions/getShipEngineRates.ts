@@ -31,34 +31,6 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 }
 
-async function getActiveCarrierIds(apiKey: string): Promise<string[]> {
-  const resp = await fetch('https://api.shipengine.com/v1/carriers', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'API-Key': apiKey,
-    },
-  })
-
-  let data: any = null
-  try {
-    data = await resp.json()
-  } catch (_) {
-    data = null
-  }
-
-  if (!resp.ok) {
-    const snippet = typeof data === 'string' ? data : JSON.stringify(data)
-    throw new Error(`ShipEngine /carriers ${resp.status}: ${String(snippet).slice(0, 200)}`)
-  }
-
-  // Accept either an array or an object with a `carriers` array
-  const carriersArr = Array.isArray(data) ? data : (Array.isArray(data?.carriers) ? data.carriers : [])
-  if (!Array.isArray(carriersArr)) return []
-
-  return carriersArr.map((c: any) => c?.carrier_id).filter(Boolean)
-}
-
 const DEFAULT_CARRIER_IDS = ['se-2300833', 'se-2945844', 'se-2300834'] // UPS, FedEx, GlobalPost
 
 export const handler: Handler = async (event) => {

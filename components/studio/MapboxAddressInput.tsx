@@ -77,9 +77,15 @@ export default function MapboxAddressInput(props: any) {
       if (postal) patch[`${root}.postal_code`] = postal
       if (countryCode) patch[`${root}.country_code`] = String(countryCode).toUpperCase()
 
-      if (_id) {
-        client.patch(_id).set(patch).commit({ autoGenerateArrayKeys: true }).catch(() => { })
-      }
+        if (_id) {
+          client
+            .patch(_id)
+            .set(patch)
+            .commit({ autoGenerateArrayKeys: true })
+            .catch((err) => {
+              console.error('MapboxAddressInput: failed to patch address fields', err)
+            })
+        }
 
       setOpen(false)
     } catch {

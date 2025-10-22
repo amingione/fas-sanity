@@ -397,26 +397,7 @@ type ParsedRow = {
   values: Record<string, string>
 }
 
-function escapeCsvValue(value: string): string {
-  if (!value) return ''
-  if (value.includes('"')) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-  if (value.includes(',') || value.includes('\n')) {
-    return `"${value}"`
-  }
-  return value
-}
-
-function buildSpreadsheetCsv(products: EditableProduct[]): string {
-  const headerLine = SPREADSHEET_COLUMNS.map((column) => escapeCsvValue(column.header)).join(',')
-  const rows = products.map((product) =>
-    SPREADSHEET_COLUMNS.map((column) => escapeCsvValue(column.getValue(product))).join(',')
-  )
-  return [headerLine, ...rows].join('\n')
-}
-
-function filterProductsByTerm(products: EditableProduct[], term: string): EditableProduct[] {
+  function filterProductsByTerm(products: EditableProduct[], term: string): EditableProduct[] {
   if (!term) return products
   const lower = term.toLowerCase()
   return products.filter((product) =>
@@ -915,10 +896,9 @@ export default function ProductBulkEditor() {
       return
     }
     setSavingAll(true)
-    for (const product of dirtyProducts) {
-      // eslint-disable-next-line no-await-in-loop
-      await handleSave(product)
-    }
+      for (const product of dirtyProducts) {
+        await handleSave(product)
+      }
     setSavingAll(false)
   }
 

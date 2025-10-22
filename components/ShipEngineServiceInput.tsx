@@ -42,13 +42,19 @@ export default function ShipEngineServiceInput({ value, onChange, fetchRates }: 
   const [error, setError] = useState<string | null>(null)
 
   // Pull contextual values from the current document
-  const docId = useFormValue(['_id']) as string | undefined
   const weight = useFormValue(['weight']) as number | string | undefined
   const dimensions = useFormValue(['dimensions']) as
     | { length?: number | string; width?: number | string; height?: number | string }
     | undefined
-  const shipToVal = (useFormValue(['shipTo']) || useFormValue(['shippingAddress']) || useFormValue(['invoice', 'shippingAddress'])) as any
-  const shipFromVal = (useFormValue(['shipFrom']) || useFormValue(['warehouseAddress']) || useFormValue(['originAddress'])) as any
+  const primaryShipTo = useFormValue(['shipTo'])
+  const fallbackShipTo = useFormValue(['shippingAddress'])
+  const invoiceShipTo = useFormValue(['invoice', 'shippingAddress'])
+  const primaryShipFrom = useFormValue(['shipFrom'])
+  const warehouseShipFrom = useFormValue(['warehouseAddress'])
+  const originShipFrom = useFormValue(['originAddress'])
+
+  const shipToVal = (primaryShipTo || fallbackShipTo || invoiceShipTo) as any
+  const shipFromVal = (primaryShipFrom || warehouseShipFrom || originShipFrom) as any
 
   const ship_to = useMemo(() => asShipEngineAddress(shipToVal), [shipToVal])
   const ship_from = useMemo(() => asShipEngineAddress(shipFromVal), [shipFromVal])

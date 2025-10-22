@@ -331,9 +331,9 @@ export const handler: Handler = async (event) => {
           } as CartItem
         })
         cart = await enrichCartItemsFromSanity(cart, sanity)
-      } catch (e) {
-        // continue without cart
-      }
+        } catch (err) {
+          console.warn('reprocessStripeSession: unable to load line items', err)
+          }
     }
 
     // Build shipping address

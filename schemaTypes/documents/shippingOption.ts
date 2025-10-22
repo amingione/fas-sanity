@@ -28,7 +28,7 @@ function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
     packageDetails?.weight?.value &&
     packageDetails?.dimensions?.length
 
-  const fetchAllRates = async () => {
+  const fetchAllRates = React.useCallback(async () => {
     if (!isComplete) return
 
     const ship_from = {
@@ -60,11 +60,11 @@ function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
       console.error('Error fetching rates:', err)
       setRates([])
     }
-  }
+  }, [customerAddress, isComplete, packageDetails])
 
   React.useEffect(() => {
     if (showOptions) fetchAllRates()
-  }, [showOptions])
+  }, [fetchAllRates, showOptions])
 
   return React.createElement(
     'div',

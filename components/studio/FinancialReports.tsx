@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useClient } from 'sanity'
-import { Button, Card, Heading, Stack, Text, Select, Flex, Box } from '@sanity/ui'
+import { Button, Heading, Text, Select, Flex, Box } from '@sanity/ui'
 import jsPDF from 'jspdf'
 
 export default function FinancialReports() {

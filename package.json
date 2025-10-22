@@ -10,6 +10,7 @@
     "build": "sanity build",
     "deploy": "sanity deploy",
     "deploy-graphql": "sanity graphql deploy",
+    "lint": "eslint --max-warnings=0 .",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
     "backfill:shipping": "tsx scripts/backfill-order-shipping.ts",
     "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
@@ -60,6 +61,8 @@
   "devDependencies": {
     "@portabletext/types": "^2.0.2",
     "@sanity/eslint-config-studio": "^5.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.10.0",
     "@types/get-stream": "^3.0.1",
     "@types/jspdf": "^1.3.3",
     "@types/lodash.get": "^4.4.7",

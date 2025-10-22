@@ -82,13 +82,8 @@ function cleanIdentifier(value?: string | null): string {
 
 function normalizeAddress(raw: any | null | undefined): NormalizedAddress | null {
   if (!raw || typeof raw !== 'object') return null
-  const lower = Object.keys(raw).reduce<Record<string, any>>((acc, key) => {
-    acc[key.toLowerCase()] = (raw as any)[key]
-    return acc
-  }, {})
-
-  return {
-    name: raw.name || raw.fullName || raw.firstName || undefined,
+    return {
+      name: raw.name || raw.fullName || raw.firstName || undefined,
     company: raw.company || undefined,
     line1: raw.addressLine1 || raw.address_line1 || undefined,
     line2: raw.addressLine2 || raw.address_line2 || undefined,

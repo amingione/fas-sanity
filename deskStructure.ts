@@ -1,7 +1,6 @@
 // deskStructure.ts
 import type {StructureResolver} from 'sanity/structure'
 import { MdCategory, MdViewList, MdFilterList } from 'react-icons/md'
-import DocumentIframePreview from './components/studio/DocumentIframePreview'
 import CustomerDashboard from './components/studio/CustomerDashboard'
 import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerator'
@@ -10,27 +9,7 @@ import FinancialReports from './components/studio/FinancialReports'
 import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
 import OrdersDashboard from './components/studio/OrdersDashboard'
 import ProductListDashboard from './components/studio/ProductListDashboard'
-import OrderStatusPreview from './components/inputs/FulfillmentBadge'
 import VendorStatusBadge from './components/inputs/VendorStatusBadge'
-
-const previewPaths: Record<string, string> = {
-  product: '/product',
-  customer: '/customer',
-  invoice: '/invoice',
-  shippingLabel: '/label',
-  quote: '/quote',
-  order: '/order',
-}
-
-const getPreviewViews = (S: any, schema: string) => [
-  S.view.form().id('form'),
-  S.view
-    .component((props: any) => DocumentIframePreview({ ...props, basePath: previewPaths[schema] || '' }))
-    .title('Preview')
-    .id('preview'),
-  schema === 'order' &&
-    S.view.component(OrderStatusPreview as any).title('Fulfillment Status').id('fulfillment-status'),
-].filter(Boolean)
 
 export const deskStructure: StructureResolver = (S, context) => {
   const safeListItem = (typeName: string, title: string, icon: any) => {

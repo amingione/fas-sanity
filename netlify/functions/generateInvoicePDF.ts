@@ -185,7 +185,7 @@ export const handler: Handler = async (event) => {
     })
 
     const identifier = String(invoiceNumber || invoiceId || invoiceData?._id || billTo?.name || shipTo?.name || 'invoice')
-    const fileId = identifier.replace(/[^\w\-]+/g, '-')
+      const fileId = identifier.replace(/[^\w-]+/g, '-')
     const filename = fileId ? `invoice-${fileId}.pdf` : 'invoice.pdf'
 
     return {

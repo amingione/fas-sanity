@@ -64,13 +64,14 @@ export default defineType({
       options: {
         list: [
           { title: 'Customer', value: 'customer' },
+          { title: 'Guest (no account)', value: 'guest' },
           { title: 'Vendor', value: 'vendor' },
           { title: 'Admin', value: 'admin' },
         ],
       },
       validation: (Rule) => Rule.required().min(1).warning('Users should have at least one role'),
       description:
-        'Used by FAS Auth to gate access to portals. Most users should stay as Customer unless granted vendor/admin access.',
+        'Used by FAS Auth to gate access to portals. Guests are imported from Stripe and do not have login access.',
     }),
     defineField({
       name: 'passwordHash',
@@ -106,6 +107,13 @@ export default defineType({
       title: 'Wishlist Items',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'product' }] }]
+    }),
+    defineField({
+      name: 'stripeMetadata',
+      title: 'Latest Stripe Metadata',
+      type: 'array',
+      of: [{ type: 'stripeMetadataEntry' }],
+      readOnly: true,
     }),
     // Marketing preferences
     defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false }),
