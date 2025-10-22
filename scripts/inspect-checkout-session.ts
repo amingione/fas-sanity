@@ -18,7 +18,7 @@ if (!secret) {
 async function main() {
   const stripe = new Stripe(secret, { apiVersion: '2024-06-20' })
   const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ['shipping_details', 'customer', 'total_details.breakdown'],
+    expand: ['customer', 'total_details.breakdown'],
   })
 
   console.log('metadata:', session.metadata)
