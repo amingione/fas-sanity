@@ -293,6 +293,9 @@ export const handler: Handler = async (event) => {
     const invoiceId = (meta['sanity_invoice_id'] || '').toString().trim()
     const metadataOrderNumberRaw = (meta['order_number'] || meta['orderNo'] || meta['website_order_number'] || '').toString().trim()
     const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '').toString().trim()
+    // Always funnel metadata + Stripe rate lookups through the shared helper so
+    // we keep the order/invoice shipping amounts, carrier details, and
+    // delivery estimates consistent with checkout.session handling.
     const shippingDetails = await resolveStripeShippingDetails({
       metadata: meta,
       session,

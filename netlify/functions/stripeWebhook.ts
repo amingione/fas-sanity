@@ -1559,6 +1559,8 @@ export const handler: Handler = async (event) => {
         const metadataInvoiceNumber = (metadata['sanity_invoice_number'] || metadata['invoice_number'] || '')
           .toString()
           .trim()
+        // Use the shared helper so metadata fallbacks and live Stripe rate
+        // lookups stay in sync across reprocessing + webhook flows.
         const shippingDetails = await resolveStripeShippingDetails({
           metadata,
           session,
