@@ -38,7 +38,7 @@ function getFnBase(): string {
 
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
 function InvoiceNumberInput(props: any) {
-  const {value, onChange, readOnly: readOnlyProp} = props
+  const { value, onChange, readOnly: readOnlyProp, elementProps = {} } = props
   const client = useClient({apiVersion: '2024-10-01'})
   const documentId = (useFormValue(['_id']) as string) || ''
   const orderNumber = (useFormValue(['orderNumber']) as string) || ''
@@ -73,6 +73,9 @@ function InvoiceNumberInput(props: any) {
 
   return (
     <TextInput
+      {...elementProps}
+      id={elementProps?.id}
+      ref={elementProps?.ref}
       readOnly={locked}
       value={value || ''}
       onChange={(event) => {
