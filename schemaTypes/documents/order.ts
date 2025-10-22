@@ -74,7 +74,7 @@ export default defineType({
       title: 'Order Status',
       type: 'string',
       options: {
-        list: ['pending', 'paid', 'fulfilled', 'cancelled'],
+        list: ['pending', 'paid', 'fulfilled', 'cancelled', 'expired'],
         layout: 'dropdown',
       },
       initialValue: 'pending',

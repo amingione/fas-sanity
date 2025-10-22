@@ -876,10 +876,13 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
   )
 
   const { code: failureCode, message: failureMessage } = await resolvePaymentFailureDiagnostics(pi)
-  const paymentStatus = (pi.status || '').trim() || 'requires_payment_method'
-  const normalizedStatus = paymentStatus.toLowerCase()
+  const rawPaymentStatus = (pi.status || '').trim().toLowerCase()
+  const paymentStatus =
+    rawPaymentStatus && !['succeeded', 'processing', 'requires_capture'].includes(rawPaymentStatus)
+      ? 'failed'
+      : rawPaymentStatus || 'failed'
   const derivedOrderStatus: 'pending' | 'cancelled' =
-    normalizedStatus === 'canceled' ? 'cancelled' : 'pending'
+    rawPaymentStatus === 'succeeded' ? 'pending' : 'cancelled'
   const timestamp = new Date().toISOString()
   const summary = buildStripeSummary({
     paymentIntent: pi,
@@ -935,7 +938,7 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
   if (invoiceId) {
     try {
       await sanity.patch(invoiceId).set({
-        status: derivedOrderStatus,
+        status: 'cancelled',
         stripeInvoiceStatus: 'payment_intent.payment_failed',
         stripeLastSyncedAt: timestamp,
         paymentFailureCode: failureCode,
@@ -1122,8 +1125,8 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
   if (orderId) {
     try {
       await sanity.patch(orderId).set({
-        status: 'cancelled',
-        paymentStatus: session.payment_status || 'expired',
+        status: 'expired',
+        paymentStatus: 'expired',
         stripeLastSyncedAt: timestamp,
         paymentFailureCode: failureCode,
         paymentFailureMessage: failureMessage,
@@ -1141,7 +1144,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
     if (invoiceId) {
       try {
         await sanity.patch(invoiceId).set({
-          status: 'cancelled',
+          status: 'expired',
           stripeInvoiceStatus: 'checkout.session.expired',
           stripeLastSyncedAt: timestamp,
           paymentFailureCode: failureCode,

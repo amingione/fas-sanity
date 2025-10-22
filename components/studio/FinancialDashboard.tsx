@@ -1598,11 +1598,13 @@ function summarizePayout(raw: PayoutResponse): PayoutSummary {
 }
 
 function isCancelled(status: string): boolean {
-  return status === 'cancelled' || status === 'canceled'
+  const normalized = status.toLowerCase()
+  return normalized === 'cancelled' || normalized === 'canceled' || normalized === 'expired'
 }
 
 function isClosedInvoice(status: string): boolean {
-  return ['paid', 'refunded', 'cancelled', 'canceled'].includes(status)
+  const normalized = status.toLowerCase()
+  return ['paid', 'refunded', 'cancelled', 'canceled', 'expired'].includes(normalized)
 }
 
 function isPaidInvoice(status: string): boolean {
