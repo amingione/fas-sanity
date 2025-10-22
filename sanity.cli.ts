@@ -20,5 +20,6 @@ export default defineCliConfig({
      * the package manager.
      */
     autoUpdates: false,
+    appId: 'drquzbmyskyqp32jncsii7os',
   },
 })
