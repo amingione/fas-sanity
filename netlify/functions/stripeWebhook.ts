@@ -1354,7 +1354,7 @@ export const handler: Handler = async (event) => {
                 invoiceStripeStatus: webhookEvent.type,
                 invoiceStatus:
                   webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible'
-                    ? 'pending'
+                    ? 'cancelled'
                     : undefined,
               })
             }
