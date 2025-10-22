@@ -866,51 +866,74 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
 }
 
 async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void> {
-  const orderId = await sanity.fetch<string | null>(
-    `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]._id`,
+  const order = await sanity.fetch<{
+    _id: string
+    invoiceRef?: { _ref?: string }
+  } | null>(
+    `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]{ _id, invoiceRef }`,
     { pid: pi.id }
   )
 
   const { code: failureCode, message: failureMessage } = await resolvePaymentFailureDiagnostics(pi)
+  const paymentStatus = (pi.status || '').trim() || 'requires_payment_method'
+  const normalizedStatus = paymentStatus.toLowerCase()
+  const derivedOrderStatus: 'pending' | 'cancelled' =
+    normalizedStatus === 'canceled' ? 'cancelled' : 'pending'
+  const timestamp = new Date().toISOString()
 
-  if (orderId) {
+  if (order?._id) {
     const setOps: Record<string, any> = {
       paymentStatus,
       status: derivedOrderStatus,
-      stripeLastSyncedAt: new Date().toISOString(),
+      stripeLastSyncedAt: timestamp,
       paymentFailureCode: failureCode,
       paymentFailureMessage: failureMessage,
     }
     try {
-      await sanity.patch(orderId).set(setOps).commit({ autoGenerateArrayKeys: true })
+      await sanity.patch(order._id).set(setOps).commit({ autoGenerateArrayKeys: true })
     } catch (err) {
       console.warn('stripeWebhook: failed to mark payment failure on order', err)
     }
   }
 
+  const invoiceCandidateIds = new Set<string>()
   const meta = (pi.metadata || {}) as Record<string, string>
+
   const invoiceMetaId = normalizeSanityId(meta['sanity_invoice_id'] || meta['invoice_id'])
   if (invoiceMetaId) {
-    const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
-    if (invoiceId) {
-      try {
-        const derivedInvoiceStatus =
-          opts.invoiceStatus !== undefined
-            ? opts.invoiceStatus
-            : normalizedStatus === 'canceled'
-              ? 'cancelled'
-              : 'pending'
+    idVariants(invoiceMetaId).forEach((id) => invoiceCandidateIds.add(id))
+  }
 
-        await sanity.patch(invoiceId).set({
-          status: derivedInvoiceStatus,
-          stripeInvoiceStatus: opts.invoiceStripeStatus || 'payment_intent.payment_failed',
-          stripeLastSyncedAt: new Date().toISOString(),
-          paymentFailureCode: failureCode,
-          paymentFailureMessage: failureMessage,
-        }).commit({ autoGenerateArrayKeys: true })
-      } catch (err) {
-        console.warn('stripeWebhook: failed to update invoice after payment failure', err)
-      }
+  if (order?.invoiceRef?._ref) {
+    idVariants(order.invoiceRef._ref).forEach((id) => invoiceCandidateIds.add(id))
+  }
+
+  let invoiceId: string | null = null
+  if (invoiceCandidateIds.size > 0) {
+    invoiceId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && _id in $ids][0]._id`,
+      { ids: Array.from(invoiceCandidateIds) }
+    )
+  }
+
+  if (!invoiceId) {
+    invoiceId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && paymentIntentId == $pid][0]._id`,
+      { pid: pi.id }
+    )
+  }
+
+  if (invoiceId) {
+    try {
+      await sanity.patch(invoiceId).set({
+        status: derivedOrderStatus,
+        stripeInvoiceStatus: 'payment_intent.payment_failed',
+        stripeLastSyncedAt: timestamp,
+        paymentFailureCode: failureCode,
+        paymentFailureMessage: failureMessage,
+      }).commit({ autoGenerateArrayKeys: true })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update invoice after payment failure', err)
     }
   }
 }
