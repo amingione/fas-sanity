@@ -141,14 +141,25 @@ export const handler: Handler = async (event) => {
 
   try {
     const targetUrl = buildBackgroundTargetUrl(event, token)
+    console.log('arenaSync-trigger: forwarding request', {
+      targetUrl,
+      hasBody: Boolean(body && Object.keys(body).length),
+      origin: requestOrigin,
+    })
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body || {}),
     })
 
+    console.log('arenaSync-trigger: background response', {
+      status: response.status,
+      statusText: response.statusText,
+    })
+
     if (!response.ok && response.status !== 202) {
       const message = await response.text().catch(() => response.statusText || 'Unknown error')
+      console.warn('arenaSync-trigger: background rejected', { status: response.status, message })
       return buildResponse(
         response.status,
         { error: `Background sync rejected: ${message}` },
@@ -156,16 +167,21 @@ export const handler: Handler = async (event) => {
       )
     }
 
+    const responseBody = {
+      ok: true,
+      message: 'Sync queued',
+      status: response.status,
+    }
+
+    console.log('arenaSync-trigger: returning to caller', responseBody)
+
     return buildResponse(
       200,
-      {
-        ok: true,
-        message: 'Sync queued',
-        status: response.status,
-      },
+      responseBody,
       corsOrigin
     )
   } catch (err: any) {
+    console.error('arenaSync-trigger: failed to call background function', err)
     return buildResponse(
       500,
       {
