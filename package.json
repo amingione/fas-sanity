@@ -8,6 +8,8 @@
     "dev": "tsx scripts/ensure-sanity-cors.ts && sanity dev",
     "start": "sanity start",
     "build": "sanity build",
+    "build:ci": "sanity build && sanity schema deploy --non-interactive --manifest-dir ./dist/static",
+    "deploy:schema": "sanity schema deploy --non-interactive --manifest-dir ./dist/static",
     "deploy": "sanity deploy",
     "deploy-graphql": "sanity graphql deploy",
     "lint": "eslint --max-warnings=0 .",
