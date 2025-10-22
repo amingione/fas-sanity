@@ -35,12 +35,10 @@ Thumbs.db
 # Dotenv and similar local-only files
 .env
 .env.*
+!.env.example
 .env.*.local
 *.local
-!.env.example
-.env.development
-
-
+.env.development.local
 # Vite/Next.js cache (if using)
 .vite/
 .next/
