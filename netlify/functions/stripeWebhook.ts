@@ -770,7 +770,7 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   const docUrl = (failure?.doc_url || '').trim() || undefined
 
   let failureCode = (failure?.code || '').trim() || undefined
-  let failureMessage = (failure?.message || pi.cancellation_reason || '').toString().trim() || undefined
+  let failureMessage = (failure?.message || pi.cancellation_reason)?.trim() || undefined
 
   if (declineCode) {
     if (!failureCode) failureCode = declineCode
@@ -834,7 +834,11 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   }
 
   const codes = Array.from(
-    new Set([failureCode, ...Array.from(additionalCodes)].filter((code) => Boolean(code?.trim())) as string[])
+    new Set(
+      [failureCode, ...additionalCodes].filter(
+        (code): code is string => typeof code === 'string' && Boolean(code.trim())
+      )
+    )
   )
 
   if (codes.length === 0) {
@@ -861,31 +865,13 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   return { code: failureCode, message: failureMessage }
 }
 
-async function markPaymentIntentFailure(
-  pi: Stripe.PaymentIntent,
-  opts: {
-    invoiceStripeStatus?: string
-    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
-    orderStatus?: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
-    paymentStatusOverride?: string
-  } = {}
-): Promise<void> {
+async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void> {
   const orderId = await sanity.fetch<string | null>(
     `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]._id`,
     { pid: pi.id }
   )
 
   const { code: failureCode, message: failureMessage } = await resolvePaymentFailureDiagnostics(pi)
-
-  const rawStatus = pi.status || 'failed'
-  const normalizedStatus = rawStatus === 'requires_payment_method' ? 'failed' : rawStatus
-  const paymentStatus = opts.paymentStatusOverride || normalizedStatus
-  const derivedOrderStatus =
-    opts.orderStatus !== undefined
-      ? opts.orderStatus
-      : normalizedStatus === 'canceled'
-        ? 'cancelled'
-        : 'pending'
 
   if (orderId) {
     const setOps: Record<string, any> = {
@@ -1350,13 +1336,7 @@ export const handler: Handler = async (event) => {
           if (shouldRecordFailure) {
             const paymentIntent = await fetchPaymentIntentResource(invoice.payment_intent)
             if (paymentIntent) {
-              await markPaymentIntentFailure(paymentIntent, {
-                invoiceStripeStatus: webhookEvent.type,
-                invoiceStatus:
-                  webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible'
-                    ? 'pending'
-                    : undefined,
-              })
+              await markPaymentIntentFailure(paymentIntent)
             }
           }
         } catch (err) {
