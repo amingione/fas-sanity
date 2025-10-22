@@ -1756,7 +1756,7 @@ export const handler: Handler = async (event) => {
             eventCreated: webhookEvent.created,
           })
 
-          const shippingAmountForDoc = shippingDetails.amount
+          const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
           if (shippingDetails.carrier) {
             baseDoc.shippingCarrier = shippingDetails.carrier
           }
@@ -1838,7 +1838,7 @@ export const handler: Handler = async (event) => {
                   patchData.invoiceDate = invoiceDateValue
                   patchData.dueDate = invoiceDateValue
                 }
-                const shippingAmountForInvoice = shippingDetails.amount
+                const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
                 if (shippingAmountForInvoice !== undefined) {
                   patchData.amountShipping = shippingAmountForInvoice
                 }
