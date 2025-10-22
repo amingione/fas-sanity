@@ -1574,7 +1574,7 @@ export const handler: Handler = async (event) => {
           const fallback = Number(cleaned)
           return Number.isFinite(fallback) ? fallback : undefined
         })()
-        if (amountShipping === undefined && shippingAmountFromMetadata !== undefined) {
+        if (shippingAmountFromMetadata !== undefined) {
           amountShipping = shippingAmountFromMetadata
         }
         const orderNumber = await resolveOrderNumber({
@@ -1776,6 +1776,10 @@ export const handler: Handler = async (event) => {
               amount: shippingAmountFromMetadata !== undefined ? shippingAmountFromMetadata : amountShipping,
               currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
             }
+          }
+
+          if (shippingAmountFromMetadata !== undefined) {
+            baseDoc.amountShipping = shippingAmountFromMetadata
           }
 
           const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
