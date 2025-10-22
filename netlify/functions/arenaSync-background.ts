@@ -8,12 +8,6 @@ type SyncBody = {
   test?: boolean
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS',
-}
-
 function parseAuthToken(headerValue?: string | string[] | undefined): string | null {
   const raw = Array.isArray(headerValue) ? headerValue[0] : headerValue
   if (!raw) return null
@@ -137,11 +131,44 @@ const updateConfigAfterSync = async ({
   }
 }
 
-function buildResponse(statusCode: number, body: Record<string, unknown>) {
+const parseAllowedOrigins = (): string[] =>
+  (process.env.CORS_ALLOW || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+function resolveCorsOrigin(requestOrigin?: string | null): string | null {
+  if (!requestOrigin) return '*'
+  const allowed = parseAllowedOrigins()
+  if (allowed.length === 0) return '*'
+  if (allowed.includes('*')) return '*'
+  return allowed.includes(requestOrigin) ? requestOrigin : null
+}
+
+function buildResponse(
+  statusCode: number,
+  body: Record<string, unknown>,
+  corsOrigin: string | null
+) {
+  if (corsOrigin === null) {
+    return {
+      statusCode: 403,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ error: 'CORS origin not allowed' }, null, 2),
+    }
+  }
+
   return {
     statusCode,
     headers: {
-      ...corsHeaders,
+      'Access-Control-Allow-Origin': corsOrigin,
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Methods': 'POST,OPTIONS',
+      ...(corsOrigin !== '*'
+        ? { 'Access-Control-Allow-Credentials': 'true' }
+        : {}),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body, null, 2),
@@ -149,16 +176,29 @@ function buildResponse(statusCode: number, body: Record<string, unknown>) {
 }
 
 export const handler: Handler = async (event) => {
+  const requestOrigin =
+    (event.headers?.origin as string) ||
+    (event.headers?.Origin as string) ||
+    null
+  const corsOrigin = resolveCorsOrigin(requestOrigin)
+
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
-      headers: corsHeaders,
+      headers: {
+        'Access-Control-Allow-Origin': corsOrigin ?? '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'POST,OPTIONS',
+        ...(corsOrigin && corsOrigin !== '*'
+          ? { 'Access-Control-Allow-Credentials': 'true' }
+          : {}),
+      },
       body: '',
     }
   }
 
   if (event.httpMethod !== 'POST') {
-    return buildResponse(405, { error: 'Method Not Allowed' })
+    return buildResponse(405, { error: 'Method Not Allowed' }, corsOrigin)
   }
 
   const requiredSecret = process.env.ARENA_SYNC_SECRET
@@ -178,17 +218,17 @@ export const handler: Handler = async (event) => {
 
   if (requiredSecret) {
     if (!providedSecret || providedSecret !== requiredSecret) {
-      return buildResponse(401, { error: 'Unauthorized' })
+      return buildResponse(401, { error: 'Unauthorized' }, corsOrigin)
     }
   }
 
   const arenaToken = process.env.ARENA_ACCESS_TOKEN
   if (!arenaToken) {
-    return buildResponse(500, { error: 'Missing ARENA_ACCESS_TOKEN environment variable' })
+    return buildResponse(500, { error: 'Missing ARENA_ACCESS_TOKEN environment variable' }, corsOrigin)
   }
 
   if (!process.env.SANITY_API_TOKEN) {
-    return buildResponse(500, { error: 'Missing SANITY_API_TOKEN environment variable' })
+    return buildResponse(500, { error: 'Missing SANITY_API_TOKEN environment variable' }, corsOrigin)
   }
 
   let body: SyncBody = {}
@@ -197,16 +237,20 @@ export const handler: Handler = async (event) => {
       body = JSON.parse(event.body)
     }
   } catch (err) {
-    return buildResponse(400, { error: 'Invalid JSON body', details: String(err) })
+    return buildResponse(400, { error: 'Invalid JSON body', details: String(err) }, corsOrigin)
   }
 
   if (body?.test) {
-    return buildResponse(200, { ok: true, message: 'Test ping acknowledged' })
+    return buildResponse(200, { ok: true, message: 'Test ping acknowledged' }, corsOrigin)
   }
 
   const channelSlugs = (await resolveChannelSlugs(body)).filter(Boolean)
   if (!channelSlugs.length) {
-    return buildResponse(400, { error: 'No channel slugs provided (body.channelSlugs, arenaSyncConfig, or ARENA_CHANNEL_SLUGS)' })
+    return buildResponse(
+      400,
+      { error: 'No channel slugs provided (body.channelSlugs, arenaSyncConfig, or ARENA_CHANNEL_SLUGS)' },
+      corsOrigin
+    )
   }
 
   const arenaClient = buildArenaClient(arenaToken)
@@ -232,14 +276,18 @@ export const handler: Handler = async (event) => {
       syncRunId: result.syncRunId,
     })
 
-    return buildResponse(200, {
-      ok: true,
-      success: result.success,
-      message: result.message,
-      updatedOrCreated: result.updatedOrCreated,
-      channels: result.channels,
-      syncRunId: result.syncRunId,
-    })
+    return buildResponse(
+      200,
+      {
+        ok: true,
+        success: result.success,
+        message: result.message,
+        updatedOrCreated: result.updatedOrCreated,
+        channels: result.channels,
+        syncRunId: result.syncRunId,
+      },
+      corsOrigin
+    )
   } catch (err: any) {
     const message = err?.message || 'Sync failed'
     await updateConfigAfterSync({
@@ -249,6 +297,6 @@ export const handler: Handler = async (event) => {
       syncRunId: `error-${Date.now()}`,
     })
     console.error('arenaSync: sync failed', err)
-    return buildResponse(500, { ok: false, error: message })
+    return buildResponse(500, { ok: false, error: message }, corsOrigin)
   }
 }
