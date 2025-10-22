@@ -162,9 +162,19 @@ export const handler: Handler = async (event) => {
   }
 
   const requiredSecret = process.env.ARENA_SYNC_SECRET
+  let tokenFromQuery: string | null = null
+  if (typeof event.rawUrl === 'string') {
+    try {
+      const url = new URL(event.rawUrl)
+      tokenFromQuery = url.searchParams.get('token')
+    } catch {
+      tokenFromQuery = null
+    }
+  }
+
   const providedSecret = parseAuthToken(
     event.headers.authorization || event.headers.Authorization || event.headers['x-authorization']
-  )
+  ) || tokenFromQuery
 
   if (requiredSecret) {
     if (!providedSecret || providedSecret !== requiredSecret) {
