@@ -1,7 +1,7 @@
-diff --git a/src/core/components/toast/toast.tsx b/src/core/components/toast/toast.tsx
-index 950956261d24138b7de7a143e38b6bd7557bb951..b7983524219b447d270ec5917734e42398393b69 100644
---- a/src/core/components/toast/toast.tsx
-+++ b/src/core/components/toast/toast.tsx
+diff --git a/node_modules/@sanity/ui/src/core/components/toast/toast.tsx b/node_modules/@sanity/ui/src/core/components/toast/toast.tsx
+index 9509562..b798352 100644
+--- a/node_modules/@sanity/ui/src/core/components/toast/toast.tsx
++++ b/node_modules/@sanity/ui/src/core/components/toast/toast.tsx
 @@ -1,5 +1,6 @@
  import {CloseIcon} from '@sanity/icons'
  import {motion, type Variant, type Variants} from 'motion/react'

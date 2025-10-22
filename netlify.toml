@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build:ci"
+  command = "netlify dev"
   publish = "dist"
 
 [build.environment]
@@ -19,9 +19,9 @@
   external_node_modules = ["get-stream"]
 
 [dev]
-  command = "pnpm run dev"
+  command = "npm run dev"
   targetPort = 3333
-  framework = "#custom"
+  port = 8888
 
 # Bypass redirect for known static assets
 [[redirects]]
