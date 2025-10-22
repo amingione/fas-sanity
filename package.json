@@ -50,7 +50,7 @@
     "react-is": "^19.1.0",
     "refractor": "^5.0.0",
     "resend": "^4.2.0",
-    "sanity": "^4.10.3",
+    "sanity": "^4.11.0",
     "sanity-plugin-hotspot-array": "^3.0.1",
     "sanity-plugin-media": "^4.0.0",
     "shipengine": "^1.0.7",
