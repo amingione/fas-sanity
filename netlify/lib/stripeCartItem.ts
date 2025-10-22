@@ -88,17 +88,6 @@ function pickFirst(map: Record<string, string>, keys: string[]): string | undefi
   return undefined
 }
 
-function humanize(text: string): string {
-  if (!text) return ''
-  return text
-    .replace(/[_\-.]+/g, ' ')
-    .replace(/([a-z])([A-Z])/g, (_, a, b) => `${a} ${b}`)
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
 function extractCategories(product: Stripe.Product | null, metadataMap: Record<string, string>): string[] | undefined {
   const categories: string[] = []
   const metaCandidate = metadataMap.categories || metadataMap.category

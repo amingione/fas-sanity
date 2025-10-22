@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react'
+import React, {useCallback, useEffect, useState} from 'react'
 import {Box, Button, Dialog, Flex, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 
@@ -16,7 +16,7 @@ export default function FilterDeleteTag({ tag }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const normTag = normalizeTag(tag)
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setBusy(true)
     setMsg('')
     try {
@@ -31,9 +31,11 @@ export default function FilterDeleteTag({ tag }: Props) {
     } finally {
       setBusy(false)
     }
-  }
+  }, [client, normTag])
 
-  useEffect(() => { refresh() }, [tag])
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
   async function removeEverywhere() {
     setBusy(true)

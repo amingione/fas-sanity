@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useClient } from 'sanity'
-import { Button, Card, Stack, Text, Box, Flex, Grid } from '@sanity/ui'
+import { Button, Card, Stack, Text, Box, Flex } from '@sanity/ui'
 import { EyeOpenIcon, DownloadIcon } from '@sanity/icons'
 import { format } from 'date-fns'
 

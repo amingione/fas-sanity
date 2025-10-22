@@ -7,9 +7,8 @@ import 'dotenv/config'
 const checkToken = (event: Parameters<Handler>[0]) => {
   const expected = process.env.SHIPENGINE_WEBHOOK_TOKEN
   if (!expected) return true // no token configured -> allow (dev convenience). Set it in prod.
-  const hdr = event.headers['x-webhook-token'] || event.headers['X-Webhook-Token']
-  const url = new URL((event.headers['x-forwarded-proto'] || 'http') + '://' + (event.headers.host || 'localhost') + (event.rawUrl?.split('://')[1]?.split('/')?.slice(1).join('/') ? '' : ''))
-  // Safer: also read from query string directly
+    const hdr = event.headers['x-webhook-token'] || event.headers['X-Webhook-Token']
+    // Safer: also read from query string directly
   const qsToken = new URL(event.rawUrl || 'https://fasmotorsports.com').searchParams.get('token')
   return hdr === expected || qsToken === expected
 }
@@ -86,11 +85,11 @@ export const handler: Handler = async (event) => {
 
     const raw = event.body || '{}'
     let payload: ShipEngineEvent
-    try {
-      payload = JSON.parse(raw)
-    } catch (e) {
-      return { statusCode: 400, body: 'Invalid JSON' }
-    }
+      try {
+        payload = JSON.parse(raw)
+      } catch {
+        return { statusCode: 400, body: 'Invalid JSON' }
+      }
 
     const seEvent = (payload.event || '').toLowerCase()
     const client = await getSanity()

@@ -527,7 +527,6 @@ function CashFlowCard({summary}: {summary: Summary}) {
 
 function InvoicesCard({summary, range}: {summary: Summary; range: RangePreset}) {
   const overduePct = summary.outstanding > 0 ? (summary.overdue / summary.outstanding) * 100 : 0
-  const currentPct = summary.outstanding > 0 ? ((summary.notDueTotal - summary.dueSoonTotal) / summary.outstanding) * 100 : 0
   const dueSoonPct = summary.outstanding > 0 ? (summary.dueSoonTotal / summary.outstanding) * 100 : 0
   const paidPct = summary.paidLast30 + summary.unpaidLast30 > 0 ? (summary.paidLast30 / (summary.paidLast30 + summary.unpaidLast30)) * 100 : 0
 
@@ -834,9 +833,9 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
         <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={2}>
             <Text weight="semibold">No payout data available</Text>
-            <Text size={1} muted>
-              We couldn't load payout activity. Confirm your Stripe credentials or try again later.
-            </Text>
+              <Text size={1} muted>
+                We couldn&rsquo;t load payout activity. Confirm your Stripe credentials or try again later.
+              </Text>
           </Stack>
         </Card>
       </IntegrationShell>
@@ -913,9 +912,9 @@ function AnalyticsIntegrationSection({
         <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={2}>
             <Text weight="semibold">No analytics data available</Text>
-            <Text size={1} muted>
-              We couldn't load visitor data. Ensure your analytics integration is configured and try again.
-            </Text>
+              <Text size={1} muted>
+                We couldn&rsquo;t load visitor data. Ensure your analytics integration is configured and try again.
+              </Text>
           </Stack>
         </Card>
       </IntegrationShell>

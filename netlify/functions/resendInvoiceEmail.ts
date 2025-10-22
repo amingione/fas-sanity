@@ -215,7 +215,7 @@ const handler: Handler = async (event) => {
       String(invoice?.paymentLinkUrl || '') ||
       (await ensureCheckoutUrl(invoiceId, invoice, baseUrl))
     if (!payUrl) {
-      const { subtotal, discountAmt, taxAmount, total } = computeInvoiceTotals(invoice)
+        const { total } = computeInvoiceTotals(invoice)
       const unitAmount = Math.round(Number(total || 0) * 100)
       console.error('resendInvoiceEmail: No payment link generated', {
         invoiceId,

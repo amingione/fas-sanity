@@ -98,10 +98,9 @@ async function ensureCors() {
       continue
     }
 
-    try {
-      await addOrigin(origin)
-      // eslint-disable-next-line no-console
-      console.log(`Added missing Sanity CORS origin: ${origin}`)
+      try {
+        await addOrigin(origin)
+        console.log(`Added missing Sanity CORS origin: ${origin}`)
     } catch (error) {
       if (error instanceof SanityCorsPermissionError) {
         console.warn(`${error.message} — unable to add ${origin}.`)

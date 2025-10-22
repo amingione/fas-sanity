@@ -66,21 +66,6 @@ function buildImageUrl(images: any[]): string | undefined {
   return undefined
 }
 
-function parseBoxDimensions(dimensions?: string): {
-  length?: number
-  width?: number
-  height?: number
-} {
-  if (!dimensions) return {}
-  const match = dimensions.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
-  if (!match) return {}
-  return {
-    length: Number(match[1]),
-    width: Number(match[2]),
-    height: Number(match[3]),
-  }
-}
-
 export const handler: Handler = async (event) => {
   try {
     if (SYNC_SECRET) {

@@ -3,7 +3,6 @@ import {existsSync} from 'node:fs'
 import path from 'node:path'
 import {createClient} from '@sanity/client'
 import SftpClient from 'ssh2-sftp-client'
-import {deriveProductFeedFields} from '../utils/productFeed'
 import dotenv from 'dotenv'
 
 const dotenvPaths = ['.env', '.env.local', '.env.development']
@@ -260,8 +259,7 @@ function buildFeedRow(product: SanityProduct): FeedRow | null {
     return null
   }
 
-  const derived = deriveProductFeedFields(product)
-  const description = sanitizeText(selectDescription(product))
+    const description = sanitizeText(selectDescription(product))
   const condition = sanitizeText(product.condition || 'new').toLowerCase() || 'new'
   const brand = sanitizeText(product.brand || '')
   const salePrice = product.onSale ? toPositiveNumber(product.salePrice) : undefined
