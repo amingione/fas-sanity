@@ -17,17 +17,6 @@ type SummaryInput = {
 type CleanValue = string | number | boolean | null | undefined | CleanObject | CleanValue[]
 type CleanObject = { [key: string]: CleanValue }
 
-const isNonEmptyArray = (value: CleanValue): value is CleanValue[] =>
-  Array.isArray(value) && value.length > 0
-
-const isNonEmptyObject = (value: CleanValue): value is CleanObject =>
-  Boolean(
-    value &&
-      typeof value === 'object' &&
-      !Array.isArray(value) &&
-      Object.keys(value as CleanObject).length > 0
-  )
-
 const prune = (input: CleanObject): CleanObject => {
   const output: CleanObject = {}
   for (const [key, value] of Object.entries(input)) {
