@@ -19,7 +19,9 @@
   external_node_modules = ["get-stream"]
 
 [dev]
+  command = "pnpm run dev"
   targetPort = 3333
+  framework = "custom"
 
 # Bypass redirect for known static assets
 [[redirects]]
