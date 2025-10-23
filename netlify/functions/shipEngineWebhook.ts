@@ -21,9 +21,9 @@ type SanityClient = {
 }
 
 const getSanity = async (): Promise<SanityClient | null> => {
-  const pid = process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID
-  const ds = process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET
-  const token = process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN
+  const pid = process.env.SANITY_STUDIO_PROJECT_ID
+  const ds = process.env.SANITY_STUDIO_DATASET
+  const token = process.env.SANITY_API_TOKEN
   if (!pid || !ds || !token) return null
   const { createClient } = await import('@sanity/client')
   return createClient({ projectId: pid, dataset: ds, apiVersion: '2023-06-07', token, useCdn: false }) as unknown as SanityClient
@@ -146,4 +146,3 @@ export const handler: Handler = async (event) => {
     }
   }
 }
-

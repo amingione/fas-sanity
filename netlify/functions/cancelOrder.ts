@@ -29,7 +29,7 @@ const stripe =
     apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
   })
 
-const sanityToken = process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN
+const sanityToken = process.env.SANITY_API_TOKEN
 const sanity = sanityToken
   ? createClient({
       projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
