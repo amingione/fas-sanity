@@ -265,6 +265,14 @@ const product = defineType({
       group: 'pricing',
     }),
     defineField({
+      name: 'stripeMetadata',
+      title: 'Stripe Product Metadata',
+      type: 'array',
+      of: [{ type: 'stripeMetadataEntry' }],
+      readOnly: true,
+      group: 'pricing',
+    }),
+    defineField({
       name: 'availability',
       title: 'Availability',
       type: 'string',

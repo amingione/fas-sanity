@@ -17,6 +17,16 @@ export const stripePriceSnapshotType = defineType({
     defineField({ name: 'active', title: 'Active', type: 'boolean', readOnly: true }),
     defineField({ name: 'livemode', title: 'Live Mode', type: 'boolean', readOnly: true }),
     defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', readOnly: true }),
+    defineField({ name: 'lookupKey', title: 'Lookup Key', type: 'string', readOnly: true }),
+    defineField({ name: 'taxBehavior', title: 'Tax Behavior', type: 'string', readOnly: true }),
+    defineField({
+      name: 'metadata',
+      title: 'Metadata',
+      type: 'array',
+      of: [{ type: 'stripeMetadataEntry' }],
+      readOnly: true,
+      options: { layout: 'grid' },
+    }),
   ],
   preview: {
     select: {

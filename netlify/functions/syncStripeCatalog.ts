@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
 import Stripe from 'stripe'
+import { mapStripeMetadata } from '../lib/stripeMetadata'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
 function makeCORS(origin?: string) {
@@ -189,6 +190,7 @@ function unixToIso(timestamp?: number | null): string | undefined {
 }
 
 function buildPriceSnapshot(price: Stripe.Price) {
+  const metadataEntries = mapStripeMetadata(price.metadata as Record<string, unknown> | null)
   return {
     _type: 'stripePriceSnapshot',
     _key: price.id,
@@ -204,6 +206,9 @@ function buildPriceSnapshot(price: Stripe.Price) {
     active: price.active,
     livemode: price.livemode,
     createdAt: unixToIso(price.created) || new Date().toISOString(),
+    lookupKey: price.lookup_key || undefined,
+    taxBehavior: price.tax_behavior || undefined,
+    metadata: metadataEntries || undefined,
   }
 }
 
@@ -366,6 +371,9 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   }
 
   const priceSnapshot = buildPriceSnapshot(priceResult.price)
+  const productMetadata = stripeProduct
+    ? mapStripeMetadata(stripeProduct.metadata as Record<string, unknown> | null)
+    : undefined
   const existingSnapshots = Array.isArray(product.stripePrices) ? product.stripePrices.filter(Boolean) : []
   const filteredSnapshots = existingSnapshots
     .filter((entry) => entry?.priceId && entry.priceId !== priceSnapshot.priceId)
@@ -384,6 +392,7 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
     stripeUpdatedAt: new Date().toISOString(),
     stripeLastSyncedAt: new Date().toISOString(),
     stripePrices: [priceSnapshot, ...filteredSnapshots],
+    stripeMetadata: productMetadata || [],
   }
 
   await patchSanityProduct(product._id, setOps)
