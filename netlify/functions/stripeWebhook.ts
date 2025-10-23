@@ -10,6 +10,7 @@ import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
+import {shouldAutoCreateInvoice} from '../lib/stripeInvoice'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -1683,6 +1684,7 @@ export const handler: Handler = async (event) => {
         const totalAmount = (Number(session.amount_total || 0) || 0) / 100
         const stripeSessionId = session.id
         const metadata = (session.metadata || {}) as Record<string, string>
+        const autoCreateInvoice = shouldAutoCreateInvoice(metadata)
         const userIdMeta =
           (
             metadata['auth0_user_id'] ||
@@ -1706,6 +1708,30 @@ export const handler: Handler = async (event) => {
           ((session as any)?.currency || (paymentIntent as any)?.currency || '')
             .toString()
             .toLowerCase() || undefined
+        const sessionStatus = (session.status || '').toString().toLowerCase()
+        const rawPaymentStatus = (
+          session.payment_status ||
+          paymentIntent?.status ||
+          ''
+        )
+          .toString()
+          .toLowerCase()
+        let paymentStatus: string = rawPaymentStatus
+        if (['paid', 'succeeded', 'complete'].includes(rawPaymentStatus)) {
+          paymentStatus = 'paid'
+        } else if (
+          ['canceled', 'cancelled', 'failed'].includes(rawPaymentStatus) ||
+          sessionStatus === 'expired'
+        ) {
+          paymentStatus = 'cancelled'
+        } else if (!paymentStatus) {
+          paymentStatus = 'pending'
+        }
+        let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' = 'pending'
+        if (paymentStatus === 'paid') derivedOrderStatus = 'paid'
+        else if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
+        else if (paymentStatus === 'cancelled') derivedOrderStatus = 'cancelled'
+        else derivedOrderStatus = 'pending'
         const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
           ? Number((session as any)?.amount_subtotal) / 100
           : undefined
@@ -1722,6 +1748,7 @@ export const handler: Handler = async (event) => {
         let cardBrand: string | undefined
         let cardLast4: string | undefined
         let receiptUrl: string | undefined
+        let chargeBillingName: string | undefined
         try {
           const ch = (paymentIntent as any)?.charges?.data?.[0]
           if (ch) {
@@ -1730,6 +1757,7 @@ export const handler: Handler = async (event) => {
             const c = ch.payment_method_details?.card
             cardBrand = c?.brand || undefined
             cardLast4 = c?.last4 || undefined
+            chargeBillingName = ch?.billing_details?.name || undefined
           }
         } catch {}
 
@@ -1821,6 +1849,7 @@ export const handler: Handler = async (event) => {
             shippingAddress?.name ||
             metadataCustomerName ||
             session.customer_details?.name ||
+            chargeBillingName ||
             email ||
             ''
           )
@@ -1947,25 +1976,28 @@ export const handler: Handler = async (event) => {
 
           const baseDoc: any = {
             _type: 'order',
+            stripeSource: 'checkout.session',
             stripeSessionId,
             orderNumber,
             customerName,
             customerEmail: email || undefined,
             totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            status: 'paid',
+            status: derivedOrderStatus,
             createdAt: new Date().toISOString(),
-            paymentStatus: (session.payment_status ||
-              (paymentIntent?.status === 'succeeded' ? 'paid' : 'unpaid')) as string,
+            paymentStatus,
+            stripeCheckoutStatus: sessionStatus || undefined,
+            stripeCheckoutMode: session.mode || undefined,
+            stripePaymentIntentStatus: paymentIntent?.status || undefined,
+            stripeLastSyncedAt: new Date().toISOString(),
             currency,
             amountSubtotal,
             amountTax,
-            amountShipping,
             paymentIntentId: paymentIntent?.id || undefined,
             chargeId,
             cardBrand,
             cardLast4,
             receiptUrl,
-            stripeLastSyncedAt: new Date().toISOString(),
+            checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
             ...(shippingAddress ? {shippingAddress} : {}),
             ...(userIdMeta ? {userId: userIdMeta} : {}),
             ...(cart.length ? {cart} : {}),
@@ -2203,7 +2235,7 @@ export const handler: Handler = async (event) => {
 
           // If no invoice was linked, create one from the order so Studio has a full record
           try {
-            if (!invoiceId && orderId) {
+            if (autoCreateInvoice && !invoiceId && orderId) {
               let titleName = defaultInvoiceTitle
               try {
                 const cref = (baseDoc as any)?.customerRef?._ref
@@ -2334,6 +2366,7 @@ export const handler: Handler = async (event) => {
       case 'payment_intent.succeeded': {
         const pi = webhookEvent.data.object as Stripe.PaymentIntent
         const meta = (pi.metadata || {}) as Record<string, string>
+        const autoCreateInvoice = shouldAutoCreateInvoice(meta)
         const userIdMeta =
           (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
             .toString()
@@ -2353,8 +2386,15 @@ export const handler: Handler = async (event) => {
           const receiptUrl = ch?.receipt_url || undefined
           const cardBrand = ch?.payment_method_details?.card?.brand || undefined
           const cardLast4 = ch?.payment_method_details?.card?.last4 || undefined
+          const chargeBillingName = ch?.billing_details?.name || undefined
           const shippingAddr: any = (pi as any)?.shipping?.address || undefined
           let amountShipping: number | undefined = undefined
+          const rawPaymentStatus = (pi.status || '').toLowerCase()
+          let paymentStatus = rawPaymentStatus || 'pending'
+          if (['succeeded', 'paid'].includes(rawPaymentStatus)) paymentStatus = 'paid'
+          else if (['canceled', 'cancelled'].includes(rawPaymentStatus)) paymentStatus = 'cancelled'
+          let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' =
+            paymentStatus === 'paid' ? 'paid' : paymentStatus === 'cancelled' ? 'cancelled' : 'pending'
 
           const metadataOrderNumberRaw = (
             meta['order_number'] ||
@@ -2383,7 +2423,13 @@ export const handler: Handler = async (event) => {
             fallbackId: pi.id,
           })
           const customerName =
-            ((pi as any)?.shipping?.name || meta['bill_to_name'] || email || '')
+            (
+              (pi as any)?.shipping?.name ||
+              meta['bill_to_name'] ||
+              chargeBillingName ||
+              email ||
+              ''
+            )
               .toString()
               .trim() || undefined
 
@@ -2397,26 +2443,29 @@ export const handler: Handler = async (event) => {
             !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
           const baseDoc: any = {
             _type: 'order',
+            stripeSource: 'payment_intent',
             stripeSessionId: pi.id,
             orderNumber,
             customerName,
             customerEmail: email || undefined,
             totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            status: 'paid',
+            status: derivedOrderStatus,
             createdAt: new Date().toISOString(),
-            paymentStatus: (pi.status || 'succeeded') as string,
+            paymentStatus,
+            stripePaymentIntentStatus: pi.status || undefined,
+            stripeLastSyncedAt: new Date().toISOString(),
             currency,
             paymentIntentId: pi.id,
             chargeId,
             cardBrand,
             cardLast4,
             receiptUrl,
-            stripeLastSyncedAt: new Date().toISOString(),
+            checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
             ...(userIdMeta ? {userId: userIdMeta} : {}),
             ...(shippingAddr
               ? {
                   shippingAddress: {
-                    name: (pi as any)?.shipping?.name || undefined,
+                    name: (pi as any)?.shipping?.name || chargeBillingName || undefined,
                     addressLine1: shippingAddr.line1 || undefined,
                     addressLine2: shippingAddr.line2 || undefined,
                     city: shippingAddr.city || undefined,

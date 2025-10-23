@@ -175,11 +175,15 @@ export async function resolveStripeShippingDetails(
   if (shippingRate) {
     carrierId = carrierId || shippingRate.id
     const fixedAmount = shippingRate.fixed_amount?.amount
-    if (typeof fixedAmount === 'number' && Number.isFinite(fixedAmount)) {
+    if (
+      amount === undefined &&
+      typeof fixedAmount === 'number' &&
+      Number.isFinite(fixedAmount)
+    ) {
       amount = fixedAmount / 100
     }
     const fixedCurrency = normalizeCurrency(shippingRate.fixed_amount?.currency)
-    if (fixedCurrency) currency = fixedCurrency
+    if (!currency && fixedCurrency) currency = fixedCurrency
 
     const {carrier: rateCarrier, service} = splitDisplayName(shippingRate.display_name)
     if (!carrier && rateCarrier) carrier = rateCarrier
