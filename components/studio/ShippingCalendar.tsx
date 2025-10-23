@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {Card, Heading, Text, Stack, Box} from '@sanity/ui'
 import {useWorkspaceClient} from '../../utils/useWorkspaceClient'
-import {readStudioEnv} from './studioEnv'
+import {readStudioEnv} from '../../utils/studioEnv'
 
 type RawShippingLabel = {
   _id: string

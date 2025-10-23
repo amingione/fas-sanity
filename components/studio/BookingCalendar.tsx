@@ -25,7 +25,7 @@ import {
   startOfWeek,
   subMonths
 } from 'date-fns'
-import {readStudioEnv} from './studioEnv'
+import {readStudioEnv} from '../../utils/studioEnv'
 
 interface CalComAttendee {
   name?: string
