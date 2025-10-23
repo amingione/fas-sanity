@@ -23,6 +23,7 @@
   "dependencies": {
     "@netlify/functions": "^3.0.4",
     "@sanity/asset-utils": "latest",
+    "@sanity/assist": "^5.0.0",
     "@sanity/cli": "^4.11.0",
     "@sanity/client": "^7.12.0",
     "@sanity/code-input": "latest",

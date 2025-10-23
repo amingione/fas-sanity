@@ -33,6 +33,6 @@ export default defineCliConfig({
      * the package manager.
      */
     autoUpdates: false,
-    appId: 'kms7ld14hoja977u3tt9hc8z',
+    appId: 'j6uutcoww92e1y2vywt5jt74',
   },
 })
