@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { Card, Heading, Text, Stack, Box } from '@sanity/ui'
-import { useWorkspaceClient } from '../../utils/useWorkspaceClient'
+import React, {useEffect, useMemo, useState} from 'react'
+import {Card, Heading, Text, Stack, Box} from '@sanity/ui'
+import {useWorkspaceClient} from '../../utils/useWorkspaceClient'
+import {readStudioEnv} from './studioEnv'
 
 type RawShippingLabel = {
   _id: string
@@ -39,18 +40,15 @@ const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
 };
 
 export default function ShippingCalendar() {
-  const client = useWorkspaceClient({ apiVersion: '2024-04-10' })
+  const client = useWorkspaceClient({apiVersion: '2024-04-10'})
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const calcomEmbedUrl = useMemo(() => {
-    const metaEnv =
-      typeof import.meta !== 'undefined' && (import.meta as any)?.env
-        ? ((import.meta as any).env as Record<string, string | undefined>)
-        : undefined
-    return metaEnv?.SANITY_STUDIO_CALCOM_EMBED_URL ??
-      metaEnv?.VITE_CALCOM_EMBED_URL ??
-      process.env?.SANITY_STUDIO_CALCOM_EMBED_URL ??
-      process.env?.VITE_CALCOM_EMBED_URL
+    return (
+      readStudioEnv('SANITY_STUDIO_CALCOM_EMBED_URL') ||
+      readStudioEnv('VITE_CALCOM_EMBED_URL') ||
+      undefined
+    )
   }, [])
 
   useEffect(() => {
@@ -135,12 +133,12 @@ export default function ShippingCalendar() {
   return (
     <Card padding={4}>
       <Heading size={2}>📆 Shipping Calendar + Booking</Heading>
-      <Box display="flex" paddingTop={4} style={{ flexDirection: 'row', gap: '2rem' }}>
+      <Box display="flex" paddingTop={4} style={{flexDirection: 'row', gap: '2rem'}}>
         {/* Calendar Column */}
         <Box flex={2}>
           <Stack space={4}>
             {loading && <Text>Loading...</Text>}
-            {!loading && events.length === 0 && <Text>No shipments scheduled.</Text>}
+              {!loading && events.length === 0 && <Text>No shipments scheduled.</Text>}
             {!loading && events.length > 0 && (
               <>
                 {Object.entries(

@@ -25,6 +25,7 @@ import {
   startOfWeek,
   subMonths
 } from 'date-fns'
+import {readStudioEnv} from './studioEnv'
 
 interface CalComAttendee {
   name?: string
@@ -62,13 +63,7 @@ type DayCell = {
   hasBookings: boolean
 }
 
-const safeEnv = (key: string): string | undefined => {
-  const metaEnv =
-    typeof import.meta !== 'undefined' && (import.meta as any)?.env
-      ? ((import.meta as any).env as Record<string, string | undefined>)
-      : undefined
-  return metaEnv?.[key] ?? process.env?.[key]
-}
+const safeEnv = (key: string): string | undefined => readStudioEnv(key)
 
 const CAL_API_BASE =
   safeEnv('SANITY_STUDIO_CALCOM_API_BASE_URL') ||

@@ -45,6 +45,16 @@ const workspaceModuleAliases = hasProcess
   : {};
 
 const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined);
+const collectStudioEnv = (): Record<string, string | undefined> => {
+  if (!hasProcess || !process?.env) return {};
+  const ALLOWED_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_', 'CALCOM_'];
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) =>
+      ALLOWED_PREFIXES.some((prefix) => key.startsWith(prefix))
+    )
+  );
+};
+const studioRuntimeEnv = collectStudioEnv();
 
 const envFlag = (value?: string | null) => {
   if (!value) return undefined;
@@ -165,6 +175,9 @@ export default defineConfig({
       rollupOptions: {
         external: ['sanity/refractor'],
       },
+    },
+    define: {
+      __SANITY_STUDIO_RUNTIME_ENV__: JSON.stringify(studioRuntimeEnv),
     },
   },
 });
