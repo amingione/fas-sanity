@@ -14,6 +14,7 @@ import {
   Text,
   useToast,
 } from '@sanity/ui'
+import {readStudioEnv} from '../../utils/studioEnv'
 
 const apiVersion = '2024-05-15'
 const configDocumentId = 'arenaSyncConfig'
@@ -36,18 +37,7 @@ type TriggerResponse = {
   updatedOrCreated?: number
 }
 
-const resolveFallbackEndpoint = () => {
-  const metaEnv =
-    (typeof import.meta !== 'undefined' &&
-      ((import.meta as ImportMeta).env as Record<string, string | undefined>)) ||
-    undefined
-  return (
-    // `SANITY_STUDIO_` prefix is respected by the Sanity bundler
-    metaEnv?.SANITY_STUDIO_SYNC_ENDPOINT ||
-    // fall back to classic process.env replacement if present
-    (typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_SYNC_ENDPOINT : undefined)
-  )
-}
+const resolveFallbackEndpoint = () => readStudioEnv('SANITY_STUDIO_SYNC_ENDPOINT')
 
 export function ArenaSyncTool() {
   const client = useClient({apiVersion})

@@ -55,7 +55,7 @@ type EditableProduct = ProductDoc & {
   dirty?: boolean
 }
 
-import {readStudioEnv} from './studioEnv'
+import {readStudioEnv} from '../../utils/studioEnv'
 
 const readEnv = (key: string): string | undefined =>
   readStudioEnv(key) ||
