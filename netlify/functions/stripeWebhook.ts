@@ -1759,6 +1759,7 @@ export const handler: Handler = async (event) => {
           })
 
           const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
+          const shippingCurrencyForDoc = shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
           if (shippingDetails.carrier) {
             baseDoc.shippingCarrier = shippingDetails.carrier
           }
@@ -1773,7 +1774,7 @@ export const handler: Handler = async (event) => {
               service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
               serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
               amount: shippingAmountForDoc,
-              currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+              currency: shippingCurrencyForDoc || 'USD',
               deliveryDays: shippingDetails.deliveryDays,
               estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
             }
@@ -1783,8 +1784,8 @@ export const handler: Handler = async (event) => {
             baseDoc.amountShipping = shippingAmountForDoc
             baseDoc.selectedShippingAmount = shippingAmountForDoc
           }
-          if (shippingDetails.currency) {
-            baseDoc.selectedShippingCurrency = shippingDetails.currency
+          if (shippingCurrencyForDoc) {
+            baseDoc.selectedShippingCurrency = shippingCurrencyForDoc
           }
           if (shippingDetails.deliveryDays !== undefined) {
             baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
@@ -1841,6 +1842,7 @@ export const handler: Handler = async (event) => {
                   patchData.dueDate = invoiceDateValue
                 }
                 const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+                const shippingCurrencyForInvoice = shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
                 if (shippingAmountForInvoice !== undefined) {
                   patchData.amountShipping = shippingAmountForInvoice
                 }
@@ -1859,16 +1861,16 @@ export const handler: Handler = async (event) => {
                         serviceCode:
                           shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
                         amount: shippingAmountForInvoice,
-                        currency:
-                          shippingDetails.currency ||
-                          (currency ? currency.toUpperCase() : undefined) ||
-                          'USD',
+                        currency: shippingCurrencyForInvoice || 'USD',
                         deliveryDays: shippingDetails.deliveryDays,
                         estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
                       }
                     : undefined
                 if (invoiceSelectedService) {
                   patchData.selectedService = invoiceSelectedService
+                }
+                if (shippingCurrencyForInvoice) {
+                  patchData.selectedShippingCurrency = shippingCurrencyForInvoice
                 }
                 if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
                   patchData.shippingMetadata = shippingDetails.metadata
@@ -2010,6 +2012,7 @@ export const handler: Handler = async (event) => {
                 stripeLastSyncedAt: new Date().toISOString(),
               }
               const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+              const shippingCurrencyForInvoice = shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
               if (shippingAmountForInvoice !== undefined) {
                 invBase.amountShipping = shippingAmountForInvoice
               }
@@ -2026,14 +2029,16 @@ export const handler: Handler = async (event) => {
                       service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
                       serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
                       amount: shippingAmountForInvoice,
-                      currency:
-                        shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                      currency: shippingCurrencyForInvoice || 'USD',
                       deliveryDays: shippingDetails.deliveryDays,
                       estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
                     }
                   : undefined
               if (invoiceSelectedService) {
                 invBase.selectedService = invoiceSelectedService
+              }
+              if (shippingCurrencyForInvoice) {
+                invBase.selectedShippingCurrency = shippingCurrencyForInvoice
               }
               if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
                 invBase.shippingMetadata = shippingDetails.metadata

@@ -401,6 +401,7 @@ export const handler: Handler = async (event) => {
     })
 
     const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
+    const shippingCurrencyForDoc = shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
     if (shippingAmountForDoc !== undefined) {
       baseDoc.amountShipping = shippingAmountForDoc
       baseDoc.selectedShippingAmount = shippingAmountForDoc
@@ -419,13 +420,13 @@ export const handler: Handler = async (event) => {
         service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
         serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
         amount: shippingAmountForDoc,
-        currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+        currency: shippingCurrencyForDoc || 'USD',
         deliveryDays: shippingDetails.deliveryDays,
         estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
       }
     }
-    if (shippingDetails.currency) {
-      baseDoc.selectedShippingCurrency = shippingDetails.currency
+    if (shippingCurrencyForDoc) {
+      baseDoc.selectedShippingCurrency = shippingCurrencyForDoc
     }
     if (shippingDetails.deliveryDays !== undefined) {
       baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
@@ -649,6 +650,7 @@ export const handler: Handler = async (event) => {
         }
 
         const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+        const shippingCurrencyForInvoice = shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
         if (shippingAmountForInvoice !== undefined) {
           invBase.amountShipping = shippingAmountForInvoice
         }
@@ -665,14 +667,16 @@ export const handler: Handler = async (event) => {
                 service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
                 serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
                 amount: shippingAmountForInvoice,
-                currency:
-                  shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                currency: shippingCurrencyForInvoice || 'USD',
                 deliveryDays: shippingDetails.deliveryDays,
                 estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
               }
             : undefined
         if (invoiceSelectedService) {
           invBase.selectedService = invoiceSelectedService
+        }
+        if (shippingCurrencyForInvoice) {
+          invBase.selectedShippingCurrency = shippingCurrencyForInvoice
         }
         if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
           invBase.shippingMetadata = shippingDetails.metadata
@@ -725,6 +729,7 @@ export const handler: Handler = async (event) => {
           if (invoiceDateValue) patch = patch.set({ invoiceDate: invoiceDateValue, dueDate: invoiceDateValue })
           if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
           const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+          const shippingCurrencyForInvoice = shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
           const invoiceSelectedService =
             shippingDetails.serviceName ||
             shippingDetails.serviceCode ||
@@ -735,8 +740,7 @@ export const handler: Handler = async (event) => {
                   service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
                   serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
                   amount: shippingAmountForInvoice,
-                  currency:
-                    shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                  currency: shippingCurrencyForInvoice || 'USD',
                   deliveryDays: shippingDetails.deliveryDays,
                   estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
                 }
@@ -750,6 +754,9 @@ export const handler: Handler = async (event) => {
           }
           if (invoiceSelectedService) {
             shippingPatch.selectedService = invoiceSelectedService
+          }
+          if (shippingCurrencyForInvoice) {
+            shippingPatch.selectedShippingCurrency = shippingCurrencyForInvoice
           }
           if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
             shippingPatch.shippingMetadata = shippingDetails.metadata
