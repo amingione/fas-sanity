@@ -1,15 +1,15 @@
-import type { Handler } from '@netlify/functions'
+import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
-import type { CartItem } from '../lib/cartEnrichment'
-import { createClient } from '@sanity/client'
-import { randomUUID } from 'crypto'
-import { generatePackingSlipAsset } from '../lib/packingSlip'
-import { syncOrderToShipStation } from '../lib/shipstation'
-import { mapStripeLineItem } from '../lib/stripeCartItem'
-import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
-import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
-import { buildStripeSummary } from '../lib/stripeSummary'
-import { resolveStripeShippingDetails } from '../lib/stripeShipping'
+import type {CartItem} from '../lib/cartEnrichment'
+import {createClient} from '@sanity/client'
+import {randomUUID} from 'crypto'
+import {generatePackingSlipAsset} from '../lib/packingSlip'
+import {syncOrderToShipStation} from '../lib/shipstation'
+import {mapStripeLineItem} from '../lib/stripeCartItem'
+import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
+import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
+import {buildStripeSummary} from '../lib/stripeSummary'
+import {resolveStripeShippingDetails} from '../lib/stripeShipping'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -58,7 +58,10 @@ function sanitizeOrderNumber(value?: string | null): string | undefined {
 
 function candidateFromSessionId(id?: string | null): string | undefined {
   if (!id) return undefined
-  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
+  const core = id
+    .toString()
+    .trim()
+    .replace(/^cs_(?:test|live)_/i, '')
   const digits = core.replace(/\D/g, '')
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
   return undefined
@@ -72,7 +75,7 @@ async function generateRandomOrderNumber(): Promise<string> {
     try {
       const existing = await sanity.fetch<number>(
         'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
-        { num: candidate }
+        {num: candidate},
       )
       if (!Number(existing)) return candidate
     } catch (err) {
@@ -114,7 +117,7 @@ function pickString(...values: Array<any>): string | undefined {
 function buildStudioAddress(
   source: any,
   type: 'billTo' | 'shipTo',
-  opts: { fallbackEmail?: string; fallbackName?: string } = {}
+  opts: {fallbackEmail?: string; fallbackName?: string} = {},
 ): Record<string, any> | undefined {
   if (!source || typeof source !== 'object') return undefined
   const name = pickString(source.name, source.fullName, opts.fallbackName)
@@ -126,10 +129,20 @@ function buildStudioAddress(
   const state_province = pickString(source.state_province, source.state, source.region)
   const postal_code = pickString(source.postal_code, source.postalCode, source.zip)
   const country_code = pickString(source.country_code, source.country)
-  if (!name && !email && !phone && !address_line1 && !address_line2 && !city_locality && !state_province && !postal_code && !country_code) {
+  if (
+    !name &&
+    !email &&
+    !phone &&
+    !address_line1 &&
+    !address_line2 &&
+    !city_locality &&
+    !state_province &&
+    !postal_code &&
+    !country_code
+  ) {
     return undefined
   }
-  const base: Record<string, any> = { _type: type }
+  const base: Record<string, any> = {_type: type}
   if (name) base.name = name
   if (email) base.email = email
   if (phone) base.phone = phone
@@ -161,7 +174,10 @@ const canonicalDetailKey = (input: string): string | null => {
   if (rest.length === 0) return trimmed.toLowerCase()
   const value = rest.join(':').trim().toLowerCase()
   let label = rawLabel.toLowerCase()
-  label = label.replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+  label = label.replace(
+    /\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g,
+    '',
+  )
   label = label.replace(/[^a-z0-9]+/g, ' ').trim()
   if (label && label === value) return null
   if (!label) return value ? `value:${value}` : trimmed.toLowerCase()
@@ -195,14 +211,13 @@ const buildDetailList = (opts: {
   }
 
   if (opts.optionDetails?.length) {
-    uniqueStrings(opts.optionDetails)
-      .forEach((detail) => {
-        detail
-          .split(',')
-          .map((part) => part.trim())
-          .filter(Boolean)
-          .forEach(addDetail)
-      })
+    uniqueStrings(opts.optionDetails).forEach((detail) => {
+      detail
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .forEach(addDetail)
+    })
   }
 
   if (opts.upgrades?.length) {
@@ -227,27 +242,32 @@ const prepareItemPresentation = (source: {
   optionDetails?: unknown
   upgrades?: unknown
   metadata?: unknown
-}): { title: string; details: string[] } => {
+}): {title: string; details: string[]} => {
   const metadataEntries = normalizeMetadataEntries(source.metadata as any)
   const derived = deriveCartOptions(metadataEntries)
-  const rawName = (source?.name || source?.description || source?.productName || source?.title || source?.sku || 'Item').toString()
+  const rawName = (
+    source?.name ||
+    source?.description ||
+    source?.productName ||
+    source?.title ||
+    source?.sku ||
+    'Item'
+  ).toString()
   const title = rawName.split('•')[0]?.trim() || rawName
-  const summary = (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
+  const summary =
+    (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
   const optionDetails = uniqueStrings([
     ...coerceStringArray(source.optionDetails),
     ...derived.optionDetails,
   ])
-  const upgrades = uniqueStrings([
-    ...coerceStringArray(source.upgrades),
-    ...derived.upgrades,
-  ])
+  const upgrades = uniqueStrings([...coerceStringArray(source.upgrades), ...derived.upgrades])
   const details = buildDetailList({
     summary,
     optionDetails,
     upgrades,
     sku: source?.sku ? String(source.sku) : undefined,
   })
-  return { title, details }
+  return {title, details}
 }
 
 function dateStringFrom(value?: any): string | undefined {
@@ -273,7 +293,8 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const money = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : '')
+const money = (value?: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : ''
 
 const renderAddressHtml = (address?: any): string => {
   if (!address) return ''
@@ -319,11 +340,13 @@ const PRODUCT_METADATA_SKU_KEYS = ['sku', 'SKU', 'product_sku', 'productSku', 's
 const PRODUCT_METADATA_SLUG_KEYS = ['sanity_slug', 'slug', 'product_slug', 'productSlug']
 const INVOICE_METADATA_ID_KEYS = ['sanity_invoice_id', 'invoice_id', 'sanityInvoiceId', 'invoiceId']
 
-function isStripeProduct(product: Stripe.Product | Stripe.DeletedProduct | string | null | undefined): product is Stripe.Product {
+function isStripeProduct(
+  product: Stripe.Product | Stripe.DeletedProduct | string | null | undefined,
+): product is Stripe.Product {
   return Boolean(
     product &&
       typeof product === 'object' &&
-      !('deleted' in product && (product as Stripe.DeletedProduct).deleted)
+      !('deleted' in product && (product as Stripe.DeletedProduct).deleted),
   )
 }
 
@@ -335,18 +358,23 @@ function normalizeSanityId(value?: string | null): string | undefined {
 }
 
 function slugifyValue(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
+  )
 }
 
 async function ensureUniqueProductSlug(baseSlug: string): Promise<string> {
   let slug = baseSlug || 'product'
   let suffix = 1
   while (suffix <= 20) {
-    const exists = await sanity.fetch<number>('count(*[_type == "product" && slug.current == $slug])', { slug })
+    const exists = await sanity.fetch<number>(
+      'count(*[_type == "product" && slug.current == $slug])',
+      {slug},
+    )
     if (!Number(exists)) return slug
     suffix += 1
     slug = `${baseSlug}-${suffix}`.slice(0, 96)
@@ -360,7 +388,8 @@ function toMajorUnits(amount?: number | null): number | undefined {
 }
 
 function unixToIso(timestamp?: number | null): string | undefined {
-  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0) return undefined
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0)
+    return undefined
   return new Date(timestamp * 1000).toISOString()
 }
 
@@ -372,18 +401,23 @@ async function findProductDocumentId(opts: {
 }): Promise<string | null> {
   const meta = opts.metadata || {}
 
-  const idCandidates = PRODUCT_METADATA_ID_KEYS
-    .map((key) => normalizeSanityId(meta[key]))
-    .filter(Boolean) as string[]
+  const idCandidates = PRODUCT_METADATA_ID_KEYS.map((key) => normalizeSanityId(meta[key])).filter(
+    Boolean,
+  ) as string[]
 
   if (idCandidates.length > 0) {
     const variants = idCandidates.flatMap((id) => idVariants(id))
-    const docId = await sanity.fetch<string | null>(`*[_type == "product" && _id in $ids][0]._id`, { ids: variants })
+    const docId = await sanity.fetch<string | null>(`*[_type == "product" && _id in $ids][0]._id`, {
+      ids: variants,
+    })
     if (docId) return docId
   }
 
   if (opts.stripeProductId) {
-    const docId = await sanity.fetch<string | null>(`*[_type == "product" && stripeProductId == $pid][0]._id`, { pid: opts.stripeProductId })
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "product" && stripeProductId == $pid][0]._id`,
+      {pid: opts.stripeProductId},
+    )
     if (docId) return docId
   }
 
@@ -391,7 +425,10 @@ async function findProductDocumentId(opts: {
     .map((value) => (value || '').toString().trim())
     .filter(Boolean)
   if (skuCandidates.length > 0) {
-    const docId = await sanity.fetch<string | null>(`*[_type == "product" && sku in $skus][0]._id`, { skus: skuCandidates })
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "product" && sku in $skus][0]._id`,
+      {skus: skuCandidates},
+    )
     if (docId) return docId
   }
 
@@ -399,15 +436,21 @@ async function findProductDocumentId(opts: {
     .map((value) => (value || '').toString().trim())
     .filter(Boolean)
   if (slugCandidates.length > 0) {
-    const docId = await sanity.fetch<string | null>(`*[_type == "product" && slug.current in $slugs][0]._id`, { slugs: slugCandidates })
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "product" && slug.current in $slugs][0]._id`,
+      {slugs: slugCandidates},
+    )
     if (docId) return docId
   }
 
   return null
 }
 
-async function ensureProductDocument(stripeProductId: string, metadata?: Record<string, string>): Promise<string | null> {
-  let docId = await findProductDocumentId({ stripeProductId, metadata })
+async function ensureProductDocument(
+  stripeProductId: string,
+  metadata?: Record<string, string>,
+): Promise<string | null> {
+  let docId = await findProductDocumentId({stripeProductId, metadata})
   if (docId) return docId
 
   try {
@@ -440,12 +483,21 @@ function buildPriceSnapshot(price: Stripe.Price) {
 
 async function syncStripeProduct(product: Stripe.Product): Promise<string | null> {
   const metadata = (product.metadata || {}) as Record<string, string>
-  const skuCandidates = [metadata.sku, metadata.SKU, metadata.product_sku, metadata.productSku].map((value) => (value || '').toString().trim()).filter(Boolean)
-  const slugMeta = metadata.sanity_slug || metadata.slug || metadata.product_slug || metadata.productSlug
+  const skuCandidates = [metadata.sku, metadata.SKU, metadata.product_sku, metadata.productSku]
+    .map((value) => (value || '').toString().trim())
+    .filter(Boolean)
+  const slugMeta =
+    metadata.sanity_slug || metadata.slug || metadata.product_slug || metadata.productSlug
 
-  const existingId = await findProductDocumentId({ metadata, stripeProductId: product.id, sku: skuCandidates[0], slug: slugMeta })
+  const existingId = await findProductDocumentId({
+    metadata,
+    stripeProductId: product.id,
+    sku: skuCandidates[0],
+    slug: slugMeta,
+  })
   const updatedAt = unixToIso(product.updated) || new Date().toISOString()
-  const defaultPriceId = typeof product.default_price === 'string' ? product.default_price : product.default_price?.id
+  const defaultPriceId =
+    typeof product.default_price === 'string' ? product.default_price : product.default_price?.id
   const sku = skuCandidates.find(Boolean)
 
   const setOps: Record<string, any> = {
@@ -456,12 +508,15 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
   if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
 
   if (existingId) {
-    const existing = await sanity.fetch<{ title?: string; sku?: string }>(`*[_id == $id][0]{title, sku}`, { id: existingId })
+    const existing = await sanity.fetch<{title?: string; sku?: string}>(
+      `*[_id == $id][0]{title, sku}`,
+      {id: existingId},
+    )
     let patch = sanity.patch(existingId).set(setOps)
-    if (sku && !existing?.sku) patch = patch.set({ sku })
-    if (product.name && !existing?.title) patch = patch.set({ title: product.name })
+    if (sku && !existing?.sku) patch = patch.set({sku})
+    if (product.name && !existing?.title) patch = patch.set({title: product.name})
     try {
-      await patch.commit({ autoGenerateArrayKeys: true })
+      await patch.commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to patch product', err)
     }
@@ -475,7 +530,7 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
   const payload: Record<string, any> = {
     _type: 'product',
     title,
-    slug: { _type: 'slug', current: slug },
+    slug: {_type: 'slug', current: slug},
     availability: 'in_stock',
     stripeProductId: product.id,
     stripeActive: product.active,
@@ -485,7 +540,7 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
   if (sku) payload.sku = sku
 
   try {
-    const created = await sanity.create(payload as any, { autoGenerateArrayKeys: true })
+    const created = await sanity.create(payload as any, {autoGenerateArrayKeys: true})
     return created?._id || null
   } catch (err) {
     console.warn('stripeWebhook: failed to create product doc from Stripe product', err)
@@ -499,18 +554,24 @@ async function syncStripePrice(price: Stripe.Price): Promise<void> {
 
   const productObject = typeof price.product === 'string' ? null : price.product
   const combinedMeta: Record<string, string> = {
-    ...(isStripeProduct(productObject) ? ((productObject.metadata || {}) as Record<string, string>) : {}),
+    ...(isStripeProduct(productObject)
+      ? ((productObject.metadata || {}) as Record<string, string>)
+      : {}),
     ...(price.metadata || {}),
   }
 
   const docId = await ensureProductDocument(productId, combinedMeta)
   if (!docId) return
 
-  const existing = await sanity.fetch<{ stripePrices?: any[] }>(`*[_id == $id][0]{stripePrices}`, { id: docId })
+  const existing = await sanity.fetch<{stripePrices?: any[]}>(`*[_id == $id][0]{stripePrices}`, {
+    id: docId,
+  })
   const currentPrices = Array.isArray(existing?.stripePrices) ? existing!.stripePrices : []
   const snapshot = buildPriceSnapshot(price)
-  const filtered = currentPrices.filter((entry: any) => entry?.priceId !== snapshot.priceId && entry?._key !== snapshot.priceId)
-  filtered.push({ _type: 'stripePriceSnapshot', _key: snapshot.priceId, ...snapshot })
+  const filtered = currentPrices.filter(
+    (entry: any) => entry?.priceId !== snapshot.priceId && entry?._key !== snapshot.priceId,
+  )
+  filtered.push({_type: 'stripePriceSnapshot', _key: snapshot.priceId, ...snapshot})
 
   const setOps: Record<string, any> = {
     stripePrices: filtered,
@@ -518,20 +579,25 @@ async function syncStripePrice(price: Stripe.Price): Promise<void> {
     stripeUpdatedAt: new Date().toISOString(),
   }
 
-  if (typeof price.active === 'boolean' && price.type === 'one_time' && typeof price.unit_amount === 'number') {
+  if (
+    typeof price.active === 'boolean' &&
+    price.type === 'one_time' &&
+    typeof price.unit_amount === 'number'
+  ) {
     const major = toMajorUnits(price.unit_amount)
     if (typeof major === 'number') setOps.price = major
   }
 
   if (isStripeProduct(productObject) && productObject.default_price) {
-    const defaultPriceId = typeof productObject.default_price === 'string'
-      ? productObject.default_price
-      : productObject.default_price?.id
+    const defaultPriceId =
+      typeof productObject.default_price === 'string'
+        ? productObject.default_price
+        : productObject.default_price?.id
     if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
   }
 
   try {
-    await sanity.patch(docId).set(setOps).commit({ autoGenerateArrayKeys: true })
+    await sanity.patch(docId).set(setOps).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to upsert Stripe price snapshot', err)
   }
@@ -540,15 +606,23 @@ async function syncStripePrice(price: Stripe.Price): Promise<void> {
 async function removeStripePrice(priceId: string, productId?: string): Promise<void> {
   if (!priceId) return
   let docId: string | null = null
-  if (productId) docId = await findProductDocumentId({ stripeProductId: productId })
+  if (productId) docId = await findProductDocumentId({stripeProductId: productId})
   if (!docId) {
-    docId = await sanity.fetch<string | null>(`*[_type == "product" && stripePrices[].priceId == $pid][0]._id`, { pid: priceId })
+    docId = await sanity.fetch<string | null>(
+      `*[_type == "product" && stripePrices[].priceId == $pid][0]._id`,
+      {pid: priceId},
+    )
   }
   if (!docId) return
 
-  const existing = await sanity.fetch<{ stripePrices?: any[]; stripeDefaultPriceId?: string }>(`*[_id == $id][0]{stripePrices, stripeDefaultPriceId}`, { id: docId })
+  const existing = await sanity.fetch<{stripePrices?: any[]; stripeDefaultPriceId?: string}>(
+    `*[_id == $id][0]{stripePrices, stripeDefaultPriceId}`,
+    {id: docId},
+  )
   const currentPrices = Array.isArray(existing?.stripePrices) ? existing!.stripePrices : []
-  const filtered = currentPrices.filter((entry: any) => entry?.priceId !== priceId && entry?._key !== priceId)
+  const filtered = currentPrices.filter(
+    (entry: any) => entry?.priceId !== priceId && entry?._key !== priceId,
+  )
 
   const setOps: Record<string, any> = {
     stripePrices: filtered,
@@ -560,7 +634,7 @@ async function removeStripePrice(priceId: string, productId?: string): Promise<v
   }
 
   try {
-    await sanity.patch(docId).set(setOps).commit({ autoGenerateArrayKeys: true })
+    await sanity.patch(docId).set(setOps).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to remove Stripe price snapshot', err)
   }
@@ -587,32 +661,42 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   const invoiceRecord = invoice as Stripe.Invoice & {
     amount_subtotal?: number
     amount_tax?: number
-    customer_details?: { email?: string | null }
+    customer_details?: {email?: string | null}
     payment_intent?: string | Stripe.PaymentIntent
   }
 
   const metadata = (invoice.metadata || {}) as Record<string, string>
-  const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(Boolean)
+  const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(
+    Boolean,
+  )
 
   let docId: string | null = null
 
   if (metaId) {
-    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(metaId) })
+    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, {
+      ids: idVariants(metaId),
+    })
   }
 
   if (!docId && invoice.id) {
-    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && stripeInvoiceId == $id][0]._id`, { id: invoice.id })
+    docId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && stripeInvoiceId == $id][0]._id`,
+      {id: invoice.id},
+    )
   }
 
   if (!docId && invoice.number) {
-    docId = await sanity.fetch<string | null>(`*[_type == "invoice" && invoiceNumber == $num][0]._id`, { num: invoice.number })
+    docId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && invoiceNumber == $num][0]._id`,
+      {num: invoice.number},
+    )
   }
 
   if (!docId) return
 
-  const existingInvoice = await sanity.fetch<{ status?: string } | null>(
+  const existingInvoice = await sanity.fetch<{status?: string} | null>(
     `*[_type == "invoice" && _id == $id][0]{status}`,
-    { id: docId }
+    {id: docId},
   )
   const existingStatus = existingInvoice?.status
 
@@ -645,7 +729,10 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   if (email) setOps.customerEmail = email
 
   if (invoiceRecord.payment_intent) {
-    setOps.paymentIntentId = typeof invoiceRecord.payment_intent === 'string' ? invoiceRecord.payment_intent : invoiceRecord.payment_intent.id
+    setOps.paymentIntentId =
+      typeof invoiceRecord.payment_intent === 'string'
+        ? invoiceRecord.payment_intent
+        : invoiceRecord.payment_intent.id
   }
 
   if (invoice.hosted_invoice_url) setOps.receiptUrl = invoice.hosted_invoice_url
@@ -659,19 +746,19 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   }
 
   try {
-    await sanity.patch(docId).set(setOps).commit({ autoGenerateArrayKeys: true })
+    await sanity.patch(docId).set(setOps).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to sync invoice doc', err)
   }
 }
 
-function splitName(fullName?: string | null): { firstName?: string; lastName?: string } {
+function splitName(fullName?: string | null): {firstName?: string; lastName?: string} {
   if (!fullName) return {}
   const name = fullName.toString().trim()
   if (!name) return {}
   const parts = name.split(/\s+/)
-  if (parts.length === 1) return { firstName: parts[0] }
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+  if (parts.length === 1) return {firstName: parts[0]}
+  return {firstName: parts[0], lastName: parts.slice(1).join(' ')}
 }
 
 function formatShippingAddress(shipping?: Stripe.Customer.Shipping | null): string | undefined {
@@ -680,7 +767,9 @@ function formatShippingAddress(shipping?: Stripe.Customer.Shipping | null): stri
   if (shipping.name) lines.push(shipping.name)
   if (shipping.address.line1) lines.push(shipping.address.line1)
   if (shipping.address.line2) lines.push(shipping.address.line2)
-  const cityLine = [shipping.address.city, shipping.address.state, shipping.address.postal_code].filter(Boolean).join(', ')
+  const cityLine = [shipping.address.city, shipping.address.state, shipping.address.postal_code]
+    .filter(Boolean)
+    .join(', ')
   if (cityLine) lines.push(cityLine)
   if (shipping.address.country) lines.push(shipping.address.country)
   return lines.filter(Boolean).join('\n') || undefined
@@ -688,9 +777,16 @@ function formatShippingAddress(shipping?: Stripe.Customer.Shipping | null): stri
 
 function buildBillingAddress(address?: Stripe.Address | null, name?: string | null) {
   if (!address) return undefined
-  const hasContent = address.line1 || address.line2 || address.city || address.state || address.postal_code || address.country
+  const hasContent =
+    address.line1 ||
+    address.line2 ||
+    address.city ||
+    address.state ||
+    address.postal_code ||
+    address.country
   if (!hasContent) return undefined
-  const street = [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
+  const street =
+    [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
   return {
     _type: 'customerBillingAddress',
     name: name || undefined,
@@ -703,18 +799,32 @@ function buildBillingAddress(address?: Stripe.Address | null, name?: string | nu
 }
 
 async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
-  const emailRaw = (customer.email || (customer.metadata as Record<string, string> | undefined)?.email || '').toString().trim()
+  const emailRaw = (
+    customer.email ||
+    (customer.metadata as Record<string, string> | undefined)?.email ||
+    ''
+  )
+    .toString()
+    .trim()
   if (!emailRaw) return
   const email = emailRaw.toLowerCase()
 
-  const existing = await sanity.fetch<{ _id: string; firstName?: string; lastName?: string; roles?: string[] }>(
+  const existing = await sanity.fetch<{
+    _id: string
+    firstName?: string
+    lastName?: string
+    roles?: string[]
+  }>(
     `*[_type == "customer" && defined(email) && lower(email) == $email][0]{_id, firstName, lastName, roles}`,
-    { email }
+    {email},
   )
 
-  const { firstName, lastName } = splitName(customer.name || customer.shipping?.name)
+  const {firstName, lastName} = splitName(customer.name || customer.shipping?.name)
   const shippingText = formatShippingAddress(customer.shipping)
-  const billingAddress = buildBillingAddress(customer.address, customer.name || customer.shipping?.name)
+  const billingAddress = buildBillingAddress(
+    customer.address,
+    customer.name || customer.shipping?.name,
+  )
 
   const setOps: Record<string, any> = {
     stripeCustomerId: customer.id,
@@ -730,7 +840,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
   if (existing?._id) {
     if (!Array.isArray(existing.roles) || existing.roles.length === 0) setOps.roles = ['customer']
     try {
-      await sanity.patch(existing._id).set(setOps).commit({ autoGenerateArrayKeys: true })
+      await sanity.patch(existing._id).set(setOps).commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to update customer doc', err)
     }
@@ -749,7 +859,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
     if (billingAddress) payload.billingAddress = billingAddress
 
     try {
-      await sanity.create(payload as any, { autoGenerateArrayKeys: true })
+      await sanity.create(payload as any, {autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to create customer doc from Stripe customer', err)
     }
@@ -761,7 +871,9 @@ type PaymentFailureDiagnostics = {
   message?: string
 }
 
-async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promise<PaymentFailureDiagnostics> {
+async function resolvePaymentFailureDiagnostics(
+  pi: Stripe.PaymentIntent,
+): Promise<PaymentFailureDiagnostics> {
   const failure = pi.last_payment_error
   const additionalCodes = new Set<string>()
 
@@ -777,8 +889,7 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   }
 
   const shouldLoadCharge =
-    Boolean(stripe) &&
-    (typeof pi.latest_charge === 'string' || !failureCode || !failureMessage)
+    Boolean(stripe) && (typeof pi.latest_charge === 'string' || !failureCode || !failureMessage)
 
   if (shouldLoadCharge) {
     try {
@@ -787,7 +898,7 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
       if (latestChargeId) {
         charge = await stripe.charges.retrieve(latestChargeId)
       } else {
-        const chargeList = await stripe.charges.list({ payment_intent: pi.id, limit: 1 })
+        const chargeList = await stripe.charges.list({payment_intent: pi.id, limit: 1})
         charge = chargeList?.data?.[0] || null
       }
 
@@ -835,9 +946,9 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
   const codes = Array.from(
     new Set(
       [failureCode, ...additionalCodes].filter(
-        (code): code is string => typeof code === 'string' && Boolean(code.trim())
-      )
-    )
+        (code): code is string => typeof code === 'string' && Boolean(code.trim()),
+      ),
+    ),
   )
 
   if (codes.length === 0) {
@@ -861,19 +972,19 @@ async function resolvePaymentFailureDiagnostics(pi: Stripe.PaymentIntent): Promi
     failureMessage = `Payment failed (codes: ${codes.join(', ')})`
   }
 
-  return { code: failureCode, message: failureMessage }
+  return {code: failureCode, message: failureMessage}
 }
 
 async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void> {
   const order = await sanity.fetch<{
     _id: string
-    invoiceRef?: { _ref?: string }
+    invoiceRef?: {_ref?: string}
   } | null>(
     `*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]{ _id, invoiceRef }`,
-    { pid: pi.id }
+    {pid: pi.id},
   )
 
-  const { code: failureCode, message: failureMessage } = await resolvePaymentFailureDiagnostics(pi)
+  const {code: failureCode, message: failureMessage} = await resolvePaymentFailureDiagnostics(pi)
   const rawPaymentStatus = (pi.status || '').trim().toLowerCase()
   const paymentStatus =
     rawPaymentStatus && !['succeeded', 'processing', 'requires_capture'].includes(rawPaymentStatus)
@@ -900,7 +1011,7 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
       stripeSummary: summary,
     }
     try {
-      await sanity.patch(order._id).set(setOps).commit({ autoGenerateArrayKeys: true })
+      await sanity.patch(order._id).set(setOps).commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to mark payment failure on order', err)
     }
@@ -920,29 +1031,31 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
 
   let invoiceId: string | null = null
   if (invoiceCandidateIds.size > 0) {
-    invoiceId = await sanity.fetch<string | null>(
-      `*[_type == "invoice" && _id in $ids][0]._id`,
-      { ids: Array.from(invoiceCandidateIds) }
-    )
+    invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, {
+      ids: Array.from(invoiceCandidateIds),
+    })
   }
 
   if (!invoiceId) {
     invoiceId = await sanity.fetch<string | null>(
       `*[_type == "invoice" && paymentIntentId == $pid][0]._id`,
-      { pid: pi.id }
+      {pid: pi.id},
     )
   }
 
   if (invoiceId) {
     try {
-      await sanity.patch(invoiceId).set({
-        status: 'cancelled',
-        stripeInvoiceStatus: 'payment_intent.payment_failed',
-        stripeLastSyncedAt: timestamp,
-        paymentFailureCode: failureCode,
-        paymentFailureMessage: failureMessage,
-        stripeSummary: summary,
-      }).commit({ autoGenerateArrayKeys: true })
+      await sanity
+        .patch(invoiceId)
+        .set({
+          status: 'cancelled',
+          stripeInvoiceStatus: 'payment_intent.payment_failed',
+          stripeLastSyncedAt: timestamp,
+          paymentFailureCode: failureCode,
+          paymentFailureMessage: failureMessage,
+          stripeSummary: summary,
+        })
+        .commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to update invoice after payment failure', err)
     }
@@ -950,7 +1063,7 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
 }
 
 async function fetchPaymentIntentResource(
-  resource: string | Stripe.PaymentIntent | null | undefined
+  resource: string | Stripe.PaymentIntent | null | undefined,
 ): Promise<Stripe.PaymentIntent | null> {
   if (!resource) return null
   if (typeof resource !== 'string') return resource
@@ -1000,8 +1113,8 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   const order = await sanity.fetch<{
     _id: string
     orderNumber?: string
-    invoiceRef?: { _id: string }
-    customerRef?: { _ref: string }
+    invoiceRef?: {_id: string}
+    customerRef?: {_ref: string}
     customerEmail?: string
     paymentFailureCode?: string
     paymentFailureMessage?: string
@@ -1011,7 +1124,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       ($charge != '' && chargeId == $charge) ||
       ($session != '' && stripeSessionId == $session)
     )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, invoiceRef->{ _id } }`,
-    params
+    params,
   )
 
   if (!order?._id) return false
@@ -1028,7 +1141,9 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
             paymentFailureCode:
               typeof order.paymentFailureCode === 'string' ? order.paymentFailureCode.trim() : '',
             paymentFailureMessage:
-              typeof order.paymentFailureMessage === 'string' ? order.paymentFailureMessage.trim() : '',
+              typeof order.paymentFailureMessage === 'string'
+                ? order.paymentFailureMessage.trim()
+                : '',
           }
         : null
 
@@ -1047,7 +1162,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   }
 
   try {
-    await sanity.patch(order._id).set(orderPatch).commit({ autoGenerateArrayKeys: true })
+    await sanity.patch(order._id).set(orderPatch).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to update order payment status', err)
   }
@@ -1057,14 +1172,14 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     if (paymentIntentId) {
       const byPI = await sanity.fetch<string | null>(
         `*[_type == "invoice" && paymentIntentId == $pi][0]._id`,
-        { pi: paymentIntentId }
+        {pi: paymentIntentId},
       )
       if (byPI) return byPI
     }
     if (order.orderNumber) {
       const byOrderNumber = await sanity.fetch<string | null>(
         `*[_type == "invoice" && (orderNumber == $orderNumber || orderRef._ref == $orderId || orderRef->_ref == $orderId)][0]._id`,
-        { orderNumber: order.orderNumber, orderId: order._id }
+        {orderNumber: order.orderNumber, orderId: order._id},
       )
       if (byOrderNumber) return byOrderNumber
     }
@@ -1082,7 +1197,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       Object.assign(invoicePatch, additionalInvoiceFields)
     }
     try {
-      await sanity.patch(invoiceId).set(invoicePatch).commit({ autoGenerateArrayKeys: true })
+      await sanity.patch(invoiceId).set(invoicePatch).commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to update invoice after payment status change', err)
     }
@@ -1096,7 +1211,10 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       email: order?.customerEmail,
     })
   } catch (err) {
-    console.warn('stripeWebhook: failed to refresh customer profile after payment status update', err)
+    console.warn(
+      'stripeWebhook: failed to refresh customer profile after payment status update',
+      err,
+    )
   }
 
   return true
@@ -1106,7 +1224,10 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
   const timestamp = new Date().toISOString()
   const failureCode = 'checkout.session.expired'
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
-  const expiresAt = typeof session.expires_at === 'number' ? new Date(session.expires_at * 1000).toISOString() : null
+  const expiresAt =
+    typeof session.expires_at === 'number'
+      ? new Date(session.expires_at * 1000).toISOString()
+      : null
   let failureMessage = 'Checkout session expired before payment was completed.'
   if (email) failureMessage = `${failureMessage} Customer: ${email}.`
   if (expiresAt) failureMessage = `${failureMessage} Expired at ${expiresAt}.`
@@ -1119,17 +1240,23 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
     eventCreated: session.created || null,
   })
 
-  const orderId = await sanity.fetch<string | null>(`*[_type == "order" && stripeSessionId == $sid][0]._id`, { sid: session.id })
+  const orderId = await sanity.fetch<string | null>(
+    `*[_type == "order" && stripeSessionId == $sid][0]._id`,
+    {sid: session.id},
+  )
   if (orderId) {
     try {
-      await sanity.patch(orderId).set({
-        status: 'expired',
-        paymentStatus: 'expired',
-        stripeLastSyncedAt: timestamp,
-        paymentFailureCode: failureCode,
-        paymentFailureMessage: failureMessage,
-        stripeSummary: summary,
-      }).commit({ autoGenerateArrayKeys: true })
+      await sanity
+        .patch(orderId)
+        .set({
+          status: 'expired',
+          paymentStatus: 'expired',
+          stripeLastSyncedAt: timestamp,
+          paymentFailureCode: failureCode,
+          paymentFailureMessage: failureMessage,
+          stripeSummary: summary,
+        })
+        .commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('stripeWebhook: failed to update order after checkout expiration', err)
     }
@@ -1138,17 +1265,23 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
   const meta = (session.metadata || {}) as Record<string, string>
   const invoiceMetaId = normalizeSanityId(meta['sanity_invoice_id'])
   if (invoiceMetaId) {
-    const invoiceId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, { ids: idVariants(invoiceMetaId) })
+    const invoiceId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && _id in $ids][0]._id`,
+      {ids: idVariants(invoiceMetaId)},
+    )
     if (invoiceId) {
       try {
-        await sanity.patch(invoiceId).set({
-          status: 'expired',
-          stripeInvoiceStatus: 'checkout.session.expired',
-          stripeLastSyncedAt: timestamp,
-          paymentFailureCode: failureCode,
-          paymentFailureMessage: failureMessage,
-          stripeSummary: summary,
-        }).commit({ autoGenerateArrayKeys: true })
+        await sanity
+          .patch(invoiceId)
+          .set({
+            status: 'expired',
+            stripeInvoiceStatus: 'checkout.session.expired',
+            stripeLastSyncedAt: timestamp,
+            paymentFailureCode: failureCode,
+            paymentFailureMessage: failureMessage,
+            stripeSummary: summary,
+          })
+          .commit({autoGenerateArrayKeys: true})
       } catch (err) {
         console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)
       }
@@ -1160,7 +1293,7 @@ async function sendOrderConfirmationEmail(opts: {
   to: string
   orderNumber: string
   customerName?: string
-  items: Array<{ name?: string; sku?: string; quantity?: number; price?: number }>
+  items: Array<{name?: string; sku?: string; quantity?: number; price?: number}>
   totalAmount?: number
   subtotal?: number
   taxAmount?: number
@@ -1169,7 +1302,17 @@ async function sendOrderConfirmationEmail(opts: {
 }) {
   if (!RESEND_API_KEY || !opts.to) return
 
-  const { to, orderNumber, customerName, items, totalAmount, subtotal, taxAmount, shippingAmount, shippingAddress } = opts
+  const {
+    to,
+    orderNumber,
+    customerName,
+    items,
+    totalAmount,
+    subtotal,
+    taxAmount,
+    shippingAmount,
+    shippingAddress,
+  } = opts
 
   const displayOrderNumber = sanitizeOrderNumber(orderNumber) || orderNumber
   const trimmedName = (customerName || '').toString().trim()
@@ -1189,7 +1332,8 @@ async function sendOrderConfirmationEmail(opts: {
         </thead>
         <tbody>
           ${items
-            .map((item) => `
+            .map(
+              (item) => `
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
                   <div style="font-size:14px;color:#111827;font-weight:600;">${item?.name || item?.sku || 'Item'}</div>
@@ -1198,7 +1342,8 @@ async function sendOrderConfirmationEmail(opts: {
                 <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:center;font-size:14px;color:#374151;">${Number(item?.quantity || 1)}</td>
                 <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;text-align:right;font-size:14px;color:#374151;">${money(item?.price)}</td>
               </tr>
-            `)
+            `,
+            )
             .join('')}
         </tbody>
       </table>`
@@ -1212,34 +1357,42 @@ async function sendOrderConfirmationEmail(opts: {
     : ''
 
   const summaryRows = [
-    { label: 'Subtotal', value: money(typeof subtotal === 'number' ? subtotal : undefined) },
-    { label: 'Shipping', value: money(typeof shippingAmount === 'number' ? shippingAmount : undefined) },
-    { label: 'Tax', value: money(typeof taxAmount === 'number' ? taxAmount : undefined) },
+    {label: 'Subtotal', value: money(typeof subtotal === 'number' ? subtotal : undefined)},
+    {
+      label: 'Shipping',
+      value: money(typeof shippingAmount === 'number' ? shippingAmount : undefined),
+    },
+    {label: 'Tax', value: money(typeof taxAmount === 'number' ? taxAmount : undefined)},
   ].filter((row) => row.value)
 
   const totalDisplay = money(totalAmount)
-  const summaryHtml = (summaryRows.length || totalDisplay)
-    ? `<div style="margin:12px 0 24px;padding:12px 16px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;max-width:340px;">
+  const summaryHtml =
+    summaryRows.length || totalDisplay
+      ? `<div style="margin:12px 0 24px;padding:12px 16px;border:1px solid #e4e4e7;border-radius:12px;background:#f9fafb;max-width:340px;">
         <table role="presentation" style="width:100%;border-collapse:collapse;">
           <tbody>
             ${summaryRows
-              .map((row) => `
+              .map(
+                (row) => `
                 <tr>
                   <td style="padding:6px 0;font-size:13px;color:#52525b;">${row.label}</td>
                   <td style="padding:6px 0;font-size:13px;color:#374151;text-align:right;">${row.value}</td>
                 </tr>
-              `)
+              `,
+              )
               .join('')}
-            ${totalDisplay
-              ? `<tr>
+            ${
+              totalDisplay
+                ? `<tr>
                   <td style="padding:8px 0 0;font-size:15px;font-weight:700;color:#111827;border-top:1px solid #e4e4e7;">Total</td>
                   <td style="padding:8px 0 0;font-size:15px;font-weight:700;color:#111827;text-align:right;border-top:1px solid #e4e4e7;">${totalDisplay}</td>
                 </tr>`
-              : ''}
+                : ''
+            }
           </tbody>
         </table>
       </div>`
-    : ''
+      : ''
 
   const html = `
     <div style="margin:0;padding:24px 12px;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -1272,9 +1425,13 @@ async function sendOrderConfirmationEmail(opts: {
     </div>
   `
 
-  const textItems = items
-    .map((item) => `- ${Number(item?.quantity || 1)} × ${item?.name || item?.sku || 'Item'} ${money(item?.price)}`)
-    .join('\n') || '- (details unavailable)'
+  const textItems =
+    items
+      .map(
+        (item) =>
+          `- ${Number(item?.quantity || 1)} × ${item?.name || item?.sku || 'Item'} ${money(item?.price)}`,
+      )
+      .join('\n') || '- (details unavailable)'
 
   const textLines: string[] = []
   textLines.push(`${salutationPlain},`)
@@ -1322,16 +1479,16 @@ async function sendOrderConfirmationEmail(opts: {
 }
 
 export const handler: Handler = async (event) => {
-  if (!stripe) return { statusCode: 500, body: 'Stripe not configured' }
+  if (!stripe) return {statusCode: 500, body: 'Stripe not configured'}
 
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!endpointSecret) return { statusCode: 500, body: 'Missing STRIPE_WEBHOOK_SECRET' }
+  if (!endpointSecret) return {statusCode: 500, body: 'Missing STRIPE_WEBHOOK_SECRET'}
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, body: ''}
+  if (event.httpMethod !== 'POST') return {statusCode: 405, body: 'Method Not Allowed'}
 
   const sig = (event.headers['stripe-signature'] || event.headers['Stripe-Signature']) as string
-  if (!sig) return { statusCode: 400, body: 'Missing Stripe-Signature header' }
+  if (!sig) return {statusCode: 400, body: 'Missing Stripe-Signature header'}
 
   let webhookEvent: Stripe.Event
   try {
@@ -1339,7 +1496,7 @@ export const handler: Handler = async (event) => {
     webhookEvent = stripe.webhooks.constructEvent(raw, sig, endpointSecret)
   } catch (err: any) {
     console.error('stripeWebhook signature verification failed:', err?.message || err)
-    return { statusCode: 400, body: `Webhook Error: ${err?.message || 'invalid signature'}` }
+    return {statusCode: 400, body: `Webhook Error: ${err?.message || 'invalid signature'}`}
   }
 
   try {
@@ -1357,13 +1514,16 @@ export const handler: Handler = async (event) => {
 
       case 'product.deleted': {
         try {
-          const product = webhookEvent.data.object as { id: string }
-          const docId = await findProductDocumentId({ stripeProductId: product.id })
+          const product = webhookEvent.data.object as {id: string}
+          const docId = await findProductDocumentId({stripeProductId: product.id})
           if (docId) {
-            await sanity.patch(docId).set({
-              stripeActive: false,
-              stripeUpdatedAt: new Date().toISOString(),
-            }).commit({ autoGenerateArrayKeys: true })
+            await sanity
+              .patch(docId)
+              .set({
+                stripeActive: false,
+                stripeUpdatedAt: new Date().toISOString(),
+              })
+              .commit({autoGenerateArrayKeys: true})
           }
         } catch (err) {
           console.warn('stripeWebhook: failed to handle product.deleted', err)
@@ -1384,8 +1544,9 @@ export const handler: Handler = async (event) => {
 
       case 'price.deleted': {
         try {
-          const deleted = webhookEvent.data.object as { id: string; product?: string | { id?: string } }
-          const productId = typeof deleted.product === 'string' ? deleted.product : deleted.product?.id
+          const deleted = webhookEvent.data.object as {id: string; product?: string | {id?: string}}
+          const productId =
+            typeof deleted.product === 'string' ? deleted.product : deleted.product?.id
           await removeStripePrice(deleted.id, productId)
         } catch (err) {
           console.warn('stripeWebhook: failed to handle price.deleted', err)
@@ -1408,10 +1569,16 @@ export const handler: Handler = async (event) => {
 
       case 'customer.deleted': {
         try {
-          const deleted = webhookEvent.data.object as { id: string }
-          const docId = await sanity.fetch<string | null>(`*[_type == "customer" && stripeCustomerId == $id][0]._id`, { id: deleted.id })
+          const deleted = webhookEvent.data.object as {id: string}
+          const docId = await sanity.fetch<string | null>(
+            `*[_type == "customer" && stripeCustomerId == $id][0]._id`,
+            {id: deleted.id},
+          )
           if (docId) {
-            await sanity.patch(docId).set({ stripeLastSyncedAt: new Date().toISOString() }).commit({ autoGenerateArrayKeys: true })
+            await sanity
+              .patch(docId)
+              .set({stripeLastSyncedAt: new Date().toISOString()})
+              .commit({autoGenerateArrayKeys: true})
           }
         } catch (err) {
           console.warn('stripeWebhook: failed to handle customer.deleted', err)
@@ -1460,7 +1627,10 @@ export const handler: Handler = async (event) => {
           const diagnostics = await resolvePaymentFailureDiagnostics(pi)
           await updateOrderPaymentStatus({
             paymentIntentId: pi.id,
-            stripeSessionId: typeof pi.metadata?.checkout_session_id === 'string' ? pi.metadata?.checkout_session_id : undefined,
+            stripeSessionId:
+              typeof pi.metadata?.checkout_session_id === 'string'
+                ? pi.metadata?.checkout_session_id
+                : undefined,
             paymentStatus: pi.status || 'canceled',
             orderStatus: 'cancelled',
             invoiceStatus: 'cancelled',
@@ -1513,13 +1683,16 @@ export const handler: Handler = async (event) => {
         const totalAmount = (Number(session.amount_total || 0) || 0) / 100
         const stripeSessionId = session.id
         const metadata = (session.metadata || {}) as Record<string, string>
-        const userIdMeta = (
-          metadata['auth0_user_id'] ||
-          metadata['auth0_sub'] ||
-          metadata['userId'] ||
-          metadata['user_id'] ||
-          ''
-        ).toString().trim() || undefined
+        const userIdMeta =
+          (
+            metadata['auth0_user_id'] ||
+            metadata['auth0_sub'] ||
+            metadata['userId'] ||
+            metadata['user_id'] ||
+            ''
+          )
+            .toString()
+            .trim() || undefined
 
         // Enrich with Stripe payment details if available
         let paymentIntent: Stripe.PaymentIntent | null = null
@@ -1529,9 +1702,16 @@ export const handler: Handler = async (event) => {
           }
         } catch {}
 
-        const currency = ((session as any)?.currency || (paymentIntent as any)?.currency || '').toString().toLowerCase() || undefined
-        const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal)) ? Number((session as any)?.amount_subtotal) / 100 : undefined
-        const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax)) ? Number((session as any)?.total_details?.amount_tax) / 100 : undefined
+        const currency =
+          ((session as any)?.currency || (paymentIntent as any)?.currency || '')
+            .toString()
+            .toLowerCase() || undefined
+        const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
+          ? Number((session as any)?.amount_subtotal) / 100
+          : undefined
+        const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
+          ? Number((session as any)?.total_details?.amount_tax) / 100
+          : undefined
         let amountShipping = (() => {
           const a = Number((session as any)?.shipping_cost?.amount_total)
           if (Number.isFinite(a)) return a / 100
@@ -1553,187 +1733,599 @@ export const handler: Handler = async (event) => {
           }
         } catch {}
 
-        const metadataOrderNumberRaw = (metadata['order_number'] || metadata['orderNo'] || metadata['website_order_number'] || '')
+        const metadataOrderNumberRaw = (
+          metadata['order_number'] ||
+          metadata['orderNo'] ||
+          metadata['website_order_number'] ||
+          ''
+        )
           .toString()
           .trim()
-        const metadataInvoiceNumber = (metadata['sanity_invoice_number'] || metadata['invoice_number'] || '')
+        const metadataInvoiceNumber = (
+          metadata['sanity_invoice_number'] ||
+          metadata['invoice_number'] ||
+          ''
+        )
           .toString()
           .trim()
-        const metadataShippingAmountRaw = (metadata['shipping_amount'] || metadata['shippingAmount'] || '').toString().trim()
-        const metadataShippingCarrier = (metadata['shipping_carrier'] || metadata['shippingCarrier'] || '').toString().trim() || undefined
-        const metadataShippingServiceCode = (metadata['shipping_service_code'] || metadata['shipping_service'] || metadata['shippingService'] || '').toString().trim() || undefined
-        const metadataShippingServiceName = (metadata['shipping_service_name'] || '').toString().trim() || undefined
-        const metadataShippingCarrierId = (metadata['shipping_carrier_id'] || '').toString().trim() || undefined
-        const metadataShippingCurrency = (metadata['shipping_currency'] || metadata['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
-        const shippingAmountFromMetadata = (() => {
-          if (!metadataShippingAmountRaw) return undefined
-          const parsed = Number(metadataShippingAmountRaw)
-          if (Number.isFinite(parsed)) return parsed
-          const cleaned = metadataShippingAmountRaw.replace(/[^0-9.]/g, '')
-          const fallback = Number(cleaned)
-          return Number.isFinite(fallback) ? fallback : undefined
-        })()
-        if (amountShipping === undefined && shippingAmountFromMetadata !== undefined) {
-          amountShipping = shippingAmountFromMetadata
-        }
-        
-        // Define shippingDetails using the imported resolver
-        const shippingDetails = resolveStripeShippingDetails({
-          session,
+        // Use the shared helper so metadata fallbacks and live Stripe rate
+        // lookups stay in sync across reprocessing + webhook flows.
+        const shippingDetails = await resolveStripeShippingDetails({
           metadata,
-          // Include other context if needed (e.g., amountShipping, currency)
-        });
-        
-        // Define shippingAmountForDoc with fallbacks
-        const shippingAmountForDoc = shippingDetails.amount ?? amountShipping ?? shippingAmountFromMetadata;
-         
-         const orderNumber = await resolveOrderNumber({
-           metadataOrderNumber: metadataOrderNumberRaw,
-           invoiceNumber: metadataInvoiceNumber,
-           fallbackId: stripeSessionId,
-         })
+          session,
+          paymentIntent,
+          fallbackAmount: amountShipping,
+          stripe,
+        })
+        if (shippingDetails.amount !== undefined) {
+          amountShipping = shippingDetails.amount
+        }
+        const orderNumber = await resolveOrderNumber({
+          metadataOrderNumber: metadataOrderNumberRaw,
+          invoiceNumber: metadataInvoiceNumber,
+          fallbackId: stripeSessionId,
+        })
 
-         const invoiceId = metadata['sanity_invoice_id']
-         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '').toString().trim()
+        const invoiceId = metadata['sanity_invoice_id']
+        const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '')
+          .toString()
+          .trim()
 
-         // 2) Gather enriched data: line items + shipping
-         let cart: CartItem[] = []
-         try {
-           const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
-             limit: 100,
-             expand: ['data.price.product'],
-           })
-           cart = (items?.data || []).map((li: Stripe.LineItem) => {
-             const mapped = mapStripeLineItem(li, { sessionMetadata: metadata })
-             return {
-               _type: 'orderCartItem',
-               _key: randomUUID(),
-               ...mapped,
-             } as CartItem
-           })
-           cart = await enrichCartItemsFromSanity(cart, sanity)
-         } catch (e) {
-           console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
-         }
-
-         let shippingAddress: any = undefined
-         try {
-           const cd = session.customer_details
-           const addr = (cd?.address || (session as any).shipping_details?.address) as Stripe.Address | undefined
-           const name = cd?.name || (session as any).shipping_details?.name || undefined
-           const phone = cd?.phone || (session as any).shipping_details?.phone || undefined
-           shippingAddress = addr
-             ? {
-                 name: name || undefined,
-                 phone: phone || undefined,
-                 email: email || undefined,
-                 addressLine1: (addr as any).line1 || undefined,
-                 addressLine2: (addr as any).line2 || undefined,
-                 city: (addr as any).city || undefined,
-                 state: (addr as any).state || undefined,
-                 postalCode: (addr as any).postal_code || undefined,
-                 country: (addr as any).country || undefined,
-               }
-             : undefined
-         } catch (err) {
-           console.warn('stripeWebhook: could not parse shipping address', err)
-         }
-
-         const customerName = (shippingAddress?.name || metadataCustomerName || session.customer_details?.name || email || '').toString().trim() || undefined
-
-         // Prepare invoice scaffolding (line items, addresses, etc.) for reuse
-         let productSummaries: Array<{ _id?: string; title?: string; sku?: string }> = []
-         if (cart.length) {
-           const skus = cart.map((c) => (c?.sku || '').toString().trim()).filter(Boolean)
-           const titles = cart.map((c) => (c?.name || c?.productName || '').toString().trim()).filter(Boolean)
-           if (skus.length || titles.length) {
-             try {
-               productSummaries = await sanity.fetch(
-                 `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`,
-                 { skus, titles }
-               )
-             } catch (err) {
-               console.warn('stripeWebhook: failed to fetch product summaries for invoice', err)
-             }
-           }
-         }
-
-         const findInvoiceProductRef = (ci: any): string | null => {
-           if (!productSummaries?.length) return null
-           const sku = (ci?.sku || '').toString().trim()
-           if (sku) {
-             const match = productSummaries.find((p) => (p?.sku || '').trim() === sku)
-             if (match?._id) return match._id
-           }
-           const title = (ci?.name || ci?.productName || ci?.description || '').toString().trim()
-           if (title) {
-             const match = productSummaries.find((p) => (p?.title || '').trim() === title)
-             if (match?._id) return match._id
-           }
-           return null
-         }
-
-         const invoiceLineItems = cart.map((ci: any) => {
-           const presentation = prepareItemPresentation({
-             name: ci.name,
-             productName: ci.productName,
-             description: ci.description,
-             sku: ci.sku,
-             optionSummary: ci.optionSummary,
-             optionDetails: ci.optionDetails,
-             upgrades: ci.upgrades,
-             metadata: ci.metadata,
-           })
-           const quantityRaw = Number(ci?.quantity || 1)
-           const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1
-           let unit = Number(ci?.price ?? ci?.unitPrice)
-           if (!Number.isFinite(unit) || unit <= 0) {
-             const lineFromItem = Number(ci?.lineTotal)
-             if (Number.isFinite(lineFromItem) && quantity > 0) {
-               unit = lineFromItem / quantity
-             }
-           }
-           const unitPrice = Number.isFinite(unit) ? unit : undefined
-           const lineSource = Number(ci?.lineTotal)
-           const computedLineTotal = Number.isFinite(lineSource)
-             ? lineSource
-             : unitPrice !== undefined
-             ? unitPrice * quantity
-             : undefined
-           const detailText = presentation.details.length ? ` (${presentation.details.join(', ')})` : ''
-           const description = `${presentation.title}${detailText}`
-           const productRef = findInvoiceProductRef(ci)
-           return {
-             _type: 'invoiceLineItem' as const,
-             _key: randomUUID(),
-             kind: productRef ? 'product' : 'custom',
-             product: productRef ? { _type: 'reference', _ref: productRef } : undefined,
-             description,
-             sku: (ci?.sku || '').toString() || undefined,
-             quantity,
-             unitPrice,
-             lineTotal: Number.isFinite(computedLineTotal || NaN) ? (computedLineTotal as number) : undefined,
-           }
-         })
-
-         const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
-         const billToForInvoice = buildStudioAddress(shippingAddress, 'billTo', { fallbackEmail: email, fallbackName: customerName })
-         const shipToForInvoice =
-           buildStudioAddress(shippingAddress, 'shipTo', { fallbackEmail: email, fallbackName: customerName }) ||
-           (billToForInvoice ? { ...billToForInvoice, _type: 'shipTo' } : undefined)
-         const timestampForInvoice = (() => {
-           try {
-             const ts = (session as any)?.created || (paymentIntent as any)?.created
-             if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
-           } catch {}
-           return new Date().toISOString()
-         })()
-         const invoiceDateValue = dateStringFrom(timestampForInvoice)
-         const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
-         const baseInvoiceTitle = pickString(customerName, billTo: 'invoiceNumberToSet', 'baseInvoiceTitle', 'orderId', 'stripeSessionId', 'metadata', 'shippingDetails', 'amountShipping', 'currency', 'totalAmount', 'amountSubtotal', 'amountTax', 'email', 'customerName', 'cart', 'shippingAddress', 'userIdMeta', 'paymentIntent', 'invoiceId', 'skuCandidates', 'slugMeta', 'existingId', 'normalizedEmail', 'shouldSendConfirmation', 'baseDoc', 'packingSlipUrl', 'created', 'orderId', 'invoiceId', 'titleName', 'subtotalValue', 'totalValue', 'taxValue', 'invBase', 'shippingAmountForInvoice', 'invoiceSelectedService', 'shippingMetadata', 'createdInv', 'orderId', 'url', 'e'
-          )
+        // 2) Gather enriched data: line items + shipping
+        let cart: CartItem[] = []
+        try {
+          const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
+            limit: 100,
+            expand: ['data.price.product'],
+          })
+          cart = (items?.data || []).map((li: Stripe.LineItem) => {
+            const mapped = mapStripeLineItem(li, {sessionMetadata: metadata})
+            return {
+              _type: 'orderCartItem',
+              _key: randomUUID(),
+              ...mapped,
+            } as CartItem
+          })
+          cart = await enrichCartItemsFromSanity(cart, sanity)
         } catch (e) {
-          console.warn('stripeWebhook: failed to upsert Order doc:', e)
+          console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
+        }
+
+        let shippingAddress: any = undefined
+        try {
+          const cd = session.customer_details
+          const addr = (cd?.address || (session as any).shipping_details?.address) as
+            | Stripe.Address
+            | undefined
+          const name = cd?.name || (session as any).shipping_details?.name || undefined
+          const phone = cd?.phone || (session as any).shipping_details?.phone || undefined
+          shippingAddress = addr
+            ? {
+                name: name || undefined,
+                phone: phone || undefined,
+                email: email || undefined,
+                addressLine1: (addr as any).line1 || undefined,
+                addressLine2: (addr as any).line2 || undefined,
+                city: (addr as any).city || undefined,
+                state: (addr as any).state || undefined,
+                postalCode: (addr as any).postal_code || undefined,
+                country: (addr as any).country || undefined,
+              }
+            : undefined
+        } catch (err) {
+          console.warn('stripeWebhook: could not parse shipping address', err)
+        }
+
+        const customerName =
+          (
+            shippingAddress?.name ||
+            metadataCustomerName ||
+            session.customer_details?.name ||
+            email ||
+            ''
+          )
+            .toString()
+            .trim() || undefined
+
+        // Prepare invoice scaffolding (line items, addresses, etc.) for reuse
+        let productSummaries: Array<{_id?: string; title?: string; sku?: string}> = []
+        if (cart.length) {
+          const skus = cart.map((c) => (c?.sku || '').toString().trim()).filter(Boolean)
+          const titles = cart
+            .map((c) => (c?.name || c?.productName || '').toString().trim())
+            .filter(Boolean)
+          if (skus.length || titles.length) {
+            try {
+              productSummaries = await sanity.fetch(
+                `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`,
+                {skus, titles},
+              )
+            } catch (err) {
+              console.warn('stripeWebhook: failed to fetch product summaries for invoice', err)
+            }
+          }
+        }
+
+        const findInvoiceProductRef = (ci: any): string | null => {
+          if (!productSummaries?.length) return null
+          const sku = (ci?.sku || '').toString().trim()
+          if (sku) {
+            const match = productSummaries.find((p) => (p?.sku || '').trim() === sku)
+            if (match?._id) return match._id
+          }
+          const title = (ci?.name || ci?.productName || ci?.description || '').toString().trim()
+          if (title) {
+            const match = productSummaries.find((p) => (p?.title || '').trim() === title)
+            if (match?._id) return match._id
+          }
+          return null
+        }
+
+        const invoiceLineItems = cart.map((ci: any) => {
+          const presentation = prepareItemPresentation({
+            name: ci.name,
+            productName: ci.productName,
+            description: ci.description,
+            sku: ci.sku,
+            optionSummary: ci.optionSummary,
+            optionDetails: ci.optionDetails,
+            upgrades: ci.upgrades,
+            metadata: ci.metadata,
+          })
+          const quantityRaw = Number(ci?.quantity || 1)
+          const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1
+          let unit = Number(ci?.price ?? ci?.unitPrice)
+          if (!Number.isFinite(unit) || unit <= 0) {
+            const lineFromItem = Number(ci?.lineTotal)
+            if (Number.isFinite(lineFromItem) && quantity > 0) {
+              unit = lineFromItem / quantity
+            }
+          }
+          const unitPrice = Number.isFinite(unit) ? unit : undefined
+          const lineSource = Number(ci?.lineTotal)
+          const computedLineTotal = Number.isFinite(lineSource)
+            ? lineSource
+            : unitPrice !== undefined
+              ? unitPrice * quantity
+              : undefined
+          const detailText = presentation.details.length
+            ? ` (${presentation.details.join(', ')})`
+            : ''
+          const description = `${presentation.title}${detailText}`
+          const productRef = findInvoiceProductRef(ci)
+          return {
+            _type: 'invoiceLineItem' as const,
+            _key: randomUUID(),
+            kind: productRef ? 'product' : 'custom',
+            product: productRef ? {_type: 'reference', _ref: productRef} : undefined,
+            description,
+            sku: (ci?.sku || '').toString() || undefined,
+            quantity,
+            unitPrice,
+            lineTotal: Number.isFinite(computedLineTotal || NaN)
+              ? (computedLineTotal as number)
+              : undefined,
+          }
+        })
+
+        const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
+        const billToForInvoice = buildStudioAddress(shippingAddress, 'billTo', {
+          fallbackEmail: email,
+          fallbackName: customerName,
+        })
+        const shipToForInvoice =
+          buildStudioAddress(shippingAddress, 'shipTo', {
+            fallbackEmail: email,
+            fallbackName: customerName,
+          }) || (billToForInvoice ? {...billToForInvoice, _type: 'shipTo'} : undefined)
+        const timestampForInvoice = (() => {
+          try {
+            const ts = (session as any)?.created || (paymentIntent as any)?.created
+            if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
+          } catch {}
+          return new Date().toISOString()
+        })()
+        const invoiceDateValue = dateStringFrom(timestampForInvoice)
+        const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
+        const baseInvoiceTitle =
+          pickString(customerName, billToForInvoice?.name, shipToForInvoice?.name, email) ||
+          'Invoice'
+        const defaultInvoiceTitle = invoiceNumberToSet
+          ? `${baseInvoiceTitle} • ${invoiceNumberToSet}`
+          : baseInvoiceTitle
+
+        // 3) Upsert an Order doc for visibility/fulfillment
+        try {
+          const existingOrder = await sanity.fetch(
+            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
+            {sid: stripeSessionId},
+          )
+          const existingId = existingOrder?._id || null
+          const normalizedEmail = typeof email === 'string' ? email.trim() : ''
+          const shouldSendConfirmation =
+            !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
+
+          const baseDoc: any = {
+            _type: 'order',
+            stripeSessionId,
+            orderNumber,
+            customerName,
+            customerEmail: email || undefined,
+            totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
+            status: 'paid',
+            createdAt: new Date().toISOString(),
+            paymentStatus: (session.payment_status ||
+              (paymentIntent?.status === 'succeeded' ? 'paid' : 'unpaid')) as string,
+            currency,
+            amountSubtotal,
+            amountTax,
+            amountShipping,
+            paymentIntentId: paymentIntent?.id || undefined,
+            chargeId,
+            cardBrand,
+            cardLast4,
+            receiptUrl,
+            stripeLastSyncedAt: new Date().toISOString(),
+            ...(shippingAddress ? {shippingAddress} : {}),
+            ...(userIdMeta ? {userId: userIdMeta} : {}),
+            ...(cart.length ? {cart} : {}),
+          }
+          baseDoc.stripeSummary = buildStripeSummary({
+            session,
+            paymentIntent,
+            eventType: webhookEvent.type,
+            eventCreated: webhookEvent.created,
+          })
+
+          const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
+          const shippingCurrencyForDoc =
+            shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
+          if (shippingDetails.carrier) {
+            baseDoc.shippingCarrier = shippingDetails.carrier
+          }
+          if (
+            shippingDetails.serviceName ||
+            shippingDetails.serviceCode ||
+            shippingAmountForDoc !== undefined
+          ) {
+            baseDoc.selectedService = {
+              carrierId: shippingDetails.carrierId || undefined,
+              carrier: shippingDetails.carrier || undefined,
+              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+              amount: shippingAmountForDoc,
+              currency: shippingCurrencyForDoc || 'USD',
+              deliveryDays: shippingDetails.deliveryDays,
+              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+            }
+          }
+
+          if (shippingAmountForDoc !== undefined) {
+            baseDoc.amountShipping = shippingAmountForDoc
+            baseDoc.selectedShippingAmount = shippingAmountForDoc
+          }
+          if (shippingCurrencyForDoc) {
+            baseDoc.selectedShippingCurrency = shippingCurrencyForDoc
+          }
+          if (shippingDetails.deliveryDays !== undefined) {
+            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
+          }
+          if (shippingDetails.estimatedDeliveryDate) {
+            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+          }
+          if (shippingDetails.serviceCode) {
+            baseDoc.shippingServiceCode = shippingDetails.serviceCode
+          }
+          if (shippingDetails.serviceName) {
+            baseDoc.shippingServiceName = shippingDetails.serviceName
+          }
+          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+            baseDoc.shippingMetadata = shippingDetails.metadata
+          }
+
+          const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
+          if (orderSlug) baseDoc.slug = {_type: 'slug', current: orderSlug}
+
+          if (invoiceId) {
+            baseDoc.invoiceRef = {_type: 'reference', _ref: invoiceId}
+          }
+
+          if (invoiceId) {
+            const ids = idVariants(invoiceId)
+            const titleValue = defaultInvoiceTitle
+
+            for (const id of ids) {
+              try {
+                const patchData: Record<string, any> = {
+                  status: 'paid',
+                  stripeLastSyncedAt: new Date().toISOString(),
+                }
+                if (orderNumber) patchData.orderNumber = orderNumber
+                if (invoiceNumberToSet) patchData.invoiceNumber = invoiceNumberToSet
+                if (titleValue) patchData.title = titleValue
+                const subtotalValue = Number(amountSubtotal)
+                if (Number.isFinite(subtotalValue)) {
+                  patchData.subtotal = subtotalValue
+                  patchData.amountSubtotal = subtotalValue
+                }
+                const totalValue = Number(totalAmount)
+                if (Number.isFinite(totalValue)) patchData.total = totalValue
+                const taxValue = Number(amountTax)
+                if (Number.isFinite(taxValue)) patchData.amountTax = taxValue
+                if (currency) patchData.currency = currency.toUpperCase()
+                if (email) patchData.customerEmail = email
+                if (invoiceLineItems.length) patchData.lineItems = invoiceLineItems
+                if (billToForInvoice) patchData.billTo = billToForInvoice
+                if (shipToForInvoice) patchData.shipTo = shipToForInvoice
+                if (invoiceDateValue) {
+                  patchData.invoiceDate = invoiceDateValue
+                  patchData.dueDate = invoiceDateValue
+                }
+                const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+                const shippingCurrencyForInvoice =
+                  shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
+                if (shippingAmountForInvoice !== undefined) {
+                  patchData.amountShipping = shippingAmountForInvoice
+                }
+                if (shippingDetails.carrier) {
+                  patchData.shippingCarrier = shippingDetails.carrier
+                }
+                const invoiceSelectedService =
+                  shippingDetails.serviceName ||
+                  shippingDetails.serviceCode ||
+                  shippingAmountForInvoice !== undefined
+                    ? {
+                        carrierId: shippingDetails.carrierId || undefined,
+                        carrier: shippingDetails.carrier || undefined,
+                        service:
+                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                        serviceCode:
+                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                        amount: shippingAmountForInvoice,
+                        currency: shippingCurrencyForInvoice || 'USD',
+                        deliveryDays: shippingDetails.deliveryDays,
+                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                      }
+                    : undefined
+                if (invoiceSelectedService) {
+                  patchData.selectedService = invoiceSelectedService
+                }
+                if (shippingCurrencyForInvoice) {
+                  patchData.selectedShippingCurrency = shippingCurrencyForInvoice
+                }
+                if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+                  patchData.shippingMetadata = shippingDetails.metadata
+                }
+                if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
+                patchData.stripeSummary = buildStripeSummary({
+                  session,
+                  paymentIntent,
+                  eventType: webhookEvent.type,
+                  eventCreated: webhookEvent.created,
+                })
+                let patch = sanity.patch(id).set(patchData)
+                await patch.commit({autoGenerateArrayKeys: true})
+                break
+              } catch (err) {
+                console.warn('stripeWebhook: failed to update invoice with variant id', err)
+              }
+            }
+          }
+
+          // Try to link to an existing customer by email
+          if (email) {
+            try {
+              const customerId = await sanity.fetch(
+                `*[_type == "customer" && email == $email][0]._id`,
+                {email},
+              )
+              if (customerId) baseDoc.customerRef = {_type: 'reference', _ref: customerId}
+            } catch {}
+          }
+
+          let orderId = existingId
+          if (existingId) {
+            await sanity
+              .patch(existingId)
+              .set(baseDoc)
+              .setIfMissing({webhookNotified: true})
+              .commit({autoGenerateArrayKeys: true})
+          } else {
+            const created = await sanity.create(
+              {...baseDoc, webhookNotified: true},
+              {autoGenerateArrayKeys: true},
+            )
+            orderId = created?._id
+          }
+
+          if (orderId) {
+            try {
+              if (!existingOrder?.packingSlipUrl) {
+                const packingSlipUrl = await generatePackingSlipAsset({
+                  sanity,
+                  orderId,
+                  invoiceId,
+                })
+                if (packingSlipUrl) {
+                  await sanity
+                    .patch(orderId)
+                    .set({packingSlipUrl})
+                    .commit({autoGenerateArrayKeys: true})
+                }
+              }
+            } catch (err) {
+              console.warn('stripeWebhook: packing slip auto upload failed', err)
+            }
+            try {
+              await syncOrderToShipStation(sanity, orderId)
+            } catch (err) {
+              console.warn('stripeWebhook: ShipStation sync failed', err)
+            }
+          }
+
+          try {
+            await updateCustomerProfileForOrder({
+              sanity,
+              orderId,
+              customerId: (baseDoc as any)?.customerRef?._ref,
+              email: normalizedEmail || email || undefined,
+              shippingAddress,
+              stripeCustomerId:
+                typeof paymentIntent?.customer === 'string' ? paymentIntent.customer : undefined,
+              stripeSyncTimestamp: new Date().toISOString(),
+              customerName,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to refresh customer profile', err)
+          }
+
+          if (shouldSendConfirmation && orderId) {
+            try {
+              await sendOrderConfirmationEmail({
+                to: normalizedEmail,
+                orderNumber,
+                customerName,
+                items: cart,
+                totalAmount,
+                subtotal: typeof amountSubtotal === 'number' ? amountSubtotal : undefined,
+                taxAmount: typeof amountTax === 'number' ? amountTax : undefined,
+                shippingAmount: typeof amountShipping === 'number' ? amountShipping : undefined,
+                shippingAddress,
+              })
+              await sanity
+                .patch(orderId)
+                .set({confirmationEmailSent: true})
+                .commit({autoGenerateArrayKeys: true})
+            } catch (err) {
+              console.warn('stripeWebhook: order confirmation email failed', err)
+            }
+          }
+
+          // If no invoice was linked, create one from the order so Studio has a full record
+          try {
+            if (!invoiceId && orderId) {
+              let titleName = defaultInvoiceTitle
+              try {
+                const cref = (baseDoc as any)?.customerRef?._ref
+                if (cref) {
+                  const cust = await sanity.fetch(
+                    `*[_type == "customer" && _id == $id][0]{firstName,lastName,email}`,
+                    {id: cref},
+                  )
+                  const full = [cust?.firstName, cust?.lastName].filter(Boolean).join(' ').trim()
+                  if (full)
+                    titleName = invoiceNumberToSet ? `${full} • ${invoiceNumberToSet}` : full
+                  else if (cust?.email)
+                    titleName = invoiceNumberToSet
+                      ? `${cust.email} • ${invoiceNumberToSet}`
+                      : cust.email
+                }
+              } catch {}
+
+              const subtotalValue = Number(amountSubtotal)
+              const totalValue = Number(totalAmount)
+              const taxValue = Number(amountTax)
+
+              const invBase: any = {
+                _type: 'invoice',
+                title: titleName,
+                orderNumber,
+                invoiceNumber: invoiceNumberToSet || orderNumber,
+                customerRef: baseDoc.customerRef || undefined,
+                orderRef: {_type: 'reference', _ref: orderId},
+                billTo: billToForInvoice,
+                shipTo: shipToForInvoice,
+                lineItems: invoiceLineItems,
+                discountType: 'amount',
+                discountValue: 0,
+                taxRate: typeof computedTaxRate === 'number' ? computedTaxRate : 0,
+                subtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
+                total: Number.isFinite(totalValue) ? totalValue : undefined,
+                amountSubtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
+                amountTax: Number.isFinite(taxValue) ? taxValue : undefined,
+                currency: (currency || 'usd').toUpperCase(),
+                customerEmail: email || undefined,
+                userId: userIdMeta || undefined,
+                status: 'paid',
+                invoiceDate: invoiceDateValue,
+                dueDate: invoiceDateValue,
+                stripeSessionId,
+                paymentIntentId: paymentIntent?.id || undefined,
+                stripeLastSyncedAt: new Date().toISOString(),
+              }
+              const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+              const shippingCurrencyForInvoice =
+                shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
+              if (shippingAmountForInvoice !== undefined) {
+                invBase.amountShipping = shippingAmountForInvoice
+              }
+              if (shippingDetails.carrier) {
+                invBase.shippingCarrier = shippingDetails.carrier
+              }
+              const invoiceSelectedService =
+                shippingDetails.serviceName ||
+                shippingDetails.serviceCode ||
+                shippingAmountForInvoice !== undefined
+                  ? {
+                      carrierId: shippingDetails.carrierId || undefined,
+                      carrier: shippingDetails.carrier || undefined,
+                      service:
+                        shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                      serviceCode:
+                        shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                      amount: shippingAmountForInvoice,
+                      currency: shippingCurrencyForInvoice || 'USD',
+                      deliveryDays: shippingDetails.deliveryDays,
+                      estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                    }
+                  : undefined
+              if (invoiceSelectedService) {
+                invBase.selectedService = invoiceSelectedService
+              }
+              if (shippingCurrencyForInvoice) {
+                invBase.selectedShippingCurrency = shippingCurrencyForInvoice
+              }
+              if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+                invBase.shippingMetadata = shippingDetails.metadata
+              }
+              const createdInv = await sanity.create(invBase, {autoGenerateArrayKeys: true})
+              if (createdInv?._id) {
+                try {
+                  await sanity
+                    .patch(orderId)
+                    .set({invoiceRef: {_type: 'reference', _ref: createdInv._id}})
+                    .commit({autoGenerateArrayKeys: true})
+                } catch {}
+              }
+            }
+          } catch (e) {
+            console.warn('stripeWebhook: failed to create invoice from order', e)
+          }
+
+          // 4) Auto-fulfillment: call our Netlify function to generate packing slip, label, and email
+          try {
+            if (orderId) {
+              const base = (
+                process.env.SANITY_STUDIO_NETLIFY_BASE ||
+                process.env.PUBLIC_SITE_URL ||
+                process.env.AUTH0_BASE_URL ||
+                ''
+              ).trim()
+              if (base && base.startsWith('http')) {
+                const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfill-order`
+                await fetch(url, {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({orderId}),
+                })
+              }
+            }
+          } catch (e) {
+            console.warn('stripeWebhook: auto-fulfillment call failed', e)
+          }
+        } catch (e) {
+          console.error('stripeWebhook: failed to upsert Order doc:', e)
+          // Do not fail the webhook; Stripe will retry and we may create duplicates otherwise
         }
 
         break
@@ -1742,19 +2334,19 @@ export const handler: Handler = async (event) => {
       case 'payment_intent.succeeded': {
         const pi = webhookEvent.data.object as Stripe.PaymentIntent
         const meta = (pi.metadata || {}) as Record<string, string>
-        const userIdMeta = (
-          meta['auth0_user_id'] ||
-          meta['auth0_sub'] ||
-          meta['userId'] ||
-          meta['user_id'] ||
-          ''
-        ).toString().trim() || undefined
+        const userIdMeta =
+          (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
+            .toString()
+            .trim() || undefined
         const invoiceId = meta['sanity_invoice_id']
 
         // Create a minimal Order if none exists yet
         try {
           const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
-          const email = (pi as any)?.charges?.data?.[0]?.billing_details?.email || (pi as any)?.receipt_email || undefined
+          const email =
+            (pi as any)?.charges?.data?.[0]?.billing_details?.email ||
+            (pi as any)?.receipt_email ||
+            undefined
           const currency = ((pi as any)?.currency || '').toString().toLowerCase() || undefined
           const ch = (pi as any)?.charges?.data?.[0]
           const chargeId = ch?.id || undefined
@@ -1762,41 +2354,47 @@ export const handler: Handler = async (event) => {
           const cardBrand = ch?.payment_method_details?.card?.brand || undefined
           const cardLast4 = ch?.payment_method_details?.card?.last4 || undefined
           const shippingAddr: any = (pi as any)?.shipping?.address || undefined
+          let amountShipping: number | undefined = undefined
 
-          const metadataOrderNumberRaw = (meta['order_number'] || meta['orderNo'] || meta['website_order_number'] || '')
+          const metadataOrderNumberRaw = (
+            meta['order_number'] ||
+            meta['orderNo'] ||
+            meta['website_order_number'] ||
+            ''
+          )
             .toString()
             .trim()
-          const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '')
+          const metadataInvoiceNumber = (
+            meta['sanity_invoice_number'] ||
+            meta['invoice_number'] ||
+            ''
+          )
             .toString()
             .trim()
-          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
-          const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
-          const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
-          const metadataShippingServiceName = (meta['shipping_service_name'] || '').toString().trim() || undefined
-          const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '').toString().trim() || undefined
-          const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
-          const shippingAmountFromMetadata = (() => {
-            if (!metadataShippingAmountRaw) return undefined
-            const parsed = Number(metadataShippingAmountRaw)
-            if (Number.isFinite(parsed)) return parsed
-            const cleaned = metadataShippingAmountRaw.replace(/[^0-9.]/g, '')
-            const fallback = Number(cleaned)
-            return Number.isFinite(fallback) ? fallback : undefined
-          })()
+          const shippingDetails = await resolveStripeShippingDetails({
+            metadata: meta,
+            paymentIntent: pi,
+            fallbackAmount: undefined,
+            stripe,
+          })
           const orderNumber = await resolveOrderNumber({
             metadataOrderNumber: metadataOrderNumberRaw,
             invoiceNumber: metadataInvoiceNumber,
             fallbackId: pi.id,
           })
-          const customerName = ((pi as any)?.shipping?.name || meta['bill_to_name'] || email || '').toString().trim() || undefined
+          const customerName =
+            ((pi as any)?.shipping?.name || meta['bill_to_name'] || email || '')
+              .toString()
+              .trim() || undefined
 
           const existingOrder = await sanity.fetch(
             `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
-            { sid: pi.id }
+            {sid: pi.id},
           )
           const existingId = existingOrder?._id || null
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
-          const shouldSendConfirmation = !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
+          const shouldSendConfirmation =
+            !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
           const baseDoc: any = {
             _type: 'order',
             stripeSessionId: pi.id,
@@ -1814,63 +2412,129 @@ export const handler: Handler = async (event) => {
             cardLast4,
             receiptUrl,
             stripeLastSyncedAt: new Date().toISOString(),
-            ...(userIdMeta ? { userId: userIdMeta } : {}),
-            ...(shippingAddr ? {
-              shippingAddress: {
-                name: (pi as any)?.shipping?.name || undefined,
-                addressLine1: shippingAddr.line1 || undefined,
-                addressLine2: shippingAddr.line2 || undefined,
-                city: shippingAddr.city || undefined,
-                state: shippingAddr.state || undefined,
-                postalCode: shippingAddr.postal_code || undefined,
-                country: shippingAddr.country || undefined,
-                email: email || undefined,
-              }
-            } : {}),
+            ...(userIdMeta ? {userId: userIdMeta} : {}),
+            ...(shippingAddr
+              ? {
+                  shippingAddress: {
+                    name: (pi as any)?.shipping?.name || undefined,
+                    addressLine1: shippingAddr.line1 || undefined,
+                    addressLine2: shippingAddr.line2 || undefined,
+                    city: shippingAddr.city || undefined,
+                    state: shippingAddr.state || undefined,
+                    postalCode: shippingAddr.postal_code || undefined,
+                    country: shippingAddr.country || undefined,
+                    email: email || undefined,
+                  },
+                }
+              : {}),
           }
           baseDoc.stripeSummary = buildStripeSummary({
             paymentIntent: pi,
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
           })
-          if (shippingAmountFromMetadata !== undefined) {
-            baseDoc.amountShipping = shippingAmountFromMetadata
+          const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
+          if (shippingAmountForDoc !== undefined) {
+            baseDoc.amountShipping = shippingAmountForDoc
+            baseDoc.selectedShippingAmount = shippingAmountForDoc
           }
-          if (metadataShippingCarrier) {
-            baseDoc.shippingCarrier = metadataShippingCarrier
+          if (shippingDetails.carrier) {
+            baseDoc.shippingCarrier = shippingDetails.carrier
           }
-          if (metadataShippingServiceCode || metadataShippingServiceName || shippingAmountFromMetadata !== undefined) {
+          if (
+            shippingDetails.serviceName ||
+            shippingDetails.serviceCode ||
+            shippingAmountForDoc !== undefined
+          ) {
             baseDoc.selectedService = {
-              carrierId: metadataShippingCarrierId || undefined,
-              carrier: metadataShippingCarrier || undefined,
-              service: metadataShippingServiceName || metadataShippingServiceCode || undefined,
-              serviceCode: metadataShippingServiceCode || metadataShippingServiceName || undefined,
-              amount: shippingAmountFromMetadata,
-              currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+              carrierId: shippingDetails.carrierId || undefined,
+              carrier: shippingDetails.carrier || undefined,
+              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+              amount: shippingAmountForDoc,
+              currency:
+                shippingDetails.currency ||
+                (currency ? currency.toUpperCase() : undefined) ||
+                'USD',
+              deliveryDays: shippingDetails.deliveryDays,
+              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
             }
           }
+          if (shippingDetails.currency) {
+            baseDoc.selectedShippingCurrency = shippingDetails.currency
+          }
+          if (shippingDetails.deliveryDays !== undefined) {
+            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
+          }
+          if (shippingDetails.estimatedDeliveryDate) {
+            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+          }
+          if (shippingDetails.serviceCode) {
+            baseDoc.shippingServiceCode = shippingDetails.serviceCode
+          }
+          if (shippingDetails.serviceName) {
+            baseDoc.shippingServiceName = shippingDetails.serviceName
+          }
+          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+            baseDoc.shippingMetadata = shippingDetails.metadata
+          }
           const intentSlug = createOrderSlug(orderNumber, pi.id)
-          if (intentSlug) baseDoc.slug = { _type: 'slug', current: intentSlug }
-          if (invoiceId) baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
+          if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
+          if (invoiceId) baseDoc.invoiceRef = {_type: 'reference', _ref: invoiceId}
 
           if (invoiceId) {
             const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
             const ids = idVariants(invoiceId)
             for (const id of ids) {
               try {
-                let patch = sanity.patch(id).set({ status: 'paid' })
-                if (orderNumber) patch = patch.setIfMissing({ orderNumber })
-                if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
-                if (customerName) patch = patch.setIfMissing({ title: customerName })
-                patch = patch.set({
+                let patch = sanity.patch(id).set({status: 'paid'})
+                if (orderNumber) patch = patch.setIfMissing({orderNumber})
+                if (invoiceNumberToSet)
+                  patch = patch.setIfMissing({invoiceNumber: invoiceNumberToSet})
+                if (customerName) patch = patch.setIfMissing({title: customerName})
+                const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+                const shippingSelectedService =
+                  shippingDetails.serviceName ||
+                  shippingDetails.serviceCode ||
+                  shippingAmountForInvoice !== undefined
+                    ? {
+                        carrierId: shippingDetails.carrierId || undefined,
+                        carrier: shippingDetails.carrier || undefined,
+                        service:
+                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                        serviceCode:
+                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                        amount: shippingAmountForInvoice,
+                        currency:
+                          shippingDetails.currency ||
+                          (currency ? currency.toUpperCase() : undefined) ||
+                          'USD',
+                        deliveryDays: shippingDetails.deliveryDays,
+                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                      }
+                    : undefined
+                const shippingSet: Record<string, any> = {
                   stripeLastSyncedAt: new Date().toISOString(),
                   stripeSummary: buildStripeSummary({
                     paymentIntent: pi,
                     eventType: webhookEvent.type,
                     eventCreated: webhookEvent.created,
                   }),
-                })
-                await patch.commit({ autoGenerateArrayKeys: true })
+                }
+                if (shippingAmountForInvoice !== undefined) {
+                  shippingSet.amountShipping = shippingAmountForInvoice
+                }
+                if (shippingDetails.carrier) {
+                  shippingSet.shippingCarrier = shippingDetails.carrier
+                }
+                if (shippingSelectedService) {
+                  shippingSet.selectedService = shippingSelectedService
+                }
+                if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+                  shippingSet.shippingMetadata = shippingDetails.metadata
+                }
+                patch = patch.set(shippingSet)
+                await patch.commit({autoGenerateArrayKeys: true})
                 break
               } catch {}
             }
@@ -1878,9 +2542,9 @@ export const handler: Handler = async (event) => {
 
           let orderId = existingId
           if (existingId) {
-            await sanity.patch(existingId).set(baseDoc).commit({ autoGenerateArrayKeys: true })
+            await sanity.patch(existingId).set(baseDoc).commit({autoGenerateArrayKeys: true})
           } else {
-            const created = await sanity.create(baseDoc, { autoGenerateArrayKeys: true })
+            const created = await sanity.create(baseDoc, {autoGenerateArrayKeys: true})
             orderId = created?._id
           }
 
@@ -1893,7 +2557,10 @@ export const handler: Handler = async (event) => {
                   invoiceId,
                 })
                 if (packingSlipUrl) {
-                  await sanity.patch(orderId).set({ packingSlipUrl }).commit({ autoGenerateArrayKeys: true })
+                  await sanity
+                    .patch(orderId)
+                    .set({packingSlipUrl})
+                    .commit({autoGenerateArrayKeys: true})
                 }
               }
             } catch (err) {
@@ -1914,9 +2581,14 @@ export const handler: Handler = async (event) => {
                 customerName,
                 items: [],
                 totalAmount,
+                shippingAmount:
+                  typeof shippingDetails.amount === 'number' ? shippingDetails.amount : undefined,
                 shippingAddress: shippingAddr,
               })
-              await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
+              await sanity
+                .patch(orderId)
+                .set({confirmationEmailSent: true})
+                .commit({autoGenerateArrayKeys: true})
             } catch (err) {
               console.warn('stripeWebhook: PI order confirmation email failed', err)
             }
@@ -1935,8 +2607,8 @@ export const handler: Handler = async (event) => {
               const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfill-order`
               await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId }),
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({orderId}),
               })
             }
           } catch {}
@@ -1958,11 +2630,11 @@ export const handler: Handler = async (event) => {
         break
     }
 
-    return { statusCode: 200, body: JSON.stringify({ received: true }) }
+    return {statusCode: 200, body: JSON.stringify({received: true})}
   } catch (err: any) {
     console.error('stripeWebhook handler error:', err)
     // Return 200 to avoid aggressive retries if our internal handling fails non-critically
-    return { statusCode: 200, body: JSON.stringify({ received: true, hint: 'internal error logged' }) }
+    return {statusCode: 200, body: JSON.stringify({received: true, hint: 'internal error logged'})}
   }
 }
 
