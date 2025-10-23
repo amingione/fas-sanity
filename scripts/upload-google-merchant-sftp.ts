@@ -105,7 +105,7 @@ const sanity = createClient({
   dataset: SANITY_DATASET,
   apiVersion: '2024-04-10',
   useCdn: false,
-  token: process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  token: process.env.SANITY_API_TOKEN,
 })
 
 const QUERY = `*[_type == "product" && defined(price) && price > 0]{

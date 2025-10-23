@@ -22,7 +22,7 @@ const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
   apiVersion: '2024-04-10',
-  token: process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN,
+  token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null

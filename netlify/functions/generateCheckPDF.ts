@@ -5,23 +5,11 @@ import Stripe from 'stripe'
 import fs from 'fs'
 import path from 'path'
 
-const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
-  process.env.VITE_SANITY_STUDIO_PROJECT_ID ||
-  process.env.PUBLIC_SANITY_PROJECT_ID ||
-  'r4og35qd'
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
 
-const dataset =
-  process.env.SANITY_STUDIO_DATASET ||
-  process.env.SANITY_DATASET ||
-  process.env.NEXT_PUBLIC_SANITY_DATASET ||
-  process.env.VITE_SANITY_STUDIO_DATASET ||
-  process.env.PUBLIC_SANITY_DATASET ||
-  'production'
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
 
-const sanityToken = process.env.SANITY_API_TOKEN || process.env.PUBLIC_SANITY_WRITE_TOKEN
+const sanityToken = process.env.SANITY_API_TOKEN
 
 const client = createClient({
   projectId,
