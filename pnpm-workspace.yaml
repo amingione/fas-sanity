@@ -6,6 +6,3 @@ ignoredBuiltDependencies:
   - netlify-cli
   - sharp
   - unix-dgram
-
-patchedDependencies:
-  '@sanity/ui@3.1.11': patches/@sanity__ui@3.1.11.patch

@@ -1,7 +1,8 @@
 import {LockIcon} from '@sanity/icons'
 import {Box, Text, TextInput, Tooltip} from '@sanity/ui'
 import {StringInputProps, useFormValue, SanityDocument, StringSchemaType} from 'sanity'
-import get from 'lodash.get'
+
+import {getFieldValue} from './getFieldValue'
 
 type Props = StringInputProps<StringSchemaType & {options?: {field?: string}}>
 
@@ -10,8 +11,8 @@ const ProxyString = (props: Props) => {
 
   const path = schemaType?.options?.field
   const doc = useFormValue([]) as SanityDocument
-
-  const proxyValue = path ? (get(doc, path) as string) : ''
+  const rawValue = getFieldValue(doc, path)
+  const proxyValue = typeof rawValue === 'string' ? rawValue : ''
 
   return (
     <Tooltip
