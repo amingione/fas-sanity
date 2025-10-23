@@ -293,6 +293,18 @@ export const handler: Handler = async (event) => {
     const invoiceId = (meta['sanity_invoice_id'] || '').toString().trim()
     const metadataOrderNumberRaw = (meta['order_number'] || meta['orderNo'] || meta['website_order_number'] || '').toString().trim()
     const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '').toString().trim()
+    // Always funnel metadata + Stripe rate lookups through the shared helper so
+    // we keep the order/invoice shipping amounts, carrier details, and
+    // delivery estimates consistent with checkout.session handling.
+    const shippingDetails = await resolveStripeShippingDetails({
+      metadata: meta,
+      session,
+      paymentIntent,
+      fallbackAmount: amountShipping,
+      stripe,
+    })
+    if (shippingDetails.amount !== undefined) {
+      amountShipping = shippingDetails.amount
     const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
     const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
     const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
@@ -411,13 +423,37 @@ export const handler: Handler = async (event) => {
     }
     if (shippingDetails.carrier) {
       baseDoc.shippingCarrier = shippingDetails.carrier
+    const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
+    if (shippingAmountForDoc !== undefined) {
+      baseDoc.amountShipping = shippingAmountForDoc
+      baseDoc.selectedShippingAmount = shippingAmountForDoc
+    }
+    if (shippingDetails.carrier) {
+      baseDoc.shippingCarrier = shippingDetails.carrier
     }
     if (
       shippingDetails.serviceName ||
       shippingDetails.serviceCode ||
       shippingAmountForDoc !== undefined
     ) {
+    if (
+      shippingDetails.serviceName ||
+      shippingDetails.serviceCode ||
+      shippingAmountForDoc !== undefined
+    ) {
       baseDoc.selectedService = {
+        carrierId: shippingDetails.carrierId || undefined,
+        carrier: shippingDetails.carrier || undefined,
+        service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+        serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+        amount: shippingAmountForDoc,
+        currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+        deliveryDays: shippingDetails.deliveryDays,
+        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+      }
+    }
+    if (shippingDetails.currency) {
+      baseDoc.selectedShippingCurrency = shippingDetails.currency
         carrierId: shippingDetails.carrierId || undefined,
         carrier: shippingDetails.carrier || undefined,
         service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
@@ -435,6 +471,20 @@ export const handler: Handler = async (event) => {
     if (metadataShippingCarrier) {
       baseDoc.shippingCarrier = metadataShippingCarrier
     }
+    if (shippingDetails.deliveryDays !== undefined) {
+      baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
+    }
+    if (shippingDetails.estimatedDeliveryDate) {
+      baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+    }
+    if (shippingDetails.serviceCode) {
+      baseDoc.shippingServiceCode = shippingDetails.serviceCode
+    }
+    if (shippingDetails.serviceName) {
+      baseDoc.shippingServiceName = shippingDetails.serviceName
+    }
+    if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+      baseDoc.shippingMetadata = shippingDetails.metadata
     if (shippingDetails.deliveryDays !== undefined) {
       baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
     }
@@ -655,6 +705,36 @@ export const handler: Handler = async (event) => {
           dueDate: createdAtIso.slice(0,10),
           stripeLastSyncedAt: new Date().toISOString(),
         }
+
+        const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+        if (shippingAmountForInvoice !== undefined) {
+          invBase.amountShipping = shippingAmountForInvoice
+        }
+        if (shippingDetails.carrier) {
+          invBase.shippingCarrier = shippingDetails.carrier
+        }
+        const invoiceSelectedService =
+          shippingDetails.serviceName ||
+          shippingDetails.serviceCode ||
+          shippingAmountForInvoice !== undefined
+            ? {
+                carrierId: shippingDetails.carrierId || undefined,
+                carrier: shippingDetails.carrier || undefined,
+                service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                amount: shippingAmountForInvoice,
+                currency:
+                  shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                deliveryDays: shippingDetails.deliveryDays,
+                estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+              }
+            : undefined
+        if (invoiceSelectedService) {
+          invBase.selectedService = invoiceSelectedService
+        }
+        if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+          invBase.shippingMetadata = shippingDetails.metadata
+        }
         invBase.stripeSummary = buildStripeSummary({
           session,
           paymentIntent,
@@ -702,6 +782,39 @@ export const handler: Handler = async (event) => {
           if (shipToUpdate) patch = patch.set({ shipTo: shipToUpdate })
           if (invoiceDateValue) patch = patch.set({ invoiceDate: invoiceDateValue, dueDate: invoiceDateValue })
           if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
+          const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
+          const invoiceSelectedService =
+            shippingDetails.serviceName ||
+            shippingDetails.serviceCode ||
+            shippingAmountForInvoice !== undefined
+              ? {
+                  carrierId: shippingDetails.carrierId || undefined,
+                  carrier: shippingDetails.carrier || undefined,
+                  service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
+                  serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                  amount: shippingAmountForInvoice,
+                  currency:
+                    shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                  deliveryDays: shippingDetails.deliveryDays,
+                  estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+                }
+              : undefined
+          const shippingPatch: Record<string, any> = {}
+          if (shippingAmountForInvoice !== undefined) {
+            shippingPatch.amountShipping = shippingAmountForInvoice
+          }
+          if (shippingDetails.carrier) {
+            shippingPatch.shippingCarrier = shippingDetails.carrier
+          }
+          if (invoiceSelectedService) {
+            shippingPatch.selectedService = invoiceSelectedService
+          }
+          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+            shippingPatch.shippingMetadata = shippingDetails.metadata
+          }
+          if (Object.keys(shippingPatch).length > 0) {
+            patch = patch.set(shippingPatch)
+          }
           patch = patch.set({
             stripeLastSyncedAt: new Date().toISOString(),
             stripeSummary: buildStripeSummary({
