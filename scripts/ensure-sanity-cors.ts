@@ -1,7 +1,12 @@
+import 'dotenv/config'
 import fetch from 'node-fetch'
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
-const token = process.env.SANITY_API_TOKEN
+const token =
+  process.env.SANITY_API_TOKEN ||
+  process.env.SANITY_AUTH_TOKEN ||
+  process.env.SANITY_DEPLOY_TOKEN ||
+  process.env.SANITY_WRITE_TOKEN
 
 class SanityCorsPermissionError extends Error {
   constructor(status: number, body: string) {
@@ -70,7 +75,9 @@ async function addOrigin(origin: string) {
 
 async function ensureCors() {
   if (!token) {
-    console.warn('Skipping Sanity CORS configuration: SANITY_API_TOKEN is undefined.')
+    console.warn(
+      'Skipping Sanity CORS configuration: set SANITY_API_TOKEN (or SANITY_AUTH_TOKEN / SANITY_DEPLOY_TOKEN / SANITY_WRITE_TOKEN).',
+    )
     return
   }
 
