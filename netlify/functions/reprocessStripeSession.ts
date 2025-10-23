@@ -305,6 +305,7 @@ export const handler: Handler = async (event) => {
     })
     if (shippingDetails.amount !== undefined) {
       amountShipping = shippingDetails.amount
+    }
     const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
     const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
     const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
@@ -423,19 +424,7 @@ export const handler: Handler = async (event) => {
     }
     if (shippingDetails.carrier) {
       baseDoc.shippingCarrier = shippingDetails.carrier
-    const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
-    if (shippingAmountForDoc !== undefined) {
-      baseDoc.amountShipping = shippingAmountForDoc
-      baseDoc.selectedShippingAmount = shippingAmountForDoc
     }
-    if (shippingDetails.carrier) {
-      baseDoc.shippingCarrier = shippingDetails.carrier
-    }
-    if (
-      shippingDetails.serviceName ||
-      shippingDetails.serviceCode ||
-      shippingAmountForDoc !== undefined
-    ) {
     if (
       shippingDetails.serviceName ||
       shippingDetails.serviceCode ||
@@ -454,15 +443,6 @@ export const handler: Handler = async (event) => {
     }
     if (shippingDetails.currency) {
       baseDoc.selectedShippingCurrency = shippingDetails.currency
-        carrierId: shippingDetails.carrierId || undefined,
-        carrier: shippingDetails.carrier || undefined,
-        service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-        serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-        amount: shippingAmountForDoc,
-        currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
-        deliveryDays: shippingDetails.deliveryDays,
-        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-      }
     }
     if (shippingAmountFromMetadata !== undefined) {
       baseDoc.amountShipping = shippingAmountFromMetadata
@@ -471,20 +451,6 @@ export const handler: Handler = async (event) => {
     if (metadataShippingCarrier) {
       baseDoc.shippingCarrier = metadataShippingCarrier
     }
-    if (shippingDetails.deliveryDays !== undefined) {
-      baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-    }
-    if (shippingDetails.estimatedDeliveryDate) {
-      baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-    }
-    if (shippingDetails.serviceCode) {
-      baseDoc.shippingServiceCode = shippingDetails.serviceCode
-    }
-    if (shippingDetails.serviceName) {
-      baseDoc.shippingServiceName = shippingDetails.serviceName
-    }
-    if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-      baseDoc.shippingMetadata = shippingDetails.metadata
     if (shippingDetails.deliveryDays !== undefined) {
       baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
     }
