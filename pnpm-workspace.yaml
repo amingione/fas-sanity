@@ -2,7 +2,9 @@ ignoredBuiltDependencies:
   - '@parcel/watcher'
   - canvas
   - core-js
+  - cpu-features
   - esbuild
   - netlify-cli
   - sharp
+  - ssh2
   - unix-dgram

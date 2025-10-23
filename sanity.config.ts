@@ -17,6 +17,7 @@ const deskTool: DeskToolFactory =
 import { visionTool } from '@sanity/vision';
 import { codeInput } from '@sanity/code-input';
 import { media } from 'sanity-plugin-media';
+import { presentationTool } from '@sanity/presentation';
 import { arenaSyncPlugin } from './plugins/arena-sync';
 import { schemaTypes } from './schemaTypes';
 import { deskStructure } from './desk/deskStructure';
@@ -71,6 +72,11 @@ const sanityEnv = getEnv('SANITY_STUDIO_ENV');
 const nodeEnv = getEnv('NODE_ENV');
 const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'));
 const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'));
+const presentationPreviewOrigin =
+  getEnv('SANITY_STUDIO_PREVIEW_ORIGIN') ||
+  getEnv('PUBLIC_SITE_URL') ||
+  getEnv('SANITY_STUDIO_NETLIFY_BASE') ||
+  undefined;
 
 const isDev =
   sanityEnv !== undefined
@@ -106,6 +112,15 @@ export default defineConfig({
     media(),
     arenaSyncPlugin(),
     codeInput(),
+    presentationTool(
+      presentationPreviewOrigin
+        ? {
+            previewUrl: {
+              origin: presentationPreviewOrigin.replace(/\/$/, ''),
+            },
+          }
+        : {},
+    ),
     ...(visionEnabled ? [visionTool()] : []),
   ],
 
