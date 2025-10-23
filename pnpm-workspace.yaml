@@ -8,3 +8,6 @@ ignoredBuiltDependencies:
   - sharp
   - ssh2
   - unix-dgram
+
+patchedDependencies:
+  react-refractor@4.0.0: patches/react-refractor@4.0.0.patch

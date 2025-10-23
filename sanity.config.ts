@@ -1,40 +1,38 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import { defineConfig, type PluginOptions } from 'sanity';
-import './styles/tailwind.css';
+import {defineConfig, type PluginOptions} from 'sanity'
+import './styles/tailwind.css'
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
-import * as _desk from 'sanity/desk';
-type DeskToolFactory = (opts?: unknown) => PluginOptions;
+import * as _desk from 'sanity/desk'
+type DeskToolFactory = (opts?: unknown) => PluginOptions
 type DeskModule = {
-  deskTool?: DeskToolFactory;
-  default?: DeskToolFactory;
-};
-const deskModule = _desk as DeskModule | DeskToolFactory;
+  deskTool?: DeskToolFactory
+  default?: DeskToolFactory
+}
+const deskModule = _desk as DeskModule | DeskToolFactory
 const deskTool: DeskToolFactory =
   typeof deskModule === 'function'
     ? deskModule
-    : deskModule.deskTool || deskModule.default || (_desk as unknown as DeskToolFactory);
-import { visionTool } from '@sanity/vision';
-import { codeInput } from '@sanity/code-input';
-import { media } from 'sanity-plugin-media';
-import { presentationTool } from '@sanity/presentation';
-import { arenaSyncPlugin } from './plugins/arena-sync';
-import { schemaTypes } from './schemaTypes';
-import { deskStructure } from './desk/deskStructure';
-import resolveDocumentActions from './resolveDocumentActions';
-import ShippingCalendar from './components/studio/ShippingCalendar';
-import AdminTools from './components/studio/AdminTools';
-import StudioLayout from './components/studio/StudioLayout';
-import {fasTheme} from './theme/fasTheme';
+    : deskModule.deskTool || deskModule.default || (_desk as unknown as DeskToolFactory)
+import {visionTool} from '@sanity/vision'
+import {codeInput} from '@sanity/code-input'
+import {media} from 'sanity-plugin-media'
+import {presentationTool} from '@sanity/presentation'
+import {arenaSyncPlugin} from './plugins/arena-sync'
+import {schemaTypes} from './schemaTypes'
+import {deskStructure} from './desk/deskStructure'
+import resolveDocumentActions from './resolveDocumentActions'
+import ShippingCalendar from './components/studio/ShippingCalendar'
+import AdminTools from './components/studio/AdminTools'
+import StudioLayout from './components/studio/StudioLayout'
+import {fasTheme} from './theme/fasTheme'
 
-const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function';
-const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/');
-const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : '';
+const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
+const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
+const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : ''
 
 const aliasFromNodeModules = (specifier: string) =>
-  hasProcess
-    ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/'))
-    : specifier;
+  hasProcess ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/')) : specifier
 
 const workspaceModuleAliases = hasProcess
   ? {
@@ -44,49 +42,49 @@ const workspaceModuleAliases = hasProcess
       'react-dom': aliasFromNodeModules('react-dom'),
       'styled-components': aliasFromNodeModules('styled-components'),
     }
-  : {};
+  : {}
 
-const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined);
+const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined)
 const collectStudioEnv = (): Record<string, string | undefined> => {
-  if (!hasProcess || !process?.env) return {};
-  const ALLOWED_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_', 'CALCOM_'];
+  if (!hasProcess || !process?.env) return {}
+  const ALLOWED_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_', 'CALCOM_']
   return Object.fromEntries(
     Object.entries(process.env).filter(([key]) =>
-      ALLOWED_PREFIXES.some((prefix) => key.startsWith(prefix))
-    )
-  );
-};
-const studioRuntimeEnv = collectStudioEnv();
+      ALLOWED_PREFIXES.some((prefix) => key.startsWith(prefix)),
+    ),
+  )
+}
+const studioRuntimeEnv = collectStudioEnv()
 
 const envFlag = (value?: string | null) => {
-  if (!value) return undefined;
+  if (!value) return undefined
 
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase()
 
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
 
-  return undefined;
-};
+  return undefined
+}
 
-const sanityEnv = getEnv('SANITY_STUDIO_ENV');
-const nodeEnv = getEnv('NODE_ENV');
-const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'));
-const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'));
+const sanityEnv = getEnv('SANITY_STUDIO_ENV')
+const nodeEnv = getEnv('NODE_ENV')
+const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
+const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'))
 const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_PREVIEW_ORIGIN') ||
   getEnv('PUBLIC_SITE_URL') ||
   getEnv('SANITY_STUDIO_NETLIFY_BASE') ||
-  undefined;
+  undefined
 
 const isDev =
   sanityEnv !== undefined
     ? sanityEnv !== 'production'
     : nodeEnv !== undefined
       ? nodeEnv !== 'production'
-      : false;
+      : false
 
-const visionEnabled = true;
+const visionEnabled = true
 
 export default defineConfig({
   name: 'default',
@@ -125,6 +123,13 @@ export default defineConfig({
     ...(visionEnabled ? [visionTool()] : []),
   ],
 
+  apps: {
+    canvas: {
+      enabled: true,
+      fallbackStudioOrigin: process.env.SANITY_STUDIO_CANVAS_FALLBACK_ORIGIN || undefined,
+    },
+  },
+
   tools: [
     {
       name: 'shipping-calendar',
@@ -157,18 +162,29 @@ export default defineConfig({
       // With pnpm, multiple peer variants can otherwise create duplicate contexts.
       dedupe: ['sanity', '@sanity/ui', 'react', 'react-dom', 'styled-components'],
       preserveSymlinks: true,
-      alias: {
-        ...workspaceModuleAliases,
-        // Work around occasional CJS/ESM interop glitches with react-refractor in dev.
-        // Use a relative replacement to avoid importing Node's `path` in the browser.
-        'react-refractor': './shims/react-refractor-shim.tsx',
+      alias: [
+        ...Object.entries(workspaceModuleAliases).map(([find, replacement]) => ({
+          find,
+          replacement,
+        })),
+        {
+          // Work around CJS/ESM interop glitches with react-refractor across workspace packages.
+          find: /^react-refractor$/,
+          replacement: joinSegments(projectRoot, 'shims', 'react-refractor-shim.tsx'),
+        },
         // Explicitly map refractor language subpaths to v3 files to satisfy Sanity imports
-        'refractor/bash': aliasFromNodeModules('refractor/lang/bash.js'),
-        'refractor/javascript': aliasFromNodeModules('refractor/lang/javascript.js'),
-        'refractor/json': aliasFromNodeModules('refractor/lang/json.js'),
-        'refractor/jsx': aliasFromNodeModules('refractor/lang/jsx.js'),
-        'refractor/typescript': aliasFromNodeModules('refractor/lang/typescript.js'),
-      },
+        {find: 'refractor/bash', replacement: aliasFromNodeModules('refractor/lang/bash.js')},
+        {
+          find: 'refractor/javascript',
+          replacement: aliasFromNodeModules('refractor/lang/javascript.js'),
+        },
+        {find: 'refractor/json', replacement: aliasFromNodeModules('refractor/lang/json.js')},
+        {find: 'refractor/jsx', replacement: aliasFromNodeModules('refractor/lang/jsx.js')},
+        {
+          find: 'refractor/typescript',
+          replacement: aliasFromNodeModules('refractor/lang/typescript.js'),
+        },
+      ],
     },
     // Remove custom Vite transforms that monkey‑patch @sanity/ui to avoid input regressions
     optimizeDeps: {
@@ -187,7 +203,17 @@ export default defineConfig({
         allow: [projectRoot].filter(Boolean),
       },
     },
-    plugins: [],
+    plugins: [
+      {
+        name: 'fas-react-refractor-alias',
+        enforce: 'pre',
+        resolveId(source: string) {
+          return source === 'react-refractor'
+            ? joinSegments(projectRoot, 'shims', 'react-refractor-shim.tsx')
+            : undefined
+        },
+      },
+    ],
     build: {
       rollupOptions: {
         external: ['sanity/refractor'],
@@ -197,4 +223,4 @@ export default defineConfig({
       __SANITY_STUDIO_RUNTIME_ENV__: JSON.stringify(studioRuntimeEnv),
     },
   },
-});
+})
