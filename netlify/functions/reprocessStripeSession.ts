@@ -305,12 +305,17 @@ export const handler: Handler = async (event) => {
     })
     if (shippingDetails.amount !== undefined) {
       amountShipping = shippingDetails.amount
+    }
     const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
-    const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
-    const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
+    const metadataShippingCarrier =
+      (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
+    const metadataShippingServiceCode =
+      (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() ||
+      undefined
     const metadataShippingServiceName = (meta['shipping_service_name'] || '').toString().trim() || undefined
     const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '').toString().trim() || undefined
-    const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
+    const metadataShippingCurrencyRaw = (meta['shipping_currency'] || meta['shippingCurrency'] || '').toString().trim()
+    const metadataShippingCurrency = metadataShippingCurrencyRaw ? metadataShippingCurrencyRaw.toUpperCase() : undefined
     const shippingAmountFromMetadata = (() => {
       if (!metadataShippingAmountRaw) return undefined
       const parsed = Number(metadataShippingAmountRaw)
@@ -319,7 +324,7 @@ export const handler: Handler = async (event) => {
       const fallback = Number(cleaned)
       return Number.isFinite(fallback) ? fallback : undefined
     })()
-    if (shippingAmountFromMetadata !== undefined) {
+    if (shippingDetails.amount === undefined && shippingAmountFromMetadata !== undefined) {
       amountShipping = shippingAmountFromMetadata
     }
     const userIdMeta = (
@@ -334,7 +339,10 @@ export const handler: Handler = async (event) => {
     let cart: CartItem[] = []
     if (session?.id) {
       try {
-        const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100, expand: ['data.price.product'] })
+        const items = await stripe.checkout.sessions.listLineItems(session.id, {
+          limit: 100,
+          expand: ['data.price.product'],
+        })
         cart = (items?.data || []).map((li: Stripe.LineItem) => {
           const mapped = mapStripeLineItem(li, { sessionMetadata: meta })
           return {
@@ -344,9 +352,9 @@ export const handler: Handler = async (event) => {
           } as CartItem
         })
         cart = await enrichCartItemsFromSanity(cart, sanity)
-        } catch (err) {
-          console.warn('reprocessStripeSession: unable to load line items', err)
-          }
+      } catch (err) {
+        console.warn('reprocessStripeSession: unable to load line items', err)
+      }
     }
 
     // Build shipping address
@@ -421,81 +429,47 @@ export const handler: Handler = async (event) => {
       baseDoc.amountShipping = shippingAmountForDoc
       baseDoc.selectedShippingAmount = shippingAmountForDoc
     }
-    if (shippingDetails.carrier) {
-      baseDoc.shippingCarrier = shippingDetails.carrier
-    const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
-    if (shippingAmountForDoc !== undefined) {
-      baseDoc.amountShipping = shippingAmountForDoc
-      baseDoc.selectedShippingAmount = shippingAmountForDoc
-    }
-    if (shippingDetails.carrier) {
-      baseDoc.shippingCarrier = shippingDetails.carrier
-    }
-    if (
-      shippingDetails.serviceName ||
-      shippingDetails.serviceCode ||
-      shippingAmountForDoc !== undefined
-    ) {
-    if (
-      shippingDetails.serviceName ||
-      shippingDetails.serviceCode ||
-      shippingAmountForDoc !== undefined
-    ) {
-      baseDoc.selectedService = {
-        carrierId: shippingDetails.carrierId || undefined,
-        carrier: shippingDetails.carrier || undefined,
-        service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-        serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-        amount: shippingAmountForDoc,
-        currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
-        deliveryDays: shippingDetails.deliveryDays,
-        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-      }
-    }
-    if (shippingDetails.currency) {
-      baseDoc.selectedShippingCurrency = shippingDetails.currency
-        carrierId: shippingDetails.carrierId || undefined,
-        carrier: shippingDetails.carrier || undefined,
-        service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-        serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-        amount: shippingAmountForDoc,
-        currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
-        deliveryDays: shippingDetails.deliveryDays,
-        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-      }
-    }
-    if (shippingAmountFromMetadata !== undefined) {
-      baseDoc.amountShipping = shippingAmountFromMetadata
+
+    const resolvedCarrier = shippingDetails.carrier || metadataShippingCarrier
+    if (resolvedCarrier) {
+      baseDoc.shippingCarrier = resolvedCarrier
     }
 
-    if (metadataShippingCarrier) {
-      baseDoc.shippingCarrier = metadataShippingCarrier
+    const resolvedServiceCode = shippingDetails.serviceCode || metadataShippingServiceCode
+    const resolvedServiceName =
+      shippingDetails.serviceName || metadataShippingServiceName || resolvedServiceCode || undefined
+
+    const selectedCurrency =
+      shippingDetails.currency || metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined)
+
+    if (resolvedServiceName || resolvedServiceCode || shippingAmountForDoc !== undefined) {
+      baseDoc.selectedService = {
+        carrierId: shippingDetails.carrierId || metadataShippingCarrierId || undefined,
+        carrier: resolvedCarrier,
+        service: resolvedServiceName || undefined,
+        serviceCode: resolvedServiceCode || resolvedServiceName || undefined,
+        amount: shippingAmountForDoc,
+        currency: selectedCurrency || 'USD',
+        deliveryDays: shippingDetails.deliveryDays,
+        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+      }
     }
+
+    if (selectedCurrency) {
+      baseDoc.selectedShippingCurrency = selectedCurrency
+    }
+
     if (shippingDetails.deliveryDays !== undefined) {
       baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
     }
     if (shippingDetails.estimatedDeliveryDate) {
       baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
     }
-    if (shippingDetails.serviceCode) {
-      baseDoc.shippingServiceCode = shippingDetails.serviceCode
+    if (resolvedServiceCode) {
+      baseDoc.shippingServiceCode = resolvedServiceCode
     }
-    if (shippingDetails.serviceName) {
-      baseDoc.shippingServiceName = shippingDetails.serviceName
-    }
-    if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-      baseDoc.shippingMetadata = shippingDetails.metadata
-    if (shippingDetails.deliveryDays !== undefined) {
-      baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-    }
-    if (shippingDetails.estimatedDeliveryDate) {
-      baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-    }
-    if (shippingDetails.serviceCode) {
-      baseDoc.shippingServiceCode = shippingDetails.serviceCode
-    }
-    if (shippingDetails.serviceName) {
-      baseDoc.shippingServiceName = shippingDetails.serviceName
+    if (resolvedServiceName) {
+      baseDoc.shippingServiceName = resolvedServiceName
     }
     if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
       baseDoc.shippingMetadata = shippingDetails.metadata
@@ -710,21 +684,20 @@ export const handler: Handler = async (event) => {
         if (shippingAmountForInvoice !== undefined) {
           invBase.amountShipping = shippingAmountForInvoice
         }
-        if (shippingDetails.carrier) {
-          invBase.shippingCarrier = shippingDetails.carrier
+        if (resolvedCarrier) {
+          invBase.shippingCarrier = resolvedCarrier
         }
         const invoiceSelectedService =
-          shippingDetails.serviceName ||
-          shippingDetails.serviceCode ||
+          resolvedServiceName ||
+          resolvedServiceCode ||
           shippingAmountForInvoice !== undefined
             ? {
-                carrierId: shippingDetails.carrierId || undefined,
-                carrier: shippingDetails.carrier || undefined,
-                service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                carrierId: shippingDetails.carrierId || metadataShippingCarrierId || undefined,
+                carrier: resolvedCarrier,
+                service: resolvedServiceName || undefined,
+                serviceCode: resolvedServiceCode || resolvedServiceName || undefined,
                 amount: shippingAmountForInvoice,
-                currency:
-                  shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                currency: selectedCurrency || 'USD',
                 deliveryDays: shippingDetails.deliveryDays,
                 estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
               }
@@ -784,17 +757,16 @@ export const handler: Handler = async (event) => {
           if (typeof computedTaxRate === 'number') patch = patch.set({ taxRate: computedTaxRate })
           const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
           const invoiceSelectedService =
-            shippingDetails.serviceName ||
-            shippingDetails.serviceCode ||
+            resolvedServiceName ||
+            resolvedServiceCode ||
             shippingAmountForInvoice !== undefined
               ? {
-                  carrierId: shippingDetails.carrierId || undefined,
-                  carrier: shippingDetails.carrier || undefined,
-                  service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                  serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
+                  carrierId: shippingDetails.carrierId || metadataShippingCarrierId || undefined,
+                  carrier: resolvedCarrier,
+                  service: resolvedServiceName || undefined,
+                  serviceCode: resolvedServiceCode || resolvedServiceName || undefined,
                   amount: shippingAmountForInvoice,
-                  currency:
-                    shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
+                  currency: selectedCurrency || 'USD',
                   deliveryDays: shippingDetails.deliveryDays,
                   estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
                 }
@@ -803,8 +775,8 @@ export const handler: Handler = async (event) => {
           if (shippingAmountForInvoice !== undefined) {
             shippingPatch.amountShipping = shippingAmountForInvoice
           }
-          if (shippingDetails.carrier) {
-            shippingPatch.shippingCarrier = shippingDetails.carrier
+          if (resolvedCarrier) {
+            shippingPatch.shippingCarrier = resolvedCarrier
           }
           if (invoiceSelectedService) {
             shippingPatch.selectedService = invoiceSelectedService
