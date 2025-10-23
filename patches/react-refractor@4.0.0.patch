@@ -1,0 +1,10 @@
+diff --git a/dist/index.js b/dist/index.js
+index 0771d904f3ab061ef1769a73648eede68db28dec..98aea796242456c78e5fdd1e01a6c243d64ded68 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -203,4 +203,5 @@ export {
+   hasLanguage,
+   registerLanguage
+ };
++export default Refractor;
+ //# sourceMappingURL=index.js.map
