@@ -1,37 +1,35 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import { defineConfig } from 'sanity';
-import './styles/tailwind.css';
+import {defineConfig} from 'sanity'
+import './styles/tailwind.css'
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
-import * as _desk from 'sanity/desk';
+import * as _desk from 'sanity/desk'
 type DeskModule = {
-  deskTool?: (opts?: unknown) => unknown;
-  default?: (opts?: unknown) => unknown;
-};
-const deskModule = _desk as DeskModule | ((opts?: unknown) => unknown);
+  deskTool?: (opts?: unknown) => unknown
+  default?: (opts?: unknown) => unknown
+}
+const deskModule = _desk as DeskModule | ((opts?: unknown) => unknown)
 const deskTool =
   typeof deskModule === 'function'
     ? deskModule
-    : deskModule.deskTool || deskModule.default || (_desk as unknown as (opts?: unknown) => unknown);
-import { visionTool } from '@sanity/vision';
-import { codeInput } from '@sanity/code-input';
-import { media } from 'sanity-plugin-media';
-import { arenaSyncPlugin } from './plugins/arena-sync';
-import { schemaTypes } from './schemaTypes';
-import { deskStructure } from './desk/deskStructure';
-import resolveDocumentActions from './resolveDocumentActions';
-import ShippingCalendar from './components/studio/ShippingCalendar';
-import AdminTools from './components/studio/AdminTools';
-import StudioLayout from './components/studio/StudioLayout';
+    : deskModule.deskTool || deskModule.default || (_desk as unknown as (opts?: unknown) => unknown)
+import {visionTool} from '@sanity/vision'
+import {codeInput} from '@sanity/code-input'
+import {media} from 'sanity-plugin-media'
+import {arenaSyncPlugin} from './plugins/arena-sync'
+import {schemaTypes} from './schemaTypes'
+import {deskStructure} from './desk/deskStructure'
+import resolveDocumentActions from './resolveDocumentActions'
+import ShippingCalendar from './components/studio/ShippingCalendar'
+import AdminTools from './components/studio/AdminTools'
+import StudioLayout from './components/studio/StudioLayout'
 
-const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function';
-const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/');
-const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : '';
+const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
+const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
+const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : ''
 
 const aliasFromNodeModules = (specifier: string) =>
-  hasProcess
-    ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/'))
-    : specifier;
+  hasProcess ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/')) : specifier
 
 const workspaceModuleAliases = hasProcess
   ? {
@@ -41,36 +39,35 @@ const workspaceModuleAliases = hasProcess
       'react-dom': aliasFromNodeModules('react-dom'),
       'styled-components': aliasFromNodeModules('styled-components'),
     }
-  : {};
+  : {}
 
-const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined);
+const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined)
 
 const envFlag = (value?: string | null) => {
-  if (!value) return undefined;
+  if (!value) return undefined
 
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase()
 
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
 
-  return undefined;
-};
+  return undefined
+}
 
-const sanityEnv = getEnv('SANITY_STUDIO_ENV');
-const nodeEnv = getEnv('NODE_ENV');
-const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'));
-const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'));
+const sanityEnv = getEnv('SANITY_STUDIO_ENV')
+const nodeEnv = getEnv('NODE_ENV')
+const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
+const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'))
 
 const isDev =
   sanityEnv !== undefined
     ? sanityEnv !== 'production'
     : nodeEnv !== undefined
       ? nodeEnv !== 'production'
-      : false;
+      : false
 
 const visionEnabled =
-  enableVisionOverride ??
-  (disableVisionOverride !== undefined ? !disableVisionOverride : isDev);
+  enableVisionOverride ?? (disableVisionOverride !== undefined ? !disableVisionOverride : isDev)
 
 export default defineConfig({
   name: 'default',
@@ -80,7 +77,7 @@ export default defineConfig({
   dataset: process.env.SANITY_STUDIO_DATASET || 'production',
 
   plugins: [
-    deskTool({
+    (deskTool as any)({
       name: 'desk',
       title: 'Content',
       structure: deskStructure,
@@ -159,4 +156,4 @@ export default defineConfig({
       },
     },
   },
-});
+})

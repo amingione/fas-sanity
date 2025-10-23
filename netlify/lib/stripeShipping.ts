@@ -42,7 +42,7 @@ function coerceNumber(value?: string): number | undefined {
 
 function coerceInteger(value?: string): number | undefined {
   const parsed = coerceNumber(value)
-  if (!Number.isFinite(parsed)) return undefined
+  if (parsed === undefined || !Number.isFinite(parsed)) return undefined
   if (!Number.isFinite(Math.trunc(parsed))) return undefined
   return Math.trunc(parsed)
 }
@@ -69,17 +69,20 @@ function deriveEstimatedDate(estimate: DeliveryEstimate): string | undefined {
   return base.toISOString()
 }
 
-function splitDisplayName(displayName?: string): { carrier?: string; service?: string } {
+function splitDisplayName(displayName?: string | null): {carrier?: string; service?: string} {
   const name = (displayName || '').trim()
   if (!name) return {}
-  const parts = name.split(/[\u2013\u2014-]/).map((part) => part.trim()).filter(Boolean)
+  const parts = name
+    .split(/[\u2013\u2014-]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
   if (parts.length >= 2) {
     return {
       carrier: parts[0],
       service: parts.slice(1).join(' – '),
     }
   }
-  return { service: name }
+  return {service: name}
 }
 
 export type StripeShippingDetails = {
@@ -105,7 +108,7 @@ export type ResolveShippingDetailsInput = {
 export async function resolveStripeShippingDetails(
   input: ResolveShippingDetailsInput,
 ): Promise<StripeShippingDetails> {
-  const { metadata, session, paymentIntent, fallbackAmount, stripe } = input
+  const {metadata, session, paymentIntent, fallbackAmount, stripe} = input
   const meta = normalizeMetadata(metadata)
 
   const metaAmount = coerceNumber(meta['shipping_amount'] || meta['shippingAmount'])
@@ -113,10 +116,16 @@ export async function resolveStripeShippingDetails(
   const metaCarrier = meta['shipping_carrier'] || meta['shippingCarrier']
   const metaCarrierId = meta['shipping_carrier_id'] || meta['shippingCarrierId']
   const metaServiceName =
-    meta['shipping_service_name'] || meta['shipping_service'] || meta['shippingServiceName'] || meta['shippingService']
+    meta['shipping_service_name'] ||
+    meta['shipping_service'] ||
+    meta['shippingServiceName'] ||
+    meta['shippingService']
   const metaServiceCode = meta['shipping_service_code'] || meta['shippingServiceCode']
-  const metaDeliveryDays = coerceInteger(meta['shipping_delivery_days'] || meta['shippingDeliveryDays'])
-  const metaEstimatedDeliveryDate = meta['shipping_estimated_delivery_date'] || meta['shippingEstimatedDeliveryDate']
+  const metaDeliveryDays = coerceInteger(
+    meta['shipping_delivery_days'] || meta['shippingDeliveryDays'],
+  )
+  const metaEstimatedDeliveryDate =
+    meta['shipping_estimated_delivery_date'] || meta['shippingEstimatedDeliveryDate']
 
   let amount = metaAmount
   let currency = metaCurrency
@@ -127,13 +136,20 @@ export async function resolveStripeShippingDetails(
   let deliveryDays = metaDeliveryDays
   let estimatedDeliveryDate = metaEstimatedDeliveryDate
 
-  const sessionAmountRaw = Number((session as any)?.shipping_cost?.amount_total ?? (session as any)?.total_details?.amount_shipping)
+  const sessionAmountRaw = Number(
+    (session as any)?.shipping_cost?.amount_total ??
+      (session as any)?.total_details?.amount_shipping,
+  )
   const sessionAmount = Number.isFinite(sessionAmountRaw) ? sessionAmountRaw / 100 : undefined
   const sessionCurrency = normalizeCurrency(
-    (session as any)?.shipping_cost?.currency || (session as any)?.currency || (paymentIntent as any)?.currency,
+    (session as any)?.shipping_cost?.currency ||
+      (session as any)?.currency ||
+      (paymentIntent as any)?.currency,
   )
   const sessionCarrier =
-    (session as any)?.shipping_details?.carrier || (session as any)?.shipping_details?.name || paymentIntent?.shipping?.carrier
+    (session as any)?.shipping_details?.carrier ||
+    (session as any)?.shipping_details?.name ||
+    paymentIntent?.shipping?.carrier
 
   if (amount === undefined) amount = sessionAmount ?? fallbackAmount
   if (!currency) currency = sessionCurrency
@@ -165,7 +181,7 @@ export async function resolveStripeShippingDetails(
     const fixedCurrency = normalizeCurrency(shippingRate.fixed_amount?.currency)
     if (fixedCurrency) currency = fixedCurrency
 
-    const { carrier: rateCarrier, service } = splitDisplayName(shippingRate.display_name)
+    const {carrier: rateCarrier, service} = splitDisplayName(shippingRate.display_name)
     if (!carrier && rateCarrier) carrier = rateCarrier
     if (!serviceName && service) serviceName = service
     if (!serviceCode && shippingRate.id) serviceCode = shippingRate.id
