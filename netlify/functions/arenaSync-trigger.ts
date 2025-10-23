@@ -86,10 +86,38 @@ const parseRequest = (event: Parameters<Handler>[0]): ParsedRequest => {
   return { token, body }
 }
 
+const isLocalHost = (host?: string | null) => {
+  if (!host) return false
+  return /^localhost(?::\d+)?$/i.test(host) || /^127\.\d+\.\d+\.\d+(?::\d+)?$/.test(host) || /^\[::1](:\d+)?$/.test(host)
+}
+
+const resolveProtocol = (event: Parameters<Handler>[0], host: string): string => {
+  const headerProto =
+    (event.headers['x-forwarded-proto'] as string) ||
+    (event.headers['X-Forwarded-Proto'] as string)
+  if (headerProto) return headerProto
+  if (isLocalHost(host)) return 'http'
+  if (process.env.URL?.startsWith('http://')) return 'http'
+  return 'https'
+}
+
 const buildBackgroundTargetUrl = (event: Parameters<Handler>[0], token: string | null): string => {
-  const protocol = (event.headers['x-forwarded-proto'] as string) || 'https'
-  const host = event.headers.host || process.env.URL || ''
-  const baseUrl = `${protocol}://${host}`
+  const hostHeader = event.headers.host as string | undefined
+  const fallbackUrl = (() => {
+    const raw = process.env.URL || 'http://localhost:8888'
+    try {
+      return new URL(raw)
+    } catch {
+      return new URL(`http://${raw.replace(/^https?:\/\//, '')}`)
+    }
+  })()
+
+  const host = hostHeader || fallbackUrl.host
+  const protocol = hostHeader
+    ? resolveProtocol(event, hostHeader)
+    : fallbackUrl.protocol.replace(/:$/, '') || 'https'
+
+  const baseUrl = `${protocol}://${host}`.replace(/\/+$/, '')
   const backgroundPath =
     process.env.ARENA_BACKGROUND_FUNCTION_PATH || '/.netlify/functions/arenaSync-background'
   const search = token ? `?token=${encodeURIComponent(token)}` : ''
