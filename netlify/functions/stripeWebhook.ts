@@ -1730,11 +1730,7 @@ export const handler: Handler = async (event) => {
          })()
          const invoiceDateValue = dateStringFrom(timestampForInvoice)
          const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
-         const baseInvoiceTitle = pickString(customerName, billTo: 'invoiceNumberToSet', 'baseInvoiceTitle', 'orderId', 'stripeSessionId', 'metadata', 'shippingDetails', 'amountShipping', 'currency', 'totalAmount', 'amountSubtotal', 'amountTax', 'email', 'customerName', 'cart', 'shippingAddress', 'userIdMeta', 'paymentIntent', 'invoiceId', 'skuCandidates', 'slugMeta', 'existingId', 'normalizedEmail', 'shouldSendConfirmation', 'baseDoc', 'packingSlipUrl', 'created', 'orderId', 'invoiceId', 'titleName', 'subtotalValue', 'totalValue', 'taxValue', 'invBase', 'shippingAmountForInvoice', 'invoiceSelectedService', 'shippingMetadata', 'createdInv', 'orderId', 'url', 'e'
-          )
-        } catch (e) {
-          console.warn('stripeWebhook: failed to upsert Order doc:', e)
-        }
+         const baseInvoiceTitle = pickString(customerName, billToForInvoice?.name, shipToForInvoice?.name, email) || 'Invoice'
 
         break
       }
