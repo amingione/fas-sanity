@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import type { CartItem } from '../lib/cartEnrichment'
 import { createClient } from '@sanity/client'
 import { randomUUID } from 'crypto'
-import { resolveNetlifyBase, generatePackingSlipAsset } from '../lib/packingSlip'
+import { generatePackingSlipAsset } from '../lib/packingSlip'
 import { syncOrderToShipStation } from '../lib/shipstation'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
@@ -345,16 +345,13 @@ function slugifyValue(value: string): string {
 async function ensureUniqueProductSlug(baseSlug: string): Promise<string> {
   let slug = baseSlug || 'product'
   let suffix = 1
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  while (suffix <= 20) {
     const exists = await sanity.fetch<number>('count(*[_type == "product" && slug.current == $slug])', { slug })
     if (!Number(exists)) return slug
     suffix += 1
     slug = `${baseSlug}-${suffix}`.slice(0, 96)
-    if (suffix > 20) {
-      return `${baseSlug}-${Date.now()}`.slice(0, 96)
-    }
   }
+  return `${baseSlug}-${Date.now()}`.slice(0, 96)
 }
 
 function toMajorUnits(amount?: number | null): number | undefined {
@@ -1249,7 +1246,9 @@ async function sendOrderConfirmationEmail(opts: {
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;border-collapse:collapse;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;">
         <tr>
           <td style="background:#0f172a;color:#ffffff;padding:24px 28px;">
-            <h1 style="margin:0;font-size:22px;font-weight:700;">Thank you for your order${displayOrderNumber ? ` <span style=\"color:#f97316\">#${displayOrderNumber}</span>` : ''}</h1>
+            <h1 style="margin:0;font-size:22px;font-weight:700;">Thank you for your order${
+              displayOrderNumber ? ` <span style="color:#f97316">#${displayOrderNumber}</span>` : ''
+            }</h1>
             <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.75);">${greetingLine}</p>
           </td>
         </tr>
@@ -1513,7 +1512,6 @@ export const handler: Handler = async (event) => {
         const email = session.customer_details?.email || session.customer_email || ''
         const totalAmount = (Number(session.amount_total || 0) || 0) / 100
         const stripeSessionId = session.id
-        const mode = session.mode
         const metadata = (session.metadata || {}) as Record<string, string>
         const userIdMeta = (
           metadata['auth0_user_id'] ||
@@ -1575,477 +1573,167 @@ export const handler: Handler = async (event) => {
           const fallback = Number(cleaned)
           return Number.isFinite(fallback) ? fallback : undefined
         })()
-        if (shippingAmountFromMetadata !== undefined) {
+        if (amountShipping === undefined && shippingAmountFromMetadata !== undefined) {
           amountShipping = shippingAmountFromMetadata
         }
-        const orderNumber = await resolveOrderNumber({
-          metadataOrderNumber: metadataOrderNumberRaw,
-          invoiceNumber: metadataInvoiceNumber,
-          fallbackId: stripeSessionId,
-        })
+        
+        // Define shippingDetails using the imported resolver
+        const shippingDetails = resolveStripeShippingDetails({
+          session,
+          metadata,
+          // Include other context if needed (e.g., amountShipping, currency)
+        });
+        
+        // Define shippingAmountForDoc with fallbacks
+        const shippingAmountForDoc = shippingDetails.amount ?? amountShipping ?? shippingAmountFromMetadata;
+         
+         const orderNumber = await resolveOrderNumber({
+           metadataOrderNumber: metadataOrderNumberRaw,
+           invoiceNumber: metadataInvoiceNumber,
+           fallbackId: stripeSessionId,
+         })
 
-        const invoiceId = metadata['sanity_invoice_id']
-        const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '').toString().trim()
+         const invoiceId = metadata['sanity_invoice_id']
+         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '').toString().trim()
 
-        // 2) Gather enriched data: line items + shipping
-        let cart: CartItem[] = []
-        try {
-          const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
-            limit: 100,
-            expand: ['data.price.product'],
-          })
-          cart = (items?.data || []).map((li: Stripe.LineItem) => {
-            const mapped = mapStripeLineItem(li, { sessionMetadata: metadata })
-            return {
-              _type: 'orderCartItem',
-              _key: randomUUID(),
-              ...mapped,
-            } as CartItem
-          })
-          cart = await enrichCartItemsFromSanity(cart, sanity)
-        } catch (e) {
-          console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
-        }
+         // 2) Gather enriched data: line items + shipping
+         let cart: CartItem[] = []
+         try {
+           const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
+             limit: 100,
+             expand: ['data.price.product'],
+           })
+           cart = (items?.data || []).map((li: Stripe.LineItem) => {
+             const mapped = mapStripeLineItem(li, { sessionMetadata: metadata })
+             return {
+               _type: 'orderCartItem',
+               _key: randomUUID(),
+               ...mapped,
+             } as CartItem
+           })
+           cart = await enrichCartItemsFromSanity(cart, sanity)
+         } catch (e) {
+           console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
+         }
 
-        let shippingAddress: any = undefined
-        try {
-          const cd = session.customer_details
-          const addr = (cd?.address || (session as any).shipping_details?.address) as Stripe.Address | undefined
-          const name = cd?.name || (session as any).shipping_details?.name || undefined
-          const phone = cd?.phone || (session as any).shipping_details?.phone || undefined
-          shippingAddress = addr
-            ? {
-                name: name || undefined,
-                phone: phone || undefined,
-                email: email || undefined,
-                addressLine1: (addr as any).line1 || undefined,
-                addressLine2: (addr as any).line2 || undefined,
-                city: (addr as any).city || undefined,
-                state: (addr as any).state || undefined,
-                postalCode: (addr as any).postal_code || undefined,
-                country: (addr as any).country || undefined,
-              }
-            : undefined
-        } catch (e) {
-          console.warn('stripeWebhook: could not parse shipping address')
-        }
+         let shippingAddress: any = undefined
+         try {
+           const cd = session.customer_details
+           const addr = (cd?.address || (session as any).shipping_details?.address) as Stripe.Address | undefined
+           const name = cd?.name || (session as any).shipping_details?.name || undefined
+           const phone = cd?.phone || (session as any).shipping_details?.phone || undefined
+           shippingAddress = addr
+             ? {
+                 name: name || undefined,
+                 phone: phone || undefined,
+                 email: email || undefined,
+                 addressLine1: (addr as any).line1 || undefined,
+                 addressLine2: (addr as any).line2 || undefined,
+                 city: (addr as any).city || undefined,
+                 state: (addr as any).state || undefined,
+                 postalCode: (addr as any).postal_code || undefined,
+                 country: (addr as any).country || undefined,
+               }
+             : undefined
+         } catch (err) {
+           console.warn('stripeWebhook: could not parse shipping address', err)
+         }
 
-        const customerName = (shippingAddress?.name || metadataCustomerName || session.customer_details?.name || email || '').toString().trim() || undefined
+         const customerName = (shippingAddress?.name || metadataCustomerName || session.customer_details?.name || email || '').toString().trim() || undefined
 
-        // Prepare invoice scaffolding (line items, addresses, etc.) for reuse
-        let productSummaries: Array<{ _id?: string; title?: string; sku?: string }> = []
-        if (cart.length) {
-          const skus = cart.map((c) => (c?.sku || '').toString().trim()).filter(Boolean)
-          const titles = cart.map((c) => (c?.name || c?.productName || '').toString().trim()).filter(Boolean)
-          if (skus.length || titles.length) {
-            try {
-              productSummaries = await sanity.fetch(
-                `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`,
-                { skus, titles }
-              )
-            } catch (err) {
-              console.warn('stripeWebhook: failed to fetch product summaries for invoice', err)
-            }
-          }
-        }
+         // Prepare invoice scaffolding (line items, addresses, etc.) for reuse
+         let productSummaries: Array<{ _id?: string; title?: string; sku?: string }> = []
+         if (cart.length) {
+           const skus = cart.map((c) => (c?.sku || '').toString().trim()).filter(Boolean)
+           const titles = cart.map((c) => (c?.name || c?.productName || '').toString().trim()).filter(Boolean)
+           if (skus.length || titles.length) {
+             try {
+               productSummaries = await sanity.fetch(
+                 `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}`,
+                 { skus, titles }
+               )
+             } catch (err) {
+               console.warn('stripeWebhook: failed to fetch product summaries for invoice', err)
+             }
+           }
+         }
 
-        const findInvoiceProductRef = (ci: any): string | null => {
-          if (!productSummaries?.length) return null
-          const sku = (ci?.sku || '').toString().trim()
-          if (sku) {
-            const match = productSummaries.find((p) => (p?.sku || '').trim() === sku)
-            if (match?._id) return match._id
-          }
-          const title = (ci?.name || ci?.productName || ci?.description || '').toString().trim()
-          if (title) {
-            const match = productSummaries.find((p) => (p?.title || '').trim() === title)
-            if (match?._id) return match._id
-          }
-          return null
-        }
+         const findInvoiceProductRef = (ci: any): string | null => {
+           if (!productSummaries?.length) return null
+           const sku = (ci?.sku || '').toString().trim()
+           if (sku) {
+             const match = productSummaries.find((p) => (p?.sku || '').trim() === sku)
+             if (match?._id) return match._id
+           }
+           const title = (ci?.name || ci?.productName || ci?.description || '').toString().trim()
+           if (title) {
+             const match = productSummaries.find((p) => (p?.title || '').trim() === title)
+             if (match?._id) return match._id
+           }
+           return null
+         }
 
-        const invoiceLineItems = cart.map((ci: any) => {
-          const presentation = prepareItemPresentation({
-            name: ci.name,
-            productName: ci.productName,
-            description: ci.description,
-            sku: ci.sku,
-            optionSummary: ci.optionSummary,
-            optionDetails: ci.optionDetails,
-            upgrades: ci.upgrades,
-            metadata: ci.metadata,
-          })
-          const quantityRaw = Number(ci?.quantity || 1)
-          const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1
-          let unit = Number(ci?.price ?? ci?.unitPrice)
-          if (!Number.isFinite(unit) || unit <= 0) {
-            const lineFromItem = Number(ci?.lineTotal)
-            if (Number.isFinite(lineFromItem) && quantity > 0) {
-              unit = lineFromItem / quantity
-            }
-          }
-          const unitPrice = Number.isFinite(unit) ? unit : undefined
-          const lineSource = Number(ci?.lineTotal)
-          const computedLineTotal = Number.isFinite(lineSource)
-            ? lineSource
-            : unitPrice !== undefined
-            ? unitPrice * quantity
-            : undefined
-          const detailText = presentation.details.length ? ` (${presentation.details.join(', ')})` : ''
-          const description = `${presentation.title}${detailText}`
-          const productRef = findInvoiceProductRef(ci)
-          return {
-            _type: 'invoiceLineItem' as const,
-            _key: randomUUID(),
-            kind: productRef ? 'product' : 'custom',
-            product: productRef ? { _type: 'reference', _ref: productRef } : undefined,
-            description,
-            sku: (ci?.sku || '').toString() || undefined,
-            quantity,
-            unitPrice,
-            lineTotal: Number.isFinite(computedLineTotal || NaN) ? (computedLineTotal as number) : undefined,
-          }
-        })
+         const invoiceLineItems = cart.map((ci: any) => {
+           const presentation = prepareItemPresentation({
+             name: ci.name,
+             productName: ci.productName,
+             description: ci.description,
+             sku: ci.sku,
+             optionSummary: ci.optionSummary,
+             optionDetails: ci.optionDetails,
+             upgrades: ci.upgrades,
+             metadata: ci.metadata,
+           })
+           const quantityRaw = Number(ci?.quantity || 1)
+           const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1
+           let unit = Number(ci?.price ?? ci?.unitPrice)
+           if (!Number.isFinite(unit) || unit <= 0) {
+             const lineFromItem = Number(ci?.lineTotal)
+             if (Number.isFinite(lineFromItem) && quantity > 0) {
+               unit = lineFromItem / quantity
+             }
+           }
+           const unitPrice = Number.isFinite(unit) ? unit : undefined
+           const lineSource = Number(ci?.lineTotal)
+           const computedLineTotal = Number.isFinite(lineSource)
+             ? lineSource
+             : unitPrice !== undefined
+             ? unitPrice * quantity
+             : undefined
+           const detailText = presentation.details.length ? ` (${presentation.details.join(', ')})` : ''
+           const description = `${presentation.title}${detailText}`
+           const productRef = findInvoiceProductRef(ci)
+           return {
+             _type: 'invoiceLineItem' as const,
+             _key: randomUUID(),
+             kind: productRef ? 'product' : 'custom',
+             product: productRef ? { _type: 'reference', _ref: productRef } : undefined,
+             description,
+             sku: (ci?.sku || '').toString() || undefined,
+             quantity,
+             unitPrice,
+             lineTotal: Number.isFinite(computedLineTotal || NaN) ? (computedLineTotal as number) : undefined,
+           }
+         })
 
-        const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
-        const billToForInvoice = buildStudioAddress(shippingAddress, 'billTo', { fallbackEmail: email, fallbackName: customerName })
-        const shipToForInvoice =
-          buildStudioAddress(shippingAddress, 'shipTo', { fallbackEmail: email, fallbackName: customerName }) ||
-          (billToForInvoice ? { ...billToForInvoice, _type: 'shipTo' } : undefined)
-        const timestampForInvoice = (() => {
-          try {
-            const ts = (session as any)?.created || (paymentIntent as any)?.created
-            if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
-          } catch {}
-          return new Date().toISOString()
-        })()
-        const invoiceDateValue = dateStringFrom(timestampForInvoice)
-        const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
-        const baseInvoiceTitle = pickString(customerName, billToForInvoice?.name, shipToForInvoice?.name, email) || 'Invoice'
-        const defaultInvoiceTitle = invoiceNumberToSet ? `${baseInvoiceTitle} • ${invoiceNumberToSet}` : baseInvoiceTitle
-
-        // 3) Upsert an Order doc for visibility/fulfillment
-        try {
-          const existingOrder = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
-            { sid: stripeSessionId }
+         const computedTaxRate = computeTaxRateFromAmounts(amountSubtotal, amountTax)
+         const billToForInvoice = buildStudioAddress(shippingAddress, 'billTo', { fallbackEmail: email, fallbackName: customerName })
+         const shipToForInvoice =
+           buildStudioAddress(shippingAddress, 'shipTo', { fallbackEmail: email, fallbackName: customerName }) ||
+           (billToForInvoice ? { ...billToForInvoice, _type: 'shipTo' } : undefined)
+         const timestampForInvoice = (() => {
+           try {
+             const ts = (session as any)?.created || (paymentIntent as any)?.created
+             if (typeof ts === 'number' && ts > 0) return new Date(ts * 1000).toISOString()
+           } catch {}
+           return new Date().toISOString()
+         })()
+         const invoiceDateValue = dateStringFrom(timestampForInvoice)
+         const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
+         const baseInvoiceTitle = pickString(customerName, billTo: 'invoiceNumberToSet', 'baseInvoiceTitle', 'orderId', 'stripeSessionId', 'metadata', 'shippingDetails', 'amountShipping', 'currency', 'totalAmount', 'amountSubtotal', 'amountTax', 'email', 'customerName', 'cart', 'shippingAddress', 'userIdMeta', 'paymentIntent', 'invoiceId', 'skuCandidates', 'slugMeta', 'existingId', 'normalizedEmail', 'shouldSendConfirmation', 'baseDoc', 'packingSlipUrl', 'created', 'orderId', 'invoiceId', 'titleName', 'subtotalValue', 'totalValue', 'taxValue', 'invBase', 'shippingAmountForInvoice', 'invoiceSelectedService', 'shippingMetadata', 'createdInv', 'orderId', 'url', 'e'
           )
-          const existingId = existingOrder?._id || null
-          const normalizedEmail = typeof email === 'string' ? email.trim() : ''
-          const shouldSendConfirmation = !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
-
-          const baseDoc: any = {
-            _type: 'order',
-            stripeSessionId,
-            orderNumber,
-            customerName,
-            customerEmail: email || undefined,
-            totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            status: 'paid',
-            createdAt: new Date().toISOString(),
-            paymentStatus: (session.payment_status || (paymentIntent?.status === 'succeeded' ? 'paid' : 'unpaid')) as string,
-            currency,
-            amountSubtotal,
-            amountTax,
-            amountShipping,
-            paymentIntentId: paymentIntent?.id || undefined,
-            chargeId,
-            cardBrand,
-            cardLast4,
-            receiptUrl,
-            stripeLastSyncedAt: new Date().toISOString(),
-            ...(shippingAddress ? { shippingAddress } : {}),
-            ...(userIdMeta ? { userId: userIdMeta } : {}),
-            ...(cart.length ? { cart } : {}),
-          }
-          baseDoc.stripeSummary = buildStripeSummary({
-            session,
-            paymentIntent,
-            eventType: webhookEvent.type,
-            eventCreated: webhookEvent.created,
-          })
-
-          const shippingAmountForDoc = shippingDetails.amount
-          if (shippingDetails.carrier) {
-            baseDoc.shippingCarrier = shippingDetails.carrier
-          }
-          if (
-            shippingDetails.serviceName ||
-            shippingDetails.serviceCode ||
-            shippingAmountForDoc !== undefined
-          ) {
-            baseDoc.selectedService = {
-              carrierId: shippingDetails.carrierId || undefined,
-              carrier: shippingDetails.carrier || undefined,
-              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-              amount: shippingAmountForDoc,
-              currency: shippingDetails.currency || (currency ? currency.toUpperCase() : undefined) || 'USD',
-              deliveryDays: shippingDetails.deliveryDays,
-              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-            }
-          }
-
-          if (shippingAmountForDoc !== undefined) {
-            baseDoc.amountShipping = shippingAmountForDoc
-            baseDoc.selectedShippingAmount = shippingAmountForDoc
-          }
-          if (shippingDetails.currency) {
-            baseDoc.selectedShippingCurrency = shippingDetails.currency
-          }
-          if (shippingDetails.deliveryDays !== undefined) {
-            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-          }
-          if (shippingDetails.estimatedDeliveryDate) {
-            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-          }
-          if (shippingDetails.serviceCode) {
-            baseDoc.shippingServiceCode = shippingDetails.serviceCode
-          }
-          if (shippingDetails.serviceName) {
-            baseDoc.shippingServiceName = shippingDetails.serviceName
-          }
-          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-            baseDoc.shippingMetadata = shippingDetails.metadata
-          }
-
-          const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
-          if (orderSlug) baseDoc.slug = { _type: 'slug', current: orderSlug }
-
-          if (invoiceId) {
-            baseDoc.invoiceRef = { _type: 'reference', _ref: invoiceId }
-          }
-
-          if (invoiceId) {
-            const ids = idVariants(invoiceId)
-            const titleValue = defaultInvoiceTitle
-
-            for (const id of ids) {
-              try {
-                const patchData: Record<string, any> = {
-                  status: 'paid',
-                  stripeLastSyncedAt: new Date().toISOString(),
-                }
-                if (orderNumber) patchData.orderNumber = orderNumber
-                if (invoiceNumberToSet) patchData.invoiceNumber = invoiceNumberToSet
-                if (titleValue) patchData.title = titleValue
-                const subtotalValue = Number(amountSubtotal)
-                if (Number.isFinite(subtotalValue)) {
-                  patchData.subtotal = subtotalValue
-                  patchData.amountSubtotal = subtotalValue
-                }
-                const totalValue = Number(totalAmount)
-                if (Number.isFinite(totalValue)) patchData.total = totalValue
-                const taxValue = Number(amountTax)
-                if (Number.isFinite(taxValue)) patchData.amountTax = taxValue
-                if (currency) patchData.currency = currency.toUpperCase()
-                if (email) patchData.customerEmail = email
-                if (invoiceLineItems.length) patchData.lineItems = invoiceLineItems
-                if (billToForInvoice) patchData.billTo = billToForInvoice
-                if (shipToForInvoice) patchData.shipTo = shipToForInvoice
-                if (invoiceDateValue) {
-                  patchData.invoiceDate = invoiceDateValue
-                  patchData.dueDate = invoiceDateValue
-                }
-                const shippingAmountForInvoice = shippingDetails.amount
-                if (shippingAmountForInvoice !== undefined) {
-                  patchData.amountShipping = shippingAmountForInvoice
-                }
-                if (shippingDetails.carrier) {
-                  patchData.shippingCarrier = shippingDetails.carrier
-                }
-                const invoiceSelectedService =
-                  shippingDetails.serviceName ||
-                  shippingDetails.serviceCode ||
-                  shippingAmountForInvoice !== undefined
-                    ? {
-                        carrierId: shippingDetails.carrierId || undefined,
-                        carrier: shippingDetails.carrier || undefined,
-                        service:
-                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                        serviceCode:
-                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-                        amount: shippingAmountForInvoice,
-                        currency:
-                          shippingDetails.currency ||
-                          (currency ? currency.toUpperCase() : undefined) ||
-                          'USD',
-                        deliveryDays: shippingDetails.deliveryDays,
-                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-                      }
-                    : undefined
-                if (invoiceSelectedService) {
-                  patchData.selectedService = invoiceSelectedService
-                }
-                if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
-                patchData.stripeSummary = buildStripeSummary({
-                  session,
-                  paymentIntent,
-                  eventType: webhookEvent.type,
-                  eventCreated: webhookEvent.created,
-                })
-                let patch = sanity.patch(id).set(patchData)
-                await patch.commit({ autoGenerateArrayKeys: true })
-                break
-              } catch (e) {
-                // try next variant
-              }
-            }
-          }
-
-          // Try to link to an existing customer by email
-          if (email) {
-            try {
-              const customerId = await sanity.fetch(
-                `*[_type == "customer" && email == $email][0]._id`,
-                { email }
-              )
-              if (customerId) baseDoc.customerRef = { _type: 'reference', _ref: customerId }
-            } catch {}
-          }
-
-          let orderId = existingId
-          if (existingId) {
-            await sanity.patch(existingId).set(baseDoc).setIfMissing({ webhookNotified: true }).commit({ autoGenerateArrayKeys: true })
-          } else {
-            const created = await sanity.create({ ...baseDoc, webhookNotified: true }, { autoGenerateArrayKeys: true })
-            orderId = created?._id
-          }
-
-          if (orderId) {
-            try {
-              if (!existingOrder?.packingSlipUrl) {
-                const packingSlipUrl = await generatePackingSlipAsset({
-                  sanity,
-                  orderId,
-                  invoiceId,
-                })
-                if (packingSlipUrl) {
-                  await sanity.patch(orderId).set({ packingSlipUrl }).commit({ autoGenerateArrayKeys: true })
-                }
-              }
-            } catch (err) {
-              console.warn('stripeWebhook: packing slip auto upload failed', err)
-            }
-            try {
-              await syncOrderToShipStation(sanity, orderId)
-            } catch (err) {
-              console.warn('stripeWebhook: ShipStation sync failed', err)
-            }
-          }
-
-          try {
-            await updateCustomerProfileForOrder({
-              sanity,
-              orderId,
-              customerId: (baseDoc as any)?.customerRef?._ref,
-              email: normalizedEmail || email || undefined,
-              shippingAddress,
-              stripeCustomerId: typeof paymentIntent?.customer === 'string' ? paymentIntent.customer : undefined,
-              stripeSyncTimestamp: new Date().toISOString(),
-              customerName,
-            })
-          } catch (err) {
-            console.warn('stripeWebhook: failed to refresh customer profile', err)
-          }
-
-          if (shouldSendConfirmation && orderId) {
-            try {
-              await sendOrderConfirmationEmail({
-                to: normalizedEmail,
-                orderNumber,
-                customerName,
-                items: cart,
-                totalAmount,
-                subtotal: typeof amountSubtotal === 'number' ? amountSubtotal : undefined,
-                taxAmount: typeof amountTax === 'number' ? amountTax : undefined,
-                shippingAmount: typeof amountShipping === 'number' ? amountShipping : undefined,
-                shippingAddress,
-              })
-              await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
-            } catch (err) {
-              console.warn('stripeWebhook: order confirmation email failed', err)
-            }
-          }
-
-          // If no invoice was linked, create one from the order so Studio has a full record
-          try {
-            if (!invoiceId && orderId) {
-              let titleName = defaultInvoiceTitle
-              try {
-                const cref = (baseDoc as any)?.customerRef?._ref
-                if (cref) {
-                  const cust = await sanity.fetch(`*[_type == "customer" && _id == $id][0]{firstName,lastName,email}`, { id: cref })
-                  const full = [cust?.firstName, cust?.lastName].filter(Boolean).join(' ').trim()
-                  if (full) titleName = invoiceNumberToSet ? `${full} • ${invoiceNumberToSet}` : full
-                  else if (cust?.email) titleName = invoiceNumberToSet ? `${cust.email} • ${invoiceNumberToSet}` : cust.email
-                }
-              } catch {}
-
-              const subtotalValue = Number(amountSubtotal)
-              const totalValue = Number(totalAmount)
-              const taxValue = Number(amountTax)
-
-              const invBase: any = {
-                _type: 'invoice',
-                title: titleName,
-                orderNumber,
-                invoiceNumber: invoiceNumberToSet || orderNumber,
-                customerRef: baseDoc.customerRef || undefined,
-                orderRef: { _type: 'reference', _ref: orderId },
-                billTo: billToForInvoice,
-                shipTo: shipToForInvoice,
-                lineItems: invoiceLineItems,
-                discountType: 'amount',
-                discountValue: 0,
-                taxRate: typeof computedTaxRate === 'number' ? computedTaxRate : 0,
-                subtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
-                total: Number.isFinite(totalValue) ? totalValue : undefined,
-                amountSubtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
-                amountTax: Number.isFinite(taxValue) ? taxValue : undefined,
-                currency: (currency || 'usd').toUpperCase(),
-                customerEmail: email || undefined,
-                userId: userIdMeta || undefined,
-                status: 'paid',
-                invoiceDate: invoiceDateValue,
-                dueDate: invoiceDateValue,
-                stripeSessionId,
-                paymentIntentId: paymentIntent?.id || undefined,
-                stripeLastSyncedAt: new Date().toISOString(),
-              }
-              const createdInv = await sanity.create(invBase, { autoGenerateArrayKeys: true })
-              if (createdInv?._id) {
-                try { await sanity.patch(orderId).set({ invoiceRef: { _type: 'reference', _ref: createdInv._id } }).commit({ autoGenerateArrayKeys: true }) } catch {}
-              }
-            }
-          } catch (e) {
-            console.warn('stripeWebhook: failed to create invoice from order', e)
-          }
-
-          // 4) Auto-fulfillment: call our Netlify function to generate packing slip, label, and email
-          try {
-            if (orderId) {
-              const base = (
-                process.env.SANITY_STUDIO_NETLIFY_BASE ||
-                process.env.PUBLIC_SITE_URL ||
-                process.env.AUTH0_BASE_URL ||
-                ''
-              ).trim()
-              if (base && base.startsWith('http')) {
-                const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfill-order`
-                await fetch(url, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ orderId }),
-                })
-              }
-            }
-          } catch (e) {
-            console.warn('stripeWebhook: auto-fulfillment call failed', e)
-          }
         } catch (e) {
-          console.error('stripeWebhook: failed to upsert Order doc:', e)
-          // Do not fail the webhook; Stripe will retry and we may create duplicates otherwise
+          console.warn('stripeWebhook: failed to upsert Order doc:', e)
         }
 
         break
@@ -2081,35 +1769,12 @@ export const handler: Handler = async (event) => {
           const metadataInvoiceNumber = (meta['sanity_invoice_number'] || meta['invoice_number'] || '')
             .toString()
             .trim()
-          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '')
-            .toString()
-            .trim()
-          const metadataShippingCarrier = ((meta['shipping_carrier'] || meta['shippingCarrier'] || '')
-            .toString()
-            .trim() || undefined)
-          const metadataShippingServiceCode = ((
-            meta['shipping_service_code'] ||
-            meta['shipping_service'] ||
-            meta['shippingService'] ||
-            ''
-          )
-            .toString()
-            .trim() || undefined)
-          const metadataShippingServiceName = ((meta['shipping_service_name'] || '')
-            .toString()
-            .trim() || undefined)
-          const metadataShippingCarrierId = ((meta['shipping_carrier_id'] || '')
-            .toString()
-            .trim() || undefined)
-          const metadataShippingCurrency = ((meta['shipping_currency'] || meta['shippingCurrency'] || '')
-            .toString()
-            .trim()
-            .toUpperCase() || undefined)
-          const shippingDetails = await resolveStripeShippingDetails({
-            metadata: meta,
-            paymentIntent: pi,
-            stripe,
-          })
+          const metadataShippingAmountRaw = (meta['shipping_amount'] || meta['shippingAmount'] || '').toString().trim()
+          const metadataShippingCarrier = (meta['shipping_carrier'] || meta['shippingCarrier'] || '').toString().trim() || undefined
+          const metadataShippingServiceCode = (meta['shipping_service_code'] || meta['shipping_service'] || meta['shippingService'] || '').toString().trim() || undefined
+          const metadataShippingServiceName = (meta['shipping_service_name'] || '').toString().trim() || undefined
+          const metadataShippingCarrierId = (meta['shipping_carrier_id'] || '').toString().trim() || undefined
+          const metadataShippingCurrency = (meta['shipping_currency'] || meta['shippingCurrency'] || '').toString().trim().toUpperCase() || undefined
           const shippingAmountFromMetadata = (() => {
             if (!metadataShippingAmountRaw) return undefined
             const parsed = Number(metadataShippingAmountRaw)
@@ -2118,19 +1783,6 @@ export const handler: Handler = async (event) => {
             const fallback = Number(cleaned)
             return Number.isFinite(fallback) ? fallback : undefined
           })()
-          const shippingAmountForDoc =
-            shippingDetails.amount !== undefined ? shippingDetails.amount : shippingAmountFromMetadata
-          const shippingCarrierForDoc = shippingDetails.carrier || metadataShippingCarrier
-          const shippingCarrierIdForDoc = shippingDetails.carrierId || metadataShippingCarrierId
-          const shippingServiceNameForDoc =
-            shippingDetails.serviceName || metadataShippingServiceName || metadataShippingServiceCode
-          const shippingServiceCodeForDoc =
-            shippingDetails.serviceCode || metadataShippingServiceCode || metadataShippingServiceName
-          const shippingCurrencyForDoc =
-            shippingDetails.currency ||
-            metadataShippingCurrency ||
-            (currency ? currency.toUpperCase() : undefined) ||
-            'USD'
           const orderNumber = await resolveOrderNumber({
             metadataOrderNumber: metadataOrderNumberRaw,
             invoiceNumber: metadataInvoiceNumber,
@@ -2181,42 +1833,21 @@ export const handler: Handler = async (event) => {
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
           })
-          if (shippingAmountForDoc !== undefined) {
-            baseDoc.amountShipping = shippingAmountForDoc
-            baseDoc.selectedShippingAmount = shippingAmountForDoc
+          if (shippingAmountFromMetadata !== undefined) {
+            baseDoc.amountShipping = shippingAmountFromMetadata
           }
-          if (shippingCarrierForDoc) {
-            baseDoc.shippingCarrier = shippingCarrierForDoc
+          if (metadataShippingCarrier) {
+            baseDoc.shippingCarrier = metadataShippingCarrier
           }
-          if (shippingServiceNameForDoc || shippingServiceCodeForDoc || shippingAmountForDoc !== undefined) {
+          if (metadataShippingServiceCode || metadataShippingServiceName || shippingAmountFromMetadata !== undefined) {
             baseDoc.selectedService = {
-              carrierId: shippingCarrierIdForDoc,
-              carrier: shippingCarrierForDoc,
-              service: shippingServiceNameForDoc || shippingServiceCodeForDoc || undefined,
-              serviceCode: shippingServiceCodeForDoc || shippingServiceNameForDoc || undefined,
-              amount: shippingAmountForDoc,
-              currency: shippingCurrencyForDoc,
-              deliveryDays: shippingDetails.deliveryDays,
-              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+              carrierId: metadataShippingCarrierId || undefined,
+              carrier: metadataShippingCarrier || undefined,
+              service: metadataShippingServiceName || metadataShippingServiceCode || undefined,
+              serviceCode: metadataShippingServiceCode || metadataShippingServiceName || undefined,
+              amount: shippingAmountFromMetadata,
+              currency: metadataShippingCurrency || (currency ? currency.toUpperCase() : undefined) || 'USD',
             }
-          }
-          if (shippingDetails.currency || metadataShippingCurrency) {
-            baseDoc.selectedShippingCurrency = shippingDetails.currency || metadataShippingCurrency
-          }
-          if (shippingDetails.deliveryDays !== undefined) {
-            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-          }
-          if (shippingDetails.estimatedDeliveryDate) {
-            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-          }
-          if (shippingServiceCodeForDoc) {
-            baseDoc.shippingServiceCode = shippingServiceCodeForDoc
-          }
-          if (shippingServiceNameForDoc) {
-            baseDoc.shippingServiceName = shippingServiceNameForDoc
-          }
-          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-            baseDoc.shippingMetadata = shippingDetails.metadata
           }
           const intentSlug = createOrderSlug(orderNumber, pi.id)
           if (intentSlug) baseDoc.slug = { _type: 'slug', current: intentSlug }
@@ -2231,40 +1862,14 @@ export const handler: Handler = async (event) => {
                 if (orderNumber) patch = patch.setIfMissing({ orderNumber })
                 if (invoiceNumberToSet) patch = patch.setIfMissing({ invoiceNumber: invoiceNumberToSet })
                 if (customerName) patch = patch.setIfMissing({ title: customerName })
-                const shippingAmountForInvoice = shippingAmountForDoc
-                const shippingSelectedService =
-                  shippingServiceNameForDoc ||
-                  shippingServiceCodeForDoc ||
-                  shippingAmountForInvoice !== undefined
-                    ? {
-                        carrierId: shippingCarrierIdForDoc,
-                        carrier: shippingCarrierForDoc,
-                        service: shippingServiceNameForDoc || shippingServiceCodeForDoc || undefined,
-                        serviceCode: shippingServiceCodeForDoc || shippingServiceNameForDoc || undefined,
-                        amount: shippingAmountForInvoice,
-                        currency: shippingCurrencyForDoc,
-                        deliveryDays: shippingDetails.deliveryDays,
-                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-                      }
-                    : undefined
-                const shippingSet: Record<string, any> = {
+                patch = patch.set({
                   stripeLastSyncedAt: new Date().toISOString(),
                   stripeSummary: buildStripeSummary({
                     paymentIntent: pi,
                     eventType: webhookEvent.type,
                     eventCreated: webhookEvent.created,
                   }),
-                }
-                if (shippingAmountForInvoice !== undefined) {
-                  shippingSet.amountShipping = shippingAmountForInvoice
-                }
-                if (shippingCarrierForDoc) {
-                  shippingSet.shippingCarrier = shippingCarrierForDoc
-                }
-                if (shippingSelectedService) {
-                  shippingSet.selectedService = shippingSelectedService
-                }
-                patch = patch.set(shippingSet)
+                })
                 await patch.commit({ autoGenerateArrayKeys: true })
                 break
               } catch {}
@@ -2309,8 +1914,6 @@ export const handler: Handler = async (event) => {
                 customerName,
                 items: [],
                 totalAmount,
-                shippingAmount:
-                  typeof shippingAmountForDoc === 'number' ? shippingAmountForDoc : undefined,
                 shippingAddress: shippingAddr,
               })
               await sanity.patch(orderId).set({ confirmationEmailSent: true }).commit({ autoGenerateArrayKeys: true })
