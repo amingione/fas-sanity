@@ -25,6 +25,7 @@ import resolveDocumentActions from './resolveDocumentActions';
 import ShippingCalendar from './components/studio/ShippingCalendar';
 import AdminTools from './components/studio/AdminTools';
 import StudioLayout from './components/studio/StudioLayout';
+import {fasTheme} from './theme/fasTheme';
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function';
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/');
@@ -144,6 +145,7 @@ export default defineConfig({
   schema: {
     types: schemaTypes,
   },
+  theme: fasTheme,
   studio: {
     components: {
       layout: StudioLayout,
