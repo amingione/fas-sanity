@@ -8,7 +8,7 @@
     "dev": "tsx scripts/ensure-sanity-cors.ts && sanity dev",
     "start": "sanity start",
     "build": "sanity build",
-    "build:ci": "sanity build && sanity schema deploy --non-interactive --manifest-dir ./dist/static",
+    "build:ci": "sanity build && node scripts/deploy-schema-if-token.js",
     "deploy:schema": "sanity schema deploy --non-interactive --manifest-dir ./dist/static",
     "deploy": "sanity deploy",
     "deploy-graphql": "sanity graphql deploy",

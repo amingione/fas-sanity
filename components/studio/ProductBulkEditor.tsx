@@ -55,17 +55,11 @@ type EditableProduct = ProductDoc & {
   dirty?: boolean
 }
 
-const readEnv = (key: string): string | undefined => {
-  const metaEnv =
-    typeof import.meta !== 'undefined' && (import.meta as any)?.env
-      ? ((import.meta as any).env as Record<string, string | undefined>)
-      : undefined
-  return (
-    metaEnv?.[key] ||
-    process.env?.[key] ||
-    (typeof window !== 'undefined' ? (window as any)?.__SITE_BASE_URL__ : undefined)
-  )
-}
+import {readStudioEnv} from './studioEnv'
+
+const readEnv = (key: string): string | undefined =>
+  readStudioEnv(key) ||
+  (typeof window !== 'undefined' ? (window as any)?.__SITE_BASE_URL__ : undefined)
 
 const SITE_BASE =
   readEnv('SANITY_STUDIO_SITE_BASE_URL') ||
