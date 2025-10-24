@@ -169,7 +169,7 @@ export default defineConfig({
         })),
         {
           // Work around CJS/ESM interop glitches with react-refractor across workspace packages.
-          find: /^react-refractor$/,
+          find: /^react-refractor(?:\/dist\/index\.js)?$/,
           replacement: joinSegments(projectRoot, 'shims', 'react-refractor-shim.tsx'),
         },
         // Explicitly map refractor language subpaths to v3 files to satisfy Sanity imports
@@ -196,6 +196,7 @@ export default defineConfig({
         'react',
         'react-dom',
         'styled-components',
+        'react-refractor',
       ],
     },
     server: {
@@ -208,9 +209,10 @@ export default defineConfig({
         name: 'fas-react-refractor-alias',
         enforce: 'pre',
         resolveId(source: string) {
-          return source === 'react-refractor'
-            ? joinSegments(projectRoot, 'shims', 'react-refractor-shim.tsx')
-            : undefined
+          if (source === 'react-refractor' || source === 'react-refractor/dist/index.js') {
+            return joinSegments(projectRoot, 'shims', 'react-refractor-shim.tsx')
+          }
+          return undefined
         },
       },
     ],

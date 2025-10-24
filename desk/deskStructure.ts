@@ -27,11 +27,11 @@ import VendorStatusBadge from '../components/inputs/VendorStatusBadge'
 import InvoiceVisualEditor from '../components/studio/InvoiceVisualEditor'
 import OrderStatusPreview from '../components/inputs/FulfillmentBadge'
 import OrderDetailView from '../components/studio/OrderDetailView'
-import SalesHub from '../components/studio/SalesHub'
 import CustomersHub from '../components/studio/CustomersHub'
 import BankAccountsTool from '../components/studio/BankAccountsTool'
 import CheckComposer from '../components/studio/CheckComposer'
 import ProfitLossDashboard from '../components/studio/ProfitLossDashboard'
+import SalesHub from '../components/studio/SalesHub'
 
 const previewPaths: Record<string, string> = {
   product: '/product',
@@ -137,7 +137,19 @@ export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('F.A.S. Studio')
     .items([
-      hubListItem(S, 'sales-hub', 'Sales & Get Paid', MdPointOfSale, SalesHub),
+      S.listItem()
+        .id('sales-hub')
+        .title('Sales & Get Paid')
+        .icon(MdPointOfSale)
+        .child(
+          S.list()
+            .title('Sales & Get Paid')
+            .items([
+              documentListWithPreview(S, 'order', 'Orders'),
+              documentListWithPreview(S, 'invoice', 'Invoices'),
+              componentPane(S, 'sales-dashboard', 'Sales Dashboard (Legacy)', SalesHub),
+            ])
+        ),
       hubListItem(S, 'customers-hub', 'Customer Hub', MdGroups, CustomersHub),
       S.listItem()
         .id('catalog')
