@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  '@sanity/ui@2.16.22':
+    hash: a1e132122b2fae4f6d9ab6424651348a23b44b1a386d9e92e47ab015d9c14fd8
+    path: patches/@sanity+ui@2.16.22.patch
   react-refractor@4.0.0:
     hash: 5d3e4be5f14b752f3292bb9994876b13ac96104cd884c3e6861a6dd561426752
     path: patches/react-refractor@4.0.0.patch
