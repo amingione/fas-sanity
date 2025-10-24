@@ -18,6 +18,7 @@ import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {media} from 'sanity-plugin-media'
 import {presentationTool} from '@sanity/presentation'
+import {definePreviewUrl} from '@sanity/preview-url-secret/define-preview-url'
 import {schemaMarkup} from '@operationnation/sanity-plugin-schema-markup'
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
@@ -89,6 +90,70 @@ const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_NETLIFY_BASE') ||
   undefined
 
+const previewOrigin =
+  presentationPreviewOrigin?.replace(/\/$/, '') || 'http://localhost:4321'
+
+const previewUrlResolver = definePreviewUrl({
+  origin: previewOrigin,
+  preview: '/',
+})
+
+type PreviewableDocument = {
+  _type?: string | null
+  _id?: string | null
+  slug?: {current?: string | null} | null
+}
+
+const resolvePreviewPath = (document: PreviewableDocument | null | undefined): string => {
+  if (!document) return '/'
+
+  const slug = document.slug?.current?.trim()
+  const fallbackSlug = document._id?.replace(/^drafts\./, '')
+
+  switch (document._type) {
+    case 'product':
+      return `/shop/${slug || fallbackSlug || ''}`
+    case 'category':
+      return `/shop/categories/${slug || fallbackSlug || ''}`
+    case 'page':
+      return `/${slug || fallbackSlug || ''}`
+    case 'home':
+      return '/'
+    default:
+      return '/'
+  }
+}
+
+type LocationResolverValue = {
+  slug?: string | null
+  _id?: string | null
+}
+
+const buildDocumentLocation = (title: string, type: string) => ({
+  select: {
+    slug: 'slug.current',
+    _id: '_id',
+  },
+  resolve: (value: LocationResolverValue | null) => {
+    if (!value?._id) return undefined
+    const path = resolvePreviewPath({
+      _type: type,
+      _id: value._id,
+      slug: value.slug ? {current: value.slug} : null,
+    })
+
+    const href = new URL(path || '/', previewOrigin).toString()
+    return {
+      locations: [
+        {
+          title,
+          href,
+        },
+      ],
+    }
+  },
+})
+
 const isDev =
   sanityEnv !== undefined
     ? sanityEnv !== 'production'
@@ -123,15 +188,19 @@ export default defineConfig({
     media(),
     codeInput(),
     schemaMarkup(),
-    presentationTool(
-      presentationPreviewOrigin
-        ? {
-            previewUrl: {
-              origin: presentationPreviewOrigin.replace(/\/$/, ''),
-            },
-          }
-        : {},
-    ),
+    presentationTool({
+      previewUrl: previewUrlResolver,
+      name: 'preview',
+      title: 'Preview',
+      resolve: {
+        locations: {
+          product: buildDocumentLocation('Shop product', 'product'),
+          category: buildDocumentLocation('Browse category', 'category'),
+          page: buildDocumentLocation('View page', 'page'),
+          home: buildDocumentLocation('Home', 'home'),
+        },
+      },
+    }),
     ...(visionEnabled ? [visionTool()] : []),
   ],
 
