@@ -72,20 +72,30 @@ async function main() {
     }
 
     try {
-      const event = {
+      const event: HandlerEvent = {
         httpMethod: 'POST',
         headers: {},
+        multiValueHeaders: {},
         queryStringParameters: {},
-        body: JSON.stringify({ id: sessionId, autoFulfill: false }),
+        multiValueQueryStringParameters: {},
+        body: JSON.stringify({id: sessionId, autoFulfill: false}),
         isBase64Encoded: false,
-      } as HandlerEvent
+        rawUrl: 'http://localhost/.netlify/functions/reprocessStripeSession',
+        rawQuery: '',
+        path: '/.netlify/functions/reprocessStripeSession',
+      }
 
       const response = await reprocessHandler(event, {} as any)
+      if (!response) {
+        console.warn(`⚠️ ${order.orderNumber || order._id} • session=${sessionId} • handler returned no response`)
+        continue
+      }
+
       const ok = response.statusCode >= 200 && response.statusCode < 300
       console.log(
         `${ok ? '✅' : '⚠️'} ${order.orderNumber || order._id} • session=${sessionId} • status=${response.statusCode}`
       )
-      if (!ok) {
+      if (!ok && response.body) {
         console.log(response.body)
       }
     } catch (err) {

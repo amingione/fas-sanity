@@ -1,11 +1,11 @@
 import { ListItemBuilder } from 'sanity/structure'
 import defineStructure from '../utils/defineStructure'
-import { TruckIcon } from '@sanity/icons'
+import {ArchiveIcon} from '@sanity/icons'
 
 export default defineStructure<ListItemBuilder>((S) =>
   S.listItem()
     .title('Freight Quotes')
-    .icon(TruckIcon)
+    .icon(ArchiveIcon)
     .child(
       S.list()
         .title('Freight Quotes')

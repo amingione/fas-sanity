@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
-import {Spinner} from '@sanity/ui'
+import {Button, Card, Dialog, Flex, Spinner, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {format, formatDistanceToNow, parseISO} from 'date-fns'
@@ -109,6 +109,20 @@ type CustomerDetail = CustomerRecord & {
   updatedAt?: string | null
   _createdAt?: string | null
   orderDocuments?: OrderDocumentLite[] | null
+}
+
+type CustomerPreview = {
+  _id: string
+  firstName?: string | null
+  lastName?: string | null
+  name?: string | null
+  email?: string | null
+  phone?: string | null
+  shippingAddress?: BasicAddress | null
+  billingAddress?: BasicAddress | null
+  orderCount?: number | null
+  lifetimeSpend?: number | null
+  roles?: string[] | null
 }
 
 type CustomerResponse = {
@@ -230,6 +244,34 @@ const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
   lifetimeSpend,
   updatedAt,
   _createdAt
+}`
+
+const CUSTOMER_PREVIEW_QUERY = `*[_type == "customer" && _id == $id][0]{
+  _id,
+  firstName,
+  lastName,
+  name,
+  email,
+  phone,
+  shippingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  billingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  orderCount,
+  lifetimeSpend,
+  roles
 }`
 
 const buildDisplayName = (customer: CustomerRecord) => {
@@ -504,6 +546,11 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [activeProfile, setActiveProfile] = useState<CustomerDetail | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewProfile, setPreviewProfile] = useState<CustomerPreview | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -561,6 +608,39 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
       return haystack.includes(term)
     })
   }, [customers, searchTerm])
+
+  useEffect(() => {
+    if (!previewOpen || !previewId) return
+    let cancelled = false
+    setPreviewLoading(true)
+    setPreviewError(null)
+    setPreviewProfile(null)
+
+    client
+      .fetch<CustomerPreview | null>(CUSTOMER_PREVIEW_QUERY, {id: previewId})
+      .then((result) => {
+        if (cancelled) return
+        if (result) {
+          setPreviewProfile(result)
+        } else {
+          setPreviewError('Customer record not found.')
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        console.error('Failed to load customer preview', err)
+        setPreviewError('Unable to load customer details right now.')
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPreviewLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [client, previewId, previewOpen])
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)))
@@ -796,6 +876,40 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   const activeDisplayName = activeProfile?.displayName ?? activeSummary?.displayName ?? 'Select a customer'
   const activeEmail = activeProfile?.email ?? activeSummary?.email ?? ''
 
+  const openPreview = useCallback((id: string) => {
+    setPreviewId(id)
+    setPreviewOpen(true)
+  }, [])
+
+  const closePreview = useCallback(() => {
+    setPreviewOpen(false)
+    setPreviewId(null)
+    setPreviewProfile(null)
+    setPreviewError(null)
+  }, [])
+
+  const handlePreviewOpenInStudio = useCallback(() => {
+    if (!previewId) return
+    router.navigateIntent('edit', {id: previewId, type: 'customer'})
+    closePreview()
+  }, [closePreview, previewId, router])
+
+  const handlePreviewShowProfile = useCallback(() => {
+    if (!previewId) return
+    setActiveCustomerId(previewId)
+    closePreview()
+  }, [closePreview, previewId])
+
+  const previewDisplayName = previewProfile
+    ? [previewProfile.firstName, previewProfile.lastName].filter(Boolean).join(' ').trim() ||
+      previewProfile.name ||
+      previewProfile.email ||
+      'Customer'
+    : 'Customer'
+
+  const previewShippingLines = formatAddressLines(previewProfile?.shippingAddress)
+  const previewBillingLines = formatAddressLines(previewProfile?.billingAddress)
+
   return (
     <div ref={ref} className="studio-surface flex h-full min-h-0 flex-col rounded-3xl">
       <div className="flex-1 overflow-hidden px-6 py-6">
@@ -938,7 +1052,17 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                 </label>
                               </td>
                               <td className="px-3 py-4">
-                                <div className="font-medium text-[var(--studio-text)] group-hover:text-[var(--studio-text)]">{customer.displayName}</div>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    openPreview(customer._id)
+                                  }}
+                                  className="font-medium text-[var(--studio-text)] transition hover:text-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                  style={{background: 'transparent', border: 'none', padding: 0, textAlign: 'left'}}
+                                >
+                                  {customer.displayName}
+                                </button>
                                 {customer.email && <div className="text-xs text-[var(--studio-muted)]">{customer.email}</div>}
                               </td>
                               <td className="px-3 py-4">
@@ -1401,6 +1525,128 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
           </div>
         </div>
       </div>
+      {previewOpen && (
+        <Dialog header={previewDisplayName} id="customer-preview" onClose={closePreview} width={1} zOffset={1000}>
+          <Card padding={4} tone="transparent">
+            {previewLoading ? (
+              <Flex align="center" justify="center" style={{minHeight: 160}}>
+                <Spinner muted size={4} />
+              </Flex>
+            ) : previewError ? (
+              <Text style={{color: 'var(--card-critical-fg-color)'}}>{previewError}</Text>
+            ) : previewProfile ? (
+              <Stack space={4}>
+                <Stack space={2}>
+                  <Text size={2} weight="semibold">
+                    Contact
+                  </Text>
+                  <Stack space={1}>
+                    <Text size={2}>{previewDisplayName}</Text>
+                    {previewProfile.email && (
+                      <Text size={1} muted>
+                        {previewProfile.email}
+                      </Text>
+                    )}
+                    {previewProfile.phone && (
+                      <Text size={1} muted>
+                        {previewProfile.phone}
+                      </Text>
+                    )}
+                  </Stack>
+                </Stack>
+
+                <Stack space={2}>
+                  <Text size={2} weight="semibold">
+                    Shipping address
+                  </Text>
+                  {previewShippingLines.length > 0 ? (
+                    <Stack space={1}>
+                      {previewShippingLines.map((line) => (
+                        <Text key={line} size={1}>
+                          {line}
+                        </Text>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Text size={1} muted>
+                      No shipping address on file.
+                    </Text>
+                  )}
+                </Stack>
+
+                <Stack space={2}>
+                  <Text size={2} weight="semibold">
+                    Billing address
+                  </Text>
+                  {previewBillingLines.length > 0 ? (
+                    <Stack space={1}>
+                      {previewBillingLines.map((line) => (
+                        <Text key={line} size={1}>
+                          {line}
+                        </Text>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Text size={1} muted>
+                      No billing address on file.
+                    </Text>
+                  )}
+                </Stack>
+
+                <Flex gap={4} wrap="wrap">
+                  <Card padding={3} radius={2} shadow={1} tone="transparent">
+                    <Stack space={1}>
+                      <Text size={1} muted>
+                        Orders
+                      </Text>
+                      <Text size={2} weight="semibold">
+                        {previewProfile.orderCount ?? 0}
+                      </Text>
+                    </Stack>
+                  </Card>
+                  <Card padding={3} radius={2} shadow={1} tone="transparent">
+                    <Stack space={1}>
+                      <Text size={1} muted>
+                        Lifetime spend
+                      </Text>
+                      <Text size={2} weight="semibold">
+                        {formatCurrency(previewProfile.lifetimeSpend)}
+                      </Text>
+                    </Stack>
+                  </Card>
+                </Flex>
+
+                {previewProfile.roles && previewProfile.roles.length > 0 && (
+                  <Stack space={2}>
+                    <Text size={2} weight="semibold">
+                      Roles
+                    </Text>
+                    <Flex gap={2} wrap="wrap">
+                      {previewProfile.roles.map((role) => (
+                        <Card key={role} paddingX={3} paddingY={1} radius={2} shadow={0} tone="transparent">
+                          <Text size={1} muted>
+                            {role}
+                          </Text>
+                        </Card>
+                      ))}
+                    </Flex>
+                  </Stack>
+                )}
+              </Stack>
+            ) : null}
+          </Card>
+          <Flex gap={2} justify="flex-end" padding={4} paddingTop={0}>
+            <Button mode="bleed" text="Close" onClick={closePreview} />
+            <Button text="Full profile" onClick={handlePreviewShowProfile} disabled={!previewId} />
+            <Button
+              tone="primary"
+              text="Edit in Studio"
+              onClick={handlePreviewOpenInStudio}
+              disabled={!previewId}
+            />
+          </Flex>
+        </Dialog>
+      )}
     </div>
   )
 })

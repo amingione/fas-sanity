@@ -219,8 +219,8 @@ async function fetchCheckoutSession(id: string): Promise<Stripe.Checkout.Session
 type SessionFailureResult = {
   diagnostics: PaymentFailureDiagnostics
   paymentStatus: string
-  orderStatus: 'cancelled'
-  invoiceStatus: 'cancelled'
+  orderStatus: 'cancelled' | 'expired'
+  invoiceStatus: 'cancelled' | 'expired'
   invoiceStripeStatus: string
 }
 
@@ -388,7 +388,7 @@ async function updateInvoice(
   diagnostics: PaymentFailureDiagnostics,
   options: {
     paymentStatus?: string
-    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
+    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled' | 'expired'
     invoiceStripeStatus?: string
     dryRun?: boolean
     paymentIntent?: Stripe.PaymentIntent | null
@@ -449,8 +449,8 @@ async function processOrder(order: OrderDoc, options: CliOptions): Promise<boole
   let session: Stripe.Checkout.Session | null = null
   let diagnostics: PaymentFailureDiagnostics | null = null
   let paymentStatus: string | undefined
-  let orderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | undefined
-  let invoiceStatus: 'pending' | 'paid' | 'refunded' | 'cancelled' | undefined
+  let orderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' | undefined
+  let invoiceStatus: 'pending' | 'paid' | 'refunded' | 'cancelled' | 'expired' | undefined
   let invoiceStripeStatus: string | undefined
 
   if (paymentIntent) {

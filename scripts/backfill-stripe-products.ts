@@ -94,6 +94,7 @@ async function main() {
   const event: HandlerEvent = {
     httpMethod: 'POST',
     headers: secret ? { authorization: `Bearer ${secret}` } : {},
+    multiValueHeaders: secret ? {authorization: [`Bearer ${secret}`]} : {},
     body: JSON.stringify(body),
     isBase64Encoded: false,
     queryStringParameters: {},
@@ -104,6 +105,11 @@ async function main() {
   }
 
   const response = await handler(event, {} as any)
+
+  if (!response) {
+    console.error('Sync failed: handler returned no response payload')
+    process.exit(1)
+  }
 
   if (response.statusCode >= 400) {
     console.error(`Sync failed with status ${response.statusCode}`)

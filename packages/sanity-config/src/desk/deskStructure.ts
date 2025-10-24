@@ -1,224 +1,502 @@
-// desk/deskStructure.ts
-
 import type {StructureResolver} from 'sanity/structure'
-import React from 'react'
-import DocumentIframePreview from '../components/studio/DocumentIframePreview'
-import BulkLabelGenerator from '../components/studio/BulkLabelGenerator'
-import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenerator'
-import FinancialDashboard from '../components/studio/FinancialDashboard'
-import FinancialReports from '../components/studio/FinancialReports'
-import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
-import EnvSelfCheck from '../components/studio/EnvSelfCheck'
-import ProductBulkEditor from '../components/studio/ProductBulkEditor'
-import ProductListDashboard from '../components/studio/ProductListDashboard'
-import FilterBulkAssignPane from '../components/studio/FilterBulkAssignPane'
-import FilterBulkRemovePane from '../components/studio/FilterBulkRemovePane'
-import FilterDeleteTagPane from '../components/studio/FilterDeleteTagPane'
-import VendorAdminDashboard from '../components/studio/VendorAdminDashboard'
-import VendorStatusBadge from '../components/inputs/VendorStatusBadge'
-import InvoiceVisualEditor from '../components/studio/InvoiceVisualEditor'
-import OrderStatusPreview from '../components/inputs/FulfillmentBadge'
+import HomePane from '../components/studio/HomePane'
+import ComingSoonPane from '../components/studio/ComingSoonPane'
 import OrderDetailView from '../components/studio/OrderDetailView'
-import CustomersHub from '../components/studio/CustomersHub'
-import BankAccountsTool from '../components/studio/BankAccountsTool'
-import CheckComposer from '../components/studio/CheckComposer'
-import ProfitLossDashboard from '../components/studio/ProfitLossDashboard'
-import SalesHub from '../components/studio/SalesHub'
+import ProductEditorPane from '../components/studio/ProductEditorPane'
+import ShippingCalendar from '../components/studio/ShippingCalendar'
+import AdminTools from '../components/studio/AdminTools'
 
-const previewPaths: Record<string, string> = {
-  product: '/product',
-  customer: '/customer',
-  invoice: '/invoice',
-  shippingLabel: '/label',
-  quote: '/quote',
-  order: '/order',
-  category: '/category',
-}
+const orderDocumentViews = (S: any) => (documentId: string) =>
+  S.document()
+    .schemaType('order')
+    .documentId(documentId)
+    .views([
+      S.view.component(OrderDetailView as any).title('Summary').id('summary'),
+      S.view.form().title('Form').id('form'),
+    ])
 
-const getPreviewViews = (S: any, schema: string) => {
-  const views: any[] = []
-
-  if (schema === 'order') {
-    views.push(
-      S.view
-        .component(OrderDetailView as any)
-        .title('Summary')
-        .id('summary')
-    )
-  }
-
-  views.push(S.view.form().id('form'))
-
-  views.push(
-    S.view
-      .component((props: any) =>
-        DocumentIframePreview({...props, basePath: previewPaths[schema] || ''})
-      )
-      .title('Preview')
-      .id('preview')
-  )
-
-  if (schema === 'invoice') {
-    views.push(
-      S.view
-        .component(InvoiceVisualEditor as any)
-        .title('Visual Editor')
-        .id('visual-editor')
-    )
-  }
-
-  if (schema === 'order') {
-    views.push(
-      S.view
-        .component(OrderStatusPreview as any)
-        .title('Fulfillment Status')
-        .id('fulfillment-status')
-    )
-  }
-
-  return views.filter(Boolean)
-}
-
-const hubListItem = (S: any, id: string, title: string, component: React.ComponentType) =>
+const productsByCategory = (S: any) =>
   S.listItem()
-    .id(id)
-    .title(title)
+    .id('products-by-category')
+    .title('Products by category')
     .child(
-      S.component()
-        .id(`${id}-pane`)
-        .title(title)
-        .component(component as any)
-    )
-
-const componentPane = (S: any, id: string, title: string, component: React.ComponentType) =>
-  S.listItem()
-    .id(id)
-    .title(title)
-    .child(
-      S.component()
-        .id(`${id}-component`)
-        .title(title)
-        .component(component as any)
-    )
-
-const documentListWithPreview = (
-  S: any,
-  schemaType: string,
-  title: string,
-  options?: {hidden?: boolean}
-) =>
-  S.listItem({
-    hidden: options?.hidden,
-  })
-    .id(`${schemaType}-list`)
-    .title(title)
-    .schemaType(schemaType)
-    .child(
-      S.documentTypeList(schemaType)
-        .title(title)
-        .child((documentId: string) =>
-          S.document()
-            .documentId(documentId)
-            .schemaType(schemaType)
-            .views(getPreviewViews(S, schemaType))
+      S.documentTypeList('category')
+        .title('Categories')
+        .child((categoryId: string) =>
+          S.documentList()
+            .apiVersion('2024-10-01')
+            .title('Products')
+            .schemaType('product')
+            .filter('_type == "product" && $categoryId in category[]._ref')
+            .params({categoryId})
         )
     )
 
 export const deskStructure: StructureResolver = (S) =>
   S.list()
-    .title('F.A.S. Studio')
+    .title('F.A.S. Motorsports')
     .items([
       S.listItem()
-        .id('sales-hub')
-        .title('Sales & Get Paid')
+        .id('home')
+        .title('Home')
         .child(
-          S.list()
-            .title('Sales & Get Paid')
-            .items([
-              documentListWithPreview(S, 'order', 'Orders'),
-              documentListWithPreview(S, 'invoice', 'Invoices'),
-              componentPane(S, 'sales-dashboard', 'Sales Dashboard (Legacy)', SalesHub),
-            ])
+          S.component()
+            .id('home-pane')
+            .title('Home')
+            .component(HomePane as any)
         ),
-      hubListItem(S, 'customers-hub', 'Customer Hub', CustomersHub),
+      S.divider(),
       S.listItem()
-        .id('catalog')
-        .title('Products & Content')
+        .id('customers')
+        .title('Customers')
         .child(
           S.list()
-            .title('Products & Content')
+            .title('Customers')
             .items([
-              componentPane(S, 'product-overview', 'Product Overview', ProductListDashboard),
-              documentListWithPreview(S, 'product', 'Products'),
-              documentListWithPreview(S, 'category', 'Categories'),
-              documentListWithPreview(S, 'vehicleModel', 'Vehicles'),
-              documentListWithPreview(S, 'filterTag', 'Filters'),
-              S.listItem()
-                .id('catalog-tools')
-                .title('Catalog Tools')
+              S.documentTypeListItem('customer')
+                .title('All customers')
                 .child(
-                  S.list()
-                    .title('Catalog Tools')
-                    .items([
-                      componentPane(S, 'product-bulk-editor', 'Product Bulk Editor', ProductBulkEditor),
-                      componentPane(S, 'filter-bulk-assign', 'Filter Bulk Assign', FilterBulkAssignPane),
-                      componentPane(S, 'filter-bulk-remove', 'Filter Bulk Remove', FilterBulkRemovePane),
-                      componentPane(S, 'filter-delete-tag', 'Filter Delete Tag', FilterDeleteTagPane),
+                  S.documentTypeList('customer')
+                    .title('All customers')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "customer"')
+                    .defaultOrdering([
+                      {field: 'lifetimeSpend', direction: 'desc'},
+                      {field: 'orderCount', direction: 'desc'},
                     ])
+                ),
+              S.divider(),
+              S.listItem()
+                .id('customers-subscribed')
+                .title('Subscribed to email')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Subscribed customers')
+                    .schemaType('customer')
+                    .filter('emailOptIn == true || marketingOptIn == true')
+                    .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                ),
+              S.listItem()
+                .id('customers-high-value')
+                .title('High value ($100+)')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('High value customers')
+                    .schemaType('customer')
+                    .filter('(lifetimeSpend ?? 0) >= 100')
+                    .defaultOrdering([{field: 'lifetimeSpend', direction: 'desc'}])
+                ),
+              S.listItem()
+                .id('customers-vip')
+                .title('VIP ($1,000+)')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('VIP customers')
+                    .schemaType('customer')
+                    .filter('(lifetimeSpend ?? 0) >= 1000')
+                    .defaultOrdering([{field: 'lifetimeSpend', direction: 'desc'}])
+                ),
+              S.listItem()
+                .id('customers-inactive')
+                .title('No orders yet')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Customers with no orders')
+                    .schemaType('customer')
+                    .filter('(orderCount ?? 0) == 0')
+                    .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                ),
+              S.listItem()
+                .id('customers-recent')
+                .title('Recently added')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Recently added customers')
+                    .schemaType('customer')
+                    .filter('_type == "customer"')
+                    .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 ),
             ])
         ),
       S.listItem()
-        .id('operations')
-        .title('Operations')
+        .id('orders')
+        .title('Orders')
         .child(
           S.list()
-            .title('Operations')
+            .title('Orders')
             .items([
-              documentListWithPreview(S, 'shippingLabel', 'Shipping Labels'),
-              componentPane(S, 'bulk-label-generator', 'Bulk Label Generator', BulkLabelGenerator),
-              componentPane(S, 'packing-slip-generator', 'Packing Slip Generator', BulkPackingSlipGenerator),
-              componentPane(S, 'fulfillment-console', 'Fulfillment Console', BulkFulfillmentConsole),
+              S.documentTypeListItem('order')
+                .title('All orders')
+                .child(
+                  S.documentTypeList('order')
+                    .title('All orders')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "order"')
+                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+                    .child(orderDocumentViews(S))
+                ),
+              S.divider(),
+              S.listItem()
+                .id('orders-pending')
+                .title('Pending fulfillment')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Pending fulfillment')
+                    .schemaType('order')
+                    .filter('_type == "order" && (status == "pending" || status == "processing") && !defined(fulfilledAt)')
+                    .defaultOrdering([{field: 'createdAt', direction: 'asc'}])
+                    .child(orderDocumentViews(S))
+                ),
+              S.listItem()
+                .id('orders-fulfilled')
+                .title('Fulfilled')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Fulfilled orders')
+                    .schemaType('order')
+                    .filter('_type == "order" && defined(fulfilledAt)')
+                    .defaultOrdering([{field: 'fulfilledAt', direction: 'desc'}])
+                    .child(orderDocumentViews(S))
+                ),
+              S.listItem()
+                .id('orders-paid')
+                .title('Paid')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Paid orders')
+                    .schemaType('order')
+                    .filter('_type == "order" && paymentStatus == "paid"')
+                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+                    .child(orderDocumentViews(S))
+                ),
+              S.listItem()
+                .id('orders-unpaid')
+                .title('Unpaid / Failed')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Unpaid orders')
+                    .schemaType('order')
+                    .filter('_type == "order" && (paymentStatus != "paid" || !defined(paymentStatus))')
+                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+                    .child(orderDocumentViews(S))
+                ),
+              S.listItem()
+                .id('orders-recent')
+                .title('Recent (Last 30 days)')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Recent orders')
+                    .schemaType('order')
+                    .filter('_type == "order" && dateTime(createdAt) > dateTime(now()) - 60*60*24*30')
+                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+                    .child(orderDocumentViews(S))
+                ),
             ])
         ),
       S.listItem()
-        .id('admin')
-        .title('Admin & Finance')
+        .id('shipping')
+        .title('Shipping')
         .child(
           S.list()
-            .title('Admin & Finance')
+            .title('Shipping')
             .items([
-              componentPane(S, 'financial-dashboard', 'Financial Dashboard', FinancialDashboard),
-              componentPane(S, 'financial-reports', 'Financial Reports', FinancialReports),
-              componentPane(S, 'profit-loss-dashboard', 'Profit & Loss', ProfitLossDashboard),
-              componentPane(S, 'bank-accounts', 'Bank Accounts', BankAccountsTool),
-              documentListWithPreview(S, 'bankAccount', 'Bank Accounts'),
-              componentPane(S, 'check-composer', 'Write Check', CheckComposer),
-              documentListWithPreview(S, 'check', 'Checks'),
-              componentPane(S, 'env-self-check', 'Environment Status', EnvSelfCheck),
-              componentPane(S, 'vendor-admin-dashboard', 'Vendor Admin Dashboard', VendorAdminDashboard),
-              S.listItem()
-                .id('vendors')
-                .title('Vendors')
+              S.documentTypeListItem('shippingLabel').title('Shipping labels'),
+              S.documentTypeListItem('shippingOption').title('Shipping options'),
+            ])
+        ),
+      S.listItem()
+        .id('products')
+        .title('Products')
+        .child(
+          S.list()
+            .title('Products')
+            .items([
+              S.documentTypeListItem('product')
+                .title('All products')
                 .child(
-                  S.documentTypeList('vendor')
+                  S.documentTypeList('product')
+                    .title('All products')
                     .apiVersion('2024-10-01')
-                    .title('Vendors')
-                    .child((id: string) =>
+                    .filter('_type == "product"')
+                    .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                    .child((documentId: string) =>
                       S.document()
-                        .documentId(id)
-                        .schemaType('vendor')
+                        .schemaType('product')
+                        .documentId(documentId)
                         .views([
-                          S.view.form().id('form'),
-                          S.view.component(VendorStatusBadge as any).title('Status Badge').id('status-badge'),
+                          S.view.form().title('Details').id('form'),
+                          S.view
+                            .component(ProductEditorPane as any)
+                            .title('Editor')
+                            .id('editor'),
                         ])
                     )
                 ),
+              S.divider(),
+              S.listItem()
+                .id('products-active')
+                .title('Active')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Active products')
+                    .schemaType('product')
+                    .filter('_type == "product" && (status == "active" || !defined(status))')
+                    .defaultOrdering([{field: 'title', direction: 'asc'}])
+                    .child((documentId: string) =>
+                      S.document()
+                        .schemaType('product')
+                        .documentId(documentId)
+                        .views([
+                          S.view.form().title('Details').id('form'),
+                          S.view
+                            .component(ProductEditorPane as any)
+                            .title('Editor')
+                            .id('editor'),
+                        ])
+                    )
+                ),
+              S.listItem()
+                .id('products-draft')
+                .title('Draft')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Draft products')
+                    .schemaType('product')
+                    .filter('_type == "product" && status == "draft"')
+                    .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                    .child((documentId: string) =>
+                      S.document()
+                        .schemaType('product')
+                        .documentId(documentId)
+                        .views([
+                          S.view.form().title('Details').id('form'),
+                          S.view
+                            .component(ProductEditorPane as any)
+                            .title('Editor')
+                            .id('editor'),
+                        ])
+                    )
+                ),
+              S.listItem()
+                .id('products-paused')
+                .title('Paused')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Paused products')
+                    .schemaType('product')
+                    .filter('_type == "product" && status == "paused"')
+                    .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                    .child((documentId: string) =>
+                      S.document()
+                        .schemaType('product')
+                        .documentId(documentId)
+                        .views([
+                          S.view.form().title('Details').id('form'),
+                          S.view
+                            .component(ProductEditorPane as any)
+                            .title('Editor')
+                            .id('editor'),
+                        ])
+                    )
+                ),
+              S.listItem()
+                .id('products-archived')
+                .title('Archived')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Archived products')
+                    .schemaType('product')
+                    .filter('_type == "product" && status == "archived"')
+                    .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                    .child((documentId: string) =>
+                      S.document()
+                        .schemaType('product')
+                        .documentId(documentId)
+                        .views([
+                          S.view.form().title('Details').id('form'),
+                          S.view
+                            .component(ProductEditorPane as any)
+                            .title('Editor')
+                            .id('editor'),
+                        ])
+                    )
+                ),
+              S.listItem()
+                .id('products-out-of-stock')
+                .title('Out of stock')
+                .child(
+                  S.documentList()
+                    .apiVersion('2024-10-01')
+                    .title('Out of stock products')
+                    .schemaType('product')
+                    .filter('_type == "product" && (inventory.quantity ?? 0) <= 0')
+                    .defaultOrdering([{field: 'title', direction: 'asc'}])
+                    .child((documentId: string) =>
+                      S.document()
+                        .schemaType('product')
+                        .documentId(documentId)
+                        .views([
+                          S.view.form().title('Details').id('form'),
+                          S.view
+                            .component(ProductEditorPane as any)
+                            .title('Editor')
+                            .id('editor'),
+                        ])
+                    )
+                ),
+              S.divider(),
+              S.documentTypeListItem('category').title('Categories'),
+              productsByCategory(S),
+              S.documentTypeListItem('productBundle').title('Bundles'),
             ])
         ),
-
-      // Hidden foundational lists to keep intents (edit/create) working with custom views.
-      documentListWithPreview(S, 'invoice', 'Invoices', {hidden: true}),
-      documentListWithPreview(S, 'order', 'Orders', {hidden: true}),
-      documentListWithPreview(S, 'quote', 'Quote Requests', {hidden: true}),
+      S.listItem()
+        .id('quotes')
+        .title('Quotes')
+        .child(
+          S.list()
+            .title('Quotes')
+            .items([
+              S.documentTypeListItem('quote')
+                .title('All quotes')
+                .child(
+                  S.documentTypeList('quote')
+                    .title('All quotes')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "quote"')
+                    .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                ),
+              S.documentTypeListItem('freightQuote')
+                .title('Freight quotes')
+                .child(
+                  S.documentTypeList('freightQuote')
+                    .title('Freight quotes')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "freightQuote"')
+                    .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                ),
+              S.documentTypeListItem('wheelQuote')
+                .title('Wheel quotes')
+                .child(
+                  S.documentTypeList('wheelQuote')
+                    .title('Wheel quotes')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "wheelQuote"')
+                    .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                ),
+            ])
+        ),
+      S.divider(),
+      S.listItem()
+        .id('finance')
+        .title('Finance')
+        .child(
+          S.list()
+            .title('Finance')
+            .items([
+              S.documentTypeListItem('invoice')
+                .title('Invoices')
+                .child(
+                  S.documentTypeList('invoice')
+                    .title('Invoices')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "invoice"')
+                    .defaultOrdering([{field: 'issueDate', direction: 'desc'}])
+                ),
+              S.documentTypeListItem('bill')
+                .title('Bills')
+                .child(
+                  S.documentTypeList('bill')
+                    .title('Bills')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "bill"')
+                    .defaultOrdering([{field: 'issueDate', direction: 'desc'}])
+                ),
+              S.documentTypeListItem('check')
+                .title('Checks')
+                .child(
+                  S.documentTypeList('check')
+                    .title('Checks')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "check"')
+                    .defaultOrdering([{field: 'checkDate', direction: 'desc'}])
+                ),
+              S.documentTypeListItem('expense')
+                .title('Expenses')
+                .child(
+                  S.documentTypeList('expense')
+                    .title('Expenses')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "expense"')
+                    .defaultOrdering([{field: 'date', direction: 'desc'}])
+                ),
+              S.divider(),
+              S.documentTypeListItem('bankAccount').title('Bank accounts'),
+              S.documentTypeListItem('vendor').title('Vendors'),
+            ])
+        ),
+      S.divider(),
+      S.listItem()
+        .id('shipping-calendar')
+        .title('Shipping Calendar')
+        .child(
+          S.component()
+            .id('shipping-calendar-pane')
+            .title('Shipping Calendar')
+            .component(ShippingCalendar as any)
+        ),
+      S.listItem()
+        .id('admin-tools')
+        .title('Admin Tools')
+        .child(
+          S.component()
+            .id('admin-tools-pane')
+            .title('Admin Tools')
+            .component(AdminTools as any)
+        ),
+      S.divider(),
+      S.listItem()
+        .id('settings')
+        .title('Settings')
+        .child(
+          S.list()
+            .title('Settings')
+            .items([
+              S.documentTypeListItem('filterTag').title('Filter tags'),
+              S.documentTypeListItem('colorTheme').title('Color themes'),
+              S.documentTypeListItem('collection').title('Collections'),
+              S.documentTypeListItem('page').title('Pages'),
+              S.documentTypeListItem('vehicleModel').title('Vehicle models'),
+              S.documentTypeListItem('tune').title('Tunes'),
+              S.documentTypeListItem('booking').title('Bookings'),
+            ])
+        ),
+      S.listItem()
+        .id('online-store')
+        .title('Online store')
+        .child(
+          S.component()
+            .id('online-store-pane')
+            .title('Online store')
+            .component(ComingSoonPane as any)
+            .options({
+              title: 'Online store tooling',
+              description:
+                'Integration with the FAS CMS is on the roadmap. Soon you will be able to edit storefront content from here.',
+            })
+        ),
     ])
