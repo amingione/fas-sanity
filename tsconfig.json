@@ -17,6 +17,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
+      "@fas/sanity-config/utils/*": ["utils/*"],
       "lib/*": ["src/lib/*"],
       "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
