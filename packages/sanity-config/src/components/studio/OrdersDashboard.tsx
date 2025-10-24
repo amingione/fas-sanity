@@ -795,8 +795,8 @@ export default function OrdersDashboard() {
     <Flex height="fill">
       <Box padding={4} style={{flex: '1 1 auto', overflow: 'auto'}}>
         <Stack space={5}>
-          <Flex wrap="wrap" gap={4} justify="space-between" align="center">
-            <Flex gap={4} align="center" wrap="wrap">
+          <Flex gap={4} justify="space-between" align="center" style={{flexWrap: 'wrap'}}>
+            <Flex gap={4} align="center" style={{flexWrap: 'wrap'}}>
               <Flex direction="column" style={{minWidth: 220}}>
                 <Text size={1} muted>
                   Location
@@ -823,7 +823,7 @@ export default function OrdersDashboard() {
                 </Select>
               </Flex>
             </Flex>
-            <Flex gap={2} align="center" wrap="wrap">
+            <Flex gap={2} align="center" style={{flexWrap: 'wrap'}}>
               <Button text="Export" mode="ghost" disabled={filteredOrders.length === 0} />
               <MenuButton
                 id="orders-dashboard-more-actions"
@@ -915,8 +915,8 @@ export default function OrdersDashboard() {
             </Card>
           </Grid>
 
-          <Flex wrap="wrap" gap={3} align="center" justify="space-between">
-            <Flex gap={2} wrap="wrap">
+          <Flex gap={3} align="center" justify="space-between" style={{flexWrap: 'wrap'}}>
+            <Flex gap={2} style={{flexWrap: 'wrap'}}>
               {tabDefinitions.map(({key, label}) => (
                 <Button
                   key={key}
@@ -927,7 +927,7 @@ export default function OrdersDashboard() {
                 />
               ))}
             </Flex>
-            <Flex gap={3} align="center" wrap="wrap">
+            <Flex gap={3} align="center" style={{flexWrap: 'wrap'}}>
               <Box style={{minWidth: 240}}>
                 <TextInput
                   value={search}
@@ -1081,7 +1081,7 @@ export default function OrdersDashboard() {
                             —
                           </Text>
                         ) : (
-                          <Flex gap={2} wrap="wrap">
+                          <Flex gap={2} style={{flexWrap: 'wrap'}}>
                             {order.tags.map((tag) => (
                               <Badge key={tag} mode="outline">
                                 {tag}
@@ -1429,7 +1429,7 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                     {headerTitle}
                   </Text>
                 </Stack>
-                <Flex gap={2} wrap="wrap">
+                <Flex gap={2} style={{flexWrap: 'wrap'}}>
                   {statusBadges.map((badge) => (
                     <Badge key={badge.label} tone={badge.tone} padding={2} mode="outline">
                       {badge.label}
@@ -1448,11 +1448,7 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                     </Text>
                   )}
                 </Stack>
-                <Flex
-                  gap={8}
-                  wrap="wrap"
-                  style={{width: '100%'}}
-                >
+                <Flex gap={8} style={{width: '100%', flexWrap: 'wrap'}}>
                   <Button
                     text="Open order"
                     tone="primary"

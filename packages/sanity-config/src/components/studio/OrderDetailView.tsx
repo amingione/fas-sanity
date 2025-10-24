@@ -953,10 +953,15 @@ function OrderDetailView(props: DocumentViewProps) {
     <Box padding={4} style={{backgroundColor: '#f3f4f6', height: '100%', overflow: 'auto'}}>
       <Stack space={4}>
         <Card padding={4} radius={4} shadow={1} style={{backgroundColor: '#ffffff'}}>
-          <Flex align={['stretch', 'center']} justify="space-between" wrap="wrap" gap={4}>
+          <Flex
+            align={['stretch', 'center']}
+            justify="space-between"
+            gap={4}
+            style={{flexWrap: 'wrap'}}
+          >
             <Stack space={3} style={{minWidth: '260px'}}>
               <Heading size={3}>{headerTitle}</Heading>
-              <Flex gap={2} wrap="wrap">
+              <Flex gap={2} style={{flexWrap: 'wrap'}}>
                 {statusBadges.map((badge) => (
                   <SummaryToken key={badge.label} tone={badge.tone}>
                     {badge.label}
@@ -977,7 +982,7 @@ function OrderDetailView(props: DocumentViewProps) {
                 )}
               </Stack>
             </Stack>
-            <Flex gap={3} align="center" wrap="wrap">
+            <Flex gap={3} align="center" style={{flexWrap: 'wrap'}}>
               {refreshing && (
                 <Flex align="center" gap={2}>
                   <Spinner muted />
@@ -1222,7 +1227,7 @@ function OrderDetailView(props: DocumentViewProps) {
                         </Text>
                       )}
                       {item.metaLabels.length > 0 && (
-                        <Flex gap={2} wrap="wrap">
+                        <Flex gap={2} style={{flexWrap: 'wrap'}}>
                           {item.metaLabels.map((meta) => (
                             <SummaryToken key={meta}>{meta}</SummaryToken>
                           ))}
