@@ -328,7 +328,7 @@ export default function SalesTransactions() {
           )}
 
           <Card padding={3} radius={3} shadow={1}>
-            <Flex wrap="wrap" gap={3}>
+            <Flex gap={3} style={{flexWrap: 'wrap'}}>
               <Flex direction="column" style={{ minWidth: 200 }}>
                 <Text size={1} muted>
                   Type
