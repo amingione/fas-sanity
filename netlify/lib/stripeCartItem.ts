@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import { deriveOptionsFromMetadata as deriveCartOptions } from '../../utils/cartItemDetails'
+import { deriveOptionsFromMetadata as deriveCartOptions } from '@fas/sanity-config/utils/cartItemDetails'
 
 type MetadataSource = 'lineItem' | 'price' | 'product' | 'session'
 
