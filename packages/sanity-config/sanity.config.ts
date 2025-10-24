@@ -1,5 +1,5 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import {defineConfig, type PluginOptions} from 'sanity'
+import {defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
 import './src/styles/tailwind.css'
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
@@ -18,7 +18,6 @@ import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {media} from 'sanity-plugin-media'
 import {presentationTool} from '@sanity/presentation'
-import {arenaSyncPlugin} from './src/plugins/arena-sync'
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
 import resolveDocumentActions from './src/resolveDocumentActions'
@@ -26,6 +25,19 @@ import ShippingCalendar from './src/components/studio/ShippingCalendar'
 import AdminTools from './src/components/studio/AdminTools'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
+
+let remoteTheme: StudioTheme | undefined
+try {
+  const module = (await import(
+    // @ts-expect-error -- remote module without types
+    'https://themer.sanity.build/api/hues?default=ababab;50;darkest:000000&primary=c9c9c9&transparent=a3a3a3;300'
+  )) as {theme: StudioTheme}
+  remoteTheme = module.theme
+} catch (err) {
+  console.warn('Failed to load remote Sanity theme; falling back to fasTheme', err)
+}
+
+const activeTheme: StudioTheme = remoteTheme || (fasTheme as StudioTheme)
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -110,7 +122,6 @@ export default defineConfig({
       structure: deskStructure,
     }),
     media(),
-    arenaSyncPlugin(),
     codeInput(),
     presentationTool(
       presentationPreviewOrigin
@@ -151,7 +162,7 @@ export default defineConfig({
   schema: {
     types: schemaTypes,
   },
-  theme: fasTheme,
+  theme: activeTheme,
   studio: {
     components: {
       layout: StudioLayout,
