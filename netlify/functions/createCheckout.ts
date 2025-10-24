@@ -264,6 +264,12 @@ export const handler: Handler = async (event) => {
         } else if (quoteRes.ok && !quoteData?.error && Array.isArray(quoteData?.rates) && quoteData.rates.length > 0) {
           const filteredRates = quoteData.rates
             .filter((rate: any) => Number.isFinite(Number(rate?.amount)))
+            .filter((rate: any) => {
+              const carrier = (rate?.carrier || '').toString().toLowerCase().trim()
+              const service = (rate?.service || '').toString().toLowerCase().trim()
+              const label = `${carrier} ${service}`.trim()
+              return !label.includes('global post') && !label.includes('globalpost')
+            })
             .sort((a: any, b: any) => Number(a?.amount || 0) - Number(b?.amount || 0))
 
           shippingOptions = filteredRates.slice(0, 6).map((rate: any) => {
