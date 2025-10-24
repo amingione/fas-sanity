@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@fas/sanity-config/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "sanity.config.ts",
+    "sanity.cli.ts",
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/schemaTypes/objects/buildQuote.ts"
+  ]
+}

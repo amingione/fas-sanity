@@ -1,0 +1,25 @@
+*** Begin Patch
+*** Update File: dist/_chunks-es/refractor.mjs
+@@
+-import Refractor from "react-refractor";
++import { Refractor, hasLanguage } from "react-refractor";
+@@
+-  $[0] !== language ? (t0 = language ? Refractor.hasLanguage(language) : !1, $[0] = language, $[1] = t0) : t0 = $[1];
++  $[0] !== language ? (t0 = language ? hasLanguage(language) : !1, $[0] = language, $[1] = t0) : t0 = $[1];
+*** End Patch
+*** Update File: dist/_chunks-cjs/refractor.js
+@@
+-var jsxRuntime = require("react/jsx-runtime"), reactCompilerRuntime = require("react-compiler-runtime"), Refractor = require("react-refractor");
++var jsxRuntime = require("react/jsx-runtime"), reactCompilerRuntime = require("react-compiler-runtime"), reactRefractor = require("react-refractor");
+@@
+-var Refractor__default = /* @__PURE__ */ _interopDefaultCompat(Refractor);
++var Refractor__default = /* @__PURE__ */ _interopDefaultCompat(reactRefractor);
++var Refractor = reactRefractor.Refractor || Refractor__default.default;
++var hasLanguage = reactRefractor.hasLanguage || (Refractor__default.default ? Refractor__default.default.hasLanguage : void 0);
+@@
+-  $[0] !== language ? (t0 = language ? Refractor__default.default.hasLanguage(language) : !1, $[0] = language, $[1] = t0) : t0 = $[1];
++  $[0] !== language ? (t0 = language ? hasLanguage && hasLanguage(language) : !1, $[0] = language, $[1] = t0) : t0 = $[1];
+@@
+-  $[6] !== language || $[7] !== registered || $[8] !== value ? (t2 = language && registered && /* @__PURE__ */ jsxRuntime.jsx(Refractor__default.default, { inline: !0, language, value: String(value) }), $[6] = language, $[7] = registered, $[8] = value, $[9] = t2) : t2 = $[9];
++  $[6] !== language || $[7] !== registered || $[8] !== value ? (t2 = language && registered && /* @__PURE__ */ jsxRuntime.jsx(Refractor || Refractor__default.default, { inline: !0, language, value: String(value) }), $[6] = language, $[7] = registered, $[8] = value, $[9] = t2) : t2 = $[9];
+*** End Patch

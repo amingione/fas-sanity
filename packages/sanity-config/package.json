@@ -1,0 +1,44 @@
+{
+  "name": "@fas/sanity-config",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./sanity.config.ts",
+  "types": "./src/types/index.d.ts",
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "lint": "eslint --max-warnings=0 .",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@sanity/asset-utils": "latest",
+    "@sanity/client": "^7.12.0",
+    "@sanity/code-input": "latest",
+    "@sanity/icons": "latest",
+    "@sanity/presentation": "^1.9.1",
+    "@sanity/ui": "latest",
+    "@sanity/vision": "latest",
+    "@stripe/stripe-js": "^3.2.0",
+    "date-fns": "^3.6.0",
+    "jspdf": "^3.0.1",
+    "pluralize-esm": "^9.0.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-icons": "^5.5.0",
+    "sanity": "^4.11.0",
+    "sanity-plugin-hotspot-array": "^3.0.1",
+    "sanity-plugin-media": "^4.0.0",
+    "styled-components": "^6.1.19"
+  },
+  "devDependencies": {
+    "@portabletext/types": "^2.0.2",
+    "@sanity/eslint-config-studio": "^5.0.2",
+    "@types/node": "^22.18.12",
+    "@types/react": "^18.0.25",
+    "eslint": "^9.9.0",
+    "typescript": "^5.1.6"
+  }
+}

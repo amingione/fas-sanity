@@ -17,28 +17,23 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@fas/sanity-config/utils/*": ["utils/*"],
-      "lib/*": ["src/lib/*"],
-      "@/lib/*": ["src/lib/*"],
-      "@/components/*": ["src/components/*"],
-      "@/*": ["src/*"]
+      "lib/*": ["packages/hydrogen-sanity/src/lib/*"],
+      "@/lib/*": ["packages/hydrogen-sanity/src/lib/*"],
+      "@fas/sanity-config/*": ["packages/sanity-config/src/*"],
+      "@fas/hydrogen-sanity/*": ["packages/hydrogen-sanity/src/*"]
     }
   },
   "include": [
     "sanity.config.ts",
-    "src",
+    "sanity.cli.ts",
     "netlify/functions",
     "netlify/lib",
-    "types",
-    "schemaTypes",
-    "desk",
-    "components",
-    "plugins",
+    "scripts",
+    "packages/sanity-config",
+    "packages/hydrogen-sanity",
+    "env.d.ts",
     "*.ts",
     "*.tsx"
   ],
-  "exclude": [
-    "node_modules",
-    "schemaTypes/objects/buildQuote.ts"
-  ]
+  "exclude": ["node_modules", "packages/sanity-config/src/schemaTypes/objects/buildQuote.ts"]
 }
