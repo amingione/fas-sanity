@@ -2,14 +2,6 @@
 
 import type {StructureResolver} from 'sanity/structure'
 import React from 'react'
-import {
-  MdPointOfSale,
-  MdGroups,
-  MdStorefront,
-  MdLocalShipping,
-  MdAdminPanelSettings,
-} from 'react-icons/md'
-
 import DocumentIframePreview from '../components/studio/DocumentIframePreview'
 import BulkLabelGenerator from '../components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenerator'
@@ -87,11 +79,10 @@ const getPreviewViews = (S: any, schema: string) => {
   return views.filter(Boolean)
 }
 
-const hubListItem = (S: any, id: string, title: string, icon: any, component: React.ComponentType) =>
+const hubListItem = (S: any, id: string, title: string, component: React.ComponentType) =>
   S.listItem()
     .id(id)
     .title(title)
-    .icon(icon)
     .child(
       S.component()
         .id(`${id}-pane`)
@@ -140,7 +131,6 @@ export const deskStructure: StructureResolver = (S) =>
       S.listItem()
         .id('sales-hub')
         .title('Sales & Get Paid')
-        .icon(MdPointOfSale)
         .child(
           S.list()
             .title('Sales & Get Paid')
@@ -150,11 +140,10 @@ export const deskStructure: StructureResolver = (S) =>
               componentPane(S, 'sales-dashboard', 'Sales Dashboard (Legacy)', SalesHub),
             ])
         ),
-      hubListItem(S, 'customers-hub', 'Customer Hub', MdGroups, CustomersHub),
+      hubListItem(S, 'customers-hub', 'Customer Hub', CustomersHub),
       S.listItem()
         .id('catalog')
         .title('Products & Content')
-        .icon(MdStorefront)
         .child(
           S.list()
             .title('Products & Content')
@@ -182,7 +171,6 @@ export const deskStructure: StructureResolver = (S) =>
       S.listItem()
         .id('operations')
         .title('Operations')
-        .icon(MdLocalShipping)
         .child(
           S.list()
             .title('Operations')
@@ -196,7 +184,6 @@ export const deskStructure: StructureResolver = (S) =>
       S.listItem()
         .id('admin')
         .title('Admin & Finance')
-        .icon(MdAdminPanelSettings)
         .child(
           S.list()
             .title('Admin & Finance')
@@ -210,15 +197,6 @@ export const deskStructure: StructureResolver = (S) =>
               documentListWithPreview(S, 'check', 'Checks'),
               componentPane(S, 'env-self-check', 'Environment Status', EnvSelfCheck),
               componentPane(S, 'vendor-admin-dashboard', 'Vendor Admin Dashboard', VendorAdminDashboard),
-              S.listItem()
-                .id('arenaSyncConfig')
-                .title('Are.na Sync Configuration')
-                .child(
-                  S.document()
-                    .schemaType('arenaSyncConfig')
-                    .documentId('arenaSyncConfig')
-                    .title('Are.na Sync Configuration')
-                ),
               S.listItem()
                 .id('vendors')
                 .title('Vendors')

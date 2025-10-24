@@ -127,6 +127,51 @@ function main() {
   } catch (err) {
     console.warn('[patch-sanity-refractor] failed to patch @sanity/ui refractor chunk:', err && err.message ? err.message : err)
   }
+
+  // Patch @sanity/ui Toast component to forward refs to fix AnimatePresence ref warnings
+  try {
+    const toastSrc = path.join(projectRoot, 'node_modules', '@sanity', 'ui', 'src', 'core', 'components', 'toast', 'toast.tsx')
+    if (fs.existsSync(toastSrc)) {
+      let ts = fs.readFileSync(toastSrc, 'utf8')
+
+      // Ensure forwardRef is imported
+      if (!ts.includes("from 'react'")) {
+        ts = ts.replace(
+          /import \{motion,[^}]*\} from 'motion\/react'\n/,
+          (m) => m + "import {forwardRef} from 'react'\n"
+        )
+      } else if (!/\bforwardRef\b/.test(ts)) {
+        ts = ts.replace(
+          /from 'react'\n/,
+          (m) => m.replace("from 'react'", "from 'react'\nimport {forwardRef} from 'react'")
+        )
+      }
+
+      // Convert function Toast to forwardRef Toast if not already converted
+      if (/export function Toast\(/.test(ts)) {
+        ts = ts.replace(
+          /export function Toast\(\n([\s\S]*?)\): React\.JSX\.Element \{/,
+          (_, params) =>
+            `export const Toast = forwardRef<\n  HTMLDivElement,\n  ${params.trim()}\n>((props, ref): React.JSX.Element => {`
+        )
+        // Add ref to MotionToast opening tag
+        ts = ts.replace(
+          /<MotionToast\n([\s\S]*?)data-ui="Toast"/,
+          (m) => m.replace('<MotionToast', '<MotionToast\n      ref={ref}')
+        )
+        // Close forwardRef wrapper
+        ts = ts.replace(/\n\}\n\nToast\.displayName/, '\n})\n\nToast.displayName')
+      }
+
+      // Write back if changed
+      fs.writeFileSync(toastSrc, ts)
+      console.log('[patch-sanity-refractor] patched @sanity/ui Toast to forward refs')
+    } else {
+      console.log('[patch-sanity-refractor] @sanity/ui toast.tsx not found; skipping Toast patch')
+    }
+  } catch (err) {
+    console.warn('[patch-sanity-refractor] failed to patch @sanity/ui Toast:', err && err.message ? err.message : err)
+  }
 }
 
 function copyDir(from, to) {

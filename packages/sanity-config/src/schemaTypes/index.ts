@@ -207,7 +207,6 @@ import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
 import vendor from './documents/vendor'
 import customer from './documents/customer'
-import arenaSyncConfigType from './documents/arenaSyncConfig'
 import shippingOption from './documents/shippingOption'
 import freightQuote from './documents/freightQuote'
 import {bankAccountType} from './documents/bankAccount'
@@ -236,7 +235,6 @@ const documents = [
   filterTag,
   tune,
   wheelQuote,
-  arenaSyncConfigType,
 ]
 
 import { homeType } from './singletons/homeType'

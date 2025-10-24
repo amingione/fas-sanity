@@ -1,7 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {google} from 'googleapis'
-import {deriveProductFeedFields} from '../../utils/productFeed'
+import {deriveProductFeedFields} from '../../packages/sanity-config/src/utils/productFeed'
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
