@@ -195,6 +195,7 @@ const blocks = [portableTextType, portableTextSimpleType]
 import {collectionType} from './documents/collection'
 import {colorThemeType} from './documents/colorTheme'
 import {pageType} from './documents/page'
+import abandonedCheckout from './documents/abandonedCheckout'
 import {productVariantType} from './documents/productVariant'
 import vehicleModel from './documents/vehicleModel'
 import {productBundle} from './documents/productBundle'
@@ -223,6 +224,7 @@ const documents = [
   vendor,
   bill,
   order,
+  abandonedCheckout,
   category,
   productBundle,
   bankAccountType,
