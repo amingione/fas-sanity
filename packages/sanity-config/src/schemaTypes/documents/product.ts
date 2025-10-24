@@ -1,93 +1,229 @@
 import { defineType, defineField } from 'sanity'
 import { googleProductCategories } from '../constants/googleProductCategories'
 
+/**
+ * SIMPLIFIED PRODUCT SCHEMA
+ *
+ * Groups reorganized by priority:
+ * 1. Essentials - Must-have fields to create a product
+ * 2. Content - Description and product info
+ * 3. Pricing - Price, sales, Stripe integration
+ * 4. Media - Images and videos
+ * 5. Options - Product variants and add-ons
+ * 6. Compatibility - Vehicle fitment
+ * 7. SEO - Search engine optimization
+ * 8. Advanced - Less commonly used fields
+ */
+
 const product = defineType({
   name: 'product',
   title: 'Product',
   type: 'document',
   groups: [
-    { name: 'general', title: 'General' },
-    { name: 'pricing', title: 'Pricing' },
-    { name: 'inventory', title: 'Inventory' },
-    { name: 'details', title: 'Details' },
-    { name: 'upgrades', title: 'Upgrades & Add-ons' },
-    { name: 'shipping', title: 'Shipping' },
-    { name: 'marketing', title: 'Marketing' },
-    { name: 'bundles', title: 'Bundles' },
-    { name: 'media', title: 'Media' },
-    { name: 'relations', title: 'Related Products' },
-    { name: 'internal', title: 'Internal' },
-    { name: 'filters', title: 'Filters' },
-    { name: 'seo', title: 'SEO' }
+    { name: 'essentials', title: '✓ Essentials', default: true },
+    { name: 'content', title: 'Content & Description' },
+    { name: 'pricing', title: 'Pricing & Sale' },
+    { name: 'media', title: 'Images & Media' },
+    { name: 'options', title: 'Options & Add-ons' },
+    { name: 'compatibility', title: 'Vehicle Compatibility' },
+    { name: 'seo', title: 'SEO & Metadata' },
+    { name: 'advanced', title: 'Advanced Settings' },
+  ],
+  fieldsets: [
+    {
+      name: 'stripe',
+      title: 'Stripe Integration (Auto-synced - Read Only)',
+      options: { collapsible: true, collapsed: true },
+    },
+    {
+      name: 'shipping',
+      title: 'Shipping Configuration (Optional)',
+      options: { collapsible: true, collapsed: true },
+    },
+    {
+      name: 'unused',
+      title: 'Unused Fields (Legacy/Google Shopping)',
+      options: { collapsible: true, collapsed: true },
+    },
   ],
   fields: [
-    // GENERAL
+    // ============================================
+    // ESSENTIALS - Required to create a product
+    // ============================================
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Product Title',
       type: 'string',
+      description: 'The name of your product as it appears on the website',
       validation: Rule => Rule.required(),
-      group: 'general'
+      group: 'essentials'
     }),
     defineField({
       name: 'slug',
-      title: 'Slug',
+      title: 'URL Slug',
       type: 'slug',
       options: { source: 'title', maxLength: 96 },
+      description: 'Auto-generated from title. Used in product URL',
       validation: Rule => Rule.required(),
-      group: 'general'
-    }),
-    defineField({
-      name: 'sku',
-      title: 'SKU',
-      type: 'string',
-      group: 'general'
-    }),
-    defineField({
-      name: 'featured',
-      title: 'Featured Product',
-      type: 'boolean',
-      group: 'general'
+      group: 'essentials'
     }),
     defineField({
       name: 'status',
       title: 'Status',
       type: 'string',
-      description: 'Controls where the product appears in internal tools and feeds.',
+      description: 'Controls product visibility',
       options: {
         layout: 'radio',
         list: [
-          {title: 'Active', value: 'active'},
-          {title: 'Draft', value: 'draft'},
-          {title: 'Paused', value: 'paused'},
-          {title: 'Archived', value: 'archived'},
+          {title: 'Active - Live on website', value: 'active'},
+          {title: 'Draft - Not published yet', value: 'draft'},
+          {title: 'Paused - Temporarily hidden', value: 'paused'},
+          {title: 'Archived - No longer available', value: 'archived'},
         ],
       },
       initialValue: 'active',
-      group: 'general',
-    }),
-    defineField({
-      name: 'productType',
-      title: 'Product Type',
-      type: 'string',
-      description:
-        'Controls which editing fields appear in Studio (e.g., options for Variable). This does not create separate product documents.',
-      initialValue: 'simple',
-      options: { list: ['simple', 'variable', 'grouped', 'variation', 'custom'], layout: 'dropdown' },
-      group: 'general'
+      group: 'essentials',
     }),
     defineField({
       name: 'category',
       title: 'Categories',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'category' }] }],
-      group: 'general'
+      description: 'Organize products into categories for shop filtering',
+      group: 'essentials'
+    }),
+    defineField({
+      name: 'sku',
+      title: 'SKU',
+      type: 'string',
+      description: 'Stock Keeping Unit - unique product identifier',
+      group: 'essentials'
+    }),
+    defineField({
+      name: 'featured',
+      title: 'Featured Product',
+      type: 'boolean',
+      description: 'Show this product in featured sections',
+      initialValue: false,
+      group: 'essentials'
     }),
 
-    // RICH TEXT CONTENT
+    // ============================================
+    // PRICING - Price and sale configuration
+    // ============================================
+    defineField({
+      name: 'price',
+      title: 'Regular Price (USD)',
+      type: 'number',
+      description: 'Base product price',
+      validation: Rule => Rule.min(0),
+      group: 'pricing'
+    }),
+    defineField({
+      name: 'onSale',
+      title: 'On Sale?',
+      type: 'boolean',
+      description: 'Enable to show sale pricing',
+      initialValue: false,
+      group: 'pricing'
+    }),
+    defineField({
+      name: 'salePrice',
+      title: 'Sale Price (USD)',
+      type: 'number',
+      description: 'Discounted price when on sale',
+      validation: Rule => Rule.min(0),
+      hidden: ({ parent }) => !parent?.onSale,
+      group: 'pricing'
+    }),
+
+    // Stripe Integration (Auto-managed, collapsible)
+    defineField({
+      name: 'stripeProductId',
+      title: 'Stripe Product ID',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeDefaultPriceId',
+      title: 'Stripe Default Price ID',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripePriceId',
+      title: 'Stripe Primary Price ID',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeActive',
+      title: 'Stripe Active Status',
+      type: 'boolean',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Last Synced with Stripe',
+      type: 'datetime',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripePrices',
+      title: 'Stripe Price History',
+      type: 'array',
+      of: [{ type: 'stripePriceSnapshot' }],
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeMetadata',
+      title: 'Stripe Metadata',
+      type: 'array',
+      of: [{ type: 'stripeMetadataEntry' }],
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+
+    // ============================================
+    // CONTENT - Product descriptions
+    // ============================================
+    defineField({
+      name: 'shortDescription',
+      title: 'Short Description',
+      type: 'array',
+      of: [
+        {
+          type: 'block',
+          styles: [{ title: 'Normal', value: 'normal' }],
+          lists: [{ title: 'Bullet', value: 'bullet' }],
+          marks: {
+            decorators: [
+              { title: 'Bold', value: 'strong' },
+              { title: 'Italic', value: 'em' }
+            ],
+          }
+        },
+      ],
+      description: 'Brief intro shown near title/price (1-2 sentences)',
+      validation: (Rule) => Rule.max(2).warning('Keep it concise'),
+      group: 'content'
+    }),
     defineField({
       name: 'description',
-      title: 'Description',
+      title: 'Full Description',
       type: 'array',
       of: [
         {
@@ -118,209 +254,94 @@ const product = defineType({
           }
         },
         { type: 'image', options: { hotspot: true } },
-        { type: 'code' }
       ],
-      description: 'Full product description with formatting, lists, and headings.',
-      group: 'details'
-    }),
-    defineField({
-      name: 'shortDescription',
-      title: 'Short Description',
-      type: 'array',
-      of: [
-        {
-          type: 'block',
-          styles: [{ title: 'Normal', value: 'normal' }],
-          lists: [{ title: 'Bullet', value: 'bullet' }],
-          marks: {
-            decorators: [
-              { title: 'Bold', value: 'strong' },
-              { title: 'Italic', value: 'em' }
-            ],
-            annotations: [
-              {
-                name: 'link',
-                type: 'object',
-                title: 'Link',
-                fields: [{ name: 'href', type: 'url', title: 'URL' }]
-              }
-            ]
-          }
-        },
-        { type: 'image', options: { hotspot: true } },
-        { type: 'code' }
-      ],
-      description: 'Brief intro near title/price (aim for 1–2 sentences).',
-      validation: (Rule) => Rule.max(2).warning('Keep the short description concise (1–2 paragraphs).'),
-      group: 'details'
+      description: 'Full product description with formatting',
+      group: 'content'
     }),
     defineField({
       name: 'importantNotes',
-      title: 'Important Notes',
+      title: 'Important Notes / Warnings',
       type: 'array',
       of: [{ type: 'block' }],
-      description: 'Critical information the customer must acknowledge before ordering. Displayed prominently on the product page.',
-      group: 'details'
+      description: 'Critical info displayed prominently (e.g., fitment requirements, warnings)',
+      group: 'content'
     }),
     defineField({
-      name: 'productHighlights',
-      title: 'Product Highlights',
+      name: 'specifications',
+      title: 'Technical Specifications',
       type: 'array',
-      of: [{ type: 'string' }],
-      description: 'Short bullet-style highlights (<=150 characters each) shown in Shopping listings.',
-      group: 'details'
+      description: 'Key/value specs shown in table (Material, Weight, Dimensions, etc.)',
+      of: [ { type: 'specItem' } ],
+      group: 'content'
     }),
     defineField({
-      name: 'productDetails',
-      title: 'Product Details',
+      name: 'attributes',
+      title: 'Product Attributes',
       type: 'array',
-      of: [{ type: 'string' }],
-      description: 'Additional detail lines formatted as "section_name: attribute_name: attribute_value".',
-      group: 'details'
-    }),
-    defineField({ name: 'color', title: 'Color', type: 'string', group: 'details' }),
-    defineField({ name: 'size', title: 'Size', type: 'string', group: 'details' }),
-    defineField({ name: 'material', title: 'Material', type: 'string', group: 'details' }),
-    defineField({ name: 'productLength', title: 'Product Length', type: 'string', description: 'Example: 10 in', group: 'details' }),
-    defineField({ name: 'productWidth', title: 'Product Width', type: 'string', description: 'Example: 4 in', group: 'details' }),
-
-    // PRICING & INVENTORY
-    defineField({ name: 'price', title: 'Price', type: 'number', group: 'pricing' }),
-    defineField({ name: 'salePrice', title: 'Sale Price', type: 'number', group: 'pricing' }),
-    defineField({ name: 'onSale', title: 'On Sale?', type: 'boolean', group: 'pricing' }),
-    defineField({
-      name: 'taxBehavior',
-      title: 'Tax Behavior',
-      type: 'string',
-      description: 'Controls how this product is taxed when building invoices or Stripe checkout sessions.',
-      options: {
-        list: [
-          {title: 'Taxable', value: 'taxable'},
-          {title: 'Tax Exempt', value: 'exempt'},
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'taxable',
-      group: 'pricing',
+      of: [ { type: 'attribute' } ],
+      description: 'Additional attributes (Color: Black, Finish: Anodized, etc.)',
+      group: 'content'
     }),
     defineField({
-      name: 'taxCode',
-      title: 'Tax Code (optional)',
-      type: 'string',
-      description: 'Optional Stripe or internal tax code to map this product to a specific tax category.',
-      group: 'pricing',
-      hidden: ({parent}) => parent?.taxBehavior === 'exempt',
-    }),
-    defineField({ name: 'pricingTiers', title: 'Pricing Tiers', type: 'array', of: [
-      { type: 'pricingTier' }
-    ], group: 'pricing' }),
-    defineField({
-      name: 'stripeProductId',
-      title: 'Stripe Product ID',
-      type: 'string',
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeDefaultPriceId',
-      title: 'Stripe Default Price ID',
-      type: 'string',
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripePriceId',
-      title: 'Stripe Primary Price ID',
-      type: 'string',
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeActive',
-      title: 'Stripe Active',
-      type: 'boolean',
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeUpdatedAt',
-      title: 'Stripe Updated At',
-      type: 'datetime',
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeLastSyncedAt',
-      title: 'Stripe Last Synced',
-      type: 'datetime',
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripePrices',
-      title: 'Stripe Prices',
+      name: 'includedInKit',
+      title: 'What\'s Included',
       type: 'array',
-      of: [{ type: 'stripePriceSnapshot' }],
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeMetadata',
-      title: 'Stripe Product Metadata',
-      type: 'array',
-      of: [{ type: 'stripeMetadataEntry' }],
-      readOnly: true,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'availability',
-      title: 'Availability',
-      type: 'string',
-      description: 'Google Shopping availability flag used in feeds and storefront messaging.',
-      options: {
-        list: [
-          {title: 'In stock', value: 'in_stock'},
-          {title: 'Out of stock', value: 'out_of_stock'},
-          {title: 'Preorder', value: 'preorder'},
-          {title: 'Backorder', value: 'backorder'},
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'in_stock',
-      group: 'inventory',
-    }),
-    defineField({
-      name: 'condition',
-      title: 'Product Condition',
-      type: 'string',
-      description: 'Required for Google Shopping when the product is used or refurbished.',
-      options: {
-        list: [
-          {title: 'New', value: 'new'},
-          {title: 'Refurbished', value: 'refurbished'},
-          {title: 'Used', value: 'used'},
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'new',
-      group: 'inventory',
-    }),
-    defineField({
-      name: 'manualInventoryCount',
-      title: 'Manual Inventory Count',
-      type: 'number',
-      description: 'Optional stock quantity for products tracked outside connected systems.',
-      validation: (Rule) => Rule.min(0).warning('Inventory cannot be negative.'),
-      group: 'inventory',
+      of: [ { type: 'kitItem' } ],
+      description: 'List items included in the kit (bolts, gaskets, instructions)',
+      group: 'content'
     }),
 
-    // VARIANTS & RELATIONS
-    // PRODUCT OPTIONS (embedded; does not create new product docs)
+    // ============================================
+    // MEDIA - Images and supplemental media
+    // ============================================
+    defineField({
+      name: 'images',
+      title: 'Product Images',
+      type: 'array',
+      of: [{
+        type: 'image',
+        fields: [{
+          name: 'alt',
+          title: 'Alt Text',
+          type: 'string',
+          description: 'Describe the image for accessibility & SEO'
+        }],
+        options: { hotspot: true }
+      }],
+      description: 'Main product gallery images',
+      group: 'media'
+    }),
+    defineField({
+      name: 'mediaAssets',
+      title: 'Additional Media',
+      type: 'array',
+      of: [ { type: 'mediaItem' } ],
+      description: 'Videos, PDFs, installation guides, etc.',
+      group: 'media'
+    }),
+
+    // ============================================
+    // OPTIONS - Product variants and add-ons
+    // ============================================
+    defineField({
+      name: 'productType',
+      title: 'Product Type',
+      type: 'string',
+      description: 'Simple = single product, Variable = has options (color/size)',
+      initialValue: 'simple',
+      options: {
+        list: [
+          { title: 'Simple Product', value: 'simple' },
+          { title: 'Variable Product (has options)', value: 'variable' },
+        ],
+        layout: 'radio'
+      },
+      group: 'options'
+    }),
     defineField({
       name: 'options',
-      title: 'Options',
-      description:
-        'Selectable options for this product (e.g., Color, Size). Used for pickers on the product page; does not create separate product documents.',
+      title: 'Product Options',
+      description: 'Color, Size, or custom options for variable products',
       type: 'array',
       of: [
         { type: 'customProductOption.color' },
@@ -332,158 +353,178 @@ const product = defineType({
         Rule.custom((options, context) => {
           const productType = (context?.parent as {productType?: string} | undefined)?.productType
           if (productType !== 'variable') return true
-
           if (!Array.isArray(options) || options.length === 0) {
-            return 'Add at least one option set for variable products.'
+            return 'Variable products need at least one option set'
           }
-
-          const hasEmptySet = options.some((option: any) => {
-            if (!option) return true
-            if (option._type === 'customProductOption.color') {
-              return !Array.isArray(option.colors) || option.colors.length === 0
-            }
-            if (option._type === 'customProductOption.size') {
-              return !Array.isArray(option.sizes) || option.sizes.length === 0
-            }
-            if (option._type === 'customProductOption.custom') {
-              return !Array.isArray(option.values) || option.values.length === 0
-            }
-            return false
-          })
-
-          if (hasEmptySet) {
-            return 'Each option must include at least one selectable choice.'
-          }
-
           return true
         }),
-      group: 'details'
+      group: 'options'
     }),
-    // Deprecated: replaced by "options" above. Kept visible only if existing values are present.
-    defineField({
-      name: 'variationOptions',
-      title: 'Variation Options (deprecated)',
-      type: 'array',
-      of: [{ type: 'string' }],
-      readOnly: true,
-      description: 'Deprecated. Use the Options field above (Color/Size, etc.).',
-      hidden: ({ parent }) => {
-        const isVariable = parent?.productType === 'variable'
-        const hasValues = Array.isArray(parent?.variationOptions) && parent.variationOptions.length > 0
-        return !isVariable || !hasValues
-      },
-      group: 'details'
-    }),
-    defineField({
-      name: 'parentProduct',
-      title: 'Parent Product',
-      type: 'reference',
-      to: [{ type: 'product' }],
-      hidden: ({ parent }) => parent?.productType !== 'variation',
-      group: 'details'
-    }),
-
-    // CUSTOM PAINT
     defineField({
       name: 'customPaint',
-      title: 'Custom Paint',
+      title: 'Custom Paint Options',
       type: 'customPaint',
-      group: 'upgrades'
+      description: 'Enable custom paint color selection',
+      group: 'options'
     }),
     defineField({
       name: 'addOns',
-      title: 'Optional Upgrades',
+      title: 'Optional Add-ons & Upgrades',
       type: 'array',
       of: [ { type: 'addOn' } ],
-      description: 'Checkbox-style add-ons (e.g., ceramic bearings +$500, paint service +$X). Customer can pick none, one, or many.',
-      group: 'upgrades'
+      description: 'Checkbox add-ons (ceramic bearings +$500, paint service +$X)',
+      group: 'options'
     }),
 
-    // SPECIFICATIONS (key/value)
-    defineField({
-      name: 'specifications',
-      title: 'Specifications',
-      type: 'array',
-      description: 'Technical key/value facts shown in a structured table (e.g., Material, Finish, Diameter, Weight).',
-      of: [ { type: 'specItem' } ],
-      options: { sortable: true },
-      group: 'details'
-    }),
-
-    // INCLUDED IN KIT
-    defineField({
-      name: 'includedInKit',
-      title: 'Included in Kit',
-      type: 'array',
-      of: [ { type: 'kitItem' } ],
-      description: 'What’s in the installation kit (e.g., bolts, gaskets, wiring).',
-      group: 'details'
-    }),
-
-    // ATTRIBUTES
-    defineField({
-      name: 'attributes',
-      title: 'Product Attributes',
-      type: 'array',
-      of: [ { type: 'attribute' } ],
-      description: 'Freeform descriptive traits for filtering/quick info (e.g., Color: Gloss Black, Finish: Anodized, Compat: Charger/Challenger). Use this for descriptive tags that aren’t technical specs or kit contents.',
-      group: 'details'
-    }),
-
-    // MEDIA
-    defineField({
-      name: 'images',
-      title: 'Images',
-      type: 'array',
-      of: [{
-        type: 'image',
-        fields: [{ name: 'alt', title: 'Alt Text', type: 'string', description: 'Describe the image for accessibility & SEO (e.g., “Black anodized Hellcat pulley kit on engine”).' }],
-        options: { hotspot: true }
-      }],
-      group: 'media'
-    }),
-    defineField({
-      name: 'mediaAssets',
-      title: 'Media Assets',
-      type: 'array',
-      of: [ { type: 'mediaItem' } ],
-      group: 'media'
-    }),
-
-    // RELATIONS
+    // ============================================
+    // COMPATIBILITY - Vehicle fitment
+    // ============================================
     defineField({
       name: 'compatibleVehicles',
-      title: 'Compatible Vehicles (Linked)',
+      title: 'Compatible Vehicles',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'vehicleModel' }] }],
-      group: 'relations'
+      description: 'Link to compatible vehicle models',
+      group: 'compatibility'
     }),
-    defineField({ name: 'relatedProducts', title: 'Related Products', type: 'array', of: [{ type: 'reference', to: [{ type: 'product' }] }], group: 'relations' }),
-    defineField({ name: 'upsellProducts', title: 'Upsell Products', type: 'array', of: [{ type: 'reference', to: [{ type: 'product' }] }], group: 'relations' }),
+    defineField({
+      name: 'tune',
+      title: 'Associated Tune',
+      type: 'reference',
+      to: [{ type: 'tune' }],
+      description: 'Link to tune if applicable',
+      group: 'compatibility'
+    }),
+    defineField({
+      name: 'averageHorsepower',
+      title: 'Average Horsepower Gain',
+      type: 'number',
+      description: 'Expected HP increase',
+      group: 'compatibility'
+    }),
 
-    // MARKETING
-    defineField({ name: 'promotionTagline', title: 'Promotion Tagline', type: 'string', description: 'Displayed in marketing banners or callouts.', group: 'marketing' }),
-    defineField({ name: 'promotionActive', title: 'Promotion Active?', type: 'boolean', initialValue: false, group: 'marketing' }),
-    defineField({ name: 'promotionStartDate', title: 'Promotion Start Date', type: 'datetime', hidden: ({ parent }) => !parent?.promotionActive, group: 'marketing' }),
-    defineField({ name: 'promotionEndDate', title: 'Promotion End Date', type: 'datetime', hidden: ({ parent }) => !parent?.promotionActive, group: 'marketing' }),
+    // ============================================
+    // SEO - Search engine optimization
+    // ============================================
+    defineField({
+      name: 'metaTitle',
+      title: 'Meta Title',
+      type: 'string',
+      description: 'SEO title (50-60 chars recommended)',
+      validation: Rule => Rule.max(60).warning('Keep under 60 characters'),
+      group: 'seo'
+    }),
+    defineField({
+      name: 'metaDescription',
+      title: 'Meta Description',
+      type: 'text',
+      rows: 3,
+      description: 'SEO description (140-160 chars recommended)',
+      validation: Rule => Rule.max(160).warning('Keep under 160 characters'),
+      group: 'seo'
+    }),
+    defineField({
+      name: 'brand',
+      title: 'Brand / Manufacturer',
+      type: 'string',
+      description: 'Brand name for schema.org markup',
+      group: 'seo'
+    }),
+    defineField({
+      name: 'gtin',
+      title: 'GTIN (UPC/EAN)',
+      type: 'string',
+      description: 'Product barcode for Google Shopping',
+      group: 'seo'
+    }),
+    defineField({
+      name: 'mpn',
+      title: 'MPN',
+      type: 'string',
+      description: 'Manufacturer Part Number',
+      group: 'seo'
+    }),
+    defineField({
+      name: 'socialImage',
+      title: 'Social Share Image',
+      type: 'image',
+      options: { hotspot: true },
+      fields: [{ name: 'alt', title: 'Alt Text', type: 'string' }],
+      description: 'Custom image for social media sharing (1200×630px)',
+      group: 'seo'
+    }),
+    defineField({
+      name: 'canonicalUrl',
+      title: 'Canonical URL',
+      type: 'url',
+      description: 'Override URL to prevent duplicate content',
+      group: 'seo'
+    }),
+    defineField({
+      name: 'noindex',
+      title: 'Hide from Search Engines',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Prevent search engines from indexing',
+      group: 'seo'
+    }),
 
-    // SHIPPING
-    defineField({ name: 'shippingWeight', title: 'Shipping Weight (lbs)', type: 'number', group: 'shipping' }),
-    defineField({ name: 'boxDimensions', title: 'Box Dimensions', type: 'string', description: 'Example: 18x12x10 inches', group: 'shipping' }),
+    // ============================================
+    // ADVANCED - Less frequently used fields
+    // ============================================
+
+    // Related Products
+    defineField({
+      name: 'relatedProducts',
+      title: 'Related Products',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      description: 'Manually curated related products (auto-computed by default)',
+      group: 'advanced'
+    }),
+    defineField({
+      name: 'upsellProducts',
+      title: 'Upsell Products',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      description: 'Premium alternatives to suggest',
+      group: 'advanced'
+    }),
+
+    // Product Tags
+    defineField({
+      name: 'filters',
+      title: 'Filter Tags',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'filterTag' }] }],
+      description: 'Tags for shop filtering',
+      group: 'advanced'
+    }),
+
+    // Shipping Configuration (Collapsed by default)
+    defineField({
+      name: 'shippingWeight',
+      title: 'Weight (lbs)',
+      type: 'number',
+      fieldset: 'shipping',
+      group: 'advanced'
+    }),
+    defineField({
+      name: 'boxDimensions',
+      title: 'Box Size',
+      type: 'string',
+      description: 'Format: 18x12x10 inches',
+      fieldset: 'shipping',
+      group: 'advanced'
+    }),
     defineField({
       name: 'installOnly',
       title: 'Install Only (No Shipping)',
       type: 'boolean',
-      description: 'Mark when this item can only be installed/picked up in-store and should be excluded from shipping quotes.',
+      description: 'In-store installation only',
       initialValue: false,
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'shippingLabel',
-      title: 'Google Shipping Label',
-      type: 'string',
-      description: 'Optional label sent with Google Shopping feed (e.g., install_only) so Merchant Center shipping rules can target this product.',
-      group: 'shipping',
+      fieldset: 'shipping',
+      group: 'advanced',
     }),
     defineField({
       name: 'shippingClass',
@@ -491,59 +532,148 @@ const product = defineType({
       type: 'string',
       options: {
         list: ['Standard', 'Oversized', 'Freight', 'Free Shipping', 'Install Only'],
-        layout: 'dropdown',
       },
-      description: 'Used to calculate shipping rates or rules based on product class. “Install Only” skips shipping calculations.',
-      group: 'shipping',
+      fieldset: 'shipping',
+      group: 'advanced',
     }),
-    defineField({ name: 'shipsAlone', title: 'Ships Alone?', type: 'boolean', description: 'Enable if this item must be shipped separately due to size or fragility.', group: 'shipping' }),
-    defineField({ name: 'handlingTime', title: 'Estimated Handling Time (Days)', type: 'number', description: 'Days before the product ships. Used in estimated delivery time.', group: 'shipping' }),
-    defineField({ name: 'specialShippingNotes', title: 'Shipping Notes', type: 'text', description: 'Internal notes or customer messages about delivery or packaging.', group: 'shipping' }),
-
-    // INTERNAL
-    defineField({ name: 'coreRequired', title: 'Core Return Required', type: 'boolean', group: 'internal' }),
-    defineField({ name: 'coreNotes', title: 'Core Return Notes', type: 'text', hidden: ({ parent }) => !parent?.coreRequired, group: 'internal' }),
-
-    // FILTER TAGS
     defineField({
-      name: 'filters',
-      title: 'Filters',
-      type: 'array',
-      of: [{
-        type: 'reference',
-        to: [{ type: 'filterTag' }],
-      }],
-      description: 'Pick from Filters. Manage filters in the Filters section.',
-      group: 'filters'
+      name: 'shipsAlone',
+      title: 'Ships Separately',
+      type: 'boolean',
+      description: 'Cannot ship with other items',
+      fieldset: 'shipping',
+      group: 'advanced'
     }),
 
-    // SEO
+    // Unused Fields (Collapsed, kept for legacy/Google Shopping)
     defineField({
-      name: 'schemaMarkup',
-      title: 'Schema Markup',
-      type: 'schemaMarkup',
-      description: 'Generate product-specific structured data for storefront SEO.',
-      group: 'seo',
+      name: 'availability',
+      title: 'Availability Status',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'In stock', value: 'in_stock'},
+          {title: 'Out of stock', value: 'out_of_stock'},
+          {title: 'Preorder', value: 'preorder'},
+          {title: 'Backorder', value: 'backorder'},
+        ],
+      },
+      initialValue: 'in_stock',
+      fieldset: 'unused',
+      group: 'advanced',
     }),
-    defineField({ name: 'brand', title: 'Brand / Manufacturer', type: 'string', description: 'Brand name (helps Google understand the product).', group: 'seo' }),
+    defineField({
+      name: 'condition',
+      title: 'Product Condition',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'New', value: 'new'},
+          {title: 'Refurbished', value: 'refurbished'},
+          {title: 'Used', value: 'used'},
+        ],
+      },
+      initialValue: 'new',
+      fieldset: 'unused',
+      group: 'advanced',
+    }),
+    defineField({
+      name: 'manualInventoryCount',
+      title: 'Inventory Count',
+      type: 'number',
+      validation: (Rule) => Rule.min(0),
+      fieldset: 'unused',
+      group: 'advanced',
+    }),
     defineField({
       name: 'googleProductCategory',
-      title: 'Google Product Category',
+      title: 'Google Shopping Category',
       type: 'string',
       options: {
         list: googleProductCategories.map((category) => ({ title: category, value: category })),
       },
-      description: 'Select the closest Google taxonomy category for Shopping feeds.',
-      group: 'seo'
+      fieldset: 'unused',
+      group: 'advanced'
     }),
-    defineField({ name: 'gtin', title: 'GTIN (UPC/EAN/ISBN)', type: 'string', description: 'Global Trade Item Number, if applicable.', group: 'seo' }),
-    defineField({ name: 'mpn', title: 'MPN (Manufacturer Part Number)', type: 'string', description: 'Manufacturer part number (useful for Google / merchant feeds).', group: 'seo' }),
-    defineField({ name: 'metaTitle', title: 'Meta Title', type: 'string', description: 'Title tag for search results (target ~50–60 chars).', validation: Rule => Rule.max(60).warning('Google typically shows up to ~60 characters.'), group: 'seo' }),
-    defineField({ name: 'metaDescription', title: 'Meta Description', type: 'text', rows: 3, description: 'Short summary for search results (target ~140–160 chars).', validation: Rule => Rule.max(160).warning('Google typically shows up to ~160 characters.'), group: 'seo' }),
-    defineField({ name: 'canonicalUrl', title: 'Canonical URL', type: 'url', description: 'Use to avoid duplicate content issues if this product appears at multiple URLs.', group: 'seo' }),
-    defineField({ name: 'noindex', title: 'Noindex this page?', type: 'boolean', initialValue: false, description: 'Prevent indexing (e.g., staging, duplicates, discontinued).', group: 'seo' }),
-    defineField({ name: 'socialImage', title: 'Social / Open Graph Image', type: 'image', options: { hotspot: true }, fields: [{ name: 'alt', title: 'Alt Text', type: 'string' }], description: 'Fallback preview image for social sharing (1200×630 recommended).', group: 'seo' })
-  ]
+    defineField({
+      name: 'taxBehavior',
+      title: 'Tax Treatment',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Taxable', value: 'taxable'},
+          {title: 'Tax Exempt', value: 'exempt'},
+        ],
+      },
+      initialValue: 'taxable',
+      fieldset: 'unused',
+      group: 'advanced'
+    }),
+    defineField({
+      name: 'pricingTiers',
+      title: 'Bulk Pricing Tiers',
+      type: 'array',
+      of: [{ type: 'pricingTier' }],
+      fieldset: 'unused',
+      group: 'advanced'
+    }),
+
+    // Deprecated fields (hidden unless they have values)
+    defineField({
+      name: 'variationOptions',
+      title: 'Variation Options (deprecated)',
+      type: 'array',
+      of: [{ type: 'string' }],
+      readOnly: true,
+      hidden: ({ parent }) => !Array.isArray(parent?.variationOptions) || parent.variationOptions.length === 0,
+      group: 'advanced'
+    }),
+    defineField({
+      name: 'color',
+      title: 'Color (legacy)',
+      type: 'string',
+      hidden: ({ parent }) => !parent?.color,
+      readOnly: true,
+      group: 'advanced'
+    }),
+    defineField({
+      name: 'size',
+      title: 'Size (legacy)',
+      type: 'string',
+      hidden: ({ parent }) => !parent?.size,
+      readOnly: true,
+      group: 'advanced'
+    }),
+    defineField({
+      name: 'material',
+      title: 'Material (legacy)',
+      type: 'string',
+      hidden: ({ parent }) => !parent?.material,
+      readOnly: true,
+      group: 'advanced'
+    }),
+  ],
+
+  preview: {
+    select: {
+      title: 'title',
+      subtitle: 'sku',
+      media: 'images.0',
+      price: 'price',
+      status: 'status',
+    },
+    prepare({ title, subtitle, media, price, status }) {
+      const priceDisplay = typeof price === 'number'
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
+        : 'No price'
+
+      return {
+        title: title || 'Untitled Product',
+        subtitle: [subtitle, priceDisplay, status?.toUpperCase()].filter(Boolean).join(' • '),
+        media,
+      }
+    },
+  },
 });
 
 export default product;
