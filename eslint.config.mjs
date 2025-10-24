@@ -18,7 +18,16 @@ const nodeGlobals = {
 export default [
   ...studio,
   {
-    files: ['scripts/**/*.{js,ts}', 'netlify/**/*.{js,ts}', 'src/**/*.{js,ts,tsx}', 'utils/**/*.{js,ts,tsx}', 'plugins/**/*.{js,ts,tsx}', 'schemaTypes/**/*.{js,ts,tsx}', 'sanity.config.ts', 'sanity.cli.ts'],
+    files: [
+      'scripts/**/*.{js,ts}',
+      'netlify/**/*.{js,ts}',
+      'packages/hydrogen-sanity/src/**/*.{js,ts,tsx}',
+      'packages/sanity-config/src/**/*.{js,ts,tsx}',
+      'packages/sanity-config/sanity.config.ts',
+      'packages/sanity-config/sanity.cli.ts',
+      'sanity.config.ts',
+      'sanity.cli.ts'
+    ],
     languageOptions: {
       globals: nodeGlobals,
     },
