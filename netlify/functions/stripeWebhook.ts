@@ -271,6 +271,287 @@ const prepareItemPresentation = (source: {
   return {title, details}
 }
 
+type EventRecordInput = {
+  eventType: string
+  status?: string
+  label?: string
+  message?: string
+  amount?: number
+  currency?: string
+  stripeEventId?: string
+  metadata?: Record<string, unknown> | null
+  occurredAt?: number | string | null
+}
+
+const safeJsonStringify = (value: unknown, maxLength = 15000): string | undefined => {
+  if (!value) return undefined
+  try {
+    const json = JSON.stringify(value, null, 2)
+    if (!json) return undefined
+    if (json.length > maxLength) return `${json.slice(0, maxLength - 3)}...`
+    return json
+  } catch {
+    return undefined
+  }
+}
+
+const toIsoTimestamp = (value?: number | string | null): string => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (value > 10_000_000_000) return new Date(value).toISOString()
+    return new Date(value * 1000).toISOString()
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return toIsoTimestamp(parsed)
+    }
+    return new Date(value).toISOString()
+  }
+  return new Date().toISOString()
+}
+
+const buildOrderEventRecord = (input: EventRecordInput) => {
+  const event: Record<string, any> = {
+    _type: 'orderEvent',
+    _key: randomUUID(),
+    type: input.eventType,
+    createdAt: toIsoTimestamp(input.occurredAt),
+  }
+  if (input.status) event.status = input.status
+  if (input.label) event.label = input.label
+  if (input.message) event.message = input.message
+  if (typeof input.amount === 'number' && Number.isFinite(input.amount)) event.amount = input.amount
+  if (input.currency) event.currency = input.currency.toUpperCase()
+  if (input.stripeEventId) event.stripeEventId = input.stripeEventId
+  const metadataString = safeJsonStringify(input.metadata)
+  if (metadataString) event.metadata = metadataString
+  return event
+}
+
+const appendEventsToDocument = async (
+  docId: string | null | undefined,
+  field: string,
+  events: Array<Record<string, any>>,
+) => {
+  if (!docId || !events.length) return
+  try {
+    await sanity
+      .patch(docId)
+      .setIfMissing({[field]: []})
+      .append(field, events)
+      .commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn(`stripeWebhook: failed to append ${field} on ${docId}`, err)
+  }
+}
+
+const appendOrderEvent = async (
+  orderId: string | null | undefined,
+  event: EventRecordInput,
+): Promise<void> => {
+  if (!orderId) return
+  await appendEventsToDocument(orderId, 'orderEvents', [buildOrderEventRecord(event)])
+}
+
+const appendAbandonedCheckoutEvent = async (
+  docId: string | null | undefined,
+  event: EventRecordInput | Record<string, any>,
+): Promise<void> => {
+  if (!docId) return
+  const record =
+    event && typeof event === 'object' && 'eventType' in event
+      ? buildOrderEventRecord(event as EventRecordInput)
+      : (event as Record<string, any>)
+  await appendEventsToDocument(docId, 'events', [record])
+}
+
+const buildMetadataEntries = (
+  metadata: Record<string, string>,
+): Array<{
+  _type: 'stripeMetadataEntry'
+  key: string
+  value: string
+}> =>
+  normalizeMetadataEntries(metadata).map((entry) => ({
+    _type: 'stripeMetadataEntry',
+    key: entry.key,
+    value: entry.value,
+  }))
+
+async function buildCartFromSessionLineItems(
+  sessionId: string,
+  metadata: Record<string, string>,
+): Promise<CartItem[]> {
+  if (!stripe) return []
+  try {
+    const items = await stripe.checkout.sessions.listLineItems(sessionId, {
+      limit: 100,
+      expand: ['data.price.product'],
+    })
+    const cartItems = (items?.data || []).map((li: Stripe.LineItem) => ({
+      _type: 'orderCartItem',
+      _key: randomUUID(),
+      ...mapStripeLineItem(li, {sessionMetadata: metadata}),
+    })) as CartItem[]
+    return await enrichCartItemsFromSanity(cartItems, sanity)
+  } catch (err) {
+    console.warn('stripeWebhook: listLineItems failed', err)
+    return []
+  }
+}
+
+const extractShippingAddressFromSession = (
+  session: Stripe.Checkout.Session,
+  email?: string,
+): Record<string, string | undefined> | undefined => {
+  try {
+    const cd = session.customer_details
+    const addr = (cd?.address || (session as any).shipping_details?.address) as
+      | Stripe.Address
+      | undefined
+    const name = cd?.name || (session as any).shipping_details?.name || undefined
+    const phone = cd?.phone || (session as any).shipping_details?.phone || undefined
+    if (!addr && !name && !phone && !email) return undefined
+    if (!addr) {
+      return {
+        name: name || undefined,
+        phone: phone || undefined,
+        email: email || undefined,
+      }
+    }
+    return {
+      name: name || undefined,
+      phone: phone || undefined,
+      email: email || undefined,
+      addressLine1: (addr as any).line1 || undefined,
+      addressLine2: (addr as any).line2 || undefined,
+      city: (addr as any).city || undefined,
+      state: (addr as any).state || undefined,
+      postalCode: (addr as any).postal_code || undefined,
+      country: (addr as any).country || undefined,
+    }
+  } catch (err) {
+    console.warn('stripeWebhook: could not parse shipping address', err)
+    return undefined
+  }
+}
+
+async function recordAbandonedCheckout(
+  session: Stripe.Checkout.Session,
+  opts: {
+    reason: string
+    failureCode?: string
+    failureMessage?: string
+    stripeEventId?: string
+    eventCreated?: number | null
+  },
+) {
+  const metadata = (session.metadata || {}) as Record<string, string>
+  const cart = await buildCartFromSessionLineItems(session.id, metadata)
+  const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
+  const customerName =
+    (session.customer_details?.name || (session.metadata?.customer_name as string) || email || '')
+      .toString()
+      .trim() || undefined
+  const totalAmount = toMajorUnits(session.amount_total ?? undefined)
+  const currency = (session.currency || '').toString().toUpperCase() || undefined
+  const metadataEntries = buildMetadataEntries(metadata)
+  const shippingAddress = extractShippingAddressFromSession(session, email)
+  const createdAt = unixToIso(session.created) || new Date().toISOString()
+  const expiredAt = unixToIso(session.expires_at) || new Date().toISOString()
+  const baseDoc: Record<string, any> = {
+    stripeSessionId: session.id,
+    clientReferenceId: session.client_reference_id || undefined,
+    status: 'abandoned',
+    paymentStatus: (session.payment_status || 'pending').toString(),
+    customerEmail: email || undefined,
+    customerName,
+    stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
+    totalAmount,
+    currency,
+    metadata: metadataEntries.length ? metadataEntries : undefined,
+    shippingAddress,
+    cart: cart.length ? cart : undefined,
+    stripeSummary: buildStripeSummary({
+      session,
+      failureCode: opts.failureCode,
+      failureMessage: opts.failureMessage,
+      eventType: opts.reason,
+      eventCreated: opts.eventCreated,
+    }),
+    createdAt,
+    expiredAt,
+  }
+
+  const existing = await sanity.fetch<{_id: string} | null>(
+    `*[_type == "abandonedCheckout" && stripeSessionId == $sid][0]{_id}`,
+    {sid: session.id},
+  )
+
+  const eventRecord = buildOrderEventRecord({
+    eventType: opts.reason,
+    status: 'abandoned',
+    label: 'Checkout expired',
+    message: opts.failureMessage,
+    stripeEventId: opts.stripeEventId,
+    occurredAt: opts.eventCreated,
+    metadata,
+    amount: totalAmount,
+    currency,
+  })
+
+  if (existing?._id) {
+    try {
+      await sanity.patch(existing._id).set(baseDoc).commit({autoGenerateArrayKeys: true})
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update abandoned checkout', err)
+    }
+    await appendAbandonedCheckoutEvent(existing._id, eventRecord)
+    return existing._id
+  }
+
+  const docToCreate = {
+    _type: 'abandonedCheckout',
+    ...baseDoc,
+    cart: cart.length ? cart : undefined,
+    metadata: metadataEntries.length ? metadataEntries : undefined,
+    events: [eventRecord],
+  }
+  try {
+    const created = await sanity.create(docToCreate, {autoGenerateArrayKeys: true})
+    return created?._id || null
+  } catch (err) {
+    console.warn('stripeWebhook: failed to create abandoned checkout record', err)
+    return null
+  }
+}
+
+async function markAbandonedCheckoutRecovered(
+  stripeSessionId: string | undefined,
+  orderId: string | null,
+  eventInput: EventRecordInput,
+): Promise<void> {
+  if (!stripeSessionId) return
+  const doc = await sanity.fetch<{_id: string} | null>(
+    `*[_type == "abandonedCheckout" && stripeSessionId == $sid][0]{_id}`,
+    {sid: stripeSessionId},
+  )
+  if (!doc?._id) return
+  const patchData: Record<string, any> = {
+    status: 'recovered',
+    recoveredAt: new Date().toISOString(),
+  }
+  if (orderId) {
+    patchData.orderRef = {_type: 'reference', _ref: orderId}
+  }
+  try {
+    await sanity.patch(doc._id).set(patchData).commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to mark abandoned checkout as recovered', err)
+  }
+  await appendAbandonedCheckoutEvent(doc._id, eventInput)
+}
+
 function dateStringFrom(value?: any): string | undefined {
   if (!value) return undefined
   try {
@@ -1088,6 +1369,7 @@ type OrderPaymentStatusInput = {
   additionalOrderFields?: Record<string, any>
   additionalInvoiceFields?: Record<string, any>
   preserveExistingFailureDiagnostics?: boolean
+  event?: EventRecordInput
 }
 
 async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<boolean> {
@@ -1102,6 +1384,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     additionalInvoiceFields,
     additionalOrderFields,
     preserveExistingFailureDiagnostics,
+    event,
   } = opts
   if (!paymentIntentId && !chargeId && !stripeSessionId) return false
 
@@ -1218,10 +1501,21 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     )
   }
 
+  if (event) {
+    const eventPayload: EventRecordInput = {
+      ...event,
+      status: event.status || orderStatus || paymentStatus,
+    }
+    await appendOrderEvent(order?._id, eventPayload)
+  }
+
   return true
 }
 
-async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<void> {
+async function handleCheckoutExpired(
+  session: Stripe.Checkout.Session,
+  context: {stripeEventId?: string; eventCreated?: number | null} = {},
+): Promise<void> {
   const timestamp = new Date().toISOString()
   const failureCode = 'checkout.session.expired'
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
@@ -1233,6 +1527,7 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
   if (email) failureMessage = `${failureMessage} Customer: ${email}.`
   if (expiresAt) failureMessage = `${failureMessage} Expired at ${expiresAt}.`
   failureMessage = `${failureMessage} (session ${session.id})`
+  const amountTotal = toMajorUnits(session.amount_total ?? undefined)
   const summary = buildStripeSummary({
     session,
     failureCode,
@@ -1258,6 +1553,17 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
           stripeSummary: summary,
         })
         .commit({autoGenerateArrayKeys: true})
+      await appendOrderEvent(orderId, {
+        eventType: 'checkout.session.expired',
+        status: 'expired',
+        label: 'Checkout expired',
+        message: failureMessage,
+        amount: amountTotal,
+        currency: (session.currency || '').toString().toUpperCase(),
+        stripeEventId: context.stripeEventId,
+        occurredAt: context.eventCreated ?? session.created,
+        metadata: session.metadata as Record<string, string>,
+      })
     } catch (err) {
       console.warn('stripeWebhook: failed to update order after checkout expiration', err)
     }
@@ -1287,6 +1593,16 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session): Promise<
         console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)
       }
     }
+  }
+
+  if (!orderId) {
+    await recordAbandonedCheckout(session, {
+      reason: 'checkout.session.expired',
+      failureCode,
+      failureMessage,
+      stripeEventId: context.stripeEventId,
+      eventCreated: context.eventCreated ?? session.created,
+    })
   }
 }
 
@@ -1709,11 +2025,7 @@ export const handler: Handler = async (event) => {
             .toString()
             .toLowerCase() || undefined
         const sessionStatus = (session.status || '').toString().toLowerCase()
-        const rawPaymentStatus = (
-          session.payment_status ||
-          paymentIntent?.status ||
-          ''
-        )
+        const rawPaymentStatus = (session.payment_status || paymentIntent?.status || '')
           .toString()
           .toLowerCase()
         let paymentStatus: string = rawPaymentStatus
@@ -1727,7 +2039,8 @@ export const handler: Handler = async (event) => {
         } else if (!paymentStatus) {
           paymentStatus = 'pending'
         }
-        let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' = 'pending'
+        let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' =
+          'pending'
         if (paymentStatus === 'paid') derivedOrderStatus = 'paid'
         else if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
         else if (paymentStatus === 'cancelled') derivedOrderStatus = 'cancelled'
@@ -1800,24 +2113,7 @@ export const handler: Handler = async (event) => {
           .trim()
 
         // 2) Gather enriched data: line items + shipping
-        let cart: CartItem[] = []
-        try {
-          const items = await stripe.checkout.sessions.listLineItems(stripeSessionId, {
-            limit: 100,
-            expand: ['data.price.product'],
-          })
-          cart = (items?.data || []).map((li: Stripe.LineItem) => {
-            const mapped = mapStripeLineItem(li, {sessionMetadata: metadata})
-            return {
-              _type: 'orderCartItem',
-              _key: randomUUID(),
-              ...mapped,
-            } as CartItem
-          })
-          cart = await enrichCartItemsFromSanity(cart, sanity)
-        } catch (e) {
-          console.warn('stripeWebhook: listLineItems failed, continuing without cart', e)
-        }
+        const cart: CartItem[] = await buildCartFromSessionLineItems(stripeSessionId, metadata)
 
         let shippingAddress: any = undefined
         try {
@@ -2171,6 +2467,28 @@ export const handler: Handler = async (event) => {
           }
 
           if (orderId) {
+            await appendOrderEvent(orderId, {
+              eventType: webhookEvent.type,
+              status: paymentStatus,
+              label: 'Checkout completed',
+              message: `Checkout session ${stripeSessionId} completed with status ${session.payment_status || 'unknown'}`,
+              amount: totalAmount,
+              currency: currency ? currency.toUpperCase() : undefined,
+              stripeEventId: webhookEvent.id,
+              occurredAt: webhookEvent.created,
+              metadata,
+            })
+            await markAbandonedCheckoutRecovered(stripeSessionId, orderId, {
+              eventType: 'checkout.recovered',
+              status: 'recovered',
+              label: 'Converted to order',
+              message: `Order ${orderNumber || orderId} created from checkout ${stripeSessionId}`,
+              amount: totalAmount,
+              currency: currency ? currency.toUpperCase() : undefined,
+              stripeEventId: webhookEvent.id,
+              occurredAt: webhookEvent.created,
+              metadata,
+            })
             try {
               if (!existingOrder?.packingSlipUrl) {
                 const packingSlipUrl = await generatePackingSlipAsset({
@@ -2372,6 +2690,15 @@ export const handler: Handler = async (event) => {
             .toString()
             .trim() || undefined
         const invoiceId = meta['sanity_invoice_id']
+        const checkoutSessionMeta =
+          (
+            meta['checkout_session_id'] ||
+            meta['checkoutSessionId'] ||
+            meta['stripe_checkout_session_id'] ||
+            ''
+          )
+            .toString()
+            .trim() || undefined
 
         // Create a minimal Order if none exists yet
         try {
@@ -2394,7 +2721,11 @@ export const handler: Handler = async (event) => {
           if (['succeeded', 'paid'].includes(rawPaymentStatus)) paymentStatus = 'paid'
           else if (['canceled', 'cancelled'].includes(rawPaymentStatus)) paymentStatus = 'cancelled'
           let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' =
-            paymentStatus === 'paid' ? 'paid' : paymentStatus === 'cancelled' ? 'cancelled' : 'pending'
+            paymentStatus === 'paid'
+              ? 'paid'
+              : paymentStatus === 'cancelled'
+                ? 'cancelled'
+                : 'pending'
 
           const metadataOrderNumberRaw = (
             meta['order_number'] ||
@@ -2598,6 +2929,30 @@ export const handler: Handler = async (event) => {
           }
 
           if (orderId) {
+            await appendOrderEvent(orderId, {
+              eventType: webhookEvent.type,
+              status: paymentStatus,
+              label: 'Payment intent succeeded',
+              message: `Payment intent ${pi.id} succeeded`,
+              amount: totalAmount,
+              currency: currency ? currency.toUpperCase() : undefined,
+              stripeEventId: webhookEvent.id,
+              occurredAt: webhookEvent.created,
+              metadata: meta,
+            })
+            await markAbandonedCheckoutRecovered(checkoutSessionMeta, orderId, {
+              eventType: 'checkout.recovered',
+              status: 'recovered',
+              label: 'Payment intent recovered checkout',
+              message: checkoutSessionMeta
+                ? `Checkout ${checkoutSessionMeta} converted from payment intent ${pi.id}`
+                : `Payment intent ${pi.id} recorded`,
+              amount: totalAmount,
+              currency: currency ? currency.toUpperCase() : undefined,
+              stripeEventId: webhookEvent.id,
+              occurredAt: webhookEvent.created,
+              metadata: meta,
+            })
             try {
               if (!existingOrder?.packingSlipUrl) {
                 const packingSlipUrl = await generatePackingSlipAsset({
@@ -2669,7 +3024,10 @@ export const handler: Handler = async (event) => {
       case 'checkout.session.expired':
         try {
           const session = webhookEvent.data.object as Stripe.Checkout.Session
-          await handleCheckoutExpired(session)
+          await handleCheckoutExpired(session, {
+            stripeEventId: webhookEvent.id,
+            eventCreated: webhookEvent.created,
+          })
         } catch (err) {
           console.warn('stripeWebhook: failed to handle checkout.session.expired', err)
         }
