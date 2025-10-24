@@ -1,3 +1,1 @@
-module.exports = {
-  plugins: [require('tailwindcss'), require('autoprefixer')],
-}
+module.exports = require('./packages/sanity-config/postcss.config.cjs')
