@@ -68,6 +68,7 @@ import {vendorOrderSummaryType} from './objects/vendorOrderSummaryType'
 import {vendorQuoteSummaryType} from './objects/vendorQuoteSummaryType'
 import {orderCartItemType} from './objects/orderCartItemType'
 import {orderCartItemMetaType} from './objects/orderCartItemMetaType'
+import {orderEventType} from './objects/orderEventType'
 import {shippingAddressType} from './objects/shippingAddressType'
 import {shippingLogEntryType} from './objects/shippingLogEntryType'
 import {shippingOptionCustomerAddressType} from './objects/shippingOptionCustomerAddressType'
@@ -148,6 +149,7 @@ const objects = [
   vendorQuoteSummaryType,
   orderCartItemType,
   orderCartItemMetaType,
+  orderEventType,
   shippingAddressType,
   shippingLogEntryType,
   shippingOptionCustomerAddressType,

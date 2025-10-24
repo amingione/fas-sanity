@@ -167,6 +167,14 @@ export default defineType({
 
     // ✅ New Field: shippingLog[]
     defineField({ name: 'shippingLog', title: 'Shipping History', type: 'array', of: [ { type: 'shippingLogEntry' } ] }),
+    defineField({
+      name: 'orderEvents',
+      title: 'Stripe Event Log',
+      type: 'array',
+      readOnly: true,
+      of: [{type: 'orderEvent'}],
+      options: {layout: 'grid'},
+    }),
 
     // Actions to create packing slips and labels directly from the order
     defineField({
