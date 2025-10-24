@@ -230,4 +230,45 @@ export default defineType({
       }
     }
   },
+
+  orderings: [
+    {
+      title: 'Created Date (Newest)',
+      name: 'createdAtDesc',
+      by: [
+        { field: 'createdAt', direction: 'desc' },
+        { field: '_createdAt', direction: 'desc' },
+      ],
+    },
+    {
+      title: 'Created Date (Oldest)',
+      name: 'createdAtAsc',
+      by: [
+        { field: 'createdAt', direction: 'asc' },
+        { field: '_createdAt', direction: 'asc' },
+      ],
+    },
+    {
+      title: 'Fulfilled Date (Newest)',
+      name: 'fulfilledAtDesc',
+      by: [
+        { field: 'fulfilledAt', direction: 'desc' },
+        { field: 'createdAt', direction: 'desc' },
+      ],
+    },
+    {
+      title: 'Order Total (High → Low)',
+      name: 'totalAmountDesc',
+      by: [
+        { field: 'totalAmount', direction: 'desc' },
+      ],
+    },
+    {
+      title: 'Order Number (A → Z)',
+      name: 'orderNumberAsc',
+      by: [
+        { field: 'orderNumber', direction: 'asc' },
+      ],
+    },
+  ],
 })
