@@ -1,5 +1,5 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import {defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
+import {defaultTheme, defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
 import './src/styles/tailwind.css'
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
@@ -36,8 +36,6 @@ try {
 } catch (err) {
   console.warn('Failed to load remote Sanity theme; falling back to fasTheme', err)
 }
-
-const activeTheme: StudioTheme = remoteTheme || (fasTheme as StudioTheme)
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -80,6 +78,18 @@ const envFlag = (value?: string | null) => {
   return undefined
 }
 
+const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) !== false
+
+const activeTheme: StudioTheme = useCoreTheme
+  ? (defaultTheme as StudioTheme)
+  : remoteTheme || (fasTheme as StudioTheme)
+
+const normalizeBaseUrl = (value?: string | null, fallback?: string): string | undefined => {
+  const candidate = value?.trim() || fallback?.trim()
+  if (!candidate) return undefined
+  return candidate.replace(/\/$/, '')
+}
+
 const sanityEnv = getEnv('SANITY_STUDIO_ENV')
 const nodeEnv = getEnv('NODE_ENV')
 const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
@@ -90,13 +100,31 @@ const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_NETLIFY_BASE') ||
   undefined
 
-const previewOrigin =
-  presentationPreviewOrigin?.replace(/\/$/, '') || 'http://localhost:4321'
+const previewOrigin = normalizeBaseUrl(presentationPreviewOrigin, 'http://localhost:4321')!
+
+const fasCmsPreviewOrigin = normalizeBaseUrl(
+  getEnv('SANITY_STUDIO_FAS_CMS_PREVIEW_ORIGIN') ||
+    getEnv('SANITY_STUDIO_LEGACY_PREVIEW_ORIGIN') ||
+    getEnv('FAS_CMS_PREVIEW_ORIGIN'),
+)
 
 const previewUrlResolver = definePreviewUrl({
   origin: previewOrigin,
   preview: '/',
 })
+
+type PreviewTarget = {
+  key: string
+  label: string
+  origin: string
+}
+
+const previewTargets: PreviewTarget[] = [
+  {key: 'primary', label: 'Storefront', origin: previewOrigin},
+  ...(fasCmsPreviewOrigin
+    ? [{key: 'fas-cms', label: 'FAS CMS', origin: fasCmsPreviewOrigin}] as PreviewTarget[]
+    : []),
+]
 
 type PreviewableDocument = {
   _type?: string | null
@@ -142,14 +170,15 @@ const buildDocumentLocation = (title: string, type: string) => ({
       slug: value.slug ? {current: value.slug} : null,
     })
 
-    const href = new URL(path || '/', previewOrigin).toString()
+    const locations = previewTargets.map((target) => ({
+      title: `${title} (${target.label})`,
+      href: new URL(path || '/', target.origin).toString(),
+    }))
+
+    if (!locations.length) return undefined
+
     return {
-      locations: [
-        {
-          title,
-          href,
-        },
-      ],
+      locations,
     }
   },
 })
