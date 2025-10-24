@@ -3,7 +3,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import dotenv from 'dotenv'
-import type { HandlerEvent } from '@netlify/functions'
+import type {Handler, HandlerEvent} from '@netlify/functions'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -48,19 +48,21 @@ async function main() {
   const event: HandlerEvent = {
     httpMethod: 'POST',
     headers: {},
+    multiValueHeaders: {},
     queryStringParameters: {},
+    multiValueQueryStringParameters: {},
     body: JSON.stringify(payload),
     isBase64Encoded: false,
+    rawUrl: 'http://localhost/.netlify/functions/reprocessStripeSession',
+    rawQuery: '',
+    path: '/.netlify/functions/reprocessStripeSession',
   }
 
   try {
     const module = await import('../netlify/functions/reprocessStripeSession')
-    const reprocessHandler = module.handler as (
-      event: HandlerEvent,
-      context: Record<string, unknown>
-    ) => Promise<{ statusCode: number; body?: string }>
+    const reprocessHandler = module.handler as Handler
 
-    if (!reprocessHandler) {
+    if (typeof reprocessHandler !== 'function') {
       throw new Error('Unable to load reprocessStripeSession handler')
     }
 

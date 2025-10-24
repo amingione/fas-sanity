@@ -518,6 +518,13 @@ const product = defineType({
     }),
 
     // SEO
+    defineField({
+      name: 'schemaMarkup',
+      title: 'Schema Markup',
+      type: 'schemaMarkup',
+      description: 'Generate product-specific structured data for storefront SEO.',
+      group: 'seo',
+    }),
     defineField({ name: 'brand', title: 'Brand / Manufacturer', type: 'string', description: 'Brand name (helps Google understand the product).', group: 'seo' }),
     defineField({
       name: 'googleProductCategory',

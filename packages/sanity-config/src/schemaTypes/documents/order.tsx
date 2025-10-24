@@ -1,4 +1,5 @@
-import { defineType, defineField } from 'sanity'
+import React from 'react'
+import {defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
 
@@ -187,9 +188,7 @@ export default defineType({
       orderNumber: 'orderNumber',
       customerName: 'customerName',
       shippingName: 'shippingAddress.name',
-      paymentStatus: 'paymentStatus',
-      paymentFailureCode: 'paymentFailureCode',
-      stripeSessionStatus: 'stripeSessionStatus',
+      createdAt: 'createdAt',
     },
     prepare({
       stripeSessionId,
@@ -199,36 +198,47 @@ export default defineType({
       orderNumber,
       customerName,
       shippingName,
-      paymentStatus,
-      paymentFailureCode,
-      stripeSessionStatus,
+      createdAt,
     }) {
-      const badge =
-        status === 'fulfilled' ? '✅' :
-        status === 'paid' ? '💵' :
-        status === 'cancelled' ? '❌' :
-        '🕒'
-
-      const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'N/A')
+      const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'Order')
       const name = customerName || shippingName || email || 'Customer'
-      const amount = typeof total === 'number' ? ` – $${Number(total).toFixed(2)}` : ''
-      const statusLabel = status || 'pending'
-      const subtitleParts = [`${badge} ${ref}`, statusLabel]
-      if (paymentStatus && paymentStatus !== statusLabel) subtitleParts.push(paymentStatus)
-      if (
-        stripeSessionStatus &&
-        stripeSessionStatus !== statusLabel &&
-        stripeSessionStatus !== paymentStatus
-      ) {
-        subtitleParts.push(stripeSessionStatus)
+      const amount = typeof total === 'number' ? `• ${new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)}` : ''
+      const statusLabel = (status || 'pending').toLowerCase()
+      const dateLabel = createdAt ? new Intl.DateTimeFormat(undefined, {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(createdAt)) : ''
+
+      const tone: Record<string, string> = {
+        fulfilled: '#059669',
+        paid: '#2563eb',
+        pending: '#f59e0b',
+        cancelled: '#dc2626',
+        expired: '#6b7280',
       }
-      if (statusLabel === 'cancelled' && paymentFailureCode) subtitleParts.push(paymentFailureCode)
-      if (email) subtitleParts.push(email)
+
+      const StatusBadge = () => (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2px 8px',
+            borderRadius: '999px',
+            backgroundColor: tone[statusLabel] || '#4b5563',
+            color: '#fff',
+            fontSize: '11px',
+            fontWeight: 600,
+            minWidth: 0,
+          }}
+        >
+          {statusLabel.toUpperCase()}
+        </span>
+      )
+
       return {
-        title: `${name}${amount}`,
-        subtitle: subtitleParts.join(' • '),
+        title: `${ref} — ${name}`,
+        subtitle: [dateLabel, amount].filter(Boolean).join(' '),
+        media: StatusBadge,
       }
-    }
+    },
   },
 
   orderings: [

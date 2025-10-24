@@ -129,13 +129,34 @@ export default defineType({
     select: {
       firstName: 'firstName',
       lastName: 'lastName',
-      email: 'email'
+      email: 'email',
+      orderCount: 'orderCount',
+      lifetimeSpend: 'lifetimeSpend',
+      city: 'shippingAddress.city',
+      state: 'shippingAddress.state',
+      emailOptIn: 'emailOptIn',
+      marketingOptIn: 'marketingOptIn',
     },
-    prepare({ firstName, lastName, email }) {
+    prepare({ firstName, lastName, email, orderCount, lifetimeSpend, city, state, emailOptIn, marketingOptIn }) {
       const name = [firstName, lastName].filter(Boolean).join(' ').trim()
+      const location = [city, state].filter(Boolean).join(', ')
+      const orders = typeof orderCount === 'number' ? orderCount : 0
+      const spend = typeof lifetimeSpend === 'number'
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(lifetimeSpend)
+        : '$0'
+      const subscribed = emailOptIn || marketingOptIn ? '✓' : ''
+
+      const parts = [
+        orders > 0 ? `${orders} orders` : 'No orders',
+        spend,
+        location,
+        subscribed ? 'Subscribed' : ''
+      ].filter(Boolean)
+
       return {
         title: name || email || 'Unnamed Customer',
-        subtitle: email || undefined,
+        subtitle: parts.join(' • '),
+        description: email || undefined,
       }
     },
   },

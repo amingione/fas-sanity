@@ -18,21 +18,20 @@ import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {media} from 'sanity-plugin-media'
 import {presentationTool} from '@sanity/presentation'
+import {schemaMarkup} from '@operationnation/sanity-plugin-schema-markup'
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
 import resolveDocumentActions from './src/resolveDocumentActions'
-import ShippingCalendar from './src/components/studio/ShippingCalendar'
-import AdminTools from './src/components/studio/AdminTools'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 
 let remoteTheme: StudioTheme | undefined
 try {
-  const module = (await import(
-    // @ts-expect-error -- remote module without types
-    'https://themer.sanity.build/api/hues?default=ababab;50;darkest:000000&primary=c9c9c9&transparent=a3a3a3;300'
+  const {theme} = (await import(
+    // @ts-expect-error -- TODO setup themer.d.ts to get correct typings
+    'https://themer.sanity.build/api/hues?default=364d5d;600&primary=5c2c14;600&transparent=374d5c;600&positive=43d675;300&caution=fbd024;200&lightest=fcfdfd&darkest=0d1216'
   )) as {theme: StudioTheme}
-  remoteTheme = module.theme
+  remoteTheme = theme
 } catch (err) {
   console.warn('Failed to load remote Sanity theme; falling back to fasTheme', err)
 }
@@ -123,6 +122,7 @@ export default defineConfig({
     }),
     media(),
     codeInput(),
+    schemaMarkup(),
     presentationTool(
       presentationPreviewOrigin
         ? {
@@ -141,19 +141,6 @@ export default defineConfig({
       fallbackStudioOrigin: process.env.SANITY_STUDIO_CANVAS_FALLBACK_ORIGIN || undefined,
     },
   },
-
-  tools: [
-    {
-      name: 'shipping-calendar',
-      title: 'Shipping Calendar',
-      component: ShippingCalendar,
-    },
-    {
-      name: 'admin-tools',
-      title: 'Admin Tools',
-      component: AdminTools,
-    },
-  ],
 
   document: {
     actions: resolveDocumentActions,

@@ -1,0 +1,303 @@
+import React, {useEffect, useMemo, useState} from 'react'
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Stack,
+  Text,
+} from '@sanity/ui'
+import {useClient} from 'sanity'
+import {useRouter} from 'sanity/router'
+
+type RecentOrder = {
+  _id: string
+  orderNumber?: string | null
+  customerName?: string | null
+  totalAmount?: number | null
+  _createdAt?: string | null
+}
+
+type RecentProduct = {
+  _id: string
+  title?: string | null
+  sku?: string | null
+  status?: string | null
+  _updatedAt?: string | null
+}
+
+type RecentInvoice = {
+  _id: string
+  invoiceNumber?: string | null
+  customerName?: string | null
+  total?: number | null
+  status?: string | null
+  _createdAt?: string | null
+}
+
+type HomePaneState = {
+  orders: RecentOrder[]
+  products: RecentProduct[]
+  invoices: RecentInvoice[]
+}
+
+const initialState: HomePaneState = {
+  orders: [],
+  products: [],
+  invoices: [],
+}
+
+const ORDER_QUERY = `*[_type == "order"] | order(coalesce(createdAt, _createdAt) desc)[0...5]{
+  _id,
+  orderNumber,
+  customerName,
+  totalAmount,
+  coalesce(createdAt, _createdAt) as _createdAt
+}`
+
+const PRODUCT_QUERY = `*[_type == "product"] | order(_updatedAt desc)[0...5]{
+  _id,
+  title,
+  sku,
+  status,
+  _updatedAt
+}`
+
+const INVOICE_QUERY = `*[_type == "invoice"] | order(coalesce(issueDate, _createdAt) desc)[0...5]{
+  _id,
+  invoiceNumber,
+  customerName,
+  total,
+  status,
+  coalesce(issueDate, _createdAt) as _createdAt
+}`
+
+const formatDate = (value?: string | null) => {
+  if (!value) return '—'
+  try {
+    const date = new Date(value)
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch (err) {
+    return value
+  }
+}
+
+const formatCurrency = (value?: number | null) => {
+  if (typeof value !== 'number') return '—'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
+  const client = useClient({apiVersion: '2024-10-01'})
+  const router = useRouter()
+
+  const [state, setState] = useState<HomePaneState>(initialState)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    const fetchAll = async () => {
+      try {
+        const [orders, products, invoices] = await Promise.all([
+          client.fetch<RecentOrder[]>(ORDER_QUERY),
+          client.fetch<RecentProduct[]>(PRODUCT_QUERY),
+          client.fetch<RecentInvoice[]>(INVOICE_QUERY),
+        ])
+
+        if (!cancelled) {
+          setState({
+            orders: orders || [],
+            products: products || [],
+            invoices: invoices || [],
+          })
+        }
+      } catch (err: any) {
+        console.error('HomePane: failed to load dashboard data', err)
+        if (!cancelled) {
+          setError('Unable to load recent activity. Try refreshing the Studio.')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchAll()
+
+    return () => {
+      cancelled = true
+    }
+  }, [client])
+
+  const sections = useMemo(
+    () => [
+      {
+        id: 'orders',
+        title: 'Recent orders',
+        description: 'Latest customer orders across the store.',
+        items: state.orders.map((order) => ({
+          key: order._id,
+          primary: order.orderNumber ? `Order #${order.orderNumber}` : 'Order',
+          secondary: order.customerName || 'Unknown customer',
+          meta: formatCurrency(order.totalAmount),
+          date: order._createdAt,
+          intent: {name: 'edit' as const, params: {id: order._id, type: 'order'}},
+        })),
+        footer: {
+          label: 'View all orders',
+          intent: {name: 'type' as const, params: {type: 'order'}},
+        },
+      },
+      {
+        id: 'products',
+        title: 'Recently updated products',
+        description: 'Products edited most recently.',
+        items: state.products.map((product) => ({
+          key: product._id,
+          primary: product.title || 'Untitled product',
+          secondary: product.sku || 'No SKU',
+          meta: product.status ? product.status.replace(/^\w/, (l) => l.toUpperCase()) : '—',
+          date: product._updatedAt,
+          intent: {name: 'edit' as const, params: {id: product._id, type: 'product'}},
+        })),
+        footer: {
+          label: 'Browse products',
+          intent: {name: 'type' as const, params: {type: 'product'}},
+        },
+      },
+      {
+        id: 'invoices',
+        title: 'Recent invoices',
+        description: 'Invoices created or updated lately.',
+        items: state.invoices.map((invoice) => ({
+          key: invoice._id,
+          primary: invoice.invoiceNumber ? `Invoice ${invoice.invoiceNumber}` : 'Invoice',
+          secondary: invoice.customerName || 'No customer on file',
+          meta: formatCurrency(invoice.total),
+          date: invoice._createdAt,
+          intent: {name: 'edit' as const, params: {id: invoice._id, type: 'invoice'}},
+        })),
+        footer: {
+          label: 'View invoices',
+          intent: {name: 'type' as const, params: {type: 'invoice'}},
+        },
+      },
+    ],
+    [state],
+  )
+
+  const handleIntent = (intent: 'type' | 'create' | 'edit', params: Record<string, unknown>) => {
+    router.navigateIntent(intent, params as any)
+  }
+
+  return (
+    <Box ref={ref} padding={[4, 5, 6]}>
+      <Stack space={5}>
+        <Stack space={2}>
+          <Heading size={4}>Welcome back</Heading>
+          <Text muted size={2}>
+            Quick snapshot of what’s happening across F.A.S. Motorsports. Use the shortcuts below to dive
+            deeper into orders, products, and finance.
+          </Text>
+        </Stack>
+
+        {loading ? (
+          <Flex align="center" justify="center" style={{minHeight: 200}}>
+            <Spinner muted size={4} />
+          </Flex>
+        ) : error ? (
+          <Card padding={4} radius={3} shadow={1} tone="critical">
+            <Stack space={3}>
+              <Text weight="semibold">{error}</Text>
+              <Button text="Retry" onClick={() => window.location.reload()} tone="critical" />
+            </Stack>
+          </Card>
+        ) : (
+          <Grid columns={[1, 1, 2]} gap={[3, 4, 5]}>
+            {sections.map((section) => (
+              <Card key={section.id} padding={4} radius={3} shadow={1} tone="transparent">
+                <Stack space={4}>
+                  <Stack space={2}>
+                    <Text size={3} weight="semibold">
+                      {section.title}
+                    </Text>
+                    <Text muted size={1}>
+                      {section.description}
+                    </Text>
+                  </Stack>
+
+                  <Stack space={2}>
+                    {section.items.length === 0 ? (
+                      <Card padding={3} radius={2} tone="transparent" border>
+                        <Text size={1} muted>
+                          Nothing to show yet. Create something new to see it appear here.
+                        </Text>
+                      </Card>
+                    ) : (
+                      section.items.map((item) => (
+                        <Card
+                          key={item.key}
+                          padding={3}
+                          radius={2}
+                          tone="transparent"
+                          border
+                          style={{cursor: 'pointer'}}
+                          onClick={() => handleIntent(item.intent.name, item.intent.params)}
+                        >
+                          <Stack space={1}>
+                            <Flex align="center" justify="space-between" gap={3}>
+                              <Text size={2} weight="semibold">
+                                {item.primary}
+                              </Text>
+                              <Text size={1} muted>
+                                {item.meta}
+                              </Text>
+                            </Flex>
+                            <Flex align="center" justify="space-between" gap={3}>
+                              <Text size={1} muted>
+                                {item.secondary}
+                              </Text>
+                              <Text size={1} muted>
+                                {formatDate(item.date)}
+                              </Text>
+                            </Flex>
+                          </Stack>
+                        </Card>
+                      ))
+                    )}
+                  </Stack>
+
+                  <Button
+                    mode="ghost"
+                    text={section.footer.label}
+                    onClick={() => handleIntent(section.footer.intent.name, section.footer.intent.params)}
+                  />
+                </Stack>
+              </Card>
+            ))}
+          </Grid>
+        )}
+      </Stack>
+    </Box>
+  )
+})
+
+HomePane.displayName = 'HomePane'
+
+export default HomePane

@@ -11,7 +11,7 @@ const FALLBACK_API_VERSION = '2024-10-01'
 
 function useOptionalStudioClient(options?: UseClientOptions) {
   try {
-    return useClient(options)
+    return options ? useClient(options) : useClient()
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('useWorkspaceClient: falling back to manual client', err)
