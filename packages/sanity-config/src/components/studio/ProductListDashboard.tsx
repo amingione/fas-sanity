@@ -963,7 +963,12 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
       />
       <Box padding={5} style={{flex: '1 1 auto', overflow: 'auto'}}>
         <Stack space={5}>
-          <Flex align="flex-start" justify="space-between" wrap="wrap" gap={4}>
+          <Flex
+            align="flex-start"
+            justify="space-between"
+            gap={4}
+            style={{flexWrap: 'wrap'}}
+          >
             <Stack space={3} style={{minWidth: 240}}>
               <Text size={1} muted>
                 Catalog
@@ -975,7 +980,7 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
                 Monitor inventory health, sales readiness, and merchandising coverage across all channels.
               </Text>
             </Stack>
-            <Flex gap={2} align="center" wrap="wrap">
+            <Flex gap={2} align="center" style={{flexWrap: 'wrap'}}>
               <Button
                 text="Export"
                 mode="ghost"
@@ -1019,8 +1024,12 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
 
           <Card padding={4} radius={4} shadow={1} tone="transparent" style={{border: '1px solid var(--card-border-color)'}}>
             <Stack space={4}>
-              <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
-                <Flex align="center" gap={3} wrap="wrap" style={{flex: '1 1 480px'}}>
+              <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
+                <Flex
+                  align="center"
+                  gap={3}
+                  style={{flexWrap: 'wrap', flex: '1 1 480px'}}
+                >
                   <Box style={{flex: '1 1 280px', minWidth: 240}}>
                     <TextInput
                       value={searchTerm}
@@ -1106,7 +1115,7 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
                     }
                   />
                 </Flex>
-                <Flex align="center" gap={2} wrap="wrap">
+                <Flex align="center" gap={2} style={{flexWrap: 'wrap'}}>
                   <MenuButton
                     id="product-saved-views"
                     button={<Button text="Saved views" mode="ghost" />}
@@ -1118,7 +1127,7 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
               </Flex>
 
               {activeFilters && (
-                <Flex gap={2} wrap="wrap">
+                <Flex gap={2} style={{flexWrap: 'wrap'}}>
                   {Array.from(vendorFilters).map((vendor) => (
                     <Card key={`vendor-${vendor}`} paddingX={2} paddingY={1} tone="primary" radius={3} border>
                       <Flex align="center" gap={2}>
