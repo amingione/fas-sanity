@@ -1001,7 +1001,7 @@ export default function ProductBulkEditor() {
   return (
     <Card padding={4} radius={3} shadow={1} style={{background: '#0d1117'}}>
       <Stack space={4}>
-        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+        <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
           <Box>
             <Text size={2} weight="semibold" style={{color: '#fff'}}>
               Product Bulk Editor
