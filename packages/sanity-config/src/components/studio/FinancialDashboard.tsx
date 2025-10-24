@@ -307,7 +307,12 @@ const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never
       }}
     >
       <Stack space={4}>
-        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+        <Flex
+          align="center"
+          justify="space-between"
+          gap={3}
+          style={{flexWrap: 'wrap'}}
+        >
           <Stack space={1}>
             <Heading size={3}>Financial dashboard</Heading>
             {summary ? (
@@ -316,7 +321,7 @@ const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never
               </Text>
             ) : null}
           </Stack>
-          <Flex gap={2} wrap="wrap">
+          <Flex gap={2} style={{flexWrap: 'wrap'}}>
             {RANGE_PRESETS.map((preset) => (
               <Button
                 key={preset.value}
@@ -435,7 +440,12 @@ function ProfitLossCard({summary, range}: {summary: Summary; range: RangePreset}
           />
         </Stack>
 
-        <Flex justify="space-between" align="center" wrap="wrap" gap={2}>
+        <Flex
+          justify="space-between"
+          align="center"
+          gap={2}
+          style={{flexWrap: 'wrap'}}
+        >
           <Text size={1} muted>
             {previousTransactions} transactions this period
           </Text>
@@ -462,7 +472,7 @@ function ExpensesCard({summary}: {summary: Summary}) {
           <TrendBadge value={change} />
         </Flex>
 
-        <Flex align="center" gap={4} wrap="wrap">
+        <Flex align="center" gap={4} style={{flexWrap: 'wrap'}}>
           <DonutChart
             size={140}
             thickness={28}
@@ -516,7 +526,7 @@ function CashFlowCard({summary}: {summary: Summary}) {
           height={120}
         />
 
-        <Flex gap={3} wrap="wrap">
+        <Flex gap={3} style={{flexWrap: 'wrap'}}>
           <SnapshotMetric label="Money in" value={moneyIn} tone="positive" />
           <SnapshotMetric label="Money out" value={moneyOut} tone="critical" />
         </Flex>
@@ -681,7 +691,12 @@ function IntegrationsCard({
                 }
               }}
             >
-              <Flex align="center" justify="space-between" gap={3} wrap="wrap">
+              <Flex
+                align="center"
+                justify="space-between"
+                gap={3}
+                style={{flexWrap: 'wrap'}}
+              >
                 <Stack space={1}>
                   <Text weight="semibold">{integration.name}</Text>
                   <Text size={1} muted>{integration.detail}</Text>
@@ -766,7 +781,7 @@ function OrdersIntegrationSection({
       onBack={onBack}
     >
       <Stack space={5}>
-        <Flex gap={3} wrap="wrap">
+        <Flex gap={3} style={{flexWrap: 'wrap'}}>
           <DetailStatCard
             label="Orders analysed"
             value={number(ordersInRange.length)}
@@ -781,7 +796,7 @@ function OrdersIntegrationSection({
           />
         </Flex>
 
-        <Flex gap={3} wrap="wrap">
+        <Flex gap={3} style={{flexWrap: 'wrap'}}>
           <StatusList title="Order status" items={statusBreakdown} />
           <StatusList title="Payment status" items={paymentBreakdown} />
         </Flex>
@@ -794,7 +809,13 @@ function OrdersIntegrationSection({
                 <Text size={1} muted>No orders captured in this range yet.</Text>
               ) : (
                 recentOrders.map((order) => (
-                  <Flex key={order.id} align="center" justify="space-between" gap={3} wrap="wrap">
+                  <Flex
+                    key={order.id}
+                    align="center"
+                    justify="space-between"
+                    gap={3}
+                    style={{flexWrap: 'wrap'}}
+                  >
                     <Stack space={1}>
                       <Text weight="semibold">Order {shortId(order.id)}</Text>
                       <Text size={1} muted>
@@ -854,7 +875,7 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
       onBack={onBack}
     >
       <Stack space={5}>
-        <Flex gap={3} wrap="wrap">
+        <Flex gap={3} style={{flexWrap: 'wrap'}}>
           <DetailStatCard label="Available balance" value={currency(payouts.available)} helper="Ready to pay out" />
           <DetailStatCard label="Pending balance" value={currency(payouts.pending)} helper="Awaiting settlement" />
           <DetailStatCard
@@ -872,7 +893,13 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
                 <Text size={1} muted>No payouts recorded yet.</Text>
               ) : (
                 recent.map((payout) => (
-                  <Flex key={payout.id} align="center" justify="space-between" gap={3} wrap="wrap">
+                  <Flex
+                    key={payout.id}
+                    align="center"
+                    justify="space-between"
+                    gap={3}
+                    style={{flexWrap: 'wrap'}}
+                  >
                     <Stack space={1}>
                       <Text weight="semibold">{currency(payout.amount)}</Text>
                       <Text size={1} muted>
@@ -932,7 +959,7 @@ function AnalyticsIntegrationSection({
       onBack={onBack}
     >
       <Stack space={5}>
-        <Flex gap={3} wrap="wrap">
+        <Flex gap={3} style={{flexWrap: 'wrap'}}>
           <DetailStatCard label="Visitors" value={number(traffic.visitors)} helper={`${rangeLabel} window`} />
           <DetailStatCard label="Sessions" value={number(traffic.sessions)} helper="Unique sessions" />
           <DetailStatCard label="Pageviews" value={number(traffic.pageviews)} helper="Total views" />
@@ -961,9 +988,15 @@ function AnalyticsIntegrationSection({
                 <Text size={1} muted>No recent analytics samples available.</Text>
               ) : (
                 traffic.recentDaily.map((day) => (
-                  <Flex key={day.date} align="center" justify="space-between" gap={3} wrap="wrap">
+                  <Flex
+                    key={day.date}
+                    align="center"
+                    justify="space-between"
+                    gap={3}
+                    style={{flexWrap: 'wrap'}}
+                  >
                     <Text weight="semibold">{format(new Date(day.date), 'EEE, MMM d')}</Text>
-                    <Flex gap={3} wrap="wrap">
+                    <Flex gap={3} style={{flexWrap: 'wrap'}}>
                       <Badge tone="primary">{number(day.visitors)} visitors</Badge>
                       <Badge tone="default">{number(day.sessions)} sessions</Badge>
                       <Badge tone="default">{number(day.pageviews)} views</Badge>
@@ -993,7 +1026,12 @@ function IntegrationShell({
   return (
     <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
       <Stack space={4}>
-        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+        <Flex
+          align="center"
+          justify="space-between"
+          gap={3}
+          style={{flexWrap: 'wrap'}}
+        >
           <Stack space={1}>
             <Heading size={3}>{title}</Heading>
             <Text size={1} muted>{description}</Text>
@@ -1098,7 +1136,7 @@ function AccountsReceivableCard({summary}: {summary: Summary}) {
           <Text size={1} muted>As of today</Text>
         </Flex>
 
-        <Flex align="center" gap={4} wrap="wrap">
+        <Flex align="center" gap={4} style={{flexWrap: 'wrap'}}>
           <DonutChart size={140} thickness={28} segments={segments} total={total}>
             <Flex direction="column" align="center" gap={1}>
               <Text size={1} muted>Total AR</Text>
