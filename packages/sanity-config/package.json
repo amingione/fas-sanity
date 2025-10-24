@@ -19,6 +19,7 @@
     "@sanity/code-input": "latest",
     "@sanity/icons": "latest",
     "@sanity/presentation": "^1.9.1",
+    "@sanity/preview-url-secret": "^2.1.15",
     "@sanity/ui": "latest",
     "@sanity/vision": "latest",
     "@stripe/stripe-js": "^3.2.0",
