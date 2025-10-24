@@ -24,6 +24,10 @@ type OrderRecord = {
   status?: string | null
   total?: number | null
   paymentMethod?: string | null
+  paymentStatus?: string | null
+  fulfillmentStatus?: string | null
+  deliveryStatus?: string | null
+  tags?: string[] | null
   customer?: {
     name?: string | null
   } | null
@@ -36,6 +40,10 @@ const ORDER_QUERY = `*[_type == "order"] | order(orderDate desc)[0...250]{
   status,
   total,
   paymentMethod,
+  paymentStatus,
+  fulfillmentStatus,
+  deliveryStatus,
+  tags,
   customer->{name}
 }`
 
@@ -62,11 +70,38 @@ const formatDate = (value?: string | null) => {
   }
 }
 
-const statusTone: Record<string, 'default' | 'primary' | 'positive' | 'caution'> = {
-  paid: 'positive',
-  pending: 'caution',
-  shipped: 'primary',
-  cancelled: 'default',
+const toTitleCase = (value?: string | null) => {
+  if (!value) return ''
+  return value
+    .toString()
+    .replace(/[_-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const badgeTone = (
+  status?: string | null,
+): 'default' | 'positive' | 'caution' | 'critical' => {
+  if (!status) return 'default'
+  const normalized = status.toLowerCase()
+  if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
+  if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
+  if (
+    [
+      'cancelled',
+      'canceled',
+      'returned',
+      'refunded',
+      'failed',
+      'exception',
+      'void',
+      'expired',
+    ].includes(normalized)
+  )
+    return 'critical'
+  return 'default'
 }
 
 const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
@@ -228,8 +263,44 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                 <Stack space={0}>
                   {filteredOrders.map((order, index) => {
                     const selected = selectedIds.includes(order._id)
-                    const status = (order.status || 'Pending').toLowerCase()
-                    const tone = statusTone[status] || 'default'
+                    const statusBadges = [
+                      order.status
+                        ? {
+                            key: 'order-status',
+                            label: toTitleCase(order.status),
+                            tone: badgeTone(order.status),
+                          }
+                        : null,
+                      order.paymentStatus
+                        ? {
+                            key: 'payment-status',
+                            label: `Payment: ${toTitleCase(order.paymentStatus)}`,
+                            tone: badgeTone(order.paymentStatus),
+                          }
+                        : null,
+                      order.fulfillmentStatus
+                        ? {
+                            key: 'fulfillment-status',
+                            label: `Fulfillment: ${toTitleCase(order.fulfillmentStatus)}`,
+                            tone: badgeTone(order.fulfillmentStatus),
+                          }
+                        : null,
+                      order.deliveryStatus
+                        ? {
+                            key: 'delivery-status',
+                            label: `Delivery: ${toTitleCase(order.deliveryStatus)}`,
+                            tone: badgeTone(order.deliveryStatus),
+                          }
+                        : null,
+                    ].filter((badge): badge is {key: string; label: string; tone: 'default' | 'positive' | 'caution' | 'critical'} =>
+                      Boolean(badge),
+                    )
+
+                    const tagBadges = Array.isArray(order.tags)
+                      ? order.tags
+                          .map((tag) => (typeof tag === 'string' ? tag.trim() : ''))
+                          .filter((tag): tag is string => Boolean(tag))
+                      : []
 
                     return (
                       <Flex
@@ -265,9 +336,47 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                           {formatDate(order.orderDate)}
                         </Text>
                         <Box style={{flex: 1}}>
-                          <Badge tone={tone} padding={2} radius={2} fontSize={1}>
-                            {order.status || 'Pending'}
-                          </Badge>
+                          {statusBadges.length || tagBadges.length ? (
+                            <Stack space={2}>
+                              {statusBadges.length > 0 && (
+                                <Flex gap={2} style={{flexWrap: 'wrap'}}>
+                                  {statusBadges.map((badge) => (
+                                    <Badge
+                                      key={badge.key}
+                                      tone={badge.tone}
+                                      padding={1}
+                                      radius={2}
+                                      fontSize={0}
+                                      style={{lineHeight: 1}}
+                                    >
+                                      {badge.label}
+                                    </Badge>
+                                  ))}
+                                </Flex>
+                              )}
+                              {tagBadges.length > 0 && (
+                                <Flex gap={1} style={{flexWrap: 'wrap'}}>
+                                  {tagBadges.map((tag) => (
+                                    <Badge
+                                      key={tag}
+                                      tone="default"
+                                      mode="outline"
+                                      padding={1}
+                                      radius={2}
+                                      fontSize={0}
+                                      style={{lineHeight: 1}}
+                                    >
+                                      {toTitleCase(tag)}
+                                    </Badge>
+                                  ))}
+                                </Flex>
+                              )}
+                            </Stack>
+                          ) : (
+                            <Text size={1} muted>
+                              —
+                            </Text>
+                          )}
                         </Box>
                         <Text size={1} style={{flex: 1}}>
                           {formatCurrency(order.total)}
