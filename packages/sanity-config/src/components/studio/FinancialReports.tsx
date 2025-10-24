@@ -111,7 +111,7 @@ export default function FinancialReports() {
       </Box>
 
       {/* Row 1 */}
-      <Flex gap={4} wrap="wrap" marginBottom={4}>
+      <Flex gap={4} marginBottom={4} style={{flexWrap: 'wrap'}}>
         <Box flex={1}>
           <Box marginBottom={2}><Text size={1}>Report Type</Text></Box>
           <Select value={reportType} onChange={e => setReportType((e.target as HTMLSelectElement).value)}>
@@ -131,7 +131,7 @@ export default function FinancialReports() {
       </Flex>
 
       {/* Row 2 */}
-      <Flex gap={4} wrap="wrap" marginBottom={4}>
+      <Flex gap={4} marginBottom={4} style={{flexWrap: 'wrap'}}>
         <Box flex={1}>
           <Box marginBottom={2}><Text size={1}>Status</Text></Box>
           <Select value={status} onChange={e => setStatus((e.target as HTMLSelectElement).value)}>
