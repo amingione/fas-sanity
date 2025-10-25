@@ -21,6 +21,7 @@ const productsByCategory = (S: any) =>
     .title('Products by category')
     .child(
       S.documentTypeList('category')
+        .apiVersion('2024-10-01')
         .title('Categories')
         .child((categoryId: string) =>
           S.documentList()
@@ -57,8 +58,8 @@ export const deskStructure: StructureResolver = (S) =>
                 .title('All customers')
                 .child(
                   S.documentTypeList('customer')
-                    .title('All customers')
                     .apiVersion('2024-10-01')
+                    .title('All customers')
                     .filter('_type == "customer"')
                     .defaultOrdering([
                       {field: 'lifetimeSpend', direction: 'desc'},
