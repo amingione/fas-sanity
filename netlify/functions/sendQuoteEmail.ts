@@ -7,8 +7,14 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Prefer the single write token you set up; no fallback to PUBLIC_*
 const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
-  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
+  projectId:
+    process.env.SANITY_STUDIO_PROJECT_ID ||
+    process.env.SANITY_PROJECT_ID ||
+    'r4og35qd',
+  dataset:
+    process.env.SANITY_STUDIO_DATASET ||
+    process.env.SANITY_DATASET ||
+    'production',
   apiVersion: '2024-04-10',
   useCdn: false,
   token: process.env.SANITY_API_TOKEN,
