@@ -190,6 +190,19 @@ export const deskStructure: StructureResolver = (S) =>
                     .child(orderDocumentViews(S))
                 ),
               S.listItem()
+                .id('orders-expired-carts')
+                .title('Expired carts')
+                .child(
+                  S.documentTypeList('expiredCart')
+                    .title('Expired carts')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "expiredCart"')
+                    .defaultOrdering([
+                      {field: 'expiredAt', direction: 'desc'},
+                      {field: 'createdAt', direction: 'desc'},
+                    ])
+                ),
+              S.listItem()
                 .id('orders-recent')
                 .title('Recent (Last 30 days)')
                 .child(

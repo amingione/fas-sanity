@@ -1,8 +1,8 @@
 import {defineField, defineType} from 'sanity'
 
 export default defineType({
-  name: 'abandonedCheckout',
-  title: 'Abandoned Checkout',
+  name: 'expiredCart',
+  title: 'Expired Cart',
   type: 'document',
   fields: [
     defineField({name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string', readOnly: true}),
@@ -13,24 +13,40 @@ export default defineType({
       type: 'string',
       options: {
         list: [
-          {title: 'Abandoned', value: 'abandoned'},
+          {title: 'Expired', value: 'expired'},
           {title: 'Recovered', value: 'recovered'},
           {title: 'Ignored', value: 'ignored'},
         ],
         layout: 'radio',
       },
-      initialValue: 'abandoned',
+      initialValue: 'expired',
     }),
     defineField({name: 'paymentStatus', title: 'Payment Status', type: 'string', readOnly: true}),
-    defineField({name: 'customerEmail', title: 'Customer Email', type: 'string'}),
-    defineField({name: 'customerName', title: 'Customer Name', type: 'string'}),
+    defineField({name: 'customerEmail', title: 'Customer Email', type: 'string', readOnly: true}),
+    defineField({name: 'customerName', title: 'Customer Name', type: 'string', readOnly: true}),
     defineField({name: 'stripeCustomerId', title: 'Stripe Customer ID', type: 'string', readOnly: true}),
     defineField({name: 'totalAmount', title: 'Checkout Total', type: 'number', readOnly: true}),
     defineField({name: 'currency', title: 'Currency', type: 'string', readOnly: true}),
-    defineField({name: 'cart', title: 'Cart Snapshot', type: 'array', of: [{type: 'orderCartItem'}], readOnly: true}),
-    defineField({name: 'metadata', title: 'Metadata', type: 'array', of: [{type: 'stripeMetadataEntry'}], readOnly: true}),
-    defineField({name: 'shippingAddress', title: 'Shipping Address', type: 'shippingAddress', readOnly: true}),
-    defineField({name: 'stripeSummary', title: 'Stripe Snapshot', type: 'stripeOrderSummary', readOnly: true}),
+    defineField({
+      name: 'cart',
+      title: 'Cart Snapshot',
+      type: 'array',
+      of: [{type: 'orderCartItem'}],
+      readOnly: true,
+    }),
+    defineField({
+      name: 'metadata',
+      title: 'Metadata',
+      type: 'array',
+      of: [{type: 'stripeMetadataEntry'}],
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeSummary',
+      title: 'Stripe Snapshot',
+      type: 'stripeOrderSummary',
+      readOnly: true,
+    }),
     defineField({
       name: 'events',
       title: 'Event Log',
@@ -54,8 +70,12 @@ export default defineType({
       currency: 'currency',
     },
     prepare({sessionId, email, status, total, currency}) {
-      const ref = sessionId ? `Session ${sessionId.slice(-6)}` : 'Abandoned Checkout'
-      const subtitleParts = [status || 'abandoned', email || 'unknown', total ? `${currency || 'USD'} ${total.toFixed(2)}` : null]
+      const ref = sessionId ? `Session ${sessionId.slice(-6)}` : 'Expired Cart'
+      const subtitleParts = [
+        status || 'expired',
+        email || 'unknown',
+        typeof total === 'number' ? `${currency || 'USD'} ${total.toFixed(2)}` : null,
+      ]
       return {
         title: ref,
         subtitle: subtitleParts.filter(Boolean).join(' • '),
