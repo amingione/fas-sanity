@@ -92,7 +92,9 @@ function assertEnv() {
 }
 
 const SANITY_PROJECT_ID =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID ||
+  process.env.SANITY_PROJECT_ID ||
+  'r4og35qd'
 const SANITY_DATASET =
   process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
