@@ -2,6 +2,7 @@ import type {StructureResolver} from 'sanity/structure'
 import HomePane from '../components/studio/HomePane'
 import ComingSoonPane from '../components/studio/ComingSoonPane'
 import OrderShippingView from '../components/studio/OrderShippingView'
+import OrderListPane from '../components/studio/OrderListPane'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
 import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
@@ -131,15 +132,14 @@ export const deskStructure: StructureResolver = (S) =>
           S.list()
             .title('Orders')
             .items([
-              S.documentTypeListItem('order')
+              S.listItem()
+                .id('orders-all')
                 .title('All orders')
                 .child(
-                  S.documentTypeList('order')
-                    .title('All orders')
-                    .apiVersion('2024-10-01')
-                    .filter('_type == "order"')
-                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                    .child(orderDocumentViews(S))
+                  S.component()
+                    .id('orders-pane')
+                    .title('Orders')
+                    .component(OrderListPane as any)
                 ),
               S.divider(),
               S.listItem()

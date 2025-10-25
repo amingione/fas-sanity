@@ -1,5 +1,8 @@
-import { defineType, defineField } from 'sanity'
-import { googleProductCategories } from '../constants/googleProductCategories'
+import {defineType, defineField} from 'sanity'
+import {googleProductCategories} from '../constants/googleProductCategories'
+
+const PRODUCT_PLACEHOLDER_ASSET =
+  'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 
 /**
  * SIMPLIFIED PRODUCT SCHEMA
@@ -658,14 +661,19 @@ const product = defineType({
     select: {
       title: 'title',
       subtitle: 'sku',
-      media: 'images.0',
+      firstImageAsset: 'images.0.asset',
       price: 'price',
       status: 'status',
     },
-    prepare({ title, subtitle, media, price, status }) {
-      const priceDisplay = typeof price === 'number'
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price)
-        : 'No price'
+    prepare({title, subtitle, firstImageAsset, price, status}) {
+      const priceDisplay =
+        typeof price === 'number'
+          ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(price)
+          : 'No price'
+
+      const media = firstImageAsset
+        ? {_type: 'image', asset: firstImageAsset}
+        : {_type: 'image', asset: {_ref: PRODUCT_PLACEHOLDER_ASSET}}
 
       return {
         title: title || 'Untitled Product',

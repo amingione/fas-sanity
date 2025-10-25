@@ -3,6 +3,9 @@ import {defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
 
+const ORDER_MEDIA_URL =
+  'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
+
 export default defineType({
   name: 'order',
   title: 'Order',
@@ -217,16 +220,20 @@ export default defineType({
       const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'Order')
       const name = customerName || shippingName || email || 'Customer'
       const amount = typeof total === 'number' ? `• ${new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)}` : ''
-      const statusLabel = (status || 'pending').toLowerCase()
+      const statusLabel = (status || 'paid').toLowerCase()
       const dateLabel = createdAt ? new Intl.DateTimeFormat(undefined, {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(createdAt)) : ''
 
-      const tone: Record<string, string> = {
-        fulfilled: '#059669',
-        paid: '#2563eb',
-        pending: '#f59e0b',
-        cancelled: '#dc2626',
-        expired: '#6b7280',
+      const tone: Record<string, {bg: string; fg: string; border: string}> = {
+        fulfilled: {bg: '#ECFDF5', fg: '#047857', border: '#A7F3D0'},
+        shipped: {bg: '#EFF6FF', fg: '#1D4ED8', border: '#BFDBFE'},
+        paid: {bg: '#EEF2FF', fg: '#4C1D95', border: '#C4B5FD'},
+        cancelled: {bg: '#FEF2F2', fg: '#B91C1C', border: '#FECACA'},
+        refunded: {bg: '#FFFBEB', fg: '#B45309', border: '#FDE68A'},
+        closed: {bg: '#F3F4F6', fg: '#374151', border: '#E5E7EB'},
+        expired: {bg: '#F3F4F6', fg: '#374151', border: '#E5E7EB'},
       }
+
+      const badgeTone = tone[statusLabel] || tone.closed
 
       const StatusBadge = () => (
         <span
@@ -234,23 +241,39 @@ export default defineType({
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '2px 8px',
+            padding: '1px 6px',
             borderRadius: '999px',
-            backgroundColor: tone[statusLabel] || '#4b5563',
-            color: '#fff',
-            fontSize: '11px',
+            border: `1px solid ${badgeTone.border}`,
+            backgroundColor: badgeTone.bg,
+            color: badgeTone.fg,
+            fontSize: 10,
             fontWeight: 600,
-            minWidth: 0,
+            letterSpacing: 0.5,
+            textTransform: 'uppercase',
           }}
         >
-          {statusLabel.toUpperCase()}
+          {statusLabel}
         </span>
+      )
+
+      const MediaLogo = () => (
+        <img
+          src={ORDER_MEDIA_URL}
+          alt="Order"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 4,
+            objectFit: 'cover',
+          }}
+        />
       )
 
       return {
         title: `${ref} — ${name}`,
         subtitle: [dateLabel, amount].filter(Boolean).join(' '),
-        media: StatusBadge,
+        media: MediaLogo,
+        status: StatusBadge,
       }
     },
   },
