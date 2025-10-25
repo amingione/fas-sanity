@@ -10,34 +10,32 @@ function main() {
 
   try {
     if (!fs.existsSync(src)) {
-      console.log('[patch-sanity-refractor] root refractor not found; skipping');
-      return;
-    }
-    const srcPkg = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8'));
-    if (!srcPkg.version.startsWith('3.')) {
-      console.log('[patch-sanity-refractor] root refractor is not v3.x; skipping');
-      return;
-    }
-    const sanityDir = path.dirname(target);
-    if (!fs.existsSync(sanityDir)) {
-      console.log('[patch-sanity-refractor] sanity not installed; skipping');
-      return;
-    }
-    // Remove existing target and copy
-    fs.rmSync(target, { recursive: true, force: true });
-    copyDir(src, target);
-    // Ensure Sanity's CJS requires like `refractor/bash` resolve by adding alias files
-    const aliases = ['bash', 'javascript', 'json', 'jsx', 'typescript'];
-    for (const name of aliases) {
-      const aliasPath = path.join(target, `${name}.js`);
-      const content = `module.exports = require('./lang/${name}.js');\n`;
-        try {
-          fs.writeFileSync(aliasPath, content);
-        } catch {
-          // ignore individual alias errors
+      console.log('[patch-sanity-refractor] root refractor not found; skipping copy');
+    } else {
+      const srcPkg = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8'));
+      if (!srcPkg.version.startsWith('3.')) {
+        console.log('[patch-sanity-refractor] root refractor is not v3.x; skipping copy');
+      } else {
+        const sanityDir = path.dirname(target);
+        if (!fs.existsSync(sanityDir)) {
+          console.log('[patch-sanity-refractor] sanity not installed; skipping refractor copy');
+        } else {
+          fs.rmSync(target, {recursive: true, force: true});
+          copyDir(src, target);
+          const aliases = ['bash', 'javascript', 'json', 'jsx', 'typescript'];
+          for (const name of aliases) {
+            const aliasPath = path.join(target, `${name}.js`);
+            const content = `module.exports = require('./lang/${name}.js');\n`;
+            try {
+              fs.writeFileSync(aliasPath, content);
+            } catch {
+              // ignore individual alias errors
+            }
+          }
+          console.log('[patch-sanity-refractor] patched sanity nested refractor to', srcPkg.version);
         }
+      }
     }
-    console.log('[patch-sanity-refractor] patched sanity nested refractor to', srcPkg.version);
   } catch (err) {
     console.warn('[patch-sanity-refractor] patch failed:', err && err.message ? err.message : err);
   }
@@ -128,49 +126,21 @@ function main() {
     console.warn('[patch-sanity-refractor] failed to patch @sanity/ui refractor chunk:', err && err.message ? err.message : err)
   }
 
-  // Patch @sanity/ui Toast component to forward refs to fix AnimatePresence ref warnings
+  // Patch @sanity/ui Toast runtime bundles to forward refs (fix AnimatePresence warnings)
   try {
-    const toastSrc = path.join(projectRoot, 'node_modules', '@sanity', 'ui', 'src', 'core', 'components', 'toast', 'toast.tsx')
-    if (fs.existsSync(toastSrc)) {
-      let ts = fs.readFileSync(toastSrc, 'utf8')
+    const uiRoot = path.join(projectRoot, 'node_modules', '@sanity', 'ui')
+    const esmPath = path.join(uiRoot, 'dist', 'index.mjs')
+    const cjsPath = path.join(uiRoot, 'dist', 'index.js')
+    const patchedEsm = patchToastDistFile(esmPath, {variant: 'esm'})
+    const patchedCjs = patchToastDistFile(cjsPath, {variant: 'cjs'})
 
-      // Ensure forwardRef is imported
-      if (!ts.includes("from 'react'")) {
-        ts = ts.replace(
-          /import \{motion,[^}]*\} from 'motion\/react'\n/,
-          (m) => m + "import {forwardRef} from 'react'\n"
-        )
-      } else if (!/\bforwardRef\b/.test(ts)) {
-        ts = ts.replace(
-          /from 'react'\n/,
-          (m) => m.replace("from 'react'", "from 'react'\nimport {forwardRef} from 'react'")
-        )
-      }
-
-      // Convert function Toast to forwardRef Toast if not already converted
-      if (/export function Toast\(/.test(ts)) {
-        ts = ts.replace(
-          /export function Toast\(\n([\s\S]*?)\): React\.JSX\.Element \{/,
-          (_, params) =>
-            `export const Toast = forwardRef<\n  HTMLDivElement,\n  ${params.trim()}\n>((props, ref): React.JSX.Element => {`
-        )
-        // Add ref to MotionToast opening tag
-        ts = ts.replace(
-          /<MotionToast\n([\s\S]*?)data-ui="Toast"/,
-          (m) => m.replace('<MotionToast', '<MotionToast\n      ref={ref}')
-        )
-        // Close forwardRef wrapper
-        ts = ts.replace(/\n\}\n\nToast\.displayName/, '\n})\n\nToast.displayName')
-      }
-
-      // Write back if changed
-      fs.writeFileSync(toastSrc, ts)
-      console.log('[patch-sanity-refractor] patched @sanity/ui Toast to forward refs')
+    if (patchedEsm || patchedCjs) {
+      console.log('[patch-sanity-refractor] patched @sanity/ui Toast bundle to forward refs')
     } else {
-      console.log('[patch-sanity-refractor] @sanity/ui toast.tsx not found; skipping Toast patch')
+      console.log('[patch-sanity-refractor] Toast bundle already forwards refs; no changes')
     }
   } catch (err) {
-    console.warn('[patch-sanity-refractor] failed to patch @sanity/ui Toast:', err && err.message ? err.message : err)
+    console.warn('[patch-sanity-refractor] failed to patch @sanity/ui Toast bundles:', err && err.message ? err.message : err)
   }
 }
 
@@ -188,6 +158,30 @@ function copyDir(from, to) {
       fs.copyFileSync(srcPath, dstPath);
     }
   }
+}
+
+function patchToastDistFile(filePath, {variant}) {
+  if (!fs.existsSync(filePath)) return false
+
+  let source = fs.readFileSync(filePath, 'utf8')
+  const alreadyForwardRef =
+    /\bconst Toast\s*=\s*forwardRef/.test(source) || /\bconst Toast\s*=\s*react\.forwardRef/.test(source)
+  if (alreadyForwardRef) return false
+
+  if (!/function Toast\(\s*props\)/.test(source)) return false
+
+  const refFactory = variant === 'cjs' ? 'react.forwardRef' : 'forwardRef'
+  source = source.replace(/function Toast\(\s*props\)/, `const Toast = ${refFactory}(function Toast(props, forwardedRef)`)
+
+  const closePattern = /\n}\s*\nToast\.displayName/
+  if (!closePattern.test(source)) return false
+  source = source.replace(closePattern, '\n});\nToast.displayName')
+
+  if (!source.includes('exit, transition, children:')) return false
+  source = source.replace('exit, transition, children:', 'exit, transition, ref: forwardedRef, children:')
+
+  fs.writeFileSync(filePath, source)
+  return true
 }
 
 main();

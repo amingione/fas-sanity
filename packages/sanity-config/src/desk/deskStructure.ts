@@ -1,7 +1,7 @@
 import type {StructureResolver} from 'sanity/structure'
 import HomePane from '../components/studio/HomePane'
 import ComingSoonPane from '../components/studio/ComingSoonPane'
-import OrderDetailView from '../components/studio/OrderDetailView'
+import OrderShippingView from '../components/studio/OrderShippingView'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
 import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
@@ -11,8 +11,8 @@ const orderDocumentViews = (S: any) => (documentId: string) =>
     .schemaType('order')
     .documentId(documentId)
     .views([
-      S.view.component(OrderDetailView as any).title('Summary').id('summary'),
       S.view.form().title('Form').id('form'),
+      S.view.component(OrderShippingView as any).title('Shipping').id('shipping'),
     ])
 
 const productsByCategory = (S: any) =>
@@ -149,7 +149,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .apiVersion('2024-10-01')
                     .title('Pending fulfillment')
                     .schemaType('order')
-                    .filter('_type == "order" && (status == "pending" || status == "processing") && !defined(fulfilledAt)')
+                    .filter('_type == "order" && status == "paid" && !defined(fulfilledAt)')
                     .defaultOrdering([{field: 'createdAt', direction: 'asc'}])
                     .child(orderDocumentViews(S))
                 ),
@@ -200,6 +200,17 @@ export const deskStructure: StructureResolver = (S) =>
                     .filter('_type == "order" && dateTime(createdAt) > dateTime(now()) - 60*60*24*30')
                     .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                     .child(orderDocumentViews(S))
+                ),
+              S.divider(),
+              S.listItem()
+                .id('orders-invoices')
+                .title('Invoices')
+                .child(
+                  S.documentTypeList('invoice')
+                    .title('Invoices')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "invoice"')
+                    .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}])
                 ),
             ])
         ),
@@ -415,7 +426,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .title('Invoices')
                     .apiVersion('2024-10-01')
                     .filter('_type == "invoice"')
-                    .defaultOrdering([{field: 'issueDate', direction: 'desc'}])
+                    .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}])
                 ),
               S.documentTypeListItem('bill')
                 .title('Bills')

@@ -1,7 +1,23 @@
-import { defineType, defineField, set, useClient, useFormValue } from 'sanity'
-import { createClient } from '@sanity/client'
-import React, {useEffect, useMemo, useState} from 'react'
-import {TextInput} from '@sanity/ui'
+import {defineType, defineField, defineArrayMember, set, useClient, useFormValue} from 'sanity'
+import {createClient} from '@sanity/client'
+import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import {DownloadIcon, EllipsisVerticalIcon, EnvelopeIcon, SearchIcon} from '@sanity/icons'
+import {
+  Autocomplete,
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Heading,
+  Menu,
+  MenuButton,
+  MenuItem,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from '@sanity/ui'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 
 import './invoiceStyles.css'
@@ -36,6 +52,75 @@ function getFnBase(): string {
   return 'https://fassanity.fasmotorsports.com'
 }
 
+const DEFAULT_INVOICE_PREFIX = (() => {
+  const raw =
+    typeof process !== 'undefined'
+      ? process.env?.SANITY_STUDIO_INVOICE_PREFIX || process.env?.INVOICE_PREFIX
+      : undefined
+  const cleaned = (raw || 'INV').toString().replace(/[^a-z0-9]/gi, '').toUpperCase()
+  return cleaned || 'INV'
+})()
+
+const LEGACY_PREFIXES = ['FAS']
+const INVOICE_PREFIXES = Array.from(new Set([DEFAULT_INVOICE_PREFIX, ...LEGACY_PREFIXES]))
+
+const formatCurrencyDisplay = (value?: number, currency: string = 'USD') => {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '—'
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+    }).format(value)
+  } catch {
+    return `$${value.toFixed(2)}`
+  }
+}
+
+async function postJson(url: string, body: any) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(typeof data === 'string' ? data : JSON.stringify(data))
+  }
+  return data
+}
+
+async function readPdfBlob(response: Response) {
+  const contentType = (response.headers.get('content-type') || '').toLowerCase()
+  if (contentType.includes('application/pdf')) {
+    try {
+      const buffer = await response.arrayBuffer()
+      return new Blob([buffer], {type: 'application/pdf'})
+    } catch {
+      // Fallback to base64 decoding below
+    }
+  }
+
+  const base64String = (await response.text()).trim()
+  if (base64String.startsWith('{')) {
+    throw new Error(base64String)
+  }
+  const clean = base64String.replace(/^"|"$/g, '')
+  const buffer = decodeBase64ToArrayBuffer(clean)
+  return new Blob([buffer], {type: 'application/pdf'})
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
 function InvoiceNumberInput(props: any) {
   const { value, onChange, readOnly: readOnlyProp, elementProps = {} } = props
@@ -67,7 +152,7 @@ function InvoiceNumberInput(props: any) {
     if (value || locked) return
 
     const rand = Math.floor(Math.random() * 1_000_000)
-    const generated = `FAS-${rand.toString().padStart(6, '0')}`
+    const generated = `${DEFAULT_INVOICE_PREFIX}-${rand.toString().padStart(6, '0')}`
     onChange(set(generated))
   }, [client, documentId, locked, onChange, orderNumber, value])
 
@@ -86,6 +171,14 @@ function InvoiceNumberInput(props: any) {
   )
 }
 
+type CustomerSearchOption = {
+  value: string
+  label: string
+  subtitle?: string
+  address?: string
+  payload: any
+}
+
 // ---- Collapsible object input (Bill To) with customer search and linking
 function BillToInput(props: any) {
   const {renderDefault, value, onChange} = props
@@ -96,12 +189,6 @@ function BillToInput(props: any) {
   const [loading, setLoading] = useState(false)
   const documentId = (useFormValue(['_id']) as string) || ''
   const currentShip = (useFormValue(['shipTo']) as any) || {}
-
-  function chooseFirst() {
-    if (results.length > 0) {
-      applyCustomer(results[0])
-    }
-  }
 
   useEffect(() => {
     const term = query.trim()
@@ -118,7 +205,7 @@ function BillToInput(props: any) {
             _id, name, email, phone,
             address_line1, address_line2, city_locality, state_province, postal_code, country_code
           }`,
-          {m: `${term}*`}
+          {m: `${term}*`},
         )
         setResults(Array.isArray(matches) ? matches : [])
       } catch {
@@ -141,7 +228,7 @@ function BillToInput(props: any) {
       city_locality: (customer?.city_locality || '').trim(),
       state_province: (customer?.state_province || '').trim(),
       postal_code: (customer?.postal_code || '').trim(),
-      country_code: (customer?.country_code || '').trim()
+      country_code: (customer?.country_code || '').trim(),
     }
 
     onChange(set(patch))
@@ -150,113 +237,147 @@ function BillToInput(props: any) {
       const emptyShip =
         !currentShip?.name && !currentShip?.address_line1 && !currentShip?.postal_code
       const operations: Record<string, any> = {
-        customerRef: {_type: 'reference', _ref: customer._id}
+        customerRef: {_type: 'reference', _ref: customer._id},
       }
       if (emptyShip) {
         operations.shipTo = patch
       }
-      client.patch(documentId).set(operations).commit({autoGenerateArrayKeys: true}).catch(() => undefined)
+      client
+        .patch(documentId)
+        .set(operations)
+        .commit({autoGenerateArrayKeys: true})
+        .catch(() => undefined)
     }
   }
+
+  const customerOptions = useMemo<CustomerSearchOption[]>(() => {
+    return results.map((customer: any, index: number) => {
+      const addressParts = [
+        [customer.address_line1, customer.address_line2].filter(Boolean).join(', '),
+        [customer.city_locality, customer.state_province].filter(Boolean).join(', '),
+        [customer.postal_code, customer.country_code].filter(Boolean).join(' '),
+      ]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' • ')
+
+      return {
+        value: customer._id || customer.email || `customer-${index}`,
+        label: customer.name || customer.email || 'Unnamed customer',
+        subtitle: [customer.email, customer.phone].filter(Boolean).join(' • ') || undefined,
+        address: addressParts || undefined,
+        payload: customer,
+      }
+    })
+  }, [results])
 
   async function createFromBillTo() {
-    const payload = {
-      _type: 'customer',
-      name: value?.name || '',
-      email: value?.email || '',
-      phone: value?.phone || '',
-      address_line1: value?.address_line1 || '',
-      address_line2: value?.address_line2 || '',
-      city_locality: value?.city_locality || '',
-      state_province: value?.state_province || '',
-      postal_code: value?.postal_code || '',
-      country_code: value?.country_code || ''
+    try {
+      const payload = {
+        _type: 'customer',
+        name: value?.name || '',
+        email: value?.email || '',
+        phone: value?.phone || '',
+        address_line1: value?.address_line1 || '',
+        address_line2: value?.address_line2 || '',
+        city_locality: value?.city_locality || '',
+        state_province: value?.state_province || '',
+        postal_code: value?.postal_code || '',
+        country_code: value?.country_code || '',
+      }
+      const created = await client.create(payload)
+      applyCustomer(created)
+    } catch (err) {
+      console.warn('BillToInput: failed to create customer', err)
     }
-    const created = await client.create(payload)
-    applyCustomer(created)
   }
 
+  const noMatches = query.trim().length >= 2 && !loading && customerOptions.length === 0
+
   return (
-    <div className="invoice-section-card invoice-section-card--contact">
-      <div className="invoice-section-card__header">
-        <span className="invoice-section-card__title">Bill To (link to Customer)</span>
-        <button
-          type="button"
-          className="invoice-section-card__toggle"
-          onClick={() => setOpen((prev) => !prev)}
-        >
-          {open ? 'Hide' : 'Show'}
-        </button>
-      </div>
-      {open && (
-        <div className="invoice-section-card__body">
-          <div className="invoice-customer-search">
-            <input
-              className="invoice-customer-search__input"
-              placeholder="Search customers by name, email, or phone…"
-              value={query}
-              onChange={(event) => setQuery(event.currentTarget.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  chooseFirst()
+    <Card padding={4} radius={3} shadow={1} tone="default" border>
+      <Stack space={4}>
+        <Flex align="center" justify="space-between">
+          <Stack space={2}>
+            <Text size={2} weight="semibold">
+              Bill To
+            </Text>
+            <Text muted size={1}>
+              Link an existing customer or capture billing details manually.
+            </Text>
+          </Stack>
+          <Button
+            mode="bleed"
+            text={open ? 'Hide' : 'Show'}
+            onClick={() => setOpen((prev) => !prev)}
+          />
+        </Flex>
+        {open && (
+          <Stack space={4}>
+            <Flex gap={3} wrap="wrap" align="flex-start">
+              <Box style={{flex: 1, minWidth: 280}}>
+                <Autocomplete<CustomerSearchOption>
+                  id="invoice-bill-to-search"
+                  openButton
+                  icon={SearchIcon}
+                  loading={loading}
+                  options={customerOptions}
+                  onQueryChange={(next) => setQuery(next || '')}
+                  placeholder="Search customers by name, email, or phone…"
+                  renderOption={(option) => (
+                    <Box padding={3}>
+                      <Stack space={2}>
+                        <Text weight="semibold">{option.label}</Text>
+                        {option.subtitle && (
+                          <Text muted size={1}>
+                            {option.subtitle}
+                          </Text>
+                        )}
+                        {option.address && (
+                          <Text muted size={1}>
+                            {option.address}
+                          </Text>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+                  renderValue={(value, option) => option?.label || value}
+                  onSelect={(selectedValue) => {
+                    const match = customerOptions.find((opt) => opt.value === selectedValue)
+                    if (match?.payload) {
+                      applyCustomer(match.payload)
+                    }
+                  }}
+                />
+                {noMatches && (
+                  <Box marginTop={3}>
+                    <Text muted size={1}>
+                      No matches — fill the form below and click “Create Customer from Bill To”.
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+              <Button
+                text="Create Customer from Bill To"
+                tone="primary"
+                onClick={createFromBillTo}
+                disabled={
+                  !value ||
+                  (!value.name &&
+                    !value.email &&
+                    !value.phone &&
+                    !value.address_line1 &&
+                    !value.postal_code)
                 }
-                if (event.key === 'ArrowDown' && results.length > 0) {
-                  event.preventDefault()
-                  chooseFirst()
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="invoice-customer-search__button"
-              onClick={createFromBillTo}
-            >
-              Create Customer from Bill To
-            </button>
-          </div>
-          {results.length > 0 ? (
-            <div className="invoice-customer-search__results">
-              {results.map((customer: any) => (
-                <button
-                  key={customer._id}
-                  type="button"
-                  className="invoice-customer-search__result"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCustomer(customer)}
-                >
-                  <span className="invoice-customer-search__result-title">
-                    {customer.name || '(No name)'}
-                  </span>
-                  <span className="invoice-customer-search__result-meta">
-                    {[customer.email || '—', customer.phone ? `• ${customer.phone}` : '']
-                      .filter(Boolean)
-                      .join(' ')}
-                  </span>
-                  <span className="invoice-customer-search__result-meta">
-                    {`${customer.address_line1 || ''}${
-                      customer.address_line2 ? `, ${customer.address_line2}` : ''
-                    }`}
-                  </span>
-                  <span className="invoice-customer-search__result-meta">
-                    {`${customer.city_locality || ''}${
-                      customer.state_province ? `, ${customer.state_province}` : ''
-                    } ${customer.postal_code || ''} ${customer.country_code || ''}`.trim()}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : query && !loading ? (
-            <p className="invoice-customer-search__empty">
-              No matches — fill the form below and click “Create Customer from Bill To”.
-            </p>
-          ) : null}
-          <div className="invoice-section-card__fields">
-            {renderDefault ? renderDefault(props) : null}
-          </div>
-        </div>
-      )}
-    </div>
+              />
+            </Flex>
+            <Card padding={3} radius={2} tone="default" border>
+              {renderDefault ? renderDefault(props) : null}
+            </Card>
+          </Stack>
+        )}
+      </Stack>
+    </Card>
   )
 }
 
@@ -271,28 +392,249 @@ function ShipToInput(props: any) {
   }
 
   return (
-    <div className="invoice-section-card invoice-section-card--shipping">
-      <div className="invoice-section-card__header">
-        <span className="invoice-section-card__title">Ship To</span>
-        <div className="invoice-section-card__actions">
-          <button type="button" className="invoice-pill-button" onClick={copyFromBillTo}>
-            Use Bill To
-          </button>
-          <button
-            type="button"
-            className="invoice-section-card__toggle"
-            onClick={() => setOpen((prev) => !prev)}
-          >
-            {open ? 'Hide' : 'Show'}
-          </button>
-        </div>
-      </div>
-      {open && (
-        <div className="invoice-section-card__body invoice-section-card__body--compact">
-          {renderDefault ? renderDefault(props) : null}
-        </div>
-      )}
-    </div>
+    <Card padding={4} radius={3} shadow={1} tone="default" border>
+      <Stack space={4}>
+        <Flex align="center" justify="space-between" gap={3}>
+          <Text size={2} weight="semibold">
+            Ship To
+          </Text>
+          <Flex gap={2}>
+            <Button
+              mode="ghost"
+              tone="primary"
+              text="Use Bill To"
+              onClick={copyFromBillTo}
+              disabled={!billTo}
+            />
+            <Button
+              mode="bleed"
+              text={open ? 'Hide' : 'Show'}
+              onClick={() => setOpen((prev) => !prev)}
+            />
+          </Flex>
+        </Flex>
+        {open && (
+          <Card padding={3} radius={2} tone="default" border>
+            {renderDefault ? renderDefault(props) : null}
+          </Card>
+        )}
+      </Stack>
+    </Card>
+  )
+}
+
+const INVOICE_STATUS_META: Record<string, {label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}> = {
+  pending: {label: 'Pending', tone: 'caution'},
+  paid: {label: 'Paid', tone: 'positive'},
+  refunded: {label: 'Refunded', tone: 'caution'},
+  cancelled: {label: 'Cancelled', tone: 'critical'},
+  overdue: {label: 'Overdue', tone: 'critical'},
+  expired: {label: 'Expired', tone: 'default'},
+}
+
+type InvoiceActionSet = {
+  sendInvoiceEmail: () => Promise<void>
+  sendingInvoiceEmail: boolean
+  downloadInvoicePdf: () => Promise<void>
+  downloadingInvoicePdf: boolean
+  createShippingLabel: () => Promise<void>
+  creatingShippingLabel: boolean
+  sendPaymentLink: () => Promise<void>
+  sendingPaymentLink: boolean
+}
+
+function useInvoiceActions(): InvoiceActionSet {
+  const invoiceId = (useFormValue(['_id']) as string) || ''
+  const invoiceNumber = (useFormValue(['invoiceNumber']) as string) || ''
+  const documentValue = useFormValue([]) as any
+  const base = getFnBase()
+  const payload = useMemo(() => ({invoiceId, invoiceNumber, invoice: documentValue}), [invoiceId, invoiceNumber, documentValue])
+
+  const [sendingInvoiceEmail, setSendingInvoiceEmail] = useState(false)
+  const [downloadingInvoicePdf, setDownloadingInvoicePdf] = useState(false)
+  const [creatingShippingLabel, setCreatingShippingLabel] = useState(false)
+  const [sendingPaymentLink, setSendingPaymentLink] = useState(false)
+
+  const sendInvoiceEmail = useCallback(async () => {
+    if (sendingInvoiceEmail) return
+    setSendingInvoiceEmail(true)
+    try {
+      let checkoutUrl = ''
+      try {
+        const checkout = await postJson(`${base}/.netlify/functions/createCheckout`, payload)
+        checkoutUrl = checkout?.url || ''
+      } catch {
+        // Optional: checkout link creation may fail independently
+      }
+
+      await postJson(`${base}/.netlify/functions/resendInvoiceEmail`, {
+        ...payload,
+        paymentLinkUrl: checkoutUrl,
+      })
+      alert('Invoice email queued')
+    } catch (error: any) {
+      alert(`Email failed: ${error?.message || error}`)
+    } finally {
+      setSendingInvoiceEmail(false)
+    }
+  }, [base, payload, sendingInvoiceEmail])
+
+  const downloadInvoicePdf = useCallback(async () => {
+    if (downloadingInvoicePdf) return
+    setDownloadingInvoicePdf(true)
+    try {
+      const response = await fetch(`${base}/.netlify/functions/generateInvoicePDF`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      })
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+      const blob = await readPdfBlob(response)
+      downloadBlob(blob, `invoice-${invoiceNumber || invoiceId}.pdf`)
+    } catch (error: any) {
+      alert(`PDF failed: ${error?.message || error}`)
+    } finally {
+      setDownloadingInvoicePdf(false)
+    }
+  }, [base, payload, downloadingInvoicePdf, invoiceId, invoiceNumber])
+
+  const createShippingLabel = useCallback(async () => {
+    if (creatingShippingLabel) return
+    setCreatingShippingLabel(true)
+    try {
+      const serviceCode =
+        typeof window !== 'undefined'
+          ? (window.prompt('Enter ShipEngine service_code (e.g., usps_ground):', 'usps_ground') || '').trim()
+          : ''
+      if (!serviceCode) return
+
+      const weightValue =
+        typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1'
+      const dimensionValue =
+        typeof window !== 'undefined' ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim() : '10x8x4'
+
+      const dimensionMatch = dimensionValue.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
+      if (!dimensionMatch) throw new Error('Invalid dimensions')
+      const length = Number(dimensionMatch[1])
+      const width = Number(dimensionMatch[2])
+      const height = Number(dimensionMatch[3])
+      const weight = Number(weightValue)
+      if (!Number.isFinite(weight) || weight <= 0) throw new Error('Invalid weight')
+
+      const response = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          invoiceId,
+          service_code: serviceCode,
+          package_details: {
+            weight: {value: weight, unit: 'pound'},
+            dimensions: {unit: 'inch', length, width, height},
+          },
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || data?.error) {
+        throw new Error(data?.error || `HTTP ${response.status}`)
+      }
+      if (data?.labelUrl) {
+        try {
+          window.open(data.labelUrl, '_blank')
+        } catch {
+          window.location.href = data.labelUrl
+        }
+        alert(`Label created. Tracking: ${data?.trackingNumber || 'n/a'}`)
+      } else {
+        alert('Label created, but no download URL returned.')
+      }
+    } catch (error: any) {
+      if (error?.message) alert(`Create label failed: ${error.message}`)
+    } finally {
+      setCreatingShippingLabel(false)
+    }
+  }, [base, creatingShippingLabel, invoiceId])
+
+  const sendPaymentLink = useCallback(async () => {
+    if (sendingPaymentLink) return
+    setSendingPaymentLink(true)
+    try {
+      const checkout = await postJson(`${base}/.netlify/functions/createCheckout`, payload)
+      if (checkout?.url) {
+        window.open(checkout.url, '_blank')
+      } else {
+        alert('No payment link returned')
+      }
+    } catch (error: any) {
+      alert(`Payment link failed: ${error?.message || error}`)
+    } finally {
+      setSendingPaymentLink(false)
+    }
+  }, [base, payload, sendingPaymentLink])
+
+  return {
+    sendInvoiceEmail,
+    sendingInvoiceEmail,
+    downloadInvoicePdf,
+    downloadingInvoicePdf,
+    createShippingLabel,
+    creatingShippingLabel,
+    sendPaymentLink,
+    sendingPaymentLink,
+  }
+}
+
+function InvoiceHeaderBar() {
+  const invoice = (useFormValue([]) as any) || {}
+  const customerName =
+    invoice?.billTo?.name || invoice?.customerName || invoice?.customerEmail || 'Invoice'
+  const invoiceNumber = invoice?.invoiceNumber || 'Draft'
+  const status = invoice?.status || 'pending'
+  const total = invoice?.total ?? invoice?.subtotal
+  const currency = invoice?.currency || 'USD'
+  const statusMeta = INVOICE_STATUS_META[status] || {label: status, tone: 'default' as const}
+
+  const {createShippingLabel, creatingShippingLabel, sendPaymentLink, sendingPaymentLink} =
+    useInvoiceActions()
+
+  return (
+    <Card padding={4} radius={4} shadow={1} tone="default">
+      <Flex align={["flex-start", "center"]} justify="space-between" wrap="wrap" gap={3}>
+        <Stack space={2} style={{minWidth: 0}}>
+          <Heading size={3}>{customerName}</Heading>
+          <Text muted size={1} style={{wordBreak: 'break-word'}}>
+            Invoice {invoiceNumber}
+          </Text>
+          <Flex gap={2} wrap="wrap">
+            <Badge tone={statusMeta.tone} mode="outline" fontSize={0} style={{textTransform: 'uppercase'}}>
+              {statusMeta.label}
+            </Badge>
+            <Badge tone="default" mode="outline" fontSize={0}>
+              {formatCurrencyDisplay(total, currency)}
+            </Badge>
+          </Flex>
+        </Stack>
+        <MenuButton
+          id="invoice-actions-menu"
+          button={<Button text="Quick actions" icon={EllipsisVerticalIcon} mode="ghost" tone="primary" />}
+          menu={
+            <Menu>
+              <MenuItem
+                text={creatingShippingLabel ? 'Creating shipping label…' : 'Create shipping label'}
+                onClick={createShippingLabel}
+                disabled={creatingShippingLabel}
+              />
+              <MenuItem
+                text={sendingPaymentLink ? 'Sending payment link…' : 'Send payment link'}
+                onClick={sendPaymentLink}
+                disabled={sendingPaymentLink}
+              />
+            </Menu>
+          }
+        />
+      </Flex>
+    </Card>
   )
 }
 
@@ -359,221 +701,45 @@ function TotalsPanel() {
   )
 }
 
-// ---- Actions (Email / PDF / Stripe in-person)
+// ---- Actions (doc footer)
 function InvoiceActions() {
-  const invoiceId = useFormValue(['_id']) as string
-  const invoiceNumber = useFormValue(['invoiceNumber']) as string
-  const documentValue = useFormValue([]) as any
-  const base = getFnBase()
-
-  async function postJson(url: string, body: any) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) {
-      throw new Error(typeof data === 'string' ? data : JSON.stringify(data))
-    }
-    return data
-  }
-
-  const payload = useMemo(
-    () => ({invoiceId, invoiceNumber, invoice: documentValue}),
-    [invoiceId, invoiceNumber, documentValue]
-  )
-
-  async function readPdfBlob(response: Response) {
-    const contentType = (response.headers.get('content-type') || '').toLowerCase()
-    if (contentType.includes('application/pdf')) {
-      try {
-        const buffer = await response.arrayBuffer()
-        return new Blob([buffer], {type: 'application/pdf'})
-      } catch {
-        // Fallback to text handling below
-      }
-    }
-
-    const base64String = (await response.text()).trim()
-    if (base64String.startsWith('{')) {
-      throw new Error(base64String)
-    }
-    const clean = base64String.replace(/^"|"$/g, '')
-    const buffer = decodeBase64ToArrayBuffer(clean)
-    return new Blob([buffer], {type: 'application/pdf'})
-  }
-
-  function downloadBlob(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = filename
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
-  }
+  const {sendInvoiceEmail, sendingInvoiceEmail, downloadInvoicePdf, downloadingInvoicePdf} =
+    useInvoiceActions()
 
   return (
-    <div className="invoice-actions">
-      <button
-        type="button"
-        className="invoice-actions__button invoice-actions__button--primary"
-        onClick={async () => {
-          try {
-            let checkoutUrl = ''
-            try {
-              const checkout = await postJson(`${base}/.netlify/functions/createCheckout`, payload)
-              checkoutUrl = checkout?.url || ''
-            } catch {
-              // ignore; email can still proceed
-            }
-
-            await postJson(`${base}/.netlify/functions/resendInvoiceEmail`, {
-              ...payload,
-              paymentLinkUrl: checkoutUrl
-            })
-            alert('Invoice email queued')
-          } catch (error: any) {
-            alert(`Email failed: ${error?.message || error}`)
-          }
-        }}
+    <Flex gap={3} wrap="wrap">
+      <Tooltip
+        content={
+          <Card padding={2} radius={2} tone="default">
+            <Text size={1}>Email PDF to customer</Text>
+          </Card>
+        }
       >
-        Email Invoice
-      </button>
-
-      <button
-        type="button"
-        className="invoice-actions__button"
-        onClick={async () => {
-          try {
-            const response = await fetch(`${base}/.netlify/functions/generateInvoicePDF`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify(payload)
-            })
-            if (!response.ok) {
-              throw new Error(await response.text())
-            }
-            const blob = await readPdfBlob(response)
-            downloadBlob(blob, `invoice-${invoiceNumber || invoiceId}.pdf`)
-          } catch (error: any) {
-            alert(`PDF failed: ${error?.message || error}`)
-          }
-        }}
+        <Button
+          text={sendingInvoiceEmail ? 'Sending…' : 'Email invoice'}
+          tone="primary"
+          icon={EnvelopeIcon}
+          onClick={sendInvoiceEmail}
+          disabled={sendingInvoiceEmail}
+        />
+      </Tooltip>
+      <Tooltip
+        content={
+          <Card padding={2} radius={2} tone="default">
+            <Text size={1}>Download / print invoice PDF</Text>
+          </Card>
+        }
       >
-        Download PDF
-      </button>
-
-      <button
-        type="button"
-        className="invoice-actions__button"
-        onClick={async () => {
-          try {
-            const response = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({invoiceId: (invoiceId || '').replace(/^drafts\./, '')})
-            })
-            if (!response.ok) {
-              throw new Error(await response.text())
-            }
-            const blob = await readPdfBlob(response)
-            downloadBlob(blob, `packing-slip-${invoiceNumber || invoiceId}.pdf`)
-          } catch (error: any) {
-            alert(`Packing slip failed: ${error?.message || error}`)
-          }
-        }}
-      >
-        Generate Packing Slip
-      </button>
-
-      <button
-        type="button"
-        className="invoice-actions__button"
-        onClick={async () => {
-          try {
-            const serviceCode =
-              typeof window !== 'undefined'
-                ? (window.prompt(
-                    'Enter ShipEngine service_code (e.g., usps_priority_mail):',
-                    'usps_priority_mail'
-                  ) || '').trim()
-                : ''
-            if (!serviceCode) return
-
-            const weightValue =
-              typeof window !== 'undefined'
-                ? (window.prompt('Weight (lb):', '1') || '').trim()
-                : '1'
-            const dimensionValue =
-              typeof window !== 'undefined'
-                ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim()
-                : '10x8x4'
-
-            const dimensionMatch = dimensionValue.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
-            if (!dimensionMatch) throw new Error('Invalid dimensions')
-            const length = Number(dimensionMatch[1])
-            const width = Number(dimensionMatch[2])
-            const height = Number(dimensionMatch[3])
-            const weight = Number(weightValue)
-            if (!Number.isFinite(weight) || weight <= 0) throw new Error('Invalid weight')
-
-            const response = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                invoiceId,
-                service_code: serviceCode,
-                package_details: {
-                  weight: {value: weight, unit: 'pound'},
-                  dimensions: {unit: 'inch', length, width, height}
-                }
-              })
-            })
-            const data = await response.json().catch(() => ({}))
-            if (!response.ok || data?.error) {
-              throw new Error(data?.error || `HTTP ${response.status}`)
-            }
-            const labelUrl = data?.labelUrl
-            if (labelUrl) {
-              try {
-                window.open(labelUrl, '_blank')
-              } catch {
-                // ignore opener issues
-              }
-              alert(`Label created. Tracking: ${data?.trackingNumber || 'n/a'}`)
-            } else {
-              alert('Label created, but URL missing. Check Shipping Label doc or Order shipping log.')
-            }
-          } catch (error: any) {
-            alert(`Create label failed: ${error?.message || error}`)
-          }
-        }}
-      >
-        Create Shipping Label
-      </button>
-
-      <button
-        type="button"
-        className="invoice-actions__button"
-        onClick={async () => {
-          try {
-            const checkout = await postJson(`${base}/.netlify/functions/createCheckout`, payload)
-            if (checkout?.url) {
-              window.open(checkout.url, '_blank')
-            } else {
-              alert('No checkout URL returned')
-            }
-          } catch (error: any) {
-            alert(`Checkout failed: ${error?.message || error}`)
-          }
-        }}
-      >
-        Stripe In‑Person
-      </button>
-    </div>
+        <Button
+          text={downloadingInvoicePdf ? 'Preparing…' : 'Download / Print'}
+          tone="primary"
+          mode="ghost"
+          icon={DownloadIcon}
+          onClick={downloadInvoicePdf}
+          disabled={downloadingInvoicePdf}
+        />
+      </Tooltip>
+    </Flex>
   )
 }
 
@@ -585,11 +751,18 @@ export default defineType({
     defineField({ name: 'title', title: 'Title', type: 'string' }),
 
     defineField({
+      name: 'invoiceHeader',
+      title: 'Header',
+      type: 'string',
+      components: {input: InvoiceHeaderBar},
+      readOnly: true,
+    }),
+
+    defineField({
       name: 'invoiceNumber',
       title: 'Invoice Number',
       type: 'string',
-      description:
-        'Auto-fills. If linked to a website order, this matches the order number; otherwise a FAS-###### number is generated while Pending. Must be unique.',
+      description: `Auto-fills. If linked to a website order, this matches the order number; otherwise a ${DEFAULT_INVOICE_PREFIX}-###### number is generated while Pending. Must be unique.`,
       components: { input: InvoiceNumberInput },
       readOnly: ({ document }: any): boolean =>
         !!document?.orderNumber || (document?.status ? document.status !== 'pending' : false),
@@ -597,8 +770,10 @@ export default defineType({
         Rule.required()
           .custom((value) => {
             if (!value) return 'Invoice number is required'
-            const re = /^FAS-\d{6}$/
-            if (!re.test(value)) return 'Use format FAS-000123 (6 digits)'
+            const pattern = new RegExp(`^(${INVOICE_PREFIXES.join('|')})-\\d{6}$`)
+            if (!pattern.test(value.toUpperCase())) {
+              return `Use format ${DEFAULT_INVOICE_PREFIX}-000123 (6 digits)`
+            }
             return true
           })
           .custom(async (value, context) => {
@@ -695,6 +870,30 @@ export default defineType({
       type: 'array',
       of: [{ type: 'shippingLogEntry' }],
       description: 'System-recorded shipping events (labels, updates, notifications).',
+    }),
+
+    defineField({
+      name: 'attachments',
+      title: 'Attachments',
+      description: 'Upload supporting PDFs or images (estimates, signed work orders, etc.).',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'file',
+          name: 'attachmentFile',
+          title: 'File',
+          options: {storeOriginalFilename: true, accept: 'application/pdf,image/*'},
+          fields: [defineField({name: 'label', title: 'Label', type: 'string'})],
+        }),
+        defineArrayMember({
+          type: 'image',
+          name: 'attachmentImage',
+          title: 'Image',
+          options: {storeOriginalFilename: true},
+          fields: [defineField({name: 'label', title: 'Label', type: 'string'})],
+        }),
+      ],
+      options: {layout: 'grid'},
     }),
 
     // Line Items with product link or custom rows

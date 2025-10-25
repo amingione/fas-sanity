@@ -10,7 +10,6 @@ import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
-import {shouldAutoCreateInvoice} from '../lib/stripeInvoice'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -1272,8 +1271,8 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
     rawPaymentStatus && !['succeeded', 'processing', 'requires_capture'].includes(rawPaymentStatus)
       ? 'failed'
       : rawPaymentStatus || 'failed'
-  const derivedOrderStatus: 'pending' | 'cancelled' =
-    rawPaymentStatus === 'succeeded' ? 'pending' : 'cancelled'
+  const derivedOrderStatus: 'paid' | 'cancelled' =
+    rawPaymentStatus === 'succeeded' ? 'paid' : 'cancelled'
   const timestamp = new Date().toISOString()
   const summary = buildStripeSummary({
     paymentIntent: pi,
@@ -1360,7 +1359,7 @@ async function fetchPaymentIntentResource(
 
 type OrderPaymentStatusInput = {
   paymentStatus: string
-  orderStatus?: 'pending' | 'paid' | 'fulfilled' | 'cancelled'
+  orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
   invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
   invoiceStripeStatus?: string
   paymentIntentId?: string
@@ -2000,7 +1999,6 @@ export const handler: Handler = async (event) => {
         const totalAmount = (Number(session.amount_total || 0) || 0) / 100
         const stripeSessionId = session.id
         const metadata = (session.metadata || {}) as Record<string, string>
-        const autoCreateInvoice = shouldAutoCreateInvoice(metadata)
         const userIdMeta =
           (
             metadata['auth0_user_id'] ||
@@ -2039,12 +2037,10 @@ export const handler: Handler = async (event) => {
         } else if (!paymentStatus) {
           paymentStatus = 'pending'
         }
-        let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' =
-          'pending'
-        if (paymentStatus === 'paid') derivedOrderStatus = 'paid'
-        else if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
+        let derivedOrderStatus: 'paid' | 'cancelled' | 'closed'
+        if (sessionStatus === 'expired') derivedOrderStatus = 'closed'
         else if (paymentStatus === 'cancelled') derivedOrderStatus = 'cancelled'
-        else derivedOrderStatus = 'pending'
+        else derivedOrderStatus = 'paid'
         const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
           ? Number((session as any)?.amount_subtotal) / 100
           : undefined
@@ -2251,13 +2247,7 @@ export const handler: Handler = async (event) => {
           return new Date().toISOString()
         })()
         const invoiceDateValue = dateStringFrom(timestampForInvoice)
-        const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
-        const baseInvoiceTitle =
-          pickString(customerName, billToForInvoice?.name, shipToForInvoice?.name, email) ||
-          'Invoice'
-        const defaultInvoiceTitle = invoiceNumberToSet
-          ? `${baseInvoiceTitle} • ${invoiceNumberToSet}`
-          : baseInvoiceTitle
+
 
         // 3) Upsert an Order doc for visibility/fulfillment
         try {
@@ -2354,91 +2344,7 @@ export const handler: Handler = async (event) => {
           const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
           if (orderSlug) baseDoc.slug = {_type: 'slug', current: orderSlug}
 
-          if (invoiceId) {
-            baseDoc.invoiceRef = {_type: 'reference', _ref: invoiceId}
-          }
 
-          if (invoiceId) {
-            const ids = idVariants(invoiceId)
-            const titleValue = defaultInvoiceTitle
-
-            for (const id of ids) {
-              try {
-                const patchData: Record<string, any> = {
-                  status: 'paid',
-                  stripeLastSyncedAt: new Date().toISOString(),
-                }
-                if (orderNumber) patchData.orderNumber = orderNumber
-                if (invoiceNumberToSet) patchData.invoiceNumber = invoiceNumberToSet
-                if (titleValue) patchData.title = titleValue
-                const subtotalValue = Number(amountSubtotal)
-                if (Number.isFinite(subtotalValue)) {
-                  patchData.subtotal = subtotalValue
-                  patchData.amountSubtotal = subtotalValue
-                }
-                const totalValue = Number(totalAmount)
-                if (Number.isFinite(totalValue)) patchData.total = totalValue
-                const taxValue = Number(amountTax)
-                if (Number.isFinite(taxValue)) patchData.amountTax = taxValue
-                if (currency) patchData.currency = currency.toUpperCase()
-                if (email) patchData.customerEmail = email
-                if (invoiceLineItems.length) patchData.lineItems = invoiceLineItems
-                if (billToForInvoice) patchData.billTo = billToForInvoice
-                if (shipToForInvoice) patchData.shipTo = shipToForInvoice
-                if (invoiceDateValue) {
-                  patchData.invoiceDate = invoiceDateValue
-                  patchData.dueDate = invoiceDateValue
-                }
-                const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
-                const shippingCurrencyForInvoice =
-                  shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
-                if (shippingAmountForInvoice !== undefined) {
-                  patchData.amountShipping = shippingAmountForInvoice
-                }
-                if (shippingDetails.carrier) {
-                  patchData.shippingCarrier = shippingDetails.carrier
-                }
-                const invoiceSelectedService =
-                  shippingDetails.serviceName ||
-                  shippingDetails.serviceCode ||
-                  shippingAmountForInvoice !== undefined
-                    ? {
-                        carrierId: shippingDetails.carrierId || undefined,
-                        carrier: shippingDetails.carrier || undefined,
-                        service:
-                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                        serviceCode:
-                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-                        amount: shippingAmountForInvoice,
-                        currency: shippingCurrencyForInvoice || 'USD',
-                        deliveryDays: shippingDetails.deliveryDays,
-                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-                      }
-                    : undefined
-                if (invoiceSelectedService) {
-                  patchData.selectedService = invoiceSelectedService
-                }
-                if (shippingCurrencyForInvoice) {
-                  patchData.selectedShippingCurrency = shippingCurrencyForInvoice
-                }
-                if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-                  patchData.shippingMetadata = shippingDetails.metadata
-                }
-                if (typeof computedTaxRate === 'number') patchData.taxRate = computedTaxRate
-                patchData.stripeSummary = buildStripeSummary({
-                  session,
-                  paymentIntent,
-                  eventType: webhookEvent.type,
-                  eventCreated: webhookEvent.created,
-                })
-                let patch = sanity.patch(id).set(patchData)
-                await patch.commit({autoGenerateArrayKeys: true})
-                break
-              } catch (err) {
-                console.warn('stripeWebhook: failed to update invoice with variant id', err)
-              }
-            }
-          }
 
           // Try to link to an existing customer by email
           if (email) {
@@ -2551,107 +2457,6 @@ export const handler: Handler = async (event) => {
             }
           }
 
-          // If no invoice was linked, create one from the order so Studio has a full record
-          try {
-            if (autoCreateInvoice && !invoiceId && orderId) {
-              let titleName = defaultInvoiceTitle
-              try {
-                const cref = (baseDoc as any)?.customerRef?._ref
-                if (cref) {
-                  const cust = await sanity.fetch(
-                    `*[_type == "customer" && _id == $id][0]{firstName,lastName,email}`,
-                    {id: cref},
-                  )
-                  const full = [cust?.firstName, cust?.lastName].filter(Boolean).join(' ').trim()
-                  if (full)
-                    titleName = invoiceNumberToSet ? `${full} • ${invoiceNumberToSet}` : full
-                  else if (cust?.email)
-                    titleName = invoiceNumberToSet
-                      ? `${cust.email} • ${invoiceNumberToSet}`
-                      : cust.email
-                }
-              } catch {}
-
-              const subtotalValue = Number(amountSubtotal)
-              const totalValue = Number(totalAmount)
-              const taxValue = Number(amountTax)
-
-              const invBase: any = {
-                _type: 'invoice',
-                title: titleName,
-                orderNumber,
-                invoiceNumber: invoiceNumberToSet || orderNumber,
-                customerRef: baseDoc.customerRef || undefined,
-                orderRef: {_type: 'reference', _ref: orderId},
-                billTo: billToForInvoice,
-                shipTo: shipToForInvoice,
-                lineItems: invoiceLineItems,
-                discountType: 'amount',
-                discountValue: 0,
-                taxRate: typeof computedTaxRate === 'number' ? computedTaxRate : 0,
-                subtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
-                total: Number.isFinite(totalValue) ? totalValue : undefined,
-                amountSubtotal: Number.isFinite(subtotalValue) ? subtotalValue : undefined,
-                amountTax: Number.isFinite(taxValue) ? taxValue : undefined,
-                currency: (currency || 'usd').toUpperCase(),
-                customerEmail: email || undefined,
-                userId: userIdMeta || undefined,
-                status: 'paid',
-                invoiceDate: invoiceDateValue,
-                dueDate: invoiceDateValue,
-                stripeSessionId,
-                paymentIntentId: paymentIntent?.id || undefined,
-                stripeLastSyncedAt: new Date().toISOString(),
-              }
-              const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
-              const shippingCurrencyForInvoice =
-                shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
-              if (shippingAmountForInvoice !== undefined) {
-                invBase.amountShipping = shippingAmountForInvoice
-              }
-              if (shippingDetails.carrier) {
-                invBase.shippingCarrier = shippingDetails.carrier
-              }
-              const invoiceSelectedService =
-                shippingDetails.serviceName ||
-                shippingDetails.serviceCode ||
-                shippingAmountForInvoice !== undefined
-                  ? {
-                      carrierId: shippingDetails.carrierId || undefined,
-                      carrier: shippingDetails.carrier || undefined,
-                      service:
-                        shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                      serviceCode:
-                        shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-                      amount: shippingAmountForInvoice,
-                      currency: shippingCurrencyForInvoice || 'USD',
-                      deliveryDays: shippingDetails.deliveryDays,
-                      estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-                    }
-                  : undefined
-              if (invoiceSelectedService) {
-                invBase.selectedService = invoiceSelectedService
-              }
-              if (shippingCurrencyForInvoice) {
-                invBase.selectedShippingCurrency = shippingCurrencyForInvoice
-              }
-              if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-                invBase.shippingMetadata = shippingDetails.metadata
-              }
-              const createdInv = await sanity.create(invBase, {autoGenerateArrayKeys: true})
-              if (createdInv?._id) {
-                try {
-                  await sanity
-                    .patch(orderId)
-                    .set({invoiceRef: {_type: 'reference', _ref: createdInv._id}})
-                    .commit({autoGenerateArrayKeys: true})
-                } catch {}
-              }
-            }
-          } catch (e) {
-            console.warn('stripeWebhook: failed to create invoice from order', e)
-          }
-
           // 4) Auto-fulfillment: call our Netlify function to generate packing slip, label, and email
           try {
             if (orderId) {
@@ -2684,7 +2489,6 @@ export const handler: Handler = async (event) => {
       case 'payment_intent.succeeded': {
         const pi = webhookEvent.data.object as Stripe.PaymentIntent
         const meta = (pi.metadata || {}) as Record<string, string>
-        const autoCreateInvoice = shouldAutoCreateInvoice(meta)
         const userIdMeta =
           (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
             .toString()
@@ -2720,12 +2524,8 @@ export const handler: Handler = async (event) => {
           let paymentStatus = rawPaymentStatus || 'pending'
           if (['succeeded', 'paid'].includes(rawPaymentStatus)) paymentStatus = 'paid'
           else if (['canceled', 'cancelled'].includes(rawPaymentStatus)) paymentStatus = 'cancelled'
-          let derivedOrderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' =
-            paymentStatus === 'paid'
-              ? 'paid'
-              : paymentStatus === 'cancelled'
-                ? 'cancelled'
-                : 'pending'
+          let derivedOrderStatus: 'paid' | 'cancelled' =
+            paymentStatus === 'cancelled' ? 'cancelled' : 'paid'
 
           const metadataOrderNumberRaw = (
             meta['order_number'] ||
@@ -2860,65 +2660,7 @@ export const handler: Handler = async (event) => {
           }
           const intentSlug = createOrderSlug(orderNumber, pi.id)
           if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
-          if (invoiceId) baseDoc.invoiceRef = {_type: 'reference', _ref: invoiceId}
 
-          if (invoiceId) {
-            const invoiceNumberToSet = sanitizeOrderNumber(metadataInvoiceNumber) || orderNumber
-            const ids = idVariants(invoiceId)
-            for (const id of ids) {
-              try {
-                let patch = sanity.patch(id).set({status: 'paid'})
-                if (orderNumber) patch = patch.setIfMissing({orderNumber})
-                if (invoiceNumberToSet)
-                  patch = patch.setIfMissing({invoiceNumber: invoiceNumberToSet})
-                if (customerName) patch = patch.setIfMissing({title: customerName})
-                const shippingAmountForInvoice = shippingDetails.amount ?? amountShipping
-                const shippingSelectedService =
-                  shippingDetails.serviceName ||
-                  shippingDetails.serviceCode ||
-                  shippingAmountForInvoice !== undefined
-                    ? {
-                        carrierId: shippingDetails.carrierId || undefined,
-                        carrier: shippingDetails.carrier || undefined,
-                        service:
-                          shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-                        serviceCode:
-                          shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-                        amount: shippingAmountForInvoice,
-                        currency:
-                          shippingDetails.currency ||
-                          (currency ? currency.toUpperCase() : undefined) ||
-                          'USD',
-                        deliveryDays: shippingDetails.deliveryDays,
-                        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-                      }
-                    : undefined
-                const shippingSet: Record<string, any> = {
-                  stripeLastSyncedAt: new Date().toISOString(),
-                  stripeSummary: buildStripeSummary({
-                    paymentIntent: pi,
-                    eventType: webhookEvent.type,
-                    eventCreated: webhookEvent.created,
-                  }),
-                }
-                if (shippingAmountForInvoice !== undefined) {
-                  shippingSet.amountShipping = shippingAmountForInvoice
-                }
-                if (shippingDetails.carrier) {
-                  shippingSet.shippingCarrier = shippingDetails.carrier
-                }
-                if (shippingSelectedService) {
-                  shippingSet.selectedService = shippingSelectedService
-                }
-                if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-                  shippingSet.shippingMetadata = shippingDetails.metadata
-                }
-                patch = patch.set(shippingSet)
-                await patch.commit({autoGenerateArrayKeys: true})
-                break
-              } catch {}
-            }
-          }
 
           let orderId = existingId
           if (existingId) {
