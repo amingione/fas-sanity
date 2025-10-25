@@ -8,6 +8,7 @@ export default defineStructure<ListItemBuilder>((S) =>
     .schemaType('product')
     .child(
       S.documentTypeList('product')
+        .apiVersion('2024-10-01')
         // .defaultLayout('detail')
         .child(async (id) =>
           S.list()
@@ -29,6 +30,7 @@ export default defineStructure<ListItemBuilder>((S) =>
                 .schemaType('productVariant')
                 .child(
                   S.documentList()
+                    .apiVersion('2024-10-01')
                     .title('Variants')
                     .schemaType('productVariant')
                     .filter(

@@ -7,5 +7,5 @@ export default defineStructure<ListItemBuilder>((S) =>
     .title('Pages')
     .icon(DocumentsIcon)
     .schemaType('page')
-    .child(S.documentTypeList('page'))
+    .child(S.documentTypeList('page').apiVersion('2024-10-01'))
 )
