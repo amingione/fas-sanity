@@ -25,17 +25,7 @@ import {deskStructure} from './src/desk/deskStructure'
 import resolveDocumentActions from './src/resolveDocumentActions'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
-
-let remoteTheme: StudioTheme | undefined
-try {
-  const {theme} = (await import(
-    // @ts-expect-error -- TODO setup themer.d.ts to get correct typings
-    'https://themer.sanity.build/api/hues?default=364d5d;600&primary=5c2c14;600&transparent=374d5c;600&positive=43d675;300&caution=fbd024;200&lightest=fcfdfd&darkest=0d1216'
-  )) as {theme: StudioTheme}
-  remoteTheme = theme
-} catch (err) {
-  console.warn('Failed to load remote Sanity theme; falling back to fasTheme', err)
-}
+import {fasBrandTheme} from './src/theme/fasBrandTheme'
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -78,11 +68,12 @@ const envFlag = (value?: string | null) => {
   return undefined
 }
 
-const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) !== false
+const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) === true
 
-const activeTheme: StudioTheme = useCoreTheme
+const brandTheme: StudioTheme = fasBrandTheme || (fasTheme as StudioTheme)
+const resolvedTheme: StudioTheme = useCoreTheme
   ? (defaultTheme as StudioTheme)
-  : remoteTheme || (fasTheme as StudioTheme)
+  : brandTheme
 
 const normalizeBaseUrl = (value?: string | null, fallback?: string): string | undefined => {
   const candidate = value?.trim() || fallback?.trim()
@@ -247,7 +238,7 @@ export default defineConfig({
   schema: {
     types: schemaTypes,
   },
-  theme: activeTheme,
+  theme: resolvedTheme,
   studio: {
     components: {
       layout: StudioLayout,
