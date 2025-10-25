@@ -64,6 +64,7 @@ export const structure: StructureResolver = (S, context) =>
         .schemaType('shippingLabel')
         .child(
           S.documentTypeList('shippingLabel')
+            .apiVersion('2024-10-01')
             .title('Shipping Labels')
         ),
       S.divider(),
