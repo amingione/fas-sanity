@@ -14,7 +14,11 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('All Invoices')
             .schemaType('order')
-            .child(S.documentTypeList('order').title('All Orders')),
+            .child(
+              S.documentTypeList('order')
+                .apiVersion('2024-10-01')
+                .title('All Orders')
+            ),
 
           S.listItem()
             .title('Unfulfilled Orders')

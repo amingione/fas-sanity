@@ -18,7 +18,11 @@ export const deskStructure: StructureResolver = (S, context) => {
           .id(`mgr-${typeName}`)
           .title(title)
           .icon(icon)
-          .child(S.documentTypeList(typeName).title(title))
+          .child(
+            S.documentTypeList(typeName)
+              .apiVersion('2024-10-01')
+              .title(title)
+          )
       : S.listItem()
           .id(`missing-${typeName}`)
           .title(`Missing: ${typeName} schema`)
@@ -61,6 +65,9 @@ export const deskStructure: StructureResolver = (S, context) => {
         : []),
       ...(context.schema.get('order')
         ? [S.documentTypeListItem('order').title('Orders')]
+        : []),
+      ...(context.schema.get('expiredCart')
+        ? [S.documentTypeListItem('expiredCart').title('Expired Carts')]
         : []),
       ...(context.schema.get('shippingLabel')
         ? [S.documentTypeListItem('shippingLabel').title('Shipping Labels')]

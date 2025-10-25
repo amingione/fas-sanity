@@ -1,8 +1,8 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {Autocomplete, Card, Flex, Spinner, Stack, Text} from '@sanity/ui'
 import {SearchIcon} from '@sanity/icons'
 import type {BaseAutocompleteOption} from '@sanity/ui'
-import {ObjectInputProps, set, useClient} from 'sanity'
+import {ObjectInputProps, set, useClient, useFormValue} from 'sanity'
 
 type AddressValue = Record<string, any> | undefined
 
@@ -227,11 +227,6 @@ function buildOptions(data: AddressQueryResult | null | undefined): AddressOptio
   })
 
   data.orders.forEach((order) => {
-    const title =
-      order.customerName ||
-      order.customerEmail ||
-      (order.orderNumber ? `Order ${order.orderNumber}` : 'Order')
-
     pushOption(
       normalizeAddress(order.shippingAddress, {
         source: 'order',
@@ -305,6 +300,8 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState<string>('')
   const [optionLookup, setOptionLookup] = useState<Map<string, AddressOption>>(new Map())
+  const autoFilledRef = useRef(false)
+  const stripeSummary = useFormValue(['stripeSummary']) as Record<string, any> | null
 
   useEffect(() => {
     if (!mapping) return
@@ -333,6 +330,47 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
     }
   }, [client, mapping])
 
+  useEffect(() => {
+    if (!mapping) return
+    if (autoFilledRef.current) return
+
+    const current = value as Record<string, any> | undefined
+    const hasMeaningfulValue = () => {
+      if (!current) return false
+      const entries = Object.entries(current).filter(([key]) => !key.startsWith('_'))
+      return entries.some(([, v]) => {
+        if (typeof v === 'string') return v.trim().length > 0
+        return Boolean(v)
+      })
+    }
+
+    if (hasMeaningfulValue()) {
+      autoFilledRef.current = true
+      return
+    }
+
+    const summaryAddress = stripeSummary?.shippingAddress || stripeSummary?.billingAddress
+    if (!summaryAddress) return
+
+    const normalized = normalizeAddress(summaryAddress, {
+      label: 'Stripe checkout',
+      source: 'stripe',
+      defaultName:
+        stripeSummary?.customer?.name ||
+        summaryAddress?.name ||
+        summaryAddress?.email ||
+        undefined,
+      email: stripeSummary?.customer?.email || summaryAddress?.email,
+      phone: stripeSummary?.customer?.phone || summaryAddress?.phone,
+    })
+
+    if (!normalized) return
+
+    const nextValue = mapping(normalized, current, schemaType.name)
+    autoFilledRef.current = true
+    onChange(set(nextValue))
+  }, [mapping, onChange, schemaType.name, stripeSummary, value])
+
   const handleSelect = useCallback(
     (selectedValue: string) => {
       if (!mapping || !selectedValue) return
@@ -352,76 +390,83 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   const inputId =
     id || (Array.isArray(path) ? ['address-lookup', ...path].join('-') : 'address-lookup-input')
 
+  const schemaOptions = schemaType.options as Record<string, any> | undefined
+  const lookupSetting = schemaOptions?.showSavedAddressLookup
+  const showLookup =
+    typeof lookupSetting === 'boolean' ? lookupSetting : schemaType.name !== 'shippingAddress'
+
   return (
     <Stack space={4}>
-      <Card padding={4} paddingBottom={[7, 7, 8]} radius={2} border tone="transparent">
-        <Stack space={3}>
-          <Text size={2} weight="semibold">
-            Pull a saved address
-          </Text>
-          <Autocomplete<AddressOption>
-            id={inputId}
-            fontSize={[2, 2, 3]}
-            icon={SearchIcon}
-            options={options}
-            value={query}
-            loading={loading}
-            onChange={setQuery}
-            onSelect={handleSelect}
-            filterOption={(term, option) => {
-              if (!term) return true
-              const opt = option as AddressOption
-              return opt.searchValue.toLowerCase().includes(term.toLowerCase())
-            }}
-            renderOption={(option) => {
-              const opt = option as AddressOption
-              const address = opt.address
-              const lines = [
-                [address.line1, address.line2].filter(Boolean).join(', '),
-                [address.city, address.state].filter(Boolean).join(', '),
-                [address.postalCode, address.country].filter(Boolean).join(' '),
-              ].filter(Boolean)
+      {showLookup && (
+        <Card padding={4} paddingBottom={[7, 7, 8]} radius={2} border tone="transparent">
+          <Stack space={3}>
+            <Text size={2} weight="semibold">
+              Pull a saved address
+            </Text>
+            <Autocomplete<AddressOption>
+              id={inputId}
+              fontSize={[2, 2, 3]}
+              icon={SearchIcon}
+              options={options}
+              value={query}
+              loading={loading}
+              onChange={setQuery}
+              onSelect={handleSelect}
+              filterOption={(term, option) => {
+                if (!term) return true
+                const opt = option as AddressOption
+                return opt.searchValue.toLowerCase().includes(term.toLowerCase())
+              }}
+              renderOption={(option) => {
+                const opt = option as AddressOption
+                const address = opt.address
+                const lines = [
+                  [address.line1, address.line2].filter(Boolean).join(', '),
+                  [address.city, address.state].filter(Boolean).join(', '),
+                  [address.postalCode, address.country].filter(Boolean).join(' '),
+                ].filter(Boolean)
 
-              return (
-                <Stack paddingY={2} paddingX={3} space={2}>
-                  <Text size={2} weight="semibold">
-                    {address.name || address.label}
-                  </Text>
-                  {lines.map((line, idx) => (
-                    <Text key={idx} size={1}>
-                      {line}
+                return (
+                  <Stack paddingY={2} paddingX={3} space={2}>
+                    <Text size={2} weight="semibold">
+                      {address.name || address.label}
                     </Text>
-                  ))}
-                  {opt.sourceLabel && (
-                    <Text size={1} muted>
-                      {opt.sourceLabel}
-                    </Text>
-                  )}
-                </Stack>
-              )
-            }}
-            placeholder={loading ? 'Loading saved addresses…' : 'Search saved addresses'}
-            suffix={
-              loading ? (
-                <Flex align="center">
-                  <Spinner muted size={2} />
-                </Flex>
-              ) : undefined
-            }
-            openButton
-          />
-          {error && (
-            <Text size={1} style={{color: 'var(--card-critical-fg-color)', minHeight: '1.5em'}}>
-              {error}
-            </Text>
-          )}
-          {!loading && options.length === 0 && !error && (
-            <Text size={1} muted>
-              No saved addresses found yet. You can fill the fields manually below.
-            </Text>
-          )}
-        </Stack>
-      </Card>
+                    {lines.map((line, idx) => (
+                      <Text key={idx} size={1}>
+                        {line}
+                      </Text>
+                    ))}
+                    {opt.sourceLabel && (
+                      <Text size={1} muted>
+                        {opt.sourceLabel}
+                      </Text>
+                    )}
+                  </Stack>
+                )
+              }}
+              placeholder={loading ? 'Loading saved addresses…' : 'Search saved addresses'}
+              suffix={
+                loading ? (
+                  <Flex align="center">
+                    <Spinner muted size={2} />
+                  </Flex>
+                ) : undefined
+              }
+              openButton
+            />
+            {error && (
+              <Text size={1} style={{color: 'var(--card-critical-fg-color)', minHeight: '1.5em'}}>
+                {error}
+              </Text>
+            )}
+            {!loading && options.length === 0 && !error && (
+              <Text size={1} muted>
+                No saved addresses found yet. You can fill the fields manually below.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+      )}
       {renderDefault(props)}
     </Stack>
   )

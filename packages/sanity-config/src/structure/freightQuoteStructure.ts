@@ -13,7 +13,11 @@ export default defineStructure<ListItemBuilder>((S) =>
           S.listItem()
             .title('All')
             .schemaType('freightQuote')
-            .child(S.documentTypeList('freightQuote').title('All Freight Quotes')),
+            .child(
+              S.documentTypeList('freightQuote')
+                .apiVersion('2024-10-01')
+                .title('All Freight Quotes')
+            ),
 
           S.listItem()
             .title('Open')
