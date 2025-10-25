@@ -353,7 +353,7 @@ const appendOrderEvent = async (
   await appendEventsToDocument(orderId, 'orderEvents', [buildOrderEventRecord(event)])
 }
 
-const appendAbandonedCheckoutEvent = async (
+const appendExpiredCartEvent = async (
   docId: string | null | undefined,
   event: EventRecordInput | Record<string, any>,
 ): Promise<void> => {
@@ -436,7 +436,7 @@ const extractShippingAddressFromSession = (
   }
 }
 
-async function recordAbandonedCheckout(
+async function recordExpiredCart(
   session: Stripe.Checkout.Session,
   opts: {
     reason: string
@@ -456,13 +456,12 @@ async function recordAbandonedCheckout(
   const totalAmount = toMajorUnits(session.amount_total ?? undefined)
   const currency = (session.currency || '').toString().toUpperCase() || undefined
   const metadataEntries = buildMetadataEntries(metadata)
-  const shippingAddress = extractShippingAddressFromSession(session, email)
   const createdAt = unixToIso(session.created) || new Date().toISOString()
   const expiredAt = unixToIso(session.expires_at) || new Date().toISOString()
   const baseDoc: Record<string, any> = {
     stripeSessionId: session.id,
     clientReferenceId: session.client_reference_id || undefined,
-    status: 'abandoned',
+    status: 'expired',
     paymentStatus: (session.payment_status || 'pending').toString(),
     customerEmail: email || undefined,
     customerName,
@@ -470,7 +469,6 @@ async function recordAbandonedCheckout(
     totalAmount,
     currency,
     metadata: metadataEntries.length ? metadataEntries : undefined,
-    shippingAddress,
     cart: cart.length ? cart : undefined,
     stripeSummary: buildStripeSummary({
       session,
@@ -484,13 +482,13 @@ async function recordAbandonedCheckout(
   }
 
   const existing = await sanity.fetch<{_id: string} | null>(
-    `*[_type == "abandonedCheckout" && stripeSessionId == $sid][0]{_id}`,
+    `*[_type == "expiredCart" && stripeSessionId == $sid][0]{_id}`,
     {sid: session.id},
   )
 
   const eventRecord = buildOrderEventRecord({
     eventType: opts.reason,
-    status: 'abandoned',
+    status: 'expired',
     label: 'Checkout expired',
     message: opts.failureMessage,
     stripeEventId: opts.stripeEventId,
@@ -504,14 +502,14 @@ async function recordAbandonedCheckout(
     try {
       await sanity.patch(existing._id).set(baseDoc).commit({autoGenerateArrayKeys: true})
     } catch (err) {
-      console.warn('stripeWebhook: failed to update abandoned checkout', err)
+      console.warn('stripeWebhook: failed to update expired cart record', err)
     }
-    await appendAbandonedCheckoutEvent(existing._id, eventRecord)
+    await appendExpiredCartEvent(existing._id, eventRecord)
     return existing._id
   }
 
   const docToCreate = {
-    _type: 'abandonedCheckout',
+    _type: 'expiredCart',
     ...baseDoc,
     cart: cart.length ? cart : undefined,
     metadata: metadataEntries.length ? metadataEntries : undefined,
@@ -521,19 +519,19 @@ async function recordAbandonedCheckout(
     const created = await sanity.create(docToCreate, {autoGenerateArrayKeys: true})
     return created?._id || null
   } catch (err) {
-    console.warn('stripeWebhook: failed to create abandoned checkout record', err)
+    console.warn('stripeWebhook: failed to create expired cart record', err)
     return null
   }
 }
 
-async function markAbandonedCheckoutRecovered(
+async function markExpiredCartRecovered(
   stripeSessionId: string | undefined,
   orderId: string | null,
   eventInput: EventRecordInput,
 ): Promise<void> {
   if (!stripeSessionId) return
   const doc = await sanity.fetch<{_id: string} | null>(
-    `*[_type == "abandonedCheckout" && stripeSessionId == $sid][0]{_id}`,
+    `*[_type == "expiredCart" && stripeSessionId == $sid][0]{_id}`,
     {sid: stripeSessionId},
   )
   if (!doc?._id) return
@@ -547,9 +545,9 @@ async function markAbandonedCheckoutRecovered(
   try {
     await sanity.patch(doc._id).set(patchData).commit({autoGenerateArrayKeys: true})
   } catch (err) {
-    console.warn('stripeWebhook: failed to mark abandoned checkout as recovered', err)
+    console.warn('stripeWebhook: failed to mark expired cart as recovered', err)
   }
-  await appendAbandonedCheckoutEvent(doc._id, eventInput)
+  await appendExpiredCartEvent(doc._id, eventInput)
 }
 
 function dateStringFrom(value?: any): string | undefined {
@@ -1596,7 +1594,7 @@ async function handleCheckoutExpired(
   }
 
   if (!orderId) {
-    await recordAbandonedCheckout(session, {
+    await recordExpiredCart(session, {
       reason: 'checkout.session.expired',
       failureCode,
       failureMessage,
@@ -2478,7 +2476,7 @@ export const handler: Handler = async (event) => {
               occurredAt: webhookEvent.created,
               metadata,
             })
-            await markAbandonedCheckoutRecovered(stripeSessionId, orderId, {
+            await markExpiredCartRecovered(stripeSessionId, orderId, {
               eventType: 'checkout.recovered',
               status: 'recovered',
               label: 'Converted to order',
@@ -2940,7 +2938,7 @@ export const handler: Handler = async (event) => {
               occurredAt: webhookEvent.created,
               metadata: meta,
             })
-            await markAbandonedCheckoutRecovered(checkoutSessionMeta, orderId, {
+            await markExpiredCartRecovered(checkoutSessionMeta, orderId, {
               eventType: 'checkout.recovered',
               status: 'recovered',
               label: 'Payment intent recovered checkout',
