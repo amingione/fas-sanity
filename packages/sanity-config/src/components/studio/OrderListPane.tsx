@@ -420,13 +420,15 @@ export default function OrderListPane() {
                       if (event.key === 'Enter') openOrder(order._id)
                     }}
                   >
-                    <Text weight="semibold">
-                      {order.orderNumber ? `${order.orderNumber}` : order._id.replace(/^drafts\./, '')} —{' '}
-                      {order.customerName || order.customerEmail || 'Customer'}
-                    </Text>
-                    <Text muted size={1}>
-                      {createdLabel} • {formatCurrency(order.totalAmount)}
-                    </Text>
+                    <Stack space={2}>
+                      <Text weight="semibold">
+                        {order.orderNumber ? `${order.orderNumber}` : order._id.replace(/^drafts\./, '')} —{' '}
+                        {order.customerName || order.customerEmail || 'Customer'}
+                      </Text>
+                      <Text muted size={1}>
+                        {createdLabel} • {formatCurrency(order.totalAmount)}
+                      </Text>
+                    </Stack>
                   </Box>
                   <Badge tone={statusMeta.tone} mode="outline" fontSize={0} style={{textTransform: 'uppercase'}}>
                     {statusMeta.label}
