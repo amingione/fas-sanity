@@ -84,7 +84,7 @@ const ORDER_QUERY = `*[_type == "order"] | order(coalesce(createdAt, _createdAt)
   orderNumber,
   customerName,
   totalAmount,
-  _createdAt: coalesce(createdAt, _createdAt)
+  "_createdAt": coalesce(createdAt, _createdAt)
 }`
 
 const PRODUCT_QUERY = `*[_type == "product"] | order(_updatedAt desc)[0...5]{
@@ -103,7 +103,7 @@ const INVOICE_QUERY = `*[_type == "invoice"] | order(coalesce(issueDate, _create
   customerName,
   total,
   status,
-  _createdAt: coalesce(issueDate, _createdAt)
+  "_createdAt": coalesce(issueDate, _createdAt)
 }`
 
 const formatDate = (value?: string | null) => {
