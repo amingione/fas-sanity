@@ -37,7 +37,7 @@ export default defineStructure<ListItemBuilder>((S) =>
             .child(
               S.documentList().apiVersion('2024-10-01')
                 .title('Pending Invoices')
-                .filter('_type == "order" && status == "pending"')
+                .filter('_type == "order" && status == "paid" && !defined(fulfilledAt)')
             )
         ])
     )
