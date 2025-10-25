@@ -93,8 +93,8 @@ const PRODUCT_QUERY = `*[_type == "product"] | order(_updatedAt desc)[0...5]{
   sku,
   status,
   _updatedAt,
-  imageUrl: images[0].asset->url,
-  imageAlt: coalesce(images[0].alt, title)
+  "imageUrl": images[0].asset->url,
+  "imageAlt": coalesce(images[0].alt, title)
 }`
 
 const INVOICE_QUERY = `*[_type == "invoice"] | order(coalesce(issueDate, _createdAt) desc)[0...5]{
