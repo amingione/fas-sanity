@@ -187,8 +187,14 @@ export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
 
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
-  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
+  projectId:
+    process.env.SANITY_STUDIO_PROJECT_ID ||
+    process.env.SANITY_PROJECT_ID ||
+    'r4og35qd',
+  dataset:
+    process.env.SANITY_STUDIO_DATASET ||
+    process.env.SANITY_DATASET ||
+    'production',
   /**
    * CORS origins must include:
    *   http://localhost:8888
