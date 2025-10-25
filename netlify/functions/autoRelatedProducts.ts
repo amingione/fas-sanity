@@ -9,7 +9,8 @@ import { createClient } from '@sanity/client'
  * SANITY_STUDIO_DATASET    -> e.g. production
  * SANITY_WEBHOOK_SECRET    -> (same value you put into the webhook “Secret” box)
  */
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || ''
+const projectId =
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || ''
 
 const dataset =
   process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
@@ -18,7 +19,9 @@ const token = process.env.SANITY_API_TOKEN || ''
 const secret = process.env.SANITY_WEBHOOK_SECRET // optional but recommended
 
 if (!projectId) {
-  throw new Error('autoRelatedProducts: Missing projectId (set SANITY_STUDIO_PROJECT_ID)')
+  throw new Error(
+    'autoRelatedProducts: Missing projectId (set SANITY_STUDIO_PROJECT_ID or SANITY_PROJECT_ID)',
+  )
 }
 
 if (!token) {
