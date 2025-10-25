@@ -80,28 +80,6 @@ export const deskStructure: StructureResolver = (S) =>
                     .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
                 ),
               S.listItem()
-                .id('customers-high-value')
-                .title('High value ($100+)')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('High value customers')
-                    .schemaType('customer')
-                    .filter('(lifetimeSpend ?? 0) >= 100')
-                    .defaultOrdering([{field: 'lifetimeSpend', direction: 'desc'}])
-                ),
-              S.listItem()
-                .id('customers-vip')
-                .title('VIP ($1,000+)')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('VIP customers')
-                    .schemaType('customer')
-                    .filter('(lifetimeSpend ?? 0) >= 1000')
-                    .defaultOrdering([{field: 'lifetimeSpend', direction: 'desc'}])
-                ),
-              S.listItem()
                 .id('customers-inactive')
                 .title('No orders yet')
                 .child(
