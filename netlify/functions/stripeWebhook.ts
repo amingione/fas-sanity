@@ -46,6 +46,17 @@ function createOrderSlug(source?: string | null, fallback?: string | null): stri
 
 const ORDER_NUMBER_PREFIX = 'FAS'
 
+const FAILED_CHECKOUT_PAYMENT_STATUSES = new Set([
+  'failed',
+  'unpaid',
+  'requires_payment_method',
+  'requires_action',
+  'requires_customer_action',
+  'requires_source',
+  'requires_source_action',
+  'requires_confirmation',
+])
+
 function sanitizeOrderNumber(value?: string | null): string | undefined {
   if (!value) return undefined
   const trimmed = value.toString().trim().toUpperCase()
@@ -2024,19 +2035,22 @@ export const handler: Handler = async (event) => {
         const rawPaymentStatus = (session.payment_status || paymentIntent?.status || '')
           .toString()
           .toLowerCase()
-        let paymentStatus: string = rawPaymentStatus
-        if (['paid', 'succeeded', 'complete'].includes(rawPaymentStatus)) {
+        const normalizedPaymentStatus = rawPaymentStatus.trim()
+        let paymentStatus: string = normalizedPaymentStatus
+        if (['paid', 'succeeded', 'complete', 'no_payment_required'].includes(normalizedPaymentStatus)) {
           paymentStatus = 'paid'
         } else if (sessionStatus === 'expired') {
           paymentStatus = 'expired'
-        } else if (['canceled', 'cancelled', 'failed'].includes(rawPaymentStatus)) {
+        } else if (['canceled', 'cancelled'].includes(normalizedPaymentStatus)) {
           paymentStatus = 'cancelled'
+        } else if (FAILED_CHECKOUT_PAYMENT_STATUSES.has(normalizedPaymentStatus)) {
+          paymentStatus = 'failed'
         } else if (!paymentStatus) {
           paymentStatus = 'pending'
         }
         let derivedOrderStatus: 'paid' | 'cancelled' | 'closed' | 'expired'
         if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
-        else if (paymentStatus === 'cancelled') derivedOrderStatus = 'cancelled'
+        else if (paymentStatus === 'cancelled' || paymentStatus === 'failed') derivedOrderStatus = 'cancelled'
         else derivedOrderStatus = 'paid'
         const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
           ? Number((session as any)?.amount_subtotal) / 100
