@@ -400,6 +400,7 @@ function matchesTab(order: OrderRow, key: TabKey): boolean {
     case 'unfulfilled':
       return fulfillment !== 'fulfilled' && !fulfillmentCancelled
     case 'unpaid':
+      if (fulfillment === 'expired') return false
       return !['paid', 'succeeded'].includes(payment) && !paymentClosed
     case 'open':
       if (fulfillmentCancelled || paymentClosed) return false
