@@ -87,7 +87,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .apiVersion('2024-10-01')
                     .title('Customers with no orders')
                     .schemaType('customer')
-                    .filter('(orderCount ?? 0) == 0')
+                    .filter('coalesce(orderCount, 0) == 0')
                     .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 ),
               S.listItem()
@@ -346,7 +346,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .apiVersion('2024-10-01')
                     .title('Out of stock products')
                     .schemaType('product')
-                    .filter('_type == "product" && (inventory.quantity ?? 0) <= 0')
+                    .filter('_type == "product" && coalesce(inventory.quantity, 0) <= 0')
                     .defaultOrdering([{field: 'title', direction: 'asc'}])
                     .child((documentId: string) =>
                       S.document()
