@@ -10,9 +10,13 @@ const stripe =
     apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
   })
 
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
+const projectId =
+  process.env.SANITY_STUDIO_PROJECT_ID ||
+  process.env.SANITY_PROJECT_ID ||
+  'r4og35qd'
 
-const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
+const dataset =
+  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
 const sanityToken = process.env.SANITY_API_TOKEN
 

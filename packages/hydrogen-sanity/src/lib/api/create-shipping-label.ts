@@ -40,8 +40,18 @@ export interface CreateLabelResult {
 
 // ---- Sanity client (serverless endpoints should do the logging, but keep as fallback) ----
 const sanityClient = createClient({
-  projectId: 'r4og35qd',
-  dataset: 'production',
+  projectId:
+    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
+    process.env.VITE_SANITY_STUDIO_PROJECT_ID ||
+    process.env.SANITY_STUDIO_PROJECT_ID ||
+    process.env.SANITY_PROJECT_ID ||
+    'r4og35qd',
+  dataset:
+    process.env.NEXT_PUBLIC_SANITY_DATASET ||
+    process.env.VITE_SANITY_STUDIO_DATASET ||
+    process.env.SANITY_STUDIO_DATASET ||
+    process.env.SANITY_DATASET ||
+    'production',
   token: process.env.SANITY_API_TOKEN,
   apiVersion: '2023-01-01',
   useCdn: false,
