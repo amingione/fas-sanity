@@ -36,6 +36,19 @@ function fmt(n?: number) {
   return typeof n === 'number' && !isNaN(n) ? Number(n).toFixed(2) : '0.00'
 }
 
+type FormValuePath = (string | number)[]
+
+function useMaybeFormValue<T = unknown>(path: FormValuePath): T | undefined {
+  try {
+    return useFormValue(path) as T
+  } catch (error) {
+    if (error instanceof Error && (error.message || '').includes('FormValueProvider')) {
+      return undefined
+    }
+    throw error
+  }
+}
+
 function getFnBase(): string {
   // Prefer env (works in Node/CLI). In Studio, you can also store an override in localStorage under 'NLFY_BASE'.
   const envBase = typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
@@ -125,9 +138,9 @@ function downloadBlob(blob: Blob, filename: string) {
 function InvoiceNumberInput(props: any) {
   const { value, onChange, readOnly: readOnlyProp, elementProps = {} } = props
   const client = useClient({apiVersion: '2024-10-01'})
-  const documentId = (useFormValue(['_id']) as string) || ''
-  const orderNumber = (useFormValue(['orderNumber']) as string) || ''
-  const status = (useFormValue(['status']) as string) || 'pending'
+  const documentId = useMaybeFormValue<string>(['_id']) ?? ''
+  const orderNumber = useMaybeFormValue<string>(['orderNumber']) ?? ''
+  const status = useMaybeFormValue<string>(['status']) ?? 'pending'
 
   const locked = Boolean(readOnlyProp ?? (status !== 'pending' || !!orderNumber))
 
@@ -187,8 +200,8 @@ function BillToInput(props: any) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const documentId = (useFormValue(['_id']) as string) || ''
-  const currentShip = (useFormValue(['shipTo']) as any) || {}
+  const documentId = useMaybeFormValue<string>(['_id']) ?? ''
+  const currentShip = useMaybeFormValue<any>(['shipTo']) ?? {}
 
   useEffect(() => {
     const term = query.trim()
@@ -383,7 +396,7 @@ function BillToInput(props: any) {
 
 function ShipToInput(props: any) {
   const {renderDefault, onChange} = props
-  const billTo = useFormValue(['billTo']) as any
+  const billTo = useMaybeFormValue<any>(['billTo'])
   const [open, setOpen] = useState(false)
 
   function copyFromBillTo() {
@@ -444,9 +457,9 @@ type InvoiceActionSet = {
 }
 
 function useInvoiceActions(): InvoiceActionSet {
-  const invoiceId = (useFormValue(['_id']) as string) || ''
-  const invoiceNumber = (useFormValue(['invoiceNumber']) as string) || ''
-  const documentValue = useFormValue([]) as any
+  const invoiceId = useMaybeFormValue<string>(['_id']) ?? ''
+  const invoiceNumber = useMaybeFormValue<string>(['invoiceNumber']) ?? ''
+  const documentValue = useMaybeFormValue<any>([]) ?? {}
   const base = getFnBase()
   const payload = useMemo(() => ({invoiceId, invoiceNumber, invoice: documentValue}), [invoiceId, invoiceNumber, documentValue])
 
@@ -586,7 +599,7 @@ function useInvoiceActions(): InvoiceActionSet {
 }
 
 function InvoiceHeaderBar() {
-  const invoice = (useFormValue([]) as any) || {}
+  const invoice = useMaybeFormValue<any>([]) || {}
   const customerName =
     invoice?.billTo?.name || invoice?.customerName || invoice?.customerEmail || 'Invoice'
   const invoiceNumber = invoice?.invoiceNumber || 'Draft'
@@ -640,13 +653,13 @@ function InvoiceHeaderBar() {
 
 // ---- Totals panel (auto-calc subtotal/discount/tax/total)
 function TotalsPanel() {
-    const rawLineItems = useFormValue(['lineItems']) as any[] | null
-    const lineItems = useMemo(() => (Array.isArray(rawLineItems) ? rawLineItems : []), [rawLineItems])
-  const discountType = (useFormValue(['discountType']) as string) || 'amount'
-  const discountValue = Number(useFormValue(['discountValue']) as any) || 0
-  const taxRate = Number(useFormValue(['taxRate']) as any) || 0
-  const amountShippingRaw = useFormValue(['amountShipping']) as any
-  const selectedService = (useFormValue(['selectedService']) as any) || {}
+  const rawLineItems = useMaybeFormValue<any[]>(['lineItems'])
+  const lineItems = useMemo(() => (Array.isArray(rawLineItems) ? rawLineItems : []), [rawLineItems])
+  const discountType = useMaybeFormValue<string>(['discountType']) ?? 'amount'
+  const discountValue = Number(useMaybeFormValue<any>(['discountValue'])) || 0
+  const taxRate = Number(useMaybeFormValue<any>(['taxRate'])) || 0
+  const amountShippingRaw = useMaybeFormValue<any>(['amountShipping'])
+  const selectedService = useMaybeFormValue<any>(['selectedService']) ?? {}
   const selectedServiceAmount = Number(
     selectedService?.amount ?? (selectedService?.rateAmount || selectedService?.price || 0)
   )
