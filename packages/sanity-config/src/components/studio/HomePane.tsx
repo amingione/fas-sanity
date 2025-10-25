@@ -27,6 +27,8 @@ type RecentProduct = {
   sku?: string | null
   status?: string | null
   _updatedAt?: string | null
+  imageUrl?: string | null
+  imageAlt?: string | null
 }
 
 type RecentInvoice = {
@@ -50,6 +52,33 @@ const initialState: HomePaneState = {
   invoices: [],
 }
 
+type SectionIntent = {
+  name: 'type' | 'create' | 'edit'
+  params: Record<string, unknown>
+}
+
+type SectionItem = {
+  key: string
+  primary: string
+  secondary: string
+  meta: string
+  date?: string | null
+  intent: SectionIntent
+  imageUrl?: string | null
+  imageAlt?: string | null
+}
+
+type SectionDefinition = {
+  id: string
+  title: string
+  description: string
+  items: SectionItem[]
+  footer: {
+    label: string
+    intent: SectionIntent
+  }
+}
+
 const ORDER_QUERY = `*[_type == "order"] | order(coalesce(createdAt, _createdAt) desc)[0...5]{
   _id,
   orderNumber,
@@ -63,7 +92,9 @@ const PRODUCT_QUERY = `*[_type == "product"] | order(_updatedAt desc)[0...5]{
   title,
   sku,
   status,
-  _updatedAt
+  _updatedAt,
+  imageUrl: images[0].asset->url,
+  imageAlt: coalesce(images[0].alt, title)
 }`
 
 const INVOICE_QUERY = `*[_type == "invoice"] | order(coalesce(issueDate, _createdAt) desc)[0...5]{
@@ -84,7 +115,7 @@ const formatDate = (value?: string | null) => {
       month: 'short',
       day: 'numeric',
     })
-  } catch (err) {
+  } catch {
     return value
   }
 }
@@ -145,7 +176,7 @@ const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props
     }
   }, [client])
 
-  const sections = useMemo(
+  const sections = useMemo<SectionDefinition[]>(
     () => [
       {
         id: 'orders',
@@ -175,6 +206,8 @@ const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props
           meta: product.status ? product.status.replace(/^\w/, (l) => l.toUpperCase()) : '—',
           date: product._updatedAt,
           intent: {name: 'edit' as const, params: {id: product._id, type: 'product'}},
+          imageUrl: product.imageUrl,
+          imageAlt: product.imageAlt || product.title || 'Product image',
         })),
         footer: {
           label: 'Browse products',
@@ -260,24 +293,47 @@ const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props
                           style={{cursor: 'pointer'}}
                           onClick={() => handleIntent(item.intent.name, item.intent.params)}
                         >
-                          <Stack space={1}>
-                            <Flex align="center" justify="space-between" gap={3}>
-                              <Text size={2} weight="semibold">
-                                {item.primary}
-                              </Text>
-                              <Text size={1} muted>
-                                {item.meta}
-                              </Text>
-                            </Flex>
-                            <Flex align="center" justify="space-between" gap={3}>
-                              <Text size={1} muted>
-                                {item.secondary}
-                              </Text>
-                              <Text size={1} muted>
-                                {formatDate(item.date)}
-                              </Text>
-                            </Flex>
-                          </Stack>
+                          <Flex gap={3} align="flex-start">
+                            {item.imageUrl ? (
+                              <Card
+                                padding={0}
+                                radius={2}
+                                shadow={1}
+                                tone="transparent"
+                                style={{
+                                  width: 56,
+                                  height: 56,
+                                  overflow: 'hidden',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <img
+                                  src={`${item.imageUrl}?w=160&h=160&fit=crop&auto=format`}
+                                  alt={item.imageAlt || item.primary}
+                                  style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                                />
+                              </Card>
+                            ) : null}
+
+                            <Stack space={1} style={{flex: 1, minWidth: 0}}>
+                              <Flex align="center" justify="space-between" gap={3}>
+                                <Text size={2} weight="semibold" style={{flex: 1, minWidth: 0}}>
+                                  {item.primary}
+                                </Text>
+                                <Text size={1} muted>
+                                  {item.meta}
+                                </Text>
+                              </Flex>
+                              <Flex align="center" justify="space-between" gap={3}>
+                                <Text size={1} muted style={{flex: 1, minWidth: 0}}>
+                                  {item.secondary}
+                                </Text>
+                                <Text size={1} muted>
+                                  {formatDate(item.date)}
+                                </Text>
+                              </Flex>
+                            </Stack>
+                          </Flex>
                         </Card>
                       ))
                     )}
