@@ -33,13 +33,16 @@ function makeCORS(origin?: string) {
   }
 }
 
-const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
+const SANITY_PROJECT_ID =
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || ''
 
 const SANITY_DATASET =
   process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
 if (!SANITY_PROJECT_ID) {
-  throw new Error('Missing Sanity projectId for backfillOrders (set SANITY_STUDIO_PROJECT_ID).')
+  throw new Error(
+    'Missing Sanity projectId for backfillOrders (set SANITY_STUDIO_PROJECT_ID or SANITY_PROJECT_ID).',
+  )
 }
 
 const sanity = createClient({

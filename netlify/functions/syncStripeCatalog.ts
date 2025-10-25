@@ -17,13 +17,16 @@ function makeCORS(origin?: string) {
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null
 
-const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
+const SANITY_PROJECT_ID =
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || ''
 
 const SANITY_DATASET =
   process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
 if (!SANITY_PROJECT_ID) {
-  throw new Error('syncStripeCatalog: missing Sanity project id (set SANITY_STUDIO_PROJECT_ID).')
+  throw new Error(
+    'syncStripeCatalog: missing Sanity project id (set SANITY_STUDIO_PROJECT_ID or SANITY_PROJECT_ID).',
+  )
 }
 
 const sanity = createClient({
