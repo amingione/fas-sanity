@@ -6,6 +6,10 @@ export const shippingAddressType = defineType({
   title: 'Shipping Address',
   type: 'object',
   components: {input: AddressAutocompleteInput},
+  options: {
+    collapsible: true,
+    collapsed: true,
+  },
   fields: [
     defineField({name: 'name', type: 'string', title: 'Recipient Name'}),
     defineField({name: 'phone', type: 'string', title: 'Phone Number'}),
