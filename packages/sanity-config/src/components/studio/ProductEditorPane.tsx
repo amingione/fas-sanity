@@ -22,10 +22,25 @@ import {
   PublishIcon,
   TagIcon,
 } from '@sanity/icons'
-import {useFormValue} from 'sanity'
+type ProductDocument = {
+  title?: string | null
+  price?: number | null
+  salePrice?: number | null
+  sku?: string | null
+  status?: string | null
+  synced?: boolean | null
+  shopifySynced?: boolean | null
+  category?: Array<{_ref?: string | null}> | null
+  inventory?: {
+    available?: number | null
+  } | null
+}
 
 type ProductEditorPaneProps = {
   renderDefault: (props: unknown) => React.ReactNode
+  document?: {
+    displayed?: ProductDocument | null
+  }
 } & Record<string, unknown>
 
 const formatCurrency = (value?: number | null) => {
@@ -53,15 +68,16 @@ const statusLabelMap: Record<string, string> = {
 
 const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   const {renderDefault} = props
+  const document = (props.document?.displayed || {}) as ProductDocument
 
-  const title = (useFormValue(['title']) as string | undefined) || 'Untitled product'
-  const price = useFormValue(['price']) as number | undefined
-  const salePrice = useFormValue(['salePrice']) as number | undefined
-  const sku = useFormValue(['sku']) as string | undefined
-  const statusValue = ((useFormValue(['status']) as string | undefined) || 'draft').toLowerCase()
-  const synced = Boolean(useFormValue(['synced'])) || Boolean(useFormValue(['shopifySynced']))
-  const categoryRefs = (useFormValue(['category']) as Array<{_ref: string}> | undefined) || []
-  const inventoryAvailable = useFormValue(['inventory', 'available']) as number | undefined
+  const title = document.title || 'Untitled product'
+  const price = document.price ?? undefined
+  const salePrice = document.salePrice ?? undefined
+  const sku = document.sku ?? undefined
+  const statusValue = (document.status || 'draft').toLowerCase()
+  const synced = Boolean(document.synced) || Boolean(document.shopifySynced)
+  const categoryRefs = Array.isArray(document.category) ? document.category : []
+  const inventoryAvailable = document.inventory?.available ?? undefined
 
   const statusTone = statusToneMap[statusValue] || 'default'
   const statusLabel = statusLabelMap[statusValue] || 'Draft'
