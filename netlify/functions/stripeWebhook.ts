@@ -1981,7 +1981,7 @@ export const handler: Handler = async (event) => {
             paymentIntentId,
             chargeId: charge.id,
             paymentStatus,
-            orderStatus: isFullRefund ? 'cancelled' : undefined,
+            orderStatus: isFullRefund ? 'refunded' : undefined,
             invoiceStatus: isFullRefund ? 'refunded' : undefined,
             invoiceStripeStatus: webhookEvent.type,
           })
@@ -2027,16 +2027,15 @@ export const handler: Handler = async (event) => {
         let paymentStatus: string = rawPaymentStatus
         if (['paid', 'succeeded', 'complete'].includes(rawPaymentStatus)) {
           paymentStatus = 'paid'
-        } else if (
-          ['canceled', 'cancelled', 'failed'].includes(rawPaymentStatus) ||
-          sessionStatus === 'expired'
-        ) {
+        } else if (sessionStatus === 'expired') {
+          paymentStatus = 'expired'
+        } else if (['canceled', 'cancelled', 'failed'].includes(rawPaymentStatus)) {
           paymentStatus = 'cancelled'
         } else if (!paymentStatus) {
           paymentStatus = 'pending'
         }
-        let derivedOrderStatus: 'paid' | 'cancelled' | 'closed'
-        if (sessionStatus === 'expired') derivedOrderStatus = 'closed'
+        let derivedOrderStatus: 'paid' | 'cancelled' | 'closed' | 'expired'
+        if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
         else if (paymentStatus === 'cancelled') derivedOrderStatus = 'cancelled'
         else derivedOrderStatus = 'paid'
         const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
