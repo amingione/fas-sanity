@@ -164,7 +164,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .apiVersion('2024-10-01')
                     .title('Unpaid orders')
                     .schemaType('order')
-                    .filter('_type == "order" && (paymentStatus != "paid" || !defined(paymentStatus))')
+                    .filter('_type == "order" && !(coalesce(status, "") in ["expired"]) && !(coalesce(paymentStatus, "") in ["paid", "expired"])')
                     .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                     .child(orderDocumentViews(S))
                 ),
