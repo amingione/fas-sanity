@@ -21,6 +21,7 @@ const productsByCategory = (S: any) =>
     .title('Products by category')
     .child(
       S.documentTypeList('category')
+        .apiVersion('2024-10-01')
         .title('Categories')
         .child((categoryId: string) =>
           S.documentList()
@@ -57,8 +58,8 @@ export const deskStructure: StructureResolver = (S) =>
                 .title('All customers')
                 .child(
                   S.documentTypeList('customer')
-                    .title('All customers')
                     .apiVersion('2024-10-01')
+                    .title('All customers')
                     .filter('_type == "customer"')
                     .defaultOrdering([
                       {field: 'lifetimeSpend', direction: 'desc'},
@@ -188,6 +189,19 @@ export const deskStructure: StructureResolver = (S) =>
                     .filter('_type == "order" && (paymentStatus != "paid" || !defined(paymentStatus))')
                     .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                     .child(orderDocumentViews(S))
+                ),
+              S.listItem()
+                .id('orders-expired-carts')
+                .title('Expired carts')
+                .child(
+                  S.documentTypeList('expiredCart')
+                    .title('Expired carts')
+                    .apiVersion('2024-10-01')
+                    .filter('_type == "expiredCart"')
+                    .defaultOrdering([
+                      {field: 'expiredAt', direction: 'desc'},
+                      {field: 'createdAt', direction: 'desc'},
+                    ])
                 ),
               S.listItem()
                 .id('orders-recent')
