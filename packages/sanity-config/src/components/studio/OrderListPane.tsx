@@ -4,8 +4,8 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Flex,
-  Grid,
   Menu,
   MenuButton,
   MenuDivider,
@@ -13,6 +13,7 @@ import {
   Spinner,
   Stack,
   Text,
+  useToast,
 } from '@sanity/ui'
 import {SortIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
@@ -36,6 +37,23 @@ type OrderListItem = {
   }
 }
 
+const ORDER_MEDIA_URL =
+  'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
+
+const ORDER_PROJECTION = `{
+  _id,
+  _updatedAt,
+  createdAt,
+  orderNumber,
+  customerName,
+  customerEmail,
+  totalAmount,
+  paymentStatus,
+  status,
+  shippingCarrier,
+  selectedService
+}`
+
 const STATUS_META: Record<
   string,
   {
@@ -51,16 +69,6 @@ const STATUS_META: Record<
   closed: {label: 'Closed', tone: 'default'},
   expired: {label: 'Expired', tone: 'default'},
 }
-
-const FILTER_OPTIONS = [
-  {id: 'all', title: 'All statuses'},
-  {id: 'paid', title: 'Paid'},
-  {id: 'fulfilled', title: 'Fulfilled'},
-  {id: 'shipped', title: 'Shipped'},
-  {id: 'cancelled', title: 'Cancelled'},
-  {id: 'refunded', title: 'Refunded'},
-  {id: 'closed', title: 'Closed'},
-]
 
 const SORT_OPTIONS = [
   {
@@ -81,6 +89,29 @@ const SORT_OPTIONS = [
 ]
 
 const DEFAULT_SORT = SORT_OPTIONS[0]
+
+const PERSPECTIVE_STACK = [
+  {id: 'recent', title: 'Recent', filter: '', defaultSortId: 'createdDesc'},
+  {
+    id: 'awaiting',
+    title: 'Awaiting fulfillment',
+    filter: '(status == "paid" && !defined(fulfilledAt))',
+    defaultSortId: 'createdDesc',
+  },
+  {id: 'paid', title: 'Paid', filter: 'status == "paid"', defaultSortId: 'createdDesc'},
+  {
+    id: 'fulfilled',
+    title: 'Fulfilled / Shipped',
+    filter: 'status in ["fulfilled","shipped"]',
+    defaultSortId: 'createdDesc',
+  },
+  {
+    id: 'issues',
+    title: 'Payment issues',
+    filter: 'paymentStatus in ["cancelled","failed","refunded"]',
+    defaultSortId: 'createdDesc',
+  },
+]
 
 const formatCurrency = (value?: number, currency: string = 'USD') => {
   if (typeof value !== 'number' || Number.isNaN(value)) return '—'
@@ -110,55 +141,65 @@ const formatDate = (value?: string) => {
   }
 }
 
-const STATUS_ALL = '__ALL__'
-
-const LIST_QUERY = `
-  *[_type == "order" && ($status == "${STATUS_ALL}" || status == $status)]
-    | order($orderBy) [0...200]{
-      _id,
-      _updatedAt,
-      createdAt,
-      orderNumber,
-      customerName,
-      customerEmail,
-      totalAmount,
-      paymentStatus,
-      status,
-      shippingCarrier,
-      selectedService
-    }
-`
+const getFnBase = (): string => {
+  const envBase =
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  if (envBase) return envBase.trim()
+  if (typeof window !== 'undefined') return window.location.origin
+  return ''
+}
 
 export default function OrderListPane() {
   const client = useClient({apiVersion: '2024-10-01'})
   const router = usePaneRouter()
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [sortId, setSortId] = useState<string>(DEFAULT_SORT.id)
-  const [loading, setLoading] = useState(true)
-  const [orders, setOrders] = useState<OrderListItem[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const toast = useToast()
+  const fnBase = useMemo(() => getFnBase(), [])
 
-  const sortOption = SORT_OPTIONS.find((opt) => opt.id === sortId) || DEFAULT_SORT
-  const groqParams = useMemo(
-    () => ({
-      status: statusFilter === 'all' ? STATUS_ALL : statusFilter,
-      orderBy: sortOption.orderBy,
-    }),
-    [sortOption.orderBy, statusFilter],
+  const [activePerspectiveId, setActivePerspectiveId] = useState(PERSPECTIVE_STACK[0].id)
+  const [sortId, setSortId] = useState<string>(DEFAULT_SORT.id)
+  const [orders, setOrders] = useState<OrderListItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkLoading, setBulkLoading] = useState<null | 'packing' | 'fulfill'>(null)
+
+  const activePerspective = useMemo(
+    () => PERSPECTIVE_STACK.find((p) => p.id === activePerspectiveId) || PERSPECTIVE_STACK[0],
+    [activePerspectiveId],
   )
+  const sortOption = useMemo(
+    () => SORT_OPTIONS.find((opt) => opt.id === sortId) || DEFAULT_SORT,
+    [sortId],
+  )
+
+  useEffect(() => {
+    if (
+      activePerspective?.defaultSortId &&
+      activePerspective.defaultSortId !== sortId &&
+      SORT_OPTIONS.some((opt) => opt.id === activePerspective.defaultSortId)
+    ) {
+      setSortId(activePerspective.defaultSortId)
+    }
+  }, [activePerspective, sortId])
+
+  const query = useMemo(() => {
+    const filterClause = activePerspective?.filter ? ` && (${activePerspective.filter})` : ''
+    return `*[_type == "order"${filterClause}] | order(${sortOption.orderBy}) [0...200] ${ORDER_PROJECTION}`
+  }, [activePerspective, sortOption])
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const result = await client.fetch<OrderListItem[]>(LIST_QUERY, groqParams)
+      const result = await client.fetch<OrderListItem[]>(query)
       setOrders(result || [])
+      setSelectedIds(new Set())
     } catch (err: any) {
       setError(err?.message || 'Unable to load orders')
     } finally {
       setLoading(false)
     }
-  }, [client, groqParams])
+  }, [client, query])
 
   useEffect(() => {
     fetchOrders()
@@ -171,169 +212,226 @@ export default function OrderListPane() {
     [router],
   )
 
-  return (
-    <Stack space={4} padding={4}>
-      <Flex align="center" justify="space-between">
-        <Stack space={2}>
-          <Text size={3} weight="semibold">
-            Orders
-          </Text>
-          <Text muted size={1}>
-            Website checkouts synced from Stripe. Status badges update automatically from webhooks.
-          </Text>
-        </Stack>
+  const toggleSelected = useCallback((orderId: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(orderId)
+      else next.delete(orderId)
+      return next
+    })
+  }, [])
 
-        <MenuButton
-          id="order-sort-button"
-          button={<Button icon={SortIcon} mode="bleed" tone="default" title="Sort & filter" />}
-          menu={
-            <Menu>
-              <Text size={1} paddingX={3} paddingTop={2} muted>
-                Sort by
-              </Text>
-              {SORT_OPTIONS.map((option) => (
-                <MenuItem
-                  key={option.id}
-                  text={option.title}
-                  icon={option.id === sortId ? undefined : undefined}
-                  tone={option.id === sortId ? 'primary' : 'default'}
-                  onClick={() => setSortId(option.id)}
-                />
-              ))}
-              <MenuDivider />
-              <Text size={1} paddingX={3} paddingTop={2} muted>
-                Filter status
-              </Text>
-              {FILTER_OPTIONS.map((option) => {
-                const filterMeta =
-                  option.id === 'all'
-                    ? {label: 'All', tone: 'default' as const}
-                    : STATUS_META[option.id] || {
-                        label: option.title,
-                        tone: 'default' as const,
-                      }
-                return (
+  const toggleAll = useCallback(
+    (checked: boolean) => {
+      if (!checked) {
+        setSelectedIds(new Set())
+        return
+      }
+      setSelectedIds(new Set(orders.map((order) => order._id)))
+    },
+    [orders],
+  )
+
+  const selectionCount = selectedIds.size
+  const selectionArray = useMemo(() => Array.from(selectedIds), [selectedIds])
+  const isIndeterminate = selectionCount > 0 && selectionCount < orders.length
+
+  const handleBulkPackingSlips = useCallback(async () => {
+    if (!selectionCount || !fnBase) return
+    setBulkLoading('packing')
+    try {
+      for (const id of selectionArray) {
+        const sanitizedId = id.replace(/^drafts\./, '')
+        const response = await fetch(`${fnBase.replace(/\/$/, '')}/.netlify/functions/generatePackingSlips`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({orderId: sanitizedId}),
+        })
+        if (!response.ok) {
+          throw new Error(await response.text())
+        }
+      }
+      toast.push({status: 'success', title: 'Packing slips queued'})
+    } catch (err: any) {
+      toast.push({
+        status: 'error',
+        title: 'Packing slips failed',
+        description: err?.message || 'Request failed',
+      })
+    } finally {
+      setBulkLoading(null)
+      setSelectedIds(new Set())
+      fetchOrders()
+    }
+  }, [selectionArray, selectionCount, fnBase, toast, fetchOrders])
+
+  const handleBulkFulfill = useCallback(async () => {
+    if (!selectionCount) return
+    setBulkLoading('fulfill')
+    try {
+      await Promise.all(
+        selectionArray.map((id) =>
+          client
+            .patch(id)
+            .set({status: 'fulfilled', fulfilledAt: new Date().toISOString()})
+            .commit({autoGenerateArrayKeys: true}),
+        ),
+      )
+      toast.push({status: 'success', title: 'Orders marked fulfilled'})
+    } catch (err: any) {
+      toast.push({
+        status: 'error',
+        title: 'Failed to mark fulfilled',
+        description: err?.message || 'Request failed',
+      })
+    } finally {
+      setBulkLoading(null)
+      setSelectedIds(new Set())
+      fetchOrders()
+    }
+  }, [selectionArray, selectionCount, client, toast, fetchOrders])
+
+  return (
+    <Stack space={3} padding={3}>
+      <Flex align="center" justify="space-between" wrap="wrap" gap={2}>
+        <Text weight="semibold">Orders</Text>
+        <Flex gap={2} wrap="wrap">
+          {PERSPECTIVE_STACK.map((perspective) => (
+            <Button
+              key={perspective.id}
+              text={perspective.title}
+              size={1}
+              mode={perspective.id === activePerspectiveId ? 'default' : 'ghost'}
+              tone={perspective.id === activePerspectiveId ? 'primary' : 'default'}
+              onClick={() => setActivePerspectiveId(perspective.id)}
+            />
+          ))}
+        </Flex>
+      </Flex>
+
+      <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+        <Flex align="center" gap={2}>
+          <Checkbox
+            checked={selectionCount > 0 && selectionCount === orders.length}
+            indeterminate={isIndeterminate}
+            onChange={(event) => toggleAll(event.currentTarget.checked)}
+          />
+          <Text size={1}>
+            {selectionCount ? `${selectionCount} selected` : 'Select orders for bulk actions'}
+          </Text>
+        </Flex>
+        <Flex gap={2} wrap="wrap">
+          <Button
+            text="Print packing slips"
+            tone="primary"
+            disabled={selectionCount === 0 || bulkLoading === 'packing'}
+            loading={bulkLoading === 'packing'}
+            onClick={handleBulkPackingSlips}
+          />
+          <Button
+            text="Mark fulfilled"
+            tone="primary"
+            mode="ghost"
+            disabled={selectionCount === 0 || bulkLoading === 'fulfill'}
+            loading={bulkLoading === 'fulfill'}
+            onClick={handleBulkFulfill}
+          />
+          <MenuButton
+            id="orders-sort-menu"
+            button={<Button icon={SortIcon} mode="bleed" tone="default" title="Sort" />}
+            menu={
+              <Menu>
+                <Text size={1} paddingX={3} paddingTop={2} muted>
+                  Sort by
+                </Text>
+                {SORT_OPTIONS.map((option) => (
                   <MenuItem
                     key={option.id}
                     text={option.title}
-                    onClick={() => setStatusFilter(option.id)}
-                    tone={option.id === statusFilter ? 'primary' : 'default'}
-                    padding={3}
-                    icon={
-                      option.id === 'all'
-                        ? undefined
-                        : () => (
-                            <Badge
-                              tone={filterMeta.tone}
-                              mode="outline"
-                              fontSize={0}
-                              style={{textTransform: 'uppercase'}}
-                            >
-                              {filterMeta.label}
-                            </Badge>
-                          )
-                    }
+                    tone={option.id === sortId ? 'primary' : 'default'}
+                    onClick={() => setSortId(option.id)}
                   />
-                )
-              })}
-            </Menu>
-          }
-        />
+                ))}
+                <MenuDivider />
+                <MenuItem text="Refresh" onClick={fetchOrders} />
+              </Menu>
+            }
+          />
+        </Flex>
       </Flex>
 
       {loading ? (
-        <Flex align="center" justify="center" paddingY={6}>
+        <Flex align="center" justify="center" paddingY={5}>
           <Spinner />
         </Flex>
       ) : error ? (
-        <Card padding={4} radius={3} tone="critical" shadow={1}>
-          <Text>{error}</Text>
-          <Box marginTop={3}>
+        <Card padding={4} tone="critical" radius={3} shadow={1}>
+          <Stack space={3}>
+            <Text weight="semibold">Failed to load orders</Text>
+            <Text size={1}>{error}</Text>
             <Button text="Retry" tone="primary" onClick={fetchOrders} />
-          </Box>
+          </Stack>
         </Card>
       ) : orders.length === 0 ? (
         <Card padding={4} radius={3} tone="default" border>
           <Stack space={3}>
-            <Text weight="semibold">No orders found</Text>
-            <Text muted size={1}>
-              Try a different filter or confirm Stripe webhooks are delivering order data.
-            </Text>
-            <Box>
-              <Button text="Clear filter" onClick={() => setStatusFilter('all')} />
-            </Box>
+            <Text weight="semibold">No orders</Text>
+            <Text muted size={1}>Try a different perspective or confirm Stripe webhooks are syncing.</Text>
           </Stack>
         </Card>
       ) : (
-        <Stack space={3}>
+        <Stack space={2}>
           {orders.map((order) => {
             const createdLabel = formatDate(order.createdAt || order._updatedAt)
             const statusMeta = STATUS_META[order.status || ''] || {
               label: order.status || 'Unknown',
               tone: 'default' as const,
             }
+            const checked = selectedIds.has(order._id)
             return (
-              <Card
-                key={order._id}
-                padding={4}
-                radius={3}
-                shadow={1}
-                tone="default"
-                as="button"
-                style={{
-                  textAlign: 'left',
-                  width: '100%',
-                  border: 'none',
-                  background: 'var(--card-bg-color)',
-                  cursor: 'pointer',
-                }}
-                onClick={() => openOrder(order._id)}
-              >
-                <Stack space={3}>
-                  <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
-                    <Stack space={1}>
-                      <Text weight="semibold">
-                        {order.orderNumber ? `Order ${order.orderNumber}` : order._id}
-                      </Text>
-                      <Text size={1} muted>
-                        {createdLabel}
-                      </Text>
-                    </Stack>
-                    <Badge
-                      tone={statusMeta.tone}
-                      mode="outline"
-                      fontSize={0}
-                      style={{textTransform: 'uppercase'}}
-                    >
-                      {statusMeta.label}
-                    </Badge>
-                  </Flex>
-
-                  <Grid columns={[1, 1, 3]} gap={3}>
-                    <Stack space={1}>
-                      <Text muted size={1}>
-                        Customer
-                      </Text>
-                      <Text>{order.customerName || order.customerEmail || '—'}</Text>
-                    </Stack>
-                    <Stack space={1}>
-                      <Text muted size={1}>
-                        Amount
-                      </Text>
-                      <Text>{formatCurrency(order.totalAmount)}</Text>
-                    </Stack>
-                    <Stack space={1}>
-                      <Text muted size={1}>
-                        Service
-                      </Text>
-                      <Text>
-                        {order.selectedService?.service ||
-                          order.shippingCarrier ||
-                          '—'}
-                      </Text>
-                    </Stack>
-                  </Grid>
-                </Stack>
+              <Card key={order._id} radius={2} padding={2} tone="default" shadow={1}>
+                <Flex align="center" gap={3}>
+                  <Checkbox
+                    checked={checked}
+                    onChange={(event) => toggleSelected(order._id, event.currentTarget.checked)}
+                  />
+                  <span
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={ORDER_MEDIA_URL}
+                      alt="Order"
+                      style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                    />
+                  </span>
+                  <Box
+                    flex={1}
+                    style={{cursor: 'pointer'}}
+                    onClick={() => openOrder(order._id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') openOrder(order._id)
+                    }}
+                  >
+                    <Text weight="semibold">
+                      {order.orderNumber ? `${order.orderNumber}` : order._id.replace(/^drafts\./, '')} —{' '}
+                      {order.customerName || order.customerEmail || 'Customer'}
+                    </Text>
+                    <Text muted size={1}>
+                      {createdLabel} • {formatCurrency(order.totalAmount)}
+                    </Text>
+                  </Box>
+                  <Badge tone={statusMeta.tone} mode="outline" fontSize={0} style={{textTransform: 'uppercase'}}>
+                    {statusMeta.label}
+                  </Badge>
+                </Flex>
               </Card>
             )
           })}
