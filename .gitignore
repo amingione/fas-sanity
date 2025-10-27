@@ -21,7 +21,8 @@ yarn-error.log*
 # OS / Editor junk
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/launch.json
 *.swp
 *.swo
 *.save
