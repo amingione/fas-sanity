@@ -17,7 +17,7 @@ import {
 } from '@sanity/ui'
 import {SortIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
-import {usePaneRouter} from 'sanity/desk'
+import {useRouter} from 'sanity/router'
 
 type OrderListItem = {
   _id: string
@@ -151,7 +151,7 @@ const getFnBase = (): string => {
 
 export default function OrderListPane() {
   const client = useClient({apiVersion: '2024-10-01'})
-  const router = usePaneRouter()
+  const router = useRouter()
   const toast = useToast()
   const fnBase = useMemo(() => getFnBase(), [])
 
@@ -341,9 +341,11 @@ export default function OrderListPane() {
             button={<Button icon={SortIcon} mode="bleed" tone="default" title="Sort" />}
             menu={
               <Menu>
-                <Text size={1} paddingX={3} paddingTop={2} muted>
-                  Sort by
-                </Text>
+                <Box paddingX={3} paddingTop={2}>
+                  <Text size={1} muted>
+                    Sort by
+                  </Text>
+                </Box>
                 {SORT_OPTIONS.map((option) => (
                   <MenuItem
                     key={option.id}
