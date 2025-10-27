@@ -1,7 +1,7 @@
 // netlify/functions/autoRelatedProducts.ts
-import type { Handler } from '@netlify/functions'
+import type {Handler} from '@netlify/functions'
 import crypto from 'crypto'
-import { createClient } from '@sanity/client'
+import {createClient} from '@sanity/client'
 
 /** ── ENV you need ─────────────────────────────────────────
  * SANITY_API_TOKEN         -> write token (update permission)
@@ -11,8 +11,7 @@ import { createClient } from '@sanity/client'
  */
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || ''
 
-const dataset =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
 const token = process.env.SANITY_API_TOKEN || ''
 const secret = process.env.SANITY_WEBHOOK_SECRET // optional but recommended
@@ -45,32 +44,29 @@ type ProductDoc = {
   _id: string
   _type: 'product'
   filtersArr?: string[]
-  category?: { _ref: string }[] // references to category docs
+  category?: {_ref: string}[] // references to category docs
 }
 
 const handler: Handler = async (event) => {
   try {
     if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: 'Method Not Allowed' }
+      return {statusCode: 405, body: 'Method Not Allowed'}
     }
 
     // Signature check (optional but good)
     const sigHeader = event.headers['x-sanity-signature'] || event.headers['X-Sanity-Signature']
     const rawBody = event.body || ''
     if (!isValidSignature(rawBody, String(sigHeader || ''))) {
-      return { statusCode: 401, body: 'Invalid signature' }
+      return {statusCode: 401, body: 'Invalid signature'}
     }
 
     const payload = JSON.parse(rawBody)
     // Support both the “minimal” and “full” payloads. Prefer documentId if present.
     const productId: string =
-      payload?.documentId ||
-      payload?.ids?.[0] ||
-      payload?.transition?.id ||
-      payload?.after?._id
+      payload?.documentId || payload?.ids?.[0] || payload?.transition?.id || payload?.after?._id
 
     if (!productId) {
-      return { statusCode: 200, body: 'No document id – nothing to do' }
+      return {statusCode: 200, body: 'No document id – nothing to do'}
     }
 
     // Ignore drafts
@@ -84,21 +80,20 @@ const handler: Handler = async (event) => {
         "filtersArr": coalesce(filters[]->slug.current, filters),
         category[]{_ref}
       }`,
-      { id },
+      {id},
     )
 
-    if (!product) return { statusCode: 200, body: 'Product not found (possibly deleted)' }
+    if (!product) return {statusCode: 200, body: 'Product not found (possibly deleted)'}
 
-    const sourceFilterSet = new Set<string>((product.filtersArr || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean))
+    const sourceFilterSet = new Set<string>(
+      (product.filtersArr || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean),
+    )
     const sourceCategoryIds = new Set<string>((product.category || []).map((c) => c._ref))
 
     // If there are no signals, clear related and exit
     if (sourceFilterSet.size === 0 && sourceCategoryIds.size === 0) {
-      await client
-        .patch(id)
-        .set({ relatedProducts: [] })
-        .commit({ autoGenerateArrayKeys: true })
-      return { statusCode: 200, body: 'Cleared relatedProducts (no filters/categories)' }
+      await client.patch(id).set({relatedProducts: []}).commit({autoGenerateArrayKeys: true})
+      return {statusCode: 200, body: 'Cleared relatedProducts (no filters/categories)'}
     }
 
     // Fetch candidate products (exclude self)
@@ -108,14 +103,18 @@ const handler: Handler = async (event) => {
         "filtersArr": coalesce(filters[]->slug.current, filters),
         "category": coalesce(category, [])
       }`,
-      { id },
+      {id},
     )
 
     // Score candidates
     const scored = candidates
       .map((p) => {
-        const theirFilters = new Set<string>((p.filtersArr || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean))
-        const theirCats = new Set<string>((p.category || []).map((c: any) => c?._ref).filter(Boolean))
+        const theirFilters = new Set<string>(
+          (p.filtersArr || []).map((s) => String(s).trim().toLowerCase()).filter(Boolean),
+        )
+        const theirCats = new Set<string>(
+          (p.category || []).map((c: any) => c?._ref).filter(Boolean),
+        )
 
         let score = 0
         // Category overlap counts more
@@ -123,27 +122,24 @@ const handler: Handler = async (event) => {
         // Filter/tag overlap
         for (const f of theirFilters) if (sourceFilterSet.has(f)) score += 1
 
-        return { _id: p._id, score }
+        return {_id: p._id, score}
       })
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 8) // keep top N
 
-    const refs = scored.map((x) => ({ _type: 'reference', _ref: x._id }))
+    const refs = scored.map((x) => ({_type: 'reference', _ref: x._id}))
 
-    await client
-      .patch(id)
-      .set({ relatedProducts: refs })
-      .commit({ autoGenerateArrayKeys: true })
+    await client.patch(id).set({relatedProducts: refs}).commit({autoGenerateArrayKeys: true})
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ updated: id, count: refs.length }),
+      body: JSON.stringify({updated: id, count: refs.length}),
     }
   } catch (err: any) {
     console.error('autoRelatedProducts failed', err)
-    return { statusCode: 500, body: `autoRelatedProducts error: ${err?.message || err}` }
+    return {statusCode: 500, body: `autoRelatedProducts error: ${err?.message || err}`}
   }
 }
 
-export { handler }
+export {handler}
