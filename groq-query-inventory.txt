@@ -1,0 +1,1493 @@
+FILE: netlify/functions/autoRelatedProducts.ts:77
+*[_type=="product" && _id==$id][0]{
+        _id,
+        // Support both legacy string tags and new filterTag references
+        "filtersArr": coalesce(filters[]->slug.current, filters),
+        category[]{_ref}
+      }
+---
+FILE: netlify/functions/autoRelatedProducts.ts:101
+*[_type=="product" && _id!=$id]{
+        _id,
+        "filtersArr": coalesce(filters[]->slug.current, filters),
+        "category": coalesce(category, [])
+      }
+---
+FILE: netlify/functions/backfillCustomers.ts:63
+*[_type == "customer" && _id > $cursor] | order(_id) {
+          _id, userId, roles, updatedAt, emailOptIn, marketingOptIn, textOptIn
+        }[0...$limit]
+---
+FILE: netlify/functions/backfillInvoices.ts:52
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/backfillInvoices.ts:63
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/backfillInvoices.ts:175
+*[_type == "invoice" && _id > $cursor] | order(_id) {
+          _id,
+          lineItems,
+          customerRef,
+          customer,
+          orderRef,
+          order,
+          invoiceNumber,
+          orderNumber,
+          stripeSessionId,
+          billTo,
+          shipTo,
+          taxRate,
+          title,
+          customerEmail,
+          amountSubtotal,
+          amountTax,
+          invoiceDate,
+          dueDate,
+          _createdAt
+        }[0...$limit]
+---
+FILE: netlify/functions/backfillInvoices.ts:209
+*[_type == "order" && _id == $id][0]{
+                orderNumber,
+                cart,
+                shippingAddress,
+                customerName,
+                customerEmail,
+                amountSubtotal,
+                amountTax,
+                createdAt,
+                stripeSessionId,
+                totalAmount
+              }
+---
+FILE: netlify/functions/backfillInvoices.ts:254
+*[_type == "product" && sku == $sku][0]._id
+---
+FILE: netlify/functions/backfillInvoices.ts:257
+*[_type == "product" && title == $t][0]._id
+---
+FILE: netlify/functions/backfillOrders.ts:186
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/backfillOrders.ts:197
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/backfillOrders.ts:260
+*[_type == "order" && _id > $cursor] | order(_id) {
+          _id,
+          cart,
+          customerRef,
+          customer,
+          customerEmail,
+          slug,
+          stripeSessionId,
+          orderNumber,
+          customerName,
+          shippingAddress
+        }[0...$limit]
+---
+FILE: netlify/functions/backfillOrders.ts:400
+count(*[_type == "order" && defined(customer)])
+---
+FILE: netlify/functions/cancelOrder.ts:101
+*[_type == "order" && _id in $ids][0]{
+        _id,
+        orderNumber,
+        paymentIntentId,
+        chargeId,
+        paymentStatus,
+        status,
+        totalAmount,
+        invoiceRef->{ _id },
+        customerRef,
+        customerEmail
+      }
+---
+FILE: netlify/functions/createCheckout.ts:191
+*[_type == "invoice" && _id == $id][0]{
+        _id,
+        invoiceNumber,
+        title,
+        lineItems[]{
+          quantity,
+          unitPrice,
+          sku,
+          description,
+          product->{ _id, sku, title }
+        },
+        discountType,
+        discountValue,
+        taxRate,
+        paymentLinkUrl,
+        billTo {
+          name,
+          email,
+          phone,
+          address_line1,
+          address_line2,
+          city_locality,
+          state_province,
+          postal_code,
+          country_code
+        },
+        shipTo {
+          name,
+          email,
+          phone,
+          address_line1,
+          address_line2,
+          city_locality,
+          state_province,
+          postal_code,
+          country_code
+        }
+      }
+---
+FILE: netlify/functions/createShippingLabel.ts:83
+*[_type == "order" && _id == $id][0]{ shippingAddress }
+---
+FILE: netlify/functions/createShippingLabel.ts:96
+*[_type == "invoice" && _id == $id][0]{ shipTo }
+---
+FILE: netlify/functions/finalizeFinancialConnection.ts:92
+defined(*[_type == "bankAccount" && defaultForChecks == true][0]._id)
+---
+FILE: netlify/functions/fulfill-order.ts:100
+*[_type == "order" && _id == $id][0]
+---
+FILE: netlify/functions/fulfill-order.ts:372
+*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass}
+---
+FILE: netlify/functions/generateCheckPDF.ts:139
+*[_type == "check" && _id == $id][0]{
+      payee,
+      mailingAddress,
+      bankAccount->{_id, title, stripeAccountId, institutionName, holderName},
+      amount,
+      memo,
+      checkNumber,
+      paymentDate,
+      lineItems[]{category, description, amount}
+    }
+---
+FILE: netlify/functions/generateCheckPDF.ts:314
+*[_type == "bill" && _id == $id][0]{
+      amount,
+      description,
+      paidDate,
+      checkNumber,
+      vendor->{
+        name,
+        address
+      }
+    }
+---
+FILE: netlify/functions/generateInvoicePDF.ts:38
+*[_type == "invoice" && _id == $id][0]{
+    _id,
+    invoiceNumber,
+    invoiceDate,
+    dueDate,
+    amountSubtotal,
+    amountTax,
+    amountShipping,
+    total,
+    shippingCarrier,
+    trackingNumber,
+    shippingLabelUrl,
+    billTo,
+    shipTo,
+    lineItems[]{
+      _key,
+      kind,
+      product->{_id, title, sku},
+      description,
+      sku,
+      quantity,
+      unitPrice,
+      lineTotal,
+      optionSummary,
+      optionDetails,
+      upgrades,
+      metadata[]{key, value}
+    },
+    orderRef->{
+      _id,
+      orderNumber,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      shippingCarrier,
+      trackingNumber,
+      shippingLabelUrl,
+      selectedService->{carrier, service, amount},
+      cart[]{
+        _key,
+        name,
+        productName,
+        sku,
+        quantity,
+        price,
+        lineTotal,
+        total,
+        optionSummary,
+        optionDetails,
+        upgrades,
+        metadata[]{key, value}
+      }
+    },
+    order->{
+      _id,
+      orderNumber,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      shippingCarrier,
+      trackingNumber,
+      shippingLabelUrl,
+      selectedService->{carrier, service, amount},
+      cart[]{
+        _key,
+        name,
+        productName,
+        sku,
+        quantity,
+        price,
+        lineTotal,
+        total,
+        optionSummary,
+        optionDetails,
+        upgrades,
+        metadata[]{key, value}
+      }
+    },
+    discountType,
+    discountValue,
+    taxRate,
+    customerNotes,
+    terms
+  }
+---
+FILE: netlify/functions/generatePackingSlips.ts:441
+*[_type == "invoice" && _id == $id][0]{
+        _id,
+        _createdAt,
+        invoiceNumber,
+        orderNumber,
+        invoiceDate,
+        customerEmail,
+        customerNotes,
+        internalNotes,
+        billTo,
+        shipTo,
+        lineItems[]{
+          quantity,
+          description,
+          sku,
+          kind,
+          product->{ title, sku },
+          unitPrice,
+          metadata[]{key, value}
+        },
+        orderRef->{
+          _id,
+          createdAt,
+          stripeSessionId,
+          customerEmail,
+          shippingAddress,
+          cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades, metadata[]{key, value} },
+        }
+      }
+---
+FILE: netlify/functions/generatePackingSlips.ts:479
+*[_type == "order" && _id == $id][0]{
+        _id,
+        createdAt,
+        stripeSessionId,
+        customerEmail,
+        shippingAddress,
+        billingAddress,
+        cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades, metadata[]{key, value} },
+        notes,
+        invoiceRef
+      }
+---
+FILE: netlify/functions/generatePackingSlips.ts:496
+*[_type == "invoice" && _id == $id][0]{
+        _id,
+        _createdAt,
+        invoiceNumber,
+        orderNumber,
+        invoiceDate,
+        customerEmail,
+        customerNotes,
+        internalNotes,
+        billTo,
+        shipTo,
+        lineItems[]{
+          quantity,
+          description,
+          sku,
+          kind,
+          product->{ title, sku },
+          unitPrice,
+          metadata[]{key, value}
+        }
+      }
+---
+FILE: netlify/functions/generateQuotePDF.ts:70
+*[_type=="quote" && _id==$id][0]{
+    _id, title, quoteNumber,
+    billTo, shipTo,
+    lineItems[]{quantity, unitPrice, customName, description, product->{title}},
+    discountType, discountValue, taxRate,
+    subtotal, taxAmount, total
+  }
+---
+FILE: netlify/functions/getShippingQuoteBySkus.ts:147
+*[_type == "product" && (sku in $skus || _id in $ids || _id in $draftIds || title in $titles)]{
+        _id,
+        title,
+        sku,
+        shippingWeight,
+        boxDimensions,
+        shipsAlone,
+        shippingClass
+      }
+---
+FILE: netlify/functions/reprocessStripeSession.ts:87
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/reprocessStripeSession.ts:98
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/reprocessStripeSession.ts:527
+*[_type == "customer" && email == $email][0]._id
+---
+FILE: netlify/functions/reprocessStripeSession.ts:537
+*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}
+---
+FILE: netlify/functions/reprocessStripeSession.ts:600
+*[_type == "invoice" && _id in $ids][0]._id
+---
+FILE: netlify/functions/reprocessStripeSession.ts:605
+*[_type == "invoice" && stripeInvoiceId == $sid][0]._id
+---
+FILE: netlify/functions/requestFreightQuote.ts:77
+*[_type == "order" && _id == $id][0]{
+      _id, customerEmail, customerRef, invoiceRef, shippingAddress, cart
+    }
+---
+FILE: netlify/functions/requestFreightQuote.ts:104
+*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass}
+---
+FILE: netlify/functions/resendInvoiceEmail.ts:116
+*[_type == "invoice" && _id == $id][0]{
+        _id,
+        title,
+      invoiceNumber,
+      invoiceDate,
+      dueDate,
+      total,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      shippingCarrier,
+      trackingNumber,
+      shippingLabelUrl,
+      billTo,
+      shipTo,
+      lineItems[]{
+        _key,
+        kind,
+          product->{_id, title, sku},
+          description,
+        sku,
+        quantity,
+        unitPrice,
+        lineTotal,
+        optionSummary,
+        optionDetails,
+        upgrades,
+        metadata[]{key, value}
+      },
+      orderRef->{
+        _id,
+        orderNumber,
+        amountSubtotal,
+        amountTax,
+        amountShipping,
+        shippingCarrier,
+        trackingNumber,
+        shippingLabelUrl,
+        selectedService->{carrier, service, amount},
+        cart[]{
+            _key,
+            name,
+            productName,
+            sku,
+          quantity,
+          price,
+          lineTotal,
+          total,
+          optionSummary,
+          optionDetails,
+          upgrades,
+          metadata[]{key, value}
+        }
+      },
+      order->{
+        _id,
+        orderNumber,
+        amountSubtotal,
+        amountTax,
+        amountShipping,
+        shippingCarrier,
+        trackingNumber,
+        shippingLabelUrl,
+        selectedService->{carrier, service, amount},
+          cart[]{
+            _key,
+            name,
+            productName,
+            sku,
+          quantity,
+          price,
+          lineTotal,
+          total,
+          optionSummary,
+          optionDetails,
+          upgrades,
+          metadata[]{key, value}
+        }
+      },
+        discountType,
+        discountValue,
+        taxRate,
+        customerNotes,
+        terms,
+        paymentLinkUrl,
+      }
+---
+FILE: netlify/functions/sendQuoteEmail.ts:56
+*[_type=="quote" && _id==$id][0]{
+    _id, title, quoteNumber,
+    billTo, shipTo,
+    lineItems[]{quantity, unitPrice, customName, description, product->{title}},
+    discountType, discountValue, taxRate,
+    subtotal, taxAmount, total
+  }
+---
+FILE: netlify/functions/shipEngineWebhook.ts:54
+*[_type=="label" && labelId == $id][0]{_id}
+---
+FILE: netlify/functions/stripeWebhook.ts:88
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: netlify/functions/stripeWebhook.ts:495
+*[_type == "expiredCart" && stripeSessionId == $sid][0]{_id}
+---
+FILE: netlify/functions/stripeWebhook.ts:544
+*[_type == "expiredCart" && stripeSessionId == $sid][0]{_id}
+---
+FILE: netlify/functions/stripeWebhook.ts:665
+count(*[_type == "product" && slug.current == $slug])
+---
+FILE: netlify/functions/stripeWebhook.ts:700
+*[_type == "product" && _id in $ids][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:708
+*[_type == "product" && stripeProductId == $pid][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:719
+*[_type == "product" && sku in $skus][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:730
+*[_type == "product" && slug.current in $slugs][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:902
+*[_type == "product" && stripePrices[].priceId == $pid][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:966
+*[_type == "invoice" && _id in $ids][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:973
+*[_type == "invoice" && stripeInvoiceId == $id][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:980
+*[_type == "invoice" && invoiceNumber == $num][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:988
+*[_type == "invoice" && _id == $id][0]{status}
+---
+FILE: netlify/functions/stripeWebhook.ts:1108
+*[_type == "customer" && defined(email) && lower(email) == $email][0]{_id, firstName, lastName, roles}
+---
+FILE: netlify/functions/stripeWebhook.ts:1273
+*[_type == "order" && (paymentIntentId == $pid || stripeSessionId == $pid)][0]{ _id, invoiceRef }
+---
+FILE: netlify/functions/stripeWebhook.ts:1324
+*[_type == "invoice" && _id in $ids][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:1331
+*[_type == "invoice" && paymentIntentId == $pid][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:1414
+*[_type == "order" && (
+      ($pi != '' && paymentIntentId == $pi) ||
+      ($charge != '' && chargeId == $charge) ||
+      ($session != '' && stripeSessionId == $session)
+    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, invoiceRef->{ _id } }
+---
+FILE: netlify/functions/stripeWebhook.ts:1466
+*[_type == "invoice" && paymentIntentId == $pi][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:1473
+*[_type == "invoice" && (orderNumber == $orderNumber || orderRef._ref == $orderId || orderRef->_ref == $orderId)][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:1548
+*[_type == "order" && stripeSessionId == $sid][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:1584
+*[_type == "invoice" && _id in $ids][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:1899
+*[_type == "customer" && stripeCustomerId == $id][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:2172
+*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku}
+---
+FILE: netlify/functions/stripeWebhook.ts:2266
+*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}
+---
+FILE: netlify/functions/stripeWebhook.ts:2364
+*[_type == "customer" && email == $email][0]._id
+---
+FILE: netlify/functions/stripeWebhook.ts:2579
+*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}
+---
+FILE: netlify/functions/syncMerchantProducts.ts:105
+*[_type == "product" && defined(price) && price > 0]{
+        _id,
+        title,
+        slug,
+        sku,
+        mpn,
+        price,
+        salePrice,
+        onSale,
+        availability,
+        condition,
+        shippingWeight,
+        boxDimensions,
+        installOnly,
+        shippingLabel,
+        productHighlights,
+        productDetails,
+        specifications[]{
+          label,
+          value,
+        },
+        attributes[]{
+          name,
+          value,
+        },
+        options[]{
+          _type,
+          title,
+          colors[]{
+            title,
+          },
+          sizes[]{
+            title,
+          },
+        },
+        color,
+        size,
+        material,
+        productLength,
+        productWidth,
+        shortDescription,
+        description,
+        brand,
+        canonicalUrl,
+        "images": images[].asset->url,
+        "categories": category[]->title
+      }
+---
+FILE: netlify/functions/syncStripeCatalog.ts:506
+*[_type == "product" && _id in $ids]{
+          _id,
+          title,
+          "slug": slug.current,
+          sku,
+          price,
+          salePrice,
+          onSale,
+          availability,
+          taxBehavior,
+          taxCode,
+          shortDescription,
+          description,
+          stripeProductId,
+          stripeDefaultPriceId,
+          stripePrices,
+          "primaryImage": images[0].asset->url
+        }
+---
+FILE: netlify/functions/syncStripeCatalog.ts:528
+*[_type == "product" && defined(price) && price > 0] | order(_updatedAt desc){
+          _id,
+          title,
+          "slug": slug.current,
+          sku,
+          price,
+          salePrice,
+          onSale,
+          availability,
+          taxBehavior,
+          taxCode,
+          shortDescription,
+          description,
+          stripeProductId,
+          stripeDefaultPriceId,
+          stripePrices,
+          "primaryImage": images[0].asset->url
+        }[0...$limit]
+---
+FILE: netlify/functions/syncStripeCatalog.ts:550
+*[_type == "product" && defined(price) && price > 0 && (!defined(stripeProductId) || stripeProductId == "" || !defined(stripeDefaultPriceId) || stripeDefaultPriceId == "")] | order(_updatedAt desc){
+          _id,
+          title,
+          "slug": slug.current,
+          sku,
+          price,
+          salePrice,
+          onSale,
+          availability,
+          taxBehavior,
+          taxCode,
+          shortDescription,
+          description,
+          stripeProductId,
+          stripeDefaultPriceId,
+          stripePrices,
+          "primaryImage": images[0].asset->url
+        }[0...$limit]
+---
+FILE: netlify/functions/userData.ts:45
+*[_type == "order" && defined(customerEmail) && lower(customerEmail) == $email]{
+      _id,
+      customerEmail,
+      totalAmount,
+      status,
+      createdAt,
+      trackingNumber,
+      shippingLabelUrl,
+      packingSlipUrl
+    } | order(createdAt desc)
+---
+FILE: netlify/lib/cartEnrichment.ts:168
+*[_type == "product" && (
+        slug.current in $slugs ||
+        sku in $skus ||
+        title in $titles ||
+        _id in $ids
+      )]{ _id, title, sku, slug, "categories": category[]->title }
+---
+FILE: netlify/lib/customerSnapshot.ts:141
+*[_type == "customer" && _id == $id][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}
+---
+FILE: netlify/lib/customerSnapshot.ts:144
+*[_type == "customer" && email == $email][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}
+---
+FILE: netlify/lib/customerSnapshot.ts:211
+: *[_type ==
+---
+FILE: netlify/lib/customerSnapshot.ts:220
+: count(*[_type ==
+---
+FILE: netlify/lib/customerSnapshot.ts:224
+: *[_type ==
+---
+FILE: netlify/lib/customerSnapshot.ts:230
+: *[_type ==
+---
+FILE: netlify/lib/customerSnapshot.ts:239
+: count(*[_type ==
+---
+FILE: netlify/lib/customerSnapshot.ts:243
+: *[_type ==
+---
+FILE: netlify/lib/shipstation.ts:146
+*[_type == "order" && _id == $id][0]{
+      _id,
+      orderNumber,
+      createdAt,
+      customerEmail,
+      customerName,
+      shippingAddress,
+      cart[]{
+        _key,
+        sku,
+        name,
+        price,
+        quantity
+      },
+      totalAmount,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      selectedService,
+      shippingCarrier,
+      weight,
+      dimensions,
+      stripeSessionId,
+      shipStationOrderId
+    }
+---
+FILE: netlify/lib/shipstation.ts:296
+*[_type == "order" && orderNumber == $orderNumber][0]._id
+---
+FILE: packages/sanity-config/src/components/inputs/AddressAutocompleteInput.tsx:34
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/inputs/AddressAutocompleteInput.tsx:45
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/previews/CustomerAvatarStack.tsx:7
+*[_type == "order" && customerRef._ref == $customerId]
+    | order(createdAt desc)[0...5].cart[]{
+      "imageUrl": coalesce(productImage.asset->url, image.asset->url),
+      "productRef": coalesce(productRef._ref, product._ref),
+      "productSlug": coalesce(productSlug, slug.current, id)
+    }
+---
+FILE: packages/sanity-config/src/components/previews/CustomerAvatarStack.tsx:16
+*[_type == "product" && (
+      defined($ids[0]) && _id in $ids || defined($slugs[0]) && slug.current in $slugs
+    )]{
+      _id,
+      "slug": slug.current,
+      "imageUrl": coalesce(
+        defaultProductVariant.images[0].asset->url,
+        images[0].asset->url
+      )
+    }
+---
+FILE: packages/sanity-config/src/components/studio/BankAccountsTool.tsx:35
+*[_type == "bankAccount"] | order(defaultForChecks desc, _createdAt desc){
+          _id,
+          title,
+          institutionName,
+          holderName,
+          accountLast4,
+          routingLast4,
+          status,
+          defaultForChecks
+        }
+---
+FILE: packages/sanity-config/src/components/studio/BulkFulfillmentConsole.tsx:9
+*[_type == "order" && status != "fulfilled"]{_id, orderNumber, customerEmail, totalAmount, status}
+---
+FILE: packages/sanity-config/src/components/studio/BulkLabelGenerator.tsx:118
+*[_type == "shippingLabel" && !defined(labelUrl)]{
+            _id,
+            name,
+            serviceSelection,
+            ship_from,
+            ship_to,
+            weight,
+            dimensions
+          } | order(_createdAt asc)
+---
+FILE: packages/sanity-config/src/components/studio/BulkPackingSlipGenerator.tsx:28
+*[_type == "invoice" && !defined(shippingLabel)]{
+        _id,
+        invoiceNumber,
+        orderNumber,
+        customerEmail,
+        billTo{ name },
+        shipTo{ name },
+        lineItems[]{ _key }
+      }
+---
+FILE: packages/sanity-config/src/components/studio/CheckComposer.tsx:64
+*[_type == "bankAccount" && status != "disconnected"] | order(defaultForChecks desc, _createdAt desc){
+          _id,
+          title,
+          institutionName,
+          accountLast4,
+          defaultForChecks
+        }
+---
+FILE: packages/sanity-config/src/components/studio/CustomerDashboard.tsx:149
+: count(*[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/CustomerDashboard.tsx:151
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/CustomerDashboard.tsx:170
+*[_type == "customer" && _id == $id][0]{
+  _id,
+  firstName,
+  lastName,
+  name,
+  email,
+  phone,
+  emailOptIn,
+  marketingOptIn,
+  textOptIn,
+  shippingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  billingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  address,
+  roles,
+  orders[]{
+    orderNumber,
+    status,
+    orderDate,
+    total
+  },
+  quotes[]{
+    quoteNumber,
+    status,
+    createdAt
+  },
+  "orderDocuments": *[
+    _type == "order" &&
+    (
+      customerRef._ref == ^._id ||
+      customer._ref == ^._id ||
+      (defined(^.email) && defined(customerEmail) && lower(customerEmail) == lower(^.email))
+    )
+  ] | order(coalesce(createdAt, _createdAt) desc)[0...50]{
+    _id,
+    orderNumber,
+    status,
+    paymentStatus,
+    createdAt,
+    _createdAt,
+    totalAmount,
+    amountSubtotal,
+    amountTax,
+    amountShipping,
+    cardBrand,
+    cardLast4,
+    cart[]{
+      _key,
+      name,
+      quantity,
+      price,
+      lineTotal,
+      metadata[]{
+        key,
+        value,
+        source
+      }
+    }
+  },
+  orderCount,
+  quoteCount,
+  lifetimeSpend,
+  updatedAt,
+  _createdAt
+}
+---
+FILE: packages/sanity-config/src/components/studio/CustomerDashboard.tsx:249
+*[_type == "customer" && _id == $id][0]{
+  _id,
+  firstName,
+  lastName,
+  name,
+  email,
+  phone,
+  shippingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  billingAddress{
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    country
+  },
+  orderCount,
+  lifetimeSpend,
+  roles
+}
+---
+FILE: packages/sanity-config/src/components/studio/CustomerListPane.tsx:55
+*[_type == "customer"] | order(coalesce(firstName + " " + lastName, name, email) asc)[0...250]{
+  _id,
+  firstName,
+  lastName,
+  name,
+  email,
+  phone,
+  orderCount,
+  lifetimeSpend,
+  roles,
+  emailOptIn,
+  marketingOptIn,
+  shippingAddress{city,state,country},
+  address,
+  updatedAt
+}
+---
+FILE: packages/sanity-config/src/components/studio/FilterBulkAssign.tsx:30
+*[_type == "product" && !( $tag in (defined(filters) ? filters : []) ) ${trimmed ? ' && (title match $m || sku match $m)' : ''}][0...200]{ _id, title, sku }
+---
+FILE: packages/sanity-config/src/components/studio/FilterBulkRemove.tsx:30
+*[_type == "product" && (defined(filters) ? $tag in filters : false) ${trimmed ? ' && (title match $m || sku match $m)' : ''}][0...200]{ _id, title, sku, filters }
+---
+FILE: packages/sanity-config/src/components/studio/FilterDeleteTag.tsx:24
+count(*[_type=="product" && defined(filters) && $tag in filters])
+---
+FILE: packages/sanity-config/src/components/studio/FilterDeleteTag.tsx:45
+*[_type=="product" && defined(filters) && $tag in filters][]._id
+---
+FILE: packages/sanity-config/src/components/studio/FilterTagsInput.tsx:29
+array::unique(*[_type == "product" && defined(filters)][].filters[])
+---
+FILE: packages/sanity-config/src/components/studio/FinancialReports.tsx:21
+*[_type == "product"].title
+---
+FILE: packages/sanity-config/src/components/studio/FinancialReports.tsx:22
+*[_type == "category"].title
+---
+FILE: packages/sanity-config/src/components/studio/FinancialReports.tsx:37
+*[_type == "invoice" && ${filter}]{
+      _createdAt,
+      amount,
+      status,
+      orderId,
+      quote->{ customer->{ fullName } }
+    }
+---
+FILE: packages/sanity-config/src/components/studio/FinancialReports.tsx:73
+*[_type == "invoice" && ${filter}]{
+      _createdAt, amount, status, orderId, quote->{ customer->{ fullName } }
+    }
+---
+FILE: packages/sanity-config/src/components/studio/HomePane.tsx:82
+*[_type == "order"] | order(coalesce(createdAt, _createdAt) desc)[0...5]{
+  _id,
+  orderNumber,
+  customerName,
+  totalAmount,
+  "_createdAt": coalesce(createdAt, _createdAt)
+}
+---
+FILE: packages/sanity-config/src/components/studio/HomePane.tsx:90
+*[_type == "product"] | order(_updatedAt desc)[0...5]{
+  _id,
+  title,
+  sku,
+  status,
+  _updatedAt,
+  "imageUrl": images[0].asset->url,
+  "imageAlt": coalesce(images[0].alt, title)
+}
+---
+FILE: packages/sanity-config/src/components/studio/HomePane.tsx:100
+*[_type == "invoice"] | order(coalesce(issueDate, _createdAt) desc)[0...5]{
+  _id,
+  invoiceNumber,
+  customerName,
+  total,
+  status,
+  "_createdAt": coalesce(issueDate, _createdAt)
+}
+---
+FILE: packages/sanity-config/src/components/studio/InvoiceDashboard.tsx:178
+*[_type == "invoice" && !(_id in path("drafts.**"))]{
+          _id,
+          _createdAt,
+          _updatedAt,
+          invoiceNumber,
+          orderNumber,
+          invoiceDate,
+          dueDate,
+          status,
+          total,
+          amount,
+          amountSubtotal,
+          amountTax,
+          billTo{ name, email },
+          customerRef->{ name, email, firstName, lastName }
+        } | order(coalesce(dueDate, invoiceDate, _createdAt) desc)
+---
+FILE: packages/sanity-config/src/components/studio/InvoiceLineItemInput.tsx:18
+*[_type == "product" && (title match $q || sku match $q)][0...8]{_id, title, sku, price}
+---
+FILE: packages/sanity-config/src/components/studio/InvoiceVisualEditor.tsx:791
+*[_type == "product" && (title match $term || sku match $term)][0...8]{
+              _id,
+              title,
+              sku,
+              price,
+              salePrice,
+              onSale,
+              shortDescription,
+              taxBehavior
+            }
+---
+FILE: packages/sanity-config/src/components/studio/OrderListPane.tsx:187
+*[_type == "order"${filterClause}] | order(${sortOption.orderBy}) [0...200] ${ORDER_PROJECTION}
+---
+FILE: packages/sanity-config/src/components/studio/OrdersDashboard.tsx:103
+*[_type == "order"] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...200]{
+  _id,
+  orderNumber,
+  stripeSessionId,
+  customerName,
+  customerEmail,
+  totalAmount,
+  status,
+  paymentStatus,
+  createdAt,
+  _createdAt,
+  fulfilledAt,
+  cart[]{quantity},
+  shippingLog[]{status, createdAt},
+  shippingCarrier,
+  selectedService{carrier, service, serviceCode},
+  shippingAddress{state, country, city, name}
+}
+---
+FILE: packages/sanity-config/src/components/studio/OrdersDashboard.tsx:122
+*[_type == "order" && _id == $id][0]{
+  _id,
+  orderNumber,
+  status,
+  paymentStatus,
+  totalAmount,
+  amountSubtotal,
+  amountShipping,
+  amountTax,
+  shippingCarrier,
+  trackingNumber,
+  shippingLabelUrl,
+  packingSlipUrl,
+  createdAt,
+  fulfilledAt,
+  customerEmail,
+  customerName,
+  shippingAddress,
+  cart[]{
+    _key,
+    name,
+    sku,
+    quantity,
+    price,
+    lineTotal,
+    optionSummary,
+    optionDetails,
+    upgrades,
+    metadata[]{key,value}
+  },
+  shippingLog[]{
+    _key,
+    status,
+    message,
+    trackingNumber,
+    trackingUrl,
+    labelUrl,
+    createdAt
+  }
+}
+---
+FILE: packages/sanity-config/src/components/studio/OrdersListPane.tsx:36
+*[_type == "order"] | order(orderDate desc)[0...250]{
+  _id,
+  orderNumber,
+  orderDate,
+  status,
+  total,
+  paymentMethod,
+  paymentStatus,
+  fulfillmentStatus,
+  deliveryStatus,
+  tags,
+  customer->{name}
+}
+---
+FILE: packages/sanity-config/src/components/studio/ProductBulkEditor.tsx:512
+*[_type == "product"]{
+            _id,
+            title,
+            slug,
+            sku,
+            mpn,
+            price,
+            salePrice,
+            onSale,
+            availability,
+            condition,
+            manualInventoryCount,
+            taxBehavior,
+            taxCode,
+            installOnly,
+            shippingLabel,
+            shippingWeight,
+            boxDimensions,
+            brand,
+            canonicalUrl,
+            googleProductCategory,
+            productHighlights,
+            productDetails,
+            specifications[]{
+              label,
+              value,
+            },
+            attributes[]{
+              name,
+              value,
+            },
+            options[]{
+              _type,
+              title,
+              colors[]{
+                title,
+              },
+              sizes[]{
+                title,
+              },
+            },
+            color,
+            size,
+            material,
+            productLength,
+            productWidth,
+            shortDescription,
+            description,
+            "images": images[].asset->url,
+            "categories": category[]->title
+          }
+---
+FILE: packages/sanity-config/src/components/studio/ProductListDashboard.tsx:41
+*[_type == "product"]{
+  _id,
+  title,
+  sku,
+  price,
+  salePrice,
+  availability,
+  installOnly,
+  status,
+  manualInventoryCount,
+  "categories": coalesce(category[]->title, []),
+  "filterTags": coalesce(filters[]->title, []),
+  "previewImageUrl": coalesce(store.previewImageUrl, images[0].asset->url),
+  "updatedAt": coalesce(store.updatedAt, _updatedAt),
+  store{
+    status,
+    isDeleted,
+    title,
+    vendor,
+    tags,
+    tracksInventory,
+    totalInventory,
+    updatedAt,
+    options[]{name, values},
+    variants[]{
+      store{
+        id,
+        sku,
+        price,
+        compareAtPrice,
+        inventoryQuantity,
+        inventoryPolicy,
+        availableForSale,
+        requiresShipping
+      }
+    }
+  }
+}
+---
+FILE: packages/sanity-config/src/components/studio/ProfitLossDashboard.tsx:27
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/ProfitLossDashboard.tsx:32
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/ProfitLossDashboard.tsx:36
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/ProfitLossReport.tsx:17
+*[_type == "invoice" && defined(amount) && dateTime(_createdAt) >= dateTime("${from}") && dateTime(_createdAt) <= dateTime("${to}")] { amount }
+---
+FILE: packages/sanity-config/src/components/studio/ProfitLossReport.tsx:18
+*[_type == "expense" && dateTime(_createdAt) >= dateTime("${from}") && dateTime(_createdAt) <= dateTime("${to}")] { amount, category }
+---
+FILE: packages/sanity-config/src/components/studio/QuoteLineItemInput.tsx:31
+*[_type == "product" && (title match $q || sku match $q)][0...8]{_id, title, sku, price}
+---
+FILE: packages/sanity-config/src/components/studio/QuotesDashboard.tsx:130
+*[_type == "quote" && !(_id in path("drafts.**"))]{
+          _id,
+          _createdAt,
+          _updatedAt,
+          quoteNumber,
+          quoteDate,
+          expirationDate,
+          status,
+          conversionStatus,
+          total,
+          subtotal,
+          taxAmount,
+          billTo{ name, email }
+        } | order(coalesce(quoteDate, _createdAt) desc)
+---
+FILE: packages/sanity-config/src/components/studio/QuotesDashboard.tsx:243
+*[_type == "quote" && _id == $id][0]{
+          _id,
+          quoteNumber,
+          quoteDate,
+          status,
+          conversionStatus,
+          customer{_ref},
+          customerRef{_ref},
+          billTo,
+          total,
+          subtotal,
+          taxAmount,
+          lineItems
+        }
+---
+FILE: packages/sanity-config/src/components/studio/SalesTransactions.tsx:73
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/SalesTransactions.tsx:84
+: *[_type ==
+---
+FILE: packages/sanity-config/src/components/studio/ShippingCalendar.tsx:55
+*[_type == "shippingLabel" && defined(shipDate)]{
+        _id,
+        shipDate,
+        status,
+        trackingUrl,
+        labelUrl,
+        invoice->{
+          quote->{
+            customer->{
+              fullName
+            }
+          }
+        }
+      }
+---
+FILE: packages/sanity-config/src/components/studio/ShippingLabelActions.tsx:237
+*[_type == "product" && (sku in $skus || _id in $ids || _id in $draftIds)]{
+            _id,
+            sku,
+            shippingWeight,
+            boxDimensions
+          }
+---
+FILE: packages/sanity-config/src/components/studio/VendorAdminDashboard.tsx:23
+*[_type == "vendor"]{
+          _id,
+          name,
+          companyName,
+          contactPerson,
+          email,
+          status,
+          approved,
+          _createdAt
+        } | order(_createdAt desc)
+---
+FILE: packages/sanity-config/src/components/studio/VendorSpend.tsx:14
+*[_type == "bill" && defined(amount) && dateTime(_createdAt) >= dateTime("${from}") && dateTime(_createdAt) <= dateTime("${to}")]{
+        amount, vendor->{name}
+      }
+---
+FILE: packages/sanity-config/src/components/studio/VendorSpend.tsx:17
+*[_type == "expense" && defined(amount) && dateTime(_createdAt) >= dateTime("${from}") && dateTime(_createdAt) <= dateTime("${to}")]{
+        amount, vendor->{name}
+      }
+---
+FILE: packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx:217
+*[_type == "customer" && (name match $m || email match $m || phone match $m)][0...10]{
+            _id, name, email, phone,
+            address_line1, address_line2, city_locality, state_province, postal_code, country_code
+          }
+---
+FILE: packages/sanity-config/src/schemaTypes/documents/quoteContent.tsx:140
+*[_type == "customer" && (name match $m || email match $m || phone match $m)][0...10]{
+            _id, name, email, phone,
+            address_line1, address_line2, city_locality, state_province, postal_code, country_code
+          }
+---
+FILE: scripts/backfill-customers.js:26
+*[_type == "customer" && _id > $cursor] | order(_id){_id, userId, roles, updatedAt, emailOptIn, marketingOptIn, textOptIn}[0...$limit]
+---
+FILE: scripts/backfill-invoices.js:118
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: scripts/backfill-invoices.js:129
+count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])
+---
+FILE: scripts/backfill-invoices.js:156
+*[_type == "invoice" && _id > $cursor] | order(_id) {
+        _id,
+        lineItems,
+        customerRef,
+        customer,
+        orderRef,
+        order,
+        invoiceNumber,
+        orderNumber,
+        stripeSessionId,
+        billTo,
+        shipTo,
+        taxRate,
+        title,
+        customerEmail,
+        amountSubtotal,
+        amountTax,
+        invoiceDate,
+        dueDate,
+        _createdAt
+      }[0...$limit]
+---
+FILE: scripts/backfill-invoices.js:191
+*[_type == "order" && _id == $id][0]{
+              orderNumber,
+              cart,
+              shippingAddress,
+              customerName,
+              customerEmail,
+              amountSubtotal,
+              amountTax,
+              createdAt,
+              stripeSessionId,
+              totalAmount
+            }
+---
+FILE: scripts/backfill-invoices.js:239
+*[_type == "product" && sku == $sku][0]._id
+---
+FILE: scripts/backfill-invoices.js:242
+*[_type == "product" && title == $t][0]._id
+---
+FILE: scripts/backfill-order-shipping.ts:43
+*[_type == "order" && defined(stripeSessionId) && (!defined(selectedService) || !defined(selectedService.serviceCode) || !defined(packingSlipUrl) || !defined(shippingCarrier))] | order(_createdAt asc)[0...$limit]{
+      _id,
+      orderNumber,
+      stripeSessionId,
+      packingSlipUrl,
+      shippingCarrier,
+      selectedService
+    }
+---
+FILE: scripts/backfill-orders.js:74
+*[_type == "order" && _id > $cursor] | order(_id) {
+        _id,
+        cart,
+        customerRef,
+        customer
+      }[0...$limit]
+---
+FILE: scripts/backfill-orders.js:129
+count(*[_type == "order" && defined(customer)])
+---
+FILE: scripts/backfill-payment-failures.ts:365
+*[_type == "invoice" && paymentIntentId == $pi][0]._id
+---
+FILE: scripts/backfill-payment-failures.ts:373
+*[_type == "invoice" && (
+        orderNumber == $orderNumber ||
+        orderRef._ref == $orderId ||
+        orderRef->_ref == $orderId
+      )][0]._id
+---
+FILE: scripts/delete-products-by-title.js:67
+*[_type == "product" && title in $titles]{_id, title, sku, _updatedAt} | order(title asc)
+---
+FILE: scripts/delete-products.js:82
+*[_type == "product" && sku == $sku]{_id, title, sku, _updatedAt} | order(_updatedAt desc)
+---
+FILE: scripts/delete-products.js:91
+*[_type == "product" && title match $q]{_id, title, sku, _updatedAt}[0...200] | order(title asc)
+---
+FILE: scripts/migrate-filters-to-refs.js:33
+*[_type=="filterTag" && slug.current==$s][0]{_id}
+---
+FILE: scripts/migrate-filters-to-refs.js:42
+array::unique(*[_type=="product" && defined(filters)][].filters[])
+---
+FILE: scripts/migrate-filters-to-refs.js:54
+*[_type=="product" && defined(filters)]{_id, filters}
+---
+FILE: scripts/migrate-filters-to-strings.ts:16
+*[_type=="product" && defined(filters)]{_id, filters}
+---
+FILE: scripts/normalize-product-filters.js:28
+*[_type=="product"]{_id, filters}
+---
+FILE: scripts/remove-refs-to-ids.js:65
+*[_type == "product" && title in $titles]{_id, title}
+---
+FILE: scripts/setRoles.js:35
+*[_type == $type && _id > $cursor] | order(_id){ _id, roles }[0...$limit]
+---
+FILE: scripts/upload-google-merchant-sftp.ts:113
+*[_type == "product" && defined(price) && price > 0]{
+  _id,
+  title,
+  slug,
+  sku,
+  mpn,
+  price,
+  salePrice,
+  onSale,
+  availability,
+  condition,
+  shippingWeight,
+  boxDimensions,
+  installOnly,
+  shippingLabel,
+  productHighlights,
+  productDetails,
+  specifications,
+  attributes,
+  options,
+  color,
+  size,
+  material,
+  productLength,
+  productWidth,
+  shortDescription,
+  description,
+  brand,
+  canonicalUrl,
+  "images": images[]{
+    asset->{url}
+  },
+  "categories": category[]->title,
+  googleProductCategory,
+  google_product_category
+}
+---

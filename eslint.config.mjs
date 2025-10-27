@@ -21,7 +21,6 @@ export default [
     files: [
       'scripts/**/*.{js,ts}',
       'netlify/**/*.{js,ts}',
-      'packages/hydrogen-sanity/src/**/*.{js,ts,tsx}',
       'packages/sanity-config/src/**/*.{js,ts,tsx}',
       'packages/sanity-config/sanity.config.ts',
       'packages/sanity-config/sanity.cli.ts',

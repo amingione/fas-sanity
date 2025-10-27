@@ -17,10 +17,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "lib/*": ["packages/hydrogen-sanity/src/lib/*"],
-      "@/lib/*": ["packages/hydrogen-sanity/src/lib/*"],
-      "@fas/sanity-config/*": ["packages/sanity-config/src/*"],
-      "@fas/hydrogen-sanity/*": ["packages/hydrogen-sanity/src/*"]
+      "@fas/sanity-config/*": ["packages/sanity-config/src/*"]
     }
   },
   "include": [
@@ -30,7 +27,6 @@
     "netlify/lib",
     "scripts",
     "packages/sanity-config",
-    "packages/hydrogen-sanity",
     "env.d.ts",
     "*.ts",
     "*.tsx"
