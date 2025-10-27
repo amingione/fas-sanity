@@ -85,6 +85,8 @@ const sanityEnv = getEnv('SANITY_STUDIO_ENV')
 const nodeEnv = getEnv('NODE_ENV')
 const enableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISUAL_EDITING'))
 const disableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISUAL_EDITING'))
+const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
+const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'))
 const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_PREVIEW_ORIGIN') ||
   getEnv('PUBLIC_SITE_URL') ||
@@ -181,7 +183,12 @@ const isDev =
       ? nodeEnv !== 'production'
       : false
 
-const visionEnabled = true
+const visionEnabled =
+  disableVisionOverride === true
+    ? false
+    : enableVisionOverride === true
+      ? true
+      : isDev
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false
