@@ -932,6 +932,7 @@ export default function OrdersDashboard() {
               <Box style={{minWidth: 240}}>
                 <TextInput
                   value={search}
+                  name="ordersDashboardSearch"
                   onChange={(event) => setSearch(event.currentTarget.value)}
                   icon={SearchIcon}
                   placeholder="Search orders"

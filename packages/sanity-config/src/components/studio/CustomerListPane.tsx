@@ -277,6 +277,7 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
                   fontSize={1}
                   icon={SearchIcon}
                   radius={2}
+                  name="customerSearch"
                   value={query}
                   onChange={handleSearchChange}
                   placeholder="Search customers"
