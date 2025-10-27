@@ -13,7 +13,7 @@
     --studio-border-light: rgba(148, 163, 184, 0.35);
     --studio-border-strong-light: rgba(100, 116, 139, 0.4);
     --studio-text-light: #0f172a;
-    --studio-muted-light: rgba(71, 85, 105, 0.85);
+    --studio-muted-light: #4b5563;
     --studio-accent-light: #2563eb;
     --studio-accent-strong-light: #1e293b;
     --studio-accent-muted-light: rgba(37, 99, 235, 0.12);
@@ -389,5 +389,11 @@
     @apply inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold;
     background: var(--studio-accent-muted);
     color: var(--studio-accent-strong);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #4b5563;
+    opacity: 1;
   }
 }

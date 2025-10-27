@@ -1032,6 +1032,7 @@ const ProductListDashboard = forwardRef<HTMLDivElement | null, Record<string, ne
                 >
                   <Box style={{flex: '1 1 280px', minWidth: 240}}>
                     <TextInput
+                      name="productListSearch"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.currentTarget.value)}
                       placeholder="Search products"
