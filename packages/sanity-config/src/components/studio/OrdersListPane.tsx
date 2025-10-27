@@ -33,6 +33,18 @@ type OrderRecord = {
   } | null
 }
 
+type OrderFilter = 'all' | 'paid' | 'pending' | 'shipped' | 'cancelled' | 'refunded' | 'expired'
+
+const ORDER_FILTER_LABELS: Record<OrderFilter, string> = {
+  all: 'All',
+  paid: 'Paid',
+  pending: 'Pending',
+  shipped: 'Shipped',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+  expired: 'Expired',
+}
+
 const ORDER_QUERY = `*[_type == "order"] | order(orderDate desc)[0...250]{
   _id,
   orderNumber,
@@ -104,15 +116,66 @@ const badgeTone = (
   return 'default'
 }
 
+const includesAny = (value: string, patterns: string[]) => patterns.some((pattern) => value.includes(pattern))
+
+const FILTER_MATCHERS: Record<Exclude<OrderFilter, 'all'>, (value: string) => boolean> = {
+  paid: (value) =>
+    !includesAny(value, ['unpaid', 'not paid', 'incomplete']) &&
+    includesAny(value, [
+      'paid',
+      'succeeded',
+      'completed',
+      'complete',
+      'captured',
+      'settled',
+      'payment received',
+      'payment_received',
+      'paid in full',
+      'paid_in_full',
+    ]),
+  pending: (value) =>
+    includesAny(value, [
+      'pending',
+      'awaiting',
+      'requires',
+      'incomplete',
+      'processing',
+      'open',
+      'on hold',
+      'on-hold',
+      'on_hold',
+      'review',
+      'authorized',
+    ]),
+  shipped: (value) =>
+    includesAny(value, [
+      'shipped',
+      'shipping',
+      'shipment',
+      'fulfilled',
+      'fulfillment',
+      'deliver',
+      'delivery',
+      'in transit',
+      'label created',
+      'out for delivery',
+      'ready for pickup',
+      'picked up',
+      'partially fulfilled',
+      'partially shipped',
+    ]) && !includesAny(value, ['not shipped', 'unshipped']),
+  cancelled: (value) => includesAny(value, ['cancel', 'void', 'return', 'returned', 'failed', 'declined', 'rejected']),
+  refunded: (value) => includesAny(value, ['refund', 'refunded', 'refunding', 'charge refunded', 'payment refunded']),
+  expired: (value) => includesAny(value, ['expired', 'expire', 'abandoned']),
+}
+
 const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const [orders, setOrders] = useState<OrderRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<
-    'all' | 'paid' | 'pending' | 'shipped' | 'cancelled' | 'refunded' | 'expired'
-  >('all')
+  const [filter, setFilter] = useState<OrderFilter>('all')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   useEffect(() => {
@@ -152,15 +215,18 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
       if (!matchesTerm) return false
       if (filter === 'all') return true
 
-      const normalizedFilter = filter.toLowerCase()
-      const statusesToCheck = [
+      const matcher = FILTER_MATCHERS[filter]
+      const valuesToCheck = [
         order.status,
         order.paymentStatus,
         order.fulfillmentStatus,
         order.deliveryStatus,
+        ...(Array.isArray(order.tags) ? order.tags : []),
       ]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.toLowerCase().trim())
 
-      return statusesToCheck.some((value) => value?.toLowerCase() === normalizedFilter)
+      return valuesToCheck.some((value) => matcher(value))
     })
   }, [orders, search, filter])
 
@@ -182,15 +248,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]))
   }
 
-  const filterLabel = {
-    all: 'All',
-    paid: 'Paid',
-    pending: 'Pending',
-    shipped: 'Shipped',
-    cancelled: 'Cancelled',
-    refunded: 'Refunded',
-    expired: 'Expired',
-  }[filter]
+  const filterLabel = ORDER_FILTER_LABELS[filter]
 
   return (
     <Box ref={ref} padding={[4, 5, 6]}>
