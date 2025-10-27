@@ -1,0 +1,84 @@
+diff --git a/src/constants.ts b/src/constants.ts
+index 1111111..2222222 100644
+--- a/src/constants.ts
++++ b/src/constants.ts
+@@
+-declare global {
+-  const PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS: unknown
+-}
+-
+-// Feature flag that uses the new Live Draft Content API instead of the Listen API + Mendoza events
+-export const LIVE_DRAFT_EVENTS_ENABLED =
+-  typeof PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'string'
+-    ? PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'true'
+-    : // @ts-expect-error: env vars are not typed
+-      process.env.SANITY_STUDIO_PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'true'
++declare global {
++  const PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS: unknown
++  const PRESENTATION_ENABLE_VISUAL_EDITING: unknown
++}
++
++// Feature flag that uses the new Live Draft Content API instead of the Listen API + Mendoza events
++export const LIVE_DRAFT_EVENTS_ENABLED =
++  typeof PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'string'
++    ? PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'true'
++    : // @ts-expect-error: env vars are not typed
++      process.env.SANITY_STUDIO_PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'true'
++
++// Allow workspaces to opt-in to starting the visual editing channel
++export const VISUAL_EDITING_ENABLED =
++  typeof PRESENTATION_ENABLE_VISUAL_EDITING === 'string'
++    ? PRESENTATION_ENABLE_VISUAL_EDITING === 'true'
++    : // @ts-expect-error: env vars are not typed
++      process.env.SANITY_STUDIO_PRESENTATION_ENABLE_VISUAL_EDITING !== 'false'
+diff --git a/src/PresentationTool.tsx b/src/PresentationTool.tsx
+index 3333333..4444444 100644
+--- a/src/PresentationTool.tsx
++++ b/src/PresentationTool.tsx
+@@
+-import {
+-  COMMENTS_INSPECTOR_NAME,
+-  DEFAULT_TOOL_NAME,
+-  EDIT_INTENT_MODE,
+-  LIVE_DRAFT_EVENTS_ENABLED,
+-} from './constants'
++import {
++  COMMENTS_INSPECTOR_NAME,
++  DEFAULT_TOOL_NAME,
++  EDIT_INTENT_MODE,
++  LIVE_DRAFT_EVENTS_ENABLED,
++  VISUAL_EDITING_ENABLED,
++} from './constants'
+@@
+-  useEffect(() => {
+-    if (!controller) return
++  useEffect(() => {
++    if (!controller || !VISUAL_EDITING_ENABLED) {
++      if (!VISUAL_EDITING_ENABLED) {
++        setVisualEditingComlink(null)
++        setOverlaysConnection('idle')
++      }
++      return
++    }
+ 
+     const comlink = controller.createChannel<VisualEditingControllerMsg, VisualEditingNodeMsg>(
+       {
+         name: 'presentation',
+         heartbeat: true,
+@@
+-    return () => {
+-      stop()
+-      setVisualEditingComlink(null)
+-    }
+-  }, [controller, handleNavigate, setDocumentsOnPage, setOverlaysConnection, targetOrigin])
++    return () => {
++      stop()
++      setVisualEditingComlink(null)
++    }
++  }, [
++    controller,
++    handleNavigate,
++    setDocumentsOnPage,
++    setOverlaysConnection,
++    targetOrigin,
++  ])
