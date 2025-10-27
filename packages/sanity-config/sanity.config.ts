@@ -18,6 +18,7 @@ import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {media} from 'sanity-plugin-media'
 import {presentationTool} from '@sanity/presentation'
+import {visualEditing} from '@sanity/visual-editing'
 import {definePreviewUrl} from '@sanity/preview-url-secret/define-preview-url'
 import {schemaMarkup} from '@operationnation/sanity-plugin-schema-markup'
 import {schemaTypes} from './src/schemaTypes'
@@ -240,6 +241,7 @@ export default defineConfig({
         },
       },
     }),
+    ...(visualEditingEnabled ? [visualEditing()] : []),
     ...(visionEnabled ? [visionTool()] : []),
   ],
 
