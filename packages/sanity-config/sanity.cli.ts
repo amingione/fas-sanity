@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 import {defineCliConfig} from 'sanity/cli'
 
 export default defineCliConfig({
@@ -23,7 +25,31 @@ export default defineCliConfig({
       nonNullDocumentFields: false,
     },
   ],
-  vite: (config) => config,
+  vite: (config, env) => {
+    const root = config.root ? path.resolve(config.root) : undefined
+    const outDir =
+      root && config.build?.outDir
+        ? path.resolve(root, config.build.outDir)
+        : config.build?.outDir
+
+    const isPreviewServe =
+      env.command === 'serve' && root && outDir && root === outDir
+
+    if (!isPreviewServe) {
+      return config
+    }
+
+    const workspaceRoot = path.dirname(root)
+
+    return {
+      ...config,
+      root: workspaceRoot,
+      build: {
+        ...config.build,
+        outDir: root,
+      },
+    }
+  },
   /**
    * Enable auto-updates for studios.
    * Learn more at https://www.sanity.io/docs/cli#auto-updates
