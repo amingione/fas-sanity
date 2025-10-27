@@ -83,6 +83,8 @@ const normalizeBaseUrl = (value?: string | null, fallback?: string): string | un
 
 const sanityEnv = getEnv('SANITY_STUDIO_ENV')
 const nodeEnv = getEnv('NODE_ENV')
+const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
+const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'))
 const enableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISUAL_EDITING'))
 const disableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISUAL_EDITING'))
 const presentationPreviewOrigin =
