@@ -85,6 +85,8 @@ const sanityEnv = getEnv('SANITY_STUDIO_ENV')
 const nodeEnv = getEnv('NODE_ENV')
 const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
 const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'))
+const enableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISUAL_EDITING'))
+const disableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISUAL_EDITING'))
 const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_PREVIEW_ORIGIN') ||
   getEnv('PUBLIC_SITE_URL') ||
@@ -182,6 +184,12 @@ const isDev =
       : false
 
 const visionEnabled = true
+const visualEditingEnabled =
+  disableVisualEditingOverride === true
+    ? false
+    : enableVisualEditingOverride === true
+      ? true
+      : isDev
 
 export default defineConfig({
   name: 'default',
@@ -317,6 +325,10 @@ export default defineConfig({
     },
     define: {
       __SANITY_STUDIO_RUNTIME_ENV__: JSON.stringify(studioRuntimeEnv),
+      PRESENTATION_ENABLE_VISUAL_EDITING: JSON.stringify(visualEditingEnabled),
+      'process.env.SANITY_STUDIO_PRESENTATION_ENABLE_VISUAL_EDITING': JSON.stringify(
+        visualEditingEnabled ? 'true' : 'false',
+      ),
     },
   },
 })
