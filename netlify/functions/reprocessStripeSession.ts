@@ -417,11 +417,20 @@ async function upsertOrder({
     stripe,
   })
 
-  const orderNumber = await resolveOrderNumber({
-    metadataOrderNumber: metadataOrderNumberRaw,
-    invoiceNumber: metadataInvoiceNumber,
-    fallbackId: stripeSessionId,
-  })
+  const existingOrder = await sanity.fetch<
+    {_id: string; orderNumber?: string; packingSlipUrl?: string} | null
+  >(
+    `*[_type == "order" && stripeSessionId == $sid][0]{_id, orderNumber, packingSlipUrl}`,
+    {sid: stripeSessionId},
+  )
+
+  const orderNumber =
+    existingOrder?.orderNumber ||
+    (await resolveOrderNumber({
+      metadataOrderNumber: metadataOrderNumberRaw,
+      invoiceNumber: metadataInvoiceNumber,
+      fallbackId: stripeSessionId,
+    }))
 
   const cart = await buildCartFromSession(stripeSessionId, metadata)
   const shippingAddress = extractShippingAddress(session, email || undefined)
@@ -532,11 +541,6 @@ async function upsertOrder({
       console.warn('reprocessStripeSession: failed to lookup customer by email', err)
     }
   }
-
-  const existingOrder = await sanity.fetch<{_id: string; packingSlipUrl?: string} | null>(
-    `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
-    {sid: stripeSessionId},
-  )
 
   let orderId = existingOrder?._id || null
   if (orderId) {
