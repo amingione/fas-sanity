@@ -333,7 +333,11 @@ export default function SalesTransactions() {
                 <Text size={1} muted>
                   Type
                 </Text>
-                <Select value={typeFilter} onChange={(event) => setTypeFilter(event.currentTarget.value as any)}>
+                <Select
+                  name="transactionTypeFilter"
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.currentTarget.value as any)}
+                >
                   {TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -345,7 +349,11 @@ export default function SalesTransactions() {
                 <Text size={1} muted>
                   Date
                 </Text>
-                <Select value={dateFilter} onChange={(event) => setDateFilter(event.currentTarget.value)}>
+                <Select
+                  name="transactionDateFilter"
+                  value={dateFilter}
+                  onChange={(event) => setDateFilter(event.currentTarget.value)}
+                >
                   {DATE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
@@ -358,6 +366,7 @@ export default function SalesTransactions() {
                   Customer
                 </Text>
                 <TextInput
+                  name="transactionCustomerSearch"
                   value={customerSearch}
                   placeholder="Search"
                   onChange={(event) => setCustomerSearch(event.currentTarget.value)}
@@ -367,7 +376,11 @@ export default function SalesTransactions() {
                 <Text size={1} muted>
                   Status
                 </Text>
-                <Select value={statusFilter} onChange={(event) => setStatusFilter(event.currentTarget.value)}>
+                <Select
+                  name="transactionStatusFilter"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.currentTarget.value)}
+                >
                   <option value="all">All statuses</option>
                   {allStatuses.map((status) => (
                     <option key={status} value={status}>

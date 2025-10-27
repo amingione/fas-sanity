@@ -265,7 +265,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
       ].join('\n'),
     )
     window.location.href = `mailto:${customerEmail}?subject=${subject}&body=${body}`
-  }, [order])
+  }, [order, orderId])
 
   if (!order) {
     return (
