@@ -23,7 +23,6 @@ It also comes with several convenient layout modules which can be re-used across
 This project now mirrors the structure of Shopify's [`hydrogen-sanity`](https://github.com/sanity-io/hydrogen-sanity) monorepo. Core code lives inside `packages/` while deployable infrastructure such as Netlify functions remains untouched.
 
 - `packages/sanity-config` contains the Studio configuration, schema, custom desk structure, themes, and supporting utilities.
-- `packages/hydrogen-sanity` exposes the shared client helpers that storefronts can import when interacting with this Studio.
 - `netlify/functions` continues to host the existing serverless endpoints with their original paths.
 
 ## Assumptions
