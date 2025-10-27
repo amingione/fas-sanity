@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Launch Sanity Studio in Chrome",
-      "type": "pwa-chrome",
+      "type": "chrome",
       "request": "launch",
       "url": "http://localhost:3333",
       "webRoot": "${workspaceFolder}",

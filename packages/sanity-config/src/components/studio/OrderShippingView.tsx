@@ -191,13 +191,13 @@ export default function OrderShippingView(props: DocumentViewProps) {
   const order = props.document?.displayed || null
   const client = useClient({apiVersion: '2024-10-01'})
   const [downloadingSlip, setDownloadingSlip] = useState(false)
-
   const base = getFnBase()
   const orderId = order?._id || ''
+
   const patchTargets = useMemo(() => resolvePatchTargets(orderId), [orderId])
 
   const ensurePackingSlip = useCallback(async () => {
-    if (downloadingSlip || !order) return
+    if (!order || downloadingSlip) return
     setDownloadingSlip(true)
     try {
       if (order.packingSlipUrl) {
@@ -249,31 +249,23 @@ export default function OrderShippingView(props: DocumentViewProps) {
     } finally {
       setDownloadingSlip(false)
     }
-  }, [
-    base,
-    client,
-    downloadingSlip,
-    order?._id,
-    order?.orderNumber,
-    order?.packingSlipUrl,
-    order?.stripeSessionId,
-    patchTargets,
-  ])
+  }, [base, client, downloadingSlip, order, patchTargets])
 
   const handleEmailCustomer = useCallback(() => {
-    if (!order?.customerEmail) return
-    const subject = encodeURIComponent(`Order ${order.orderNumber || order._id}`)
+    const customerEmail = order?.customerEmail
+    if (!customerEmail) return
+    const subject = encodeURIComponent(`Order ${order?.orderNumber || orderId}`)
     const body = encodeURIComponent(
       [
-        `Hi ${order.customerName || ''},`,
+        `Hi ${order?.customerName || ''},`,
         '',
         'We wanted to follow up on your recent order. Let us know if you have any questions.',
         '',
         '— F.A.S. Motorsports',
       ].join('\n'),
     )
-    window.location.href = `mailto:${order.customerEmail}?subject=${subject}&body=${body}`
-  }, [order?.customerEmail, order?.customerName, order?._id, order?.orderNumber])
+    window.location.href = `mailto:${customerEmail}?subject=${subject}&body=${body}`
+  }, [order])
 
   if (!order) {
     return (

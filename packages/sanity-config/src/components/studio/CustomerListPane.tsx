@@ -1,20 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  Flex,
-  TextInput,
-  Menu,
-  MenuButton,
-  MenuDivider,
-  MenuItem,
-  Spinner,
-  Stack,
-  Text,
-} from '@sanity/ui'
+import {Badge, Box, Button, Card, Checkbox, Flex, TextInput, Menu, MenuButton, MenuDivider, MenuItem, Spinner, Stack, Text} from '@sanity/ui'
 import {
   AddIcon,
   CheckmarkIcon,
