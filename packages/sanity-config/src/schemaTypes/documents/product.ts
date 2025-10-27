@@ -1,8 +1,9 @@
+import {createElement} from 'react'
 import {defineType, defineField} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 
-const PRODUCT_PLACEHOLDER_ASSET =
-  'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
+const PRODUCT_PLACEHOLDER_IMAGE_URL =
+  'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
 
 /**
  * SIMPLIFIED PRODUCT SCHEMA
@@ -671,14 +672,18 @@ const product = defineType({
           ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(price)
           : 'No price'
 
-      const media = firstImageAsset
-        ? {_type: 'image', asset: firstImageAsset}
-        : {_type: 'image', asset: {_ref: PRODUCT_PLACEHOLDER_ASSET}}
+      const mediaUrl =
+        (firstImageAsset as {_ref?: string; url?: string} | undefined)?.url ||
+        PRODUCT_PLACEHOLDER_IMAGE_URL
 
       return {
         title: title || 'Untitled Product',
         subtitle: [subtitle, priceDisplay, status?.toUpperCase()].filter(Boolean).join(' • '),
-        media,
+        media: createElement('img', {
+          src: mediaUrl,
+          alt: title || 'Product preview',
+          style: {objectFit: 'cover', width: '100%', height: '100%'},
+        }),
       }
     },
   },
