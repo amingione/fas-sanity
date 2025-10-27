@@ -1,9 +1,10 @@
 import {createClient} from '@sanity/client'
+import type {ClientConfig} from '@sanity/client'
 import {useContext, useMemo} from 'react'
-import {useClient} from 'sanity'
 import {WorkspaceContext} from 'sanity/_singletons'
+import type {SourceClientOptions} from 'sanity'
 
-type UseClientOptions = Parameters<typeof useClient>[0]
+type UseClientOptions = (SourceClientOptions & Partial<ClientConfig>) | undefined
 
 const DEFAULT_PROJECT_ID =
   process.env.SANITY_STUDIO_PROJECT_ID ||
@@ -13,39 +14,48 @@ const DEFAULT_DATASET =
   process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 const FALLBACK_API_VERSION = '2024-10-01'
 
-function useOptionalStudioClient(options?: UseClientOptions) {
-  try {
-    return options ? useClient(options) : useClient()
-  } catch (err) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('useWorkspaceClient: falling back to manual client', err)
-    }
-    return null
-  }
-}
-
 export function useWorkspaceClient(options?: UseClientOptions) {
   const workspace = useContext(WorkspaceContext)
-  const apiVersion = options?.apiVersion
-  const studioClient = useOptionalStudioClient(options)
+  const apiVersion = options?.apiVersion || FALLBACK_API_VERSION
 
-  const fallbackClient = useMemo(
-    () =>
-      createClient({
-        projectId: DEFAULT_PROJECT_ID,
-        dataset: DEFAULT_DATASET,
-        apiVersion: apiVersion || FALLBACK_API_VERSION,
-        useCdn: false,
-        withCredentials: true,
-        perspective: 'published',
-        ignoreBrowserTokenWarning: true,
-      }),
-    [apiVersion],
-  )
+  const fallbackClient = useMemo(() => {
+    const {
+      dataset,
+      perspective,
+      projectId,
+      stega,
+      token,
+      useCdn,
+      withCredentials,
+    } = options || {}
 
-  if (workspace && studioClient) {
-    return studioClient
-  }
+    return createClient({
+      projectId: projectId || DEFAULT_PROJECT_ID,
+      dataset: dataset || DEFAULT_DATASET,
+      apiVersion,
+      useCdn: useCdn ?? false,
+      withCredentials: withCredentials ?? true,
+      perspective: perspective || 'published',
+      token,
+      stega,
+      ignoreBrowserTokenWarning: true,
+    })
+  }, [apiVersion, options])
 
-  return fallbackClient
+  const studioClient = useMemo(() => {
+    if (!workspace) return null
+    try {
+      return workspace.getClient({
+        ...(options || {}),
+        apiVersion,
+      } as SourceClientOptions & Partial<ClientConfig>)
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('useWorkspaceClient: falling back to manual client', err)
+      }
+      return null
+    }
+  }, [workspace, options, apiVersion])
+
+  return studioClient || fallbackClient
 }

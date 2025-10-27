@@ -1,22 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  Flex,
-  Grid,
-  Inline,
-  TextInput,
-  Menu,
-  MenuButton,
-  MenuDivider,
-  MenuItem,
-  Spinner,
-  Stack,
-  Text,
-} from '@sanity/ui'
+import {Badge, Box, Button, Card, Checkbox, Flex, TextInput, Menu, MenuButton, MenuDivider, MenuItem, Spinner, Stack, Text} from '@sanity/ui'
 import {
   AddIcon,
   CheckmarkIcon,
@@ -180,11 +163,6 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)))
   }, [filteredCustomers])
-
-  const activeCustomer = useMemo(
-    () => filteredCustomers.find((customer) => customer._id === activeCustomerId) || null,
-    [filteredCustomers, activeCustomerId],
-  )
 
   const allSelected = filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
 
