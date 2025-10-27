@@ -459,9 +459,12 @@ type InvoiceActionSet = {
 function useInvoiceActions(): InvoiceActionSet {
   const invoiceId = useMaybeFormValue<string>(['_id']) ?? ''
   const invoiceNumber = useMaybeFormValue<string>(['invoiceNumber']) ?? ''
-  const documentValue = useMaybeFormValue<any>([]) ?? {}
+  const documentValue = useMaybeFormValue<any>([])
   const base = getFnBase()
-  const payload = useMemo(() => ({invoiceId, invoiceNumber, invoice: documentValue}), [invoiceId, invoiceNumber, documentValue])
+  const payload = useMemo(
+    () => ({invoiceId, invoiceNumber, invoice: documentValue ?? {}}),
+    [invoiceId, invoiceNumber, documentValue],
+  )
 
   const [sendingInvoiceEmail, setSendingInvoiceEmail] = useState(false)
   const [downloadingInvoicePdf, setDownloadingInvoicePdf] = useState(false)
