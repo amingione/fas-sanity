@@ -153,14 +153,31 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
       if (filter === 'all') return true
 
       const normalizedFilter = filter.toLowerCase()
-      const statusesToCheck = [
-        order.status,
-        order.paymentStatus,
-        order.fulfillmentStatus,
-        order.deliveryStatus,
-      ]
 
-      return statusesToCheck.some((value) => value?.toLowerCase() === normalizedFilter)
+      // Only check the relevant status field(s) for each filter type
+      switch (normalizedFilter) {
+        case 'refunded':
+          return order.paymentStatus?.toLowerCase() === 'refunded'
+        case 'paid':
+          return order.paymentStatus?.toLowerCase() === 'paid'
+        case 'pending':
+          // 'pending' could refer to paymentStatus or fulfillmentStatus
+          return (
+            order.paymentStatus?.toLowerCase() === 'pending' ||
+            order.fulfillmentStatus?.toLowerCase() === 'pending'
+          )
+        case 'shipped':
+          // 'shipped' could refer to fulfillmentStatus or deliveryStatus
+          return (
+            order.fulfillmentStatus?.toLowerCase() === 'shipped' ||
+            order.deliveryStatus?.toLowerCase() === 'shipped'
+          )
+        case 'delivered':
+          return order.deliveryStatus?.toLowerCase() === 'delivered'
+        default:
+          // fallback: check main status field
+          return order.status?.toLowerCase() === normalizedFilter
+      }
     })
   }, [orders, search, filter])
 
