@@ -192,19 +192,12 @@ export default function OrderShippingView(props: DocumentViewProps) {
   const client = useClient({apiVersion: '2024-10-01'})
   const [downloadingSlip, setDownloadingSlip] = useState(false)
 
-  if (!order) {
-    return (
-      <Card padding={4}>
-        <Text>No order data available.</Text>
-      </Card>
-    )
-  }
-
   const base = getFnBase()
-  const patchTargets = useMemo(() => resolvePatchTargets(order._id || ''), [order._id])
+  const orderId = order?._id || ''
+  const patchTargets = useMemo(() => resolvePatchTargets(orderId), [orderId])
 
   const ensurePackingSlip = useCallback(async () => {
-    if (downloadingSlip) return
+    if (downloadingSlip || !order) return
     setDownloadingSlip(true)
     try {
       if (order.packingSlipUrl) {
@@ -256,10 +249,10 @@ export default function OrderShippingView(props: DocumentViewProps) {
     } finally {
       setDownloadingSlip(false)
     }
-  }, [base, client, downloadingSlip, order._id, order.orderNumber, order.packingSlipUrl, order.stripeSessionId, patchTargets])
+  }, [base, client, downloadingSlip, order, patchTargets])
 
   const handleEmailCustomer = useCallback(() => {
-    if (!order.customerEmail) return
+    if (!order?.customerEmail) return
     const subject = encodeURIComponent(`Order ${order.orderNumber || order._id}`)
     const body = encodeURIComponent(
       [
@@ -271,7 +264,15 @@ export default function OrderShippingView(props: DocumentViewProps) {
       ].join('\n'),
     )
     window.location.href = `mailto:${order.customerEmail}?subject=${subject}&body=${body}`
-  }, [order.customerEmail, order.customerName, order._id, order.orderNumber])
+  }, [order])
+
+  if (!order) {
+    return (
+      <Card padding={4}>
+        <Text>No order data available.</Text>
+      </Card>
+    )
+  }
 
   const statusMeta = STATUS_META[order.status || ''] || {
     label: order.status || 'Unknown',

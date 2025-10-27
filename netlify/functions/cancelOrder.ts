@@ -146,6 +146,28 @@ export const handler: Handler = async (event) => {
       chargeId = intentCharges[0]?.id || undefined
     }
 
+    let charge: Stripe.Charge | null = null
+    if (chargeId) {
+      if (intentCharges?.length) {
+        charge = intentCharges.find((entry) => entry?.id === chargeId) || intentCharges[0] || null
+      }
+      if (!charge) {
+        try {
+          charge = await stripe.charges.retrieve(chargeId)
+        } catch (err) {
+          console.warn('cancelOrder: failed to retrieve charge', err)
+        }
+      }
+    }
+
+    const chargeIsFullyRefunded = Boolean(
+      charge?.refunded ||
+        (typeof charge?.amount === 'number' &&
+          typeof charge?.amount_refunded === 'number' &&
+          charge.amount > 0 &&
+          charge.amount_refunded >= charge.amount),
+    )
+
     let stripeAction: 'refunded' | 'canceled' | null = null
     const refundMetadata = reason ? { sanity_cancellation_note: reason } : undefined
 
@@ -157,7 +179,9 @@ export const handler: Handler = async (event) => {
         ['succeeded', 'processing', 'requires_capture'].includes(intentStatus) ||
         paymentIntent?.amount_received === paymentIntent?.amount)
 
-    if (shouldRefund && chargeId) {
+    if (chargeIsFullyRefunded) {
+      stripeAction = 'refunded'
+    } else if (shouldRefund && chargeId) {
       await stripe.refunds.create({
         charge: chargeId,
         reason: 'requested_by_customer',

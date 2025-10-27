@@ -6,8 +6,6 @@ import {
   Card,
   Checkbox,
   Flex,
-  Grid,
-  Inline,
   TextInput,
   Menu,
   MenuButton,
@@ -180,11 +178,6 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)))
   }, [filteredCustomers])
-
-  const activeCustomer = useMemo(
-    () => filteredCustomers.find((customer) => customer._id === activeCustomerId) || null,
-    [filteredCustomers, activeCustomerId],
-  )
 
   const allSelected = filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
 

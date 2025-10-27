@@ -183,7 +183,12 @@ const isDev =
       ? nodeEnv !== 'production'
       : false
 
-const visionEnabled = true
+const visionEnabled =
+  disableVisionOverride === true
+    ? false
+    : enableVisionOverride === true
+      ? true
+      : isDev
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false

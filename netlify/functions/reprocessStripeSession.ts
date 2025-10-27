@@ -251,7 +251,7 @@ async function fetchSessionById(id: string): Promise<Stripe.Checkout.Session | n
   if (!stripe) return null
   try {
     const session = await stripe.checkout.sessions.retrieve(id, {
-      expand: ['payment_intent', 'customer_details', 'shipping_details'],
+      expand: ['payment_intent', 'customer_details'],
     } as Stripe.Checkout.SessionRetrieveParams)
     return session
   } catch (err) {
