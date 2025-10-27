@@ -15,6 +15,9 @@
     "lint": "eslint --max-warnings=0 .",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
     "backfill:shipping": "tsx scripts/backfill-order-shipping.ts",
+    "backfill:customers": "tsx scripts/invoke-netlify-function.ts backfillCustomers '{\"dryRun\":false}'",
+    "backfill:orders": "tsx scripts/invoke-netlify-function.ts backfillOrders '{\"dryRun\":false}'",
+    "backfill:invoices": "tsx scripts/invoke-netlify-function.ts backfillInvoices '{\"dryRun\":false}'",
     "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
   },
   "keywords": [
