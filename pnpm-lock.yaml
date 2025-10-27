@@ -61,6 +61,9 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
+      client:
+        specifier: link:sanity/@sanity/client
+        version: link:sanity/@sanity/client
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
