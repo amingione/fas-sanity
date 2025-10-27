@@ -1,5 +1,7 @@
 packages:
-  - 'packages/**'
+  - 'packages/sanity-config'
+  # Keep other packages (for example packages/hydrogen-sanity) outside of the
+  # workspace so tooling like `netlify dev` sees a single project.
 ignoredBuiltDependencies:
   - '@parcel/watcher'
   - canvas
