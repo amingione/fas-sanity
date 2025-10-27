@@ -1,7 +1,6 @@
 import {createClient} from '@sanity/client'
-import {useContext, useMemo} from 'react'
+import {useMemo} from 'react'
 import {useClient} from 'sanity'
-import {WorkspaceContext} from 'sanity/_singletons'
 
 type UseClientOptions = Parameters<typeof useClient>[0]
 
@@ -25,7 +24,6 @@ function useOptionalStudioClient(options?: UseClientOptions) {
 }
 
 export function useWorkspaceClient(options?: UseClientOptions) {
-  const workspace = useContext(WorkspaceContext)
   const apiVersion = options?.apiVersion
   const studioClient = useOptionalStudioClient(options)
 
@@ -43,7 +41,7 @@ export function useWorkspaceClient(options?: UseClientOptions) {
     [apiVersion],
   )
 
-  if (workspace && studioClient) {
+  if (studioClient) {
     return studioClient
   }
 
