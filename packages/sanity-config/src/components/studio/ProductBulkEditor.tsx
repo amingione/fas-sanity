@@ -1012,6 +1012,7 @@ export default function ProductBulkEditor() {
           </Box>
           <Inline space={2}>
             <TextInput
+              name="bulkEditorSearch"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.currentTarget.value)}
               placeholder="Search by title, SKU, or ID"

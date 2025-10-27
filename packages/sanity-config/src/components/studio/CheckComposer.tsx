@@ -360,17 +360,20 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
             {lineItems.map((item, index) => (
               <Grid key={index} columns={[1, 1, 3]} gap={3}>
                 <TextInput
+                  name={`lineItems.${index}.category`}
                   value={item.category}
                   onChange={(event) => handleLineItemChange(index, 'category', event.currentTarget.value)}
                   placeholder="Category"
                 />
                 <TextInput
+                  name={`lineItems.${index}.description`}
                   value={item.description}
                   onChange={(event) => handleLineItemChange(index, 'description', event.currentTarget.value)}
                   placeholder="Description"
                 />
                 <Flex gap={2}>
                   <TextInput
+                    name={`lineItems.${index}.amount`}
                     value={item.amount}
                     onChange={(event) => handleLineItemChange(index, 'amount', event.currentTarget.value)}
                     placeholder="Amount"
