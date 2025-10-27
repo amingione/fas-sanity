@@ -175,7 +175,9 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<OrderFilter>('all')
+  const [filter, setFilter] = useState<
+    'all' | 'paid' | 'pending' | 'shipped' | 'cancelled' | 'refunded' | 'expired'
+  >('all')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   useEffect(() => {
@@ -215,18 +217,32 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
       if (!matchesTerm) return false
       if (filter === 'all') return true
 
-      const matcher = FILTER_MATCHERS[filter]
-      const valuesToCheck = [
-        order.status,
-        order.paymentStatus,
-        order.fulfillmentStatus,
-        order.deliveryStatus,
-        ...(Array.isArray(order.tags) ? order.tags : []),
-      ]
-        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-        .map((value) => value.toLowerCase().trim())
+      const normalizedFilter = filter.toLowerCase()
 
-      return valuesToCheck.some((value) => matcher(value))
+      // Only check the relevant status field(s) for each filter type
+      switch (normalizedFilter) {
+        case 'refunded':
+          return order.paymentStatus?.toLowerCase() === 'refunded'
+        case 'paid':
+          return order.paymentStatus?.toLowerCase() === 'paid'
+        case 'pending':
+          // 'pending' could refer to paymentStatus or fulfillmentStatus
+          return (
+            order.paymentStatus?.toLowerCase() === 'pending' ||
+            order.fulfillmentStatus?.toLowerCase() === 'pending'
+          )
+        case 'shipped':
+          // 'shipped' could refer to fulfillmentStatus or deliveryStatus
+          return (
+            order.fulfillmentStatus?.toLowerCase() === 'shipped' ||
+            order.deliveryStatus?.toLowerCase() === 'shipped'
+          )
+        case 'delivered':
+          return order.deliveryStatus?.toLowerCase() === 'delivered'
+        default:
+          // fallback: check main status field
+          return order.status?.toLowerCase() === normalizedFilter
+      }
     })
   }, [orders, search, filter])
 
@@ -248,7 +264,15 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]))
   }
 
-  const filterLabel = ORDER_FILTER_LABELS[filter]
+  const filterLabel = {
+    all: 'All',
+    paid: 'Paid',
+    pending: 'Pending',
+    shipped: 'Shipped',
+    cancelled: 'Cancelled',
+    refunded: 'Refunded',
+    expired: 'Expired',
+  }[filter]
 
   return (
     <Box ref={ref} padding={[4, 5, 6]}>
