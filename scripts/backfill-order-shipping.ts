@@ -4,8 +4,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import dotenv from 'dotenv'
 import { createClient } from '@sanity/client'
-import type { HandlerEvent } from '@netlify/functions'
-import { handler as reprocessHandler } from '../netlify/functions/reprocessStripeSession'
+import type { Handler, HandlerEvent } from '@netlify/functions'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -60,6 +59,10 @@ async function main() {
   if (!orders.length) {
     console.log('No orders require backfill.')
     return
+  }
+
+  const { handler: reprocessHandler } = (await import('../netlify/functions/reprocessStripeSession')) as {
+    handler: Handler
   }
 
   console.log(`Backfilling ${orders.length} orders…`)
