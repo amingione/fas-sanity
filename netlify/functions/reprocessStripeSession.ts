@@ -545,7 +545,7 @@ async function upsertOrder({
     }
   }
 
-  let shipStationOrderId: string | undefined = undefined
+  let shipStationOrderId: string | undefined;
   if (autoFulfill && orderId) {
     try {
       shipStationOrderId = await syncOrderToShipStation(sanity, orderId)
