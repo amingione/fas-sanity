@@ -249,7 +249,16 @@ export default function OrderShippingView(props: DocumentViewProps) {
     } finally {
       setDownloadingSlip(false)
     }
-  }, [base, client, downloadingSlip, order, patchTargets])
+  }, [
+    base,
+    client,
+    downloadingSlip,
+    order?._id,
+    order?.orderNumber,
+    order?.packingSlipUrl,
+    order?.stripeSessionId,
+    patchTargets,
+  ])
 
   const handleEmailCustomer = useCallback(() => {
     if (!order?.customerEmail) return
