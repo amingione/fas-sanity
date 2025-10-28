@@ -2668,7 +2668,11 @@ export const handler: Handler = async (event) => {
             (typeof refundedCentsFromRefund === 'number' && refundedCentsFromRefund > 0)
           const fallbackRefundSucceeded = !hasRefundStatus && chargeIndicatesRefund
           const refundSucceeded = refundStatus === 'succeeded' || fallbackRefundSucceeded
-          const preserveRefundedStatus = Boolean(refundStatus && refundStatus !== 'succeeded')
+          const preserveRefundedStatus = Boolean(
+            !fallbackRefundSucceeded &&
+              refundStatus &&
+              !['failed', 'pending', 'canceled', 'succeeded'].includes(refundStatus),
+          )
           const paymentStatus = refundSucceeded
             ? isFullRefund
               ? 'refunded'
