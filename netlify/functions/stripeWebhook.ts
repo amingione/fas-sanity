@@ -1205,6 +1205,7 @@ type OrderPaymentStatusInput = {
   additionalOrderFields?: Record<string, any>
   additionalInvoiceFields?: Record<string, any>
   preserveExistingFailureDiagnostics?: boolean
+  preserveExistingRefundedStatus?: boolean
   event?: EventRecordInput
 }
 
@@ -1443,6 +1444,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     additionalInvoiceFields,
     additionalOrderFields,
     preserveExistingFailureDiagnostics,
+    preserveExistingRefundedStatus,
     event,
   } = opts
   if (!paymentIntentId && !chargeId && !stripeSessionId) return false
@@ -1461,21 +1463,31 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     customerEmail?: string
     paymentFailureCode?: string
     paymentFailureMessage?: string
+    paymentStatus?: string
   } | null>(
     `*[_type == "order" && (
       ($pi != '' && paymentIntentId == $pi) ||
       ($charge != '' && chargeId == $charge) ||
       ($session != '' && stripeSessionId == $session)
-    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, invoiceRef->{ _id } }`,
+    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, paymentStatus, invoiceRef->{ _id } }`,
     params,
   )
 
   if (!order?._id) return false
 
+  const existingPaymentStatus =
+    typeof order?.paymentStatus === 'string' ? order.paymentStatus.trim().toLowerCase() : undefined
+  const shouldPreserveRefundedStatus = Boolean(
+    preserveExistingRefundedStatus &&
+      existingPaymentStatus &&
+      ['refunded', 'partially_refunded'].includes(existingPaymentStatus),
+  )
+
   const orderPatch: Record<string, any> = {
     stripeLastSyncedAt: new Date().toISOString(),
   }
-  if (paymentStatus !== undefined) {
+
+  if (!shouldPreserveRefundedStatus) {
     orderPatch.paymentStatus = paymentStatus
   }
   if (orderStatus) orderPatch.status = orderStatus
@@ -2650,25 +2662,28 @@ export const handler: Handler = async (event) => {
               chargeAmountCents > 0 &&
               refundedCentsFromCharge >= chargeAmountCents)
 
+          const refundStatus = (refund?.status || '').toString().toLowerCase()
+          const refundSucceeded = refundStatus === 'succeeded'
+          const preserveRefundedStatus = Boolean(refundStatus && refundStatus !== 'succeeded')
           const paymentStatus = refundSucceeded
             ? isFullRefund
               ? 'refunded'
               : 'partially_refunded'
-            : undefined
+            : 'paid'
           const paymentIntentId =
             typeof paymentIntent?.id === 'string'
               ? paymentIntent.id
               : typeof charge?.payment_intent === 'string'
                 ? charge.payment_intent
-                : typeof refund?.payment_intent === 'string'
-                  ? refund.payment_intent
-                  : undefined
+                  : typeof refund?.payment_intent === 'string'
+                    ? refund.payment_intent
+                    : undefined
           await updateOrderPaymentStatus({
             paymentIntentId,
             chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
             paymentStatus,
-            orderStatus: isFullRefund ? 'refunded' : undefined,
-            invoiceStatus: isFullRefund ? 'refunded' : undefined,
+            orderStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
+            invoiceStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
             invoiceStripeStatus: webhookEvent.type,
             additionalOrderFields: {
               ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
@@ -2685,6 +2700,7 @@ export const handler: Handler = async (event) => {
                 eventCreated: webhookEvent.created,
               }),
             },
+            preserveExistingRefundedStatus: preserveRefundedStatus,
             event: {
               eventType: webhookEvent.type,
               label: refund?.id ? `Refund ${refund.id}` : 'Charge refunded',
