@@ -2660,15 +2660,20 @@ export const handler: Handler = async (event) => {
               chargeAmountCents > 0 &&
               refundedCentsFromCharge >= chargeAmountCents)
 
-          const refundStatus = (refund?.status || '').toString().toLowerCase()
-          const hasRefundStatus = Boolean(refundStatus)
+          const explicitRefundStatus = (refund?.status || '').toString().toLowerCase()
           const chargeIndicatesRefund =
             Boolean(charge?.refunded) ||
             (typeof refundedCentsFromCharge === 'number' && refundedCentsFromCharge > 0) ||
             (typeof refundedCentsFromRefund === 'number' && refundedCentsFromRefund > 0)
-          const fallbackRefundSucceeded = !hasRefundStatus && chargeIndicatesRefund
-          const refundSucceeded = refundStatus === 'succeeded' || fallbackRefundSucceeded
-          const preserveRefundedStatus = Boolean(refundStatus && refundStatus !== 'succeeded')
+          const inferredRefundStatus =
+            !explicitRefundStatus && chargeIndicatesRefund
+              ? 'succeeded' // Charge-only webhook payloads omit refunds; infer success from charge
+              : ''
+          const refundStatus = explicitRefundStatus || inferredRefundStatus
+          const refundSucceeded = refundStatus === 'succeeded'
+          const preserveRefundedStatus = Boolean(
+            explicitRefundStatus && explicitRefundStatus !== 'succeeded',
+          )
           const paymentStatus = refundSucceeded
             ? isFullRefund
               ? 'refunded'
@@ -2692,7 +2697,7 @@ export const handler: Handler = async (event) => {
             additionalOrderFields: {
               ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
               ...(refund?.id ? {lastRefundId: refund.id} : {}),
-              ...(refund?.status ? {lastRefundStatus: refund.status} : {}),
+              ...(refundStatus ? {lastRefundStatus: refundStatus} : {}),
               ...(refund?.reason ? {lastRefundReason: refund.reason} : {}),
               ...(typeof refund?.created === 'number'
                 ? {lastRefundedAt: new Date(refund.created * 1000).toISOString()}
