@@ -42,7 +42,7 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
   const [currency, setCurrency] = useState('usd')
   const [isSubmitting, setSubmitting] = useState(false)
 
-  const disabled = readOnly || !stripeCustomerId
+  const disabled = !stripeCustomerId
 
   async function handleSubmit() {
     if (!stripeCustomerId) {
