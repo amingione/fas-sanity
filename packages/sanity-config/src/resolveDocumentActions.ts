@@ -7,6 +7,10 @@ import { backfillInvoicesAction } from './schemaTypes/documentActions/backfillIn
 import { backfillOrdersAction } from './schemaTypes/documentActions/backfillOrdersAction'
 import { backfillCustomersAction } from './schemaTypes/documentActions/backfillCustomersAction'
 import { forceDeleteUnlinkAction } from './schemaTypes/documentActions/forceDeleteUnlinkAction'
+import {
+  refundStripeInvoiceAction,
+  refundStripeOrderAction,
+} from './schemaTypes/documentActions/refundStripeAction'
 
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
@@ -14,11 +18,13 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(createShippingLabel)
     list.push(reprocessStripeSessionAction)
     list.push(backfillInvoicesAction)
+    list.push(refundStripeInvoiceAction)
   }
   if (context.schemaType === 'order') {
     list.push(reprocessStripeSessionAction)
     list.push(backfillOrdersAction)
     list.push(cancelStripeOrderAction)
+    list.push(refundStripeOrderAction)
   }
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)
