@@ -214,6 +214,7 @@ import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
 import booking from './documents/booking'
+import stripeWebhookEvent from './documents/stripeWebhookEvent'
 
 const documents = [
   collectionType,
@@ -242,6 +243,7 @@ const documents = [
   wheelQuote,
   expense,
   booking,
+  stripeWebhookEvent,
 ]
 
 import {homeType} from './singletons/homeType'
