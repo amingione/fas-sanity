@@ -217,7 +217,6 @@ function determineOutcome(
 
 async function main() {
   const options = parseOptions()
-  const webhookHandlers = options.dryRun ? null : await loadWebhookHandlers()
   const orders = await fetchOrders(options)
   if (!orders.length) {
     console.log('No matching orders found.')
@@ -225,7 +224,6 @@ async function main() {
   }
 
   console.log(`Found ${orders.length} order(s) to evaluate.`)
-
   const webhookHandlers = options.dryRun ? null : await loadWebhookHandlers()
 
   let processed = 0
@@ -345,3 +343,4 @@ main().catch((err) => {
   console.error('Backfill failed:', (err as any)?.message || err)
   process.exit(1)
 })
+
