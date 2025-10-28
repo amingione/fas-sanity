@@ -145,10 +145,10 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
 
   const metadataValues: unknown[] = []
   if ('metadata' in source) {
-    metadataValues.push(consume(source, ['metadata']) ?? undefined)
+    metadataValues.push(consume(source, ['metadata']))
   }
   if ('raw_metadata' in source) {
-    metadataValues.push(consume(source, ['raw_metadata']) ?? undefined)
+    metadataValues.push(consume(source, ['raw_metadata']))
   }
 
   // Remaining fields on `source` should still be surfaced for context
