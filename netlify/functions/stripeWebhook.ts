@@ -44,6 +44,7 @@ function createOrderSlug(source?: string | null, fallback?: string | null): stri
 }
 
 const ORDER_NUMBER_PREFIX = 'FAS'
+const QUOTE_NUMBER_PREFIX = 'QT'
 
 const FAILED_CHECKOUT_PAYMENT_STATUSES = new Set([
   'failed',
@@ -94,6 +95,34 @@ async function generateRandomOrderNumber(): Promise<string> {
     }
   }
   return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
+}
+
+function sanitizeQuoteNumber(value?: string | null): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.toString().trim().toUpperCase()
+  if (!trimmed) return undefined
+  if (/^QT-\d{6}$/.test(trimmed)) return trimmed
+  const digits = trimmed.replace(/\D/g, '')
+  if (digits.length >= 6) return `${QUOTE_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+async function generateRandomQuoteNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const randomValue = Math.floor(Math.random() * 1_000_000)
+    const candidate = `${QUOTE_NUMBER_PREFIX}-${randomValue.toString().padStart(6, '0')}`
+    try {
+      const existing = await sanity.fetch<number>(
+        'count(*[_type == "quote" && quoteNumber == $num])',
+        {num: candidate},
+      )
+      if (!Number(existing)) return candidate
+    } catch (err) {
+      console.warn('stripeWebhook: quote number uniqueness check failed', err)
+      return candidate
+    }
+  }
+  return `${QUOTE_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
 }
 
 async function resolveOrderNumber(options: {
@@ -147,6 +176,18 @@ const toIsoTimestamp = (value?: number | string | null): string => {
     return new Date(value).toISOString()
   }
   return new Date().toISOString()
+}
+
+const isoDateOnly = (iso?: string | null): string | undefined => {
+  if (!iso) return undefined
+  const trimmed = iso.toString().trim()
+  if (!trimmed) return undefined
+  return trimmed.slice(0, 10)
+}
+
+const isoDateFromUnix = (value?: number | null): string | undefined => {
+  const iso = unixToIso(value)
+  return isoDateOnly(iso)
 }
 
 const buildOrderEventRecord = (input: EventRecordInput) => {
@@ -426,6 +467,16 @@ const PRODUCT_METADATA_ID_KEYS = [
 const PRODUCT_METADATA_SKU_KEYS = ['sku', 'SKU', 'product_sku', 'productSku', 'sanity_sku']
 const PRODUCT_METADATA_SLUG_KEYS = ['sanity_slug', 'slug', 'product_slug', 'productSlug']
 const INVOICE_METADATA_ID_KEYS = ['sanity_invoice_id', 'invoice_id', 'sanityInvoiceId', 'invoiceId']
+const QUOTE_METADATA_ID_KEYS = ['sanity_quote_id', 'quote_id', 'sanityQuoteId', 'quoteId']
+const QUOTE_METADATA_NUMBER_KEYS = ['sanity_quote_number', 'quote_number', 'quoteNumber']
+const PAYMENT_LINK_METADATA_ID_KEYS = [
+  'sanity_payment_link_id',
+  'payment_link_id',
+  'sanityPaymentLinkId',
+  'paymentLinkId',
+]
+const PAYMENT_LINK_METADATA_QUOTE_KEYS = ['sanity_quote_id', 'quote_id', 'quoteId', 'sanityQuoteId']
+const PAYMENT_LINK_METADATA_ORDER_KEYS = ['sanity_order_id', 'order_id', 'orderId', 'sanityOrderId']
 
 function isStripeProduct(
   product: Stripe.Product | Stripe.DeletedProduct | string | null | undefined,
@@ -724,6 +775,760 @@ async function removeStripePrice(priceId: string, productId?: string): Promise<v
     await sanity.patch(docId).set(setOps).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to remove Stripe price snapshot', err)
+  }
+}
+
+async function findCustomerDocIdByStripeCustomerId(
+  stripeCustomerId?: string | null,
+): Promise<string | null> {
+  if (!stripeCustomerId) return null
+  try {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "customer" && stripeCustomerId == $id][0]._id`,
+      {id: stripeCustomerId},
+    )
+    return docId || null
+  } catch (err) {
+    console.warn('stripeWebhook: failed to lookup customer by Stripe ID', err)
+    return null
+  }
+}
+
+async function resolveCustomerReference(
+  stripeCustomerId?: string | null,
+  email?: string | null,
+): Promise<{_type: 'reference'; _ref: string} | undefined> {
+  let docId = await findCustomerDocIdByStripeCustomerId(stripeCustomerId)
+
+  if (!docId && stripeCustomerId && stripe) {
+    try {
+      const customer = await stripe.customers.retrieve(stripeCustomerId)
+      if (customer && !('deleted' in customer && customer.deleted)) {
+        await syncStripeCustomer(customer as Stripe.Customer)
+        docId = await findCustomerDocIdByStripeCustomerId(stripeCustomerId)
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: unable to hydrate Stripe customer record', err)
+    }
+  }
+
+  if (!docId && email) {
+    const normalizedEmail = email.toString().trim().toLowerCase()
+    if (normalizedEmail) {
+      try {
+        docId = await sanity.fetch<string | null>(
+          `*[_type == "customer" && defined(email) && lower(email) == $email][0]._id`,
+          {email: normalizedEmail},
+        )
+      } catch (err) {
+        console.warn('stripeWebhook: failed to lookup customer by email', err)
+      }
+    }
+  }
+
+  return docId ? {_type: 'reference', _ref: docId} : undefined
+}
+
+function mapStripeQuoteStatus(status?: string | null): string {
+  const normalized = (status || '').toLowerCase()
+  switch (normalized) {
+    case 'open':
+      return 'Sent'
+    case 'accepted':
+      return 'Approved'
+    case 'canceled':
+    case 'cancelled':
+      return 'Cancelled'
+    case 'draft':
+    default:
+      return 'Draft'
+  }
+}
+
+function mapQuoteConversionStatus(status?: string | null): string {
+  const normalized = (status || '').toLowerCase()
+  switch (normalized) {
+    case 'accepted':
+      return 'Converted'
+    case 'canceled':
+    case 'cancelled':
+      return 'Closed'
+    default:
+      return 'Open'
+  }
+}
+
+function buildQuoteBillTo(quote: Stripe.Quote): Record<string, string> | undefined {
+  const details = (quote as any)?.customer_details
+  if (!details) return undefined
+  const billTo: Record<string, string> = {}
+  if (details.name) billTo.name = details.name
+  if (details.email) billTo.email = details.email
+  if (details.phone) billTo.phone = details.phone
+  const address = details.address || null
+  if (address?.line1) billTo.address_line1 = address.line1
+  if (address?.line2) billTo.address_line2 = address.line2
+  if (address?.city) billTo.city_locality = address.city
+  if (address?.state) billTo.state_province = address.state
+  if (address?.postal_code) billTo.postal_code = address.postal_code
+  if (address?.country) billTo.country_code = address.country
+  return Object.keys(billTo).length > 0 ? billTo : undefined
+}
+
+function buildQuoteShipTo(quote: Stripe.Quote): Record<string, string> | undefined {
+  const quoteAny = quote as any
+  const shipping = quoteAny?.shipping_details || quoteAny?.shipping
+  if (!shipping) return undefined
+  const shipTo: Record<string, string> = {}
+  if (shipping.name) shipTo.name = shipping.name
+  if (shipping.email) shipTo.email = shipping.email
+  if (shipping.phone) shipTo.phone = shipping.phone
+  const address = shipping.address || null
+  if (address?.line1) shipTo.address_line1 = address.line1
+  if (address?.line2) shipTo.address_line2 = address.line2
+  if (address?.city) shipTo.city_locality = address.city
+  if (address?.state) shipTo.state_province = address.state
+  if (address?.postal_code) shipTo.postal_code = address.postal_code
+  if (address?.country) shipTo.country_code = address.country
+  return Object.keys(shipTo).length > 0 ? shipTo : undefined
+}
+
+async function listQuoteLineItems(quote: Stripe.Quote): Promise<Stripe.LineItem[]> {
+  const expanded = ((quote as any)?.line_items?.data || []) as Stripe.LineItem[]
+  if (Array.isArray(expanded) && expanded.length > 0) {
+    return expanded
+  }
+  if (!stripe) return []
+  try {
+    const response = await stripe.quotes.listLineItems(quote.id, {
+      limit: 100,
+      expand: ['data.price.product'],
+    })
+    return (response?.data || []) as Stripe.LineItem[]
+  } catch (err) {
+    console.warn('stripeWebhook: failed to list quote line items', err)
+    return []
+  }
+}
+
+async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
+  const metadata = (quote.metadata || {}) as Record<string, string>
+  const lineItems = await listQuoteLineItems(quote)
+  if (!lineItems.length) return []
+
+  const built: any[] = []
+  for (const lineItem of lineItems) {
+    const mapped = mapStripeLineItem(lineItem, {sessionMetadata: metadata})
+    const quantity = mapped.quantity ?? Number(lineItem.quantity || 1) || 1
+    const totalAmount =
+      toMajorUnits((lineItem as any)?.amount_total) ??
+      (mapped.price !== undefined && quantity ? mapped.price * quantity : undefined)
+    const unitPrice =
+      mapped.price !== undefined
+        ? mapped.price
+        : totalAmount !== undefined
+          ? totalAmount / quantity
+          : undefined
+
+    const priceObj = lineItem.price && typeof lineItem.price === 'object' ? (lineItem.price as Stripe.Price) : null
+    const productObj =
+      priceObj && priceObj.product && typeof priceObj.product === 'object'
+        ? (priceObj.product as Stripe.Product)
+        : null
+    const stripeProductId =
+      mapped.stripeProductId ||
+      (typeof lineItem.price?.product === 'string'
+        ? (lineItem.price as any).product
+        : productObj?.id)
+
+    let productDocId: string | null = null
+    if (stripeProductId) {
+      const productMetadata = (productObj?.metadata || {}) as Record<string, string>
+      productDocId = await ensureProductDocument(stripeProductId, productMetadata)
+    } else if (mapped.productSlug) {
+      try {
+        productDocId = await sanity.fetch<string | null>(
+          `*[_type == "product" && slug.current == $slug][0]._id`,
+          {slug: mapped.productSlug},
+        )
+      } catch (err) {
+        console.warn('stripeWebhook: failed to resolve product by slug for quote line item', err)
+      }
+    }
+
+    const item: Record<string, any> = {
+      _type: 'quoteLineItem',
+      _key: randomUUID(),
+      kind: productDocId ? 'product' : 'custom',
+      quantity,
+    }
+
+    if (productDocId) {
+      item.product = {_type: 'reference', _ref: productDocId}
+    }
+
+    const name = mapped.name || mapped.productName || lineItem.description || 'Line item'
+    if (name) {
+      item.customName = name
+      item.description = lineItem.description || mapped.description || name
+    }
+    if (mapped.sku) item.sku = mapped.sku
+    if (unitPrice !== undefined && Number.isFinite(unitPrice)) item.unitPrice = Number(unitPrice.toFixed(2))
+    if (totalAmount !== undefined && Number.isFinite(totalAmount)) item.lineTotal = Number(totalAmount.toFixed(2))
+
+    built.push(item)
+  }
+
+  return built
+}
+
+async function appendQuoteTimelineEvent(
+  quoteId: string | null | undefined,
+  action: string,
+  occurredAt?: number | string | null,
+): Promise<void> {
+  if (!quoteId || !action) return
+  try {
+    await sanity
+      .patch(quoteId)
+      .setIfMissing({timeline: []})
+      .append('timeline', [
+        {
+          _type: 'quoteTimelineEvent',
+          _key: randomUUID(),
+          action,
+          timestamp: toIsoTimestamp(occurredAt),
+        },
+      ])
+      .commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to append quote timeline event', err)
+  }
+}
+
+async function findQuoteDocumentId(opts: {
+  stripeQuoteId?: string | null
+  metadata?: Record<string, string>
+  quoteNumber?: string | null
+}): Promise<string | null> {
+  const meta = opts.metadata || {}
+  const idCandidates = QUOTE_METADATA_ID_KEYS.map((key) => normalizeSanityId(meta[key])).filter(Boolean) as string[]
+
+  if (idCandidates.length > 0) {
+    try {
+      const docId = await sanity.fetch<string | null>(
+        `*[_type == "quote" && _id in $ids][0]._id`,
+        {ids: idCandidates.flatMap((id) => idVariants(id))},
+      )
+      if (docId) return docId
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve quote by metadata id', err)
+    }
+  }
+
+  if (opts.stripeQuoteId) {
+    try {
+      const docId = await sanity.fetch<string | null>(
+        `*[_type == "quote" && stripeQuoteId == $id][0]._id`,
+        {id: opts.stripeQuoteId},
+      )
+      if (docId) return docId
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve quote by Stripe ID', err)
+    }
+  }
+
+  const numberCandidates = [
+    sanitizeQuoteNumber(opts.quoteNumber),
+    ...QUOTE_METADATA_NUMBER_KEYS.map((key) => sanitizeQuoteNumber(meta[key])),
+  ].filter(Boolean) as string[]
+
+  if (numberCandidates.length > 0) {
+    try {
+      const docId = await sanity.fetch<string | null>(
+        `*[_type == "quote" && quoteNumber in $numbers][0]._id`,
+        {numbers: numberCandidates},
+      )
+      if (docId) return docId
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve quote by number', err)
+    }
+  }
+
+  return null
+}
+
+async function syncStripeQuote(
+  quote: Stripe.Quote,
+  opts: {eventType?: string; eventCreated?: number} = {},
+): Promise<string | null> {
+  const metadata = (quote.metadata || {}) as Record<string, string>
+  const candidateQuoteNumber =
+    sanitizeQuoteNumber(quote.number) ||
+    QUOTE_METADATA_NUMBER_KEYS.map((key) => sanitizeQuoteNumber(metadata[key])).find(Boolean)
+
+  let quoteId = await findQuoteDocumentId({
+    stripeQuoteId: quote.id,
+    metadata,
+    quoteNumber: candidateQuoteNumber || null,
+  })
+
+  const billTo = buildQuoteBillTo(quote)
+  const shipTo = buildQuoteShipTo(quote)
+  const lineItems = await buildQuoteLineItems(quote)
+  const subtotal = toMajorUnits((quote as any)?.amount_subtotal)
+  const total = toMajorUnits((quote as any)?.amount_total)
+  const taxAmount = toMajorUnits((quote as any)?.total_details?.amount_tax)
+  const discountAmount = toMajorUnits((quote as any)?.total_details?.amount_discount)
+  const discountType = discountAmount ? 'amount' : 'none'
+  const stripeCustomerId =
+    typeof quote.customer === 'string'
+      ? quote.customer
+      : (quote.customer as Stripe.Customer | undefined)?.id
+  const customerEmail = ((quote as any)?.customer_details?.email || '') as string
+  const quoteDate = isoDateFromUnix(quote.created)
+  const expirationDate = isoDateFromUnix(quote.expires_at)
+  const acceptedDate = isoDateFromUnix((quote as any)?.status_transitions?.accepted_at)
+  const stripeQuotePdf = ((quote as any)?.pdf as string | undefined) || undefined
+  const now = new Date().toISOString()
+
+  if (!quoteId) {
+    const quoteNumber = candidateQuoteNumber || (await generateRandomQuoteNumber())
+    const payload: Record<string, any> = {
+      _type: 'quote',
+      quoteNumber,
+      title: metadata.title || 'Stripe Quote',
+      quoteDate: quoteDate || isoDateOnly(now),
+      status: mapStripeQuoteStatus(quote.status),
+      conversionStatus: mapQuoteConversionStatus(quote.status),
+      createdAt: now,
+      stripeQuoteId: quote.id,
+      stripeQuoteStatus: quote.status || undefined,
+      stripeQuoteNumber: quote.number || undefined,
+      stripeCustomerId: stripeCustomerId || undefined,
+      stripeLastSyncedAt: now,
+    }
+    if (billTo) payload.billTo = billTo
+    if (shipTo) payload.shipTo = shipTo
+    if (lineItems.length > 0) payload.lineItems = lineItems
+    if (subtotal !== undefined) payload.subtotal = subtotal
+    if (taxAmount !== undefined) payload.taxAmount = taxAmount
+    if (total !== undefined) payload.total = total
+    if (discountAmount !== undefined) {
+      payload.discountType = discountType
+      payload.discountValue = discountAmount
+    }
+    if (expirationDate) payload.expirationDate = expirationDate
+    if (acceptedDate) payload.acceptedDate = acceptedDate
+    if (stripeQuotePdf) payload.stripeQuotePdf = stripeQuotePdf
+
+    const customerRef = await resolveCustomerReference(stripeCustomerId, customerEmail)
+    if (customerRef) payload.customer = customerRef
+
+    try {
+      const created = await sanity.create(payload, {autoGenerateArrayKeys: true})
+      quoteId = created?._id || null
+    } catch (err) {
+      console.warn('stripeWebhook: failed to create quote document', err)
+      return null
+    }
+  }
+
+  if (!quoteId) return null
+
+  const setOps: Record<string, any> = {
+    status: mapStripeQuoteStatus(quote.status),
+    conversionStatus: mapQuoteConversionStatus(quote.status),
+    stripeQuoteId: quote.id,
+    stripeQuoteStatus: quote.status || undefined,
+    stripeQuoteNumber: quote.number || undefined,
+    stripeCustomerId: stripeCustomerId || undefined,
+    stripeLastSyncedAt: now,
+  }
+
+  const existingQuote = await sanity.fetch<{quoteNumber?: string} | null>(
+    `*[_type == "quote" && _id == $id][0]{quoteNumber}`,
+    {id: quoteId},
+  )
+  if (!existingQuote?.quoteNumber && candidateQuoteNumber) {
+    setOps.quoteNumber = candidateQuoteNumber
+  }
+
+  if (quoteDate) setOps.quoteDate = quoteDate
+  if (expirationDate) setOps.expirationDate = expirationDate
+  if (acceptedDate) setOps.acceptedDate = acceptedDate
+  if (billTo) setOps.billTo = billTo
+  if (shipTo) setOps.shipTo = shipTo
+  if (lineItems.length > 0) setOps.lineItems = lineItems
+  if (subtotal !== undefined) setOps.subtotal = subtotal
+  if (taxAmount !== undefined) setOps.taxAmount = taxAmount
+  if (total !== undefined) setOps.total = total
+  if (discountAmount !== undefined) {
+    setOps.discountType = discountType
+    setOps.discountValue = discountAmount
+  } else {
+    setOps.discountType = 'none'
+    setOps.discountValue = undefined
+  }
+  if ((quote as any)?.footer) setOps.customerMessage = (quote as any).footer
+  if ((quote as any)?.header) setOps.paymentInstructions = (quote as any).header
+  if (stripeQuotePdf) setOps.stripeQuotePdf = stripeQuotePdf
+
+  const paymentLinkId =
+    ((quote as any)?.payment_link as string | undefined) ||
+    metadata.payment_link_id ||
+    metadata.paymentLinkId
+  if (paymentLinkId) setOps.stripePaymentLinkId = paymentLinkId
+
+  const customerRef = await resolveCustomerReference(stripeCustomerId, customerEmail)
+  if (customerRef) setOps.customer = customerRef
+
+  try {
+    await sanity.patch(quoteId).set(setOps).commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to update quote document', err)
+  }
+
+  await appendQuoteTimelineEvent(quoteId, opts.eventType || 'stripe.quote.sync', opts.eventCreated)
+
+  return quoteId
+}
+
+async function fetchQuoteResource(resource: Stripe.Quote | string): Promise<Stripe.Quote | null> {
+  if (!resource) return null
+  const quoteId = typeof resource === 'string' ? resource : resource.id
+  if (!quoteId) return typeof resource === 'object' ? resource : null
+  if (!stripe) return typeof resource === 'object' ? resource : null
+  try {
+    const fresh = await stripe.quotes.retrieve(quoteId, {
+      expand: ['line_items.data.price.product', 'customer'],
+    })
+    return fresh as Stripe.Quote
+  } catch (err) {
+    console.warn('stripeWebhook: failed to retrieve quote resource', err)
+    return typeof resource === 'object' ? resource : null
+  }
+}
+
+async function findPaymentLinkDocumentId(opts: {
+  stripePaymentLinkId?: string | null
+  metadata?: Record<string, string>
+}): Promise<string | null> {
+  const meta = opts.metadata || {}
+  const idCandidates = PAYMENT_LINK_METADATA_ID_KEYS.map((key) => normalizeSanityId(meta[key])).filter(
+    Boolean,
+  ) as string[]
+
+  if (idCandidates.length > 0) {
+    try {
+      const docId = await sanity.fetch<string | null>(
+        `*[_type == "paymentLink" && _id in $ids][0]._id`,
+        {ids: idCandidates.flatMap((id) => idVariants(id))},
+      )
+      if (docId) return docId
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve payment link by metadata id', err)
+    }
+  }
+
+  if (opts.stripePaymentLinkId) {
+    try {
+      const docId = await sanity.fetch<string | null>(
+        `*[_type == "paymentLink" && stripePaymentLinkId == $id][0]._id`,
+        {id: opts.stripePaymentLinkId},
+      )
+      if (docId) return docId
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve payment link by Stripe ID', err)
+    }
+  }
+
+  return null
+}
+
+async function buildPaymentLinkLineItems(paymentLink: Stripe.PaymentLink): Promise<CartItem[]> {
+  if (!stripe) return []
+  try {
+    const response = await stripe.paymentLinks.listLineItems(paymentLink.id, {
+      limit: 100,
+      expand: ['data.price.product'],
+    })
+    const metadata = (paymentLink.metadata || {}) as Record<string, string>
+    const items = (response?.data || []).map((lineItem) => ({
+      _type: 'orderCartItem',
+      _key: randomUUID(),
+      ...mapStripeLineItem(lineItem, {sessionMetadata: metadata}),
+    })) as CartItem[]
+    return await enrichCartItemsFromSanity(items, sanity)
+  } catch (err) {
+    console.warn('stripeWebhook: failed to list payment link line items', err)
+    return []
+  }
+}
+
+async function fetchPaymentLinkResource(
+  resource: Stripe.PaymentLink | string,
+): Promise<Stripe.PaymentLink | null> {
+  if (!resource) return null
+  const paymentLinkId = typeof resource === 'string' ? resource : resource.id
+  if (!paymentLinkId) return typeof resource === 'object' ? resource : null
+  if (!stripe) return typeof resource === 'object' ? resource : null
+  try {
+    const fresh = await stripe.paymentLinks.retrieve(paymentLinkId)
+    return fresh as Stripe.PaymentLink
+  } catch (err) {
+    console.warn('stripeWebhook: failed to retrieve payment link resource', err)
+    return typeof resource === 'object' ? resource : null
+  }
+}
+
+async function syncStripePaymentLink(
+  paymentLink: Stripe.PaymentLink,
+  opts: {eventType?: string; eventCreated?: number} = {},
+): Promise<string | null> {
+  const metadata = (paymentLink.metadata || {}) as Record<string, string>
+  let paymentLinkId = await findPaymentLinkDocumentId({
+    stripePaymentLinkId: paymentLink.id,
+    metadata,
+  })
+
+  const lineItems = await buildPaymentLinkLineItems(paymentLink)
+  const metadataEntries = buildMetadataEntries(metadata)
+  const status = paymentLink.active ? 'active' : 'inactive'
+  const title = metadata.title || paymentLink.url || paymentLink.id
+  const now = new Date().toISOString()
+
+  let quoteDocId = await findQuoteDocumentId({
+    metadata,
+    stripeQuoteId: metadata.stripe_quote_id || metadata.quote_id || metadata.quoteId || null,
+  })
+  if (!quoteDocId) {
+    const quoteCandidate = PAYMENT_LINK_METADATA_QUOTE_KEYS.map((key) =>
+      normalizeSanityId(metadata[key]),
+    ).find(Boolean)
+    if (quoteCandidate) {
+      try {
+        quoteDocId = await sanity.fetch<string | null>(
+          `*[_type == "quote" && _id in $ids][0]._id`,
+          {ids: idVariants(quoteCandidate)},
+        )
+      } catch (err) {
+        console.warn('stripeWebhook: failed to resolve quote reference for payment link', err)
+      }
+    }
+  }
+  let orderDocId: string | null = null
+  const orderIdCandidate = PAYMENT_LINK_METADATA_ORDER_KEYS.map((key) => normalizeSanityId(metadata[key])).find(
+    Boolean,
+  )
+  if (orderIdCandidate) {
+    try {
+      orderDocId = await sanity.fetch<string | null>(
+        `*[_type == "order" && _id in $ids][0]._id`,
+        {ids: idVariants(orderIdCandidate)},
+      )
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve order for payment link', err)
+    }
+  }
+
+  const customerEmail =
+    (metadata.customer_email || metadata.email || metadata.billing_email || '') as string
+  const stripeCustomerId = metadata.stripe_customer_id || metadata.customer_id || undefined
+  const customerRef = await resolveCustomerReference(stripeCustomerId, customerEmail)
+
+  const baseSet: Record<string, any> = {
+    title,
+    stripePaymentLinkId: paymentLink.id,
+    status,
+    url: paymentLink.url || undefined,
+    livemode: paymentLink.livemode ?? undefined,
+    active: paymentLink.active,
+    metadata: metadataEntries.length ? metadataEntries : undefined,
+    lineItems: lineItems.length ? lineItems : undefined,
+    stripeLastSyncedAt: now,
+    afterCompletion: safeJsonStringify(paymentLink.after_completion) || undefined,
+  }
+
+  if (customerRef) baseSet.customerRef = customerRef
+  if (quoteDocId) baseSet.quoteRef = {_type: 'reference', _ref: quoteDocId}
+  if (orderDocId) baseSet.orderRef = {_type: 'reference', _ref: orderDocId}
+
+  if (!paymentLinkId) {
+    const payload: Record<string, any> = {
+      _type: 'paymentLink',
+      ...baseSet,
+    }
+    try {
+      const created = await sanity.create(payload, {autoGenerateArrayKeys: true})
+      paymentLinkId = created?._id || null
+    } catch (err) {
+      console.warn('stripeWebhook: failed to create payment link document', err)
+      return null
+    }
+  } else {
+    try {
+      await sanity.patch(paymentLinkId).set(baseSet).commit({autoGenerateArrayKeys: true})
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update payment link document', err)
+    }
+  }
+
+  if (paymentLinkId && quoteDocId) {
+    try {
+      await sanity
+        .patch(quoteDocId)
+        .set({
+          stripePaymentLinkId: paymentLink.id,
+          stripePaymentLinkUrl: paymentLink.url || undefined,
+          paymentLinkRef: {_type: 'reference', _ref: paymentLinkId},
+        })
+        .commit({autoGenerateArrayKeys: true})
+      await appendQuoteTimelineEvent(
+        quoteDocId,
+        opts.eventType || 'stripe.payment_link.sync',
+        opts.eventCreated,
+      )
+    } catch (err) {
+      console.warn('stripeWebhook: failed to link payment link to quote', err)
+    }
+  }
+
+  return paymentLinkId
+}
+
+async function syncCustomerPaymentMethod(paymentMethod: Stripe.PaymentMethod): Promise<void> {
+  const paymentMethodId = paymentMethod.id
+  if (!paymentMethodId) return
+
+  const stripeCustomerId =
+    typeof paymentMethod.customer === 'string'
+      ? paymentMethod.customer
+      : (paymentMethod.customer as Stripe.Customer | undefined)?.id
+
+  let targetDocIds: string[] = []
+  const billingEmail = paymentMethod.billing_details?.email || null
+  const now = new Date().toISOString()
+
+  if (stripeCustomerId) {
+    let docId = await findCustomerDocIdByStripeCustomerId(stripeCustomerId)
+    if (!docId && stripe) {
+      try {
+        const customer = await stripe.customers.retrieve(stripeCustomerId)
+        if (customer && !('deleted' in customer && customer.deleted)) {
+          await syncStripeCustomer(customer as Stripe.Customer)
+          docId = await findCustomerDocIdByStripeCustomerId(stripeCustomerId)
+        }
+      } catch (err) {
+        console.warn('stripeWebhook: unable to reload customer for payment method', err)
+      }
+    }
+    if (docId) targetDocIds.push(docId)
+  }
+
+  if (targetDocIds.length === 0 && billingEmail) {
+    const normalizedEmail = billingEmail.toString().trim().toLowerCase()
+    if (normalizedEmail) {
+      try {
+        const docId = await sanity.fetch<string | null>(
+          `*[_type == "customer" && defined(email) && lower(email) == $email][0]._id`,
+          {email: normalizedEmail},
+        )
+        if (docId) targetDocIds.push(docId)
+      } catch (err) {
+        console.warn('stripeWebhook: failed to find customer by billing email', err)
+      }
+    }
+  }
+
+  if (targetDocIds.length === 0) return
+
+  const card = paymentMethod.card
+  const wallet = card?.wallet && typeof card.wallet === 'object' ? Object.keys(card.wallet)[0] : undefined
+  const createdAt = isoDateFromUnix(paymentMethod.created) || new Date().toISOString()
+
+  for (const docId of targetDocIds) {
+    let existing: {stripePaymentMethods?: any[]} | null = null
+    try {
+      existing = await sanity.fetch<{stripePaymentMethods?: any[]} | null>(
+        `*[_type == "customer" && _id == $id][0]{stripePaymentMethods}`,
+        {id: docId},
+      )
+    } catch (err) {
+      console.warn('stripeWebhook: failed to load existing payment methods', err)
+    }
+
+    const current = Array.isArray(existing?.stripePaymentMethods) ? existing!.stripePaymentMethods : []
+    const filtered = current.filter(
+      (entry: any) => entry?.id !== paymentMethodId && entry?._key !== paymentMethodId,
+    )
+    filtered.unshift({
+      _type: 'stripePaymentMethod',
+      _key: paymentMethodId,
+      id: paymentMethodId,
+      type: paymentMethod.type || 'card',
+      brand: card?.brand || 'Card on file',
+      last4: card?.last4 || '',
+      expMonth: card?.exp_month ?? undefined,
+      expYear: card?.exp_year ?? undefined,
+      funding: card?.funding || undefined,
+      fingerprint: card?.fingerprint || undefined,
+      wallet: wallet || undefined,
+      customerId: stripeCustomerId || undefined,
+      billingName: paymentMethod.billing_details?.name || undefined,
+      billingEmail: billingEmail || undefined,
+      billingZip: paymentMethod.billing_details?.address?.postal_code || undefined,
+      createdAt,
+      livemode: paymentMethod.livemode ?? undefined,
+      isDefault: Boolean(
+        (paymentMethod.metadata as any)?.is_default === 'true' ||
+          (paymentMethod.metadata as any)?.default_payment_method === 'true',
+      ),
+    })
+
+    try {
+      await sanity
+        .patch(docId)
+        .set({
+          stripePaymentMethods: filtered,
+          stripeLastSyncedAt: now,
+        })
+        .commit({autoGenerateArrayKeys: true})
+    } catch (err) {
+      console.warn('stripeWebhook: failed to upsert customer payment method', err)
+    }
+  }
+}
+
+async function removeCustomerPaymentMethod(paymentMethodId: string): Promise<void> {
+  if (!paymentMethodId) return
+  let customers: Array<{_id: string; stripePaymentMethods?: any[]}> = []
+  try {
+    customers =
+      (await sanity.fetch(
+        `*[_type == "customer" && stripePaymentMethods[].id == $id]{_id, stripePaymentMethods}`,
+        {id: paymentMethodId},
+      )) || []
+  } catch (err) {
+    console.warn('stripeWebhook: failed to lookup customers for payment method removal', err)
+    return
+  }
+
+  for (const customer of customers) {
+    const current = Array.isArray(customer.stripePaymentMethods)
+      ? customer.stripePaymentMethods
+      : []
+    const filtered = current.filter(
+      (entry: any) => entry?.id !== paymentMethodId && entry?._key !== paymentMethodId,
+    )
+    try {
+      await sanity
+        .patch(customer._id)
+        .set({stripePaymentMethods: filtered})
+        .commit({autoGenerateArrayKeys: true})
+    } catch (err) {
+      console.warn('stripeWebhook: failed to remove payment method from customer', err)
+    }
   }
 }
 
@@ -2092,6 +2897,62 @@ export const handler: Handler = async (event) => {
 
   try {
     switch (webhookEvent.type) {
+      case 'quote.created':
+      case 'quote.finalized':
+      case 'quote.updated':
+      case 'quote.accepted':
+      case 'quote.canceled':
+      case 'quote.will_expire': {
+        try {
+          const quoteObject = webhookEvent.data.object as Stripe.Quote
+          const quote = (await fetchQuoteResource(quoteObject)) || quoteObject
+          await syncStripeQuote(quote, {
+            eventType: webhookEvent.type,
+            eventCreated: webhookEvent.created,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync quote event', err)
+        }
+        break
+      }
+
+      case 'payment_link.created':
+      case 'payment_link.updated': {
+        try {
+          const paymentLinkObject = webhookEvent.data.object as Stripe.PaymentLink
+          const paymentLink = (await fetchPaymentLinkResource(paymentLinkObject)) || paymentLinkObject
+          await syncStripePaymentLink(paymentLink, {
+            eventType: webhookEvent.type,
+            eventCreated: webhookEvent.created,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync payment link event', err)
+        }
+        break
+      }
+
+      case 'payment_method.attached':
+      case 'payment_method.updated':
+      case 'payment_method.automatically_updated': {
+        try {
+          const paymentMethod = webhookEvent.data.object as Stripe.PaymentMethod
+          await syncCustomerPaymentMethod(paymentMethod)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync payment method', err)
+        }
+        break
+      }
+
+      case 'payment_method.detached': {
+        try {
+          const paymentMethod = webhookEvent.data.object as Stripe.PaymentMethod
+          await removeCustomerPaymentMethod(paymentMethod.id)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to remove payment method', err)
+        }
+        break
+      }
+
       case 'product.created':
       case 'product.updated': {
         try {
