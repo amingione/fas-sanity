@@ -223,7 +223,9 @@ async function findInvoiceDocumentIdForEvent(input: {
   paymentIntentId?: string | null
 }): Promise<string | null> {
   const metadata = (input.metadata || {}) as Record<string, string>
-  const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(Boolean)
+  const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(
+    Boolean,
+  )
   if (metaId) {
     const docId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, {
       ids: idVariants(metaId),
@@ -395,7 +397,8 @@ async function recordStripeWebhookEvent(options: {
     invoiceNumber: invoiceNumberCandidate || null,
   })
 
-  const metadataString = metadata && Object.keys(metadata).length > 0 ? safeJsonStringify(metadata) : undefined
+  const metadataString =
+    metadata && Object.keys(metadata).length > 0 ? safeJsonStringify(metadata) : undefined
   const rawPayload = payload ? safeJsonStringify(payload) : undefined
   const summaryText = summary || `Processed ${event.type}`
 
@@ -526,9 +529,7 @@ const recordStripeWebhookResourceEvent = async (
         ? (dataObject as any).id
         : undefined
     const resourceType =
-      dataObject &&
-      typeof dataObject === 'object' &&
-      typeof (dataObject as any).object === 'string'
+      dataObject && typeof dataObject === 'object' && typeof (dataObject as any).object === 'string'
         ? (dataObject as any).object
         : undefined
     let status: string | undefined
@@ -549,9 +550,7 @@ const recordStripeWebhookResourceEvent = async (
         ? (dataObject as any).currency.toUpperCase()
         : undefined
     const requestId =
-      typeof webhookEvent.request === 'string'
-        ? webhookEvent.request
-        : webhookEvent.request?.id
+      typeof webhookEvent.request === 'string' ? webhookEvent.request : webhookEvent.request?.id
     const categoryLabel = humanizeSegments(category)
     const remainder = webhookEvent.type.startsWith(`${category}.`)
       ? webhookEvent.type.slice(category.length + 1)
@@ -1290,7 +1289,9 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
   const built: any[] = []
   for (const lineItem of lineItems) {
     const mapped = mapStripeLineItem(lineItem, {sessionMetadata: metadata})
-    const fallbackQuantity = Number(lineItem.quantity ?? 1) || 1
+    const fallbackQuantityRaw = Number(lineItem.quantity ?? 1)
+    const fallbackQuantity = Number.isFinite(fallbackQuantityRaw) ? fallbackQuantityRaw : 1
+    // Prefer mapped.quantity (may reflect derived values); otherwise use Stripe line item quantity.
     const quantity = mapped.quantity ?? fallbackQuantity
     const totalAmount =
       toMajorUnits((lineItem as any)?.amount_total) ??
@@ -1302,7 +1303,8 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
           ? totalAmount / quantity
           : undefined
 
-    const priceObj = lineItem.price && typeof lineItem.price === 'object' ? (lineItem.price as Stripe.Price) : null
+    const priceObj =
+      lineItem.price && typeof lineItem.price === 'object' ? (lineItem.price as Stripe.Price) : null
     const productObj =
       priceObj && priceObj.product && typeof priceObj.product === 'object'
         ? (priceObj.product as Stripe.Product)
@@ -1345,8 +1347,10 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
       item.description = lineItem.description || mapped.description || name
     }
     if (mapped.sku) item.sku = mapped.sku
-    if (unitPrice !== undefined && Number.isFinite(unitPrice)) item.unitPrice = Number(unitPrice.toFixed(2))
-    if (totalAmount !== undefined && Number.isFinite(totalAmount)) item.lineTotal = Number(totalAmount.toFixed(2))
+    if (unitPrice !== undefined && Number.isFinite(unitPrice))
+      item.unitPrice = Number(unitPrice.toFixed(2))
+    if (totalAmount !== undefined && Number.isFinite(totalAmount))
+      item.lineTotal = Number(totalAmount.toFixed(2))
 
     built.push(item)
   }
@@ -1384,14 +1388,15 @@ async function findQuoteDocumentId(opts: {
   quoteNumber?: string | null
 }): Promise<string | null> {
   const meta = opts.metadata || {}
-  const idCandidates = QUOTE_METADATA_ID_KEYS.map((key) => normalizeSanityId(meta[key])).filter(Boolean) as string[]
+  const idCandidates = QUOTE_METADATA_ID_KEYS.map((key) => normalizeSanityId(meta[key])).filter(
+    Boolean,
+  ) as string[]
 
   if (idCandidates.length > 0) {
     try {
-      const docId = await sanity.fetch<string | null>(
-        `*[_type == "quote" && _id in $ids][0]._id`,
-        {ids: idCandidates.flatMap((id) => idVariants(id))},
-      )
+      const docId = await sanity.fetch<string | null>(`*[_type == "quote" && _id in $ids][0]._id`, {
+        ids: idCandidates.flatMap((id) => idVariants(id)),
+      })
       if (docId) return docId
     } catch (err) {
       console.warn('stripeWebhook: failed to resolve quote by metadata id', err)
@@ -1587,9 +1592,9 @@ async function findPaymentLinkDocumentId(opts: {
   metadata?: Record<string, string>
 }): Promise<string | null> {
   const meta = opts.metadata || {}
-  const idCandidates = PAYMENT_LINK_METADATA_ID_KEYS.map((key) => normalizeSanityId(meta[key])).filter(
-    Boolean,
-  ) as string[]
+  const idCandidates = PAYMENT_LINK_METADATA_ID_KEYS.map((key) =>
+    normalizeSanityId(meta[key]),
+  ).filter(Boolean) as string[]
 
   if (idCandidates.length > 0) {
     try {
@@ -1690,22 +1695,23 @@ async function syncStripePaymentLink(
     }
   }
   let orderDocId: string | null = null
-  const orderIdCandidate = PAYMENT_LINK_METADATA_ORDER_KEYS.map((key) => normalizeSanityId(metadata[key])).find(
-    Boolean,
-  )
+  const orderIdCandidate = PAYMENT_LINK_METADATA_ORDER_KEYS.map((key) =>
+    normalizeSanityId(metadata[key]),
+  ).find(Boolean)
   if (orderIdCandidate) {
     try {
-      orderDocId = await sanity.fetch<string | null>(
-        `*[_type == "order" && _id in $ids][0]._id`,
-        {ids: idVariants(orderIdCandidate)},
-      )
+      orderDocId = await sanity.fetch<string | null>(`*[_type == "order" && _id in $ids][0]._id`, {
+        ids: idVariants(orderIdCandidate),
+      })
     } catch (err) {
       console.warn('stripeWebhook: failed to resolve order for payment link', err)
     }
   }
 
-  const customerEmail =
-    (metadata.customer_email || metadata.email || metadata.billing_email || '') as string
+  const customerEmail = (metadata.customer_email ||
+    metadata.email ||
+    metadata.billing_email ||
+    '') as string
   const stripeCustomerId = metadata.stripe_customer_id || metadata.customer_id || undefined
   const customerRef = await resolveCustomerReference(stripeCustomerId, customerEmail)
 
@@ -1816,7 +1822,8 @@ async function syncCustomerPaymentMethod(paymentMethod: Stripe.PaymentMethod): P
   if (targetDocIds.length === 0) return
 
   const card = paymentMethod.card
-  const wallet = card?.wallet && typeof card.wallet === 'object' ? Object.keys(card.wallet)[0] : undefined
+  const wallet =
+    card?.wallet && typeof card.wallet === 'object' ? Object.keys(card.wallet)[0] : undefined
   const createdAt = isoDateFromUnix(paymentMethod.created) || new Date().toISOString()
 
   for (const docId of targetDocIds) {
@@ -1830,7 +1837,9 @@ async function syncCustomerPaymentMethod(paymentMethod: Stripe.PaymentMethod): P
       console.warn('stripeWebhook: failed to load existing payment methods', err)
     }
 
-    const current = Array.isArray(existing?.stripePaymentMethods) ? existing!.stripePaymentMethods : []
+    const current = Array.isArray(existing?.stripePaymentMethods)
+      ? existing!.stripePaymentMethods
+      : []
     const filtered = current.filter(
       (entry: any) => entry?.id !== paymentMethodId && entry?._key !== paymentMethodId,
     )
@@ -2016,7 +2025,9 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   }
 }
 
-async function syncStripeInvoiceById(invoice: string | Stripe.Invoice | null | undefined): Promise<void> {
+async function syncStripeInvoiceById(
+  invoice: string | Stripe.Invoice | null | undefined,
+): Promise<void> {
   if (!invoice || !stripe) return
   const invoiceId =
     typeof invoice === 'string' ? invoice : typeof invoice?.id === 'string' ? invoice.id : undefined
@@ -2370,7 +2381,6 @@ async function fetchPaymentIntentResource(
   }
 }
 
-
 type OrderPaymentStatusInput = {
   paymentStatus?: string
   orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
@@ -2435,7 +2445,8 @@ const handleChargeEvent = async (input: HandleChargeEventInput) => {
   } = input
 
   const resolvedPaymentIntent =
-    paymentIntent || (charge?.payment_intent ? await fetchPaymentIntentResource(charge.payment_intent) : null)
+    paymentIntent ||
+    (charge?.payment_intent ? await fetchPaymentIntentResource(charge.payment_intent) : null)
   const resolvedPaymentIntentId =
     paymentIntentId ||
     (resolvedPaymentIntent?.id
@@ -2579,7 +2590,8 @@ const handleDisputeEvent = async (input: HandleDisputeEventInput) => {
     if (dueByIso) orderFields.lastDisputeDueBy = dueByIso
   }
 
-  const metadata = dispute?.metadata || (resolvedCharge?.metadata as Record<string, string> | null) || null
+  const metadata =
+    dispute?.metadata || (resolvedCharge?.metadata as Record<string, string> | null) || null
 
   const parts = messageParts.filter((part): part is string => Boolean(part && String(part).trim()))
   if (dispute?.status) parts.push(`Status ${dispute.status}`)
@@ -2663,11 +2675,12 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
       Boolean(charge?.refunded) ||
       (typeof refundedCentsFromCharge === 'number' && refundedCentsFromCharge > 0) ||
       (typeof refundedCentsFromRefund === 'number' && refundedCentsFromRefund > 0)
-    const inferredRefundStatus =
-      !explicitRefundStatus && chargeIndicatesRefund ? 'succeeded' : ''
+    const inferredRefundStatus = !explicitRefundStatus && chargeIndicatesRefund ? 'succeeded' : ''
     const refundStatus = explicitRefundStatus || inferredRefundStatus
     const refundSucceeded = refundStatus === 'succeeded'
-    const preserveRefundedStatus = Boolean(explicitRefundStatus && explicitRefundStatus !== 'succeeded')
+    const preserveRefundedStatus = Boolean(
+      explicitRefundStatus && explicitRefundStatus !== 'succeeded',
+    )
     const paymentStatus = refundSucceeded
       ? isFullRefund
         ? 'refunded'
@@ -2904,7 +2917,7 @@ const getCheckoutAsyncDefaults = (
   const metadata =
     (context.metadata && typeof context.metadata === 'object'
       ? context.metadata
-      : (session.metadata || {}) as Record<string, string>) || {}
+      : ((session.metadata || {}) as Record<string, string>)) || {}
   const baseEventType = context.eventType || context.invoiceStripeStatus || ''
   const eventType = baseEventType || 'checkout.session.async_payment_succeeded'
   const invoiceStripeStatus =
@@ -2914,28 +2927,29 @@ const getCheckoutAsyncDefaults = (
       ? session.amount_total / 100
       : undefined
   const currency =
-    (session.currency || context.paymentIntent?.currency || '')
-      .toString()
-      .toUpperCase() || undefined
+    (session.currency || context.paymentIntent?.currency || '').toString().toUpperCase() ||
+    undefined
   return {metadata, eventType, invoiceStripeStatus, amount, currency}
 }
 
-export async function handleCheckoutAsyncPaymentSucceeded(
+async function handleCheckoutAsyncPaymentSucceeded(
   session: Stripe.Checkout.Session,
   context: CheckoutAsyncContext = {},
 ): Promise<void> {
   const paymentIntent =
     context.paymentIntent ?? (await fetchPaymentIntentResource(session.payment_intent))
-  const {metadata, eventType, invoiceStripeStatus, amount, currency} =
-    getCheckoutAsyncDefaults(session, {
+  const {metadata, eventType, invoiceStripeStatus, amount, currency} = getCheckoutAsyncDefaults(
+    session,
+    {
       ...context,
-      invoiceStripeStatus: context.invoiceStripeStatus || 'checkout.session.async_payment_succeeded',
-    })
+      invoiceStripeStatus:
+        context.invoiceStripeStatus || 'checkout.session.async_payment_succeeded',
+    },
+  )
 
   const paymentIntentId =
-    (typeof session.payment_intent === 'string'
-      ? session.payment_intent
-      : paymentIntent?.id) || undefined
+    (typeof session.payment_intent === 'string' ? session.payment_intent : paymentIntent?.id) ||
+    undefined
 
   const summary = buildStripeSummary({
     session,
@@ -2973,13 +2987,10 @@ export async function handleCheckoutAsyncPaymentSucceeded(
     event: {
       eventType,
       label: context.label || 'Async payment succeeded',
-      message:
-        context.message || `Checkout session ${session.id} async payment succeeded`,
+      message: context.message || `Checkout session ${session.id} async payment succeeded`,
       amount,
-      currency: currency ||
-        (paymentIntent?.currency
-          ? paymentIntent.currency.toUpperCase()
-          : undefined),
+      currency:
+        currency || (paymentIntent?.currency ? paymentIntent.currency.toUpperCase() : undefined),
       stripeEventId: context.stripeEventId,
       occurredAt: context.eventCreated ?? null,
       metadata,
@@ -2993,11 +3004,13 @@ export async function handleCheckoutAsyncPaymentFailed(
 ): Promise<void> {
   const paymentIntent =
     context.paymentIntent ?? (await fetchPaymentIntentResource(session.payment_intent))
-  const {metadata, eventType, invoiceStripeStatus, amount, currency} =
-    getCheckoutAsyncDefaults(session, {
+  const {metadata, eventType, invoiceStripeStatus, amount, currency} = getCheckoutAsyncDefaults(
+    session,
+    {
       ...context,
       invoiceStripeStatus: context.invoiceStripeStatus || 'checkout.session.async_payment_failed',
-    })
+    },
+  )
 
   let failureCode: string | undefined
   let failureMessage: string | undefined
@@ -3018,11 +3031,9 @@ export async function handleCheckoutAsyncPaymentFailed(
     return 'failed'
   })()
 
-  let orderStatus: 'paid' | 'cancelled' =
-    paymentStatus === 'paid' ? 'paid' : 'cancelled'
+  let orderStatus: 'paid' | 'cancelled' = paymentStatus === 'paid' ? 'paid' : 'cancelled'
 
-  let invoiceStatus: 'paid' | 'cancelled' =
-    paymentStatus === 'paid' ? 'paid' : 'cancelled'
+  let invoiceStatus: 'paid' | 'cancelled' = paymentStatus === 'paid' ? 'paid' : 'cancelled'
 
   if (paymentStatus === 'paid' && failureCode) {
     // Even if intent eventually succeeded, preserve diagnostics for visibility.
@@ -3057,9 +3068,8 @@ export async function handleCheckoutAsyncPaymentFailed(
   if (failureMessage) additionalInvoiceFields.paymentFailureMessage = failureMessage
 
   const paymentIntentId =
-    (typeof session.payment_intent === 'string'
-      ? session.payment_intent
-      : paymentIntent?.id) || undefined
+    (typeof session.payment_intent === 'string' ? session.payment_intent : paymentIntent?.id) ||
+    undefined
 
   await updateOrderPaymentStatus({
     paymentStatus,
@@ -3074,13 +3084,10 @@ export async function handleCheckoutAsyncPaymentFailed(
     event: {
       eventType,
       label: context.label || 'Async payment failed',
-      message:
-        context.message || `Checkout session ${session.id} async payment failed`,
+      message: context.message || `Checkout session ${session.id} async payment failed`,
       amount,
-      currency: currency ||
-        (paymentIntent?.currency
-          ? paymentIntent.currency.toUpperCase()
-          : undefined),
+      currency:
+        currency || (paymentIntent?.currency ? paymentIntent.currency.toUpperCase() : undefined),
       stripeEventId: context.stripeEventId,
       occurredAt: context.eventCreated ?? null,
       metadata,
@@ -3422,7 +3429,8 @@ export const handler: Handler = async (event) => {
       case 'payment_link.updated': {
         try {
           const paymentLinkObject = webhookEvent.data.object as Stripe.PaymentLink
-          const paymentLink = (await fetchPaymentLinkResource(paymentLinkObject)) || paymentLinkObject
+          const paymentLink =
+            (await fetchPaymentLinkResource(paymentLinkObject)) || paymentLinkObject
           await syncStripePaymentLink(paymentLink, {
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
@@ -3704,7 +3712,9 @@ export const handler: Handler = async (event) => {
       case 'invoiceitem.updated': {
         try {
           const invoiceItem = webhookEvent.data.object as Stripe.InvoiceItem
-          await syncStripeInvoiceById(invoiceItem.invoice as string | Stripe.Invoice | null | undefined)
+          await syncStripeInvoiceById(
+            invoiceItem.invoice as string | Stripe.Invoice | null | undefined,
+          )
         } catch (err) {
           console.warn('stripeWebhook: failed to sync invoice from invoiceitem event', err)
         }
@@ -3827,11 +3837,13 @@ export const handler: Handler = async (event) => {
             amountOverride: amountFailed,
             additionalOrderFields: {
               paymentFailureCode: charge.failure_code || charge.outcome?.reason || undefined,
-              paymentFailureMessage: charge.failure_message || charge.outcome?.seller_message || undefined,
+              paymentFailureMessage:
+                charge.failure_message || charge.outcome?.seller_message || undefined,
             },
             additionalInvoiceFields: {
               paymentFailureCode: charge.failure_code || charge.outcome?.reason || undefined,
-              paymentFailureMessage: charge.failure_message || charge.outcome?.seller_message || undefined,
+              paymentFailureMessage:
+                charge.failure_message || charge.outcome?.seller_message || undefined,
             },
             preserveExistingFailureDiagnostics: false,
             includeChargeContext: false,
@@ -4022,10 +4034,7 @@ export const handler: Handler = async (event) => {
             eventCreated: webhookEvent.created,
           })
         } catch (err) {
-          console.warn(
-            'stripeWebhook: failed to handle checkout.session.async_payment_failed',
-            err,
-          )
+          console.warn('stripeWebhook: failed to handle checkout.session.async_payment_failed', err)
         }
         break
       }
@@ -4065,7 +4074,9 @@ export const handler: Handler = async (event) => {
           .toLowerCase()
         const normalizedPaymentStatus = rawPaymentStatus.trim()
         let paymentStatus: string = normalizedPaymentStatus
-        if (['paid', 'succeeded', 'complete', 'no_payment_required'].includes(normalizedPaymentStatus)) {
+        if (
+          ['paid', 'succeeded', 'complete', 'no_payment_required'].includes(normalizedPaymentStatus)
+        ) {
           paymentStatus = 'paid'
         } else if (sessionStatus === 'expired') {
           paymentStatus = 'expired'
@@ -4078,7 +4089,8 @@ export const handler: Handler = async (event) => {
         }
         let derivedOrderStatus: 'paid' | 'cancelled' | 'closed' | 'expired'
         if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
-        else if (paymentStatus === 'cancelled' || paymentStatus === 'failed') derivedOrderStatus = 'cancelled'
+        else if (paymentStatus === 'cancelled' || paymentStatus === 'failed')
+          derivedOrderStatus = 'cancelled'
         else derivedOrderStatus = 'paid'
         const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
           ? Number((session as any)?.amount_subtotal) / 100
@@ -4282,8 +4294,6 @@ export const handler: Handler = async (event) => {
 
           const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
           if (orderSlug) baseDoc.slug = {_type: 'slug', current: orderSlug}
-
-
 
           // Try to link to an existing customer by email
           if (email) {
@@ -4599,7 +4609,6 @@ export const handler: Handler = async (event) => {
           }
           const intentSlug = createOrderSlug(orderNumber, pi.id)
           if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
-
 
           let orderId = existingId
           if (existingId) {
