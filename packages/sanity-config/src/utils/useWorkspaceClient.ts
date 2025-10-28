@@ -1,7 +1,7 @@
 import {createClient} from '@sanity/client'
 import type {ClientConfig} from '@sanity/client'
-import {useContext, useMemo} from 'react'
-import {WorkspaceContext} from 'sanity/_singletons'
+import {useMemo} from 'react'
+import {useClient} from 'sanity'
 import type {SourceClientOptions} from 'sanity'
 
 type UseClientOptions = (SourceClientOptions & Partial<ClientConfig>) | undefined
@@ -15,20 +15,12 @@ const DEFAULT_DATASET =
 const FALLBACK_API_VERSION = '2024-10-01'
 
 export function useWorkspaceClient(options?: UseClientOptions) {
-  const workspace = useContext(WorkspaceContext)
-  const apiVersion = options?.apiVersion || FALLBACK_API_VERSION
+  const {apiVersion = FALLBACK_API_VERSION, ...restOptions} = options || {}
+  const {dataset, perspective, projectId, stega, token, useCdn, withCredentials} = restOptions
+
+  const baseClient = useClient({apiVersion})
 
   const fallbackClient = useMemo(() => {
-    const {
-      dataset,
-      perspective,
-      projectId,
-      stega,
-      token,
-      useCdn,
-      withCredentials,
-    } = options || {}
-
     return createClient({
       projectId: projectId || DEFAULT_PROJECT_ID,
       dataset: dataset || DEFAULT_DATASET,
@@ -40,22 +32,31 @@ export function useWorkspaceClient(options?: UseClientOptions) {
       stega,
       ignoreBrowserTokenWarning: true,
     })
-  }, [apiVersion, options])
+  }, [apiVersion, dataset, perspective, projectId, stega, token, useCdn, withCredentials])
 
   const studioClient = useMemo(() => {
-    if (!workspace) return null
+    const config: Partial<ClientConfig> = {}
+
+    if (projectId) config.projectId = projectId
+    if (dataset) config.dataset = dataset
+    if (perspective) config.perspective = perspective
+    if (typeof useCdn === 'boolean') config.useCdn = useCdn
+    if (typeof withCredentials === 'boolean') config.withCredentials = withCredentials
+    if (token) config.token = token
+    if (stega) config.stega = stega
+
     try {
-      return workspace.getClient({
-        ...(options || {}),
-        apiVersion,
-      } as SourceClientOptions & Partial<ClientConfig>)
+      if (Object.keys(config).length > 0) {
+        return baseClient.withConfig(config)
+      }
+      return baseClient
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn('useWorkspaceClient: falling back to manual client', err)
       }
       return null
     }
-  }, [workspace, options, apiVersion])
+  }, [baseClient, dataset, perspective, projectId, stega, token, useCdn, withCredentials])
 
   return studioClient || fallbackClient
 }
