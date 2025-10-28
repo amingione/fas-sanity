@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
 import {Box, Button, Card, Flex, Inline, Spinner, Stack, Text, TextInput, Tooltip, useToast} from '@sanity/ui'
 import {useClient} from 'sanity'
+import {googleProductCategories} from '../../schemaTypes/constants/googleProductCategories'
 import type {DerivedProductFeedFields, ProductAttribute, ProductOptionSet, ProductSpecification} from '../../utils/productFeed'
 import {deriveProductFeedFields, detailsToStrings} from '../../utils/productFeed'
 
@@ -28,6 +29,7 @@ type ProductDoc = {
   boxDimensions?: string
   brand?: string
   canonicalUrl?: string
+  googleProductCategory?: string
   installOnly?: boolean
   shippingLabel?: string
   productHighlights?: string[]
@@ -111,6 +113,7 @@ const EXPORT_FEED_HEADERS = [
   'identifier_exists',
   'shipping_weight',
   'product_type',
+  'google_product_category',
   'shipping_label',
   'product_highlight',
   'product_detail',
@@ -363,6 +366,15 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
     },
   },
   {
+    header: 'Google Product Category',
+    headerKey: 'google product category',
+    getValue: (product) => product.googleProductCategory || '',
+    setValue: (raw) => {
+      const next = raw.trim()
+      return makeUpdate('googleProductCategory', (next || undefined) as EditableProduct['googleProductCategory'])
+    },
+  },
+  {
     header: 'Install Only',
     headerKey: 'install only',
     getValue: (product) => formatBooleanCell(product.installOnly),
@@ -517,6 +529,7 @@ export default function ProductBulkEditor() {
             boxDimensions,
             brand,
             canonicalUrl,
+            googleProductCategory,
             productHighlights,
             productDetails,
             specifications[]{
@@ -856,6 +869,7 @@ export default function ProductBulkEditor() {
         brand: product.brand || undefined,
         mpn: product.mpn || undefined,
         canonicalUrl: product.canonicalUrl || undefined,
+        googleProductCategory: product.googleProductCategory || undefined,
         installOnly: Boolean(product.installOnly),
         shippingLabel: product.shippingLabel || undefined,
       }
@@ -922,6 +936,7 @@ export default function ProductBulkEditor() {
       const identifierExists = product.mpn ? 'TRUE' : 'FALSE'
       const shippingWeight = product.shippingWeight ? `${product.shippingWeight} lb` : ''
       const productType = Array.isArray(product.categories) ? product.categories.join(' > ') : ''
+      const googleCategory = product.googleProductCategory || ''
       const shippingLabel = product.shippingLabel || (product.installOnly ? 'install_only' : '')
       const derived = product.derivedFeed
       const highlightsString = derived?.highlights?.join('; ') || ''
@@ -948,6 +963,7 @@ export default function ProductBulkEditor() {
         identifierExists,
         shippingWeight,
         productType,
+        googleCategory,
         shippingLabel,
         highlightsString,
         detailsString,
@@ -1168,6 +1184,7 @@ export default function ProductBulkEditor() {
                     'Tax Code',
                     'Shipping Weight (lb)',
                     'Box Dimensions',
+                    'Google Product Category',
                     'Highlights',
                     'Details',
                     'Color',
@@ -1328,6 +1345,19 @@ export default function ProductBulkEditor() {
                         onChange={(event) => updateProductField(product._id, 'boxDimensions', event.currentTarget.value)}
                         placeholder="LxWxH"
                       />
+                    </td>
+                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <select
+                        value={product.googleProductCategory || ''}
+                        onChange={(event) => updateProductField(product._id, 'googleProductCategory', event.currentTarget.value)}
+                      >
+                        <option value="">Select category</option>
+                        {googleProductCategories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                       <Stack space={2}>
