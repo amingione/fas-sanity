@@ -18,7 +18,16 @@ export function useWorkspaceClient(options?: UseClientOptions) {
   const {apiVersion = FALLBACK_API_VERSION, ...restOptions} = options || {}
   const {dataset, perspective, projectId, stega, token, useCdn, withCredentials} = restOptions
 
-  const baseClient = useClient({apiVersion})
+  let baseClient: ReturnType<typeof useClient> | null = null
+
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- The hook is always invoked, we simply catch context errors.
+    baseClient = useClient({apiVersion})
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('useWorkspaceClient: workspace context unavailable, using fallback client', err)
+    }
+  }
 
   const fallbackClient = useMemo(() => {
     return createClient({
@@ -44,6 +53,8 @@ export function useWorkspaceClient(options?: UseClientOptions) {
     if (typeof withCredentials === 'boolean') config.withCredentials = withCredentials
     if (token) config.token = token
     if (stega) config.stega = stega
+
+    if (!baseClient) return null
 
     try {
       if (Object.keys(config).length > 0) {
