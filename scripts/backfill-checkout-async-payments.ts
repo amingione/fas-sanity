@@ -5,10 +5,6 @@ import fs from 'node:fs'
 import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
-import {
-  handleCheckoutAsyncPaymentFailed,
-  handleCheckoutAsyncPaymentSucceeded,
-} from '../netlify/functions/stripeWebhook'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -17,6 +13,8 @@ for (const filename of ENV_FILES) {
     dotenv.config({path: resolved, override: false})
   }
 }
+
+type StripeWebhookModule = typeof import('../netlify/functions/stripeWebhook')
 
 type CliOptions = {
   dryRun: boolean
@@ -200,6 +198,10 @@ function determineOutcome(
 
 async function main() {
   const options = parseOptions()
+  let webhookHandlers: StripeWebhookModule | undefined
+  if (!options.dryRun) {
+    webhookHandlers = await import('../netlify/functions/stripeWebhook')
+  }
   const orders = await fetchOrders(options)
   if (!orders.length) {
     console.log('No matching orders found.')
@@ -287,10 +289,13 @@ async function main() {
     )
 
     if (!options.dryRun) {
+      if (!webhookHandlers) {
+        throw new Error('Stripe webhook helpers failed to load')
+      }
       const metadata = (session.metadata || {}) as Record<string, string>
       const eventCreated = Math.floor(Date.now() / 1000)
       if (outcome === 'success') {
-        await handleCheckoutAsyncPaymentSucceeded(session, {
+        await webhookHandlers.handleCheckoutAsyncPaymentSucceeded(session, {
           paymentIntent,
           metadata,
           eventType: 'checkout.session.async_payment_succeeded',
@@ -300,7 +305,7 @@ async function main() {
           eventCreated,
         })
       } else {
-        await handleCheckoutAsyncPaymentFailed(session, {
+        await webhookHandlers.handleCheckoutAsyncPaymentFailed(session, {
           paymentIntent,
           metadata,
           eventType: 'checkout.session.async_payment_failed',
