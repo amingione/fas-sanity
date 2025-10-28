@@ -24,7 +24,12 @@ async function getRequiredOrigins() {
     .map((origin) => origin.trim())
     .filter(Boolean)
 
-  const defaults = ['http://localhost:3333', 'http://localhost:8888', 'http://localhost:48752']
+  const defaults = [
+    'http://localhost:3333',
+    'http://localhost:8888',
+    'http://localhost:48752',
+    'https://fassanity.fasmotorsports.com',
+  ]
 
   const fusionOrigin = process.env.FUSION_ENV_ORIGIN || ''
 
@@ -108,9 +113,9 @@ async function ensureCors() {
       continue
     }
 
-      try {
-        await addOrigin(origin)
-        console.log(`Added missing Sanity CORS origin: ${origin}`)
+    try {
+      await addOrigin(origin)
+      console.log(`Added missing Sanity CORS origin: ${origin}`)
     } catch (error) {
       if (error instanceof SanityCorsPermissionError) {
         console.warn(`${error.message} — unable to add ${origin}.`)
