@@ -43,8 +43,6 @@ type SanityProduct = {
   canonicalUrl?: string | null
   images?: Array<{asset?: {url?: string | null} | null}> | string[]
   categories?: string[] | null
-  googleProductCategory?: string | null
-  google_product_category?: string | null
 }
 
 const SFTP_HOST =
@@ -142,9 +140,7 @@ const QUERY = `*[_type == "product" && defined(price) && price > 0]{
   "images": images[]{
     asset->{url}
   },
-  "categories": category[]->title,
-  googleProductCategory,
-  google_product_category
+  "categories": category[]->title
 }`
 
 const FEED_COLUMNS = [
@@ -157,7 +153,6 @@ const FEED_COLUMNS = [
   'price',
   'condition',
   'brand',
-  'google_product_category',
   'product_type',
   'mpn',
   'sale_price',
@@ -245,12 +240,6 @@ function toProductType(categories: string[] | null | undefined): string {
   return categories.join(' > ')
 }
 
-function deriveGoogleCategory(product: SanityProduct): string {
-  const explicit = sanitizeText(product.googleProductCategory || product.google_product_category)
-  if (explicit) return explicit
-  return ''
-}
-
 function buildFeedRow(product: SanityProduct): FeedRow | null {
   const offerId = sanitizeText(product.sku || product._id)
   const price = toPositiveNumber(product.price)
@@ -261,7 +250,7 @@ function buildFeedRow(product: SanityProduct): FeedRow | null {
     return null
   }
 
-    const description = sanitizeText(selectDescription(product))
+  const description = sanitizeText(selectDescription(product))
   const condition = sanitizeText(product.condition || 'new').toLowerCase() || 'new'
   const brand = sanitizeText(product.brand || '')
   const salePrice = product.onSale ? toPositiveNumber(product.salePrice) : undefined
@@ -277,7 +266,6 @@ function buildFeedRow(product: SanityProduct): FeedRow | null {
     price: formatPrice(price, FEED_CURRENCY),
     condition,
     brand,
-    google_product_category: deriveGoogleCategory(product),
     product_type: toProductType(product.categories),
     mpn: sanitizeText(product.mpn || offerId),
     sale_price: formatPrice(salePrice, FEED_CURRENCY),

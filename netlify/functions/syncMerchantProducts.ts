@@ -182,7 +182,6 @@ const content = google.content({ version: 'v2.1', auth })
       const productType = Array.isArray(product?.categories) && product.categories.length > 0
         ? product.categories.join(' > ')
         : undefined
-      const googleProductCategory = product?.googleProductCategory || product?.google_product_category
       const shippingLabel = product?.shippingLabel || (product?.installOnly ? 'install_only' : undefined)
       const productHighlights = Array.isArray(derivedFeed?.highlights) ? derivedFeed.highlights : []
       const productDetails = Array.isArray(derivedFeed?.details) ? derivedFeed.details : []
@@ -209,10 +208,6 @@ const content = google.content({ version: 'v2.1', auth })
 
      if (productType) {
         googleProduct.productType = productType
-      }
-
-      if (googleProductCategory) {
-        googleProduct.googleProductCategory = googleProductCategory
       }
 
       if (shippingWeight) {
