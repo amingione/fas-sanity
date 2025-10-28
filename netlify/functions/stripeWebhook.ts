@@ -1195,7 +1195,7 @@ async function fetchPaymentIntentResource(
 
 
 type OrderPaymentStatusInput = {
-  paymentStatus: string
+  paymentStatus?: string
   orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
   invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
   invoiceStripeStatus?: string
@@ -1473,8 +1473,10 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   if (!order?._id) return false
 
   const orderPatch: Record<string, any> = {
-    paymentStatus,
     stripeLastSyncedAt: new Date().toISOString(),
+  }
+  if (paymentStatus !== undefined) {
+    orderPatch.paymentStatus = paymentStatus
   }
   if (orderStatus) orderPatch.status = orderStatus
   if (additionalOrderFields && typeof additionalOrderFields === 'object') {
@@ -2620,6 +2622,8 @@ export const handler: Handler = async (event) => {
           const refundedCentsFromCharge =
             typeof charge?.amount_refunded === 'number' ? charge.amount_refunded : undefined
           const refundedCentsFromRefund = typeof refund?.amount === 'number' ? refund.amount : undefined
+          const refundStatus = (refund?.status || '').toString().toLowerCase()
+          const refundSucceeded = refundStatus === 'succeeded'
 
           const refundedAmount =
             refundedCentsFromCharge !== undefined
@@ -2635,7 +2639,11 @@ export const handler: Handler = async (event) => {
               chargeAmountCents > 0 &&
               refundedCentsFromCharge >= chargeAmountCents)
 
-          const paymentStatus = isFullRefund ? 'refunded' : 'partially_refunded'
+          const paymentStatus = refundSucceeded
+            ? isFullRefund
+              ? 'refunded'
+              : 'partially_refunded'
+            : undefined
           const paymentIntentId =
             typeof paymentIntent?.id === 'string'
               ? paymentIntent.id
@@ -2686,6 +2694,7 @@ export const handler: Handler = async (event) => {
               stripeEventId: webhookEvent.id,
               occurredAt: webhookEvent.created,
               metadata: (refund?.metadata || charge?.metadata || {}) as Record<string, string>,
+              status: refundStatus || paymentStatus || undefined,
             },
           })
         } catch (err) {
