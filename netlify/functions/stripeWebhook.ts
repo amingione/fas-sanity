@@ -2645,8 +2645,6 @@ export const handler: Handler = async (event) => {
           const refundedCentsFromCharge =
             typeof charge?.amount_refunded === 'number' ? charge.amount_refunded : undefined
           const refundedCentsFromRefund = typeof refund?.amount === 'number' ? refund.amount : undefined
-          const refundStatus = (refund?.status || '').toString().toLowerCase()
-          const refundSucceeded = refundStatus === 'succeeded'
 
           const refundedAmount =
             refundedCentsFromCharge !== undefined
@@ -2663,7 +2661,13 @@ export const handler: Handler = async (event) => {
               refundedCentsFromCharge >= chargeAmountCents)
 
           const refundStatus = (refund?.status || '').toString().toLowerCase()
-          const refundSucceeded = refundStatus === 'succeeded'
+          const hasRefundStatus = Boolean(refundStatus)
+          const chargeIndicatesRefund =
+            Boolean(charge?.refunded) ||
+            (typeof refundedCentsFromCharge === 'number' && refundedCentsFromCharge > 0) ||
+            (typeof refundedCentsFromRefund === 'number' && refundedCentsFromRefund > 0)
+          const fallbackRefundSucceeded = !hasRefundStatus && chargeIndicatesRefund
+          const refundSucceeded = refundStatus === 'succeeded' || fallbackRefundSucceeded
           const preserveRefundedStatus = Boolean(refundStatus && refundStatus !== 'succeeded')
           const paymentStatus = refundSucceeded
             ? isFullRefund
