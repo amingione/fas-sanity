@@ -9,6 +9,7 @@ import FinancialReports from './components/studio/FinancialReports'
 import BulkFulfillmentConsole from './components/studio/BulkFulfillmentConsole'
 import OrdersDashboard from './components/studio/OrdersDashboard'
 import ProductListDashboard from './components/studio/ProductListDashboard'
+import WebhooksDashboard from './components/studio/WebhooksDashboard'
 import VendorStatusBadge from './components/inputs/VendorStatusBadge'
 import StripeWebhookDashboard from './components/studio/StripeWebhookDashboard'
 
@@ -96,6 +97,9 @@ export const deskStructure: StructureResolver = (S, context) => {
       ),
       S.listItem().id('customer-dashboard').title('👤 Customer Dashboard').child(
         S.component().title('Customers').component(CustomerDashboard as any)
+      ),
+      S.listItem().id('webhooks-dashboard').title('🔔 Webhooks Dashboard').child(
+        S.component().title('Stripe Webhooks').component(WebhooksDashboard as any)
       ),
 
       S.listItem().id('admin-tools')
