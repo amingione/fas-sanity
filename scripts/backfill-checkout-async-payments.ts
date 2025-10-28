@@ -217,6 +217,10 @@ function determineOutcome(
 
 async function main() {
   const options = parseOptions()
+  let webhookHandlers: StripeWebhookModule | undefined
+  if (!options.dryRun) {
+    webhookHandlers = await import('../netlify/functions/stripeWebhook')
+  }
   const orders = await fetchOrders(options)
   if (!orders.length) {
     console.log('No matching orders found.')
@@ -306,6 +310,9 @@ async function main() {
     )
 
     if (!options.dryRun) {
+      if (!webhookHandlers) {
+        throw new Error('Stripe webhook helpers failed to load')
+      }
       const metadata = (session.metadata || {}) as Record<string, string>
       const eventCreated = Math.floor(Date.now() / 1000)
       if (outcome === 'success') {
