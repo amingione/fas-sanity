@@ -217,10 +217,6 @@ function determineOutcome(
 
 async function main() {
   const options = parseOptions()
-  let webhookHandlers: StripeWebhookModule | undefined
-  if (!options.dryRun) {
-    webhookHandlers = await import('../netlify/functions/stripeWebhook')
-  }
   const orders = await fetchOrders(options)
   if (!orders.length) {
     console.log('No matching orders found.')
@@ -228,8 +224,7 @@ async function main() {
   }
 
   console.log(`Found ${orders.length} order(s) to evaluate.`)
-
-  webhookHandlers = await loadWebhookHandlers()
+  const webhookHandlers = options.dryRun ? null : await loadWebhookHandlers()
 
   let processed = 0
   let skipped = 0
@@ -348,3 +343,4 @@ main().catch((err) => {
   console.error('Backfill failed:', (err as any)?.message || err)
   process.exit(1)
 })
+
