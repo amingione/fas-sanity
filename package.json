@@ -18,6 +18,9 @@
     "backfill:customers": "tsx scripts/invoke-netlify-function.ts backfillCustomers '{\"dryRun\":false}'",
     "backfill:orders": "tsx scripts/invoke-netlify-function.ts backfillOrders '{\"dryRun\":false}'",
     "backfill:invoices": "tsx scripts/invoke-netlify-function.ts backfillInvoices '{\"dryRun\":false}'",
+    "backfill:checkout-async": "tsx scripts/backfill-checkout-async-payments.ts",
+    "backfill:checkout-async-success": "pnpm backfill:checkout-async -- --status success",
+    "backfill:checkout-async-failure": "pnpm backfill:checkout-async -- --status failure",
     "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
   },
   "keywords": [
