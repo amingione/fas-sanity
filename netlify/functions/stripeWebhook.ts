@@ -1288,7 +1288,8 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
   const built: any[] = []
   for (const lineItem of lineItems) {
     const mapped = mapStripeLineItem(lineItem, {sessionMetadata: metadata})
-    const quantity = (mapped.quantity ?? Number(lineItem.quantity ?? 1)) || 1
+    // If mapped.quantity is undefined, fallback to lineItem.quantity (default 1). A quantity of 0 is allowed.
+    const quantity = mapped.quantity ?? Number(lineItem.quantity ?? 1)
     const totalAmount =
       toMajorUnits((lineItem as any)?.amount_total) ??
       (mapped.price !== undefined && quantity ? mapped.price * quantity : undefined)
