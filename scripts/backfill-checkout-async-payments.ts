@@ -305,7 +305,7 @@ async function main() {
       `- ${prefix}Applying async ${outcomeLabel} for ${formatOrderRef(order)} (session ${session.id}).`,
     )
 
-    if (!options.dryRun && webhookHandlers) {
+    if (!options.dryRun) {
       const metadata = (session.metadata || {}) as Record<string, string>
       const eventCreated = Math.floor(Date.now() / 1000)
       if (outcome === 'success') {
