@@ -189,6 +189,7 @@ const isoDateOnly = (iso?: string | null): string | undefined => {
 const isoDateFromUnix = (value?: number | null): string | undefined => {
   const iso = unixToIso(value)
   return isoDateOnly(iso)
+}
 function pruneUndefined<T extends Record<string, any>>(input: T): T {
   const result: Record<string, any> = {}
   for (const [key, value] of Object.entries(input)) {
@@ -508,7 +509,7 @@ const humanizeSegments = (value: string) =>
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(' ')
 
-const recordStripeWebhookEvent = async (
+const recordStripeWebhookCategoryEvent = async (
   webhookEvent: Stripe.Event,
   category: StripeWebhookCategory,
 ): Promise<void> => {
@@ -831,26 +832,6 @@ const PAYMENT_LINK_METADATA_ID_KEYS = [
 ]
 const PAYMENT_LINK_METADATA_QUOTE_KEYS = ['sanity_quote_id', 'quote_id', 'quoteId', 'sanityQuoteId']
 const PAYMENT_LINK_METADATA_ORDER_KEYS = ['sanity_order_id', 'order_id', 'orderId', 'sanityOrderId']
-const INVOICE_METADATA_NUMBER_KEYS = [
-  'sanity_invoice_number',
-  'invoice_number',
-  'invoiceNumber',
-  'sanityInvoiceNumber',
-]
-const PRODUCT_METADATA_ID_KEYS = [
-  'sanity_id',
-  'sanityId',
-  'sanity_document_id',
-  'sanityDocId',
-  'sanity_doc_id',
-  'sanityProductId',
-  'sanity_product_id',
-  'sanityDocumentId',
-  'document_id',
-  'documentId',
-  'product_document_id',
-  'productDocumentId',
-]
 const ORDER_METADATA_NUMBER_KEYS = [
   'sanity_order_number',
   'order_number',
@@ -4054,7 +4035,9 @@ export const handler: Handler = async (event) => {
           if (session.payment_intent) {
             paymentIntent = await stripe.paymentIntents.retrieve(String(session.payment_intent))
           }
-        } catch {}
+        } catch (err) {
+          console.warn('stripeWebhook: failed to retrieve payment intent during checkout summary build', err)
+        }
 
         const currency =
           ((session as any)?.currency || (paymentIntent as any)?.currency || '')
@@ -4108,7 +4091,9 @@ export const handler: Handler = async (event) => {
             cardLast4 = c?.last4 || undefined
             chargeBillingName = ch?.billing_details?.name || undefined
           }
-        } catch {}
+        } catch (err) {
+          console.warn('stripeWebhook: failed to resolve order for checkout event', err)
+        }
 
         const metadataOrderNumberRaw = (
           metadata['order_number'] ||
@@ -4294,7 +4279,9 @@ export const handler: Handler = async (event) => {
                 {email},
               )
               if (customerId) baseDoc.customerRef = {_type: 'reference', _ref: customerId}
-            } catch {}
+            } catch (err) {
+              console.warn('stripeWebhook: failed to refresh order after fulfillment sync', err)
+            }
           }
 
           let orderId = existingId
@@ -4697,7 +4684,9 @@ export const handler: Handler = async (event) => {
                 body: JSON.stringify({orderId}),
               })
             }
-          } catch {}
+          } catch (err) {
+            console.warn('stripeWebhook: auto-fulfillment trigger failed', err)
+          }
         } catch (e) {
           console.warn('stripeWebhook: PI fallback order creation failed', e)
         }
@@ -4717,11 +4706,11 @@ export const handler: Handler = async (event) => {
       default: {
         const type = webhookEvent.type || ''
         if (type.startsWith('source.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'source')
+          await recordStripeWebhookCategoryEvent(webhookEvent, 'source')
         } else if (type.startsWith('person.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'person')
+          await recordStripeWebhookCategoryEvent(webhookEvent, 'person')
         } else if (type.startsWith('issuing_dispute.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'issuing_dispute')
+          await recordStripeWebhookCategoryEvent(webhookEvent, 'issuing_dispute')
         }
         break
       }
