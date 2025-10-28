@@ -20,10 +20,9 @@ It also comes with several convenient layout modules which can be re-used across
 
 ## Repository layout
 
-This project now mirrors the structure of Shopify's [`hydrogen-sanity`](https://github.com/sanity-io/hydrogen-sanity) monorepo. Core code lives inside `packages/` while deployable infrastructure such as Netlify functions remains untouched.
+Core studio code lives inside `packages/` while deployable infrastructure such as Netlify functions remains untouched.
 
 - `packages/sanity-config` contains the Studio configuration, schema, custom desk structure, themes, and supporting utilities.
-- `packages/hydrogen-sanity` exposes the shared client helpers that storefronts can import when interacting with this Studio.
 - `netlify/functions` continues to host the existing serverless endpoints with their original paths.
 
 ## Assumptions
@@ -90,7 +89,6 @@ This repository is published under the [MIT](license) license.
 [docs-document-actions]: https://www.sanity.io/docs/document-actions
 [docs-input-components]: https://www.sanity.io/docs/custom-input-widgets
 [docs-string-input]: https://www.sanity.io/docs/string-type
-[hydrogen-demo]: https://github.com/sanity-io/hydrogen-sanity-demo
 [license]: https://github.com/sanity-io/sanity/blob/next/LICENSE
 [sanity-shopify]: https://apps.shopify.com/sanity-connect
 [structured-content-patterns]: https://www.sanity.io/guides/structured-content-patterns-for-e-commerce

@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto'
 import Stripe from 'stripe'
 import { mapStripeLineItem } from '../lib/stripeCartItem'
 import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
+import { normalizeMetadataEntries } from '@fas/sanity-config/utils/cartItemDetails'
 
 function normalizeOrigin(value?: string | null): string {
   if (!value) return ''
@@ -74,6 +75,21 @@ function toOrderCartItem(it: any) {
   if (!cloned._type) cloned._type = 'orderCartItem'
   if (cloned._type !== 'orderCartItem') return null
   if (typeof cloned._key !== 'string' || !cloned._key) cloned._key = randomUUID()
+
+  if (cloned.metadata && typeof cloned.metadata === 'object' && !Array.isArray(cloned.metadata)) {
+    const normalized = normalizeMetadataEntries(cloned.metadata as Record<string, unknown>)
+    if (normalized.length) {
+      cloned.metadata = normalized.map(({ key, value }) => ({
+        _type: 'orderCartItemMeta',
+        key,
+        value,
+        source: 'legacy',
+      }))
+    } else {
+      delete cloned.metadata
+    }
+  }
+
   return cloned
 }
 

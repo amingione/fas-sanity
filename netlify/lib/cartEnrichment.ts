@@ -1,4 +1,5 @@
 import type { SanityClient } from '@sanity/client'
+import { normalizeMetadataEntries } from '@fas/sanity-config/utils/cartItemDetails'
 import type { CartMetadataEntry } from './stripeCartItem'
 
 export type CartItem = {
@@ -19,7 +20,7 @@ export type CartItem = {
   optionDetails?: string[]
   upgrades?: string[]
   categories?: string[]
-  metadata?: CartMetadataEntry[]
+  metadata?: CartMetadataEntry[] | Record<string, unknown> | null
 }
 
 type ProductSummary = {
@@ -44,11 +45,32 @@ function slugifyValue(value?: string | null): string | undefined {
 }
 
 function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
-  if (!Array.isArray(item.metadata)) return []
-  return item.metadata.filter(
-    (entry): entry is CartMetadataEntry =>
-      Boolean(entry && typeof entry === 'object' && entry._type === CART_METADATA_TYPE && entry.key && entry.value)
-  )
+  if (Array.isArray(item.metadata)) {
+    const filtered = item.metadata.filter(
+      (entry): entry is CartMetadataEntry =>
+        Boolean(entry && typeof entry === 'object' && entry._type === CART_METADATA_TYPE && entry.key && entry.value)
+    )
+    if (filtered.length !== item.metadata.length) {
+      item.metadata = filtered
+    }
+    return filtered
+  }
+
+  if (item.metadata && typeof item.metadata === 'object') {
+    const normalized = normalizeMetadataEntries(item.metadata as Record<string, unknown>)
+    if (normalized.length) {
+      const upgraded = normalized.map<CartMetadataEntry>(({ key, value }) => ({
+        _type: CART_METADATA_TYPE,
+        key,
+        value,
+        source: 'legacy',
+      }))
+      item.metadata = upgraded
+      return upgraded
+    }
+  }
+
+  return []
 }
 
 function appendMetadata(item: CartItem, key: string, value: string, source: CartMetadataEntry['source']) {
