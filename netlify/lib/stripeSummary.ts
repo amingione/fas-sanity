@@ -17,6 +17,9 @@ type SummaryInput = {
 type CleanValue = string | number | boolean | null | undefined | CleanObject | CleanValue[]
 type CleanObject = { [key: string]: CleanValue }
 
+const toISOStringFromSeconds = (timestamp?: number | null) =>
+  typeof timestamp === 'number' && Number.isFinite(timestamp) ? new Date(timestamp * 1000).toISOString() : undefined
+
 const prune = (input: CleanObject): CleanObject => {
   const output: CleanObject = {}
   for (const [key, value] of Object.entries(input)) {
@@ -94,7 +97,7 @@ const buildMetadataEntries = (sources: Array<{ data?: Record<string, string> | n
 }
 
 const buildAttemptEntries = (pi?: PaymentLike, charge?: ChargeLike) => {
-  const attempts: Array<{ type: string; status?: string; created?: number; code?: string; message?: string }> = []
+  const attempts: Array<{ type: string; status?: string; created?: string; code?: string; message?: string }> = []
 
   const piAny = pi as any
   const lastError = piAny?.last_payment_error
@@ -102,7 +105,7 @@ const buildAttemptEntries = (pi?: PaymentLike, charge?: ChargeLike) => {
     attempts.push({
       type: 'payment_intent.last_payment_error',
       status: piAny?.status,
-      created: lastError.created || null,
+      created: toISOStringFromSeconds(lastError.created) || undefined,
       code: (lastError.code || lastError.decline_code || '') || undefined,
       message: lastError.message || undefined,
     })
@@ -113,7 +116,7 @@ const buildAttemptEntries = (pi?: PaymentLike, charge?: ChargeLike) => {
     attempts.push({
       type: 'charge',
       status: ch.status || undefined,
-      created: ch.created || undefined,
+      created: toISOStringFromSeconds(ch.created) || undefined,
       code: ch.failure_code || ch.outcome?.reason || undefined,
       message: ch.failure_message || ch.outcome?.seller_message || undefined,
     })

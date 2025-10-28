@@ -1,6 +1,6 @@
-import { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
+import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -8,6 +8,7 @@ import {
   shouldDisplayMetadataSegment,
   uniqueStrings,
 } from '@fas/sanity-config/utils/cartItemDetails'
+import type {NormalizedMetadataEntry} from '@fas/sanity-config/utils/cartItemDetails'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888').split(',')
 
@@ -35,7 +36,9 @@ const sanity = createClient({
 const LOGO_URL = process.env.PACKING_SLIP_LOGO_URL || 'https://fassite.netlify.app/logo.png'
 const SHOP_NAME = process.env.PACKING_SLIP_SHOP_NAME || process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports'
 const SHOP_EMAIL = process.env.PACKING_SLIP_SHOP_EMAIL || process.env.SHIP_FROM_EMAIL || 'orders@fasmotorsports.com'
-const SHOP_DOMAIN = (process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com').replace(/^https?:\/\//, '').replace(/\/$/, '')
+const SHOP_DOMAIN = (process.env.PACKING_SLIP_SHOP_DOMAIN || 'www.fasmotorsports.com')
+  .replace(/^https?:\/\//, '')
+  .replace(/\/$/, '')
 const SHOP_ADDRESS = [
   process.env.SHIP_FROM_ADDRESS1,
   process.env.SHIP_FROM_CITY,
@@ -63,6 +66,59 @@ interface PackingItem {
   title: string
   details?: string
   quantity: number
+}
+
+const toNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim().replace(/[$,]/g, '')
+    if (!trimmed) return undefined
+    const parsed = Number.parseFloat(trimmed)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return undefined
+}
+
+const formatCurrency = (value: unknown, currency = 'USD'): string | undefined => {
+  const num = toNumber(value)
+  if (typeof num !== 'number') return undefined
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num)
+  } catch {
+    return `$${num.toFixed(2)}`
+  }
+}
+
+const metadataEntriesToMap = (entries: NormalizedMetadataEntry[]): Record<string, string> => {
+  return entries.reduce<Record<string, string>>((acc, entry) => {
+    if (!entry?.key) return acc
+    const key = entry.key.toLowerCase()
+    if (!acc[key]) acc[key] = entry.value
+    return acc
+  }, {})
+}
+
+const getMetaValue = (
+  metaMap: Record<string, string>,
+  ...keys: Array<string | string[]>
+): string | undefined => {
+  for (const key of keys.flat()) {
+    const lookup = metaMap[key.toLowerCase()]
+    if (lookup) return lookup
+  }
+  return undefined
+}
+
+const normalizeSkuCandidate = (value?: string | null): string | undefined => {
+  if (!value) return undefined
+  const trimmed = value.toString().trim()
+  if (!trimmed || /^price_/i.test(trimmed)) return undefined
+  return trimmed
 }
 
 interface PackingData {
@@ -149,7 +205,6 @@ const buildDetailList = (opts: {
   summary?: string | null
   optionDetails?: string[]
   upgrades?: string[]
-  sku?: string | null
 }): string[] => {
   const details: string[] = []
   const seen = new Set<string>()
@@ -187,10 +242,6 @@ const buildDetailList = (opts: {
     if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
   }
 
-  if (opts.sku) {
-    addDetail(`SKU ${opts.sku}`)
-  }
-
   return details
 }
 
@@ -200,11 +251,14 @@ const prepareItemPresentation = (source: {
   description?: unknown
   title?: unknown
   sku?: unknown
+  productSku?: unknown
+  price?: unknown
+  currency?: string
   optionSummary?: unknown
   optionDetails?: unknown
   upgrades?: unknown
   metadata?: unknown
-}): { title: string; details: string[] } => {
+}): {title: string; details: string[]} => {
   const metadataEntries = normalizeMetadataEntries(source.metadata as any)
   const derived = deriveCartOptions(metadataEntries)
   const rawName = (source?.name || source?.description || source?.productName || source?.title || source?.sku || 'Item').toString()
@@ -222,8 +276,23 @@ const prepareItemPresentation = (source: {
     summary,
     optionDetails,
     upgrades,
-    sku: source?.sku ? String(source.sku) : undefined,
   })
+  const detailSet = new Set(details.map((detail) => detail.toLowerCase()))
+  const appendDetail = (detail?: string) => {
+    if (!detail) return
+    const normalized = detail.toLowerCase()
+    if (detailSet.has(normalized)) return
+    detailSet.add(normalized)
+    details.push(detail)
+  }
+  const rawSkuCandidates = [
+    source?.sku,
+    source?.productSku,
+  ].map((candidate) => (typeof candidate === 'string' ? candidate.trim() : undefined))
+  const resolvedSku = rawSkuCandidates.find((candidate) => candidate && !/^price_/i.test(candidate))
+  if (resolvedSku) appendDetail(`SKU: ${resolvedSku}`)
+  const formattedPrice = formatCurrency(source.price, source.currency)
+  if (formattedPrice) appendDetail(`Price: ${formattedPrice}`)
   return { title, details }
 }
 
@@ -460,6 +529,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         },
         orderRef->{
           _id,
+          orderNumber,
           createdAt,
           stripeSessionId,
           customerEmail,
@@ -478,6 +548,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
     order = await sanity.fetch(
       `*[_type == "order" && _id == $id][0]{
         _id,
+        orderNumber,
         createdAt,
         stripeSessionId,
         customerEmail,
@@ -520,6 +591,37 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
 
   if (!invoice && !order) return null
 
+  const collectProductIds = (...collections: Array<any[] | undefined | null>): string[] => {
+    const ids = new Set<string>()
+    for (const collection of collections) {
+      if (!Array.isArray(collection)) continue
+      for (const item of collection) {
+        const entries = normalizeMetadataEntries(item?.metadata as any)
+        const metaMap = metadataEntriesToMap(entries)
+        const candidate =
+          getMetaValue(metaMap, 'sanity_product_id', 'product_id', 'productid') ||
+          (item?.product?._id ? String(item.product._id) : undefined)
+        const normalized = candidate ? cleanIdentifier(candidate) : ''
+        if (normalized) ids.add(normalized)
+      }
+    }
+    return Array.from(ids)
+  }
+
+  const productIds = collectProductIds(order?.cart, invoice?.lineItems)
+  let productLookup: Record<string, { sku?: string | null }> = {}
+  if (productIds.length > 0) {
+    const products: Array<{ _id: string; sku?: string | null }> = await sanity.fetch(
+      `*[_type == "product" && _id in $ids]{ _id, sku }`,
+      { ids: productIds },
+    )
+    productLookup = products.reduce<Record<string, { sku?: string | null }>>((acc, product) => {
+      const key = cleanIdentifier(product._id)
+      if (key) acc[key] = { sku: product.sku || undefined }
+      return acc
+    }, {})
+  }
+
   const shippingAddress = normalizeAddress(invoice?.shipTo || order?.shippingAddress)
   const billingAddress = normalizeAddress(invoice?.billTo || order?.billingAddress || shippingAddress)
 
@@ -552,10 +654,27 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   if (Array.isArray(order?.cart) && order.cart.length > 0) {
     for (const ci of order.cart) {
       if (!ci) continue
+      const metadataEntries = normalizeMetadataEntries(ci.metadata as any)
+      const metaMap = metadataEntriesToMap(metadataEntries)
+      const productId = getMetaValue(metaMap, 'sanity_product_id', 'product_id')
+      const lookupSku = productId ? productLookup[cleanIdentifier(productId)]?.sku : undefined
+      const baseSku = typeof ci.sku === 'string' ? ci.sku.trim() : undefined
+      const resolvedSku =
+        normalizeSkuCandidate(baseSku) ||
+        normalizeSkuCandidate(getMetaValue(metaMap, 'sanity_sku', 'product_sku', 'sku')) ||
+        normalizeSkuCandidate(lookupSku) ||
+        baseSku
+      const unitPrice =
+        toNumber(ci.price) ||
+        toNumber(getMetaValue(metaMap, 'unit_price')) ||
+        toNumber(getMetaValue(metaMap, 'base_price'))
+      const currency = getMetaValue(metaMap, 'currency') || 'USD'
       const presentation = prepareItemPresentation({
         name: ci.name,
         productName: ci.productName,
-        sku: ci.sku,
+        sku: resolvedSku,
+        price: unitPrice,
+        currency,
         optionSummary: ci.optionSummary,
         optionDetails: ci.optionDetails,
         upgrades: ci.upgrades,
@@ -571,10 +690,29 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   } else if (Array.isArray(invoice?.lineItems) && invoice.lineItems.length > 0) {
     for (const li of invoice.lineItems) {
       const quantity = Number(li?.quantity || 1)
+      const metadataEntries = normalizeMetadataEntries((li as any)?.metadata)
+      const metaMap = metadataEntriesToMap(metadataEntries)
+      const productId =
+        getMetaValue(metaMap, 'sanity_product_id', 'product_id') ||
+        (li?.product?._id ? String(li.product._id) : undefined)
+      const lookupSku = productId ? productLookup[cleanIdentifier(productId)]?.sku : undefined
+      const baseSku = typeof li?.sku === 'string' ? String(li.sku).trim() : undefined
+      const resolvedSku =
+        normalizeSkuCandidate(baseSku) ||
+        normalizeSkuCandidate(getMetaValue(metaMap, 'sanity_sku', 'product_sku', 'sku')) ||
+        normalizeSkuCandidate(lookupSku) ||
+        baseSku
+      const unitPrice =
+        toNumber(li?.unitPrice) ||
+        toNumber(getMetaValue(metaMap, 'unit_price')) ||
+        toNumber(getMetaValue(metaMap, 'base_price'))
+      const currency = getMetaValue(metaMap, 'currency') || 'USD'
       const presentation = prepareItemPresentation({
         name: li?.description,
         productName: li?.product?.title,
-        sku: li?.sku,
+        sku: resolvedSku,
+        price: unitPrice,
+        currency,
         optionSummary: (li as any)?.optionSummary,
         optionDetails: (li as any)?.optionDetails,
         upgrades: (li as any)?.upgrades,

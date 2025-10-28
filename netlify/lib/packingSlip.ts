@@ -19,6 +19,22 @@ type PackingSlipOptions = {
   baseUrl?: string | null
 }
 
+const ECONN_REFUSED = 'ECONNREFUSED'
+
+function isConnectionRefusedError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  if ((err as any).code === ECONN_REFUSED) return true
+  const cause = (err as any).cause
+  if (cause && typeof cause === 'object') {
+    if ((cause as any).code === ECONN_REFUSED) return true
+    const nested = (cause as any).errors
+    if (Array.isArray(nested)) {
+      return nested.some((entry) => isConnectionRefusedError(entry))
+    }
+  }
+  return false
+}
+
 export async function generatePackingSlipAsset({
   sanity,
   orderId,
@@ -35,12 +51,24 @@ export async function generatePackingSlipAsset({
     if (cleanOrderId) payload.orderId = cleanOrderId
     if (cleanInvoiceId) payload.invoiceId = cleanInvoiceId
     if (!payload.orderId && !payload.invoiceId) return undefined
+    const url = `${base}/.netlify/functions/generatePackingSlips`
 
-    const response = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      })
+    } catch (err) {
+      if (isConnectionRefusedError(err)) {
+        console.warn(
+          `generatePackingSlipAsset: Netlify function unreachable at ${url}. Skipping packing slip upload.`,
+        )
+        return undefined
+      }
+      throw err
+    }
 
     if (!response.ok) {
       const body = await response.text().catch(() => '')
@@ -50,13 +78,13 @@ export async function generatePackingSlipAsset({
 
     const contentType = (response.headers.get('content-type') || '').toLowerCase()
     let buffer: Buffer
-      if (contentType.includes('application/pdf')) {
-        const arrayBuffer = await response.arrayBuffer()
-        buffer = Buffer.from(arrayBuffer)
-      } else {
-        const base64 = (await response.text()).replace(/^"|"$/g, '')
-        buffer = Buffer.from(base64, 'base64')
-      }
+    if (contentType.includes('application/pdf')) {
+      const arrayBuffer = await response.arrayBuffer()
+      buffer = Buffer.from(arrayBuffer)
+    } else {
+      const base64 = (await response.text()).replace(/^"|"$/g, '')
+      buffer = Buffer.from(base64, 'base64')
+    }
 
     if (!buffer || buffer.length === 0) return undefined
 
@@ -68,6 +96,12 @@ export async function generatePackingSlipAsset({
 
     return (asset as any)?.url
   } catch (err) {
+    if (isConnectionRefusedError(err)) {
+      console.warn(
+        'generatePackingSlipAsset: packing slip service unreachable. Set SANITY_STUDIO_NETLIFY_BASE to a deployed site when reprocessing orders.',
+      )
+      return undefined
+    }
     console.warn('generatePackingSlipAsset error', err)
     return undefined
   }

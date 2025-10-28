@@ -154,6 +154,7 @@ const TARGET_PAYMENT_STATUSES = [
   'cancelled',
   'incomplete',
   'incomplete_expired',
+  'expired',
 ]
 
 async function fetchOrders(options: CliOptions): Promise<OrderDoc[]> {
@@ -343,4 +344,3 @@ main().catch((err) => {
   console.error('Backfill failed:', (err as any)?.message || err)
   process.exit(1)
 })
-

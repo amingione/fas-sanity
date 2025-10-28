@@ -76,7 +76,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .apiVersion('2024-10-01')
                     .title('Subscribed customers')
                     .schemaType('customer')
-                    .filter('emailOptIn == true || marketingOptIn == true')
+                    .filter('_type == "customer" && (emailOptIn == true || marketingOptIn == true)')
                     .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
                 ),
               S.listItem()
@@ -87,7 +87,7 @@ export const deskStructure: StructureResolver = (S) =>
                     .apiVersion('2024-10-01')
                     .title('Customers with no orders')
                     .schemaType('customer')
-                    .filter('coalesce(orderCount, 0) == 0')
+                    .filter('_type == "customer" && coalesce(orderCount, 0) == 0')
                     .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 ),
               S.listItem()
@@ -170,16 +170,15 @@ export const deskStructure: StructureResolver = (S) =>
                 ),
               S.listItem()
                 .id('orders-expired-carts')
-                .title('Expired carts')
+                .title('Expired checkouts')
                 .child(
-                  S.documentTypeList('expiredCart')
-                    .title('Expired carts')
+                  S.documentList()
                     .apiVersion('2024-10-01')
-                    .filter('_type == "expiredCart"')
-                    .defaultOrdering([
-                      {field: 'expiredAt', direction: 'desc'},
-                      {field: 'createdAt', direction: 'desc'},
-                    ])
+                    .title('Expired checkouts')
+                    .schemaType('order')
+                    .filter('_type == "order" && status == "expired"')
+                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+                    .child(orderDocumentViews(S))
                 ),
               S.listItem()
                 .id('orders-recent')

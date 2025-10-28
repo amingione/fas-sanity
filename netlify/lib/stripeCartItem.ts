@@ -7,7 +7,7 @@ export type CartMetadataEntry = {
   _type: 'orderCartItemMeta'
   key: string
   value: string
-  source: MetadataSource | 'derived'
+  source: MetadataSource | 'derived' | 'legacy'
 }
 
 export type MapLineItemOptions = {

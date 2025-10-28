@@ -149,7 +149,7 @@ const getFnBase = (): string => {
   return ''
 }
 
-export default function OrderListPane() {
+const OrderListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const router = usePaneRouter()
   const toast = useToast()
@@ -292,73 +292,76 @@ export default function OrderListPane() {
   }, [selectionArray, selectionCount, client, toast, fetchOrders])
 
   return (
-    <Stack space={3} padding={3}>
-      <Flex align="center" justify="space-between" wrap="wrap" gap={2}>
-        <Text weight="semibold">Orders</Text>
-        <Flex gap={2} wrap="wrap">
-          {PERSPECTIVE_STACK.map((perspective) => (
-            <Button
-              key={perspective.id}
-              text={perspective.title}
-              size={1}
-              mode={perspective.id === activePerspectiveId ? 'default' : 'ghost'}
-              tone={perspective.id === activePerspectiveId ? 'primary' : 'default'}
-              onClick={() => setActivePerspectiveId(perspective.id)}
-            />
-          ))}
+    <Box ref={ref} padding={[4, 5, 6]}>
+      <Stack space={3}>
+        <Flex align="center" justify="space-between" wrap="wrap" gap={2}>
+          <Text weight="semibold">Orders</Text>
+          <Flex gap={2} wrap="wrap">
+            {PERSPECTIVE_STACK.map((perspective) => (
+              <Button
+                key={perspective.id}
+                text={perspective.title}
+                size={1}
+                mode={perspective.id === activePerspectiveId ? 'default' : 'ghost'}
+                tone={perspective.id === activePerspectiveId ? 'primary' : 'default'}
+                onClick={() => setActivePerspectiveId(perspective.id)}
+              />
+            ))}
+          </Flex>
         </Flex>
-      </Flex>
 
-      <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
-        <Flex align="center" gap={2}>
-          <Checkbox
-            checked={selectionCount > 0 && selectionCount === orders.length}
-            indeterminate={isIndeterminate}
-            onChange={(event) => toggleAll(event.currentTarget.checked)}
-          />
-          <Text size={1}>
-            {selectionCount ? `${selectionCount} selected` : 'Select orders for bulk actions'}
-          </Text>
+        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+          <Flex align="center" gap={2}>
+            <Checkbox
+              checked={selectionCount > 0 && selectionCount === orders.length}
+              indeterminate={isIndeterminate}
+              onChange={(event) => toggleAll(event.currentTarget.checked)}
+            />
+            <Text size={1}>
+              {selectionCount ? `${selectionCount} selected` : 'Select orders for bulk actions'}
+            </Text>
+          </Flex>
+          <Flex gap={2} wrap="wrap">
+            <Button
+              text="Print packing slips"
+              tone="primary"
+              disabled={selectionCount === 0 || bulkLoading === 'packing'}
+              loading={bulkLoading === 'packing'}
+              onClick={handleBulkPackingSlips}
+            />
+            <Button
+              text="Mark fulfilled"
+              tone="primary"
+              mode="ghost"
+              disabled={selectionCount === 0 || bulkLoading === 'fulfill'}
+              loading={bulkLoading === 'fulfill'}
+              onClick={handleBulkFulfill}
+            />
+            <MenuButton
+              id="orders-sort-menu"
+              button={<Button icon={SortIcon} mode="bleed" tone="default" title="Sort" />}
+              menu={
+                <Menu>
+                  <Box paddingX={3} paddingTop={2}>
+                    <Text size={1} muted>
+                      Sort by
+                    </Text>
+                  </Box>
+                  {SORT_OPTIONS.map((option) => (
+                    <MenuItem
+                      key={option.id}
+                      text={option.title}
+                      tone={option.id === sortId ? 'primary' : 'default'}
+                      onClick={() => setSortId(option.id)}
+                    />
+                  ))}
+                  <MenuDivider />
+                  <MenuItem text="Refresh" onClick={fetchOrders} />
+                </Menu>
+              }
+            />
+          </Flex>
         </Flex>
-        <Flex gap={2} wrap="wrap">
-          <Button
-            text="Print packing slips"
-            tone="primary"
-            disabled={selectionCount === 0 || bulkLoading === 'packing'}
-            loading={bulkLoading === 'packing'}
-            onClick={handleBulkPackingSlips}
-          />
-          <Button
-            text="Mark fulfilled"
-            tone="primary"
-            mode="ghost"
-            disabled={selectionCount === 0 || bulkLoading === 'fulfill'}
-            loading={bulkLoading === 'fulfill'}
-            onClick={handleBulkFulfill}
-          />
-          <MenuButton
-            id="orders-sort-menu"
-            button={<Button icon={SortIcon} mode="bleed" tone="default" title="Sort" />}
-            menu={
-              <Menu>
-                <Text size={1} paddingX={3} paddingTop={2} muted>
-                  Sort by
-                </Text>
-                {SORT_OPTIONS.map((option) => (
-                  <MenuItem
-                    key={option.id}
-                    text={option.title}
-                    tone={option.id === sortId ? 'primary' : 'default'}
-                    onClick={() => setSortId(option.id)}
-                  />
-                ))}
-                <MenuDivider />
-                <MenuItem text="Refresh" onClick={fetchOrders} />
-              </Menu>
-            }
-          />
-        </Flex>
-      </Flex>
 
       {loading ? (
         <Flex align="center" justify="center" paddingY={5}>
@@ -439,6 +442,9 @@ export default function OrderListPane() {
           })}
         </Stack>
       )}
-    </Stack>
+      </Stack>
+    </Box>
   )
-}
+})
+
+export default OrderListPane
