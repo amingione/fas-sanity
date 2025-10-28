@@ -3,108 +3,68 @@
 import path from 'node:path'
 import fs from 'node:fs'
 import dotenv from 'dotenv'
-import { createClient } from '@sanity/client'
-import type { Handler, HandlerEvent } from '@netlify/functions'
+import {
+  runOrderShippingBackfill,
+  type OrderShippingBackfillOptions,
+} from '../netlify/lib/backfills/orderShipping'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
   const filePath = path.resolve(process.cwd(), filename)
   if (fs.existsSync(filePath)) {
-    dotenv.config({ path: filePath, override: false })
+    dotenv.config({path: filePath, override: false})
   }
 }
 
-const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
-  apiVersion: '2024-04-10',
-  token: process.env.SANITY_API_TOKEN as string,
-  useCdn: false,
-})
+function parseArgs(): OrderShippingBackfillOptions {
+  const args = process.argv.slice(2)
+  const options: OrderShippingBackfillOptions = {}
 
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY
-if (!STRIPE_KEY) {
-  console.error('Missing STRIPE_SECRET_KEY in environment. Aborting.')
-  process.exit(1)
-}
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]
+    if (arg === '--limit') {
+      const value = args[i + 1]
+      if (!value) throw new Error('Missing value for --limit')
+      const parsed = Number.parseInt(value, 10)
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new Error(`Invalid --limit value "${value}" (expected positive integer)`)
+      }
+      options.limit = parsed
+      i += 1
+      continue
+    }
+    if (arg === '--dry-run' || arg === '--dryRun') {
+      options.dryRun = true
+      continue
+    }
+    if (arg === '--session') {
+      const value = args[i + 1]
+      if (!value) throw new Error('Missing value for --session')
+      options.sessionId = value.trim()
+      i += 1
+      continue
+    }
+    if (arg === '--order') {
+      const value = args[i + 1]
+      if (!value) throw new Error('Missing value for --order')
+      options.orderId = value.trim()
+      i += 1
+      continue
+    }
+  }
 
-async function fetchOrders(limit: number) {
-  return sanity.fetch<
-    Array<{
-      _id: string
-      orderNumber?: string
-      stripeSessionId?: string
-      packingSlipUrl?: string
-      shippingCarrier?: string
-      selectedService?: { serviceCode?: string; amount?: number }
-    }>
-  >(
-    `*[_type == "order" && defined(stripeSessionId) && (!defined(selectedService) || !defined(selectedService.serviceCode) || !defined(packingSlipUrl) || !defined(shippingCarrier))] | order(_createdAt asc)[0...$limit]{
-      _id,
-      orderNumber,
-      stripeSessionId,
-      packingSlipUrl,
-      shippingCarrier,
-      selectedService
-    }`,
-    { limit }
-  )
+  return options
 }
 
 async function main() {
-  const limitArg = Number(process.argv[2])
-  const limit = Number.isFinite(limitArg) && limitArg > 0 ? Math.floor(limitArg) : 50
-
-  const orders = await fetchOrders(limit)
-  if (!orders.length) {
-    console.log('No orders require backfill.')
-    return
-  }
-
-  const { handler: reprocessHandler } = (await import('../netlify/functions/reprocessStripeSession')) as {
-    handler: Handler
-  }
-
-  console.log(`Backfilling ${orders.length} orders…`)
-
-  for (const order of orders) {
-    const sessionId = order.stripeSessionId
-    if (!sessionId) {
-      console.warn(`Skipping ${order._id} (missing stripeSessionId)`)
-      continue
-    }
-
-    try {
-      const event: HandlerEvent = {
-        httpMethod: 'POST',
-        headers: {},
-        multiValueHeaders: {},
-        queryStringParameters: {},
-        multiValueQueryStringParameters: {},
-        body: JSON.stringify({id: sessionId, autoFulfill: false}),
-        isBase64Encoded: false,
-        rawUrl: 'http://localhost/.netlify/functions/reprocessStripeSession',
-        rawQuery: '',
-        path: '/.netlify/functions/reprocessStripeSession',
-      }
-
-      const response = await reprocessHandler(event, {} as any)
-      if (!response) {
-        console.warn(`⚠️ ${order.orderNumber || order._id} • session=${sessionId} • handler returned no response`)
-        continue
-      }
-
-      const ok = response.statusCode >= 200 && response.statusCode < 300
-      console.log(
-        `${ok ? '✅' : '⚠️'} ${order.orderNumber || order._id} • session=${sessionId} • status=${response.statusCode}`
-      )
-      if (!ok && response.body) {
-        console.log(response.body)
-      }
-    } catch (err) {
-      console.error(`❌ Failed to reprocess ${order.orderNumber || order._id}`, err)
-    }
-  }
+  const options = parseArgs()
+  const result = await runOrderShippingBackfill({
+    ...options,
+    logger: (message) => console.log(message),
+  })
+  console.log(
+    `Done. processed=${result.processed}, failures=${result.failures}, skipped=${result.skipped}, total=${result.total}`
+  )
 }
 
 main().catch((err) => {
