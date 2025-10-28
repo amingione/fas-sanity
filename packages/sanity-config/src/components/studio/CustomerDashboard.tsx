@@ -109,6 +109,20 @@ type CustomerDetail = CustomerRecord & {
   updatedAt?: string | null
   _createdAt?: string | null
   orderDocuments?: OrderDocumentLite[] | null
+  stripePaymentMethods?: StripePaymentMethodRecord[] | null
+}
+
+type StripePaymentMethodRecord = {
+  id?: string | null
+  type?: string | null
+  brand?: string | null
+  last4?: string | null
+  expMonth?: number | null
+  expYear?: number | null
+  funding?: string | null
+  wallet?: string | null
+  createdAt?: string | null
+  isDefault?: boolean | null
 }
 
 type CustomerPreview = {
@@ -205,6 +219,18 @@ const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
     quoteNumber,
     status,
     createdAt
+  },
+  stripePaymentMethods[]{
+    id,
+    type,
+    brand,
+    last4,
+    expMonth,
+    expYear,
+    funding,
+    wallet,
+    createdAt,
+    isDefault
   },
   "orderDocuments": *[
     _type == "order" &&
@@ -468,38 +494,72 @@ const normalizeCardBrand = (brand?: string | null) => {
   return 'Card on file'
 }
 
-const computePaymentMethods = (orders?: OrderDocumentLite[] | null): PaymentMethodSummary[] => {
-  if (!orders || orders.length === 0) return []
+const computePaymentMethods = (
+  orders?: OrderDocumentLite[] | null,
+  stripeMethods?: StripePaymentMethodRecord[] | null,
+): PaymentMethodSummary[] => {
   const summary = new Map<string, PaymentMethodSummary>()
-  for (const order of orders) {
-    if (!order) continue
-    const brand = normalizeCardBrand(order.cardBrand)
-    const rawLast4 = (order.cardLast4 || '').replace(/\s+/g, '')
-    const last4 = rawLast4 ? rawLast4.slice(-4) : ''
-    if (!last4 && brand === 'Card on file') continue
-    const key = `${brand.toLowerCase()}-${last4 || 'unknown'}`
-    const lastUsed = safeParseDate(order.createdAt) ?? safeParseDate(order._createdAt)
-    const existing = summary.get(key)
-    if (existing) {
-      existing.orderCount += 1
-      if (lastUsed && (!existing.lastUsed || lastUsed > existing.lastUsed)) {
-        existing.lastUsed = lastUsed
+
+  if (Array.isArray(stripeMethods)) {
+    stripeMethods.forEach((method) => {
+      if (!method) return
+      const brand = normalizeCardBrand(method.brand)
+      const rawLast4 = (method.last4 || '').replace(/\s+/g, '')
+      const last4 = rawLast4 ? rawLast4.slice(-4) : ''
+      if (!last4 && brand === 'Card on file') return
+      const key = `${brand.toLowerCase()}-${last4 || 'unknown'}`
+      const createdAt = method.createdAt ? safeParseDate(method.createdAt) : null
+      const existing = summary.get(key)
+      if (existing) {
+        existing.lastUsed = pickLatestDate(existing.lastUsed, createdAt)
+        existing.orderCount = Math.max(existing.orderCount, method.isDefault ? 1 : existing.orderCount)
+      } else {
+        summary.set(key, {
+          key,
+          brand,
+          last4,
+          orderCount: method.isDefault ? 1 : 0,
+          lastUsed: createdAt ?? null,
+        })
       }
-    } else {
-      summary.set(key, {
-        key,
-        brand,
-        last4,
-        orderCount: 1,
-        lastUsed: lastUsed ?? null,
-      })
+    })
+  }
+
+  if (Array.isArray(orders)) {
+    for (const order of orders) {
+      if (!order) continue
+      const brand = normalizeCardBrand(order.cardBrand)
+      const rawLast4 = (order.cardLast4 || '').replace(/\s+/g, '')
+      const last4 = rawLast4 ? rawLast4.slice(-4) : ''
+      if (!last4 && brand === 'Card on file') continue
+      const key = `${brand.toLowerCase()}-${last4 || 'unknown'}`
+      const lastUsed = safeParseDate(order.createdAt) ?? safeParseDate(order._createdAt)
+      const existing = summary.get(key)
+      if (existing) {
+        existing.orderCount += 1
+        existing.lastUsed = pickLatestDate(existing.lastUsed, lastUsed)
+      } else {
+        summary.set(key, {
+          key,
+          brand,
+          last4,
+          orderCount: 1,
+          lastUsed: lastUsed ?? null,
+        })
+      }
     }
   }
+
   return Array.from(summary.values()).sort((a, b) => {
     const aTime = a.lastUsed ? a.lastUsed.getTime() : 0
     const bTime = b.lastUsed ? b.lastUsed.getTime() : 0
     return bTime - aTime
   })
+}
+
+const pickLatestDate = (a: Date | null, b: Date | null): Date | null => {
+  if (a && b) return a > b ? a : b
+  return a || b || null
 }
 
 const computeStoreCreditSummary = (orders?: OrderDocumentLite[] | null): StoreCreditSummary => {
@@ -752,8 +812,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   )
 
   const paymentMethods = useMemo(
-    () => computePaymentMethods(activeProfile?.orderDocuments),
-    [activeProfile?.orderDocuments],
+    () => computePaymentMethods(activeProfile?.orderDocuments, activeProfile?.stripePaymentMethods),
+    [activeProfile?.orderDocuments, activeProfile?.stripePaymentMethods],
   )
 
   const storeCreditSummary = useMemo(
