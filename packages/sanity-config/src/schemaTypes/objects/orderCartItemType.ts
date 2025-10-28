@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity'
+import OrderCartItemMetadataInput from '../../components/inputs/OrderCartItemMetadataInput'
 
 export const orderCartItemType = defineType({
   name: 'orderCartItem',
@@ -13,6 +14,8 @@ export const orderCartItemType = defineType({
     defineField({ name: 'name', type: 'string', title: 'Display Name' }),
     defineField({ name: 'productName', type: 'string', title: 'Stripe Product Name', readOnly: true }),
     defineField({ name: 'description', type: 'string', title: 'Stripe Line Description', readOnly: true }),
+    defineField({ name: 'image', type: 'url', title: 'Product Image URL', readOnly: true }),
+    defineField({ name: 'productUrl', type: 'url', title: 'Product URL', readOnly: true }),
     defineField({ name: 'optionSummary', type: 'string', title: 'Selected Options', readOnly: true }),
     defineField({
       name: 'optionDetails',
@@ -32,13 +35,15 @@ export const orderCartItemType = defineType({
     }),
     defineField({ name: 'price', type: 'number', title: 'Unit Price' }),
     defineField({ name: 'quantity', type: 'number', title: 'Quantity' }),
-    defineField({ name: 'categories', title: 'Category Tags', type: 'array', of: [ { type: 'string' } ] }),
+    defineField({ name: 'categories', title: 'Category Tags', type: 'array', of: [{ type: 'string' }] }),
     defineField({
       name: 'metadata',
       title: 'Raw Metadata',
       type: 'array',
       of: [{ type: 'orderCartItemMeta' }],
-      readOnly: true,
+      components: {
+        input: OrderCartItemMetadataInput,
+      },
     }),
   ],
 })

@@ -2,7 +2,7 @@ import React from 'react'
 import { useFormValue, set, PatchEvent } from 'sanity'
 import { Stack, Card, Text, Select } from '@sanity/ui'
 
-const statusOptions = ['Draft', 'Sent', 'Approved', 'Invoiced']
+const statusOptions = ['Draft', 'Sent', 'Approved', 'Invoiced', 'Cancelled']
 
 export default function QuoteStatusWithTimeline(props: any) {
   const currentTimeline = useFormValue(['timeline']) || []

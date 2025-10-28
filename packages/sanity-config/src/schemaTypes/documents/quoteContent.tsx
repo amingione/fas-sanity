@@ -14,6 +14,7 @@ import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 
 import ConvertToInvoiceButton from '../../components/studio/ConvertToInvoiceButton'
 import QuoteStatusWithTimeline from '../../components/inputs/QuoteStatusWithTimeline'
+import QuoteStripeSummary from '../../components/studio/QuoteStripeSummary'
 
 import './quoteStyles.css'
 
@@ -627,10 +628,23 @@ export default defineType({
       readOnly: true
     }),
     defineField({
+      name: 'stripeSummary',
+      title: 'Stripe Sync',
+      type: 'string',
+      components: {input: QuoteStripeSummary},
+      readOnly: true,
+    }),
+    defineField({
       name: 'status',
       title: 'Quote Status',
       type: 'string',
       components: {input: QuoteStatusWithTimeline}
+    }),
+    defineField({
+      name: 'conversionStatus',
+      title: 'Conversion Status',
+      type: 'string',
+      description: 'Tracks whether the quote has been converted to an invoice or order.',
     }),
     defineField({
       name: 'timeline',
@@ -663,7 +677,22 @@ export default defineType({
       title: 'Convert to Invoice',
       components: {input: ConvertToInvoiceButton},
       description: 'Create an invoice from this quote.'
-    })
+    }),
+    defineField({name: 'stripeQuoteId', title: 'Stripe Quote ID', type: 'string', readOnly: true}),
+    defineField({name: 'stripeQuoteNumber', title: 'Stripe Quote Number', type: 'string', readOnly: true}),
+    defineField({name: 'stripeQuoteStatus', title: 'Stripe Quote Status', type: 'string', readOnly: true}),
+    defineField({name: 'stripeCustomerId', title: 'Stripe Customer ID', type: 'string', readOnly: true}),
+    defineField({name: 'stripePaymentLinkId', title: 'Stripe Payment Link ID', type: 'string', readOnly: true}),
+    defineField({name: 'stripePaymentLinkUrl', title: 'Stripe Payment Link URL', type: 'url', readOnly: true}),
+    defineField({
+      name: 'paymentLinkRef',
+      title: 'Payment Link',
+      type: 'reference',
+      to: [{type: 'paymentLink'}],
+      readOnly: true,
+    }),
+    defineField({name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true}),
+    defineField({name: 'stripeQuotePdf', title: 'Stripe Quote PDF', type: 'url', readOnly: true}),
   ],
   preview: {
     select: {

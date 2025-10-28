@@ -83,6 +83,7 @@ import {spotType} from './objects/hotspot/spotType'
 import {stripePriceSnapshotType} from './objects/stripePriceSnapshotType'
 import {stripeOrderSummaryType} from './objects/stripeOrderSummaryType'
 import {stripeMetadataEntryType} from './objects/stripeMetadataEntry'
+import {stripePaymentMethodType} from './objects/stripePaymentMethodType'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
 
@@ -165,6 +166,7 @@ const objects = [
   stripePriceSnapshotType,
   stripeOrderSummaryType,
   stripeMetadataEntryType,
+  stripePaymentMethodType,
   {
     name: 'siteSettings',
     type: 'document',
@@ -203,8 +205,10 @@ import vehicleModel from './documents/vehicleModel'
 import {productBundle} from './documents/productBundle'
 import filterTag from './documents/filterTag'
 import quote from './documents/quote'
+import paymentLink from './documents/paymentLink'
 import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
+import stripeWebhook from './documents/stripeWebhook'
 import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
@@ -213,6 +217,7 @@ import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
 import booking from './documents/booking'
+import stripeWebhookEvent from './documents/stripeWebhookEvent'
 
 const documents = [
   collectionType,
@@ -221,8 +226,10 @@ const documents = [
   product,
   productVariantType,
   quote,
+  paymentLink,
   shippingLabel,
   invoice,
+  stripeWebhook,
   vendor,
   bill,
   order,
@@ -240,6 +247,7 @@ const documents = [
   wheelQuote,
   expense,
   booking,
+  stripeWebhookEvent,
 ]
 
 import {homeType} from './singletons/homeType'

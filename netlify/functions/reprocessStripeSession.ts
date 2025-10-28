@@ -277,6 +277,12 @@ async function findSessionByPaymentIntent(paymentIntentId: string): Promise<Stri
 
 async function fetchPaymentIntent(id: string): Promise<Stripe.PaymentIntent | null> {
   if (!stripe) return null
+  if (!id.startsWith('pi_')) {
+    if (DEBUG_REPROCESS) {
+      console.debug('reprocessStripeSession: skip payment intent lookup for non-pi id', id)
+    }
+    return null
+  }
   try {
     return await stripe.paymentIntents.retrieve(id, {
       expand: ['latest_charge', 'charges.data'],
