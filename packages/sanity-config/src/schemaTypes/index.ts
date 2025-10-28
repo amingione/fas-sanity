@@ -64,6 +64,7 @@ import {customerBillingAddressType} from './objects/customerBillingAddressType'
 import {customerOrderSummaryType} from './objects/customerOrderSummaryType'
 import {customerQuoteSummaryType} from './objects/customerQuoteSummaryType'
 import {customerAddressType} from './objects/customerAddressType'
+import {customerDiscountType} from './objects/customerDiscountType'
 import {vendorOrderSummaryType} from './objects/vendorOrderSummaryType'
 import {vendorQuoteSummaryType} from './objects/vendorQuoteSummaryType'
 import {orderCartItemType} from './objects/orderCartItemType'
@@ -145,6 +146,7 @@ const objects = [
   customerOrderSummaryType,
   customerQuoteSummaryType,
   customerAddressType,
+  customerDiscountType,
   vendorOrderSummaryType,
   vendorQuoteSummaryType,
   orderCartItemType,
