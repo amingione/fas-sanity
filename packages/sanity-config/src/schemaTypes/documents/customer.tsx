@@ -117,6 +117,13 @@ export default defineType({
       of: [{ type: 'stripeMetadataEntry' }],
       readOnly: true,
     }),
+    defineField({
+      name: 'stripePaymentMethods',
+      title: 'Stripe Payment Methods',
+      type: 'array',
+      of: [{type: 'stripePaymentMethod'}],
+      readOnly: true,
+    }),
     // Marketing preferences
     defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false }),
     defineField({ name: 'marketingOptIn', title: 'Marketing Opt‑In', type: 'boolean', initialValue: false }),

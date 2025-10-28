@@ -129,6 +129,101 @@
   color: #ffffff;
 }
 
+.quote-stripe-card {
+  border: 1px solid #d4d7dc;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 6px 18px rgba(10, 22, 37, 0.06);
+  margin-bottom: 20px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quote-stripe-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.quote-stripe-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a1c1f;
+}
+
+.quote-stripe-card__subtitle {
+  font-size: 0.85rem;
+  color: #4a4c50;
+}
+
+.quote-stripe-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.quote-stripe-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #4a4c50;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.quote-stripe-card__value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1c1f;
+}
+
+.quote-stripe-card__muted {
+  font-size: 0.75rem;
+  color: #6b6e74;
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.quote-stripe-card__actions {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.quote-stripe-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: #eef2ff;
+  color: #3730a3;
+}
+
+.quote-stripe-status--accepted,
+.quote-stripe-status--approved {
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.quote-stripe-status--open,
+.quote-stripe-status--sent {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.quote-stripe-status--canceled,
+.quote-stripe-status--cancelled {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
 .quote-customer-search {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
