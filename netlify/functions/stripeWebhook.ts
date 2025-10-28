@@ -1869,9 +1869,7 @@ export const handler: Handler = async (event) => {
                   ? [
                       refund?.status ? `Refund ${refund.status}` : null,
                       refundedAmount !== undefined
-                        ? `Amount ${refundedAmount.toFixed(2)} ${(refund?.currency || charge?.currency || '')
-                            .toString()
-                            .toUpperCase()}`
+                        ? `Amount ${refundedAmount.toFixed(2)} ${(refund?.currency || charge?.currency || '').toUpperCase()}`
                         : null,
                       charge?.id ? `Charge ${charge.id}` : null,
                     ]
