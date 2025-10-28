@@ -2285,6 +2285,7 @@ export const handler: Handler = async (event) => {
                 paymentIntentId,
                 chargeId,
                 paymentStatus: 'paid',
+                orderStatus: 'paid',
                 invoiceStatus: 'paid',
                 invoiceStripeStatus: webhookEvent.type,
                 additionalOrderFields: {stripeSummary: summary},
