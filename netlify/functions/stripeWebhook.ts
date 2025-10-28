@@ -1195,7 +1195,7 @@ async function fetchPaymentIntentResource(
 
 
 type OrderPaymentStatusInput = {
-  paymentStatus: string
+  paymentStatus?: string
   orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
   invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
   invoiceStripeStatus?: string
@@ -2295,14 +2295,25 @@ export const handler: Handler = async (event) => {
                 eventType: webhookEvent.type,
                 eventCreated: webhookEvent.created,
               })
+              const additionalOrderFields = {
+                stripeSummary: summary,
+                paymentFailureCode: null,
+                paymentFailureMessage: null,
+              }
+              const additionalInvoiceFields = {
+                stripeSummary: summary,
+                paymentFailureCode: null,
+                paymentFailureMessage: null,
+              }
               await updateOrderPaymentStatus({
                 paymentIntentId,
                 chargeId,
                 paymentStatus: 'paid',
+                orderStatus: 'paid',
                 invoiceStatus: 'paid',
                 invoiceStripeStatus: webhookEvent.type,
-                additionalOrderFields: {stripeSummary: summary},
-                additionalInvoiceFields: {stripeSummary: summary},
+                additionalOrderFields,
+                additionalInvoiceFields,
                 event: {
                   eventType: webhookEvent.type,
                   label: 'Invoice payment succeeded',
@@ -2634,6 +2645,8 @@ export const handler: Handler = async (event) => {
           const refundedCentsFromCharge =
             typeof charge?.amount_refunded === 'number' ? charge.amount_refunded : undefined
           const refundedCentsFromRefund = typeof refund?.amount === 'number' ? refund.amount : undefined
+          const refundStatus = (refund?.status || '').toString().toLowerCase()
+          const refundSucceeded = refundStatus === 'succeeded'
 
           const refundedAmount =
             refundedCentsFromCharge !== undefined
@@ -2708,6 +2721,7 @@ export const handler: Handler = async (event) => {
               stripeEventId: webhookEvent.id,
               occurredAt: webhookEvent.created,
               metadata: (refund?.metadata || charge?.metadata || {}) as Record<string, string>,
+              status: refundStatus || paymentStatus || undefined,
             },
           })
         } catch (err) {
