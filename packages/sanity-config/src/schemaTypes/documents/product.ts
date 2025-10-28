@@ -1,4 +1,5 @@
 import {defineType, defineField} from 'sanity'
+import {googleProductCategories} from '../constants/googleProductCategories'
 
 const PRODUCT_PLACEHOLDER_ASSET =
   'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
@@ -168,6 +169,14 @@ const product = defineType({
       name: 'stripeActive',
       title: 'Stripe Active Status',
       type: 'boolean',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'stripeUpdatedAt',
+      title: 'Stripe Updated At',
+      type: 'datetime',
       readOnly: true,
       fieldset: 'stripe',
       group: 'pricing',
@@ -584,6 +593,16 @@ const product = defineType({
       title: 'Inventory Count',
       type: 'number',
       validation: (Rule) => Rule.min(0),
+      fieldset: 'unused',
+      group: 'advanced',
+    }),
+    defineField({
+      name: 'googleProductCategory',
+      title: 'Google Shopping Category',
+      type: 'string',
+      options: {
+        list: googleProductCategories.map((category) => ({title: category, value: category})),
+      },
       fieldset: 'unused',
       group: 'advanced',
     }),
