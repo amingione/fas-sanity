@@ -30,9 +30,10 @@ const toNumberValue = (value: unknown): number | undefined => {
   if (typeof value === 'string') {
     const trimmed = value.trim()
     if (!trimmed) return undefined
-    const normalized = trimmed.replace(/[^0-9.+-]+/g, '')
-    if (!normalized) return undefined
-    const parsed = Number.parseFloat(normalized)
+    // Only accept valid number strings (integer, float, optional sign, optional exponent)
+    const numberPattern = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/
+    if (!numberPattern.test(trimmed)) return undefined
+    const parsed = Number.parseFloat(trimmed)
     return Number.isFinite(parsed) ? parsed : undefined
   }
   return undefined
