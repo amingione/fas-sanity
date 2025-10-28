@@ -1553,6 +1553,208 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   return true
 }
 
+type CheckoutAsyncContext = {
+  eventType?: string
+  invoiceStripeStatus?: string
+  stripeEventId?: string
+  eventCreated?: number | null
+  metadata?: Record<string, string>
+  paymentIntent?: Stripe.PaymentIntent | null
+  label?: string
+  message?: string
+}
+
+const getCheckoutAsyncDefaults = (
+  session: Stripe.Checkout.Session,
+  context: CheckoutAsyncContext,
+) => {
+  const metadata =
+    (context.metadata && typeof context.metadata === 'object'
+      ? context.metadata
+      : (session.metadata || {}) as Record<string, string>) || {}
+  const baseEventType = context.eventType || context.invoiceStripeStatus || ''
+  const eventType = baseEventType || 'checkout.session.async_payment_succeeded'
+  const invoiceStripeStatus =
+    context.invoiceStripeStatus || 'checkout.session.async_payment_succeeded'
+  const amount =
+    typeof session.amount_total === 'number' && Number.isFinite(session.amount_total)
+      ? session.amount_total / 100
+      : undefined
+  const currency =
+    (session.currency || context.paymentIntent?.currency || '')
+      .toString()
+      .toUpperCase() || undefined
+  return {metadata, eventType, invoiceStripeStatus, amount, currency}
+}
+
+export async function handleCheckoutAsyncPaymentSucceeded(
+  session: Stripe.Checkout.Session,
+  context: CheckoutAsyncContext = {},
+): Promise<void> {
+  const paymentIntent =
+    context.paymentIntent ?? (await fetchPaymentIntentResource(session.payment_intent))
+  const {metadata, eventType, invoiceStripeStatus, amount, currency} =
+    getCheckoutAsyncDefaults(session, {
+      ...context,
+      invoiceStripeStatus: context.invoiceStripeStatus || 'checkout.session.async_payment_succeeded',
+    })
+
+  const paymentIntentId =
+    (typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : paymentIntent?.id) || undefined
+
+  const summary = buildStripeSummary({
+    session,
+    paymentIntent: paymentIntent || undefined,
+    eventType: invoiceStripeStatus,
+    eventCreated: context.eventCreated ?? null,
+  })
+
+  const additionalOrderFields: Record<string, any> = {
+    stripeSummary: summary,
+    stripeCheckoutStatus: session.status || undefined,
+    stripeSessionStatus: session.status || undefined,
+    stripeCheckoutMode: session.mode || undefined,
+    stripePaymentIntentStatus: paymentIntent?.status || session.payment_status || undefined,
+    checkoutDraft: false,
+    paymentFailureCode: null,
+    paymentFailureMessage: null,
+  }
+
+  const additionalInvoiceFields: Record<string, any> = {
+    stripeSummary: summary,
+    paymentFailureCode: null,
+    paymentFailureMessage: null,
+  }
+
+  await updateOrderPaymentStatus({
+    paymentStatus: 'paid',
+    orderStatus: 'paid',
+    invoiceStatus: 'paid',
+    invoiceStripeStatus,
+    paymentIntentId,
+    stripeSessionId: session.id,
+    additionalOrderFields,
+    additionalInvoiceFields,
+    event: {
+      eventType,
+      label: context.label || 'Async payment succeeded',
+      message:
+        context.message || `Checkout session ${session.id} async payment succeeded`,
+      amount,
+      currency: currency ||
+        (paymentIntent?.currency
+          ? paymentIntent.currency.toUpperCase()
+          : undefined),
+      stripeEventId: context.stripeEventId,
+      occurredAt: context.eventCreated ?? null,
+      metadata,
+    },
+  })
+}
+
+export async function handleCheckoutAsyncPaymentFailed(
+  session: Stripe.Checkout.Session,
+  context: CheckoutAsyncContext = {},
+): Promise<void> {
+  const paymentIntent =
+    context.paymentIntent ?? (await fetchPaymentIntentResource(session.payment_intent))
+  const {metadata, eventType, invoiceStripeStatus, amount, currency} =
+    getCheckoutAsyncDefaults(session, {
+      ...context,
+      invoiceStripeStatus: context.invoiceStripeStatus || 'checkout.session.async_payment_failed',
+    })
+
+  let failureCode: string | undefined
+  let failureMessage: string | undefined
+  const paymentIntentStatus = (paymentIntent?.status || '').toString().toLowerCase()
+  const sessionPaymentStatus = (session.payment_status || '').toString().toLowerCase()
+
+  if (paymentIntent) {
+    const diagnostics = await resolvePaymentFailureDiagnostics(paymentIntent)
+    failureCode = diagnostics.code
+    failureMessage = diagnostics.message
+  }
+
+  let paymentStatus = (() => {
+    const raw = paymentIntentStatus || sessionPaymentStatus
+    if (['succeeded', 'paid', 'complete', 'requires_capture'].includes(raw)) return 'paid'
+    if (['canceled', 'cancelled'].includes(raw)) return 'cancelled'
+    if (raw) return raw
+    return 'failed'
+  })()
+
+  let orderStatus: 'paid' | 'cancelled' =
+    paymentStatus === 'paid' ? 'paid' : 'cancelled'
+
+  let invoiceStatus: 'paid' | 'cancelled' =
+    paymentStatus === 'paid' ? 'paid' : 'cancelled'
+
+  if (paymentStatus === 'paid' && failureCode) {
+    // Even if intent eventually succeeded, preserve diagnostics for visibility.
+    orderStatus = 'paid'
+    invoiceStatus = 'paid'
+  }
+
+  const summary = buildStripeSummary({
+    session,
+    paymentIntent: paymentIntent || undefined,
+    failureCode,
+    failureMessage,
+    eventType: invoiceStripeStatus,
+    eventCreated: context.eventCreated ?? null,
+  })
+
+  const additionalOrderFields: Record<string, any> = {
+    stripeSummary: summary,
+    stripeCheckoutStatus: session.status || undefined,
+    stripeSessionStatus: session.status || undefined,
+    stripeCheckoutMode: session.mode || undefined,
+    stripePaymentIntentStatus: paymentIntent?.status || session.payment_status || undefined,
+    checkoutDraft: orderStatus === 'paid' ? false : true,
+  }
+  if (failureCode) additionalOrderFields.paymentFailureCode = failureCode
+  if (failureMessage) additionalOrderFields.paymentFailureMessage = failureMessage
+
+  const additionalInvoiceFields: Record<string, any> = {
+    stripeSummary: summary,
+  }
+  if (failureCode) additionalInvoiceFields.paymentFailureCode = failureCode
+  if (failureMessage) additionalInvoiceFields.paymentFailureMessage = failureMessage
+
+  const paymentIntentId =
+    (typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : paymentIntent?.id) || undefined
+
+  await updateOrderPaymentStatus({
+    paymentStatus,
+    orderStatus,
+    invoiceStatus,
+    invoiceStripeStatus,
+    paymentIntentId,
+    stripeSessionId: session.id,
+    additionalOrderFields,
+    additionalInvoiceFields,
+    preserveExistingFailureDiagnostics: !(failureCode || failureMessage),
+    event: {
+      eventType,
+      label: context.label || 'Async payment failed',
+      message:
+        context.message || `Checkout session ${session.id} async payment failed`,
+      amount,
+      currency: currency ||
+        (paymentIntent?.currency
+          ? paymentIntent.currency.toUpperCase()
+          : undefined),
+      stripeEventId: context.stripeEventId,
+      occurredAt: context.eventCreated ?? null,
+      metadata,
+    },
+  })
+}
+
 async function handleCheckoutExpired(
   session: Stripe.Checkout.Session,
   context: {stripeEventId?: string; eventCreated?: number | null} = {},
@@ -2338,6 +2540,42 @@ export const handler: Handler = async (event) => {
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to handle charge refund', err)
+        }
+        break
+      }
+
+      case 'checkout.session.async_payment_succeeded': {
+        try {
+          const session = webhookEvent.data.object as Stripe.Checkout.Session
+          await handleCheckoutAsyncPaymentSucceeded(session, {
+            eventType: webhookEvent.type,
+            invoiceStripeStatus: webhookEvent.type,
+            stripeEventId: webhookEvent.id,
+            eventCreated: webhookEvent.created,
+          })
+        } catch (err) {
+          console.warn(
+            'stripeWebhook: failed to handle checkout.session.async_payment_succeeded',
+            err,
+          )
+        }
+        break
+      }
+
+      case 'checkout.session.async_payment_failed': {
+        try {
+          const session = webhookEvent.data.object as Stripe.Checkout.Session
+          await handleCheckoutAsyncPaymentFailed(session, {
+            eventType: webhookEvent.type,
+            invoiceStripeStatus: webhookEvent.type,
+            stripeEventId: webhookEvent.id,
+            eventCreated: webhookEvent.created,
+          })
+        } catch (err) {
+          console.warn(
+            'stripeWebhook: failed to handle checkout.session.async_payment_failed',
+            err,
+          )
         }
         break
       }
