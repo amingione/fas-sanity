@@ -15,7 +15,7 @@ export const orderCartItemType = defineType({
     defineField({ name: 'productName', type: 'string', title: 'Stripe Product Name', readOnly: true }),
     defineField({ name: 'description', type: 'string', title: 'Stripe Line Description', readOnly: true }),
     defineField({ name: 'image', type: 'url', title: 'Product Image URL', readOnly: true }),
-    defineField({ name: 'productUrl', type: 'url', title: 'Product URL', readOnly: true }),
+    defineField({ name: 'productUrl', type: 'string', title: 'Product URL', readOnly: true }),
     defineField({ name: 'optionSummary', type: 'string', title: 'Selected Options', readOnly: true }),
     defineField({
       name: 'optionDetails',
