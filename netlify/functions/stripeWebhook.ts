@@ -204,6 +204,97 @@ const appendExpiredCartEvent = async (
   await appendEventsToDocument(docId, 'events', [record])
 }
 
+type StripeWebhookCategory = 'source' | 'person' | 'issuing_dispute'
+
+const humanizeSegments = (value: string) =>
+  value
+    .split(/[^a-z0-9]+/i)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ')
+
+const recordStripeWebhookEvent = async (
+  webhookEvent: Stripe.Event,
+  category: StripeWebhookCategory,
+): Promise<void> => {
+  try {
+    const dataObject = webhookEvent.data?.object as Record<string, any> | null
+    const metadataString =
+      dataObject && typeof dataObject === 'object' && 'metadata' in dataObject
+        ? safeJsonStringify((dataObject as any).metadata, 6000)
+        : undefined
+    const dataSnapshot = dataObject ? safeJsonStringify(dataObject, 12000) : undefined
+    const payloadSnapshot = safeJsonStringify(webhookEvent, 15000)
+    const resourceId =
+      dataObject && typeof dataObject === 'object' && typeof (dataObject as any).id === 'string'
+        ? (dataObject as any).id
+        : undefined
+    const resourceType =
+      dataObject &&
+      typeof dataObject === 'object' &&
+      typeof (dataObject as any).object === 'string'
+        ? (dataObject as any).object
+        : undefined
+    let status: string | undefined
+    if (dataObject && typeof dataObject === 'object') {
+      const candidateStatus = (dataObject as any).status
+      if (typeof candidateStatus === 'string') {
+        status = candidateStatus
+      } else if (typeof (dataObject as any).verification?.status === 'string') {
+        status = (dataObject as any).verification.status
+      }
+    }
+    const amount =
+      dataObject && typeof (dataObject as any).amount === 'number'
+        ? (dataObject as any).amount
+        : undefined
+    const currency =
+      dataObject && typeof (dataObject as any).currency === 'string'
+        ? (dataObject as any).currency.toUpperCase()
+        : undefined
+    const requestId =
+      typeof webhookEvent.request === 'string'
+        ? webhookEvent.request
+        : webhookEvent.request?.id
+    const categoryLabel = humanizeSegments(category)
+    const remainder = webhookEvent.type.startsWith(`${category}.`)
+      ? webhookEvent.type.slice(category.length + 1)
+      : webhookEvent.type
+    const actionLabel = humanizeSegments(remainder.replace(/\./g, ' '))
+    const baseSummary = [categoryLabel, actionLabel].filter(Boolean).join(' ') || webhookEvent.type
+
+    const doc = {
+      _id: `stripeWebhookEvent.${webhookEvent.id}`,
+      _type: 'stripeWebhookEvent',
+      eventId: webhookEvent.id,
+      eventType: webhookEvent.type,
+      category,
+      summary: resourceId ? `${baseSummary} • ${resourceId}` : baseSummary,
+      status,
+      livemode: Boolean(webhookEvent.livemode),
+      amount,
+      currency,
+      resourceId,
+      resourceType,
+      requestId,
+      apiVersion: webhookEvent.api_version || undefined,
+      metadata: metadataString,
+      data: dataSnapshot,
+      payload: payloadSnapshot,
+      createdAt: toIsoTimestamp(webhookEvent.created),
+      receivedAt: new Date().toISOString(),
+    }
+
+    const cleanedDoc = Object.fromEntries(
+      Object.entries(doc).filter(([, value]) => value !== undefined && value !== null),
+    )
+
+    await sanity.createOrReplace(cleanedDoc)
+  } catch (err) {
+    console.warn('stripeWebhook: failed to record generic webhook event', err)
+  }
+}
+
 const buildMetadataEntries = (
   metadata: Record<string, string>,
 ): Array<{
@@ -3458,9 +3549,17 @@ export const handler: Handler = async (event) => {
           console.warn('stripeWebhook: failed to handle checkout.session.expired', err)
         }
         break
-      default:
-        // Ignore other events quietly
+      default: {
+        const type = webhookEvent.type || ''
+        if (type.startsWith('source.')) {
+          await recordStripeWebhookEvent(webhookEvent, 'source')
+        } else if (type.startsWith('person.')) {
+          await recordStripeWebhookEvent(webhookEvent, 'person')
+        } else if (type.startsWith('issuing_dispute.')) {
+          await recordStripeWebhookEvent(webhookEvent, 'issuing_dispute')
+        }
         break
+      }
     }
 
     return {statusCode: 200, body: JSON.stringify({received: true})}
