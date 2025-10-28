@@ -2281,14 +2281,25 @@ export const handler: Handler = async (event) => {
                 eventType: webhookEvent.type,
                 eventCreated: webhookEvent.created,
               })
+              const additionalOrderFields = {
+                stripeSummary: summary,
+                paymentFailureCode: null,
+                paymentFailureMessage: null,
+              }
+              const additionalInvoiceFields = {
+                stripeSummary: summary,
+                paymentFailureCode: null,
+                paymentFailureMessage: null,
+              }
               await updateOrderPaymentStatus({
                 paymentIntentId,
                 chargeId,
                 paymentStatus: 'paid',
+                orderStatus: 'paid',
                 invoiceStatus: 'paid',
                 invoiceStripeStatus: webhookEvent.type,
-                additionalOrderFields: {stripeSummary: summary},
-                additionalInvoiceFields: {stripeSummary: summary},
+                additionalOrderFields,
+                additionalInvoiceFields,
                 event: {
                   eventType: webhookEvent.type,
                   label: 'Invoice payment succeeded',
