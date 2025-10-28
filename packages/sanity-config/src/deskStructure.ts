@@ -11,6 +11,7 @@ import OrdersDashboard from './components/studio/OrdersDashboard'
 import ProductListDashboard from './components/studio/ProductListDashboard'
 import WebhooksDashboard from './components/studio/WebhooksDashboard'
 import VendorStatusBadge from './components/inputs/VendorStatusBadge'
+import StripeWebhookDashboard from './components/studio/StripeWebhookDashboard'
 
 export const deskStructure: StructureResolver = (S, context) => {
   const safeListItem = (typeName: string, title: string, icon: any) => {
@@ -107,6 +108,13 @@ export const deskStructure: StructureResolver = (S, context) => {
           S.list()
             .title('Admin Tools')
             .items([
+              S.listItem().id('stripe-webhook-dashboard')
+                .title('🔔 Stripe Webhooks')
+                .child(
+                  S.component()
+                    .title('Stripe Webhooks')
+                    .component(StripeWebhookDashboard as any),
+                ),
               S.listItem().id('vendor-applications')
                 .title('📝 Vendor Applications')
                 .child(

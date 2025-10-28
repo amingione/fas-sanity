@@ -17,6 +17,8 @@ type RecentOrder = {
   _id: string
   orderNumber?: string | null
   customerName?: string | null
+  customerEmail?: string | null
+  shippingName?: string | null
   totalAmount?: number | null
   _createdAt?: string | null
 }
@@ -83,6 +85,8 @@ const ORDER_QUERY = `*[_type == "order"] | order(coalesce(createdAt, _createdAt)
   _id,
   orderNumber,
   customerName,
+  customerEmail,
+  "shippingName": shippingAddress.name,
   totalAmount,
   "_createdAt": coalesce(createdAt, _createdAt)
 }`
@@ -127,6 +131,21 @@ const formatCurrency = (value?: number | null) => {
     currency: 'USD',
     maximumFractionDigits: 2,
   }).format(value)
+}
+
+const getOrderCustomerLabel = (order: RecentOrder) => {
+  const candidates = [order.customerName, order.shippingName, order.customerEmail]
+
+  for (const value of candidates) {
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) {
+        return trimmed
+      }
+    }
+  }
+
+  return 'Unknown customer'
 }
 
 const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
@@ -185,7 +204,7 @@ const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props
         items: state.orders.map((order) => ({
           key: order._id,
           primary: order.orderNumber ? `Order #${order.orderNumber}` : 'Order',
-          secondary: order.customerName || 'Unknown customer',
+          secondary: getOrderCustomerLabel(order),
           meta: formatCurrency(order.totalAmount),
           date: order._createdAt,
           intent: {name: 'edit' as const, params: {id: order._id, type: 'order'}},
