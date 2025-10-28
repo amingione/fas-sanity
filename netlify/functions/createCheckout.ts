@@ -284,6 +284,32 @@ export const handler: Handler = async (event) => {
                 }
               : undefined
 
+            const metadata: Stripe.MetadataParam = {}
+            const pushMeta = (key: string, value: unknown) => {
+              if (value === undefined || value === null) return
+              const raw = typeof value === 'number' ? String(value) : `${value}`
+              const trimmed = raw.trim()
+              if (trimmed) metadata[key] = trimmed
+            }
+
+            if (Number.isFinite(Number(rate?.amount))) {
+              pushMeta('shipping_amount', Number(rate.amount).toFixed(2))
+            }
+            if (rate?.currency) {
+              pushMeta('shipping_currency', String(rate.currency).toUpperCase())
+            }
+            pushMeta('shipping_carrier', rate?.carrier)
+            pushMeta('shipping_carrier_id', rate?.carrierId || rate?.carrierCode)
+            pushMeta('shipping_carrier_code', rate?.carrierCode)
+            pushMeta('shipping_service', rate?.service)
+            pushMeta('shipping_service_code', rate?.serviceCode)
+            if (Number.isFinite(deliveryDays)) {
+              pushMeta('shipping_delivery_days', Math.max(1, Math.round(deliveryDays)))
+            }
+            pushMeta('shipping_estimated_delivery_date', rate?.estimatedDeliveryDate)
+            pushMeta('shipengine_rate_id', rate?.rateId)
+            pushMeta('shipping_rate_source', 'shipengine')
+
             return {
               shipping_rate_data: {
                 display_name: displayName,
@@ -291,6 +317,7 @@ export const handler: Handler = async (event) => {
                 fixed_amount: { amount: amountCents, currency: 'usd' },
                 tax_behavior: 'exclusive',
                 ...(estimate ? { delivery_estimate: estimate } : {}),
+                ...(Object.keys(metadata).length ? { metadata } : {}),
               },
             }
           })

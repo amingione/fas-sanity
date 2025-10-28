@@ -327,6 +327,7 @@ export const handler: Handler = async (event) => {
 
     const ratesArr: any[] = Array.isArray(ratesJson?.rate_response?.rates) ? ratesJson.rate_response.rates : []
     const rates = ratesArr.map((rate: any) => ({
+      rateId: rate.rate_id,
       carrierId: rate.carrier_id,
       carrierCode: rate.carrier_code,
       carrier: rate.carrier_friendly_name,
