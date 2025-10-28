@@ -208,6 +208,7 @@ import quote from './documents/quote'
 import paymentLink from './documents/paymentLink'
 import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
+import stripeWebhook from './documents/stripeWebhook'
 import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
@@ -216,6 +217,7 @@ import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
 import booking from './documents/booking'
+import stripeWebhookEvent from './documents/stripeWebhookEvent'
 
 const documents = [
   collectionType,
@@ -227,6 +229,7 @@ const documents = [
   paymentLink,
   shippingLabel,
   invoice,
+  stripeWebhook,
   vendor,
   bill,
   order,
@@ -244,6 +247,7 @@ const documents = [
   wheelQuote,
   expense,
   booking,
+  stripeWebhookEvent,
 ]
 
 import {homeType} from './singletons/homeType'
