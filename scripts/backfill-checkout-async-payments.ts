@@ -5,10 +5,6 @@ import fs from 'node:fs'
 import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
-import {
-  handleCheckoutAsyncPaymentFailed,
-  handleCheckoutAsyncPaymentSucceeded,
-} from '../netlify/functions/stripeWebhook'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -17,6 +13,11 @@ for (const filename of ENV_FILES) {
     dotenv.config({path: resolved, override: false})
   }
 }
+
+const {
+  handleCheckoutAsyncPaymentFailed,
+  handleCheckoutAsyncPaymentSucceeded,
+} = await import('../netlify/functions/stripeWebhook')
 
 type CliOptions = {
   dryRun: boolean
