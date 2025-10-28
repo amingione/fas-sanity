@@ -1816,7 +1816,13 @@ export const handler: Handler = async (event) => {
               chargeAmountCents > 0 &&
               refundedCentsFromCharge >= chargeAmountCents)
 
-          const paymentStatus = isFullRefund ? 'refunded' : 'partially_refunded'
+          const refundStatus = typeof refund?.status === 'string' ? refund.status : undefined
+          const refundSucceeded = refundStatus === 'succeeded' || Boolean(charge?.refunded)
+          const paymentStatus = refundSucceeded
+            ? isFullRefund
+              ? 'refunded'
+              : 'partially_refunded'
+            : 'paid'
           const paymentIntentId =
             typeof paymentIntent?.id === 'string'
               ? paymentIntent.id
@@ -1829,8 +1835,8 @@ export const handler: Handler = async (event) => {
             paymentIntentId,
             chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
             paymentStatus,
-            orderStatus: isFullRefund ? 'refunded' : undefined,
-            invoiceStatus: isFullRefund ? 'refunded' : undefined,
+            orderStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
+            invoiceStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
             invoiceStripeStatus: webhookEvent.type,
             additionalOrderFields: {
               ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
