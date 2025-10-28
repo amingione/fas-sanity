@@ -14,10 +14,26 @@ for (const filename of ENV_FILES) {
   }
 }
 
-const {
-  handleCheckoutAsyncPaymentFailed,
-  handleCheckoutAsyncPaymentSucceeded,
-} = await import('../netlify/functions/stripeWebhook')
+type StripeWebhookModule = typeof import('../netlify/functions/stripeWebhook')
+type WebhookHandlers = Pick<
+  StripeWebhookModule,
+  'handleCheckoutAsyncPaymentSucceeded' | 'handleCheckoutAsyncPaymentFailed'
+>
+
+let webhookHandlersPromise: Promise<WebhookHandlers> | null = null
+
+async function loadWebhookHandlers(): Promise<WebhookHandlers> {
+  if (!webhookHandlersPromise) {
+    webhookHandlersPromise = import('../netlify/functions/stripeWebhook').then(
+      ({handleCheckoutAsyncPaymentSucceeded, handleCheckoutAsyncPaymentFailed}) => ({
+        handleCheckoutAsyncPaymentSucceeded,
+        handleCheckoutAsyncPaymentFailed,
+      }),
+    )
+  }
+
+  return webhookHandlersPromise
+}
 
 type CliOptions = {
   dryRun: boolean
@@ -209,6 +225,8 @@ async function main() {
 
   console.log(`Found ${orders.length} order(s) to evaluate.`)
 
+  const webhookHandlers = await loadWebhookHandlers()
+
   let processed = 0
   let skipped = 0
 
@@ -291,7 +309,7 @@ async function main() {
       const metadata = (session.metadata || {}) as Record<string, string>
       const eventCreated = Math.floor(Date.now() / 1000)
       if (outcome === 'success') {
-        await handleCheckoutAsyncPaymentSucceeded(session, {
+        await webhookHandlers.handleCheckoutAsyncPaymentSucceeded(session, {
           paymentIntent,
           metadata,
           eventType: 'checkout.session.async_payment_succeeded',
@@ -301,7 +319,7 @@ async function main() {
           eventCreated,
         })
       } else {
-        await handleCheckoutAsyncPaymentFailed(session, {
+        await webhookHandlers.handleCheckoutAsyncPaymentFailed(session, {
           paymentIntent,
           metadata,
           eventType: 'checkout.session.async_payment_failed',
