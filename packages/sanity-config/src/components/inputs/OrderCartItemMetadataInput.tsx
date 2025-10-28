@@ -13,11 +13,13 @@ type MetadataEntry = {
 
 type MetadataValue = MetadataEntry[] | Record<string, unknown> | null | undefined
 
+const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function';
+
 const generateKey = () => {
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID()
+  if (HAS_RANDOM_UUID) {
+    return globalThis.crypto.randomUUID();
   }
-  return Math.random().toString(36).slice(2)
+  return Math.random().toString(36).slice(2);
 }
 
 const toMetadataEntries = (value: Record<string, unknown>): MetadataEntry[] => {
