@@ -26,7 +26,7 @@ function sanitizeDocId(value?: string | null): string | undefined {
 type Props = ArrayInputProps<any>
 
 const CustomerDiscountsInput: React.FC<Props> = (props) => {
-  const {renderDefault, readOnly} = props
+  const {renderDefault} = props
   const toast = useToast()
 
   const stripeCustomerId = useFormValue(['stripeCustomerId']) as string | undefined
@@ -42,6 +42,11 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
   const [currency, setCurrency] = useState('usd')
   const [isSubmitting, setSubmitting] = useState(false)
 
+  // The `discounts` field itself is marked as read-only in the schema so the
+  // array can't be edited manually, but we still want editors to be able to
+  // create new Stripe discounts from this input. Respect the presence of a
+  // Stripe customer ID but ignore the read-only flag for the button so the
+  // dialog remains accessible when the field is intentionally read-only.
   const disabled = !stripeCustomerId
 
   async function handleSubmit() {
