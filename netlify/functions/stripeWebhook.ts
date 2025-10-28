@@ -508,7 +508,7 @@ const humanizeSegments = (value: string) =>
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(' ')
 
-const recordStripeWebhookEvent = async (
+const recordStripeWebhookResourceEvent = async (
   webhookEvent: Stripe.Event,
   category: StripeWebhookCategory,
 ): Promise<void> => {
@@ -831,26 +831,6 @@ const PAYMENT_LINK_METADATA_ID_KEYS = [
 ]
 const PAYMENT_LINK_METADATA_QUOTE_KEYS = ['sanity_quote_id', 'quote_id', 'quoteId', 'sanityQuoteId']
 const PAYMENT_LINK_METADATA_ORDER_KEYS = ['sanity_order_id', 'order_id', 'orderId', 'sanityOrderId']
-const INVOICE_METADATA_NUMBER_KEYS = [
-  'sanity_invoice_number',
-  'invoice_number',
-  'invoiceNumber',
-  'sanityInvoiceNumber',
-]
-const PRODUCT_METADATA_ID_KEYS = [
-  'sanity_id',
-  'sanityId',
-  'sanity_document_id',
-  'sanityDocId',
-  'sanity_doc_id',
-  'sanityProductId',
-  'sanity_product_id',
-  'sanityDocumentId',
-  'document_id',
-  'documentId',
-  'product_document_id',
-  'productDocumentId',
-]
 const ORDER_METADATA_NUMBER_KEYS = [
   'sanity_order_number',
   'order_number',
@@ -1308,7 +1288,7 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
   const built: any[] = []
   for (const lineItem of lineItems) {
     const mapped = mapStripeLineItem(lineItem, {sessionMetadata: metadata})
-    const quantity = mapped.quantity ?? Number(lineItem.quantity || 1) || 1
+    const quantity = (mapped.quantity ?? Number(lineItem.quantity ?? 1)) || 1
     const totalAmount =
       toMajorUnits((lineItem as any)?.amount_total) ??
       (mapped.price !== undefined && quantity ? mapped.price * quantity : undefined)
@@ -2813,7 +2793,7 @@ const getCheckoutAsyncDefaults = (
   return {metadata, eventType, invoiceStripeStatus, amount, currency}
 }
 
-export async function handleCheckoutAsyncPaymentSucceeded(
+async function handleCheckoutAsyncPaymentSucceeded(
   session: Stripe.Checkout.Session,
   context: CheckoutAsyncContext = {},
 ): Promise<void> {
@@ -4717,11 +4697,11 @@ export const handler: Handler = async (event) => {
       default: {
         const type = webhookEvent.type || ''
         if (type.startsWith('source.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'source')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'source')
         } else if (type.startsWith('person.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'person')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'person')
         } else if (type.startsWith('issuing_dispute.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'issuing_dispute')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'issuing_dispute')
         }
         break
       }
