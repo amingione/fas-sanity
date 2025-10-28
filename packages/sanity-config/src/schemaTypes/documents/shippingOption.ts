@@ -1,10 +1,10 @@
-import { defineType } from 'sanity'
+import { PatchEvent, defineType, set } from 'sanity'
 import React from 'react'
 import ShipEngineServiceInput from '../../components/ShipEngineServiceInput'
 
 interface ShipEngineFieldProps {
   value: string
-  onChange: (event: any) => void
+  onChange: (event: PatchEvent) => void
   type: any
   markers: any
   presence: any
@@ -104,10 +104,12 @@ function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
                 {
                   type: 'button',
                   onClick: () => {
-                    props.onChange([
-                      { type: 'set', path: ['shipEngineService'], value: rate.value },
-                      { type: 'set', path: ['shippingCost'], value: rate.amount },
-                    ])
+                    props.onChange(
+                      PatchEvent.from([
+                        set(rate.value, ['shipEngineService']),
+                        set(rate.amount, ['shippingCost']),
+                      ]),
+                    )
                     setShowOptions(false)
                   },
                   style: {
