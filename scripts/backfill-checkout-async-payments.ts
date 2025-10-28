@@ -14,7 +14,10 @@ for (const filename of ENV_FILES) {
   }
 }
 
-type StripeWebhookModule = typeof import('../netlify/functions/stripeWebhook')
+const {
+  handleCheckoutAsyncPaymentFailed,
+  handleCheckoutAsyncPaymentSucceeded,
+} = await import('../netlify/functions/stripeWebhook')
 
 type CliOptions = {
   dryRun: boolean
