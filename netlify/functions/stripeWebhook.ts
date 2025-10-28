@@ -1129,6 +1129,23 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
   }
 }
 
+async function fetchChargeResource(
+  resource: string | Stripe.Charge | null | undefined,
+  opts: {expandPaymentIntent?: boolean} = {},
+): Promise<Stripe.Charge | null> {
+  if (!resource) return null
+  if (typeof resource !== 'string') return resource
+  if (!stripe) return null
+  try {
+    return await stripe.charges.retrieve(resource, {
+      expand: opts.expandPaymentIntent ? ['payment_intent'] : undefined,
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: unable to load charge for diagnostics', err)
+    return null
+  }
+}
+
 async function fetchPaymentIntentResource(
   resource: string | Stripe.PaymentIntent | null | undefined,
 ): Promise<Stripe.PaymentIntent | null> {
@@ -1754,24 +1771,107 @@ export const handler: Handler = async (event) => {
       }
 
       case 'charge.refunded':
+      case 'charge.refund.created':
       case 'charge.refund.updated': {
         try {
-          const charge = webhookEvent.data.object as Stripe.Charge
-          const totalAmount = Number(charge.amount || 0)
-          const refundedAmount = Number(charge.amount_refunded || 0)
-          const isFullRefund = charge.refunded || (totalAmount > 0 && refundedAmount >= totalAmount)
+          const raw = webhookEvent.data.object as Stripe.Charge | Stripe.Refund
+          const rawObject = raw as unknown as {object?: string}
+          const isRefundObject = rawObject?.object === 'refund'
+
+          let refund: Stripe.Refund | null = isRefundObject ? (raw as Stripe.Refund) : null
+          let charge: Stripe.Charge | null =
+            !isRefundObject && rawObject?.object === 'charge' ? (raw as Stripe.Charge) : null
+
+          if (!charge && refund?.charge) {
+            charge = await fetchChargeResource(refund.charge, {expandPaymentIntent: true})
+          }
+
+          if (!refund && charge?.refunds?.data?.length) {
+            const matchingRefund = charge.refunds.data.find((entry) => entry.id === (raw as any)?.id)
+            refund = matchingRefund || charge.refunds.data[charge.refunds.data.length - 1] || null
+          }
+
+          const paymentIntent = await fetchPaymentIntentResource(
+            (charge?.payment_intent as Stripe.PaymentIntent | string | null | undefined) ??
+              (refund?.payment_intent as Stripe.PaymentIntent | string | null | undefined) ??
+              null,
+          )
+
+          const chargeAmountCents = typeof charge?.amount === 'number' ? charge.amount : undefined
+          const refundedCentsFromCharge =
+            typeof charge?.amount_refunded === 'number' ? charge.amount_refunded : undefined
+          const refundedCentsFromRefund = typeof refund?.amount === 'number' ? refund.amount : undefined
+
+          const refundedAmount =
+            refundedCentsFromCharge !== undefined
+              ? refundedCentsFromCharge / 100
+              : refundedCentsFromRefund !== undefined
+                ? refundedCentsFromRefund / 100
+                : undefined
+
+          const isFullRefund =
+            Boolean(charge?.refunded) ||
+            (typeof chargeAmountCents === 'number' &&
+              typeof refundedCentsFromCharge === 'number' &&
+              chargeAmountCents > 0 &&
+              refundedCentsFromCharge >= chargeAmountCents)
+
           const paymentStatus = isFullRefund ? 'refunded' : 'partially_refunded'
           const paymentIntentId =
-            typeof charge.payment_intent === 'string'
-              ? charge.payment_intent
-              : (charge.payment_intent as Stripe.PaymentIntent | null)?.id
+            typeof paymentIntent?.id === 'string'
+              ? paymentIntent.id
+              : typeof charge?.payment_intent === 'string'
+                ? charge.payment_intent
+                : typeof refund?.payment_intent === 'string'
+                  ? refund.payment_intent
+                  : undefined
           await updateOrderPaymentStatus({
             paymentIntentId,
-            chargeId: charge.id,
+            chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
             paymentStatus,
             orderStatus: isFullRefund ? 'refunded' : undefined,
             invoiceStatus: isFullRefund ? 'refunded' : undefined,
             invoiceStripeStatus: webhookEvent.type,
+            additionalOrderFields: {
+              ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
+              ...(refund?.id ? {lastRefundId: refund.id} : {}),
+              ...(refund?.status ? {lastRefundStatus: refund.status} : {}),
+              ...(refund?.reason ? {lastRefundReason: refund.reason} : {}),
+              ...(typeof refund?.created === 'number'
+                ? {lastRefundedAt: new Date(refund.created * 1000).toISOString()}
+                : {}),
+              stripeSummary: buildStripeSummary({
+                paymentIntent: paymentIntent || undefined,
+                charge: charge || undefined,
+                eventType: webhookEvent.type,
+                eventCreated: webhookEvent.created,
+              }),
+            },
+            event: {
+              eventType: webhookEvent.type,
+              label: refund?.id ? `Refund ${refund.id}` : 'Charge refunded',
+              message:
+                refund?.status || refund?.amount
+                  ? [
+                      refund?.status ? `Refund ${refund.status}` : null,
+                      refundedAmount !== undefined
+                        ? `Amount ${refundedAmount.toFixed(2)} ${(refund?.currency || charge?.currency || '')
+                            .toString()
+                            .toUpperCase()}`
+                        : null,
+                      charge?.id ? `Charge ${charge.id}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' • ')
+                  : `Charge ${charge?.id || refund?.charge || ''} refunded`,
+              amount: refundedAmount,
+              currency: (refund?.currency || charge?.currency || '')
+                .toString()
+                .toUpperCase() || undefined,
+              stripeEventId: webhookEvent.id,
+              occurredAt: webhookEvent.created,
+              metadata: (refund?.metadata || charge?.metadata || {}) as Record<string, string>,
+            },
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to handle charge refund', err)
@@ -1959,6 +2059,7 @@ export const handler: Handler = async (event) => {
             createdAt: new Date().toISOString(),
             paymentStatus,
             stripeCheckoutStatus: sessionStatus || undefined,
+            stripeSessionStatus: sessionStatus || undefined,
             stripeCheckoutMode: session.mode || undefined,
             stripePaymentIntentStatus: paymentIntent?.status || undefined,
             stripeLastSyncedAt: new Date().toISOString(),

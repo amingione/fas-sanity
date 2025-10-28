@@ -449,6 +449,7 @@ async function upsertOrder({
     createdAt: new Date().toISOString(),
     paymentStatus,
     stripeCheckoutStatus: sessionStatus || undefined,
+    stripeSessionStatus: sessionStatus || undefined,
     stripeCheckoutMode: session.mode || undefined,
     stripePaymentIntentStatus: paymentIntent?.status || undefined,
     stripeLastSyncedAt: new Date().toISOString(),
