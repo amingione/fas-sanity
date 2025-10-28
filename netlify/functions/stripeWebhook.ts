@@ -1865,9 +1865,7 @@ export const handler: Handler = async (event) => {
                       .join(' • ')
                   : `Charge ${charge?.id || refund?.charge || ''} refunded`,
               amount: refundedAmount,
-              currency: (refund?.currency || charge?.currency || '')
-                .toString()
-                .toUpperCase() || undefined,
+              currency: (refund?.currency || charge?.currency)?.toUpperCase() || undefined,
               stripeEventId: webhookEvent.id,
               occurredAt: webhookEvent.created,
               metadata: (refund?.metadata || charge?.metadata || {}) as Record<string, string>,
