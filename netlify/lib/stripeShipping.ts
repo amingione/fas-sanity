@@ -110,17 +110,22 @@ export async function resolveStripeShippingDetails(
 ): Promise<StripeShippingDetails> {
   const {metadata, session, paymentIntent, fallbackAmount, stripe} = input
   const meta = normalizeMetadata(metadata)
+  let shippingRateMetadata: NormalizeResult | null = null
 
   const metaAmount = coerceNumber(meta['shipping_amount'] || meta['shippingAmount'])
   const metaCurrency = normalizeCurrency(meta['shipping_currency'] || meta['shippingCurrency'])
   const metaCarrier = meta['shipping_carrier'] || meta['shippingCarrier']
-  const metaCarrierId = meta['shipping_carrier_id'] || meta['shippingCarrierId']
+  const metaCarrierId =
+    meta['shipping_carrier_id'] ||
+    meta['shippingCarrierId'] ||
+    meta['shipping_carrier_code']
   const metaServiceName =
     meta['shipping_service_name'] ||
     meta['shipping_service'] ||
     meta['shippingServiceName'] ||
     meta['shippingService']
   const metaServiceCode = meta['shipping_service_code'] || meta['shippingServiceCode']
+  const metaRateId = meta['shipping_rate_id'] || meta['shipengine_rate_id']
   const metaDeliveryDays = coerceInteger(
     meta['shipping_delivery_days'] || meta['shippingDeliveryDays'],
   )
@@ -167,12 +172,14 @@ export async function resolveStripeShippingDetails(
   if (stripe && shippingRateId) {
     try {
       shippingRate = await stripe.shippingRates.retrieve(shippingRateId)
+      shippingRateMetadata = normalizeMetadata((shippingRate as any)?.metadata)
     } catch (err) {
       console.warn('resolveStripeShippingDetails: failed to load shipping rate', err)
     }
   }
 
   if (shippingRate) {
+    const rateMeta = shippingRateMetadata || {}
     carrierId = carrierId || shippingRate.id
     const fixedAmount = shippingRate.fixed_amount?.amount
     if (
@@ -189,6 +196,57 @@ export async function resolveStripeShippingDetails(
     if (!carrier && rateCarrier) carrier = rateCarrier
     if (!serviceName && service) serviceName = service
     if (!serviceCode && shippingRate.id) serviceCode = shippingRate.id
+
+    if (amount === undefined) {
+      const metaAmount =
+        coerceNumber(rateMeta['shipping_amount']) ||
+        coerceNumber(rateMeta['shippingAmount']) ||
+        coerceNumber(rateMeta['shipengine_amount'])
+      if (metaAmount !== undefined) amount = metaAmount
+    }
+    if (!currency) {
+      const metaCurrency =
+        normalizeCurrency(rateMeta['shipping_currency']) ||
+        normalizeCurrency(rateMeta['shippingCurrency']) ||
+        normalizeCurrency(rateMeta['shipengine_currency'])
+      if (metaCurrency) currency = metaCurrency
+    }
+    if (!carrier && (rateMeta['shipping_carrier'] || rateMeta['shipengine_carrier'])) {
+      carrier = rateMeta['shipping_carrier'] || rateMeta['shipengine_carrier']
+    }
+    if (!carrierId) {
+      carrierId =
+        rateMeta['shipping_carrier_id'] ||
+        rateMeta['shipping_carrier_code'] ||
+        rateMeta['shipengine_carrier_id'] ||
+        rateMeta['shipengine_carrier_code'] ||
+        carrierId
+    }
+    if (!serviceName) {
+      serviceName =
+        rateMeta['shipping_service_name'] ||
+        rateMeta['shipping_service'] ||
+        rateMeta['shipengine_service'] ||
+        serviceName
+    }
+    if (!serviceCode) {
+      serviceCode =
+        rateMeta['shipping_service_code'] ||
+        rateMeta['shipengine_service_code'] ||
+        serviceCode
+    }
+    if (deliveryDays === undefined) {
+      const metaDeliveryDays =
+        coerceInteger(rateMeta['shipping_delivery_days']) ||
+        coerceInteger(rateMeta['shipengine_delivery_days'])
+      if (metaDeliveryDays !== undefined) deliveryDays = metaDeliveryDays
+    }
+    if (!estimatedDeliveryDate) {
+      const metaEstimatedDate =
+        rateMeta['shipping_estimated_delivery_date'] ||
+        rateMeta['shipengine_estimated_delivery_date']
+      if (metaEstimatedDate) estimatedDeliveryDate = metaEstimatedDate
+    }
 
     const estimate = shippingRate.delivery_estimate
     if (deliveryDays === undefined) {
@@ -217,6 +275,19 @@ export async function resolveStripeShippingDetails(
   if (serviceCode) metadataForDoc.shipping_service_code = serviceCode
   if (deliveryDays !== undefined) metadataForDoc.shipping_delivery_days = String(deliveryDays)
   if (estimatedDeliveryDate) metadataForDoc.shipping_estimated_delivery_date = estimatedDeliveryDate
+  if (shippingRateId) metadataForDoc.shipping_rate_id = shippingRateId
+  if (!metadataForDoc.shipping_rate_id && metaRateId) metadataForDoc.shipping_rate_id = metaRateId
+
+  if (shippingRateMetadata) {
+    const metaRateId =
+      shippingRateMetadata['shipping_rate_id'] || shippingRateMetadata['shipengine_rate_id']
+    if (metaRateId && !metadataForDoc.shipping_rate_id) metadataForDoc.shipping_rate_id = metaRateId
+    for (const [key, value] of Object.entries(shippingRateMetadata)) {
+      if (!value) continue
+      if (metadataForDoc[key]) continue
+      metadataForDoc[key] = value
+    }
+  }
 
   return {
     amount,
