@@ -834,6 +834,19 @@ async function syncStripeInvoice(invoice: Stripe.Invoice): Promise<void> {
   }
 }
 
+async function syncStripeInvoiceById(invoice: string | Stripe.Invoice | null | undefined): Promise<void> {
+  if (!invoice || !stripe) return
+  const invoiceId =
+    typeof invoice === 'string' ? invoice : typeof invoice?.id === 'string' ? invoice.id : undefined
+  if (!invoiceId) return
+  try {
+    const freshInvoice = await stripe.invoices.retrieve(invoiceId)
+    await syncStripeInvoice(freshInvoice)
+  } catch (err) {
+    console.warn('stripeWebhook: failed to sync invoice by id', err)
+  }
+}
+
 function splitName(fullName?: string | null): {firstName?: string; lastName?: string} {
   if (!fullName) return {}
   const name = fullName.toString().trim()
@@ -1719,27 +1732,123 @@ export const handler: Handler = async (event) => {
         break
       }
 
+      case 'invoice.created':
+      case 'invoice.deleted':
+      case 'invoice.finalization_failed':
       case 'invoice.finalized':
+      case 'invoice.marked_uncollectible':
       case 'invoice.paid':
+      case 'invoice.payment_action_required':
       case 'invoice.payment_failed':
+      case 'invoice.payment_succeeded':
+      case 'invoice.sent':
+      case 'invoice.upcoming':
       case 'invoice.voided':
       case 'invoice.updated': {
         try {
           const invoice = webhookEvent.data.object as Stripe.Invoice
           await syncStripeInvoice(invoice)
 
+          const invoiceStatus = (invoice.status || '').toString().toLowerCase()
+          const invoiceIdentifier = (() => {
+            const raw = (invoice.number ?? invoice.id ?? '') as string | null
+            return raw ? raw.toString().trim() : ''
+          })()
           const shouldRecordFailure =
-            webhookEvent.type === 'invoice.payment_failed' ||
-            (webhookEvent.type === 'invoice.updated' && invoice.status === 'uncollectible')
+            webhookEvent.type === 'invoice.payment_failed' || invoiceStatus === 'uncollectible'
 
           if (shouldRecordFailure) {
             const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
             if (paymentIntent) {
               await markPaymentIntentFailure(paymentIntent)
             }
+          } else if (webhookEvent.type === 'invoice.payment_action_required') {
+            const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
+            const paymentIntentId =
+              paymentIntent?.id ||
+              (typeof (invoice as any)?.payment_intent === 'string'
+                ? ((invoice as any).payment_intent as string)
+                : undefined)
+            if (paymentIntentId) {
+              await updateOrderPaymentStatus({
+                paymentIntentId,
+                paymentStatus: 'requires_action',
+                invoiceStripeStatus: webhookEvent.type,
+                preserveExistingFailureDiagnostics: true,
+                event: {
+                  eventType: webhookEvent.type,
+                  label: 'Invoice requires payment action',
+                  message: invoiceIdentifier
+                    ? `Invoice ${invoiceIdentifier} requires customer action`
+                    : 'Invoice requires customer action',
+                  stripeEventId: webhookEvent.id,
+                  occurredAt: webhookEvent.created,
+                  metadata: (invoice.metadata || {}) as Record<string, unknown>,
+                },
+              })
+            }
+          } else if (
+            webhookEvent.type === 'invoice.payment_succeeded' ||
+            webhookEvent.type === 'invoice.paid'
+          ) {
+            const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
+            const paymentIntentId =
+              paymentIntent?.id ||
+              (typeof (invoice as any)?.payment_intent === 'string'
+                ? ((invoice as any).payment_intent as string)
+                : undefined)
+            if (paymentIntentId) {
+              const latestCharge = paymentIntent?.latest_charge as
+                | string
+                | Stripe.Charge
+                | null
+                | undefined
+              const chargeId =
+                typeof latestCharge === 'string'
+                  ? latestCharge
+                  : typeof latestCharge?.id === 'string'
+                    ? latestCharge.id
+                    : undefined
+              const summary = buildStripeSummary({
+                paymentIntent: paymentIntent || undefined,
+                eventType: webhookEvent.type,
+                eventCreated: webhookEvent.created,
+              })
+              await updateOrderPaymentStatus({
+                paymentIntentId,
+                chargeId,
+                paymentStatus: 'paid',
+                invoiceStatus: 'paid',
+                invoiceStripeStatus: webhookEvent.type,
+                additionalOrderFields: {stripeSummary: summary},
+                additionalInvoiceFields: {stripeSummary: summary},
+                event: {
+                  eventType: webhookEvent.type,
+                  label: 'Invoice payment succeeded',
+                  message: invoiceIdentifier
+                    ? `Invoice ${invoiceIdentifier} payment succeeded`
+                    : 'Invoice payment succeeded',
+                  stripeEventId: webhookEvent.id,
+                  occurredAt: webhookEvent.created,
+                  metadata: (invoice.metadata || {}) as Record<string, unknown>,
+                },
+              })
+            }
           }
         } catch (err) {
           console.warn('stripeWebhook: failed to sync invoice', err)
+        }
+        break
+      }
+
+      case 'invoiceitem.created':
+      case 'invoiceitem.deleted':
+      case 'invoiceitem.updated': {
+        try {
+          const invoiceItem = webhookEvent.data.object as Stripe.InvoiceItem
+          await syncStripeInvoiceById(invoiceItem.invoice as string | Stripe.Invoice | null | undefined)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync invoice from invoiceitem event', err)
         }
         break
       }
