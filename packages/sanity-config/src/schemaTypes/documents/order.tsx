@@ -50,7 +50,7 @@ export default defineType({
       name: 'paymentStatus',
       title: 'Payment Status',
       type: 'string',
-      description: 'Normalized payment status derived from Stripe.',
+      description: 'Raw Stripe payment status (e.g. succeeded, processing).',
       readOnly: true,
       group: 'payment',
     }),
