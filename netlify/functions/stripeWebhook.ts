@@ -11,6 +11,11 @@ import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
+import {
+  hydrateDiscountResources,
+  removeCustomerDiscountRecord,
+  syncCustomerDiscountRecord,
+} from '../lib/customerDiscounts'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -1715,6 +1720,42 @@ export const handler: Handler = async (event) => {
           }
         } catch (err) {
           console.warn('stripeWebhook: failed to handle customer.deleted', err)
+        }
+        break
+      }
+
+      case 'customer.discount.created':
+      case 'customer.discount.updated': {
+        try {
+          const discount = webhookEvent.data.object as Stripe.Discount
+          const {coupon, promotion} = await hydrateDiscountResources(stripe, discount)
+          await syncCustomerDiscountRecord({
+            sanity,
+            discount,
+            stripe,
+            coupon,
+            promotion,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync customer discount', err)
+        }
+        break
+      }
+
+      case 'customer.discount.deleted': {
+        try {
+          const discount = webhookEvent.data.object as Stripe.Discount
+          const stripeCustomerId =
+            typeof discount.customer === 'string'
+              ? discount.customer
+              : (discount.customer as Stripe.Customer | null)?.id
+          await removeCustomerDiscountRecord({
+            sanity,
+            stripeDiscountId: discount.id,
+            stripeCustomerId,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to remove customer discount', err)
         }
         break
       }
