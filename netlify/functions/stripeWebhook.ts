@@ -1289,7 +1289,8 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
   const built: any[] = []
   for (const lineItem of lineItems) {
     const mapped = mapStripeLineItem(lineItem, {sessionMetadata: metadata})
-    const quantity = mapped.quantity ?? Number(lineItem.quantity || 1) || 1
+    // If mapped.quantity is undefined, fallback to lineItem.quantity (default 1). A quantity of 0 is allowed.
+    const quantity = mapped.quantity ?? Number(lineItem.quantity ?? 1)
     const totalAmount =
       toMajorUnits((lineItem as any)?.amount_total) ??
       (mapped.price !== undefined && quantity ? mapped.price * quantity : undefined)
@@ -2918,7 +2919,7 @@ const getCheckoutAsyncDefaults = (
   return {metadata, eventType, invoiceStripeStatus, amount, currency}
 }
 
-export async function handleCheckoutAsyncPaymentSucceeded(
+async function handleCheckoutAsyncPaymentSucceeded(
   session: Stripe.Checkout.Session,
   context: CheckoutAsyncContext = {},
 ): Promise<void> {
@@ -4717,11 +4718,11 @@ export const handler: Handler = async (event) => {
       default: {
         const type = webhookEvent.type || ''
         if (type.startsWith('source.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'source')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'source')
         } else if (type.startsWith('person.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'person')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'person')
         } else if (type.startsWith('issuing_dispute.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'issuing_dispute')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'issuing_dispute')
         }
         break
       }
