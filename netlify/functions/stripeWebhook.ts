@@ -1787,7 +1787,7 @@ export const handler: Handler = async (event) => {
           }
 
           if (!refund && charge?.refunds?.data?.length) {
-            const matchingRefund = charge.refunds.data.find((entry) => entry.id === (raw as any)?.id)
+            const matchingRefund = charge.refunds.data.find((entry) => entry.id === (isRefundObject ? (raw as Stripe.Refund).id : undefined))
             refund = matchingRefund || charge.refunds.data[charge.refunds.data.length - 1] || null
           }
 
