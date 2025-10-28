@@ -34,18 +34,18 @@ const toMetadataEntries = (value: Record<string, unknown>): MetadataEntry[] => {
   }))
 }
 
-const coerceMetadataArray = (value: MetadataValue): MetadataEntry[] | undefined => {
-  if (Array.isArray(value)) return value as MetadataEntry[]
-  if (value && typeof value === 'object' && Object.keys(value).length) {
-    return toMetadataEntries(value)
-  }
-  return undefined
-}
-
 const OrderCartItemMetadataInput = (props: ArrayOfObjectsInputProps<MetadataEntry>) => {
   const {value, onChange} = props
 
   useEffect(() => {
+    const coerceMetadataArray = (val: MetadataValue): MetadataEntry[] | undefined => {
+      if (Array.isArray(val)) return val as MetadataEntry[]
+      if (val && typeof val === 'object' && Object.keys(val).length) {
+        return toMetadataEntries(val)
+      }
+      return undefined
+    }
+
     if (!value || Array.isArray(value)) return
     if (typeof value !== 'object') {
       onChange(PatchEvent.from(unset()))
