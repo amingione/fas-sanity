@@ -1,10 +1,21 @@
 
 import { defineType, defineField } from 'sanity'
+import CustomerDiscountsInput from '../../components/inputs/CustomerDiscountsInput'
+
+const CUSTOMER_GROUPS = [
+  { name: 'profile', title: 'Profile', default: true },
+  { name: 'addresses', title: 'Addresses' },
+  { name: 'activity', title: 'Activity' },
+  { name: 'marketing', title: 'Marketing' },
+  { name: 'stripe', title: 'Stripe' },
+  { name: 'discounts', title: 'Discounts' },
+]
 
 export default defineType({
   name: 'customer',
   title: 'Customer',
   type: 'document',
+  groups: CUSTOMER_GROUPS,
   fieldsets: [
     {
       name: 'shippingInfo',
@@ -25,6 +36,7 @@ export default defineType({
       type: 'string',
       description:
         'Legacy identifier for imported accounts. FAS Auth uses this document ID, so new users can leave this empty.',
+      group: 'profile',
     }),
     defineField({
       name: 'name',
@@ -34,26 +46,30 @@ export default defineType({
       description:
         'Existing records may still use this legacy field. Use the action button or copy the value into First/Last Name below.',
       hidden: ({ document }) => !document?.name,
+      group: 'profile',
     }),
-    defineField({ name: 'firstName', title: 'First Name', type: 'string' }),
-    defineField({ name: 'lastName', title: 'Last Name', type: 'string' }),
+    defineField({ name: 'firstName', title: 'First Name', type: 'string', group: 'profile' }),
+    defineField({ name: 'lastName', title: 'Last Name', type: 'string', group: 'profile' }),
     defineField({
       name: 'email',
       title: 'Email',
       type: 'string',
-      validation: Rule => Rule.required().email()
+      validation: Rule => Rule.required().email(),
+      group: 'profile',
     }),
     defineField({
       name: 'stripeCustomerId',
       title: 'Stripe Customer ID',
       type: 'string',
       readOnly: true,
+      group: 'stripe',
     }),
     defineField({
       name: 'stripeLastSyncedAt',
       title: 'Stripe Last Synced',
       type: 'datetime',
       readOnly: true,
+      group: 'stripe',
     }),
     defineField({
       name: 'roles',
@@ -72,19 +88,22 @@ export default defineType({
       validation: (Rule) => Rule.required().min(1).warning('Users should have at least one role'),
       description:
         'Used by FAS Auth to gate access to portals. Guests are imported from Stripe and do not have login access.',
+      group: 'profile',
     }),
     defineField({
       name: 'passwordHash',
       title: 'Password Hash',
       type: 'string',
-      hidden: true
+      hidden: true,
+      group: 'profile',
     }),
-    defineField({ name: 'phone', title: 'Phone Number', type: 'string' }),
+    defineField({ name: 'phone', title: 'Phone Number', type: 'string', group: 'profile' }),
     defineField({
       name: 'shippingAddress',
       title: 'Shipping Address',
       type: 'customerBillingAddress',
       fieldset: 'shippingInfo',
+      group: 'addresses',
     }),
     defineField({
       name: 'address',
@@ -92,21 +111,42 @@ export default defineType({
       type: 'text',
       fieldset: 'shippingInfo',
       hidden: true,
+      group: 'addresses',
     }),
     defineField({
       name: 'billingAddress',
       title: 'Billing Address',
       type: 'customerBillingAddress',
       fieldset: 'billingInfo',
+      group: 'addresses',
     }),
-    defineField({ name: 'orders', title: 'Orders', type: 'array', of: [ { type: 'customerOrderSummary' } ] }),
-    defineField({ name: 'quotes', title: 'Saved Quotes', type: 'array', of: [ { type: 'customerQuoteSummary' } ] }),
-    defineField({ name: 'addresses', title: 'Addresses', type: 'array', of: [ { type: 'customerAddress' } ] }),
+    defineField({
+      name: 'orders',
+      title: 'Orders',
+      type: 'array',
+      of: [{ type: 'customerOrderSummary' }],
+      group: 'activity',
+    }),
+    defineField({
+      name: 'quotes',
+      title: 'Saved Quotes',
+      type: 'array',
+      of: [{ type: 'customerQuoteSummary' }],
+      group: 'activity',
+    }),
+    defineField({
+      name: 'addresses',
+      title: 'Addresses',
+      type: 'array',
+      of: [{ type: 'customerAddress' }],
+      group: 'addresses',
+    }),
     defineField({
       name: 'wishlistItems',
       title: 'Wishlist Items',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }]
+      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      group: 'activity',
     }),
     defineField({
       name: 'stripeMetadata',
@@ -114,15 +154,26 @@ export default defineType({
       type: 'array',
       of: [{ type: 'stripeMetadataEntry' }],
       readOnly: true,
+      group: 'stripe',
     }),
     // Marketing preferences
-    defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false }),
-    defineField({ name: 'marketingOptIn', title: 'Marketing Opt‑In', type: 'boolean', initialValue: false }),
-    defineField({ name: 'textOptIn', title: 'Text/SMS Opt‑In', type: 'boolean', initialValue: false }),
-    defineField({ name: 'orderCount', title: 'Order Count', type: 'number', readOnly: true }),
-    defineField({ name: 'quoteCount', title: 'Quote Count', type: 'number', readOnly: true }),
-    defineField({ name: 'lifetimeSpend', title: 'Lifetime Spend ($)', type: 'number', readOnly: true }),
-    defineField({ name: 'updatedAt', title: 'Updated At', type: 'datetime' }),
+    defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
+    defineField({ name: 'marketingOptIn', title: 'Marketing Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
+    defineField({ name: 'textOptIn', title: 'Text/SMS Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
+    defineField({ name: 'orderCount', title: 'Order Count', type: 'number', readOnly: true, group: 'activity' }),
+    defineField({ name: 'quoteCount', title: 'Quote Count', type: 'number', readOnly: true, group: 'activity' }),
+    defineField({ name: 'lifetimeSpend', title: 'Lifetime Spend ($)', type: 'number', readOnly: true, group: 'activity' }),
+    defineField({
+      name: 'discounts',
+      title: 'Stripe Discounts',
+      type: 'array',
+      of: [{ type: 'customerDiscount' }],
+      readOnly: true,
+      group: 'discounts',
+      components: { input: CustomerDiscountsInput as any },
+      description: 'Synced customer-level coupons and promotions from Stripe.',
+    }),
+    defineField({ name: 'updatedAt', title: 'Updated At', type: 'datetime', group: 'profile' }),
   ],
 
   preview: {
