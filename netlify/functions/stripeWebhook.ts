@@ -242,6 +242,7 @@ async function recordExpiredCart(
     failureMessage?: string
     stripeEventId?: string
     eventCreated?: number | null
+    orderId?: string | null
   },
 ) {
   const metadata = (session.metadata || {}) as Record<string, string>
@@ -256,11 +257,21 @@ async function recordExpiredCart(
   const metadataEntries = buildMetadataEntries(metadata)
   const createdAt = unixToIso(session.created) || new Date().toISOString()
   const expiredAt = unixToIso(session.expires_at) || new Date().toISOString()
+  const normalizedPaymentStatus = (session.payment_status || 'pending').toString()
+  const paymentStatus =
+    opts.reason === 'checkout.session.expired' || opts.failureCode === 'checkout.session.expired'
+      ? 'expired'
+      : normalizedPaymentStatus
+  const eventMetadata: Record<string, string> = {...metadata}
+  if (opts.orderId) {
+    eventMetadata['sanity_order_id'] = opts.orderId
+  }
+
   const baseDoc: Record<string, any> = {
     stripeSessionId: session.id,
     clientReferenceId: session.client_reference_id || undefined,
     status: 'expired',
-    paymentStatus: (session.payment_status || 'pending').toString(),
+    paymentStatus,
     customerEmail: email || undefined,
     customerName,
     stripeCustomerId: typeof session.customer === 'string' ? session.customer : undefined,
@@ -279,10 +290,14 @@ async function recordExpiredCart(
     expiredAt,
   }
 
-  const existing = await sanity.fetch<{_id: string} | null>(
-    `*[_type == "expiredCart" && stripeSessionId == $sid][0]{_id}`,
+  const existing = await sanity.fetch<{_id: string; status?: string} | null>(
+    `*[_type == "expiredCart" && stripeSessionId == $sid][0]{_id, status}`,
     {sid: session.id},
   )
+
+  if (existing?.status && existing.status !== 'expired') {
+    baseDoc.status = existing.status
+  }
 
   const eventRecord = buildOrderEventRecord({
     eventType: opts.reason,
@@ -291,7 +306,7 @@ async function recordExpiredCart(
     message: opts.failureMessage,
     stripeEventId: opts.stripeEventId,
     occurredAt: opts.eventCreated,
-    metadata,
+    metadata: eventMetadata,
     amount: totalAmount,
     currency,
   })
@@ -1380,15 +1395,14 @@ async function handleCheckoutExpired(
     }
   }
 
-  if (!orderId) {
-    await recordExpiredCart(session, {
-      reason: 'checkout.session.expired',
-      failureCode,
-      failureMessage,
-      stripeEventId: context.stripeEventId,
-      eventCreated: context.eventCreated ?? session.created,
-    })
-  }
+  await recordExpiredCart(session, {
+    reason: 'checkout.session.expired',
+    failureCode,
+    failureMessage,
+    stripeEventId: context.stripeEventId,
+    eventCreated: context.eventCreated ?? session.created,
+    orderId,
+  })
 }
 
 async function sendOrderConfirmationEmail(opts: {
