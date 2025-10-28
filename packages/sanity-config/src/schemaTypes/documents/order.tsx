@@ -1,6 +1,7 @@
 import React from 'react'
 import {defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
+import OrderCartItemsInput from '../../components/inputs/OrderCartItemsInput'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
 
 const ORDER_MEDIA_URL =
@@ -142,6 +143,9 @@ export default defineType({
       type: 'array',
       of: [{type: 'orderCartItem'}],
       readOnly: true,
+      components: {
+        input: OrderCartItemsInput as any,
+      },
       group: 'cart',
     }),
     defineField({
@@ -151,6 +155,9 @@ export default defineType({
       of: [{type: 'orderCartItem'}],
       hidden: true,
       readOnly: true,
+      components: {
+        input: OrderCartItemsInput as any,
+      },
       group: 'cart',
     }),
     defineField({
