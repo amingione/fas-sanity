@@ -189,6 +189,7 @@ const isoDateOnly = (iso?: string | null): string | undefined => {
 const isoDateFromUnix = (value?: number | null): string | undefined => {
   const iso = unixToIso(value)
   return isoDateOnly(iso)
+}
 function pruneUndefined<T extends Record<string, any>>(input: T): T {
   const result: Record<string, any> = {}
   for (const [key, value] of Object.entries(input)) {
@@ -582,7 +583,7 @@ const recordStripeWebhookResourceEvent = async (
 
     const cleanedDoc = Object.fromEntries(
       Object.entries(doc).filter(([, value]) => value !== undefined && value !== null),
-    )
+    ) as Record<string, any> & {_id: string; _type: 'stripeWebhookEvent'}
 
     await sanity.createOrReplace(cleanedDoc)
   } catch (err) {
@@ -1289,7 +1290,8 @@ async function buildQuoteLineItems(quote: Stripe.Quote): Promise<any[]> {
   const built: any[] = []
   for (const lineItem of lineItems) {
     const mapped = mapStripeLineItem(lineItem, {sessionMetadata: metadata})
-    const quantity = mapped.quantity ?? Number(lineItem.quantity || 1) || 1
+    const fallbackQuantity = Number(lineItem.quantity ?? 1) || 1
+    const quantity = mapped.quantity ?? fallbackQuantity
     const totalAmount =
       toMajorUnits((lineItem as any)?.amount_total) ??
       (mapped.price !== undefined && quantity ? mapped.price * quantity : undefined)
@@ -1496,7 +1498,7 @@ async function syncStripeQuote(
     if (customerRef) payload.customer = customerRef
 
     try {
-      const created = await sanity.create(payload, {autoGenerateArrayKeys: true})
+      const created = await sanity.create(payload as any, {autoGenerateArrayKeys: true})
       quoteId = created?._id || null
     } catch (err) {
       console.warn('stripeWebhook: failed to create quote document', err)
@@ -1624,7 +1626,7 @@ async function buildPaymentLinkLineItems(paymentLink: Stripe.PaymentLink): Promi
       expand: ['data.price.product'],
     })
     const metadata = (paymentLink.metadata || {}) as Record<string, string>
-    const items = (response?.data || []).map((lineItem) => ({
+    const items = (response?.data || []).map((lineItem: Stripe.LineItem) => ({
       _type: 'orderCartItem',
       _key: randomUUID(),
       ...mapStripeLineItem(lineItem, {sessionMetadata: metadata}),
@@ -1730,7 +1732,7 @@ async function syncStripePaymentLink(
       ...baseSet,
     }
     try {
-      const created = await sanity.create(payload, {autoGenerateArrayKeys: true})
+      const created = await sanity.create(payload as any, {autoGenerateArrayKeys: true})
       paymentLinkId = created?._id || null
     } catch (err) {
       console.warn('stripeWebhook: failed to create payment link document', err)
@@ -3393,10 +3395,7 @@ export const handler: Handler = async (event) => {
   let webhookSummary = summarizeEventType(webhookEvent.type)
 
   try {
-    type ExtendedStripeEventType =
-      | Stripe.Event.Type
-      | 'invoiceitem.updated'
-      | 'charge.refund.created'
+    type ExtendedStripeEventType = Stripe.Event.Type | string
     const eventType = webhookEvent.type as ExtendedStripeEventType
 
     switch (eventType) {
@@ -4717,11 +4716,11 @@ export const handler: Handler = async (event) => {
       default: {
         const type = webhookEvent.type || ''
         if (type.startsWith('source.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'source')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'source')
         } else if (type.startsWith('person.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'person')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'person')
         } else if (type.startsWith('issuing_dispute.')) {
-          await recordStripeWebhookEvent(webhookEvent, 'issuing_dispute')
+          await recordStripeWebhookResourceEvent(webhookEvent, 'issuing_dispute')
         }
         break
       }
