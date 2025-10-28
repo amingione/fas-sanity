@@ -124,6 +124,7 @@ type EventRecordInput = {
 
 const safeJsonStringify = (value: unknown, maxLength = 15000): string | undefined => {
   if (!value) return undefined
+
   try {
     const json = JSON.stringify(value, null, 2)
     if (!json) return undefined
@@ -147,6 +148,261 @@ const toIsoTimestamp = (value?: number | string | null): string => {
     return new Date(value).toISOString()
   }
   return new Date().toISOString()
+}
+
+function pruneUndefined<T extends Record<string, any>>(input: T): T {
+  const result: Record<string, any> = {}
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) {
+      result[key] = value
+    }
+  }
+  return result as T
+}
+
+function firstString(values: Array<unknown>): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+  }
+  return undefined
+}
+
+function summarizeEventType(eventType?: string): string {
+  if (!eventType) return 'Processed event'
+  const friendly = eventType.replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!friendly) return 'Processed event'
+  return friendly.charAt(0).toUpperCase() + friendly.slice(1)
+}
+
+async function findInvoiceDocumentIdForEvent(input: {
+  metadata?: Record<string, any> | null
+  stripeInvoiceId?: string
+  invoiceNumber?: string
+  paymentIntentId?: string | null
+}): Promise<string | null> {
+  const metadata = (input.metadata || {}) as Record<string, string>
+  const metaId = INVOICE_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(Boolean)
+  if (metaId) {
+    const docId = await sanity.fetch<string | null>(`*[_type == "invoice" && _id in $ids][0]._id`, {
+      ids: idVariants(metaId),
+    })
+    if (docId) return docId
+  }
+
+  if (input.stripeInvoiceId) {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && stripeInvoiceId == $id][0]._id`,
+      {id: input.stripeInvoiceId},
+    )
+    if (docId) return docId
+  }
+
+  const metaNumber = firstString(
+    INVOICE_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
+  )
+  const invoiceNumber = metaNumber || input.invoiceNumber
+  if (invoiceNumber) {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && invoiceNumber == $num][0]._id`,
+      {num: invoiceNumber},
+    )
+    if (docId) return docId
+  }
+
+  if (input.paymentIntentId) {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "invoice" && paymentIntentId == $pi][0]._id`,
+      {pi: input.paymentIntentId},
+    )
+    if (docId) return docId
+  }
+
+  return null
+}
+
+async function findOrderDocumentIdForEvent(input: {
+  metadata?: Record<string, any> | null
+  paymentIntentId?: string | null
+  chargeId?: string | null
+  sessionId?: string | null
+  invoiceDocId?: string | null
+  invoiceNumber?: string | null
+}): Promise<string | null> {
+  const metadata = (input.metadata || {}) as Record<string, string>
+  const metaId = ORDER_METADATA_ID_KEYS.map((key) => normalizeSanityId(metadata[key])).find(Boolean)
+  if (metaId) {
+    const docId = await sanity.fetch<string | null>(`*[_type == "order" && _id in $ids][0]._id`, {
+      ids: idVariants(metaId),
+    })
+    if (docId) return docId
+  }
+
+  if (input.invoiceDocId) {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "order" && invoiceRef._ref == $invoiceId][0]._id`,
+      {invoiceId: input.invoiceDocId},
+    )
+    if (docId) return docId
+  }
+
+  const metaOrderNumber = firstString(
+    ORDER_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
+  )
+  const invoiceNumber = input.invoiceNumber || metaOrderNumber
+  if (invoiceNumber) {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "order" && orderNumber == $num][0]._id`,
+      {num: invoiceNumber},
+    )
+    if (docId) return docId
+  }
+
+  if (input.paymentIntentId || input.chargeId || input.sessionId) {
+    const docId = await sanity.fetch<string | null>(
+      `*[_type == "order" && (
+        ($pi != '' && paymentIntentId == $pi) ||
+        ($charge != '' && chargeId == $charge) ||
+        ($session != '' && stripeSessionId == $session)
+      )][0]._id`,
+      {
+        pi: input.paymentIntentId || '',
+        charge: input.chargeId || '',
+        session: input.sessionId || '',
+      },
+    )
+    if (docId) return docId
+  }
+
+  return null
+}
+
+async function recordStripeWebhookEvent(options: {
+  event: Stripe.Event
+  status: 'processed' | 'ignored' | 'error'
+  summary?: string
+}): Promise<void> {
+  const {event, status, summary} = options
+  if (!event?.id) return
+
+  const payload = event.data?.object as Record<string, any> | undefined
+  const metadata = (payload?.metadata || {}) as Record<string, string>
+
+  const paymentIntentId = (() => {
+    if (!payload) return undefined
+    const raw = payload.payment_intent
+    if (typeof raw === 'string') return raw
+    if (raw && typeof raw === 'object' && typeof raw.id === 'string') return raw.id
+    return undefined
+  })()
+
+  const chargeId = (() => {
+    if (!payload) return undefined
+    const raw = payload.charge
+    if (typeof raw === 'string') return raw
+    if (raw && typeof raw === 'object' && typeof raw.id === 'string') return raw.id
+    const latestCharge = payload.latest_charge
+    if (typeof latestCharge === 'string') return latestCharge
+    if (latestCharge && typeof latestCharge === 'object' && typeof latestCharge.id === 'string') {
+      return latestCharge.id
+    }
+    return undefined
+  })()
+
+  const sessionId = (() => {
+    const candidates: Array<unknown> = SESSION_METADATA_KEYS.map((key) => metadata[key])
+    candidates.push((payload as any)?.checkout_session)
+    candidates.push((payload as any)?.session)
+    for (const value of candidates) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim()
+      }
+    }
+    return undefined
+  })()
+
+  const invoiceNumberCandidate = (() => {
+    if (typeof payload?.number === 'string' && payload.number.trim()) {
+      return payload.number.trim()
+    }
+    const metaNumber = firstString(
+      INVOICE_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
+    )
+    if (metaNumber) return metaNumber
+    const orderNumberMeta = firstString(
+      ORDER_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
+    )
+    return orderNumberMeta
+  })()
+
+  const invoiceDocId = await findInvoiceDocumentIdForEvent({
+    metadata,
+    stripeInvoiceId:
+      payload && payload.object === 'invoice' && typeof payload.id === 'string'
+        ? payload.id
+        : undefined,
+    invoiceNumber: invoiceNumberCandidate,
+    paymentIntentId: paymentIntentId || null,
+  })
+
+  const orderDocId = await findOrderDocumentIdForEvent({
+    metadata,
+    paymentIntentId: paymentIntentId || null,
+    chargeId: chargeId || null,
+    sessionId: sessionId || null,
+    invoiceDocId,
+    invoiceNumber: invoiceNumberCandidate || null,
+  })
+
+  const metadataString = metadata && Object.keys(metadata).length > 0 ? safeJsonStringify(metadata) : undefined
+  const rawPayload = payload ? safeJsonStringify(payload) : undefined
+  const summaryText = summary || `Processed ${event.type}`
+
+  const orderNumber = firstString(
+    ORDER_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
+  )
+
+  const document = pruneUndefined({
+    _id: `${WEBHOOK_DOCUMENT_PREFIX}${event.id}`,
+    _type: 'stripeWebhook',
+    stripeEventId: event.id,
+    eventType: event.type,
+    status,
+    summary: summaryText,
+    occurredAt: toIsoTimestamp(event.created),
+    processedAt: new Date().toISOString(),
+    resourceType: typeof payload?.object === 'string' ? payload.object : undefined,
+    resourceId: typeof payload?.id === 'string' ? payload.id : undefined,
+    invoiceNumber: invoiceNumberCandidate,
+    invoiceStatus: typeof payload?.status === 'string' ? payload.status : undefined,
+    paymentIntentId,
+    chargeId,
+    customerId:
+      typeof payload?.customer === 'string'
+        ? payload.customer
+        : payload?.customer && typeof payload.customer === 'object'
+          ? (payload.customer as {id?: string}).id
+          : undefined,
+    requestId:
+      typeof event.request === 'string'
+        ? event.request
+        : (event.request as Stripe.Event.Request | null | undefined)?.id,
+    livemode: event.livemode ?? undefined,
+    orderNumber,
+    metadata: metadataString,
+    rawPayload,
+    orderId: orderDocId || undefined,
+    invoiceId: invoiceDocId || undefined,
+    orderRef: orderDocId ? {_type: 'reference', _ref: orderDocId} : undefined,
+    invoiceRef: invoiceDocId ? {_type: 'reference', _ref: invoiceDocId} : undefined,
+  })
+
+  try {
+    await sanity.createOrReplace(document, {autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to record webhook event', err)
+  }
 }
 
 const buildOrderEventRecord = (input: EventRecordInput) => {
@@ -426,6 +682,28 @@ const PRODUCT_METADATA_ID_KEYS = [
 const PRODUCT_METADATA_SKU_KEYS = ['sku', 'SKU', 'product_sku', 'productSku', 'sanity_sku']
 const PRODUCT_METADATA_SLUG_KEYS = ['sanity_slug', 'slug', 'product_slug', 'productSlug']
 const INVOICE_METADATA_ID_KEYS = ['sanity_invoice_id', 'invoice_id', 'sanityInvoiceId', 'invoiceId']
+const INVOICE_METADATA_NUMBER_KEYS = [
+  'sanity_invoice_number',
+  'invoice_number',
+  'invoiceNumber',
+  'sanityInvoiceNumber',
+]
+const ORDER_METADATA_ID_KEYS = ['sanity_order_id', 'order_id', 'sanityOrderId', 'orderId']
+const ORDER_METADATA_NUMBER_KEYS = [
+  'sanity_order_number',
+  'order_number',
+  'orderNumber',
+  'sanityOrderNumber',
+]
+const SESSION_METADATA_KEYS = [
+  'stripe_session_id',
+  'stripeSessionId',
+  'sanity_session_id',
+  'session_id',
+  'sessionId',
+  'checkout_session_id',
+]
+const WEBHOOK_DOCUMENT_PREFIX = 'stripeWebhook.'
 
 function isStripeProduct(
   product: Stripe.Product | Stripe.DeletedProduct | string | null | undefined,
@@ -2090,6 +2368,9 @@ export const handler: Handler = async (event) => {
     return {statusCode: 400, body: `Webhook Error: ${err?.message || 'invalid signature'}`}
   }
 
+  let webhookStatus: 'processed' | 'ignored' | 'error' = 'processed'
+  let webhookSummary = summarizeEventType(webhookEvent.type)
+
   try {
     switch (webhookEvent.type) {
       case 'product.created':
@@ -2177,9 +2458,6 @@ export const handler: Handler = async (event) => {
         break
       }
 
-      case 'invoice.created':
-      case 'invoice.deleted':
-      case 'invoice.finalization_failed':
       case 'customer.discount.created':
       case 'customer.discount.updated': {
         try {
@@ -2216,8 +2494,13 @@ export const handler: Handler = async (event) => {
         break
       }
 
+      case 'invoice.created':
+      case 'invoice.deleted':
+      case 'invoice.finalization_failed':
       case 'invoice.finalized':
       case 'invoice.marked_uncollectible':
+      case 'invoice.overdue':
+      case 'invoice.overpaid':
       case 'invoice.paid':
       case 'invoice.payment_action_required':
       case 'invoice.payment_failed':
@@ -2225,7 +2508,8 @@ export const handler: Handler = async (event) => {
       case 'invoice.sent':
       case 'invoice.upcoming':
       case 'invoice.voided':
-      case 'invoice.updated': {
+      case 'invoice.updated':
+      case 'invoice.will_be_due': {
         try {
           const invoice = webhookEvent.data.object as Stripe.Invoice
           await syncStripeInvoice(invoice)
@@ -3458,17 +3742,40 @@ export const handler: Handler = async (event) => {
           console.warn('stripeWebhook: failed to handle checkout.session.expired', err)
         }
         break
+      case 'issuing_card.created':
+      case 'issuing_card.updated':
+      case 'issuing_cardholder.created':
+      case 'issuing_cardholder.updated':
+        // Record-only events for issuing resources to power dashboards
+        break
       default:
-        // Ignore other events quietly
+        webhookStatus = 'ignored'
+        webhookSummary = `No handler for event ${webhookEvent.type}`
         break
     }
-
-    return {statusCode: 200, body: JSON.stringify({received: true})}
   } catch (err: any) {
+    webhookStatus = 'error'
+    webhookSummary = err?.message
+      ? `Error processing ${webhookEvent.type}: ${err.message}`
+      : `Error processing ${webhookEvent.type}`
     console.error('stripeWebhook handler error:', err)
-    // Return 200 to avoid aggressive retries if our internal handling fails non-critically
+  }
+
+  try {
+    await recordStripeWebhookEvent({
+      event: webhookEvent,
+      status: webhookStatus,
+      summary: webhookSummary,
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to log webhook event', err)
+  }
+
+  if (webhookStatus === 'error') {
     return {statusCode: 200, body: JSON.stringify({received: true, hint: 'internal error logged'})}
   }
+
+  return {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
 }
 
 // Netlify picks up the named export automatically; avoid duplicate exports.

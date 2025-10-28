@@ -205,6 +205,7 @@ import filterTag from './documents/filterTag'
 import quote from './documents/quote'
 import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
+import stripeWebhook from './documents/stripeWebhook'
 import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
@@ -223,6 +224,7 @@ const documents = [
   quote,
   shippingLabel,
   invoice,
+  stripeWebhook,
   vendor,
   bill,
   order,
