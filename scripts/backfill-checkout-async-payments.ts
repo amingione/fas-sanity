@@ -5,10 +5,6 @@ import fs from 'node:fs'
 import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
-import {
-  handleCheckoutAsyncPaymentFailed,
-  handleCheckoutAsyncPaymentSucceeded,
-} from '../netlify/functions/stripeWebhook'
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -16,6 +12,27 @@ for (const filename of ENV_FILES) {
   if (fs.existsSync(resolved)) {
     dotenv.config({path: resolved, override: false})
   }
+}
+
+type StripeWebhookModule = typeof import('../netlify/functions/stripeWebhook')
+type WebhookHandlers = Pick<
+  StripeWebhookModule,
+  'handleCheckoutAsyncPaymentSucceeded' | 'handleCheckoutAsyncPaymentFailed'
+>
+
+let webhookHandlersPromise: Promise<WebhookHandlers> | null = null
+
+async function loadWebhookHandlers(): Promise<WebhookHandlers> {
+  if (!webhookHandlersPromise) {
+    webhookHandlersPromise = import('../netlify/functions/stripeWebhook').then(
+      ({handleCheckoutAsyncPaymentSucceeded, handleCheckoutAsyncPaymentFailed}) => ({
+        handleCheckoutAsyncPaymentSucceeded,
+        handleCheckoutAsyncPaymentFailed,
+      }),
+    )
+  }
+
+  return webhookHandlersPromise
 }
 
 type CliOptions = {
@@ -208,6 +225,8 @@ async function main() {
 
   console.log(`Found ${orders.length} order(s) to evaluate.`)
 
+  const webhookHandlers = options.dryRun ? null : await loadWebhookHandlers()
+
   let processed = 0
   let skipped = 0
 
@@ -286,11 +305,11 @@ async function main() {
       `- ${prefix}Applying async ${outcomeLabel} for ${formatOrderRef(order)} (session ${session.id}).`,
     )
 
-    if (!options.dryRun) {
+    if (!options.dryRun && webhookHandlers) {
       const metadata = (session.metadata || {}) as Record<string, string>
       const eventCreated = Math.floor(Date.now() / 1000)
       if (outcome === 'success') {
-        await handleCheckoutAsyncPaymentSucceeded(session, {
+        await webhookHandlers.handleCheckoutAsyncPaymentSucceeded(session, {
           paymentIntent,
           metadata,
           eventType: 'checkout.session.async_payment_succeeded',
@@ -300,7 +319,7 @@ async function main() {
           eventCreated,
         })
       } else {
-        await handleCheckoutAsyncPaymentFailed(session, {
+        await webhookHandlers.handleCheckoutAsyncPaymentFailed(session, {
           paymentIntent,
           metadata,
           eventType: 'checkout.session.async_payment_failed',
