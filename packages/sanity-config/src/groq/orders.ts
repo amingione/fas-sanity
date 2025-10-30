@@ -292,6 +292,8 @@ export async function listByFilters(
   if (params.search && params.search.trim().length > 0) {
     const escaped = escapeRegExp(params.search.trim())
     const pattern = `(?i).*${escaped}.*`
+    // PERFORMANCE NOTE: For large datasets, ensure 'orderNumber', 'customerName', and 'customerEmail'
+    // are indexed in the Sanity schema to optimize search performance.
     filters.push(
       'string(orderNumber) match $searchPattern || customerName match $searchPattern || customerEmail match $searchPattern || _id match $searchPattern',
     )
