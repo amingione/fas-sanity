@@ -200,6 +200,13 @@ const blocks = [portableTextType, portableTextSimpleType]
 import {collectionType} from './documents/collection'
 import {colorThemeType} from './documents/colorTheme'
 import {pageType} from './documents/page'
+import {blogType} from './documents/blog'
+import {faqType} from './documents/faq'
+import {seoArticleType} from './documents/seoArticle'
+import {comparisonType} from './documents/comparison'
+import {guideType} from './documents/guide'
+import {productFeedType} from './documents/productFeed'
+import {seoMetricsType} from './documents/seoMetrics'
 import expiredCart from './documents/expiredCart'
 import checkout from './documents/checkout'
 import {productVariantType} from './documents/productVariant'
@@ -227,6 +234,11 @@ const documents = [
   collectionType,
   colorThemeType,
   pageType,
+  blogType,
+  faqType,
+  seoArticleType,
+  comparisonType,
+  guideType,
   product,
   productVariantType,
   quote,
@@ -256,12 +268,15 @@ const documents = [
   booking,
   stripeWebhookEvent,
   stripeEvent,
+  productFeedType,
+  seoMetricsType,
 ]
 
 import {homeType} from './singletons/homeType'
 import {settingsType as siteSettingsType} from './singletons/siteSettingsType'
+import {globalSeoType} from './singletons/globalSeoType'
 
-const singletons = [homeType, siteSettingsType]
+const singletons = [homeType, siteSettingsType, globalSeoType]
 
 export const schemaTypes = [
   ...annotations,
