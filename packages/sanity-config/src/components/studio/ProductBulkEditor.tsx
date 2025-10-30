@@ -53,6 +53,7 @@ type EditableProduct = ProductDoc & {
   derivedFeed?: DerivedProductFeedFields
   isSaving?: boolean
   dirty?: boolean
+  dirtySince?: number
 }
 
 import {readStudioEnv} from '../../utils/studioEnv'
@@ -670,6 +671,7 @@ export default function ProductBulkEditor() {
         ...patches,
         dirty: true,
         isSaving: false,
+        dirtySince: Date.now(),
       }
       nextProduct.derivedFeed = deriveProductFeedFields(nextProduct)
       return nextProduct
@@ -833,14 +835,21 @@ export default function ProductBulkEditor() {
     }
   }, [viewMode, filteredProducts, sheetRows.length])
 
-  const updateProductField = (id: string, field: keyof EditableProduct, value: any) => {
+  const updateProductField = (
+    id: string,
+    field: keyof EditableProduct,
+    value: any,
+    options?: {markDirty?: boolean}
+  ) => {
+    const shouldMarkDirty = options?.markDirty ?? true
     setProducts((prev) =>
       prev.map((prod) =>
         prod._id === id
           ? {
               ...prod,
               [field]: value,
-              dirty: true,
+              dirty: shouldMarkDirty ? true : prod.dirty,
+              dirtySince: shouldMarkDirty ? Date.now() : prod.dirtySince,
             }
           : prod
       )
@@ -849,8 +858,9 @@ export default function ProductBulkEditor() {
 
   const handleSave = async (product: EditableProduct) => {
     if (!product._id) return
+    const saveMarker = product.dirtySince
     try {
-      updateProductField(product._id, 'isSaving', true)
+      updateProductField(product._id, 'isSaving', true, {markDirty: false})
       const payload: Record<string, any> = {
         title: product.title || '',
         sku: product.sku || undefined,
@@ -877,21 +887,28 @@ export default function ProductBulkEditor() {
       await client.patch(product._id).set(payload).commit({autoGenerateArrayKeys: true})
       toast.push({status: 'success', title: 'Product saved', description: product.title || product.sku || product._id})
       setProducts((prev) =>
-        prev.map((prod) =>
-          prod._id === product._id
-            ? {
-                ...prod,
-                ...payload,
-                isSaving: false,
-                dirty: false,
-              }
-            : prod
-        )
+        prev.map((prod) => {
+          if (prod._id !== product._id) return prod
+          const hasPendingChanges = prod.dirtySince !== undefined && prod.dirtySince !== saveMarker
+          if (hasPendingChanges) {
+            return {
+              ...prod,
+              isSaving: false,
+            }
+          }
+          return {
+            ...prod,
+            ...payload,
+            isSaving: false,
+            dirty: false,
+            dirtySince: undefined,
+          }
+        })
       )
     } catch (err) {
       console.error('Product save failed', err)
       toast.push({status: 'error', title: 'Failed to save product', description: String((err as any)?.message || err)})
-      updateProductField(product._id, 'isSaving', false)
+      updateProductField(product._id, 'isSaving', false, {markDirty: false})
     }
   }
 
