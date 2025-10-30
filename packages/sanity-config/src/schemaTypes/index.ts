@@ -91,6 +91,10 @@ import wheelQuote from './documents/wheelQuote'
 import {schemaOrganizationType} from './documents/schemaOrganization'
 import {schemaProductType} from './documents/schemaProduct'
 import {schemaLocalBusinessType} from './documents/schemaLocalBusiness'
+import {blogPostType} from './documents/blogPost'
+import {blogTemplateType} from './documents/blogTemplate'
+import {emailMarketingCampaignType} from './documents/emailMarketingCampaign'
+import {outreachEmailTemplateLibraryType} from './documents/outreachEmailTemplateLibrary'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -232,6 +236,10 @@ const documents = [
   collectionType,
   colorThemeType,
   pageType,
+  blogPostType,
+  blogTemplateType,
+  emailMarketingCampaignType,
+  outreachEmailTemplateLibraryType,
   product,
   productVariantType,
   quote,
