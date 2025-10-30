@@ -418,20 +418,9 @@ const product = defineType({
     // SEO - Search engine optimization
     // ============================================
     defineField({
-      name: 'metaTitle',
-      title: 'Meta Title',
-      type: 'string',
-      description: 'SEO title (50-60 chars recommended)',
-      validation: Rule => Rule.max(60).warning('Keep under 60 characters'),
-      group: 'seo'
-    }),
-    defineField({
-      name: 'metaDescription',
-      title: 'Meta Description',
-      type: 'text',
-      rows: 3,
-      description: 'SEO description (140-160 chars recommended)',
-      validation: Rule => Rule.max(160).warning('Keep under 160 characters'),
+      name: 'seo',
+      title: 'SEO Metadata',
+      type: 'seo',
       group: 'seo'
     }),
     defineField({
@@ -456,22 +445,6 @@ const product = defineType({
       group: 'seo'
     }),
     defineField({
-      name: 'socialImage',
-      title: 'Social Share Image',
-      type: 'image',
-      options: { hotspot: true },
-      fields: [{ name: 'alt', title: 'Alt Text', type: 'string' }],
-      description: 'Custom image for social media sharing (1200×630px)',
-      group: 'seo'
-    }),
-    defineField({
-      name: 'canonicalUrl',
-      title: 'Canonical URL',
-      type: 'url',
-      description: 'Override URL to prevent duplicate content',
-      group: 'seo'
-    }),
-    defineField({
       name: 'noindex',
       title: 'Hide from Search Engines',
       type: 'boolean',
@@ -480,19 +453,35 @@ const product = defineType({
       group: 'seo'
     }),
 
-    // ============================================
-    // ADVANCED - Less frequently used fields
-    // ============================================
-
-    // Related Products
     defineField({
       name: 'relatedProducts',
       title: 'Related Products',
       type: 'array',
       of: [{ type: 'reference', to: [{ type: 'product' }] }],
-      description: 'Manually curated related products (auto-computed by default)',
-      group: 'advanced'
+      description: 'Curated internal links to complementary products.',
+      group: 'seo'
     }),
+    defineField({
+      name: 'relatedBlogs',
+      title: 'Related Blog Posts',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'blog' }] }],
+      description: 'Link to educational content that supports this product.',
+      group: 'seo'
+    }),
+    defineField({
+      name: 'relatedFaqs',
+      title: 'Related FAQs',
+      type: 'array',
+      of: [{ type: 'reference', to: [{ type: 'faq' }] }],
+      description: 'Surface helpful answers for common fitment or install questions.',
+      group: 'seo'
+    }),
+
+    // ============================================
+    // ADVANCED - Less frequently used fields
+    // ============================================
+
     defineField({
       name: 'upsellProducts',
       title: 'Upsell Products',

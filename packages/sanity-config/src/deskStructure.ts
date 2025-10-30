@@ -1,6 +1,7 @@
 // deskStructure.ts
 import type {StructureBuilder, StructureResolver} from 'sanity/structure'
-import { MdCategory, MdViewList, MdFilterList } from 'react-icons/md'
+import {MdCategory, MdViewList, MdFilterList} from 'react-icons/md'
+import {SearchIcon, ComposeIcon, HelpCircleIcon, SparkleIcon, BookIcon, DocumentIcon} from '@sanity/icons'
 import ordersStructure from './desk/ordersStructure'
 import CustomerDashboard from './components/studio/CustomerDashboard'
 import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
@@ -47,6 +48,31 @@ export const deskStructure: StructureResolver = (S, context) => {
     safeListItem('productFilterDoc', 'Filters', MdFilterList),
   ]
 
+  const marketingItems = [
+    safeListItem('blog', 'Blog Posts', ComposeIcon),
+    safeListItem('faq', 'FAQs', HelpCircleIcon),
+    safeListItem('seoArticle', 'SEO Articles', SparkleIcon),
+    safeListItem('comparison', 'Comparison Guides', DocumentIcon),
+    safeListItem('guide', 'Guides', BookIcon),
+    safeListItem('productFeed', 'Product Feed', DocumentIcon),
+    safeListItem('seoMetrics', 'SEO Metrics', SearchIcon),
+  ]
+
+  if (context.schema.get('globalSeo')) {
+    marketingItems.push(
+      S.listItem()
+        .id('global-seo-defaults')
+        .title('Global SEO Defaults')
+        .icon(SearchIcon)
+        .child(
+          S.document()
+            .schemaType('globalSeo')
+            .documentId('globalSeo')
+            .title('Global SEO Defaults'),
+        ),
+    )
+  }
+
   return S.list()
     .title('F.A.S. Motorsports')
     .items([
@@ -75,6 +101,12 @@ export const deskStructure: StructureResolver = (S, context) => {
       ...(context.schema.get('shippingLabel')
         ? [S.documentTypeListItem('shippingLabel').title('Shipping Labels')]
         : []),
+
+      S.listItem()
+        .id('marketing-seo')
+        .title('Marketing & SEO')
+        .icon(SearchIcon)
+        .child(S.list().title('Marketing & SEO').items(marketingItems)),
 
       S.divider(),
 
