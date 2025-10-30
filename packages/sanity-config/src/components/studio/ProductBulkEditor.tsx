@@ -532,7 +532,7 @@ export default function ProductBulkEditor() {
             shippingWeight,
             boxDimensions,
             brand,
-            "canonicalUrl": coalesce(canonicalUrl, seo.canonicalUrl),
+            "canonicalUrl": coalesce(seo.canonicalUrl, canonicalUrl),
             "seo": {
               "canonicalUrl": seo.canonicalUrl
             },
