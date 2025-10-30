@@ -177,14 +177,26 @@ const archiveAction: DocumentActionComponent = (props) => {
       try {
         if (isArchived) {
           await Promise.all([
-            client.patch(id).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch(() => null),
-            client.patch(publishedId).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch(() => null),
+            client.patch(id).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch((err) => {
+              console.error(`Failed to unarchive document ${id}:`, err);
+              if (typeof window !== 'undefined') window.alert(`Failed to unarchive document ${id}: ${err?.message || err}`);
+            }),
+            client.patch(publishedId).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch((err) => {
+              console.error(`Failed to unarchive document ${publishedId}:`, err);
+              if (typeof window !== 'undefined') window.alert(`Failed to unarchive document ${publishedId}: ${err?.message || err}`);
+            }),
           ])
         } else {
           const timestamp = new Date().toISOString()
           await Promise.all([
-            client.patch(id).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch(() => null),
-            client.patch(publishedId).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch(() => null),
+            client.patch(id).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch((err) => {
+              console.error(`Failed to archive document ${id}:`, err);
+              if (typeof window !== 'undefined') window.alert(`Failed to archive document ${id}: ${err?.message || err}`);
+            }),
+            client.patch(publishedId).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch((err) => {
+              console.error(`Failed to archive document ${publishedId}:`, err);
+              if (typeof window !== 'undefined') window.alert(`Failed to archive document ${publishedId}: ${err?.message || err}`);
+            }),
           ])
         }
       } catch (err) {
