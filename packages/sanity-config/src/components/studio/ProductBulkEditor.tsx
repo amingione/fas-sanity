@@ -89,7 +89,7 @@ function sanitizeNumber(value: string, fallback?: number): number | undefined {
 }
 
 function buildProductLink(product: ProductDoc): string {
-  const canonical = product.canonicalUrl || product.seo?.canonicalUrl || ''
+  const canonical = product.seo?.canonicalUrl || product.canonicalUrl || ''
   if (canonical) return canonical
   const slug = product.slug?.current || ''
   if (!slug) return ''
@@ -858,7 +858,7 @@ export default function ProductBulkEditor() {
     if (!product._id) return
     try {
       updateProductField(product._id, 'isSaving', true)
-      const canonicalUrlValue = (product.canonicalUrl || product.seo?.canonicalUrl || '')
+      const canonicalUrlValue = (product.seo?.canonicalUrl || product.canonicalUrl || '')
         .toString()
         .trim()
 
