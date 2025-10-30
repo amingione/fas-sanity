@@ -11,6 +11,7 @@ import {
   refundStripeInvoiceAction,
   refundStripeOrderAction,
 } from './schemaTypes/documentActions/refundStripeAction'
+import {orderDocumentActions} from './actions/orderActions'
 
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
@@ -25,6 +26,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(backfillOrdersAction)
     list.push(cancelStripeOrderAction)
     list.push(refundStripeOrderAction)
+    orderDocumentActions.forEach((action) => list.push(action))
   }
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)

@@ -1,6 +1,7 @@
 // deskStructure.ts
-import type {StructureResolver} from 'sanity/structure'
+import type {StructureBuilder, StructureResolver} from 'sanity/structure'
 import { MdCategory, MdViewList, MdFilterList } from 'react-icons/md'
+import ordersStructure from './desk/ordersStructure'
 import CustomerDashboard from './components/studio/CustomerDashboard'
 import BulkLabelGenerator from './components/studio/BulkLabelGenerator'
 import BulkPackingSlipGenerator from './components/studio/BulkPackingSlipGenerator'
@@ -66,7 +67,7 @@ export const deskStructure: StructureResolver = (S, context) => {
         ? [S.documentTypeListItem('quote').title('Quote Requests')]
         : []),
       ...(context.schema.get('order')
-        ? [S.documentTypeListItem('order').title('Orders')]
+        ? [ordersStructure(S as StructureBuilder)]
         : []),
       ...(context.schema.get('expiredCart')
         ? [S.documentTypeListItem('expiredCart').title('Expired Carts')]

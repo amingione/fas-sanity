@@ -1,20 +1,10 @@
 import type {StructureResolver} from 'sanity/structure'
 import HomePane from '../components/studio/HomePane'
 import ComingSoonPane from '../components/studio/ComingSoonPane'
-import OrderShippingView from '../components/studio/OrderShippingView'
-import OrderListPane from '../components/studio/OrderListPane'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
 import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
-
-const orderDocumentViews = (S: any) => (documentId: string) =>
-  S.document()
-    .schemaType('order')
-    .documentId(documentId)
-    .views([
-      S.view.form().title('Form').id('form'),
-      S.view.component(OrderShippingView as any).title('Shipping').id('shipping'),
-    ])
+import ordersStructure from './ordersStructure'
 
 const productsByCategory = (S: any) =>
   S.listItem()
@@ -103,108 +93,7 @@ export const deskStructure: StructureResolver = (S) =>
                 ),
             ])
         ),
-      S.listItem()
-        .id('orders')
-        .title('Orders')
-        .child(
-          S.list()
-            .title('Orders')
-            .items([
-              S.listItem()
-                .id('orders-all')
-                .title('All orders')
-                .child(
-                  S.component()
-                    .id('orders-pane')
-                    .title('Orders')
-                    .component(OrderListPane as any)
-                ),
-              S.divider(),
-              S.listItem()
-                .id('orders-pending')
-                .title('Pending fulfillment')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('Pending fulfillment')
-                    .schemaType('order')
-                    .filter('_type == "order" && status == "paid" && !defined(fulfilledAt)')
-                    .defaultOrdering([{field: 'createdAt', direction: 'asc'}])
-                    .child(orderDocumentViews(S))
-                ),
-              S.listItem()
-                .id('orders-fulfilled')
-                .title('Fulfilled')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('Fulfilled orders')
-                    .schemaType('order')
-                    .filter('_type == "order" && defined(fulfilledAt)')
-                    .defaultOrdering([{field: 'fulfilledAt', direction: 'desc'}])
-                    .child(orderDocumentViews(S))
-                ),
-              S.listItem()
-                .id('orders-paid')
-                .title('Paid')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('Paid orders')
-                    .schemaType('order')
-                    .filter('_type == "order" && paymentStatus == "paid"')
-                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                    .child(orderDocumentViews(S))
-                ),
-              S.listItem()
-                .id('orders-unpaid')
-                .title('Unpaid / Failed')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('Unpaid orders')
-                    .schemaType('order')
-                    .filter('_type == "order" && !(coalesce(status, "") in ["expired"]) && !(coalesce(paymentStatus, "") in ["paid", "expired"])')
-                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                    .child(orderDocumentViews(S))
-                ),
-              S.listItem()
-                .id('orders-expired-carts')
-                .title('Expired checkouts')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('Expired checkouts')
-                    .schemaType('order')
-                    .filter('_type == "order" && status == "expired"')
-                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                    .child(orderDocumentViews(S))
-                ),
-              S.listItem()
-                .id('orders-recent')
-                .title('Recent (Last 30 days)')
-                .child(
-                  S.documentList()
-                    .apiVersion('2024-10-01')
-                    .title('Recent orders')
-                    .schemaType('order')
-                    .filter('_type == "order" && dateTime(createdAt) > dateTime(now()) - 60*60*24*30')
-                    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                    .child(orderDocumentViews(S))
-                ),
-              S.divider(),
-              S.listItem()
-                .id('orders-invoices')
-                .title('Invoices')
-                .child(
-                  S.documentTypeList('invoice')
-                    .title('Invoices')
-                    .apiVersion('2024-10-01')
-                    .filter('_type == "invoice"')
-                    .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}])
-                ),
-            ])
-        ),
+      ordersStructure(S),
       S.listItem()
         .id('shipping')
         .title('Shipping')

@@ -1,8 +1,9 @@
 import React from 'react'
-import {defineField, defineType} from 'sanity'
+import {defineArrayMember, defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
 import OrderCartItemsInput from '../../components/inputs/OrderCartItemsInput'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
+import RefundOwedBannerInput from '../../components/studio/RefundOwedBannerInput'
 
 const ORDER_MEDIA_URL =
   'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
@@ -29,9 +30,17 @@ export default defineType({
     defineField({
       name: 'orderNumber',
       title: 'Order Number',
-      type: 'string',
+      type: 'number',
       description: 'Customer-facing order number shared across Stripe emails, invoices, and Studio.',
       readOnly: true,
+      group: 'overview',
+    }),
+    defineField({
+      name: 'refundOwedBanner',
+      title: 'Refund notice',
+      type: 'string',
+      readOnly: true,
+      components: {input: RefundOwedBannerInput as any},
       group: 'overview',
     }),
     defineField({
@@ -39,22 +48,98 @@ export default defineType({
       title: 'Order Status',
       type: 'string',
       options: {
-        list: ['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded', 'closed', 'expired'],
+        list: [
+          {title: 'Draft', value: 'draft'},
+          {title: 'Open', value: 'open'},
+          {title: 'Fulfilled', value: 'fulfilled'},
+          {title: 'Partially fulfilled', value: 'partially_fulfilled'},
+          {title: 'Canceled', value: 'canceled'},
+        ],
         layout: 'dropdown',
       },
-      readOnly: true,
+      initialValue: 'open',
       components: {
         input: FulfillmentBadge as any,
       },
       group: 'overview',
     }),
     defineField({
+      name: 'risk',
+      title: 'Risk level',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Low', value: 'low'},
+          {title: 'Medium', value: 'medium'},
+          {title: 'High', value: 'high'},
+        ],
+        layout: 'dropdown',
+      },
+      initialValue: 'low',
+      group: 'overview',
+    }),
+    defineField({
+      name: 'isInvoice',
+      title: 'Invoice draft',
+      type: 'boolean',
+      initialValue: false,
+      group: 'overview',
+    }),
+    defineField({
+      name: 'isQuote',
+      title: 'Quote draft',
+      type: 'boolean',
+      initialValue: false,
+      group: 'overview',
+    }),
+    defineField({
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      of: [defineArrayMember({type: 'reference', to: [{type: 'tag'}]})],
+      group: 'overview',
+    }),
+    defineField({
+      name: 'systemTags',
+      title: 'System tags',
+      type: 'array',
+      of: [defineArrayMember({type: 'string'})],
+      readOnly: true,
+      options: {layout: 'tags'},
+      group: 'overview',
+    }),
+    defineField({
       name: 'paymentStatus',
       title: 'Payment Status',
       type: 'string',
-      description: 'Raw Stripe payment status (e.g. succeeded, processing).',
-      readOnly: true,
+      options: {
+        list: [
+          {title: 'Unpaid', value: 'unpaid'},
+          {title: 'Pending', value: 'pending'},
+          {title: 'Authorized', value: 'authorized'},
+          {title: 'Paid', value: 'paid'},
+          {title: 'Partially refunded', value: 'partially_refunded'},
+          {title: 'Refunded', value: 'refunded'},
+        ],
+        layout: 'dropdown',
+      },
+      initialValue: 'unpaid',
       group: 'payment',
+    }),
+    defineField({
+      name: 'fulfillmentStatus',
+      title: 'Fulfillment Status',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Unfulfilled', value: 'unfulfilled'},
+          {title: 'Partially fulfilled', value: 'partial'},
+          {title: 'Fulfilled', value: 'fulfilled'},
+        ],
+        layout: 'dropdown',
+      },
+      initialValue: 'unfulfilled',
+      group: 'fulfillment',
     }),
     defineField({
       name: 'createdAt',
@@ -62,6 +147,24 @@ export default defineType({
       type: 'datetime',
       readOnly: true,
       initialValue: () => new Date().toISOString(),
+      group: 'overview',
+    }),
+    defineField({
+      name: 'updatedAt',
+      title: 'Updated At',
+      type: 'datetime',
+      group: 'overview',
+    }),
+    defineField({
+      name: 'archivedAt',
+      title: 'Archived At',
+      type: 'datetime',
+      group: 'overview',
+    }),
+    defineField({
+      name: 'canceledAt',
+      title: 'Canceled At',
+      type: 'datetime',
       group: 'overview',
     }),
     defineField({
@@ -161,6 +264,43 @@ export default defineType({
       group: 'cart',
     }),
     defineField({
+      name: 'subtotal',
+      title: 'Subtotal',
+      type: 'number',
+      group: 'amounts',
+    }),
+    defineField({
+      name: 'shippingAmount',
+      title: 'Shipping Amount',
+      type: 'number',
+      group: 'amounts',
+    }),
+    defineField({
+      name: 'taxAmount',
+      title: 'Tax Amount',
+      type: 'number',
+      group: 'amounts',
+    }),
+    defineField({
+      name: 'discountAmount',
+      title: 'Discount Amount',
+      type: 'number',
+      group: 'amounts',
+    }),
+    defineField({
+      name: 'total',
+      title: 'Total',
+      type: 'number',
+      group: 'amounts',
+    }),
+    defineField({
+      name: 'amountPaid',
+      title: 'Amount Paid',
+      type: 'number',
+      initialValue: 0,
+      group: 'refunds',
+    }),
+    defineField({
       name: 'totalAmount',
       title: 'Total Amount (USD)',
       type: 'number',
@@ -193,7 +333,7 @@ export default defineType({
       name: 'currency',
       title: 'Currency',
       type: 'string',
-      readOnly: true,
+      initialValue: 'USD',
       group: 'amounts',
     }),
     defineField({
@@ -242,6 +382,7 @@ export default defineType({
       name: 'amountRefunded',
       title: 'Total Refunded',
       type: 'number',
+      initialValue: 0,
       readOnly: true,
       group: 'refunds',
     }),
@@ -405,6 +546,21 @@ export default defineType({
       name: 'shippingAddress',
       title: 'Shipping Address',
       type: 'shippingAddress',
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'shippingSelection',
+      title: 'Shipping Selection',
+      type: 'object',
+      options: {columns: 2},
+      fields: [
+        defineField({name: 'selectedRateId', title: 'Selected rate ID', type: 'string'}),
+        defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
+        defineField({name: 'service', title: 'Service', type: 'string'}),
+        defineField({name: 'deliveryDays', title: 'Delivery days', type: 'number'}),
+        defineField({name: 'rateAmount', title: 'Rate amount', type: 'number'}),
+        defineField({name: 'currency', title: 'Currency', type: 'string'}),
+      ],
       group: 'shipping',
     }),
     defineField({
@@ -576,6 +732,23 @@ export default defineType({
       type: 'array',
       of: [{type: 'shippingLogEntry'}],
       readOnly: true,
+      group: 'activity',
+    }),
+    defineField({
+      name: 'notes',
+      title: 'Notes',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'object',
+          name: 'orderNote',
+          fields: [
+            defineField({name: 'message', title: 'Note', type: 'text'}),
+            defineField({name: 'createdAt', title: 'Created at', type: 'datetime', readOnly: true}),
+            defineField({name: 'author', title: 'Author', type: 'string', readOnly: true}),
+          ],
+        }),
+      ],
       group: 'activity',
     }),
     defineField({
