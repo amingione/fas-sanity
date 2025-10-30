@@ -56,8 +56,10 @@ function toPositiveNumber(value: unknown): number | undefined {
   return undefined
 }
 
-function buildProductLink(slug?: any, canonicalUrl?: string): string | undefined {
-  if (canonicalUrl) return canonicalUrl
+function buildProductLink(product: any): string | undefined {
+  const canonical = product?.canonicalUrl || product?.seo?.canonicalUrl
+  if (canonical) return canonical
+  const slug = product?.slug
   const slugStr = slug?.current || slug
   if (SITE_BASE_URL && typeof slugStr === 'string' && slugStr.trim()) {
     return `${SITE_BASE_URL}/product/${slugStr}`
@@ -145,7 +147,10 @@ const content = google.content({ version: 'v2.1', auth })
         shortDescription,
         description,
         brand,
-        canonicalUrl,
+        "canonicalUrl": coalesce(canonicalUrl, seo.canonicalUrl),
+        "seo": {
+          "canonicalUrl": seo.canonicalUrl
+        },
         googleProductCategory,
         google_product_category,
         "images": images[].asset->url,
@@ -159,7 +164,7 @@ const content = google.content({ version: 'v2.1', auth })
     products.forEach((product: any, index: number) => {
       try {
       const offerId = (product?.sku || product?._id || '').toString().trim()
-      const link = buildProductLink(product?.slug, product?.canonicalUrl)
+      const link = buildProductLink(product)
       const imageLink = buildImageUrl(product?.images || [])
       const price = toPositiveNumber(product?.price)
       if (!offerId || !price || !link || !imageLink) {

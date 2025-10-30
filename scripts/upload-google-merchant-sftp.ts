@@ -41,6 +41,9 @@ type SanityProduct = {
   description?: unknown
   brand?: string | null
   canonicalUrl?: string | null
+  seo?: {
+    canonicalUrl?: string | null
+  } | null
   images?: Array<{asset?: {url?: string | null} | null}> | string[]
   categories?: string[] | null
   googleProductCategory?: string | null
@@ -138,7 +141,10 @@ const QUERY = `*[_type == "product" && defined(price) && price > 0]{
   shortDescription,
   description,
   brand,
-  canonicalUrl,
+  "canonicalUrl": coalesce(canonicalUrl, seo.canonicalUrl),
+  "seo": {
+    "canonicalUrl": seo.canonicalUrl
+  }
   "images": images[]{
     asset->{url}
   },
@@ -205,7 +211,11 @@ function selectDescription(product: SanityProduct): string {
 }
 
 function buildProductLink(product: SanityProduct): string {
-  if (product.canonicalUrl) return sanitizeText(product.canonicalUrl)
+  const canonical =
+    product.canonicalUrl ||
+    product.seo?.canonicalUrl ||
+    undefined
+  if (canonical) return sanitizeText(canonical)
   const slug = typeof product.slug === 'object' ? product.slug?.current : undefined
   if (SITE_BASE_URL && slug) {
     return `${SITE_BASE_URL}/product/${slug}`
