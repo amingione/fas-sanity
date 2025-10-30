@@ -4036,7 +4036,9 @@ export const handler: Handler = async (event) => {
           if (session.payment_intent) {
             paymentIntent = await stripe.paymentIntents.retrieve(String(session.payment_intent))
           }
-        } catch {}
+        } catch (err) {
+          console.warn('stripeWebhook: failed to retrieve payment intent during checkout summary build', err)
+        }
 
         const currency =
           ((session as any)?.currency || (paymentIntent as any)?.currency || '')
@@ -4090,7 +4092,9 @@ export const handler: Handler = async (event) => {
             cardLast4 = c?.last4 || undefined
             chargeBillingName = ch?.billing_details?.name || undefined
           }
-        } catch {}
+        } catch (err) {
+          console.warn('stripeWebhook: failed to resolve order for checkout event', err)
+        }
 
         const metadataOrderNumberRaw = (
           metadata['order_number'] ||
@@ -4276,7 +4280,9 @@ export const handler: Handler = async (event) => {
                 {email},
               )
               if (customerId) baseDoc.customerRef = {_type: 'reference', _ref: customerId}
-            } catch {}
+            } catch (err) {
+              console.warn('stripeWebhook: failed to refresh order after fulfillment sync', err)
+            }
           }
 
           let orderId = existingId
@@ -4679,7 +4685,9 @@ export const handler: Handler = async (event) => {
                 body: JSON.stringify({orderId}),
               })
             }
-          } catch {}
+          } catch (err) {
+            console.warn('stripeWebhook: auto-fulfillment trigger failed', err)
+          }
         } catch (e) {
           console.warn('stripeWebhook: PI fallback order creation failed', e)
         }

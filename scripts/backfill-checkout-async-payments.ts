@@ -216,7 +216,9 @@ async function main() {
   }
 
   console.log(`Found ${orders.length} order(s) to evaluate.`)
-  const webhookHandlers = options.dryRun ? null : await loadWebhookHandlers()
+  const webhookHandlers: WebhookHandlers | null = options.dryRun
+    ? null
+    : await loadWebhookHandlers()
 
   let processed = 0
   let skipped = 0
