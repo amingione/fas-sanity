@@ -77,6 +77,7 @@ import {shippingOptionCustomerAddressType} from './objects/shippingOptionCustome
 import {shippingOptionDimensionsType} from './objects/shippingOptionDimensionsType'
 import {packageDetailsType} from './objects/packageDetailsType'
 import {seoType} from './objects/seoType'
+import {schemaPostalAddressType} from './objects/schemaPostalAddressType'
 import {shopifyCollectionType} from './objects/shopify/shopifyCollectionType'
 import {shopifyProductType} from './objects/shopify/shopifyProductType'
 import {shopifyProductVariantType} from './objects/shopify/shopifyProductVariantType'
@@ -87,6 +88,9 @@ import {stripeMetadataEntryType} from './objects/stripeMetadataEntry'
 import {stripePaymentMethodType} from './objects/stripePaymentMethodType'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
+import {schemaOrganizationType} from './documents/schemaOrganization'
+import {schemaProductType} from './documents/schemaProduct'
+import {schemaLocalBusinessType} from './documents/schemaLocalBusiness'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -160,6 +164,7 @@ const objects = [
   shippingOptionDimensionsType,
   packageDetailsType,
   seoType,
+  schemaPostalAddressType,
   shopifyCollectionType,
   shopifyProductType,
   shopifyProductVariantType,
@@ -256,6 +261,9 @@ const documents = [
   booking,
   stripeWebhookEvent,
   stripeEvent,
+  schemaOrganizationType,
+  schemaProductType,
+  schemaLocalBusinessType,
 ]
 
 import {homeType} from './singletons/homeType'
