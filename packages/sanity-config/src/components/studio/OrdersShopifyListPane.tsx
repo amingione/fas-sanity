@@ -381,12 +381,12 @@ const OrdersShopifyListPane = React.forwardRef<HTMLDivElement, OrdersPaneProps>(
           <Stack space={3}>
             {!isCheckoutView && orders.map(renderOrderRow)}
             {isCheckoutView && checkouts.map(renderCheckoutRow)}
-            {!loading && !error && !isCheckoutView && orders.length === 0 && (
+            {!isCheckoutView && orders.length === 0 && (
               <Card padding={4} radius={3} tone="transparent">
                 <Text muted>No orders match the current filters.</Text>
               </Card>
             )}
-            {!loading && !error && isCheckoutView && checkouts.length === 0 && (
+            {isCheckoutView && checkouts.length === 0 && (
               <Card padding={4} radius={3} tone="transparent">
                 <Text muted>No abandoned checkouts right now.</Text>
               </Card>
