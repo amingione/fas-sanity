@@ -16,7 +16,9 @@ const toShipments = (
 ): Array<{labelStatus?: string | null; trackingNumber?: string | null}> => {
   if (Array.isArray(order.shipments)) {
     return order.shipments.filter((item): item is {labelStatus?: string | null; trackingNumber?: string | null} =>
-      item !== null && typeof item === 'object',
+      item !== null &&
+      typeof item === 'object' &&
+      ('labelStatus' in item || 'trackingNumber' in item),
     )
   }
 
