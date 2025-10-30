@@ -41,6 +41,7 @@ const hiddenDocTypes = (listItem: ListItemBuilder) => {
     'order',
     'shippingLabel',
     'freightQuote',
+    'checkout',
   ].includes(id)
 }
 
@@ -57,7 +58,7 @@ export const structure: StructureResolver = (S, context) =>
       colorThemes(S, context),
       S.divider(),
       settings(S, context),
-      orders(S, context),
+      ...orders(S, context),
       freightQuotes(S, context),
       S.listItem()
         .title('Shipping Labels')
