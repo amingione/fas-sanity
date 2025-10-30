@@ -1,5 +1,5 @@
 // resolveDocumentActions.ts
-import type { DocumentActionsResolver } from 'sanity'
+import type { DocumentActionComponent, DocumentActionsResolver } from 'sanity'
 import { createShippingLabel } from './schemaTypes/documentActions/invoiceActions'
 import { reprocessStripeSessionAction } from './schemaTypes/documentActions/reprocessStripeAction'
 import { cancelStripeOrderAction } from './schemaTypes/documentActions/cancelStripeOrderAction'
@@ -13,13 +13,26 @@ import {
 } from './schemaTypes/documentActions/refundStripeAction'
 import {orderDocumentActions} from './actions/orderActions'
 
+const appendActions = (
+  actions: DocumentActionComponent[],
+  additions: DocumentActionComponent[]
+) => {
+  for (const action of additions) {
+    if (!actions.includes(action)) {
+      actions.push(action)
+    }
+  }
+}
+
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
   if (context.schemaType === 'invoice') {
-    list.push(createShippingLabel)
-    list.push(reprocessStripeSessionAction)
-    list.push(backfillInvoicesAction)
-    list.push(refundStripeInvoiceAction)
+    appendActions(list, [
+      createShippingLabel,
+      reprocessStripeSessionAction,
+      backfillInvoicesAction,
+      refundStripeInvoiceAction,
+    ])
   }
   if (context.schemaType === 'order') {
     list.push(reprocessStripeSessionAction)
@@ -27,12 +40,18 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(cancelStripeOrderAction)
     list.push(refundStripeOrderAction)
     orderDocumentActions.forEach((action) => list.push(action))
+    appendActions(list, [
+      reprocessStripeSessionAction,
+      backfillOrdersAction,
+      cancelStripeOrderAction,
+      refundStripeOrderAction,
+    ])
   }
   if (context.schemaType === 'customer') {
-    list.push(backfillCustomersAction)
+    appendActions(list, [backfillCustomersAction])
   }
   if (['vehicleModel', 'filterTag', 'product'].includes(context.schemaType)) {
-    list.push(forceDeleteUnlinkAction)
+    appendActions(list, [forceDeleteUnlinkAction])
   }
   return list
 }
