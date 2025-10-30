@@ -30,24 +30,38 @@ type ShipmentSummary = {
   trackingNumber?: string | null
 }
 
-const shipmentCache = new Map<string, Promise<ShipmentSummary | null>>()
+// Cache entries store both the promise and the timestamp when cached
+type ShipmentCacheEntry = {
+  promise: Promise<ShipmentSummary | null>,
+  timestamp: number
+}
+const shipmentCache = new Map<string, ShipmentCacheEntry>()
+
+// TTL for cache entries in milliseconds (e.g., 5 minutes)
+const SHIPMENT_CACHE_TTL = 5 * 60 * 1000;
 
 const fetchLatestShipment = async (
   props: Parameters<DocumentActionComponent>[0],
 ): Promise<ShipmentSummary | null> => {
   const id = normalizeId(props.id)
-  if (!shipmentCache.has(id)) {
-    const client = getContextClient(props as any)
-    if (!client) return null
-    const promise = client
-      .fetch<ShipmentSummary | null>(
-        '*[_type == "shipment" && references($orderId)] | order(purchasedAt desc, _updatedAt desc)[0]{_id, labelStatus, labelUrl, packingSlipUrl, trackingNumber}',
-        {orderId: id},
-      )
-      .catch(() => null)
-    shipmentCache.set(id, promise)
+  const now = Date.now()
+  const cacheEntry = shipmentCache.get(id)
+  if (
+    cacheEntry &&
+    (now - cacheEntry.timestamp) < SHIPMENT_CACHE_TTL
+  ) {
+    return cacheEntry.promise
   }
-  return shipmentCache.get(id) || null
+  const client = getContextClient(props as any)
+  if (!client) return null
+  const promise = client
+    .fetch<ShipmentSummary | null>(
+      '*[_type == "shipment" && references($orderId)] | order(purchasedAt desc, _updatedAt desc)[0]{_id, labelStatus, labelUrl, packingSlipUrl, trackingNumber}',
+      {orderId: id},
+    )
+    .catch(() => null)
+  shipmentCache.set(id, {promise, timestamp: now})
+  return promise
 }
 
 const hasPurchasedLabel = (doc: Record<string, any> | null | undefined): boolean => {
