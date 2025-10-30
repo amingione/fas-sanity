@@ -903,28 +903,37 @@ export default function ProductBulkEditor() {
 
       await patch.commit({autoGenerateArrayKeys: true})
       toast.push({status: 'success', title: 'Product saved', description: product.title || product.sku || product._id})
+      const payloadForState = {...payload} as Partial<EditableProduct> & Record<string, any>
+      delete payloadForState['seo.canonicalUrl']
+
       setProducts((prev) =>
-        prev.map((prod) =>
-          prod._id === product._id
-            ? {
-                ...prod,
-                canonicalUrl: canonicalUrlValue || undefined,
-                seo: canonicalUrlValue
-                  ? {
-                      ...(prod.seo ?? {}),
-                      canonicalUrl: canonicalUrlValue,
-                    }
-                  : prod.seo
-                  ? {
-                      ...(prod.seo ?? {}),
-                      canonicalUrl: undefined,
-                    }
-                  : prod.seo ?? null,
-                isSaving: false,
-                dirty: false,
-              }
-            : prod
-        )
+        prev.map((prod) => {
+          if (prod._id !== product._id) return prod
+
+          const nextProduct: EditableProduct = {
+            ...prod,
+            ...payloadForState,
+            isSaving: false,
+            dirty: false,
+          }
+
+          if (canonicalUrlValue) {
+            nextProduct.seo = {
+              ...(prod.seo ?? {}),
+              canonicalUrl: canonicalUrlValue,
+            }
+          } else if (prod.seo?.canonicalUrl) {
+            const nextSeo = {...(prod.seo ?? {})}
+            delete nextSeo.canonicalUrl
+            nextProduct.seo = Object.keys(nextSeo).length > 0 ? nextSeo : null
+          }
+
+          if (!canonicalUrlValue) {
+            delete (nextProduct as any).canonicalUrl
+          }
+
+          return nextProduct
+        })
       )
     } catch (err) {
       console.error('Product save failed', err)
