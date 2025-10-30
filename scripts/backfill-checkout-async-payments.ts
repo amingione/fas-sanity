@@ -15,21 +15,13 @@ for (const filename of ENV_FILES) {
 }
 
 type StripeWebhookModule = typeof import('../netlify/functions/stripeWebhook')
-type WebhookHandlers = Pick<
-  StripeWebhookModule,
-  'handleCheckoutAsyncPaymentSucceeded' | 'handleCheckoutAsyncPaymentFailed'
->
+type WebhookHandlers = StripeWebhookModule
 
 let webhookHandlersPromise: Promise<WebhookHandlers> | null = null
 
 async function loadWebhookHandlers(): Promise<WebhookHandlers> {
   if (!webhookHandlersPromise) {
-    webhookHandlersPromise = import('../netlify/functions/stripeWebhook').then(
-      ({handleCheckoutAsyncPaymentSucceeded, handleCheckoutAsyncPaymentFailed}) => ({
-        handleCheckoutAsyncPaymentSucceeded,
-        handleCheckoutAsyncPaymentFailed,
-      }),
-    )
+    webhookHandlersPromise = import('../netlify/functions/stripeWebhook')
   }
 
   return webhookHandlersPromise

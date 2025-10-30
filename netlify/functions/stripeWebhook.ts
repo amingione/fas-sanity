@@ -190,6 +190,7 @@ const isoDateFromUnix = (value?: number | null): string | undefined => {
   const iso = unixToIso(value)
   return isoDateOnly(iso)
 }
+
 function pruneUndefined<T extends Record<string, any>>(input: T): T {
   const result: Record<string, any> = {}
   for (const [key, value] of Object.entries(input)) {
