@@ -3,6 +3,8 @@ import collections from './collectionStructure'
 import colorThemes from './colorThemeStructure'
 import home from './homeStructure'
 import pages from './pageStructure'
+import blog from './blogStructure'
+import emailMarketing from './emailMarketingStructure'
 import products from './productStructure'
 import settings from './settingStructure'
 import orders from './orderStructure'
@@ -34,6 +36,10 @@ const hiddenDocTypes = (listItem: ListItemBuilder) => {
     'colorTheme',
     'home',
     'media.tag',
+    'blogPost',
+    'blogTemplate',
+    'emailMarketingCampaign',
+    'outreachEmailTemplateLibrary',
     'page',
     'product',
     'productVariant',
@@ -51,6 +57,8 @@ export const structure: StructureResolver = (S, context) =>
     .items([
       home(S, context),
       pages(S, context),
+      blog(S, context),
+      emailMarketing(S, context),
       S.divider(),
       collections(S, context),
       products(S, context),

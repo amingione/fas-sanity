@@ -87,6 +87,10 @@ import {stripeMetadataEntryType} from './objects/stripeMetadataEntry'
 import {stripePaymentMethodType} from './objects/stripePaymentMethodType'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
+import {blogPostType} from './documents/blogPost'
+import {blogTemplateType} from './documents/blogTemplate'
+import {emailMarketingCampaignType} from './documents/emailMarketingCampaign'
+import {outreachEmailTemplateLibraryType} from './documents/outreachEmailTemplateLibrary'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -227,6 +231,10 @@ const documents = [
   collectionType,
   colorThemeType,
   pageType,
+  blogPostType,
+  blogTemplateType,
+  emailMarketingCampaignType,
+  outreachEmailTemplateLibraryType,
   product,
   productVariantType,
   quote,
