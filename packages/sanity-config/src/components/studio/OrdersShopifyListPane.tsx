@@ -208,8 +208,8 @@ const OrdersShopifyListPane = React.forwardRef<HTMLDivElement, OrdersPaneProps>(
       let orderNumberLabel = '#—'
       if (typeof order.orderNumber === 'number') {
         orderNumberLabel = `#${order.orderNumber}`
-      } else if (typeof (order as any).orderNumber === 'string') {
-        orderNumberLabel = `#${(order as any).orderNumber}`
+      } else if (typeof order.orderNumber === 'string') {
+        orderNumberLabel = `#${order.orderNumber}`
       }
       const tags = Array.isArray(order.tags) ? order.tags : []
       const systemTags = Array.isArray(order.systemTags)
