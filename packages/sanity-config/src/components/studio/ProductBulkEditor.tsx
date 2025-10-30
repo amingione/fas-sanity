@@ -29,6 +29,9 @@ type ProductDoc = {
   boxDimensions?: string
   brand?: string
   canonicalUrl?: string
+  seo?: {
+    canonicalUrl?: string | null
+  } | null
   googleProductCategory?: string
   installOnly?: boolean
   shippingLabel?: string
@@ -86,7 +89,8 @@ function sanitizeNumber(value: string, fallback?: number): number | undefined {
 }
 
 function buildProductLink(product: ProductDoc): string {
-  if (product.canonicalUrl) return product.canonicalUrl
+  const canonical = product.canonicalUrl || product.seo?.canonicalUrl || ''
+  if (canonical) return canonical
   const slug = product.slug?.current || ''
   if (!slug) return ''
   return `${SITE_BASE.replace(/\/$/, '')}/product/${slug}`
@@ -528,7 +532,10 @@ export default function ProductBulkEditor() {
             shippingWeight,
             boxDimensions,
             brand,
-            canonicalUrl,
+            "canonicalUrl": coalesce(canonicalUrl, seo.canonicalUrl),
+            "seo": {
+              "canonicalUrl": seo.canonicalUrl
+            },
             googleProductCategory,
             productHighlights,
             productDetails,
@@ -851,6 +858,10 @@ export default function ProductBulkEditor() {
     if (!product._id) return
     try {
       updateProductField(product._id, 'isSaving', true)
+      const canonicalUrlValue = (product.canonicalUrl || product.seo?.canonicalUrl || '')
+        .toString()
+        .trim()
+
       const payload: Record<string, any> = {
         title: product.title || '',
         sku: product.sku || undefined,
@@ -868,20 +879,47 @@ export default function ProductBulkEditor() {
         boxDimensions: product.boxDimensions || undefined,
         brand: product.brand || undefined,
         mpn: product.mpn || undefined,
-        canonicalUrl: product.canonicalUrl || undefined,
+        canonicalUrl: canonicalUrlValue || undefined,
         googleProductCategory: product.googleProductCategory || undefined,
         installOnly: Boolean(product.installOnly),
         shippingLabel: product.shippingLabel || undefined,
       }
 
-      await client.patch(product._id).set(payload).commit({autoGenerateArrayKeys: true})
+      if (canonicalUrlValue) {
+        payload['seo.canonicalUrl'] = canonicalUrlValue
+      } else {
+        delete payload.canonicalUrl
+      }
+
+      const unsetFields: string[] = []
+      if (!canonicalUrlValue) {
+        unsetFields.push('canonicalUrl', 'seo.canonicalUrl')
+      }
+
+      let patch = client.patch(product._id).set(payload)
+      if (unsetFields.length > 0) {
+        patch = patch.unset(unsetFields)
+      }
+
+      await patch.commit({autoGenerateArrayKeys: true})
       toast.push({status: 'success', title: 'Product saved', description: product.title || product.sku || product._id})
       setProducts((prev) =>
         prev.map((prod) =>
           prod._id === product._id
             ? {
                 ...prod,
-                ...payload,
+                canonicalUrl: canonicalUrlValue || undefined,
+                seo: canonicalUrlValue
+                  ? {
+                      ...(prod.seo ?? {}),
+                      canonicalUrl: canonicalUrlValue,
+                    }
+                  : prod.seo
+                  ? {
+                      ...(prod.seo ?? {}),
+                      canonicalUrl: undefined,
+                    }
+                  : prod.seo ?? null,
                 isSaving: false,
                 dirty: false,
               }
