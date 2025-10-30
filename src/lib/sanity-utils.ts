@@ -162,21 +162,37 @@ const isHostnameAllowlisted = (hostname: string | null | undefined): boolean => 
   return visualEditingAllowedHosts.has(normalized);
 };
 
-const visualEditingOriginAllowed = isBrowserRuntime
-  ? isHostnameAllowlisted(runtimeHostname)
-  : isHostnameAllowlisted(undefined);
+const visualEditingOriginAllowed = isHostnameAllowlisted(runtimeHostname);
 
 const visualEditingRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_VISUAL_EDITING as string | undefined
 );
-
-const previewDraftsEnvOverride = toBooleanFlag(
+const previewDraftsEnvRequested = toBooleanFlag(
   (import.meta.env.PUBLIC_SANITY_PREVIEW_DRAFTS as string | undefined) ?? 'false'
 );
+
+const visualEditingFlag = visualEditingRequested && visualEditingOriginAllowed;
+
+if (visualEditingRequested && !studioUrl) {
+  console.warn(
+    '[sanity-utils] Visual editing enabled but no PUBLIC_SANITY_STUDIO_URL (or SANITY_STUDIO_URL) configured.'
+  );
+}
+
+if (visualEditingRequested && !visualEditingOriginAllowed) {
+  const allowed = Array.from(visualEditingAllowedHosts.values()).join(', ') || '<none>';
+  console.warn(
+    `[sanity-utils] Visual editing disabled for host "${runtimeHostname ?? '<unknown>'}". Allowlisted hosts: ${allowed}.`
+  );
+}
+
+const previewDraftsRequested =
+  visualEditingOriginAllowed && (visualEditingFlag || previewDraftsEnvRequested);
 
 const liveSubscriptionsRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_LIVE_SUBSCRIPTIONS as string | undefined
 );
+const liveSubscriptionsFlag = visualEditingOriginAllowed && liveSubscriptionsRequested;
 
 const apiToken =
   (import.meta.env.SANITY_API_TOKEN as string | undefined) ||
@@ -272,7 +288,21 @@ const parsePositiveInt = (value: unknown, fallback: number): number => {
   return fallback;
 };
 
-export const sanityCacheEnabled = runtimeHostState.sanityCacheEnabled;
+const manualCacheDisableFlag =
+  toBooleanFlag((import.meta.env.SANITY_DISABLE_CACHE as string | undefined) ?? 'false') ||
+  toBooleanFlag((import.meta.env.PUBLIC_SANITY_DISABLE_CACHE as string | undefined) ?? 'false');
+const manualCacheEnableFlagRaw =
+  (import.meta.env.SANITY_ENABLE_CACHE as string | undefined) ||
+  (import.meta.env.PUBLIC_SANITY_ENABLE_CACHE as string | undefined);
+const manualCacheEnableFlag =
+  manualCacheEnableFlagRaw === undefined ? true : toBooleanFlag(manualCacheEnableFlagRaw);
+
+export const sanityCacheEnabled =
+  !manualCacheDisableFlag &&
+  manualCacheEnableFlag &&
+  !import.meta.env.DEV &&
+  !previewDraftsEnabled &&
+  !visualEditingFlag;
 
 const DEFAULT_SANITY_CACHE_TTL_SECONDS = parsePositiveInt(
   (import.meta.env.SANITY_CACHE_TTL_SECONDS as string | undefined) ||
@@ -448,51 +478,12 @@ export const defaultClientConfig = config;
 
 export const visualEditingEnabled = stegaEnabled;
 export const previewDraftsActive = previewDraftsEnabled;
-export const previewDraftsRequestedFlag = runtimeHostState.previewDraftsRequested;
 export const liveSubscriptionsEnabled = stegaEnabled && liveSubscriptionsFlag;
 
 export const isVisualEditingHostnameAllowlisted = (hostname: string | null | undefined): boolean =>
   isHostnameAllowlisted(hostname);
-export const visualEditingHostAllowlisted = runtimeHostState.allowlisted;
+export const visualEditingHostAllowlisted = visualEditingOriginAllowed;
 export const visualEditingRequestedFlag = visualEditingRequested;
-
-export type ResolveSanityRuntimeStateOptions = HostStateOptions;
-
-export interface ResolvedSanityRuntimeState {
-  allowlisted: boolean;
-  perspective: 'published' | 'previewDrafts';
-  visualEditingRequested: boolean;
-  visualEditingEnabled: boolean;
-  previewDraftsRequested: boolean;
-  previewDraftsEnabled: boolean;
-  liveSubscriptionsRequested: boolean;
-  liveSubscriptionsEnabled: boolean;
-  sanityCacheEnabled: boolean;
-}
-
-export const resolveSanityRuntimeStateForHostname = (
-  hostname: string | null | undefined,
-  options: ResolveSanityRuntimeStateOptions = {}
-): ResolvedSanityRuntimeState => {
-  const allowlisted = isHostnameAllowlisted(hostname);
-  const hostState = computeHostState(allowlisted, options);
-  const stegaEnabledForHost = hostState.visualEditingFlag && Boolean(studioUrl);
-  const perspectiveForHost: ResolvedSanityRuntimeState['perspective'] = hostState.previewDraftsEnabled
-    ? 'previewDrafts'
-    : 'published';
-
-  return {
-    allowlisted,
-    perspective: perspectiveForHost,
-    visualEditingRequested,
-    visualEditingEnabled: stegaEnabledForHost,
-    previewDraftsRequested: hostState.previewDraftsRequested,
-    previewDraftsEnabled: hostState.previewDraftsEnabled,
-    liveSubscriptionsRequested,
-    liveSubscriptionsEnabled: stegaEnabledForHost && hostState.liveSubscriptionsFlag,
-    sanityCacheEnabled: hostState.sanityCacheEnabled,
-  };
-};
 
 // Define interfaces
 export interface Product {
