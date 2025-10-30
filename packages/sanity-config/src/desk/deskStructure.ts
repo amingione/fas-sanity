@@ -1,4 +1,4 @@
-import type {StructureResolver} from 'sanity/structure'
+import type { StructureResolver } from 'sanity/structure'
 import HomePane from '../components/studio/HomePane'
 import ComingSoonPane from '../components/studio/ComingSoonPane'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
@@ -20,7 +20,7 @@ const productsByCategory = (S: any) =>
             .title('Products')
             .schemaType('product')
             .filter('_type == "product" && $categoryId in category[]._ref')
-            .params({categoryId})
+            .params({ categoryId })
         )
     )
 
@@ -40,11 +40,10 @@ export const deskStructure: StructureResolver = (S, context) => {
             .child(
               S.documentTypeList('customer')
                 .apiVersion('2024-10-01')
-                .title('All customers')
                 .filter('_type == "customer"')
                 .defaultOrdering([
-                  {field: 'lifetimeSpend', direction: 'desc'},
-                  {field: 'orderCount', direction: 'desc'},
+                  { field: 'lifetimeSpend', direction: 'desc' },
+                  { field: 'orderCount', direction: 'desc' },
                 ])
             ),
           S.divider(),
@@ -57,7 +56,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                 .title('Subscribed customers')
                 .schemaType('customer')
                 .filter('_type == "customer" && (emailOptIn == true || marketingOptIn == true)')
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
             ),
           S.listItem()
             .id('customers-inactive')
@@ -68,7 +67,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                 .title('Customers with no orders')
                 .schemaType('customer')
                 .filter('_type == "customer" && coalesce(orderCount, 0) == 0')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
             ),
           S.listItem()
             .id('customers-recent')
@@ -79,28 +78,18 @@ export const deskStructure: StructureResolver = (S, context) => {
                 .title('Recently added customers')
                 .schemaType('customer')
                 .filter('_type == "customer"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
             ),
         ])
     )
 
   const supportingDocumentItems: any[] = []
 
-  if (hasType('customer')) {
-    supportingDocumentItems.push(customersItem)
-  }
-  if (hasType('invoice')) {
-    supportingDocumentItems.push(S.documentTypeListItem('invoice').title('Invoices'))
-  }
-  if (hasType('quote')) {
-    supportingDocumentItems.push(S.documentTypeListItem('quote').title('Quote Requests'))
-  }
-  if (hasType('expiredCart')) {
-    supportingDocumentItems.push(S.documentTypeListItem('expiredCart').title('Expired Carts'))
-  }
-  if (hasType('shippingLabel')) {
-    supportingDocumentItems.push(S.documentTypeListItem('shippingLabel').title('Shipping Labels'))
-  }
+  if (hasType('customer')) supportingDocumentItems.push(customersItem)
+  if (hasType('invoice')) supportingDocumentItems.push(S.documentTypeListItem('invoice').title('Invoices'))
+  if (hasType('quote')) supportingDocumentItems.push(S.documentTypeListItem('quote').title('Quote Requests'))
+  if (hasType('expiredCart')) supportingDocumentItems.push(S.documentTypeListItem('expiredCart').title('Expired Carts'))
+  if (hasType('shippingLabel')) supportingDocumentItems.push(S.documentTypeListItem('shippingLabel').title('Shipping Labels'))
 
   const items: any[] = [
     S.listItem()
@@ -116,15 +105,9 @@ export const deskStructure: StructureResolver = (S, context) => {
     ...orderStructureItems,
   ]
 
-  if (orderStructureItems.length > 0) {
-    items.push(S.divider())
-  }
-
+  if (orderStructureItems.length > 0) items.push(S.divider())
   items.push(...supportingDocumentItems)
-
-  if (supportingDocumentItems.length > 0) {
-    items.push(S.divider())
-  }
+  if (supportingDocumentItems.length > 0) items.push(S.divider())
 
   items.push(
     S.listItem()
@@ -155,17 +138,14 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('All products')
                   .apiVersion('2024-10-01')
                   .filter('_type == "product"')
-                  .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
                   .child((documentId: string) =>
                     S.document()
                       .schemaType('product')
                       .documentId(documentId)
                       .views([
                         S.view.form().title('Details').id('form'),
-                        S.view
-                          .component(ProductEditorPane as any)
-                          .title('Editor')
-                          .id('editor'),
+                        S.view.component(ProductEditorPane as any).title('Editor').id('editor'),
                       ])
                   )
               ),
@@ -179,17 +159,14 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Active products')
                   .schemaType('product')
                   .filter('_type == "product" && (status == "active" || !defined(status))')
-                  .defaultOrdering([{field: 'title', direction: 'asc'}])
+                  .defaultOrdering([{ field: 'title', direction: 'asc' }])
                   .child((documentId: string) =>
                     S.document()
                       .schemaType('product')
                       .documentId(documentId)
                       .views([
                         S.view.form().title('Details').id('form'),
-                        S.view
-                          .component(ProductEditorPane as any)
-                          .title('Editor')
-                          .id('editor'),
+                        S.view.component(ProductEditorPane as any).title('Editor').id('editor'),
                       ])
                   )
               ),
@@ -202,17 +179,14 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Draft products')
                   .schemaType('product')
                   .filter('_type == "product" && status == "draft"')
-                  .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
                   .child((documentId: string) =>
                     S.document()
                       .schemaType('product')
                       .documentId(documentId)
                       .views([
                         S.view.form().title('Details').id('form'),
-                        S.view
-                          .component(ProductEditorPane as any)
-                          .title('Editor')
-                          .id('editor'),
+                        S.view.component(ProductEditorPane as any).title('Editor').id('editor'),
                       ])
                   )
               ),
@@ -225,17 +199,14 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Paused products')
                   .schemaType('product')
                   .filter('_type == "product" && status == "paused"')
-                  .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
                   .child((documentId: string) =>
                     S.document()
                       .schemaType('product')
                       .documentId(documentId)
                       .views([
                         S.view.form().title('Details').id('form'),
-                        S.view
-                          .component(ProductEditorPane as any)
-                          .title('Editor')
-                          .id('editor'),
+                        S.view.component(ProductEditorPane as any).title('Editor').id('editor'),
                       ])
                   )
               ),
@@ -248,17 +219,14 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Archived products')
                   .schemaType('product')
                   .filter('_type == "product" && status == "archived"')
-                  .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
                   .child((documentId: string) =>
                     S.document()
                       .schemaType('product')
                       .documentId(documentId)
                       .views([
                         S.view.form().title('Details').id('form'),
-                        S.view
-                          .component(ProductEditorPane as any)
-                          .title('Editor')
-                          .id('editor'),
+                        S.view.component(ProductEditorPane as any).title('Editor').id('editor'),
                       ])
                   )
               ),
@@ -271,17 +239,14 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Out of stock products')
                   .schemaType('product')
                   .filter('_type == "product" && coalesce(inventory.quantity, 0) <= 0')
-                  .defaultOrdering([{field: 'title', direction: 'asc'}])
+                  .defaultOrdering([{ field: 'title', direction: 'asc' }])
                   .child((documentId: string) =>
                     S.document()
                       .schemaType('product')
                       .documentId(documentId)
                       .views([
                         S.view.form().title('Details').id('form'),
-                        S.view
-                          .component(ProductEditorPane as any)
-                          .title('Editor')
-                          .id('editor'),
+                        S.view.component(ProductEditorPane as any).title('Editor').id('editor'),
                       ])
                   )
               ),
@@ -308,7 +273,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('All quotes')
                   .apiVersion('2024-10-01')
                   .filter('_type == "quote"')
-                  .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
               ),
             S.documentTypeListItem('freightQuote')
               .title('Freight quotes')
@@ -317,7 +282,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Freight quotes')
                   .apiVersion('2024-10-01')
                   .filter('_type == "freightQuote"')
-                  .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
               ),
             S.documentTypeListItem('wheelQuote')
               .title('Wheel quotes')
@@ -326,7 +291,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Wheel quotes')
                   .apiVersion('2024-10-01')
                   .filter('_type == "wheelQuote"')
-                  .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                  .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
               ),
           ])
       )
@@ -349,7 +314,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Invoices')
                   .apiVersion('2024-10-01')
                   .filter('_type == "invoice"')
-                  .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}])
+                  .defaultOrdering([{ field: 'invoiceDate', direction: 'desc' }])
               ),
             S.documentTypeListItem('bill')
               .title('Bills')
@@ -358,7 +323,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Bills')
                   .apiVersion('2024-10-01')
                   .filter('_type == "bill"')
-                  .defaultOrdering([{field: 'issueDate', direction: 'desc'}])
+                  .defaultOrdering([{ field: 'issueDate', direction: 'desc' }])
               ),
             S.documentTypeListItem('check')
               .title('Checks')
@@ -367,7 +332,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Checks')
                   .apiVersion('2024-10-01')
                   .filter('_type == "check"')
-                  .defaultOrdering([{field: 'checkDate', direction: 'desc'}])
+                  .defaultOrdering([{ field: 'checkDate', direction: 'desc' }])
               ),
             S.documentTypeListItem('expense')
               .title('Expenses')
@@ -376,7 +341,7 @@ export const deskStructure: StructureResolver = (S, context) => {
                   .title('Expenses')
                   .apiVersion('2024-10-01')
                   .filter('_type == "expense"')
-                  .defaultOrdering([{field: 'date', direction: 'desc'}])
+                  .defaultOrdering([{ field: 'date', direction: 'desc' }])
               ),
             S.divider(),
             S.documentTypeListItem('bankAccount').title('Bank accounts'),

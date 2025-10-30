@@ -27,6 +27,7 @@
     "netlify/lib",
     "scripts",
     "packages/sanity-config",
+    "src",
     "env.d.ts",
     "*.ts",
     "*.tsx"

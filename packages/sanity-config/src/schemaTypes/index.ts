@@ -1,6 +1,7 @@
 import product from './documents/product'
 import category from './documents/category'
 import order from './documents/order'
+import tag from './documents/tag'
 import bill from './documents/bill'
 import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
@@ -214,11 +215,13 @@ import vendor from './documents/vendor'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
 import freightQuote from './documents/freightQuote'
+import shipment from './documents/shipping/shipment'
 import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
 import booking from './documents/booking'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
+import stripeEvent from './documents/integrations/stripeEvent'
 
 const documents = [
   collectionType,
@@ -238,10 +241,12 @@ const documents = [
   checkout,
   category,
   productBundle,
+  tag,
   bankAccountType,
   checkType,
   customer,
   shippingOption,
+  shipment,
   freightQuote,
   vehicleModel,
   filterTag,
@@ -250,6 +255,7 @@ const documents = [
   expense,
   booking,
   stripeWebhookEvent,
+  stripeEvent,
 ]
 
 import {homeType} from './singletons/homeType'
