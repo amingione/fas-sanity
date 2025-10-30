@@ -315,7 +315,7 @@ const OrdersShopifyListPane = React.forwardRef<HTMLDivElement, OrdersPaneProps>(
                 {checkout.status || 'abandoned'}
               </Text>
               <Text size={1} muted>
-                {`${itemCount} item${itemCount === 1 ? '' : 's'} • ${createdAgo}`}
+                {`• ${itemCount} item${itemCount === 1 ? '' : 's'} • ${createdAgo}`}
               </Text>
             </Stack>
             <Text size={3} weight="semibold">
