@@ -295,7 +295,12 @@ export async function listByFilters(
     // PERFORMANCE NOTE: For large datasets, ensure 'orderNumber', 'customerName', and 'customerEmail'
     // are indexed in the Sanity schema to optimize search performance.
     filters.push(
-      'string(orderNumber) match $searchPattern || customerName match $searchPattern || customerEmail match $searchPattern || _id match $searchPattern',
+      `(${[
+        'string(orderNumber) match $searchPattern',
+        'customerName match $searchPattern',
+        'customerEmail match $searchPattern',
+        '_id match $searchPattern',
+      ].join(' || ')})`,
     )
     queryParams.searchPattern = pattern
   }
