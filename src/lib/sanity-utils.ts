@@ -167,11 +167,12 @@ const visualEditingOriginAllowed = isHostnameAllowlisted(runtimeHostname);
 const visualEditingRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_VISUAL_EDITING as string | undefined
 );
-const previewDraftsEnvRequested = toBooleanFlag(
+const previewDraftsEnvOverride = toBooleanFlag(
   (import.meta.env.PUBLIC_SANITY_PREVIEW_DRAFTS as string | undefined) ?? 'false'
 );
-
-const visualEditingFlag = visualEditingRequested && visualEditingOriginAllowed;
+const liveSubscriptionsEnvRequested = toBooleanFlag(
+  import.meta.env.PUBLIC_SANITY_ENABLE_LIVE_SUBSCRIPTIONS as string | undefined
+);
 
 if (visualEditingRequested && !studioUrl) {
   console.warn(
@@ -185,14 +186,6 @@ if (visualEditingRequested && !visualEditingOriginAllowed) {
     `[sanity-utils] Visual editing disabled for host "${runtimeHostname ?? '<unknown>'}". Allowlisted hosts: ${allowed}.`
   );
 }
-
-const previewDraftsRequested =
-  visualEditingOriginAllowed && (visualEditingFlag || previewDraftsEnvRequested);
-
-const liveSubscriptionsRequested = toBooleanFlag(
-  import.meta.env.PUBLIC_SANITY_ENABLE_LIVE_SUBSCRIPTIONS as string | undefined
-);
-const liveSubscriptionsFlag = visualEditingOriginAllowed && liveSubscriptionsRequested;
 
 const apiToken =
   (import.meta.env.SANITY_API_TOKEN as string | undefined) ||
@@ -208,6 +201,10 @@ const manualCacheEnableFlagRaw =
   (import.meta.env.PUBLIC_SANITY_ENABLE_CACHE as string | undefined);
 const manualCacheEnableFlag =
   manualCacheEnableFlagRaw === undefined ? true : toBooleanFlag(manualCacheEnableFlagRaw);
+const baseCacheEnabled =
+  !manualCacheDisableFlag &&
+  manualCacheEnableFlag &&
+  !import.meta.env.DEV;
 
 interface HostStateOptions {
   emitWarnings?: boolean;
@@ -238,14 +235,9 @@ const computeHostState = (allowlisted: boolean, options: HostStateOptions = {}):
     previewDraftsEnabled = false;
   }
 
-  const liveSubscriptionsFlag = allowlisted && liveSubscriptionsRequested;
+  const liveSubscriptionsFlag = allowlisted && liveSubscriptionsEnvRequested;
 
-  const sanityCacheEnabled =
-    !manualCacheDisableFlag &&
-    manualCacheEnableFlag &&
-    !import.meta.env.DEV &&
-    !previewDraftsEnabled &&
-    !visualEditingFlag;
+  const sanityCacheEnabled = baseCacheEnabled && !previewDraftsEnabled && !visualEditingFlag;
 
   return {
     allowlisted,
@@ -259,21 +251,12 @@ const computeHostState = (allowlisted: boolean, options: HostStateOptions = {}):
 
 const runtimeHostState = computeHostState(visualEditingOriginAllowed, { emitWarnings: true });
 
-const { visualEditingFlag, previewDraftsRequested, previewDraftsEnabled, liveSubscriptionsFlag } =
-  runtimeHostState;
-
-if (visualEditingRequested && !studioUrl) {
-  console.warn(
-    '[sanity-utils] Visual editing enabled but no PUBLIC_SANITY_STUDIO_URL (or SANITY_STUDIO_URL) configured.'
-  );
-}
-
-if (visualEditingRequested && !runtimeHostState.allowlisted) {
-  const allowed = Array.from(visualEditingAllowedHosts.values()).join(', ') || '<none>';
-  console.warn(
-    `[sanity-utils] Visual editing disabled for host "${runtimeHostname ?? '<unknown>'}". Allowlisted hosts: ${allowed}.`
-  );
-}
+const {
+  visualEditingFlag: runtimeVisualEditingFlag,
+  previewDraftsEnabled: runtimePreviewDraftsEnabled,
+  liveSubscriptionsFlag: runtimeLiveSubscriptionsFlag,
+  sanityCacheEnabled: runtimeSanityCacheEnabled,
+} = runtimeHostState;
 
 const parsePositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
@@ -288,21 +271,7 @@ const parsePositiveInt = (value: unknown, fallback: number): number => {
   return fallback;
 };
 
-const manualCacheDisableFlag =
-  toBooleanFlag((import.meta.env.SANITY_DISABLE_CACHE as string | undefined) ?? 'false') ||
-  toBooleanFlag((import.meta.env.PUBLIC_SANITY_DISABLE_CACHE as string | undefined) ?? 'false');
-const manualCacheEnableFlagRaw =
-  (import.meta.env.SANITY_ENABLE_CACHE as string | undefined) ||
-  (import.meta.env.PUBLIC_SANITY_ENABLE_CACHE as string | undefined);
-const manualCacheEnableFlag =
-  manualCacheEnableFlagRaw === undefined ? true : toBooleanFlag(manualCacheEnableFlagRaw);
-
-export const sanityCacheEnabled =
-  !manualCacheDisableFlag &&
-  manualCacheEnableFlag &&
-  !import.meta.env.DEV &&
-  !previewDraftsEnabled &&
-  !visualEditingFlag;
+export const sanityCacheEnabled = runtimeSanityCacheEnabled;
 
 const DEFAULT_SANITY_CACHE_TTL_SECONDS = parsePositiveInt(
   (import.meta.env.SANITY_CACHE_TTL_SECONDS as string | undefined) ||
@@ -430,8 +399,8 @@ export const cachedSanityFetch = async <T>(
   return fetcher();
 };
 
-const perspective = previewDraftsEnabled ? 'previewDrafts' : 'published';
-const stegaEnabled = visualEditingFlag && Boolean(studioUrl);
+const perspective = runtimePreviewDraftsEnabled ? 'previewDrafts' : 'published';
+const stegaEnabled = runtimeVisualEditingFlag && Boolean(studioUrl);
 
 // Gracefully handle missing env vars in preview/editor environments
 const hasSanityConfig = Boolean(projectId && dataset);
@@ -449,7 +418,7 @@ const clientOptions: Parameters<typeof createClient>[0] = {
   perspective,
 };
 
-if (previewDraftsEnabled && apiToken) {
+if (runtimePreviewDraftsEnabled && apiToken) {
   clientOptions.token = apiToken;
 }
 
@@ -477,8 +446,8 @@ export const clientConfig = config;
 export const defaultClientConfig = config;
 
 export const visualEditingEnabled = stegaEnabled;
-export const previewDraftsActive = previewDraftsEnabled;
-export const liveSubscriptionsEnabled = stegaEnabled && liveSubscriptionsFlag;
+export const previewDraftsActive = runtimePreviewDraftsEnabled;
+export const liveSubscriptionsEnabled = stegaEnabled && runtimeLiveSubscriptionsFlag;
 
 export const isVisualEditingHostnameAllowlisted = (hostname: string | null | undefined): boolean =>
   isHostnameAllowlisted(hostname);

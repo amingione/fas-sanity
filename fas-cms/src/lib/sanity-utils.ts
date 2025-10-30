@@ -165,10 +165,10 @@ const isHostnameAllowlisted = (hostname: string | null | undefined): boolean => 
 const visualEditingRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_VISUAL_EDITING as string | undefined
 );
-const previewDraftsToggleRequested = toBooleanFlag(
+const previewDraftsEnvOverride = toBooleanFlag(
   (import.meta.env.PUBLIC_SANITY_PREVIEW_DRAFTS as string | undefined) ?? 'false'
 );
-const liveSubscriptionsRequested = toBooleanFlag(
+const liveSubscriptionsEnvRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_LIVE_SUBSCRIPTIONS as string | undefined
 );
 
@@ -196,8 +196,8 @@ const resolveRequestedPreviewState = (
   return {
     originAllowed,
     visualEditing: visualEditingRequested,
-    previewDrafts: visualEditingRequested || previewDraftsToggleRequested,
-    liveSubscriptions: liveSubscriptionsRequested,
+    previewDrafts: visualEditingRequested || previewDraftsEnvOverride,
+    liveSubscriptions: liveSubscriptionsEnvRequested,
   };
 };
 
@@ -206,6 +206,8 @@ const runtimePreviewState = resolveRequestedPreviewState(runtimeHostname);
 // features remain disabled until a request-scoped hostname is validated.
 const visualEditingOriginAllowed = runtimePreviewState.originAllowed;
 const visualEditingRequestedAtRuntime = runtimePreviewState.visualEditing;
+const previewDraftsResolved = runtimePreviewState.previewDrafts;
+const liveSubscriptionsResolved = runtimePreviewState.liveSubscriptions;
 
 if (visualEditingRequested && !studioUrl) {
   console.warn(
@@ -220,22 +222,19 @@ if (visualEditingRequested && !visualEditingOriginAllowed) {
   );
 }
 
-const previewDraftsRequested = runtimePreviewState.previewDrafts;
-const liveSubscriptionsRequested = runtimePreviewState.liveSubscriptions;
-
 const apiToken =
   (import.meta.env.SANITY_API_TOKEN as string | undefined) ||
   (import.meta.env.SANITY_WRITE_TOKEN as string | undefined) ||
   (import.meta.env.PUBLIC_SANITY_API_TOKEN as string | undefined) ||
   undefined;
 
-if (previewDraftsRequested && !apiToken) {
+if (previewDraftsResolved && !apiToken) {
   console.warn(
     '[sanity-utils] Preview drafts requested but no SANITY_API_TOKEN (or PUBLIC_SANITY_API_TOKEN) was found; falling back to published content.'
   );
 }
 
-const previewDraftsEnabled = previewDraftsRequested && Boolean(apiToken);
+const previewDraftsEnabled = previewDraftsResolved && Boolean(apiToken);
 
 const parsePositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
@@ -431,7 +430,7 @@ export const defaultClientConfig = config;
 
 export const visualEditingEnabled = stegaEnabled;
 export const previewDraftsActive = previewDraftsEnabled;
-export const liveSubscriptionsEnabled = stegaEnabled && liveSubscriptionsRequested;
+export const liveSubscriptionsEnabled = stegaEnabled && liveSubscriptionsResolved;
 
 export const isVisualEditingHostnameAllowlisted = (hostname: string | null | undefined): boolean =>
   isHostnameAllowlisted(hostname);
