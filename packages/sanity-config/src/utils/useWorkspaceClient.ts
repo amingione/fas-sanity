@@ -1,7 +1,7 @@
 import {createClient} from '@sanity/client'
-import type {ClientConfig} from '@sanity/client'
-import {useMemo} from 'react'
-import {useClient} from 'sanity'
+import type {ClientConfig, SanityClient} from '@sanity/client'
+import {useContext, useMemo} from 'react'
+import {SourceContext} from 'sanity/_singletons'
 import type {SourceClientOptions} from 'sanity'
 
 type UseClientOptions = (SourceClientOptions & Partial<ClientConfig>) | undefined
@@ -18,7 +18,25 @@ export function useWorkspaceClient(options?: UseClientOptions) {
   const {apiVersion = FALLBACK_API_VERSION, ...restOptions} = options || {}
   const {dataset, perspective, projectId, stega, token, useCdn, withCredentials} = restOptions
 
-  const baseClient = useClient({apiVersion})
+  const source = useContext(SourceContext)
+
+  const {baseClient, baseClientError} = useMemo<{
+    baseClient: SanityClient | null
+    baseClientError: unknown
+  }>(() => {
+    if (!source) {
+      return {baseClient: null, baseClientError: null}
+    }
+
+    try {
+      return {
+        baseClient: source.getClient({apiVersion}),
+        baseClientError: null,
+      }
+    } catch (err) {
+      return {baseClient: null, baseClientError: err}
+    }
+  }, [apiVersion, source])
 
   const fallbackClient = useMemo(() => {
     return createClient({
@@ -35,6 +53,17 @@ export function useWorkspaceClient(options?: UseClientOptions) {
   }, [apiVersion, dataset, perspective, projectId, stega, token, useCdn, withCredentials])
 
   const studioClient = useMemo(() => {
+    if (!baseClient) {
+      if (baseClientError && process.env.NODE_ENV !== 'production') {
+        console.warn(
+          'useWorkspaceClient: missing Sanity context, falling back to manual client',
+          baseClientError,
+        )
+      }
+
+      return null
+    }
+
     const config: Partial<ClientConfig> = {}
 
     if (projectId) config.projectId = projectId
@@ -56,7 +85,17 @@ export function useWorkspaceClient(options?: UseClientOptions) {
       }
       return null
     }
-  }, [baseClient, dataset, perspective, projectId, stega, token, useCdn, withCredentials])
+  }, [
+    baseClient,
+    baseClientError,
+    dataset,
+    perspective,
+    projectId,
+    stega,
+    token,
+    useCdn,
+    withCredentials,
+  ])
 
   return studioClient || fallbackClient
 }
