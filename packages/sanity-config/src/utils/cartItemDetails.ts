@@ -1,4 +1,4 @@
-type MetadataEntryInput =
+export type MetadataEntryInput =
   | Array<{key?: string | null; value?: unknown} | null | undefined>
   | Record<string, unknown>
   | null

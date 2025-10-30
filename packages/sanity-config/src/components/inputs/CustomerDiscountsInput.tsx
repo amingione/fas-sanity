@@ -1,5 +1,6 @@
 import React, {useMemo, useState} from 'react'
-import {ArrayInputProps, useFormValue} from 'sanity'
+import {useFormValue} from 'sanity'
+import type {ArrayOfObjectsInputProps} from 'sanity'
 import {
   Box,
   Button,
@@ -23,7 +24,9 @@ function sanitizeDocId(value?: string | null): string | undefined {
   return trimmed.replace(/^drafts\./, '')
 }
 
-type Props = ArrayInputProps<any>
+type DiscountValue = {_key: string} & Record<string, unknown>
+
+type Props = ArrayOfObjectsInputProps<DiscountValue>
 
 const CustomerDiscountsInput: React.FC<Props> = (props) => {
   const {renderDefault} = props

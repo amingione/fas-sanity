@@ -1,13 +1,14 @@
 import type {DocumentActionComponent} from 'sanity'
+import type {SanityClient} from '@sanity/client'
 
 const normalizeId = (id: string): string => id.replace(/^drafts\./, '')
 
-const getContextClient = (props: Record<string, unknown>) => {
+const getContextClient = (props: Record<string, unknown>): SanityClient | null => {
   const context = (props as any).context
   if (context?.getClient) {
-    return context.getClient({apiVersion: '2024-10-01'})
+    return context.getClient({apiVersion: '2024-10-01'}) as SanityClient
   }
-  return context?.client || null
+  return (context?.client as SanityClient | undefined) || null
 }
 
 const getApiBase = (): string => {
@@ -191,31 +192,36 @@ const archiveAction: DocumentActionComponent = (props) => {
       try {
         if (isArchived) {
           await Promise.all([
-            client.patch(id).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch((err) => {
+            client.patch(id).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch((err: unknown) => {
               console.error(`Failed to unarchive document ${id}:`, err);
-              if (typeof window !== 'undefined') window.alert(`Failed to unarchive document ${id}: ${err?.message || err}`);
+              const message = err instanceof Error ? err.message : String(err);
+              if (typeof window !== 'undefined') window.alert(`Failed to unarchive document ${id}: ${message}`);
             }),
-            client.patch(publishedId).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch((err) => {
+            client.patch(publishedId).unset(['archivedAt']).commit({autoGenerateArrayKeys: true}).catch((err: unknown) => {
               console.error(`Failed to unarchive document ${publishedId}:`, err);
-              if (typeof window !== 'undefined') window.alert(`Failed to unarchive document ${publishedId}: ${err?.message || err}`);
+              const message = err instanceof Error ? err.message : String(err);
+              if (typeof window !== 'undefined') window.alert(`Failed to unarchive document ${publishedId}: ${message}`);
             }),
           ])
         } else {
           const timestamp = new Date().toISOString()
           await Promise.all([
-            client.patch(id).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch((err) => {
+            client.patch(id).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch((err: unknown) => {
               console.error(`Failed to archive document ${id}:`, err);
-              if (typeof window !== 'undefined') window.alert(`Failed to archive document ${id}: ${err?.message || err}`);
+              const message = err instanceof Error ? err.message : String(err);
+              if (typeof window !== 'undefined') window.alert(`Failed to archive document ${id}: ${message}`);
             }),
-            client.patch(publishedId).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch((err) => {
+            client.patch(publishedId).set({archivedAt: timestamp}).commit({autoGenerateArrayKeys: true}).catch((err: unknown) => {
               console.error(`Failed to archive document ${publishedId}:`, err);
-              if (typeof window !== 'undefined') window.alert(`Failed to archive document ${publishedId}: ${err?.message || err}`);
+              const message = err instanceof Error ? err.message : String(err);
+              if (typeof window !== 'undefined') window.alert(`Failed to archive document ${publishedId}: ${message}`);
             }),
           ])
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Archive toggle failed', err)
-        if (typeof window !== 'undefined') window.alert(`Unable to update archive status: ${(err as any)?.message || err}`)
+        const message = err instanceof Error ? err.message : String(err)
+        if (typeof window !== 'undefined') window.alert(`Unable to update archive status: ${message}`)
       } finally {
         props.onComplete()
       }

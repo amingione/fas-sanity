@@ -1,6 +1,8 @@
 import {useEffect, useMemo} from 'react'
+import type {ReactNode} from 'react'
 import {ArrayOfObjectsInputProps, PatchEvent, set, unset} from 'sanity'
 import {normalizeMetadataEntries} from '../../utils/cartItemDetails'
+import type {MetadataEntryInput, NormalizedMetadataEntry} from '../../utils/cartItemDetails'
 
 const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function'
 
@@ -82,7 +84,7 @@ const consume = (source: Record<string, unknown>, keys: string[]) => {
 }
 
 const buildMetadataEntries = (
-  ...inputs: Array<unknown>
+  ...inputs: Array<MetadataEntryInput | NormalizedMetadataEntry[]>
 ): Array<{_key: string; _type: 'orderCartItemMeta'; key: string; value: string; source?: string}> => {
   const entries = inputs.flatMap((input) => normalizeMetadataEntries(input))
   return entries.map(({key, value}) => ({
@@ -143,16 +145,24 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   )
   const upgrades = toStringArray(consume(source, ['upgrades', 'upgrade_list']))
 
-  const metadataValues: unknown[] = []
+  const metadataValues: Array<MetadataEntryInput | NormalizedMetadataEntry[]> = []
   if ('metadata' in source) {
-    metadataValues.push(consume(source, ['metadata']))
+    const metadata = consume(source, ['metadata']) as
+      | MetadataEntryInput
+      | NormalizedMetadataEntry[]
+      | undefined
+    if (metadata !== undefined) metadataValues.push(metadata)
   }
   if ('raw_metadata' in source) {
-    metadataValues.push(consume(source, ['raw_metadata']))
+    const rawMetadata = consume(source, ['raw_metadata']) as
+      | MetadataEntryInput
+      | NormalizedMetadataEntry[]
+      | undefined
+    if (rawMetadata !== undefined) metadataValues.push(rawMetadata)
   }
 
   // Remaining fields on `source` should still be surfaced for context
-  metadataValues.push(source)
+  metadataValues.push(source as MetadataEntryInput)
 
   const metadata = buildMetadataEntries(...metadataValues)
 
@@ -204,8 +214,11 @@ const normalizeLegacyCartValue = (value: LegacyCartValue): OrderCartItem[] | und
   return undefined
 }
 
-const OrderCartItemsInput = (props: ArrayOfObjectsInputProps<OrderCartItem>) => {
+type OrderCartItemsInputProps = ArrayOfObjectsInputProps<OrderCartItem>
+
+const OrderCartItemsInput = (props: OrderCartItemsInputProps) => {
   const {value, onChange, renderDefault} = props
+  const renderArrayInput = renderDefault as (nextProps: ArrayOfObjectsInputProps<OrderCartItem>) => ReactNode
 
   const normalized = useMemo(() => normalizeLegacyCartValue(value), [value])
 
@@ -222,10 +235,10 @@ const OrderCartItemsInput = (props: ArrayOfObjectsInputProps<OrderCartItem>) => 
   }, [value, normalized, onChange])
 
   if (!Array.isArray(value) && normalized) {
-    return renderDefault({...props, value: normalized})
+    return renderArrayInput({...props, value: normalized})
   }
 
-  return renderDefault(props)
+  return renderArrayInput(props)
 }
 
 export default OrderCartItemsInput

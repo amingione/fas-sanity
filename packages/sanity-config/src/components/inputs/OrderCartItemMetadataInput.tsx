@@ -4,22 +4,26 @@ import {ArrayOfObjectsInputProps, PatchEvent, set, unset} from 'sanity'
 import {normalizeMetadataEntries} from '../../utils/cartItemDetails'
 
 type MetadataEntry = {
-  _key?: string
+  _key: string
   _type?: string
   key?: string
   value?: string
   source?: string
 }
 
-type MetadataValue = MetadataEntry[] | Record<string, unknown> | null | undefined
+type MetadataValue =
+  | Array<Partial<MetadataEntry> | Record<string, unknown> | null | undefined>
+  | Record<string, unknown>
+  | null
+  | undefined
 
-const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function';
+const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function'
 
 const generateKey = () => {
   if (HAS_RANDOM_UUID) {
-    return globalThis.crypto.randomUUID();
+    return globalThis.crypto.randomUUID()
   }
-  return Math.random().toString(36).slice(2);
+  return Math.random().toString(36).slice(2)
 }
 
 const toMetadataEntries = (value: Record<string, unknown>): MetadataEntry[] => {
@@ -39,9 +43,34 @@ const OrderCartItemMetadataInput = (props: ArrayOfObjectsInputProps<MetadataEntr
 
   useEffect(() => {
     const coerceMetadataArray = (val: MetadataValue): MetadataEntry[] | undefined => {
-      if (Array.isArray(val)) return val as MetadataEntry[]
+      if (Array.isArray(val)) {
+        return val
+          .filter((entry): entry is Partial<MetadataEntry> | Record<string, unknown> => Boolean(entry))
+          .map((entry) => {
+            const candidate = entry as Partial<MetadataEntry>
+            const key =
+              'key' in candidate && typeof candidate.key === 'string'
+                ? candidate.key
+                : undefined
+            const value =
+              'value' in candidate && typeof candidate.value === 'string'
+                ? candidate.value
+                : undefined
+            const source =
+              'source' in candidate && typeof candidate.source === 'string'
+                ? candidate.source
+                : undefined
+            return {
+              _key: candidate._key || generateKey(),
+              _type: candidate._type || 'orderCartItemMeta',
+              key,
+              value,
+              source,
+            }
+          })
+      }
       if (val && typeof val === 'object' && Object.keys(val).length) {
-        return toMetadataEntries(val)
+        return toMetadataEntries(val as Record<string, unknown>)
       }
       return undefined
     }
