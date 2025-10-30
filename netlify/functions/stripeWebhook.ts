@@ -2919,7 +2919,7 @@ const getCheckoutAsyncDefaults = (
   return {metadata, eventType, invoiceStripeStatus, amount, currency}
 }
 
-async function handleCheckoutAsyncPaymentSucceeded(
+export async function handleCheckoutAsyncPaymentSucceeded(
   session: Stripe.Checkout.Session,
   context: CheckoutAsyncContext = {},
 ): Promise<void> {
