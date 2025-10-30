@@ -25,6 +25,7 @@ export const PAGE_REFERENCES = [
   {type: 'product'},
   {type: 'blog'},
   {type: 'faq'},
+  {type: 'blogPost'},
 ]
 
 // API version to use when using the Sanity client within the studio

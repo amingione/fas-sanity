@@ -399,6 +399,29 @@ export const deskStructure: StructureResolver = (S, context) => {
 
   items.push(
     S.listItem()
+      .id('seo-and-schema')
+      .title('SEO & Schema')
+      .child(
+        S.list()
+          .title('SEO & Schema')
+          .items([
+            S.listItem()
+              .id('site-settings')
+              .title('Site settings')
+              .child(
+                S.document()
+                  .schemaType('settings')
+                  .documentId('settings')
+              ),
+            S.documentTypeListItem('schemaOrganization').title('Organization schema'),
+            S.documentTypeListItem('schemaProduct').title('Product schema'),
+            S.documentTypeListItem('schemaLocalBusiness').title('Local business schema'),
+          ])
+      )
+  )
+
+  items.push(
+    S.listItem()
       .id('online-store')
       .title('Online store')
       .child(
