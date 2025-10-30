@@ -162,37 +162,15 @@ const isHostnameAllowlisted = (hostname: string | null | undefined): boolean => 
   return visualEditingAllowedHosts.has(normalized);
 };
 
-const visualEditingOriginAllowed = isHostnameAllowlisted(runtimeHostname);
-
 const visualEditingRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_VISUAL_EDITING as string | undefined
 );
 const previewDraftsEnvRequested = toBooleanFlag(
   (import.meta.env.PUBLIC_SANITY_PREVIEW_DRAFTS as string | undefined) ?? 'false'
 );
-
-const visualEditingFlag = visualEditingRequested && visualEditingOriginAllowed;
-
-if (visualEditingRequested && !studioUrl) {
-  console.warn(
-    '[sanity-utils] Visual editing enabled but no PUBLIC_SANITY_STUDIO_URL (or SANITY_STUDIO_URL) configured.'
-  );
-}
-
-if (visualEditingRequested && !visualEditingOriginAllowed) {
-  const allowed = Array.from(visualEditingAllowedHosts.values()).join(', ') || '<none>';
-  console.warn(
-    `[sanity-utils] Visual editing disabled for host "${runtimeHostname ?? '<unknown>'}". Allowlisted hosts: ${allowed}.`
-  );
-}
-
-const previewDraftsRequested =
-  visualEditingOriginAllowed && (visualEditingFlag || previewDraftsEnvRequested);
-
 const liveSubscriptionsRequested = toBooleanFlag(
   import.meta.env.PUBLIC_SANITY_ENABLE_LIVE_SUBSCRIPTIONS as string | undefined
 );
-const liveSubscriptionsFlag = visualEditingOriginAllowed && liveSubscriptionsRequested;
 
 const apiToken =
   (import.meta.env.SANITY_API_TOKEN as string | undefined) ||
@@ -200,14 +178,6 @@ const apiToken =
   (import.meta.env.PUBLIC_SANITY_API_TOKEN as string | undefined) ||
   undefined;
 const hasApiToken = Boolean(apiToken);
-
-let previewDraftsEnabled = Boolean(previewDraftsRequested);
-if (previewDraftsEnabled && !hasApiToken) {
-  console.warn(
-    '[sanity-utils] Preview drafts requested but no SANITY_API_TOKEN (or PUBLIC_SANITY_API_TOKEN) was found; falling back to published content.'
-  );
-  previewDraftsEnabled = false;
-}
 
 export interface VisualEditingState {
   allowlisted: boolean;
@@ -254,6 +224,69 @@ export const resolveVisualEditingStateForHostname = (
   };
 };
 
+const defaultVisualEditingState: Readonly<VisualEditingState> = Object.freeze(
+  resolveVisualEditingStateForHostname(runtimeHostname)
+);
+
+const visualEditingOriginAllowed = defaultVisualEditingState.allowlisted;
+const visualEditingFlagForRuntime = defaultVisualEditingState.visualEditingFlag;
+const previewDraftsRequested = defaultVisualEditingState.previewDraftsRequested;
+const previewDraftsEnabled = defaultVisualEditingState.previewDraftsEnabled;
+const perspective = defaultVisualEditingState.perspective;
+const stegaEnabled = defaultVisualEditingState.stegaEnabled;
+const liveSubscriptionsFlagForRuntime = defaultVisualEditingState.liveSubscriptionsFlag;
+const liveSubscriptionsEnabledForRuntime = defaultVisualEditingState.liveSubscriptionsEnabled;
+
+if (visualEditingRequested && !studioUrl) {
+  console.warn(
+    '[sanity-utils] Visual editing enabled but no PUBLIC_SANITY_STUDIO_URL (or SANITY_STUDIO_URL) configured.'
+  );
+}
+
+if (visualEditingRequested && !visualEditingOriginAllowed) {
+  const allowed = Array.from(visualEditingAllowedHosts.values()).join(', ') || '<none>';
+  console.warn(
+    `[sanity-utils] Visual editing disabled for host "${runtimeHostname ?? '<unknown>'}". Allowlisted hosts: ${allowed}.`
+  );
+}
+
+if (previewDraftsRequested && !previewDraftsEnabled) {
+  console.warn(
+    '[sanity-utils] Preview drafts requested but no SANITY_API_TOKEN (or PUBLIC_SANITY_API_TOKEN) was found; falling back to published content.'
+  );
+}
+
+const buildSanityClientOptionsForState = (
+  state: VisualEditingState
+): Parameters<typeof createClient>[0] => {
+  const options: Parameters<typeof createClient>[0] = {
+    projectId,
+    dataset,
+    apiVersion,
+    useCdn: false,
+    perspective: state.perspective,
+  };
+
+  if (state.previewDraftsEnabled && apiToken) {
+    options.token = apiToken;
+  }
+
+  if (state.stegaEnabled && studioUrl) {
+    options.stega = { enabled: true, studioUrl } as const;
+  }
+
+  return options;
+};
+
+const buildSanityClientConfigForState = (state: VisualEditingState) =>
+  ({
+    projectId,
+    dataset,
+    apiVersion,
+    perspective: state.perspective,
+    studioUrl: state.stegaEnabled ? studioUrl : undefined,
+  }) as const;
+
 const parsePositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
     return Math.floor(value);
@@ -276,12 +309,20 @@ const manualCacheEnableFlagRaw =
 const manualCacheEnableFlag =
   manualCacheEnableFlagRaw === undefined ? true : toBooleanFlag(manualCacheEnableFlagRaw);
 
-export const sanityCacheEnabled =
+const computeSanityCacheEnabledForState = (state: VisualEditingState): boolean =>
   !manualCacheDisableFlag &&
   manualCacheEnableFlag &&
   !import.meta.env.DEV &&
-  !previewDraftsEnabled &&
-  !visualEditingFlag;
+  !state.previewDraftsEnabled &&
+  !state.visualEditingFlag;
+
+export const sanityCacheEnabled = computeSanityCacheEnabledForState(defaultVisualEditingState);
+
+export const isSanityCacheEnabledForState = (state: VisualEditingState): boolean =>
+  computeSanityCacheEnabledForState(state);
+
+export const isSanityCacheEnabledForHostname = (hostname: string | null | undefined): boolean =>
+  computeSanityCacheEnabledForState(resolveVisualEditingStateForHostname(hostname));
 
 const DEFAULT_SANITY_CACHE_TTL_SECONDS = parsePositiveInt(
   (import.meta.env.SANITY_CACHE_TTL_SECONDS as string | undefined) ||
@@ -345,6 +386,12 @@ const stableStringify = (value: unknown): string => {
 export interface SanityCacheOptions {
   ttlSeconds?: number;
   forceRefresh?: boolean;
+  cacheEnabled?: boolean;
+}
+
+export interface SanityRequestContext {
+  client?: SanityClientLite | null;
+  cache?: SanityCacheOptions;
 }
 
 export const cachedSanityFetch = async <T>(
@@ -352,7 +399,8 @@ export const cachedSanityFetch = async <T>(
   fetcher: () => Promise<T>,
   options: SanityCacheOptions = {}
 ): Promise<T> => {
-  const shouldUseCache = sanityCacheEnabled && !options.forceRefresh;
+  const cacheEnabledToggle = options.cacheEnabled ?? sanityCacheEnabled;
+  const shouldUseCache = cacheEnabledToggle && !options.forceRefresh;
   const cacheStore = shouldUseCache ? getSanityCacheStore() : null;
   const ttlSeconds =
     options.ttlSeconds !== undefined
@@ -409,9 +457,6 @@ export const cachedSanityFetch = async <T>(
   return fetcher();
 };
 
-const perspective = previewDraftsEnabled ? 'previewDrafts' : 'published';
-const stegaEnabled = visualEditingFlag && Boolean(studioUrl);
-
 // Gracefully handle missing env vars in preview/editor environments
 const hasSanityConfig = Boolean(projectId && dataset);
 if (!hasSanityConfig) {
@@ -420,44 +465,63 @@ if (!hasSanityConfig) {
   );
 }
 
-const clientOptions: Parameters<typeof createClient>[0] = {
-  projectId,
-  dataset,
-  apiVersion,
-  useCdn: false,
-  perspective,
-};
-
-if (previewDraftsEnabled && apiToken) {
-  clientOptions.token = apiToken;
-}
-
-if (stegaEnabled && studioUrl) {
-  clientOptions.stega = { enabled: true, studioUrl } as const;
-}
+const clientOptions = buildSanityClientOptionsForState(defaultVisualEditingState);
 
 export const sanity: SanityClientLite | null = hasSanityConfig
   ? (createClient(clientOptions) as unknown as SanityClientLite)
   : null;
+
+export const createSanityClientForVisualEditingState = (
+  state: VisualEditingState
+): SanityClientLite | null => {
+  if (!hasSanityConfig) return null;
+  return createClient(buildSanityClientOptionsForState(state)) as unknown as SanityClientLite;
+};
+
+export const createSanityClientForHostname = (
+  hostname: string | null | undefined
+): SanityClientLite | null => {
+  const state = resolveVisualEditingStateForHostname(hostname);
+  return createSanityClientForVisualEditingState(state);
+};
 
 // Back-compat aliases for callers expecting different names
 export const sanityClient = sanity as any;
 export const client = sanity as any;
 export const getClient = () => sanity as any;
 
-export const config = {
-  projectId,
-  dataset,
-  apiVersion,
-  perspective,
-  studioUrl: stegaEnabled ? studioUrl : undefined,
-} as const;
+export const visualEditingState = defaultVisualEditingState;
+
+const resolvedClientConfig = buildSanityClientConfigForState(defaultVisualEditingState);
+
+export const config = resolvedClientConfig;
 export const clientConfig = config;
 export const defaultClientConfig = config;
 
+export const resolveSanityClientConfigForVisualEditingState = (state: VisualEditingState) =>
+  buildSanityClientConfigForState(state);
+
+export const resolveSanityClientConfigForHostname = (
+  hostname: string | null | undefined
+) => buildSanityClientConfigForState(resolveVisualEditingStateForHostname(hostname));
+
+export const resolveSanityContextForHostname = (hostname: string | null | undefined) => {
+  const state = resolveVisualEditingStateForHostname(hostname);
+  const sanityCacheEnabledForHost = computeSanityCacheEnabledForState(state);
+  return {
+    state,
+    client: createSanityClientForVisualEditingState(state),
+    config: buildSanityClientConfigForState(state),
+    sanityCacheEnabled: sanityCacheEnabledForHost,
+    cache: { cacheEnabled: sanityCacheEnabledForHost } as SanityCacheOptions,
+  } as const;
+};
+
 export const visualEditingEnabled = stegaEnabled;
 export const previewDraftsActive = previewDraftsEnabled;
-export const liveSubscriptionsEnabled = stegaEnabled && liveSubscriptionsFlag;
+export const liveSubscriptionsEnabled = liveSubscriptionsEnabledForRuntime;
+export const liveSubscriptionsFlag = liveSubscriptionsFlagForRuntime;
+export const visualEditingFlag = visualEditingFlagForRuntime;
 
 export const isVisualEditingHostnameAllowlisted = (hostname: string | null | undefined): boolean =>
   isHostnameAllowlisted(hostname);
@@ -784,7 +848,7 @@ export async function fetchProductsFromSanity({
   vehicleSlug?: string;
   vehicleSlugs?: string[];
   minHp?: number;
-}): Promise<Product[]> {
+}, context?: SanityRequestContext): Promise<Product[]> {
   try {
     if (!hasSanityConfig) return [];
     const conditions: string[] = [];
@@ -863,10 +927,11 @@ export async function fetchProductsFromSanity({
       )
     }`;
 
-    if (!sanity) return [];
+    const clientToUse = context?.client ?? sanity;
+    if (!clientToUse) return [];
 
     const executeQuery = async () => {
-      const results = await sanity!.fetch<Product[]>(query, params);
+      const results = await clientToUse.fetch<Product[]>(query, params);
       return Array.isArray(results) ? results.map((item) => normalizeProductPrice(item)) : [];
     };
 
@@ -879,7 +944,8 @@ export async function fetchProductsFromSanity({
         conditions,
         params
       ],
-      executeQuery
+      executeQuery,
+      context?.cache
     );
   } catch (err) {
     console.error('Failed to fetch products:', err);
@@ -888,7 +954,7 @@ export async function fetchProductsFromSanity({
 }
 
 // Fetch all categories
-export async function fetchCategories(): Promise<Category[]> {
+export async function fetchCategories(context?: SanityRequestContext): Promise<Category[]> {
   try {
     if (!hasSanityConfig) return [];
     const query = `*[_type == "category" && defined(slug.current)] {
@@ -898,14 +964,16 @@ export async function fetchCategories(): Promise<Category[]> {
       "imageUrl": coalesce(image.asset->url, mainImage.asset->url, images[0].asset->url),
       description
     }`;
-    if (!sanity) return [];
+    const clientToUse = context?.client ?? sanity;
+    if (!clientToUse) return [];
     const executeQuery = async () => {
-      const results = await sanity!.fetch<Category[]>(query, {});
+      const results = await clientToUse.fetch<Category[]>(query, {});
       return Array.isArray(results) ? results.map((item) => normalizeCategoryEntry(item)) : [];
     };
     return cachedSanityFetch(
       ['fetchCategories', config.projectId, config.dataset, perspective],
-      executeQuery
+      executeQuery,
+      context?.cache
     );
   } catch (err) {
     console.error('Failed to fetch categories:', err);
@@ -914,7 +982,7 @@ export async function fetchCategories(): Promise<Category[]> {
 }
 
 // Fetch all tunes
-export async function fetchTunes(): Promise<Tune[]> {
+export async function fetchTunes(context?: SanityRequestContext): Promise<Tune[]> {
   try {
     if (!hasSanityConfig) return [];
     const query = `*[_type == "tune" && defined(slug.current)] {
@@ -922,11 +990,13 @@ export async function fetchTunes(): Promise<Tune[]> {
       title,
       slug
     }`;
-    if (!sanity) return [];
-    const executeQuery = async () => sanity!.fetch<Tune[]>(query, {});
+    const clientToUse = context?.client ?? sanity;
+    if (!clientToUse) return [];
+    const executeQuery = async () => clientToUse.fetch<Tune[]>(query, {});
     return cachedSanityFetch(
       ['fetchTunes', config.projectId, config.dataset, perspective],
-      executeQuery
+      executeQuery,
+      context?.cache
     );
   } catch (err) {
     console.error('Failed to fetch tunes:', err);
@@ -935,7 +1005,7 @@ export async function fetchTunes(): Promise<Tune[]> {
 }
 
 // Fetch all vehicles
-export async function fetchVehicles(): Promise<Vehicle[]> {
+export async function fetchVehicles(context?: SanityRequestContext): Promise<Vehicle[]> {
   try {
     if (!hasSanityConfig) return [];
     const query = `*[_type == "vehicleModel" && defined(slug.current)] {
@@ -943,11 +1013,13 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
       title,
       slug
     }`;
-    if (!sanity) return [];
-    const executeQuery = async () => sanity!.fetch<Vehicle[]>(query, {});
+    const clientToUse = context?.client ?? sanity;
+    if (!clientToUse) return [];
+    const executeQuery = async () => clientToUse.fetch<Vehicle[]>(query, {});
     return cachedSanityFetch(
       ['fetchVehicles', config.projectId, config.dataset, perspective],
-      executeQuery
+      executeQuery,
+      context?.cache
     );
   } catch (err) {
     console.error('Failed to fetch vehicles:', err);
@@ -956,7 +1028,10 @@ export async function fetchVehicles(): Promise<Vehicle[]> {
 }
 
 // Fetch product by slug
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(
+  slug: string,
+  context?: SanityRequestContext
+): Promise<Product | null> {
   try {
     if (!hasSanityConfig) return null;
     const query = `*[_type == "product" && slug.current == $slug][0]{
@@ -1020,14 +1095,16 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
         defined(category) => category[]->{ _id, title, slug }
       )
     }`;
-    if (!sanity) return null;
+    const clientToUse = context?.client ?? sanity;
+    if (!clientToUse) return null;
     const executeQuery = async () => {
-      const productResult = await sanity!.fetch<Product | null>(query, { slug });
+      const productResult = await clientToUse.fetch<Product | null>(query, { slug });
       return productResult ? normalizeProductPrice(productResult) : null;
     };
     return cachedSanityFetch(
       ['getProductBySlug', config.projectId, config.dataset, perspective, slug],
-      executeQuery
+      executeQuery,
+      context?.cache
     );
   } catch (err) {
     console.error(`Failed to fetch product with slug "${slug}":`, err);
@@ -1040,7 +1117,8 @@ export async function getRelatedProducts(
   slug: string,
   categoryIds: string[] = [],
   filters: string[] = [],
-  limit = 6
+  limit = 6,
+  context?: SanityRequestContext
 ) {
   if (!hasSanityConfig) return [];
   const ids = Array.isArray(categoryIds) ? categoryIds : [];
@@ -1061,9 +1139,10 @@ export async function getRelatedProducts(
     } | order(rel desc, onSale desc, coalesce(salePrice, price, 9e9) asc, _createdAt desc)[0...$limit]
   `;
   const params = { slug, catIds: ids, filters: flt, limit } as Record<string, any>;
-  if (!sanity) return [];
+  const clientToUse = context?.client ?? sanity;
+  if (!clientToUse) return [];
   const executeQuery = async () => {
-    const results = await sanity!.fetch<Product[]>(query, params);
+    const results = await clientToUse.fetch<Product[]>(query, params);
     return Array.isArray(results) ? results.map((item) => normalizeProductPrice(item)) : [];
   };
   return cachedSanityFetch(
@@ -1077,7 +1156,8 @@ export async function getRelatedProducts(
       flt,
       limit
     ],
-    executeQuery
+    executeQuery,
+    context?.cache
   );
 }
 
@@ -1086,7 +1166,8 @@ export async function getUpsellProducts(
   slug: string,
   categoryIds: string[] = [],
   basePrice?: number,
-  limit = 6
+  limit = 6,
+  context?: SanityRequestContext
 ) {
   if (!hasSanityConfig) return [];
   const ids = Array.isArray(categoryIds) ? categoryIds : [];
@@ -1108,9 +1189,10 @@ export async function getUpsellProducts(
   `;
   const params: Record<string, any> = { slug, catIds: ids, limit };
   if (hasPrice) params.price = basePrice;
-  if (!sanity) return [];
+  const clientToUse = context?.client ?? sanity;
+  if (!clientToUse) return [];
   const executeQuery = async () => {
-    const results = await sanity!.fetch<Product[]>(query, params);
+    const results = await clientToUse.fetch<Product[]>(query, params);
     return Array.isArray(results) ? results.map((item) => normalizeProductPrice(item)) : [];
   };
   return cachedSanityFetch(
@@ -1124,7 +1206,8 @@ export async function getUpsellProducts(
       hasPrice ? basePrice : null,
       limit
     ],
-    executeQuery
+    executeQuery,
+    context?.cache
   );
 }
 
@@ -1132,8 +1215,9 @@ export async function getUpsellProducts(
 export async function getSimilarProducts(
   categories: { slug?: { current?: string } }[] = [],
   currentSlug: string,
-  limit = 6
+  limit = 6,
+  context?: SanityRequestContext
 ): Promise<Product[]> {
   const catIds = (categories || []).map((c: any) => c?._id || c?._ref).filter(Boolean);
-  return getRelatedProducts(currentSlug, catIds, [], limit);
+  return getRelatedProducts(currentSlug, catIds, [], limit, context);
 }
