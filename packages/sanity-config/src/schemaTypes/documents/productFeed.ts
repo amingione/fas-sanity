@@ -1,11 +1,11 @@
-import {ShoppingCartIcon} from '@sanity/icons'
+import {BasketIcon} from '@sanity/icons'
 import {defineField, defineType} from 'sanity'
 
 export const productFeedType = defineType({
   name: 'productFeed',
   title: 'Marketplace Product Feed',
   type: 'document',
-  icon: ShoppingCartIcon,
+  icon: BasketIcon,
   fields: [
     defineField({
       name: 'title',

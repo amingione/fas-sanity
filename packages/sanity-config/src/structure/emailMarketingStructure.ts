@@ -1,4 +1,4 @@
-import {EnvelopeIcon, MegaphoneIcon} from '@sanity/icons'
+import {EnvelopeIcon, TargetIcon} from '@sanity/icons'
 import {ListItemBuilder} from 'sanity/structure'
 
 import defineStructure from '../utils/defineStructure'
@@ -6,14 +6,14 @@ import defineStructure from '../utils/defineStructure'
 export default defineStructure<ListItemBuilder>((S) =>
   S.listItem()
     .title('Email Marketing')
-    .icon(MegaphoneIcon)
+    .icon(TargetIcon)
     .child(
       S.list()
         .title('Email Marketing')
         .items([
           S.listItem()
             .title('Campaigns')
-            .icon(MegaphoneIcon)
+            .icon(TargetIcon)
             .schemaType('emailMarketingCampaign')
             .child(
               S.documentTypeList('emailMarketingCampaign')

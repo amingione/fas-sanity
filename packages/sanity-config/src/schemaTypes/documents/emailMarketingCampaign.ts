@@ -1,4 +1,4 @@
-import {EnvelopeIcon, MegaphoneIcon} from '@sanity/icons'
+import {EnvelopeIcon, TargetIcon} from '@sanity/icons'
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 import {validateSlug} from '../../utils/validateSlug'
@@ -7,13 +7,13 @@ export const emailMarketingCampaignType = defineType({
   name: 'emailMarketingCampaign',
   title: 'Email Marketing Campaign',
   type: 'document',
-  icon: MegaphoneIcon,
+  icon: TargetIcon,
   groups: [
     {
       default: true,
       name: 'planning',
       title: 'Planning',
-      icon: MegaphoneIcon,
+      icon: TargetIcon,
     },
     {
       name: 'creative',
