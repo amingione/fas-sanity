@@ -324,6 +324,7 @@ export default defineConfig({
       },
     ],
     build: {
+      outDir: joinSegments(packageRoot, 'dist', 'studio'),
       rollupOptions: {
         external: ['sanity/refractor'],
       },
