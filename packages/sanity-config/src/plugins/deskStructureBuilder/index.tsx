@@ -154,27 +154,29 @@ export default deskStructure`
           />
         </Flex>
 
-        <Card padding={3} radius={2} tone="transparent">
-          <Text size={1} muted>
+        <Card padding={4} radius={3} tone="transparent">
+          <Text size={2} muted>
             Sections added:
           </Text>
           {sections.length === 0 && (
-            <Text size={1} muted>
+            <Text size={2} muted>
               No sections yet. Add a title to begin.
             </Text>
           )}
-          {sections.map((section) => {
-            const parent = section.parentId
-              ? sections.find((candidate) => candidate.id === section.parentId)
-              : null
-            return (
-              <Text key={section.id} size={1}>
-                {section.title}
-                {section.schemaType ? ` → ${section.schemaType}` : ''}
-                {parent ? ` (child of ${parent.title})` : ''}
-              </Text>
-            )
-          })}
+          <Stack space={4} marginTop={3}>
+            {sections.map((section) => {
+              const parent = section.parentId
+                ? sections.find((candidate) => candidate.id === section.parentId)
+                : null
+              return (
+                <Text key={section.id} size={2}>
+                  {section.title}
+                  {section.schemaType ? ` → ${section.schemaType}` : ''}
+                  {parent ? ` (child of ${parent.title})` : ''}
+                </Text>
+              )
+            })}
+          </Stack>
         </Card>
 
         <Inline>
@@ -204,4 +206,3 @@ export const deskStructureBuilderTool = definePlugin({
     },
   ],
 })
-
