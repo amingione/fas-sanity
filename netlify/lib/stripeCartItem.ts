@@ -1,5 +1,9 @@
 import Stripe from 'stripe'
-import { deriveOptionsFromMetadata as deriveCartOptions } from '@fas/sanity-config/utils/cartItemDetails'
+import {
+  coerceStringArray,
+  deriveOptionsFromMetadata as deriveCartOptions,
+  uniqueStrings,
+} from '@fas/sanity-config/utils/cartItemDetails'
 
 type MetadataSource = 'lineItem' | 'price' | 'product' | 'session'
 
@@ -80,12 +84,29 @@ function collectMetadata(sources: Array<{ source: MetadataSource; data?: Record<
   return { map: combined, entries }
 }
 
+function sanitizeListInput(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value.replace(/[\u2022•]/g, ',').replace(/[\r\n]+/g, ',')
+  }
+  return value
+}
+
 function pickFirst(map: Record<string, string>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = map[key]
     if (value) return value
   }
   return undefined
+}
+
+function normalizeDetails(...values: Array<unknown>): string[] {
+  const segments = values.flatMap((value) => coerceStringArray(sanitizeListInput(value)))
+  if (segments.length === 0) return []
+  return uniqueStrings(
+    segments
+      .map((segment) => segment.replace(/[\u2022•]/g, '•').replace(/\s+/g, ' ').trim())
+      .filter(Boolean),
+  )
 }
 
 function extractCategories(product: Stripe.Product | null, metadataMap: Record<string, string>): string[] | undefined {
@@ -186,9 +207,42 @@ export function mapStripeLineItem(
 
   const baseName = description || fallbackName || productName
   const derivedOptions = deriveCartOptions(metadata.entries)
-  const optionSummary = derivedOptions.optionSummary
-  const optionDetails = derivedOptions.optionDetails
-  const upgrades = derivedOptions.upgrades
+  const fallbackSummary = pickFirst(metadata.map, [
+    'option_summary_display',
+    'option_summary',
+    'options_readable',
+    'selected_options_display',
+    'selected_options',
+  ])
+  const normalizedSummary = (derivedOptions.optionSummary || fallbackSummary || '').toString().trim()
+  const summary = normalizedSummary ? normalizedSummary : undefined
+  const summarySegments = summary ? normalizeDetails(summary) : []
+  const optionDetailCandidates = normalizeDetails(
+    derivedOptions.optionDetails,
+    summarySegments,
+    metadata.map.option_details_json,
+    metadata.map.option_details,
+    metadata.map.selected_options_json,
+    metadata.map.selected_options,
+    metadata.map.option_values,
+    metadata.map.option_value_display,
+  )
+  const optionDetails = optionDetailCandidates.length ? optionDetailCandidates : undefined
+  const upgradesCandidates = normalizeDetails(
+    derivedOptions.upgrades,
+    metadata.map.upgrades,
+    metadata.map.upgrade_list,
+    metadata.map.upgrade_summary,
+    metadata.map.upgrade_details,
+  )
+  const upgrades = upgradesCandidates.length
+    ? uniqueStrings(
+        upgradesCandidates.map((entry) => {
+          const match = entry.match(/^(?:upgrades?|add[-_ ]?ons?)[:\-\s]+(.+)/i)
+          return match && match[1] ? match[1].trim() || entry : entry
+        }),
+      )
+    : undefined
   const name = baseName || undefined
   const categories = extractCategories(productObj, metadata.map)
 
@@ -201,9 +255,9 @@ export function mapStripeLineItem(
     name,
     productName,
     description,
-    optionSummary,
-    optionDetails: optionDetails.length ? optionDetails : undefined,
-    upgrades: upgrades.length ? upgrades : undefined,
+    optionSummary: summary,
+    optionDetails,
+    upgrades,
     price,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,
     categories,
