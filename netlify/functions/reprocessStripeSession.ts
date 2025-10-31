@@ -118,6 +118,101 @@ const sanity = sanityToken
     })
   : null
 
+type ExistingOrderDoc = {
+  _id: string
+  orderNumber?: string | null
+  stripeSessionId?: string | null
+  paymentIntentId?: string | null
+  packingSlipUrl?: string | null
+}
+
+async function findExistingOrder(params: {
+  targetOrderId?: string
+  metadataOrderId?: string
+  stripeSessionId: string
+  paymentIntentId?: string | null
+  chargeId?: string | null
+  orderNumberCandidates: string[]
+}): Promise<ExistingOrderDoc | null> {
+  if (!sanity) return null
+  const projection =
+    '{_id, orderNumber, stripeSessionId, paymentIntentId, packingSlipUrl}'
+
+  const attempt = async (
+    query: string,
+    queryParams: Record<string, unknown>,
+  ): Promise<ExistingOrderDoc | null> => {
+    try {
+      const doc = await sanity.fetch<ExistingOrderDoc | null>(
+        `${query}${projection}`,
+        queryParams,
+      )
+      if (doc?._id) return doc
+    } catch (err) {
+      console.warn('reprocessStripeSession: lookup failed', err)
+    }
+    return null
+  }
+
+  const distinctNumbers = Array.from(
+    new Set(
+      params.orderNumberCandidates
+        .map((value) => (value || '').toString().trim())
+        .filter(Boolean),
+    ),
+  )
+
+  const targetIds = idVariants(
+    (params.targetOrderId || '').toString().trim() || undefined,
+  )
+  if (targetIds.length) {
+    const doc = await attempt('*[_type == "order" && _id in $ids][0]', {
+      ids: targetIds,
+    })
+    if (doc) return doc
+  }
+
+  const metadataIds = idVariants(
+    (params.metadataOrderId || '').toString().trim() || undefined,
+  )
+  if (metadataIds.length) {
+    const doc = await attempt('*[_type == "order" && _id in $ids][0]', {
+      ids: metadataIds,
+    })
+    if (doc) return doc
+  }
+
+  if (params.stripeSessionId) {
+    const doc = await attempt('*[_type == "order" && stripeSessionId == $sid][0]', {
+      sid: params.stripeSessionId,
+    })
+    if (doc) return doc
+  }
+
+  const paymentIntentId = (params.paymentIntentId || '').toString().trim()
+  if (paymentIntentId) {
+    const doc = await attempt('*[_type == "order" && paymentIntentId == $pid][0]', {
+      pid: paymentIntentId,
+    })
+    if (doc) return doc
+  }
+
+  const chargeId = (params.chargeId || '').toString().trim()
+  if (chargeId) {
+    const doc = await attempt('*[_type == "order" && chargeId == $cid][0]', {cid: chargeId})
+    if (doc) return doc
+  }
+
+  for (const candidate of distinctNumbers) {
+    const doc = await attempt('*[_type == "order" && orderNumber == $num][0]', {
+      num: candidate,
+    })
+    if (doc) return doc
+  }
+
+  return null
+}
+
 const DEBUG_REPROCESS = process.env.DEBUG_REPROCESS === '1'
 
 type NormalizedMetadata = Record<string, string>
@@ -350,11 +445,13 @@ async function upsertOrder({
   paymentIntent,
   metadata,
   autoFulfill,
+  targetOrderId,
 }: {
   session: Stripe.Checkout.Session
   paymentIntent: Stripe.PaymentIntent | null
   metadata: NormalizedMetadata
   autoFulfill: boolean
+  targetOrderId?: string
 }): Promise<{
   orderId?: string
   invoiceId?: string
@@ -372,6 +469,15 @@ async function upsertOrder({
     .toString()
     .trim()
   const invoiceIdMeta = (metadata['sanity_invoice_id'] || metadata['invoice_id'] || '')
+    .toString()
+    .trim()
+  const metadataOrderId = (
+    metadata['sanity_order_id'] ||
+    metadata['order_id'] ||
+    metadata['orderId'] ||
+    metadata['sanityOrderId'] ||
+    ''
+  )
     .toString()
     .trim()
 
@@ -415,6 +521,31 @@ async function upsertOrder({
   const derivedOrderStatus: 'paid' | 'cancelled' | 'closed' | 'expired' =
     sessionStatus === 'expired' ? 'expired' : paymentStatus === 'cancelled' ? 'cancelled' : 'paid'
 
+  const charge = (paymentIntent as any)?.charges?.data?.[0] as Stripe.Charge | undefined
+  const chargeId = charge?.id || undefined
+
+  const orderNumberCandidatesForLookup: string[] = []
+  const pushCandidate = (value?: string) => {
+    if (!value) return
+    const trimmed = value.toString().trim()
+    if (!trimmed) return
+    orderNumberCandidatesForLookup.push(trimmed)
+  }
+  pushCandidate(metadataOrderNumberRaw)
+  pushCandidate(metadataInvoiceNumber)
+  pushCandidate(sanitizeOrderNumber(metadataOrderNumberRaw))
+  pushCandidate(sanitizeOrderNumber(metadataInvoiceNumber))
+  pushCandidate(candidateFromSessionId(stripeSessionId))
+
+  const existingOrder = await findExistingOrder({
+    targetOrderId,
+    metadataOrderId,
+    stripeSessionId,
+    paymentIntentId: paymentIntent?.id || null,
+    chargeId,
+    orderNumberCandidates: orderNumberCandidatesForLookup,
+  })
+
   const shippingDetails = await resolveStripeShippingDetails({
     metadata,
     session,
@@ -423,17 +554,18 @@ async function upsertOrder({
     stripe,
   })
 
-  const orderNumber = await resolveOrderNumber({
-    metadataOrderNumber: metadataOrderNumberRaw,
-    invoiceNumber: metadataInvoiceNumber,
-    fallbackId: stripeSessionId,
-  })
+  const existingOrderNumber = (existingOrder?.orderNumber || '').toString().trim()
+  const orderNumber =
+    existingOrderNumber ||
+    (await resolveOrderNumber({
+      metadataOrderNumber: metadataOrderNumberRaw,
+      invoiceNumber: metadataInvoiceNumber,
+      fallbackId: stripeSessionId,
+    }))
 
   const cart = await buildCartFromSession(stripeSessionId, metadata)
   const shippingAddress = extractShippingAddress(session, email || undefined)
 
-  const charge = (paymentIntent as any)?.charges?.data?.[0] as Stripe.Charge | undefined
-  const chargeId = charge?.id || undefined
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined
   const receiptUrl = charge?.receipt_url || undefined
@@ -539,11 +671,6 @@ async function upsertOrder({
       console.warn('reprocessStripeSession: failed to lookup customer by email', err)
     }
   }
-
-  const existingOrder = await sanity.fetch<{_id: string; packingSlipUrl?: string} | null>(
-    `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
-    {sid: stripeSessionId},
-  )
 
   let orderId = existingOrder?._id || null
   if (orderId) {
@@ -664,6 +791,8 @@ export const handler: Handler = async (event) => {
     }
 
     const autoFulfill = toBoolean(body?.autoFulfill)
+    const targetOrderId =
+      typeof body?.targetOrderId === 'string' ? body.targetOrderId.trim() : ''
 
     const {session, paymentIntent, idType} = await resolveSessionAndIntent(rawId)
     if (!session) {
@@ -684,6 +813,7 @@ export const handler: Handler = async (event) => {
       paymentIntent,
       metadata,
       autoFulfill,
+      targetOrderId: targetOrderId || undefined,
     })
 
     if (!result.orderId) {
