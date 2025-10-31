@@ -46,6 +46,10 @@ type SanityOrderForShipStation = {
   dimensions?: { length?: number; width?: number; height?: number }
   stripeSessionId?: string
   shipStationOrderId?: string
+  shipStationLabelId?: string
+  shippingLabelUrl?: string
+  trackingNumber?: string
+  trackingUrl?: string
 }
 
 function requireShipStationCredentials() {
@@ -254,6 +258,13 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
     } catch (err) {
       console.warn('Failed to patch order with ShipStation order id', err)
     }
+    order.shipStationOrderId = shipStationOrderId
+  }
+
+  try {
+    await maybeCreateLabelForOrder(sanity, order)
+  } catch (err) {
+    console.warn('Failed to auto-create ShipStation label', err)
   }
 
   return shipStationOrderId || undefined
@@ -297,3 +308,92 @@ export async function findOrderIdByOrderNumber(sanity: SanityClient, orderNumber
 }
 
 export type ShipStationWebhookEvent = ShipStationWebhookPayload
+
+function normalizeCarrierCode(order: SanityOrderForShipStation): string | undefined {
+  const fromId = order.selectedService?.carrierId
+  if (fromId && !fromId.startsWith('se-')) return fromId
+  const name = order.selectedService?.carrier || order.shippingCarrier
+  if (!name) return undefined
+  return name.toString().trim().toLowerCase().replace(/\s+/g, '')
+}
+
+function normalizeServiceCode(order: SanityOrderForShipStation): string | undefined {
+  const code = order.selectedService?.serviceCode || order.selectedService?.service
+  return code ? code.toString().trim() : undefined
+}
+
+async function maybeCreateLabelForOrder(sanity: SanityClient, order: SanityOrderForShipStation) {
+  if (order.shipStationLabelId || order.shippingLabelUrl || order.trackingNumber) return
+  if (!order.shipStationOrderId) return
+
+  const carrierCode = normalizeCarrierCode(order)
+  const serviceCode = normalizeServiceCode(order)
+  if (!carrierCode || !serviceCode) return
+
+  const weight = normalizeWeight(order.weight)
+  const dims = order.dimensions
+    ? {
+        units: 'inches',
+        length: Number(order.dimensions.length || 0),
+        width: Number(order.dimensions.width || 0),
+        height: Number(order.dimensions.height || 0),
+      }
+    : undefined
+
+  const payload: Record<string, any> = {
+    carrierCode,
+    serviceCode,
+    shipDate: new Date().toISOString().slice(0, 10),
+    confirmation: 'none',
+    labelFormat: 'PDF',
+  }
+
+  const numericId = Number(order.shipStationOrderId)
+  if (Number.isFinite(numericId)) payload.orderId = numericId
+  else payload.orderKey = order.shipStationOrderId
+
+  if (weight) payload.weight = weight
+  if (dims) payload.dimensions = dims
+
+  const label = await shipStationRequest<any>('/orders/createlabel', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+
+  const labelUrl =
+    label?.labelData?.fileUrl ||
+    label?.labelDownload?.href ||
+    label?.labelDownload?.pdf ||
+    label?.label_url ||
+    undefined
+  const trackingNumber =
+    label?.trackingNumber || label?.tracking_number || label?.shipment?.trackingNumber || undefined
+  const trackingUrl = label?.trackingUrl || label?.tracking_url || undefined
+
+  try {
+    const patch = sanity
+      .patch(order._id)
+      .set({
+        shipStationLabelId: label?.labelId ? String(label.labelId) : label?.label_id ? String(label.label_id) : undefined,
+        shippingLabelUrl: labelUrl || undefined,
+        trackingNumber: trackingNumber || undefined,
+        trackingUrl: trackingUrl || undefined,
+      })
+      .setIfMissing({ shippingLog: [] })
+      .append('shippingLog', [
+        {
+          _type: 'shippingLogEntry',
+          status: 'label_created',
+          message: `Label purchased via ShipStation API (${carrierCode || 'carrier'} – ${serviceCode || 'service'})`,
+          createdAt: new Date().toISOString(),
+          trackingNumber: trackingNumber || undefined,
+          trackingUrl: trackingUrl || undefined,
+          labelUrl: labelUrl || undefined,
+        },
+      ])
+
+    await patch.commit({ autoGenerateArrayKeys: true })
+  } catch (err) {
+    console.warn('Failed to patch order after ShipStation label creation', err)
+  }
+}
