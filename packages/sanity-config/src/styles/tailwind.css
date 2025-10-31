@@ -12,13 +12,18 @@
     --studio-surface-overlay-light: rgba(248, 250, 252, 0.55);
     --studio-border-light: rgba(148, 163, 184, 0.35);
     --studio-border-strong-light: rgba(100, 116, 139, 0.4);
-    --studio-text-light: #0f172a;
-    --studio-muted-light: #4b5563;
+    --studio-text-light: #000000;
+    --studio-muted-light: #000000;
     --studio-accent-light: #2563eb;
     --studio-accent-strong-light: #1e293b;
     --studio-accent-muted-light: rgba(37, 99, 235, 0.12);
     --studio-shadow-light: 0 18px 45px rgba(15, 23, 42, 0.18);
     --studio-backdrop-light: rgba(148, 163, 184, 0.25);
+    --card-bg-color: var(--studio-surface);
+    --card-fg-color: var(--studio-text);
+    --card-muted-bg-color: var(--studio-surface);
+    --card-muted-fg-color: var(--studio-text);
+    --card-border-color: var(--studio-border);
 
     --studio-body-background-dark: radial-gradient(circle at 15% -10%, #1e293b 0%, #0f172a 45%, #020617 100%);
     --studio-surface-dark: rgba(15, 23, 42, 0.85);
@@ -27,13 +32,18 @@
     --studio-surface-overlay-dark: rgba(15, 23, 42, 0.6);
     --studio-border-dark: rgba(148, 163, 184, 0.28);
     --studio-border-strong-dark: rgba(148, 163, 184, 0.4);
-    --studio-text-dark: #f8fafc;
-    --studio-muted-dark: rgba(226, 232, 240, 0.78);
+    --studio-text-dark: #ffffff;
+    --studio-muted-dark: #ffffff;
     --studio-accent-dark: #60a5fa;
     --studio-accent-strong-dark: #e2e8f0;
     --studio-accent-muted-dark: rgba(96, 165, 250, 0.22);
     --studio-shadow-dark: 0 22px 55px rgba(2, 6, 23, 0.55);
     --studio-backdrop-dark: rgba(2, 6, 23, 0.55);
+    --card-bg-color-dark: #050505;
+    --card-fg-color-dark: #ffffff;
+    --card-muted-bg-color-dark: #050505;
+    --card-muted-fg-color-dark: #ffffff;
+    --card-border-color-dark: var(--studio-border-dark);
 
     --studio-body-background: var(--studio-body-background-light);
     --studio-surface: var(--studio-surface-light);
@@ -49,7 +59,18 @@
     --studio-accent-muted: var(--studio-accent-muted-light);
     --studio-shadow: var(--studio-shadow-light);
     --studio-backdrop: var(--studio-backdrop-light);
+    --card-bg-color: var(--studio-surface);
+    --card-fg-color: var(--studio-text);
+    --card-muted-bg-color: var(--studio-surface);
+    --card-muted-fg-color: var(--studio-text);
+    --card-border-color: var(--studio-border);
     color-scheme: light;
+  }
+
+  body.sanity-studio-theme,
+  body.sanity-studio-theme [data-ui] {
+    --card-muted-fg-color: var(--card-fg-color) !important;
+    --card-muted-bg-color: var(--card-bg-color) !important;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -75,6 +96,11 @@
       --studio-accent-muted: var(--studio-accent-muted-dark);
       --studio-shadow: var(--studio-shadow-dark);
       --studio-backdrop: var(--studio-backdrop-dark);
+      --card-bg-color: var(--card-bg-color-dark);
+      --card-fg-color: var(--card-fg-color-dark);
+      --card-muted-bg-color: var(--card-muted-bg-color-dark);
+      --card-muted-fg-color: var(--card-muted-fg-color-dark);
+      --card-border-color: var(--card-border-color-dark);
       color-scheme: dark;
     }
   }
@@ -108,6 +134,11 @@
     --studio-accent-muted: var(--studio-accent-muted-dark);
     --studio-shadow: var(--studio-shadow-dark);
     --studio-backdrop: var(--studio-backdrop-dark);
+    --card-bg-color: var(--card-bg-color-dark);
+    --card-fg-color: var(--card-fg-color-dark);
+    --card-muted-bg-color: var(--card-muted-bg-color-dark);
+    --card-muted-fg-color: var(--card-muted-fg-color-dark);
+    --card-border-color: var(--card-border-color-dark);
     color-scheme: dark;
   }
 
@@ -140,6 +171,11 @@
     --studio-accent-muted: var(--studio-accent-muted-light);
     --studio-shadow: var(--studio-shadow-light);
     --studio-backdrop: var(--studio-backdrop-light);
+    --card-bg-color: var(--studio-surface);
+    --card-fg-color: var(--studio-text);
+    --card-muted-bg-color: var(--studio-surface);
+    --card-muted-fg-color: var(--studio-text);
+    --card-border-color: var(--studio-border);
     color-scheme: light;
   }
 

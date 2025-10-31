@@ -453,6 +453,18 @@ export const deskStructure: StructureResolver = (S) =>
         ),
       S.divider(),
       S.listItem()
+        .id('marketing')
+        .title('Marketing')
+        .child(
+          S.list()
+            .title('Marketing')
+            .items([
+              S.documentTypeListItem('campaign').title('Campaigns'),
+              S.documentTypeListItem('attribution').title('Attribution'),
+            ])
+        ),
+      S.divider(),
+      S.listItem()
         .id('shipping-calendar')
         .title('Shipping Calendar')
         .child(
