@@ -2847,12 +2847,12 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       )
       if (byPI) return byPI
     }
-    if (order.orderNumber) {
-      const byOrderNumber = await sanity.fetch<string | null>(
-        `*[_type == "invoice" && (orderNumber == $orderNumber || orderRef._ref == $orderId || orderRef->_ref == $orderId)][0]._id`,
-        {orderNumber: order.orderNumber, orderId: order._id},
+    if (order._id) {
+      const byOrderRef = await sanity.fetch<string | null>(
+        `*[_type == "invoice" && (orderRef._ref == $orderId || orderRef->_ref == $orderId)][0]._id`,
+        {orderId: order._id},
       )
-      if (byOrderNumber) return byOrderNumber
+      if (byOrderRef) return byOrderRef
     }
     return null
   }

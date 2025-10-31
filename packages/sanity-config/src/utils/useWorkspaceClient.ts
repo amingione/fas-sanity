@@ -35,7 +35,7 @@ export function useWorkspaceClient(options?: UseClientOptions) {
       dataset: dataset || DEFAULT_DATASET,
       apiVersion,
       useCdn: useCdn ?? false,
-      withCredentials: withCredentials ?? true,
+      withCredentials: withCredentials ?? false,
       perspective: perspective || 'published',
       token,
       stega,
