@@ -262,7 +262,11 @@ const prepareItemPresentation = (source: {
   const metadataEntries = normalizeMetadataEntries(source.metadata as any)
   const derived = deriveCartOptions(metadataEntries)
   const rawName = (source?.name || source?.description || source?.productName || source?.title || source?.sku || 'Item').toString()
-  const title = rawName.split('•')[0]?.trim() || rawName
+  const nameSegments = rawName
+    .split('•')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+  const title = nameSegments[0] || rawName
   const summary = (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
   const optionDetails = uniqueStrings([
     ...coerceStringArray(source.optionDetails),
@@ -284,6 +288,14 @@ const prepareItemPresentation = (source: {
     if (detailSet.has(normalized)) return
     detailSet.add(normalized)
     details.push(detail)
+  }
+  if (nameSegments.length > 1) {
+    for (const segment of nameSegments.slice(1)) {
+      const normalized = segment.replace(/\s+/g, ' ').trim()
+      if (!normalized) continue
+      if (!shouldDisplayMetadataSegment(normalized)) continue
+      appendDetail(normalized)
+    }
   }
   const rawSkuCandidates = [
     source?.sku,
