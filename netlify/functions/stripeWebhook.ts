@@ -634,10 +634,13 @@ async function recordExpiredCart(
     stripeEventId?: string
     eventCreated?: number | null
     orderId?: string | null
+    preloadedCart?: CartItem[]
   },
 ) {
   const metadata = (session.metadata || {}) as Record<string, string>
-  const cart = await buildCartFromSessionLineItems(session.id, metadata)
+  const cart = Array.isArray(opts.preloadedCart)
+    ? opts.preloadedCart
+    : await buildCartFromSessionLineItems(session.id, metadata)
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const customerName =
     (session.customer_details?.name || (session.metadata?.customer_name as string) || email || '')
@@ -3101,16 +3104,34 @@ async function handleCheckoutExpired(
 ): Promise<void> {
   const timestamp = new Date().toISOString()
   const failureCode = 'checkout.session.expired'
+  const metadata = (session.metadata || {}) as Record<string, string>
+  const cart = await buildCartFromSessionLineItems(session.id, metadata)
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const expiresAt =
     typeof session.expires_at === 'number'
       ? new Date(session.expires_at * 1000).toISOString()
       : null
+  const createdAt =
+    typeof session.created === 'number' ? new Date(session.created * 1000).toISOString() : timestamp
   let failureMessage = 'Checkout session expired before payment was completed.'
   if (email) failureMessage = `${failureMessage} Customer: ${email}.`
   if (expiresAt) failureMessage = `${failureMessage} Expired at ${expiresAt}.`
   failureMessage = `${failureMessage} (session ${session.id})`
   const amountTotal = toMajorUnits(session.amount_total ?? undefined)
+  const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
+    ? Number((session as any)?.amount_subtotal) / 100
+    : undefined
+  const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
+    ? Number((session as any)?.total_details?.amount_tax) / 100
+    : undefined
+  let amountShipping = (() => {
+    const a = Number((session as any)?.shipping_cost?.amount_total)
+    if (Number.isFinite(a)) return a / 100
+    const b = Number((session as any)?.total_details?.amount_shipping)
+    return Number.isFinite(b) ? b / 100 : undefined
+  })()
+  const currencyLower = (session.currency || '').toString().toLowerCase() || undefined
+  const currencyUpper = currencyLower ? currencyLower.toUpperCase() : undefined
   const summary = buildStripeSummary({
     session,
     failureCode,
@@ -3119,41 +3140,243 @@ async function handleCheckoutExpired(
     eventCreated: session.created || null,
   })
 
-  const orderId = await sanity.fetch<string | null>(
+  const shippingDetails = await resolveStripeShippingDetails({
+    metadata,
+    session,
+    fallbackAmount: amountShipping,
+    stripe,
+  })
+  if (shippingDetails.amount !== undefined) {
+    amountShipping = shippingDetails.amount
+  }
+  const shippingCurrencyForDoc = shippingDetails.currency || currencyUpper
+
+  let shippingAddress: Record<string, any> | undefined
+  try {
+    const details = session.customer_details
+    const address = (details?.address || (session as any)?.shipping_details?.address) as
+      | Stripe.Address
+      | undefined
+    const name = details?.name || (session as any)?.shipping_details?.name || undefined
+    const phone = details?.phone || (session as any)?.shipping_details?.phone || undefined
+    shippingAddress = address
+      ? {
+          name: name || undefined,
+          phone: phone || undefined,
+          email: email || undefined,
+          addressLine1: address.line1 || undefined,
+          addressLine2: address.line2 || undefined,
+          city: address.city || undefined,
+          state: address.state || undefined,
+          postalCode: address.postal_code || undefined,
+          country: address.country || undefined,
+        }
+      : undefined
+  } catch (err) {
+    console.warn('stripeWebhook: could not parse shipping address for expired checkout', err)
+  }
+
+  const customerName =
+    (
+      shippingAddress?.name ||
+      metadata['customer_name'] ||
+      metadata['bill_to_name'] ||
+      session.customer_details?.name ||
+      email ||
+      ''
+    )
+      .toString()
+      .trim() || undefined
+
+  const existingOrderId = await sanity.fetch<string | null>(
     `*[_type == "order" && stripeSessionId == $sid][0]._id`,
     {sid: session.id},
   )
-  if (orderId) {
+  let orderId = existingOrderId
+  if (!orderId) {
     try {
+      const metadataOrderNumber = (
+        metadata['order_number'] || metadata['orderNo'] || metadata['website_order_number'] || ''
+      )
+        .toString()
+        .trim()
+      const metadataInvoiceNumber = (
+        metadata['sanity_invoice_number'] || metadata['invoice_number'] || ''
+      )
+        .toString()
+        .trim()
+      const orderNumber = await resolveOrderNumber({
+        metadataOrderNumber,
+        invoiceNumber: metadataInvoiceNumber,
+        fallbackId: session.id,
+      })
+      const orderSlug = createOrderSlug(orderNumber, session.id)
+      const baseDoc: Record<string, any> = pruneUndefined({
+        _type: 'order',
+        stripeSource: 'checkout.session',
+        stripeSessionId: session.id,
+        orderNumber,
+        slug: orderSlug ? {_type: 'slug', current: orderSlug} : undefined,
+        customerName,
+        customerEmail: email || undefined,
+        totalAmount: amountTotal,
+        amountSubtotal,
+        amountTax,
+        amountShipping,
+        currency: currencyLower,
+        status: 'expired',
+        paymentStatus: 'expired',
+        checkoutDraft: true,
+        createdAt,
+        stripeCreatedAt: createdAt,
+        stripeExpiresAt: expiresAt || undefined,
+        stripeCheckoutStatus: session.status || undefined,
+        stripeSessionStatus: session.status || undefined,
+        stripeCheckoutMode: session.mode || undefined,
+        stripePaymentIntentStatus: session.payment_status || undefined,
+        stripeLastSyncedAt: timestamp,
+        stripeSummary: summary,
+        paymentFailureCode: failureCode,
+        paymentFailureMessage: failureMessage,
+        cart: cart.length ? cart : undefined,
+        shippingAddress,
+        webhookNotified: true,
+      })
+
+      const selectedService = pruneUndefined({
+        carrierId: shippingDetails.carrierId,
+        carrier: shippingDetails.carrier,
+        service: shippingDetails.serviceName || shippingDetails.serviceCode,
+        serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName,
+        amount: amountShipping,
+        currency: shippingCurrencyForDoc,
+        deliveryDays: shippingDetails.deliveryDays,
+        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+      })
+      if (Object.keys(selectedService).length > 0) {
+        baseDoc.selectedService = selectedService
+      }
+      if (amountShipping !== undefined) {
+        baseDoc.selectedShippingAmount = amountShipping
+      }
+      if (shippingCurrencyForDoc) {
+        baseDoc.selectedShippingCurrency = shippingCurrencyForDoc
+      }
+      if (shippingDetails.deliveryDays !== undefined) {
+        baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
+      }
+      if (shippingDetails.estimatedDeliveryDate) {
+        baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+      }
+      if (shippingDetails.serviceCode) {
+        baseDoc.shippingServiceCode = shippingDetails.serviceCode
+      }
+      if (shippingDetails.serviceName) {
+        baseDoc.shippingServiceName = shippingDetails.serviceName
+      }
+      if (shippingDetails.carrier) {
+        baseDoc.shippingCarrier = shippingDetails.carrier
+      }
+      if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
+        baseDoc.shippingMetadata = shippingDetails.metadata
+      }
+
+      if (email) {
+        try {
+          const customerId = await sanity.fetch(
+            `*[_type == "customer" && email == $email][0]._id`,
+            {email},
+          )
+          if (customerId) baseDoc.customerRef = {_type: 'reference', _ref: customerId}
+        } catch (err) {
+          console.warn('stripeWebhook: failed to link customer for expired checkout', err)
+        }
+      }
+
+      const created = await sanity.create(baseDoc, {autoGenerateArrayKeys: true})
+      orderId = created?._id || null
+    } catch (err) {
+      console.warn('stripeWebhook: failed to create order for expired checkout', err)
+    }
+  } else {
+    try {
+      const patchData: Record<string, any> = pruneUndefined({
+        status: 'expired',
+        paymentStatus: 'expired',
+        checkoutDraft: true,
+        stripeCheckoutStatus: session.status || undefined,
+        stripeSessionStatus: session.status || undefined,
+        stripeCheckoutMode: session.mode || undefined,
+        stripePaymentIntentStatus: session.payment_status || undefined,
+        stripeLastSyncedAt: timestamp,
+        stripeCreatedAt: createdAt,
+        stripeExpiresAt: expiresAt || undefined,
+        stripeSummary: summary,
+        paymentFailureCode: failureCode,
+        paymentFailureMessage: failureMessage,
+        totalAmount: amountTotal,
+        amountSubtotal,
+        amountTax,
+        amountShipping,
+        currency: currencyLower,
+        cart: cart.length ? cart : undefined,
+        shippingAddress,
+        shippingCarrier: shippingDetails.carrier || undefined,
+        shippingServiceCode: shippingDetails.serviceCode || undefined,
+        shippingServiceName: shippingDetails.serviceName || undefined,
+        shippingDeliveryDays: shippingDetails.deliveryDays,
+        shippingEstimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+        shippingMetadata:
+          shippingDetails.metadata && Object.keys(shippingDetails.metadata).length
+            ? shippingDetails.metadata
+            : undefined,
+      })
+
+      const selectedServicePatch = pruneUndefined({
+        carrierId: shippingDetails.carrierId,
+        carrier: shippingDetails.carrier,
+        service: shippingDetails.serviceName || shippingDetails.serviceCode,
+        serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName,
+        amount: amountShipping,
+        currency: shippingCurrencyForDoc,
+        deliveryDays: shippingDetails.deliveryDays,
+        estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+      })
+      if (Object.keys(selectedServicePatch).length > 0) {
+        patchData.selectedService = selectedServicePatch
+        if (amountShipping !== undefined) {
+          patchData.selectedShippingAmount = amountShipping
+        }
+        if (shippingCurrencyForDoc) {
+          patchData.selectedShippingCurrency = shippingCurrencyForDoc
+        }
+      }
+
       await sanity
         .patch(orderId)
-        .set({
-          status: 'expired',
-          paymentStatus: 'expired',
-          stripeLastSyncedAt: timestamp,
-          paymentFailureCode: failureCode,
-          paymentFailureMessage: failureMessage,
-          stripeSummary: summary,
-        })
+        .set(patchData)
+        .setIfMissing({webhookNotified: true})
         .commit({autoGenerateArrayKeys: true})
-      await appendOrderEvent(orderId, {
-        eventType: 'checkout.session.expired',
-        status: 'expired',
-        label: 'Checkout expired',
-        message: failureMessage,
-        amount: amountTotal,
-        currency: (session.currency || '').toString().toUpperCase(),
-        stripeEventId: context.stripeEventId,
-        occurredAt: context.eventCreated ?? session.created,
-        metadata: session.metadata as Record<string, string>,
-      })
     } catch (err) {
       console.warn('stripeWebhook: failed to update order after checkout expiration', err)
     }
   }
 
-  const meta = (session.metadata || {}) as Record<string, string>
-  const invoiceMetaId = normalizeSanityId(meta['sanity_invoice_id'])
+  if (orderId) {
+    await appendOrderEvent(orderId, {
+      eventType: 'checkout.session.expired',
+      status: 'expired',
+      label: 'Checkout expired',
+      message: failureMessage,
+      amount: amountTotal,
+      currency: currencyUpper,
+      stripeEventId: context.stripeEventId,
+      occurredAt: context.eventCreated ?? session.created,
+      metadata: session.metadata as Record<string, string>,
+    })
+  }
+
+  const invoiceMetaId = normalizeSanityId(metadata['sanity_invoice_id'])
   if (invoiceMetaId) {
     const invoiceId = await sanity.fetch<string | null>(
       `*[_type == "invoice" && _id in $ids][0]._id`,
@@ -3185,6 +3408,7 @@ async function handleCheckoutExpired(
     stripeEventId: context.stripeEventId,
     eventCreated: context.eventCreated ?? session.created,
     orderId,
+    preloadedCart: cart,
   })
 }
 

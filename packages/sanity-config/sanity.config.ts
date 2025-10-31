@@ -72,9 +72,7 @@ const envFlag = (value?: string | null) => {
 const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) === true
 
 const brandTheme: StudioTheme = fasBrandTheme || (fasTheme as StudioTheme)
-const resolvedTheme: StudioTheme = useCoreTheme
-  ? (defaultTheme as StudioTheme)
-  : brandTheme
+const resolvedTheme: StudioTheme = useCoreTheme ? (defaultTheme as StudioTheme) : brandTheme
 
 const normalizeBaseUrl = (value?: string | null, fallback?: string): string | undefined => {
   const candidate = value?.trim() || fallback?.trim()
@@ -94,7 +92,7 @@ const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_NETLIFY_BASE') ||
   undefined
 
-const previewOrigin = normalizeBaseUrl(presentationPreviewOrigin, 'http://localhost:4321')!
+const previewOrigin = normalizeBaseUrl(presentationPreviewOrigin, 'http://localhost:3333')!
 
 const fasCmsPreviewOrigin = normalizeBaseUrl(
   getEnv('SANITY_STUDIO_FAS_CMS_PREVIEW_ORIGIN') ||
@@ -116,7 +114,7 @@ type PreviewTarget = {
 const previewTargets: PreviewTarget[] = [
   {key: 'primary', label: 'Storefront', origin: previewOrigin},
   ...(fasCmsPreviewOrigin
-    ? [{key: 'fas-cms', label: 'FAS CMS', origin: fasCmsPreviewOrigin}] as PreviewTarget[]
+    ? ([{key: 'fas-cms', label: 'FAS CMS', origin: fasCmsPreviewOrigin}] as PreviewTarget[])
     : []),
 ]
 
@@ -185,11 +183,7 @@ const isDev =
       : false
 
 const visionEnabled =
-  disableVisionOverride === true
-    ? false
-    : enableVisionOverride === true
-      ? true
-      : isDev
+  disableVisionOverride === true ? false : enableVisionOverride === true ? true : isDev
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false
@@ -201,14 +195,8 @@ export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
 
-  projectId:
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    'r4og35qd',
-  dataset:
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    'production',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
+  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
   /**
    * CORS origins must include:
    *   http://localhost:8888
