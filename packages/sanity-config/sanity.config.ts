@@ -193,7 +193,9 @@ const visionEnabled =
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false
-    : true
+    : enableVisualEditingOverride !== undefined
+      ? enableVisualEditingOverride
+      : true
 
 export default defineConfig({
   name: 'default',
