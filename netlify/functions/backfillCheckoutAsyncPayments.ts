@@ -62,7 +62,7 @@ export const handler: Handler = async (event) => {
   if (event.body) {
     try {
       payload = JSON.parse(event.body)
-    } catch (err) {
+    } catch {
       return {
         statusCode: 400,
         headers: {...CORS, 'Content-Type': 'application/json'},
