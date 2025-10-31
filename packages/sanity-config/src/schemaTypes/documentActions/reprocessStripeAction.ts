@@ -39,10 +39,15 @@ export const reprocessStripeSessionAction: DocumentActionComponent = (props) => 
         if (!id) return onComplete()
 
         const base = getNetlifyFnBase().replace(/\/$/, '')
+        const payload: Record<string, unknown> = { id, autoFulfill: true }
+        if (typeof doc?._id === 'string' && doc._id.trim()) {
+          payload.targetOrderId = doc._id.trim()
+        }
+
         const res = await fetch(`${base}/.netlify/functions/reprocessStripeSession`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, autoFulfill: true }),
+          body: JSON.stringify(payload),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok || data?.error) {
