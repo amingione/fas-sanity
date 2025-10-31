@@ -206,3 +206,5 @@ export const deskStructureBuilderTool = definePlugin({
     },
   ],
 })
+
+export default deskStructureBuilderTool
