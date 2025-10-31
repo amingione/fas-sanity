@@ -28,6 +28,10 @@
 [dev.environment]
   SANITY_STUDIO_PORT = "3333"
 
+[[scheduled_function]]
+  name = "syncMarketingAttribution"
+  schedule = "0 2 * * *"
+
 # Bypass redirect for known static assets
 [[redirects]]
   from = "/site.webmanifest"

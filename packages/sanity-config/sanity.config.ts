@@ -22,6 +22,7 @@ import {definePreviewUrl} from '@sanity/preview-url-secret/define-preview-url'
 import {schemaMarkup} from '@operationnation/sanity-plugin-schema-markup'
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
+import {deskStructureBuilderTool} from './src/plugins/deskStructureBuilder'
 import resolveDocumentActions from './src/resolveDocumentActions'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
@@ -192,9 +193,7 @@ const visionEnabled =
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false
-    : enableVisualEditingOverride === true
-      ? true
-      : isDev
+    : true
 
 export default defineConfig({
   name: 'default',
@@ -224,6 +223,7 @@ export default defineConfig({
       title: 'Content',
       structure: deskStructure,
     }),
+    deskStructureBuilderTool(),
     media(),
     codeInput(),
     schemaMarkup(),

@@ -86,6 +86,9 @@ import {stripeMetadataEntryType} from './objects/stripeMetadataEntry'
 import {stripePaymentMethodType} from './objects/stripePaymentMethodType'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
+import campaign from './marketing/campaigns/campaign'
+import attribution from './marketing/attribution'
+import marketingChannel from './marketing/marketingChannel'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -248,6 +251,9 @@ const documents = [
   expense,
   booking,
   stripeWebhookEvent,
+  campaign,
+  attribution,
+  marketingChannel,
 ]
 
 import {homeType} from './singletons/homeType'

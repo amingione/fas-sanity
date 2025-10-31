@@ -1,9 +1,9 @@
 import React, {useMemo, useState} from 'react'
 
 function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as
-    | string
-    | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     try {
@@ -77,7 +77,9 @@ export default function AdminTools() {
     try {
       return (
         // @ts-ignore
-        (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_BACKFILL_SECRET : '') ||
+        (typeof process !== 'undefined'
+          ? (process as any)?.env?.SANITY_STUDIO_BACKFILL_SECRET
+          : '') ||
         window.localStorage?.getItem('BACKFILL_SECRET') ||
         ''
       )
@@ -107,7 +109,7 @@ export default function AdminTools() {
       body?: Record<string, any>
       query?: Record<string, string | undefined>
       includeDryRunQuery?: boolean
-    } = {}
+    } = {},
   ) {
     if (busyKey) return
     const {dryRun, body = {}, query = {}, includeDryRunQuery = false} = options
@@ -196,8 +198,8 @@ export default function AdminTools() {
     return (
       <pre
         style={{
-          background: '#fafafa',
-          border: '1px solid #f0f0f0',
+          background: '#000000',
+          border: '1px solid #ffffff',
           padding: 8,
           borderRadius: 6,
           marginTop: 10,
@@ -211,11 +213,15 @@ export default function AdminTools() {
 
   const sharedSecretField = (id: string) => (
     <div style={{marginBottom: 8}}>
-      <label style={{display: 'block', fontSize: 12, color: '#555555', marginBottom: 4}} htmlFor={id}>
+      <label
+        style={{display: 'block', fontSize: 12, color: '#ffffff', marginBottom: 4}}
+        htmlFor={id}
+      >
         Optional BACKFILL secret
       </label>
       <input
         id={id}
+        name={id}
         type="password"
         value={secret}
         placeholder="Enter secret or leave blank"
@@ -231,13 +237,20 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Orders Backfill</h3>
-        <p style={{color: '#555555'}}>
-          Runs a cleanup across Order documents: normalises cart items, migrates legacy customer fields, and removes deprecated properties.
+        <p style={{color: '#ffffff'}}>
+          Runs a cleanup across Order documents: normalises cart items, migrates legacy customer
+          fields, and removes deprecated properties.
         </p>
         <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-            <input type="checkbox" checked={globalDryRun} onChange={(event) => setGlobalDryRun(event.target.checked)} /> Dry
-            run
+          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="orders-global-dry-run">
+            <input
+              id="orders-global-dry-run"
+              name="globalDryRun"
+              type="checkbox"
+              checked={globalDryRun}
+              onChange={(event) => setGlobalDryRun(event.target.checked)}
+            />{' '}
+            Dry run
           </label>
         </div>
         {sharedSecretField('orders-secret')}
@@ -265,11 +278,22 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Invoices Backfill</h3>
-        <p style={{color: '#555555'}}>Fixes invoice line items, migrates legacy references, and reconciles numbering.</p>
+        <p style={{color: '#ffffff'}}>
+          Fixes invoice line items, migrates legacy references, and reconciles numbering.
+        </p>
         <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-            <input type="checkbox" checked={globalDryRun} onChange={(event) => setGlobalDryRun(event.target.checked)} /> Dry
-            run
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="invoices-global-dry-run"
+          >
+            <input
+              id="invoices-global-dry-run"
+              name="globalDryRun"
+              type="checkbox"
+              checked={globalDryRun}
+              onChange={(event) => setGlobalDryRun(event.target.checked)}
+            />{' '}
+            Dry run
           </label>
         </div>
         {sharedSecretField('invoices-secret')}
@@ -297,11 +321,22 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Customers Backfill</h3>
-        <p style={{color: '#555555'}}>Cleans up legacy auth provider IDs, defaults opt-in flags, and refreshes metadata.</p>
+        <p style={{color: '#ffffff'}}>
+          Cleans up legacy auth provider IDs, defaults opt-in flags, and refreshes metadata.
+        </p>
         <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-            <input type="checkbox" checked={globalDryRun} onChange={(event) => setGlobalDryRun(event.target.checked)} /> Dry
-            run
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="customers-global-dry-run"
+          >
+            <input
+              id="customers-global-dry-run"
+              name="globalDryRun"
+              type="checkbox"
+              checked={globalDryRun}
+              onChange={(event) => setGlobalDryRun(event.target.checked)}
+            />{' '}
+            Dry run
           </label>
         </div>
         {sharedSecretField('customers-secret')}
@@ -329,23 +364,36 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Checkout Async Payments</h3>
-        <p style={{color: '#555555'}}>
-          Replays async Stripe Checkout outcomes to reconcile orders stuck in pending or cancelled states.
+        <p style={{color: '#ffffff'}}>
+          Replays async Stripe Checkout outcomes to reconcile orders stuck in pending or cancelled
+          states.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="checkout-async-dry-run"
+          >
             <input
+              id="checkout-async-dry-run"
+              name="checkoutDryRun"
               type="checkbox"
               checked={checkoutDryRun}
               onChange={(event) => setCheckoutDryRun(event.target.checked)}
             />{' '}
             Dry run
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Status filter</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="checkout-status-filter"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Status filter</span>
             <select
+              id="checkout-status-filter"
+              name="checkoutStatus"
               value={checkoutStatus}
-              onChange={(event) => setCheckoutStatus(event.target.value as 'all' | 'success' | 'failure')}
+              onChange={(event) =>
+                setCheckoutStatus(event.target.value as 'all' | 'success' | 'failure')
+              }
               style={inlineInputStyle}
             >
               <option value="all">All</option>
@@ -353,9 +401,14 @@ export default function AdminTools() {
               <option value="failure">Failure only</option>
             </select>
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Limit</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="checkout-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
             <input
+              id="checkout-limit"
+              name="checkoutLimit"
               type="number"
               min={1}
               value={checkoutLimit}
@@ -365,9 +418,14 @@ export default function AdminTools() {
           </label>
         </div>
         <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Checkout session ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="checkout-session-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Checkout session ID (optional)</span>
             <input
+              id="checkout-session-id"
+              name="checkoutSessionId"
               type="text"
               value={checkoutSessionId}
               onChange={(event) => setCheckoutSessionId(event.target.value)}
@@ -375,9 +433,14 @@ export default function AdminTools() {
               style={inputStyle}
             />
           </label>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Order ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="checkout-order-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
             <input
+              id="checkout-order-id"
+              name="checkoutOrderId"
               type="text"
               value={checkoutOrderId}
               onChange={(event) => setCheckoutOrderId(event.target.value)}
@@ -415,21 +478,32 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Order Shipping Backfill</h3>
-        <p style={{color: '#555555'}}>
-          Replays checkout sessions to backfill packing slips, carrier data, and selected shipping services.
+        <p style={{color: '#ffffff'}}>
+          Replays checkout sessions to backfill packing slips, carrier data, and selected shipping
+          services.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="shipping-dry-run"
+          >
             <input
+              id="shipping-dry-run"
+              name="shippingDryRun"
               type="checkbox"
               checked={shippingDryRun}
               onChange={(event) => setShippingDryRun(event.target.checked)}
             />{' '}
             Dry run
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Limit</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="shipping-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
             <input
+              id="shipping-limit"
+              name="shippingLimit"
               type="number"
               min={1}
               value={shippingLimit}
@@ -439,18 +513,28 @@ export default function AdminTools() {
           </label>
         </div>
         <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Order ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="shipping-order-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
             <input
+              id="shipping-order-id"
+              name="shippingOrderId"
               type="text"
               value={shippingOrderId}
               onChange={(event) => setShippingOrderId(event.target.value)}
               style={inputStyle}
             />
           </label>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Checkout session ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="shipping-session-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Checkout session ID (optional)</span>
             <input
+              id="shipping-session-id"
+              name="shippingSessionId"
               type="text"
               value={shippingSessionId}
               onChange={(event) => setShippingSessionId(event.target.value)}
@@ -486,16 +570,28 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Stripe Order Sync</h3>
-        <p style={{color: '#555555'}}>
-          Replays Stripe data to fill in checkout sessions, payment intents, or charge metadata on orders.
+        <p style={{color: '#ffffff'}}>
+          Replays Stripe data to fill in checkout sessions, payment intents, or charge metadata on
+          orders.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Mode</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="stripe-sync-mode"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Mode</span>
             <select
+              id="stripe-sync-mode"
+              name="stripeKind"
               value={stripeKind}
               onChange={(event) =>
-                setStripeKind(event.target.value === 'charge' ? 'charge' : event.target.value === 'checkout' ? 'checkout' : 'paymentIntent')
+                setStripeKind(
+                  event.target.value === 'charge'
+                    ? 'charge'
+                    : event.target.value === 'checkout'
+                      ? 'checkout'
+                      : 'paymentIntent',
+                )
               }
               style={inlineInputStyle}
             >
@@ -504,9 +600,14 @@ export default function AdminTools() {
               <option value="charge">Charge</option>
             </select>
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Limit</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="stripe-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
             <input
+              id="stripe-limit"
+              name="stripeLimit"
               type="number"
               min={1}
               value={stripeLimit}
@@ -514,14 +615,28 @@ export default function AdminTools() {
               style={inlineInputStyle}
             />
           </label>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-            <input type="checkbox" checked={stripeDryRun} onChange={(event) => setStripeDryRun(event.target.checked)} /> Dry
-            run
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="stripe-dry-run"
+          >
+            <input
+              id="stripe-dry-run"
+              name="stripeDryRun"
+              type="checkbox"
+              checked={stripeDryRun}
+              onChange={(event) => setStripeDryRun(event.target.checked)}
+            />{' '}
+            Dry run
           </label>
         </div>
-        <label style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}>
-          <span style={{fontSize: 12, color: '#555555'}}>Specific Stripe ID (optional)</span>
+        <label
+          style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
+          htmlFor="stripe-specific-id"
+        >
+          <span style={{fontSize: 12, color: '#ffffff'}}>Specific Stripe ID (optional)</span>
           <input
+            id="stripe-specific-id"
+            name="stripeId"
             type="text"
             value={stripeId}
             onChange={(event) => setStripeId(event.target.value)}
@@ -557,21 +672,31 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Payment Failure Diagnostics</h3>
-        <p style={{color: '#555555'}}>
+        <p style={{color: '#ffffff'}}>
           Pulls failure codes from Stripe and patches orders/invoices with reconciliation details.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="payment-failures-dry-run"
+          >
             <input
+              id="payment-failures-dry-run"
+              name="paymentFailuresDryRun"
               type="checkbox"
               checked={paymentFailuresDryRun}
               onChange={(event) => setPaymentFailuresDryRun(event.target.checked)}
             />{' '}
             Dry run
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Limit</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="payment-failures-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
             <input
+              id="payment-failures-limit"
+              name="paymentFailuresLimit"
               type="number"
               min={1}
               value={paymentFailuresLimit}
@@ -581,18 +706,28 @@ export default function AdminTools() {
           </label>
         </div>
         <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Order ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="payment-failures-order-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
             <input
+              id="payment-failures-order-id"
+              name="paymentFailuresOrderId"
               type="text"
               value={paymentFailuresOrderId}
               onChange={(event) => setPaymentFailuresOrderId(event.target.value)}
               style={inputStyle}
             />
           </label>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Order number (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="payment-failures-order-number"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Order number (optional)</span>
             <input
+              id="payment-failures-order-number"
+              name="paymentFailuresOrderNumber"
               type="text"
               value={paymentFailuresOrderNumber}
               onChange={(event) => setPaymentFailuresOrderNumber(event.target.value)}
@@ -600,9 +735,14 @@ export default function AdminTools() {
               style={inputStyle}
             />
           </label>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Payment intent ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="payment-failures-intent"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Payment intent ID (optional)</span>
             <input
+              id="payment-failures-intent"
+              name="paymentFailuresPaymentIntent"
               type="text"
               value={paymentFailuresPaymentIntent}
               onChange={(event) => setPaymentFailuresPaymentIntent(event.target.value)}
@@ -640,15 +780,31 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Refund Reconciliation</h3>
-        <p style={{color: '#555555'}}>Replays Stripe refund webhook events to ensure orders and invoices reflect refund status.</p>
+        <p style={{color: '#ffffff'}}>
+          Replays Stripe refund webhook events to ensure orders and invoices reflect refund status.
+        </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}}>
-            <input type="checkbox" checked={refundsDryRun} onChange={(event) => setRefundsDryRun(event.target.checked)} /> Dry
-            run
-          </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Limit</span>
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="refunds-dry-run"
+          >
             <input
+              id="refunds-dry-run"
+              name="refundsDryRun"
+              type="checkbox"
+              checked={refundsDryRun}
+              onChange={(event) => setRefundsDryRun(event.target.checked)}
+            />{' '}
+            Dry run
+          </label>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="refunds-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <input
+              id="refunds-limit"
+              name="refundsLimit"
               type="number"
               min={1}
               value={refundsLimit}
@@ -658,18 +814,28 @@ export default function AdminTools() {
           </label>
         </div>
         <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Order ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="refunds-order-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
             <input
+              id="refunds-order-id"
+              name="refundsOrderId"
               type="text"
               value={refundsOrderId}
               onChange={(event) => setRefundsOrderId(event.target.value)}
               style={inputStyle}
             />
           </label>
-          <label style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Payment intent ID (optional)</span>
+          <label
+            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="refunds-payment-intent"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Payment intent ID (optional)</span>
             <input
+              id="refunds-payment-intent"
+              name="refundsPaymentIntent"
               type="text"
               value={refundsPaymentIntent}
               onChange={(event) => setRefundsPaymentIntent(event.target.value)}
@@ -706,13 +872,19 @@ export default function AdminTools() {
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Stripe Products Sync</h3>
-        <p style={{color: '#555555'}}>
-          Invokes the catalog sync to ensure Sanity products are reflected in Stripe with current pricing.
+        <p style={{color: '#ffffff'}}>
+          Invokes the catalog sync to ensure Sanity products are reflected in Stripe with current
+          pricing.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Mode</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="stripe-product-mode"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Mode</span>
             <select
+              id="stripe-product-mode"
+              name="productMode"
               value={productMode}
               onChange={(event) => setProductMode(event.target.value === 'all' ? 'all' : 'missing')}
               style={inlineInputStyle}
@@ -721,9 +893,14 @@ export default function AdminTools() {
               <option value="all">Sync all</option>
             </select>
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-            <span style={{fontSize: 12, color: '#555555'}}>Limit</span>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="stripe-product-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
             <input
+              id="stripe-product-limit"
+              name="productLimit"
               type="number"
               min={1}
               max={100}
@@ -733,9 +910,16 @@ export default function AdminTools() {
             />
           </label>
         </div>
-        <label style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}>
-          <span style={{fontSize: 12, color: '#555555'}}>Specific product IDs (optional, comma separated)</span>
+        <label
+          style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
+          htmlFor="stripe-product-ids"
+        >
+          <span style={{fontSize: 12, color: '#ffffff'}}>
+            Specific product IDs (optional, comma separated)
+          </span>
           <input
+            id="stripe-product-ids"
+            name="productIds"
             type="text"
             value={productIds}
             onChange={(event) => setProductIds(event.target.value)}

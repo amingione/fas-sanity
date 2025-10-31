@@ -126,7 +126,7 @@ export function createBackfillAction({label, functionName, resultSummary}: Backf
                     <Text size={2} weight="semibold">
                       {label}
                     </Text>
-                    <Text size={1} muted>
+                    <Text size={1} style={{color: 'var(--card-fg-color)'}}>
                       Runs Netlify function `{functionName}` using base {baseUrl}. Adjust options below.
                     </Text>
                   </Box>
@@ -140,7 +140,7 @@ export function createBackfillAction({label, functionName, resultSummary}: Backf
                     <Text>Dry run</Text>
                   </Flex>
                   <Stack space={2}>
-                    <Text size={1} muted>
+                    <Text size={1} style={{color: 'var(--card-fg-color)'}}>
                       Optional bearer secret
                     </Text>
                     <TextInput
