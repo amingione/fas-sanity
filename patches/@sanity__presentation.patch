@@ -1,0 +1,50 @@
+diff --git a/src/PresentationTool.tsx b/src/PresentationTool.tsx
+index b47c555d2db040a78ab401b2f233884bb2a4f4c8..9c5d981818076085c06393ab89e584ba92fa5d99 100644
+--- a/src/PresentationTool.tsx
++++ b/src/PresentationTool.tsx
+@@ -26,6 +26,7 @@ import {
+   DEFAULT_TOOL_NAME,
+   EDIT_INTENT_MODE,
+   LIVE_DRAFT_EVENTS_ENABLED,
++  VISUAL_EDITING_ENABLED,
+ } from './constants'
+ import PostMessageFeatures from './features/PostMessageFeatures'
+ import {useUnique, useWorkspace, type CommentIntentGetter} from './internals'
+@@ -223,7 +224,13 @@ export default function PresentationTool(props: {
+       navigate(nextState, nextSearchState, forceReplace),
+   )
+   useEffect(() => {
+-    if (!controller) return
++    if (!controller || !VISUAL_EDITING_ENABLED) {
++      if (!VISUAL_EDITING_ENABLED) {
++        setVisualEditingComlink(null)
++        setOverlaysConnection('idle')
++      }
++      return
++    }
+ 
+     const comlink = controller.createChannel<VisualEditingControllerMsg, VisualEditingNodeMsg>(
+       {
+diff --git a/src/constants.ts b/src/constants.ts
+index 064c20e581d0d5417ab04364d9a2a85264da9330..ae643fb54a02fb2e4e96987d51d4d3661c9c6ef4 100644
+--- a/src/constants.ts
++++ b/src/constants.ts
+@@ -29,6 +29,7 @@ export const POPUP_CHECK_INTERVAL = 1000 // ms
+ 
+ declare global {
+   const PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS: unknown
++  const PRESENTATION_ENABLE_VISUAL_EDITING: unknown
+ }
+ 
+ // Feature flag that uses the new Live Draft Content API instead of the Listen API + Mendoza events
+@@ -37,3 +38,10 @@ export const LIVE_DRAFT_EVENTS_ENABLED =
+     ? PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'true'
+     : // @ts-expect-error: env vars are not typed
+       process.env.SANITY_STUDIO_PRESENTATION_ENABLE_LIVE_DRAFT_EVENTS === 'true'
++
++// Allow workspaces to opt-in to starting the visual editing channel
++export const VISUAL_EDITING_ENABLED =
++  typeof PRESENTATION_ENABLE_VISUAL_EDITING === 'string'
++    ? PRESENTATION_ENABLE_VISUAL_EDITING === 'true'
++    : // @ts-expect-error: env vars are not typed
++      process.env.SANITY_STUDIO_PRESENTATION_ENABLE_VISUAL_EDITING === 'true'

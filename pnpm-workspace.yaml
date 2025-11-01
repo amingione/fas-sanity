@@ -1,5 +1,6 @@
 packages:
-  - 'packages/**'
+  - packages/**
+
 ignoredBuiltDependencies:
   - '@parcel/watcher'
   - canvas
@@ -12,4 +13,5 @@ ignoredBuiltDependencies:
   - unix-dgram
 
 patchedDependencies:
+  '@sanity/presentation': patches/@sanity__presentation.patch
   react-refractor@4.0.0: patches/react-refractor@4.0.0.patch
