@@ -23,6 +23,7 @@
     "@sanity/ui": "latest",
     "@sanity/vision": "latest",
     "@sanity/visual-editing": "^4.0.0",
+    "codemirror": "^6.0.0",
     "@stripe/stripe-js": "^3.2.0",
     "date-fns": "^3.6.0",
     "jspdf": "^3.0.1",
