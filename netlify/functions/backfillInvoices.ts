@@ -139,6 +139,13 @@ function dateStringFrom(value?: any): string | undefined {
   }
 }
 
+function parseLimit(value: any): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) return undefined
+  return Math.floor(numeric)
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -151,11 +158,17 @@ export const handler: Handler = async (event) => {
   if (expected && presented !== expected) return { statusCode: 401, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Unauthorized' }) }
 
   let dryRun = (event.queryStringParameters?.dryRun || '').toLowerCase() === 'true'
+  let limit = parseLimit(event.queryStringParameters?.limit)
   if (event.httpMethod === 'POST') {
-    try { const body = JSON.parse(event.body || '{}'); if (typeof body.dryRun === 'boolean') dryRun = body.dryRun } catch {}
+    try {
+      const body = JSON.parse(event.body || '{}')
+      if (typeof body.dryRun === 'boolean') dryRun = body.dryRun
+      const bodyLimit = parseLimit(body.limit)
+      if (bodyLimit !== undefined) limit = bodyLimit
+    } catch {}
   }
 
-  const pageSize = 100
+  const pageSize = limit ? Math.min(limit, 100) : 100
   let cursor = ''
   let total = 0
   let changed = 0
@@ -170,7 +183,7 @@ export const handler: Handler = async (event) => {
   let datesUpdated = 0
 
   try {
-    while (true) {
+    outer: while (true) {
       const docs: any[] = await sanity.fetch(
         `*[_type == "invoice" && _id > $cursor] | order(_id) {
           _id,
@@ -369,6 +382,9 @@ export const handler: Handler = async (event) => {
           if (setOps.lineItems) itemsFixed++
         }
         cursor = d._id
+        if (limit && total >= limit) {
+          break outer
+        }
       }
       if (docs.length < pageSize) break
     }
@@ -393,6 +409,7 @@ export const handler: Handler = async (event) => {
       taxRateUpdated,
       titleUpdated,
       datesUpdated,
+      limit,
     }),
   }
 }

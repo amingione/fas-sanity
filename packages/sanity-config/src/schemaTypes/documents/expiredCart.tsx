@@ -5,8 +5,18 @@ export default defineType({
   title: 'Expired Cart',
   type: 'document',
   fields: [
-    defineField({name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string', readOnly: true}),
-    defineField({name: 'clientReferenceId', title: 'Client Reference ID', type: 'string', readOnly: true}),
+    defineField({
+      name: 'stripeSessionId',
+      title: 'Stripe Session ID',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'clientReferenceId',
+      title: 'Client Reference ID',
+      type: 'string',
+      readOnly: true,
+    }),
     defineField({
       name: 'status',
       title: 'Status',
@@ -24,8 +34,23 @@ export default defineType({
     defineField({name: 'paymentStatus', title: 'Payment Status', type: 'string', readOnly: true}),
     defineField({name: 'customerEmail', title: 'Customer Email', type: 'string', readOnly: true}),
     defineField({name: 'customerName', title: 'Customer Name', type: 'string', readOnly: true}),
-    defineField({name: 'stripeCustomerId', title: 'Stripe Customer ID', type: 'string', readOnly: true}),
+    defineField({
+      name: 'stripeCustomerId',
+      title: 'Stripe Customer ID',
+      type: 'string',
+      readOnly: true,
+    }),
     defineField({name: 'totalAmount', title: 'Checkout Total', type: 'number', readOnly: true}),
+    defineField({name: 'stripeRaw', title: 'Raw Stripe Data', type: 'text', readOnly: true}),
+    defineField({name: 'stripeEventId', title: 'Stripe Event ID', type: 'string', readOnly: true}),
+    defineField({
+      name: 'eventCreated',
+      title: 'Event Created At',
+      type: 'datetime',
+      readOnly: true,
+    }),
+    defineField({name: 'failureMessage', title: 'Failure Message', type: 'string', readOnly: true}),
+
     defineField({name: 'currency', title: 'Currency', type: 'string', readOnly: true}),
     defineField({
       name: 'cart',
@@ -55,7 +80,12 @@ export default defineType({
       readOnly: true,
       options: {layout: 'grid'},
     }),
-    defineField({name: 'orderRef', title: 'Recovered Order', type: 'reference', to: [{type: 'order'}]}),
+    defineField({
+      name: 'orderRef',
+      title: 'Recovered Order',
+      type: 'reference',
+      to: [{type: 'order'}],
+    }),
     defineField({name: 'note', title: 'Internal Notes', type: 'text'}),
     defineField({name: 'createdAt', title: 'Created At', type: 'datetime', readOnly: true}),
     defineField({name: 'expiredAt', title: 'Expired At', type: 'datetime', readOnly: true}),

@@ -21,6 +21,7 @@
     "backfill:charge": "tsx scripts/backfill-order-stripe.ts --type charge",
     "backfill:paymentIntent": "tsx scripts/backfill-order-stripe.ts --type paymentIntent",
     "backfill:checkout": "tsx scripts/backfill-order-stripe.ts --type checkout",
+    "backfill:checkout-expired": "tsx scripts/backfill-expired-checkouts.ts",
     "backfill:product": "tsx scripts/backfill-stripe-products.ts --mode all",
     "backfill:price": "tsx scripts/backfill-stripe-products.ts",
     "backfill:refunds": "tsx scripts/backfill-refunds.ts",

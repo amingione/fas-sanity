@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useClient } from 'sanity'
 import { Card, Button, Stack, Text, Box } from '@sanity/ui'
+import { formatApiError } from '../../utils/formatApiError'
 
 type ShipEngineAddress = {
   name?: string
@@ -179,7 +180,7 @@ export default function BulkLabelGenerator() {
 
       const result = await res.json().catch(() => ({}))
       if (!res.ok || result?.error) {
-        throw new Error(result?.error || `HTTP ${res.status}`)
+        throw new Error(formatApiError(result?.error ?? result ?? `HTTP ${res.status}`))
       }
 
       const trackingNumber = result?.trackingNumber || result?.tracking_number

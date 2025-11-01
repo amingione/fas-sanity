@@ -603,6 +603,82 @@ const buildMetadataEntries = (
     value: entry.value,
   }))
 
+const parseCartMetadataNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^\d.-]/g, '')
+    if (!cleaned) return undefined
+    const parsed = Number(cleaned)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return undefined
+}
+
+const parseCartMetadataString = (value: unknown): string | undefined => {
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  return undefined
+}
+
+function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
+  const rawCandidates = [
+    metadata['cart'],
+    metadata['cart_items'],
+    metadata['cartItems'],
+    metadata['line_items'],
+  ]
+  const raw = rawCandidates.find((candidate) => typeof candidate === 'string' && candidate.trim())
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    const items: CartItem[] = []
+    for (const entry of parsed) {
+      if (!entry || typeof entry !== 'object') continue
+      const record = entry as Record<string, unknown>
+      const quantity = parseCartMetadataNumber(record.q ?? record.quantity ?? 1)
+      const price = parseCartMetadataNumber(
+        record.p ?? record.price ?? record.unit_price ?? record.amount ?? record.total,
+      )
+      const slug =
+        parseCartMetadataString(
+          (record.slug as string) ??
+            (record.productSlug as string) ??
+            (record.handle as string) ??
+            (record.url as string)?.split('/').filter(Boolean).pop(),
+        ) || undefined
+      const name =
+        parseCartMetadataString(
+          (record.n as string) ??
+            (record.name as string) ??
+            (record.title as string) ??
+            (record.productName as string),
+        ) ||
+        slug ||
+        parseCartMetadataString(record.sku) ||
+        'Item'
+      const item: CartItem = {
+        _type: 'orderCartItem',
+        _key: randomUUID(),
+        name,
+        productSlug: slug,
+        sku: parseCartMetadataString(record.sku),
+        id: parseCartMetadataString((record.id as string) ?? (record.i as string)),
+      }
+      if (typeof quantity === 'number' && Number.isFinite(quantity)) {
+        item.quantity = Math.max(1, Math.round(quantity))
+      }
+      if (typeof price === 'number' && Number.isFinite(price)) {
+        item.price = Number(price)
+      }
+      items.push(item)
+    }
+    return items
+  } catch (err) {
+    console.warn('stripeWebhook: failed to parse cart metadata', err)
+    return []
+  }
+}
+
 async function buildCartFromSessionLineItems(
   sessionId: string,
   metadata: Record<string, string>,
@@ -613,15 +689,25 @@ async function buildCartFromSessionLineItems(
       limit: 100,
       expand: ['data.price.product'],
     })
-    const cartItems = (items?.data || []).map((li: Stripe.LineItem) => ({
+    let cartItems = (items?.data || []).map((li: Stripe.LineItem) => ({
       _type: 'orderCartItem',
       _key: randomUUID(),
       ...mapStripeLineItem(li, {sessionMetadata: metadata}),
     })) as CartItem[]
+    if (!cartItems.length) {
+      cartItems = cartItemsFromMetadata(metadata)
+    }
+    if (!cartItems.length) return []
     return await enrichCartItemsFromSanity(cartItems, sanity)
   } catch (err) {
     console.warn('stripeWebhook: listLineItems failed', err)
-    return []
+    const fallback = cartItemsFromMetadata(metadata)
+    if (!fallback.length) return []
+    try {
+      return await enrichCartItemsFromSanity(fallback, sanity)
+    } catch {
+      return fallback
+    }
   }
 }
 
@@ -3196,12 +3282,17 @@ async function handleCheckoutExpired(
   if (!orderId) {
     try {
       const metadataOrderNumber = (
-        metadata['order_number'] || metadata['orderNo'] || metadata['website_order_number'] || ''
+        metadata['order_number'] ||
+        metadata['orderNo'] ||
+        metadata['website_order_number'] ||
+        ''
       )
         .toString()
         .trim()
       const metadataInvoiceNumber = (
-        metadata['sanity_invoice_number'] || metadata['invoice_number'] || ''
+        metadata['sanity_invoice_number'] ||
+        metadata['invoice_number'] ||
+        ''
       )
         .toString()
         .trim()
@@ -3293,7 +3384,7 @@ async function handleCheckoutExpired(
         }
       }
 
-      const created = await sanity.create(baseDoc, {autoGenerateArrayKeys: true})
+      const created = await sanity.create(baseDoc as any, {autoGenerateArrayKeys: true})
       orderId = created?._id || null
     } catch (err) {
       console.warn('stripeWebhook: failed to create order for expired checkout', err)
