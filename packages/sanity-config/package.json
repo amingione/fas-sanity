@@ -27,6 +27,7 @@
     "@stripe/stripe-js": "^3.2.0",
     "date-fns": "^3.6.0",
     "jspdf": "^3.0.1",
+    "@sanity/sdk-react": "latest",
     "pluralize-esm": "^9.0.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",

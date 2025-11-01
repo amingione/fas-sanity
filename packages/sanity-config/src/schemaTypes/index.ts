@@ -86,6 +86,7 @@ import {stripeMetadataEntryType} from './objects/stripeMetadataEntry'
 import {stripePaymentMethodType} from './objects/stripePaymentMethodType'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
+import downloadResource from './documents/downloadResource'
 import campaign from './marketing/campaigns/campaign'
 import attribution from './marketing/attribution'
 import marketingChannel from './marketing/marketingChannel'
@@ -254,6 +255,7 @@ const documents = [
   campaign,
   attribution,
   marketingChannel,
+  downloadResource,
 ]
 
 import {homeType} from './singletons/homeType'

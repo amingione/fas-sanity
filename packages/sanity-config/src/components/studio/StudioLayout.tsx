@@ -1,5 +1,6 @@
 import {useEffect} from 'react'
 import type {LayoutProps} from 'sanity'
+import PaneLimiter from './PaneLimiter'
 
 export default function StudioLayout(props: LayoutProps) {
   useEffect(() => {
@@ -30,5 +31,10 @@ export default function StudioLayout(props: LayoutProps) {
     }
   }, [])
 
-  return props.renderDefault(props)
+  return (
+    <>
+      <PaneLimiter maxPanes={2} />
+      {props.renderDefault(props)}
+    </>
+  )
 }
