@@ -1,4 +1,5 @@
 import type { DocumentActionComponent } from 'sanity'
+import { formatApiError } from '../../utils/formatApiError'
 
 function getFnBase(): string {
   const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
@@ -43,7 +44,9 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
           })
         })
         const result = await res.json().catch(() => ({}))
-        if (!res.ok || result?.error) throw new Error(result?.error || `HTTP ${res.status}`)
+        if (!res.ok || result?.error) {
+          throw new Error(formatApiError(result?.error ?? result ?? `HTTP ${res.status}`))
+        }
         if (result?.labelUrl) {
           try { window.open(result.labelUrl, '_blank') } catch {}
           alert(`Label created. Tracking: ${result?.trackingNumber || 'n/a'}`)

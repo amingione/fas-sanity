@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Flex, Text, useToast } from '@sanity/ui'
 import { useClient, useFormValue } from 'sanity'
+import { formatApiError } from '../../utils/formatApiError'
 
 function asShipEngineAddress(raw?: any) {
   if (!raw) return null
@@ -436,9 +437,17 @@ export default function ShippingLabelActions({ doc }: Props) {
         })
       })
 
-      const result = await res.json()
+      let result: any = null
+      try {
+        result = await res.json()
+      } catch {
+        result = null
+      }
 
-      if (!res.ok) throw new Error(result.error)
+      if (!res.ok) {
+        console.error('createShippingLabel failed', result)
+        throw new Error(formatApiError(result?.error ?? result ?? `HTTP ${res.status}`))
+      }
 
       const patchData: Record<string, any> = {}
       if (result.trackingUrl) patchData.trackingUrl = result.trackingUrl

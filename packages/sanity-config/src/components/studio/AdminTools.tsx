@@ -53,6 +53,13 @@ export default function AdminTools() {
   const [shippingOrderId, setShippingOrderId] = useState('')
   const [shippingSessionId, setShippingSessionId] = useState('')
 
+  const [invoiceLimit, setInvoiceLimit] = useState('50')
+
+  const [expiredDryRun, setExpiredDryRun] = useState(true)
+  const [expiredLimit, setExpiredLimit] = useState('50')
+  const [expiredSince, setExpiredSince] = useState('')
+  const [expiredSessionId, setExpiredSessionId] = useState('')
+
   const [stripeKind, setStripeKind] = useState<'checkout' | 'paymentIntent' | 'charge'>('checkout')
   const [stripeDryRun, setStripeDryRun] = useState(true)
   const [stripeLimit, setStripeLimit] = useState('25')
@@ -295,6 +302,21 @@ export default function AdminTools() {
             />{' '}
             Dry run
           </label>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="invoices-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <input
+              id="invoices-limit"
+              name="invoicesLimit"
+              type="number"
+              min={1}
+              value={invoiceLimit}
+              onChange={(event) => setInvoiceLimit(event.target.value)}
+              style={inlineInputStyle}
+            />
+          </label>
         </div>
         {sharedSecretField('invoices-secret')}
         <button
@@ -302,6 +324,12 @@ export default function AdminTools() {
           onClick={() =>
             invokeBackfill('invoices', 'backfillInvoices', {
               dryRun: globalDryRun,
+              query: {
+                limit: (() => {
+                  const limitValue = parseLimit(invoiceLimit)
+                  return typeof limitValue === 'number' ? String(limitValue) : undefined
+                })(),
+              },
               includeDryRunQuery: true,
             })
           }
@@ -474,6 +502,102 @@ export default function AdminTools() {
           {busyKey === 'checkoutAsync' ? 'Running…' : 'Run Async Payment Backfill'}
         </button>
         {renderMessage('checkoutAsync')}
+      </section>
+
+      <section style={cardStyle}>
+        <h3 style={{marginTop: 0}}>Expired Checkout Sessions</h3>
+        <p style={{color: '#ffffff'}}>
+          Reprocesses Stripe checkout sessions that have expired to create the matching order and
+          expired cart records in Sanity.
+        </p>
+        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="expired-dry-run"
+          >
+            <input
+              id="expired-dry-run"
+              name="expiredDryRun"
+              type="checkbox"
+              checked={expiredDryRun}
+              onChange={(event) => setExpiredDryRun(event.target.checked)}
+            />{' '}
+            Dry run
+          </label>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="expired-limit"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <input
+              id="expired-limit"
+              name="expiredLimit"
+              type="number"
+              min={1}
+              value={expiredLimit}
+              onChange={(event) => setExpiredLimit(event.target.value)}
+              style={inlineInputStyle}
+            />
+          </label>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            htmlFor="expired-since"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Created since (ISO or Unix)</span>
+            <input
+              id="expired-since"
+              name="expiredSince"
+              type="text"
+              value={expiredSince}
+              onChange={(event) => setExpiredSince(event.target.value)}
+              placeholder="2025-10-01 or 1730332800"
+              style={inlineInputStyle}
+            />
+          </label>
+        </div>
+        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+          <label
+            style={{display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 260px'}}
+            htmlFor="expired-session-id"
+          >
+            <span style={{fontSize: 12, color: '#ffffff'}}>Specific session ID (optional)</span>
+            <input
+              id="expired-session-id"
+              name="expiredSessionId"
+              type="text"
+              value={expiredSessionId}
+              onChange={(event) => setExpiredSessionId(event.target.value)}
+              placeholder="cs_..."
+              style={inputStyle}
+            />
+          </label>
+        </div>
+        {sharedSecretField('expired-secret')}
+        <button
+          type="button"
+          onClick={() =>
+            invokeBackfill('expired-checkouts', 'backfillExpiredCheckouts', {
+              dryRun: expiredDryRun,
+              body: {
+                dryRun: expiredDryRun,
+                limit: parseLimit(expiredLimit),
+                since: expiredSince.trim() || undefined,
+                sessionId: expiredSessionId.trim() || undefined,
+              },
+            })
+          }
+          disabled={busyKey !== null}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid #aa0000ff',
+            background: busyKey === 'expired-checkouts' ? '#f3f3f3' : '#aa0000ff',
+            cursor: busyKey ? 'default' : 'pointer',
+          }}
+        >
+          {busyKey === 'expired-checkouts' ? 'Running…' : 'Run Expired Checkout Backfill'}
+        </button>
+        {renderMessage('expired-checkouts')}
       </section>
 
       <section style={cardStyle}>

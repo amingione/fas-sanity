@@ -19,6 +19,51 @@ const sanity = createClient({
   useCdn: false
 })
 
+const extractShipEngineErrorMessage = (payload: unknown): string | undefined => {
+  if (!payload || typeof payload !== 'object') return undefined
+  const data = payload as Record<string, any>
+
+  const collectMessages = (value: unknown): string[] => {
+    if (!value) return []
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => collectMessages(item))
+    }
+    if (typeof value === 'string') return [value]
+    if (typeof value === 'object') {
+      const obj = value as Record<string, any>
+      const msgs: string[] = []
+      if (typeof obj.message === 'string') msgs.push(obj.message)
+      if (typeof obj.detail === 'string') msgs.push(obj.detail)
+      if (typeof obj.error === 'string') msgs.push(obj.error)
+      if (Array.isArray(obj.errors)) {
+        for (const item of obj.errors) {
+          msgs.push(...collectMessages(item))
+        }
+      }
+      return msgs
+    }
+    return []
+  }
+
+  const directKeys = ['message', 'error', 'error_description', 'detail']
+  for (const key of directKeys) {
+    const value = data[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+
+  if (Array.isArray(data.errors)) {
+    const messages = collectMessages(data.errors).filter((msg) => msg && msg.trim())
+    if (messages.length) return messages.join('; ')
+  }
+
+  if (data.details) {
+    const nested = collectMessages(data.details)
+    if (nested.length) return nested.join('; ')
+  }
+
+  return undefined
+}
+
 export const handler: Handler = async (event) => {
   // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -149,7 +194,13 @@ export const handler: Handler = async (event) => {
     })
     const labelData = await labelResp.json()
     if (!labelResp.ok) {
-      return { statusCode: labelResp.status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: labelData }) }
+      const friendlyError =
+        extractShipEngineErrorMessage(labelData) || `ShipEngine label request failed (HTTP ${labelResp.status})`
+      return {
+        statusCode: labelResp.status,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: friendlyError, details: labelData }),
+      }
     }
 
     const trackingNumber = labelData?.tracking_number
