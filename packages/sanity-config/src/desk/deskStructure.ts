@@ -23,6 +23,7 @@ import OrderListPane from '../components/studio/OrderListPane'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
 import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
+import DownloadsPreviewList from '../components/studio/downloads/DownloadsPreviewList'
 
 const API_VERSION = '2024-10-01'
 
@@ -37,6 +38,22 @@ const orderDocumentViews = (S: any) => (documentId: string) =>
         .title('Shipping')
         .id('shipping'),
     ])
+
+const expiredCheckoutsList = (S: any, title: string) =>
+  S.documentList()
+    .apiVersion(API_VERSION)
+    .title(title)
+    .schemaType('order')
+    .filter('_type == "order" && status == "expired"')
+    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+    .child(orderDocumentViews(S))
+
+const invoicesDocumentList = (S: any, title: string) =>
+  S.documentTypeList('invoice')
+    .title(title)
+    .apiVersion(API_VERSION)
+    .filter('_type == "invoice"')
+    .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}])
 
 const productDocumentViews = (S: any) => (documentId: string) =>
   S.document()
@@ -74,107 +91,10 @@ const createOrdersList = (S: any) =>
     .title('Orders')
     .icon(TrolleyIcon)
     .child(
-      S.list()
+      S.component()
+        .id('orders-pane')
         .title('Orders')
-        .items([
-          S.listItem()
-            .id('orders-all')
-            .title('All orders')
-            .child(
-              S.component()
-                .id('orders-pane')
-                .title('Orders')
-                .component(OrderListPane as any),
-            ),
-          S.divider(),
-          S.listItem()
-            .id('orders-pending')
-            .title('Pending fulfillment')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Pending fulfillment')
-                .schemaType('order')
-                .filter('_type == "order" && status == "paid" && !defined(fulfilledAt)')
-                .defaultOrdering([{field: 'createdAt', direction: 'asc'}])
-                .child(orderDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('orders-fulfilled')
-            .title('Fulfilled')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Fulfilled orders')
-                .schemaType('order')
-                .filter('_type == "order" && defined(fulfilledAt)')
-                .defaultOrdering([{field: 'fulfilledAt', direction: 'desc'}])
-                .child(orderDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('orders-paid')
-            .title('Paid')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Paid orders')
-                .schemaType('order')
-                .filter('_type == "order" && paymentStatus == "paid"')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                .child(orderDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('orders-unpaid')
-            .title('Unpaid / Failed')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Unpaid orders')
-                .schemaType('order')
-                .filter(
-                  '_type == "order" && !(coalesce(status, "") in ["expired"]) && !(coalesce(paymentStatus, "") in ["paid", "expired"])',
-                )
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                .child(orderDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('orders-expired-carts')
-            .title('Expired checkouts')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Expired checkouts')
-                .schemaType('order')
-                .filter('_type == "order" && status == "expired"')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                .child(orderDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('orders-recent')
-            .title('Recent (Last 30 days)')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Recent orders')
-                .schemaType('order')
-                .filter(
-                  '_type == "order" && dateTime(createdAt) > dateTime(now()) - 60*60*24*30',
-                )
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                .child(orderDocumentViews(S)),
-            ),
-          S.divider(),
-          S.listItem()
-            .id('orders-invoices')
-            .title('Invoices')
-            .child(
-              S.documentTypeList('invoice')
-                .title('Invoices')
-                .apiVersion(API_VERSION)
-                .filter('_type == "invoice"')
-                .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}]),
-            ),
-        ]),
+        .component(OrderListPane as any),
     )
 
 const createShippingList = (S: any) =>
@@ -456,15 +376,10 @@ const createOnlineStoreSection = (S: any) =>
           createOrdersList(S),
           S.divider(),
           S.listItem()
-            .id('online-store-expired-carts')
+            .id('online-store-abandoned-carts')
             .title('Abandoned carts')
             .icon(BasketIcon)
-            .child(
-              S.documentTypeList('expiredCart')
-                .apiVersion(API_VERSION)
-                .title('Abandoned carts')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
+            .child(expiredCheckoutsList(S, 'Abandoned carts')),
           S.listItem()
             .id('online-store-payment-links')
             .title('Payment links')
@@ -489,14 +404,16 @@ const createInStoreSection = (S: any) =>
         .items([
           createQuotesList(S),
           S.listItem()
+            .id('in-store-invoices')
+            .title('Invoices')
+            .icon(DocumentIcon)
+            // Note: in-store manual invoices only—must not auto-link to website orders.
+            .child(invoicesDocumentList(S, 'Invoices')),
+          S.listItem()
             .id('in-store-appointments')
             .title('Appointments')
             .icon(CalendarIcon)
-            .child(
-              S.documentTypeList('booking')
-                .apiVersion(API_VERSION)
-                .title('Appointments'),
-            ),
+            .child(S.documentTypeList('booking').apiVersion(API_VERSION).title('Appointments')),
         ]),
     )
 
@@ -596,9 +513,7 @@ const createAdministrationSection = (S: any) =>
             .id('administration-site-settings')
             .title('Site settings')
             .icon(CogIcon)
-            .child(
-              S.document().schemaType('settings').documentId('settings'),
-            ),
+            .child(S.document().schemaType('settings').documentId('settings')),
           S.listItem()
             .id('administration-integrations')
             .title('Integrations')
@@ -653,6 +568,17 @@ export const deskStructure: StructureResolver = (S) =>
       createMarketingSection(S),
       S.divider(),
       createAdministrationSection(S),
+      S.divider(),
+      S.listItem()
+        .id('downloads')
+        .title('Downloads')
+        .icon(DocumentIcon)
+        .child(
+          S.component()
+            .id('downloads-preview')
+            .title('Downloads')
+            .component(DownloadsPreviewList as any),
+        ),
       S.divider(),
       createOnlineStorePlaceholder(S),
     ])
