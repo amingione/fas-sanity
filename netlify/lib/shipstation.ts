@@ -224,8 +224,8 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
     taxAmount: Number.isFinite(order.amountTax || 0) ? Number(order.amountTax || 0) : undefined,
     shippingAmount: Number.isFinite(order.amountShipping || 0) ? Number(order.amountShipping || 0) : undefined,
     requestedShippingService: order.selectedService?.service || order.selectedService?.serviceCode || undefined,
-    carrierCode: order.selectedService?.carrierId || order.shippingCarrier || undefined,
-    serviceCode: order.selectedService?.serviceCode || undefined,
+    carrierCode: normalizeCarrierCode(order),
+    serviceCode: normalizeServiceCode(order),
     billTo: shipTo,
     shipTo,
     shipFrom,
@@ -311,15 +311,32 @@ export type ShipStationWebhookEvent = ShipStationWebhookPayload
 
 function normalizeCarrierCode(order: SanityOrderForShipStation): string | undefined {
   const fromId = order.selectedService?.carrierId
-  if (fromId && !fromId.startsWith('se-')) return fromId
-  const name = order.selectedService?.carrier || order.shippingCarrier
+  if (fromId && !/^se-/i.test(fromId) && !/^shr_/i.test(fromId)) return fromId
+  const name = (order.selectedService?.carrier || order.shippingCarrier || '').toString().trim().toLowerCase()
   if (!name) return undefined
-  return name.toString().trim().toLowerCase().replace(/\s+/g, '')
+  const mappings: Array<[RegExp, string]> = [
+    [/ups/, 'ups'],
+    [/fedex/, 'fedex'],
+    [/usps|postal|stamps/, 'stamps_com'],
+    [/dhl/, 'dhl_express'],
+  ]
+  for (const [pattern, code] of mappings) {
+    if (pattern.test(name)) return code
+  }
+  return undefined
 }
 
 function normalizeServiceCode(order: SanityOrderForShipStation): string | undefined {
-  const code = order.selectedService?.serviceCode || order.selectedService?.service
-  return code ? code.toString().trim() : undefined
+  const code = order.selectedService?.serviceCode
+  if (code && !/^shr_/i.test(code)) return code.toString().trim()
+  const service = order.selectedService?.service
+  if (!service) return undefined
+  const normalized = service.toString().trim()
+  if (!normalized) return undefined
+  if (normalized.toLowerCase().includes('ups')) return 'ups_ground'
+  if (normalized.toLowerCase().includes('fedex') && normalized.toLowerCase().includes('2day')) return 'fedex_2day'
+  if (normalized.toLowerCase().includes('fedex') && normalized.toLowerCase().includes('ground')) return 'fedex_ground'
+  return undefined
 }
 
 async function maybeCreateLabelForOrder(sanity: SanityClient, order: SanityOrderForShipStation) {
@@ -328,6 +345,14 @@ async function maybeCreateLabelForOrder(sanity: SanityClient, order: SanityOrder
 
   const carrierCode = normalizeCarrierCode(order)
   const serviceCode = normalizeServiceCode(order)
+  if (!carrierCode || !serviceCode) {
+    console.warn('maybeCreateLabelForOrder: missing carrier/service', {
+      orderNumber: order.orderNumber,
+      carrierCode,
+      serviceCode,
+    })
+    return
+  }
   if (!carrierCode || !serviceCode) return
 
   const weight = normalizeWeight(order.weight)
