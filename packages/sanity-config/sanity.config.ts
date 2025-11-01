@@ -91,12 +91,6 @@ const normalizeBaseUrl = (value?: string | null, fallback?: string): string | un
   return candidate.replace(/\/$/, '')
 }
 
-const sanityEnv = getEnv('SANITY_STUDIO_ENV')
-const nodeEnv = getEnv('NODE_ENV')
-const enableVisionOverride = getEnvFlag(
-  'SANITY_STUDIO_ENABLE_VISION',
-  'VITE_SANITY_STUDIO_ENABLE_VISION',
-)
 const disableVisionOverride = getEnvFlag(
   'SANITY_STUDIO_DISABLE_VISION',
   'VITE_SANITY_STUDIO_DISABLE_VISION',
@@ -198,21 +192,7 @@ const buildDocumentLocation = (title: string, type: string) => ({
   },
 })
 
-const isDev =
-  sanityEnv !== undefined
-    ? sanityEnv !== 'production'
-    : nodeEnv !== undefined
-      ? nodeEnv !== 'production'
-      : false
-
-let visionEnabled: boolean
-if (disableVisionOverride === true) {
-  visionEnabled = false
-} else if (enableVisionOverride === true) {
-  visionEnabled = true
-} else {
-  visionEnabled = isDev
-}
+const visionEnabled = disableVisionOverride === true ? false : true
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false
