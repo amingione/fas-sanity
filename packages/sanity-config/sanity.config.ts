@@ -69,6 +69,15 @@ const envFlag = (value?: string | null) => {
   return undefined
 }
 
+const readFlag = (...keys: Array<string | undefined>) => {
+  for (const key of keys) {
+    if (!key) continue
+    const parsed = envFlag(getEnv(key))
+    if (parsed !== undefined) return parsed
+  }
+  return undefined
+}
+
 const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) === true
 
 const brandTheme: StudioTheme = fasBrandTheme || (fasTheme as StudioTheme)
@@ -82,10 +91,30 @@ const normalizeBaseUrl = (value?: string | null, fallback?: string): string | un
 
 const sanityEnv = getEnv('SANITY_STUDIO_ENV')
 const nodeEnv = getEnv('NODE_ENV')
-const enableVisionOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISION'))
-const disableVisionOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISION'))
-const enableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_ENABLE_VISUAL_EDITING'))
-const disableVisualEditingOverride = envFlag(getEnv('SANITY_STUDIO_DISABLE_VISUAL_EDITING'))
+const enableVisionOverride = readFlag(
+  'SANITY_STUDIO_ENABLE_VISION',
+  'VITE_SANITY_STUDIO_ENABLE_VISION',
+)
+const disableVisionOverride = readFlag(
+  'SANITY_STUDIO_DISABLE_VISION',
+  'VITE_SANITY_STUDIO_DISABLE_VISION',
+)
+const enableVisualEditingOverride = readFlag(
+  'SANITY_STUDIO_ENABLE_VISUAL_EDITING',
+  'VITE_SANITY_STUDIO_ENABLE_VISUAL_EDITING',
+)
+const disableVisualEditingOverride = readFlag(
+  'SANITY_STUDIO_DISABLE_VISUAL_EDITING',
+  'VITE_SANITY_STUDIO_DISABLE_VISUAL_EDITING',
+)
+const enablePresentationOverride = readFlag(
+  'SANITY_STUDIO_ENABLE_PRESENTATION',
+  'VITE_SANITY_STUDIO_ENABLE_PRESENTATION',
+)
+const disablePresentationOverride = readFlag(
+  'SANITY_STUDIO_DISABLE_PRESENTATION',
+  'VITE_SANITY_STUDIO_DISABLE_PRESENTATION',
+)
 const presentationPreviewOrigin =
   getEnv('SANITY_STUDIO_PREVIEW_ORIGIN') ||
   getEnv('PUBLIC_SITE_URL') ||
@@ -182,8 +211,22 @@ const isDev =
       ? nodeEnv !== 'production'
       : false
 
-const visionEnabled =
-  disableVisionOverride === true ? false : enableVisionOverride === true ? true : isDev
+let visionEnabled: boolean
+if (disableVisionOverride === true) {
+  visionEnabled = false
+} else if (enableVisionOverride === true) {
+  visionEnabled = true
+} else {
+  visionEnabled = isDev
+}
+let presentationEnabled: boolean
+if (disablePresentationOverride === true) {
+  presentationEnabled = false
+} else if (enablePresentationOverride !== undefined) {
+  presentationEnabled = enablePresentationOverride
+} else {
+  presentationEnabled = true
+}
 const visualEditingEnabled =
   disableVisualEditingOverride === true
     ? false
@@ -217,19 +260,23 @@ export default defineConfig({
     media(),
     codeInput(),
     schemaMarkup(),
-    presentationTool({
-      previewUrl: previewUrlResolver,
-      name: 'preview',
-      title: 'Preview',
-      resolve: {
-        locations: {
-          product: buildDocumentLocation('Shop product', 'product'),
-          category: buildDocumentLocation('Browse category', 'category'),
-          page: buildDocumentLocation('View page', 'page'),
-          home: buildDocumentLocation('Home', 'home'),
-        },
-      },
-    }),
+    ...(presentationEnabled
+      ? [
+          presentationTool({
+            previewUrl: previewUrlResolver,
+            name: 'preview',
+            title: 'Preview',
+            resolve: {
+              locations: {
+                product: buildDocumentLocation('Shop product', 'product'),
+                category: buildDocumentLocation('Browse category', 'category'),
+                page: buildDocumentLocation('View page', 'page'),
+                home: buildDocumentLocation('Home', 'home'),
+              },
+            },
+          }),
+        ]
+      : []),
     ...(visionEnabled ? [visionTool()] : []),
   ],
 
