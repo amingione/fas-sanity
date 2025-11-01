@@ -188,7 +188,17 @@ export default deskStructure`
             <Text size={1} muted>
               Copy into <Code>deskStructure.ts</Code>
             </Text>
-            <Code size={1}>{output}</Code>
+            <Code
+              size={1}
+              style={{
+                display: 'block',
+                whiteSpace: 'pre',
+                lineHeight: 1.6,
+                letterSpacing: '0.015em',
+              }}
+            >
+              {output}
+            </Code>
           </Card>
         )}
       </Stack>
