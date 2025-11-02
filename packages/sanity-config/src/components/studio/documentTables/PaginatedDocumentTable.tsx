@@ -32,9 +32,8 @@ type RowResult<TData extends Record<string, unknown>> = TData & {
 
 function normalizeProjection(projection: string) {
   const trimmed = projection.trim()
-  const body = trimmed.startsWith('{') && trimmed.endsWith('}')
-    ? trimmed.slice(1, -1).trim()
-    : trimmed
+  const body =
+    trimmed.startsWith('{') && trimmed.endsWith('}') ? trimmed.slice(1, -1).trim() : trimmed
 
   const entries = body
     ? body
@@ -112,10 +111,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
 
     const fetchTotal = async () => {
       try {
-        const count = await client.fetch<number>(
-          `count(*[_type == $documentType])`,
-          {documentType},
-        )
+        const count = await client.fetch<number>(`count(*[_type == $documentType])`, {documentType})
         if (!cancelled) {
           setTotal(count)
           if (currentPage > Math.max(1, Math.ceil(count / pageSize))) {
@@ -186,28 +182,6 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
     [router],
   )
 
-  const columnHeaders = useMemo(
-    () =>
-      columns.map((column) => (
-        <th
-          key={column.key}
-          style={{
-            textAlign: column.align ?? 'left',
-            padding: '12px',
-            fontSize: '12px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            color: 'var(--card-muted-fg-color)',
-            fontWeight: 600,
-            borderBottom: '1px solid var(--card-border-color)',
-          }}
-        >
-          {column.header}
-        </th>
-      )),
-    [columns],
-  )
-
   return (
     <Card padding={4} radius={3} shadow={1} tone="transparent">
       <Stack space={4}>
@@ -215,15 +189,42 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
           {title}
         </Heading>
 
-        <div style={{overflowX: 'auto'}}>
-          <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '14px'}}>
+        <div
+          style={{
+            overflowX: 'auto',
+            backgroundColor: 'var(--card-bg-color)',
+            borderRadius: 12,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            padding: 16,
+          }}
+        >
+          <table
+            style={{width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '14px'}}
+          >
             <thead>
-              <tr>{columnHeaders}</tr>
+              <tr>
+                {columns.map((column) => (
+                  <th
+                    key={column.key}
+                    style={{
+                      textAlign: column.align ?? 'left',
+                      padding: '12px 16px',
+                      fontSize: '12px',
+                      textTransform: 'uppercase',
+                      color: 'var(--card-muted-fg-color)',
+                      fontWeight: 600,
+                      borderBottom: '1px solid var(--card-border-color)',
+                    }}
+                  >
+                    {column.header}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={columns.length} style={{padding: '16px'}}>
+                  <td colSpan={columns.length} style={{padding: '20px 16px'}}>
                     <Text size={1} muted>
                       Loading…
                     </Text>
@@ -231,40 +232,37 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} style={{padding: '16px'}}>
+                  <td colSpan={columns.length} style={{padding: '20px 16px'}}>
                     <Text size={1} muted>
                       {emptyState}
                     </Text>
                   </td>
                 </tr>
               ) : (
-                items.map((row) => (
+                items.map((row, idx) => (
                   <tr
                     key={row._id}
                     onClick={() => handleRowClick(row)}
                     style={{
                       cursor: 'pointer',
-                      borderBottom: '1px solid var(--card-border-color)',
-                      transition: 'background-color 120ms ease',
+                      backgroundColor: idx % 2 === 0 ? 'var(--card-bg-color)' : 'rgba(0,0,0,0.02)',
+                      transition: 'background-color 150ms ease',
                     }}
-                    onMouseEnter={(event) => {
-                      event.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)'
-                    }}
-                    onMouseLeave={(event) => {
-                      event.currentTarget.style.backgroundColor = 'transparent'
-                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.04)')
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.backgroundColor =
+                        idx % 2 === 0 ? 'var(--card-bg-color)' : 'rgba(0,0,0,0.02)')
+                    }
                   >
                     {columns.map((column) => (
                       <td
                         key={column.key}
                         style={{
-                          padding: '10px 12px',
+                          padding: '16px 18px',
                           textAlign: column.align ?? 'left',
-                          whiteSpace: 'nowrap',
-                          maxWidth:
-                            typeof column.width === 'number'
-                              ? `${column.width}px`
-                              : column.width,
+                          verticalAlign: 'middle',
                         }}
                       >
                         {column.render(row)}
@@ -275,20 +273,35 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
               )}
             </tbody>
           </table>
-        </div>
 
-        <Flex align="center" justify="space-between">
-          <Button mode="ghost" text="Previous" disabled={currentPage <= 1} onClick={handlePrevious} />
-          <Text size={1} weight="medium">
-            Page {total === 0 ? 0 : currentPage} of {total === 0 ? 0 : totalPages}
-          </Text>
-          <Button
-            mode="ghost"
-            text="Next"
-            disabled={currentPage >= totalPages}
-            onClick={handleNext}
-          />
-        </Flex>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 16,
+              marginTop: 24,
+            }}
+          >
+            <Button
+              mode="ghost"
+              tone="primary"
+              text="Previous Page"
+              disabled={currentPage <= 1}
+              onClick={handlePrevious}
+            />
+            <Text size={1} weight="medium">
+              Page {total === 0 ? 0 : currentPage} of {total === 0 ? 0 : totalPages}
+            </Text>
+            <Button
+              mode="ghost"
+              tone="primary"
+              text="Next Page"
+              disabled={currentPage >= totalPages}
+              onClick={handleNext}
+            />
+          </div>
+        </div>
       </Stack>
     </Card>
   )

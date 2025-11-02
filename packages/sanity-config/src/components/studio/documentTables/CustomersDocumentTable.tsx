@@ -45,6 +45,8 @@ const formatLocation = (data: CustomerRowData) => {
 }
 
 export default function CustomersDocumentTable() {
+  type CustomerRow = CustomerRowData & {_id: string; _type: string}
+
   return (
     <PaginatedDocumentTable<CustomerRowData>
       title="Customers"
@@ -56,7 +58,7 @@ export default function CustomersDocumentTable() {
         {
           key: 'name',
           header: 'Customer',
-          render: (data) => (
+          render: (data: CustomerRow) => (
             <Text size={1} weight="medium">
               {formatName(data)}
             </Text>
@@ -65,31 +67,31 @@ export default function CustomersDocumentTable() {
         {
           key: 'email',
           header: 'Email',
-          render: (data) => <Text size={1}>{data.email || '—'}</Text>,
+          render: (data: CustomerRow) => <Text size={1}>{data.email || '—'}</Text>,
         },
         {
           key: 'location',
           header: 'Location',
-          render: (data) => <Text size={1}>{formatLocation(data)}</Text>,
+          render: (data: CustomerRow) => <Text size={1}>{formatLocation(data)}</Text>,
         },
         {
           key: 'orders',
           header: 'Orders',
           align: 'right',
-          render: (data) => <Text size={1}>{data.orderCount ?? 0}</Text>,
+          render: (data: CustomerRow) => <Text size={1}>{data.orderCount ?? 0}</Text>,
         },
         {
           key: 'lifetimeSpend',
           header: 'Lifetime Spend',
           align: 'right',
-          render: (data) => (
+          render: (data: CustomerRow) => (
             <Text size={1}>{formatCurrency(data.lifetimeSpend ?? null, 'USD')}</Text>
           ),
         },
         {
           key: 'marketing',
           header: 'Marketing Opt-In',
-          render: (data) => (
+          render: (data: CustomerRow) => (
             <Text size={1}>
               {formatBoolean(Boolean(data.emailOptIn || data.marketingOptIn))}
             </Text>
@@ -98,7 +100,7 @@ export default function CustomersDocumentTable() {
         {
           key: 'updated',
           header: 'Updated',
-          render: (data) => <Text size={1}>{formatDate(data.updatedAt)}</Text>,
+          render: (data: CustomerRow) => <Text size={1}>{formatDate(data.updatedAt)}</Text>,
         },
       ]}
     />

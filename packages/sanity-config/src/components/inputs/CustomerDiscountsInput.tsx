@@ -1,16 +1,6 @@
 import React, {useMemo, useState} from 'react'
-import {ArrayInputProps, useFormValue} from 'sanity'
-import {
-  Box,
-  Button,
-  Dialog,
-  Flex,
-  Stack,
-  Text,
-  TextInput,
-  Select,
-  useToast,
-} from '@sanity/ui'
+import {TagsArrayInputProps, useFormValue} from 'sanity'
+import {Box, Button, Dialog, Flex, Stack, Text, TextInput, Select, useToast} from '@sanity/ui'
 import {getNetlifyFnBase} from '../../schemaTypes/documentActions/netlifyFnBase'
 
 type DiscountMode = 'percent' | 'amount'
@@ -23,7 +13,7 @@ function sanitizeDocId(value?: string | null): string | undefined {
   return trimmed.replace(/^drafts\./, '')
 }
 
-type Props = ArrayInputProps<any>
+type Props = TagsArrayInputProps
 
 const CustomerDiscountsInput: React.FC<Props> = (props) => {
   const {renderDefault} = props
@@ -51,29 +41,49 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
 
   async function handleSubmit() {
     if (!stripeCustomerId) {
-      toast.push({status: 'warning', title: 'Connect to Stripe', description: 'Add a Stripe Customer ID before creating discounts.'})
+      toast.push({
+        status: 'warning',
+        title: 'Connect to Stripe',
+        description: 'Add a Stripe Customer ID before creating discounts.',
+      })
       return
     }
 
     const parsedValue = Number(value)
     if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
-      toast.push({status: 'warning', title: 'Enter a value', description: 'Discount value must be a positive number.'})
+      toast.push({
+        status: 'warning',
+        title: 'Enter a value',
+        description: 'Discount value must be a positive number.',
+      })
       return
     }
 
     if (mode === 'percent' && parsedValue > 100) {
-      toast.push({status: 'warning', title: 'Percent too high', description: 'Percent-off discounts must be 100 or less.'})
+      toast.push({
+        status: 'warning',
+        title: 'Percent too high',
+        description: 'Percent-off discounts must be 100 or less.',
+      })
       return
     }
 
     let currencyCode = currency.trim().toLowerCase()
     if (mode === 'amount') {
       if (!currencyCode) {
-        toast.push({status: 'warning', title: 'Choose currency', description: 'Select a currency for amount-based discounts.'})
+        toast.push({
+          status: 'warning',
+          title: 'Choose currency',
+          description: 'Select a currency for amount-based discounts.',
+        })
         return
       }
       if (currencyCode.length !== 3) {
-        toast.push({status: 'warning', title: 'Invalid currency', description: 'Currency codes should be three letters (e.g. USD).'})
+        toast.push({
+          status: 'warning',
+          title: 'Invalid currency',
+          description: 'Currency codes should be three letters (e.g. USD).',
+        })
         return
       }
     } else {
@@ -84,7 +94,11 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
     if (duration === 'repeating') {
       durationMonthsValue = Number(durationMonths)
       if (!Number.isFinite(durationMonthsValue) || durationMonthsValue <= 0) {
-        toast.push({status: 'warning', title: 'Set duration months', description: 'Enter how many months the discount repeats.'})
+        toast.push({
+          status: 'warning',
+          title: 'Set duration months',
+          description: 'Enter how many months the discount repeats.',
+        })
         return
       }
     }
@@ -115,7 +129,8 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
       toast.push({
         status: 'success',
         title: 'Discount created',
-        description: 'Stripe is updating this customer. Refresh in a moment to see the new discount.',
+        description:
+          'Stripe is updating this customer. Refresh in a moment to see the new discount.',
       })
       setDialogOpen(false)
       setValue('')
@@ -135,7 +150,8 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
     <Stack space={4}>
       <Flex align="center" justify="space-between">
         <Text size={1} muted>
-          Discounts sync automatically from Stripe. Use the button to create a coupon for this customer.
+          Discounts sync automatically from Stripe. Use the button to create a coupon for this
+          customer.
         </Text>
         <Button
           text="Create discount"
@@ -151,7 +167,7 @@ const CustomerDiscountsInput: React.FC<Props> = (props) => {
           </Text>
         </Box>
       ) : null}
-      {renderDefault(props)}
+      {renderDefault(props as any)}
       {isDialogOpen ? (
         <Dialog
           id="customer-discount-dialog"

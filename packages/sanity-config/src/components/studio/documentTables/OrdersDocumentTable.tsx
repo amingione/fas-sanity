@@ -34,7 +34,19 @@ function getCustomerLabel(data: OrderRowData) {
   return '—'
 }
 
+const toTitleCase = (value?: string | null) => {
+  if (!value) return '—'
+  const trimmed = value.trim().replace(/_/g, ' ')
+  if (!trimmed) return '—'
+  return trimmed
+    .split(' ')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
 export default function OrdersDocumentTable() {
+  type OrderRow = OrderRowData & {_id: string; _type: string}
+
   return (
     <PaginatedDocumentTable<OrderRowData>
       title="Orders"
@@ -46,7 +58,7 @@ export default function OrdersDocumentTable() {
         {
           key: 'order',
           header: 'Order',
-          render: (data) => (
+          render: (data: OrderRow) => (
             <Text size={1} weight="medium">
               {data.orderNumber || '—'}
             </Text>
@@ -55,17 +67,17 @@ export default function OrdersDocumentTable() {
         {
           key: 'customer',
           header: 'Customer',
-          render: (data) => <Text size={1}>{getCustomerLabel(data)}</Text>,
+          render: (data: OrderRow) => <Text size={1}>{getCustomerLabel(data)}</Text>,
         },
         {
           key: 'status',
           header: 'Status',
-          render: (data) => (
-            <Text size={1}>
-              {data.paymentStatus ? data.paymentStatus : '—'}
+          render: (data: OrderRow) => (
+            <Text size={1} muted>
+              {toTitleCase(data.paymentStatus)}
               {data.status && data.status !== data.paymentStatus
-                ? ` • ${data.status}`
-                : null}
+                ? ` • ${toTitleCase(data.status)}`
+                : ''}
             </Text>
           ),
         },
@@ -73,14 +85,14 @@ export default function OrdersDocumentTable() {
           key: 'amount',
           header: 'Total',
           align: 'right',
-          render: (data) =>
+          render: (data: OrderRow) =>
             <Text size={1}>{formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}</Text>,
         },
         {
           key: 'refunded',
           header: 'Refunded',
           align: 'right',
-          render: (data) =>
+          render: (data: OrderRow) =>
             <Text size={1}>
               {data.amountRefunded && data.amountRefunded > 0
                 ? formatCurrency(data.amountRefunded, data.currency ?? 'USD')
@@ -90,7 +102,7 @@ export default function OrdersDocumentTable() {
         {
           key: 'created',
           header: 'Created',
-          render: (data) => <Text size={1}>{formatDate(data.createdAt)}</Text>,
+          render: (data: OrderRow) => <Text size={1}>{formatDate(data.createdAt)}</Text>,
         },
       ]}
     />

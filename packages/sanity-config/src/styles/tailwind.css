@@ -304,9 +304,41 @@
     background: var(--studio-accent-muted);
     color: var(--studio-accent-strong);
   }
+
 }
 
 @layer base {
+  body.sanity-studio-theme {
+    --card-badge-default-bg-color: #e2e8f0 !important;
+    --card-badge-default-fg-color: #111827 !important;
+    --card-badge-primary-bg-color: #bfdbfe !important;
+    --card-badge-primary-fg-color: #111827 !important;
+    --card-badge-positive-bg-color: #bbf7d0 !important;
+    --card-badge-positive-fg-color: #111827 !important;
+    --card-badge-caution-bg-color: #fde68a !important;
+    --card-badge-caution-fg-color: #111827 !important;
+    --card-badge-critical-bg-color: #fecaca !important;
+    --card-badge-critical-fg-color: #111827 !important;
+    --card-badge-neutral-bg-color: #e5e7eb !important;
+    --card-badge-neutral-fg-color: #111827 !important;
+    --card-badge-suggest-bg-color: #c7d2fe !important;
+    --card-badge-suggest-fg-color: #111827 !important;
+    --card-badge-default-dot-color: transparent !important;
+    --card-badge-primary-dot-color: transparent !important;
+    --card-badge-positive-dot-color: transparent !important;
+    --card-badge-caution-dot-color: transparent !important;
+    --card-badge-critical-dot-color: transparent !important;
+    --card-badge-neutral-dot-color: transparent !important;
+    --card-badge-suggest-dot-color: transparent !important;
+    --card-badge-default-icon-color: #111827 !important;
+    --card-badge-primary-icon-color: #111827 !important;
+    --card-badge-positive-icon-color: #111827 !important;
+    --card-badge-caution-icon-color: #111827 !important;
+    --card-badge-critical-icon-color: #111827 !important;
+    --card-badge-neutral-icon-color: #111827 !important;
+    --card-badge-suggest-icon-color: #111827 !important;
+  }
+
   body.sanity-studio-theme *,
   body.sanity-studio-theme *::before,
   body.sanity-studio-theme *::after {
@@ -425,6 +457,52 @@
     @apply inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold;
     background: var(--studio-accent-muted);
     color: var(--studio-accent-strong);
+  }
+
+  body.sanity-studio-theme [data-ui='Card'] {
+    --card-badge-default-bg-color: #e2e8f0 !important;
+    --card-badge-default-fg-color: #111827 !important;
+    --card-badge-primary-bg-color: #bfdbfe !important;
+    --card-badge-primary-fg-color: #111827 !important;
+    --card-badge-positive-bg-color: #bbf7d0 !important;
+    --card-badge-positive-fg-color: #111827 !important;
+    --card-badge-caution-bg-color: #fde68a !important;
+    --card-badge-caution-fg-color: #111827 !important;
+    --card-badge-critical-bg-color: #fecaca !important;
+    --card-badge-critical-fg-color: #111827 !important;
+    --card-badge-neutral-bg-color: #e5e7eb !important;
+    --card-badge-neutral-fg-color: #111827 !important;
+    --card-badge-suggest-bg-color: #c7d2fe !important;
+    --card-badge-suggest-fg-color: #111827 !important;
+    --card-badge-default-dot-color: transparent !important;
+    --card-badge-primary-dot-color: transparent !important;
+    --card-badge-positive-dot-color: transparent !important;
+    --card-badge-caution-dot-color: transparent !important;
+    --card-badge-critical-dot-color: transparent !important;
+    --card-badge-neutral-dot-color: transparent !important;
+    --card-badge-suggest-dot-color: transparent !important;
+    --card-badge-default-icon-color: #111827 !important;
+    --card-badge-primary-icon-color: #111827 !important;
+    --card-badge-positive-icon-color: #111827 !important;
+    --card-badge-caution-icon-color: #111827 !important;
+    --card-badge-critical-icon-color: #111827 !important;
+    --card-badge-neutral-icon-color: #111827 !important;
+    --card-badge-suggest-icon-color: #111827 !important;
+  }
+
+  body.sanity-studio-theme [data-ui='Badge'] {
+    border-radius: 0.35rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    padding: 0.2rem 0.65rem !important;
+    background-color: var(--card-bg-color, #e5e7eb) !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+
+  body.sanity-studio-theme [data-ui='Badge'] [data-ui='Text'] {
+    color: inherit !important;
   }
 
   input::placeholder,
