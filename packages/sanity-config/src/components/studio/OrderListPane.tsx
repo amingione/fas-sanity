@@ -50,6 +50,8 @@ type SortDefinition = {
   direction: 'asc' | 'desc'
 }
 
+const BASE_FILTER = 'count(orderEvents[type == "checkout.session.completed"]) > 0'
+
 const FILTERS: FilterDefinition[] = [
   {id: 'recent', title: 'Recent', description: 'Newest orders first'},
   {
@@ -284,6 +286,14 @@ function OrdersTableContent() {
     [sortId],
   )
 
+  const combinedFilter = useMemo(() => {
+    const filterExpression = activeFilter.filter?.trim()
+    if (filterExpression && filterExpression.length > 0) {
+      return `(${BASE_FILTER}) && (${filterExpression})`
+    }
+    return BASE_FILTER
+  }, [activeFilter.filter])
+
   const {
     data,
     isPending,
@@ -297,7 +307,7 @@ function OrdersTableContent() {
   } = usePaginatedDocuments({
     documentType: 'order',
     pageSize: PAGE_SIZE,
-    filter: activeFilter.filter,
+    filter: combinedFilter,
     orderings: [{field: activeSort.field, direction: activeSort.direction}],
   })
 
