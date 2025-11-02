@@ -1,5 +1,5 @@
 import React from 'react'
-import {Box, Flex, Text} from '@sanity/ui'
+import {Badge, Box, Flex, Inline, Stack, Text} from '@sanity/ui'
 import {PaginatedDocumentTable, formatBoolean, formatCurrency, formatDate} from './PaginatedDocumentTable'
 
 type ProductRowData = {
@@ -13,6 +13,11 @@ type ProductRowData = {
   stripeActive?: boolean | null
   updatedAt?: string | null
   primaryImage?: string | null
+}
+
+type ProductRow = ProductRowData & {
+  _id: string
+  _type: string
 }
 
 const PRODUCT_PROJECTION = `{
@@ -63,48 +68,68 @@ export default function ProductsDocumentTable() {
         {
           key: 'title',
           header: 'Product',
-          render: (data) => (
-            <Flex align="center" gap={3}>
-              {data.primaryImage ? (
-                <Box
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 6,
-                    overflow: 'hidden',
-                    backgroundColor: 'var(--card-muted-fg-color)',
-                    flexShrink: 0,
-                  }}
-                >
-                  <img
-                    src={data.primaryImage}
-                    alt={data.title ?? 'Product image'}
-                    style={{width: '100%', height: '100%', objectFit: 'cover'}}
-                  />
-                </Box>
-              ) : null}
-              <Box>
-                <Text size={1} weight="medium">
-                  {data.title || 'Untitled product'}
-                </Text>
-                {data.featured ? (
-                  <Text size={0} muted>
-                    Featured
-                  </Text>
+          render: (data: ProductRow) => {
+            const badges: React.ReactNode[] = []
+            if (data.featured) {
+              badges.push(
+                <Badge key="featured" tone="primary" mode="default">
+                  Featured
+                </Badge>,
+              )
+            }
+            if (data.onSale) {
+              badges.push(
+                <Badge key="sale" tone="caution" mode="default">
+                  On Sale
+                </Badge>,
+              )
+            }
+
+            return (
+              <Flex align="center" style={{gap: '12px'}}>
+                {data.primaryImage ? (
+                  <Box
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 6,
+                      overflow: 'hidden',
+                      backgroundColor: 'var(--card-muted-fg-color)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={data.primaryImage}
+                      alt={data.title ?? 'Product image'}
+                      style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                    />
+                  </Box>
                 ) : null}
-              </Box>
-            </Flex>
-          ),
+                <Box style={{minWidth: 0}}>
+                  <Stack space={2}>
+                    <Text size={1} weight="medium">
+                      {data.title || 'Untitled product'}
+                    </Text>
+                    {badges.length > 0 ? (
+                      <Inline space={2} style={{flexWrap: 'wrap', rowGap: '4px'}}>
+                        {badges}
+                      </Inline>
+                    ) : null}
+                  </Stack>
+                </Box>
+              </Flex>
+            )
+          },
         },
         {
           key: 'sku',
           header: 'SKU',
-          render: (data) => <Text size={1}>{data.sku || '—'}</Text>,
+          render: (data: ProductRow) => <Text size={1}>{data.sku || '—'}</Text>,
         },
         {
           key: 'status',
           header: 'Status',
-          render: (data) => (
+          render: (data: ProductRow) => (
             <Text size={1} style={{textTransform: 'capitalize'}}>
               {data.status || '—'}
             </Text>
@@ -114,17 +139,19 @@ export default function ProductsDocumentTable() {
           key: 'price',
           header: 'Price',
           align: 'right',
-          render: (data) => <PriceCell row={data} />,
+          render: (data: ProductRow) => <PriceCell row={data} />,
         },
         {
           key: 'stripe',
           header: 'Stripe',
-          render: (data) => <Text size={1}>{formatBoolean(Boolean(data.stripeActive))}</Text>,
+          render: (data: ProductRow) => (
+            <Text size={1}>{formatBoolean(Boolean(data.stripeActive))}</Text>
+          ),
         },
         {
           key: 'updatedAt',
           header: 'Last Updated',
-          render: (data) => <Text size={1}>{formatDate(data.updatedAt)}</Text>,
+          render: (data: ProductRow) => <Text size={1}>{formatDate(data.updatedAt)}</Text>,
         },
       ]}
     />

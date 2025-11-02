@@ -27,7 +27,7 @@ import {
   usePaginatedDocuments,
 } from '@sanity/sdk-react'
 import {useClient} from 'sanity'
-import {usePaneRouter} from 'sanity/desk'
+import {useRouter} from 'sanity/router'
 
 import {formatCurrency, formatDate} from './documentTables/PaginatedDocumentTable'
 
@@ -163,7 +163,7 @@ function statusBadge(value?: string | null) {
 }
 
 function OrderTableRow({document}: {document: DocumentHandle}) {
-  const router = usePaneRouter()
+  const router = useRouter()
   const ref = useRef<HTMLTableRowElement | null>(null)
 
   const {data} = useDocumentProjection<OrderProjection>({

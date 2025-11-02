@@ -24,6 +24,7 @@ import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
 import {deskStructureBuilderTool} from './src/plugins/deskStructureBuilder'
 import resolveDocumentActions from './src/resolveDocumentActions'
+import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 import {fasBrandTheme} from './src/theme/fasBrandTheme'
@@ -57,6 +58,10 @@ const collectStudioEnv = (): Record<string, string | undefined> => {
   )
 }
 const studioRuntimeEnv = collectStudioEnv()
+
+const DEFAULT_API_VERSION = '2024-10-01'
+const SANITY_API_VERSION =
+  getEnv('SANITY_STUDIO_API_VERSION') || getEnv('SANITY_API_VERSION') || DEFAULT_API_VERSION
 
 const envFlag = (value?: string | null) => {
   if (!value) return undefined
@@ -210,7 +215,7 @@ export default defineConfig({
    *   https://fassanity.fasmotorsports.com
    */
   api: {
-    apiVersion: '2025-10-22',
+    apiVersion: SANITY_API_VERSION,
     useCdn: false,
   },
 
@@ -249,6 +254,7 @@ export default defineConfig({
 
   document: {
     actions: resolveDocumentActions,
+    badges: resolveDocumentBadges,
   },
 
   schema: {
