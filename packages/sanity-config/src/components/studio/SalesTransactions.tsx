@@ -14,6 +14,8 @@ import {
   Text,
   TextInput,
 } from '@sanity/ui'
+import { formatOrderNumber } from '../../utils/orderNumber'
+import { GROQ_FILTER_EXCLUDE_EXPIRED } from '../../utils/orderFilters'
 
 type RawOrder = {
   _id: string
@@ -70,7 +72,7 @@ const TYPE_OPTIONS: Array<{ value: 'all' | TransactionKind; label: string }> = [
 ]
 
 const query = `{
-  "orders": *[_type == "order"] | order(coalesce(createdAt, _createdAt) desc)[0...75]{
+  "orders": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED})] | order(coalesce(createdAt, _createdAt) desc)[0...75]{
     _id,
     orderNumber,
     stripeSessionId,
@@ -100,7 +102,8 @@ function normalizeTransactions(payload: { orders?: RawOrder[]; invoices?: RawInv
   const mappedOrders: Transaction[] = orders.map((order) => {
     const dateISO = order.createdAt || order._createdAt || ''
     const dateValue = dateISO ? Date.parse(dateISO) : NaN
-    const ref = order.orderNumber || order.stripeSessionId || order._id
+    const ref =
+      formatOrderNumber(order.orderNumber) || order.stripeSessionId || order._id
     const customer = order.customerName || order.customerEmail || 'Customer'
     const total =
       typeof order.totalAmount === 'number' && Number.isFinite(order.totalAmount) ? order.totalAmount : 0
@@ -120,7 +123,8 @@ function normalizeTransactions(payload: { orders?: RawOrder[]; invoices?: RawInv
   const mappedInvoices: Transaction[] = invoices.map((invoice) => {
     const dateISO = invoice.invoiceDate || invoice._createdAt || ''
     const dateValue = dateISO ? Date.parse(dateISO) : NaN
-    const ref = invoice.invoiceNumber || invoice.orderNumber || invoice._id
+    const orderRef = formatOrderNumber(invoice.orderNumber) || invoice.orderNumber
+    const ref = invoice.invoiceNumber || orderRef || invoice._id
     const customer = invoice.billTo?.name || 'Invoice'
     const total = typeof invoice.total === 'number' && Number.isFinite(invoice.total) ? invoice.total : 0
     return {

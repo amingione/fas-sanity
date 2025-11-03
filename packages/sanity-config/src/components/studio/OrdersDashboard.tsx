@@ -28,6 +28,8 @@ import {
   shouldDisplayMetadataSegment,
   uniqueStrings,
 } from '../../utils/cartItemDetails'
+import {formatOrderNumber, orderNumberSearchTokens} from '../../utils/orderNumber'
+import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 type RawCartItem = {
   quantity?: number | null
@@ -100,7 +102,7 @@ type DatePreset = 'today' | '7' | '30' | '90' | '365' | 'all'
 
 type TabKey = 'all' | 'unfulfilled' | 'unpaid' | 'open' | 'archived' | 'returns'
 
-const ORDER_QUERY = `*[_type == "order"] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...200]{
+const ORDER_QUERY = `*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED})] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...200]{
   _id,
   orderNumber,
   stripeSessionId,
@@ -213,7 +215,19 @@ const STICKY_ORDER_BASE: CSSProperties = {
 }
 
 const CANCELLED_STATUSES = new Set(['cancelled', 'canceled'])
-const CLOSED_PAYMENT_STATUSES = new Set(['cancelled', 'canceled', 'refunded', 'void', 'failed', 'expired'])
+const CLOSED_PAYMENT_STATUSES = new Set([
+  'cancelled',
+  'canceled',
+  'refunded',
+  'void',
+  'failed',
+  'expired',
+  'checkout.session.expired',
+  'stripe.checkout.session.expired',
+  'checkout_session_expired',
+  'incomplete_expired',
+  'abandoned',
+])
 const OPEN_FULFILLMENT_STATUSES = new Set(['pending', 'processing', 'paid'])
 const OPEN_PAYMENT_STATUSES = new Set(['pending', 'processing'])
 
@@ -297,7 +311,24 @@ function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'defau
   const normalized = status.toLowerCase()
   if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
   if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
-  if (['cancelled', 'canceled', 'returned', 'refunded', 'failed', 'exception', 'void', 'expired'].includes(normalized)) return 'critical'
+  if (
+    [
+      'cancelled',
+      'canceled',
+      'returned',
+      'refunded',
+      'failed',
+      'exception',
+      'void',
+      'expired',
+      'checkout.session.expired',
+      'stripe.checkout.session.expired',
+      'checkout_session_expired',
+      'incomplete_expired',
+      'abandoned',
+    ].includes(normalized)
+  )
+    return 'critical'
   return 'default'
 }
 
@@ -334,7 +365,8 @@ function normalizeOrder(raw: RawOrder): OrderRow {
   const fulfilledAtValue = raw.fulfilledAt ? Date.parse(raw.fulfilledAt) || null : null
 
   const customerName = raw.customerName || raw.shippingAddress?.name || raw.customerEmail || 'Customer'
-  const orderRef = raw.orderNumber || `#${raw._id.slice(-6).toUpperCase()}`
+  const formattedOrderNumber = formatOrderNumber(raw.orderNumber)
+  const orderRef = formattedOrderNumber || `#${raw._id.slice(-6).toUpperCase()}`
   const channel = raw.stripeSessionId ? 'Online Store' : 'Manual Entry'
   const total = typeof raw.totalAmount === 'number' && Number.isFinite(raw.totalAmount) ? raw.totalAmount : 0
   const itemsCount = (raw.cart || []).reduce((sum, item) => {
@@ -363,9 +395,15 @@ function normalizeOrder(raw: RawOrder): OrderRow {
   const fulfillmentStatus = normalizeStatusLabel(raw.status)
   const deliveryMethod = raw.selectedService?.service || raw.shippingCarrier || '—'
 
-  const searchIndex = [orderRef, customerName, raw.customerEmail || '', fulfillmentStatus, paymentStatus]
-    .join(' ')
-    .toLowerCase()
+  const searchTokens = [
+    ...orderNumberSearchTokens(raw.orderNumber),
+    orderRef,
+    customerName,
+    raw.customerEmail || '',
+    fulfillmentStatus,
+    paymentStatus,
+  ].filter((token): token is string => Boolean(token))
+  const searchIndex = searchTokens.join(' ').toLowerCase()
 
   return {
     id: raw._id,
@@ -1371,7 +1409,10 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
     }
   }, [order])
 
-  const headerTitle = order?.orderNumber ? `Order ${order.orderNumber}` : 'Order'
+  const headerOrderNumber = order?.orderNumber
+    ? formatOrderNumber(order.orderNumber) || order.orderNumber
+    : null
+  const headerTitle = headerOrderNumber ? `Order ${headerOrderNumber}` : 'Order'
 
   const formatDate = (value?: string | null) => {
     if (!value) return null

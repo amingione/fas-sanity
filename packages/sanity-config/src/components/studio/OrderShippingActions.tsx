@@ -1,21 +1,55 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Flex } from '@sanity/ui'
-import { useClient, useFormValue } from 'sanity'
-import { decodeBase64ToArrayBuffer } from '../../utils/base64'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {Button, Flex} from '@sanity/ui'
+import {useClient, useFormValue} from 'sanity'
+import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import ShippingLabelActions from './ShippingLabelActions'
 
-function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
-  if (envBase) return envBase
+const DEFAULT_NETLIFY_BASE = 'https://fassanity.fasmotorsports.com'
+const SANITY_API_VERSION =
+  (typeof process !== 'undefined'
+    ? ((process as any)?.env?.SANITY_STUDIO_API_VERSION ||
+        (process as any)?.env?.SANITY_API_VERSION) ?? null
+    : null) || '2024-10-01'
+
+function normalizeBase(value?: string | null): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (!/^https?:\/\//i.test(trimmed)) return null
+  return trimmed.replace(/\/+$/, '')
+}
+
+function getFnBaseCandidates(): string[] {
+  const candidates: string[] = []
+  const envBase = normalizeBase(
+    (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as
+      | string
+      | undefined,
+  )
+  if (envBase) candidates.push(envBase)
+
+  const localNetlifyBases = [
+    normalizeBase('http://localhost:8888'),
+    normalizeBase('http://127.0.0.1:8888'),
+  ].filter((candidate): candidate is string => Boolean(candidate))
+  candidates.push(...localNetlifyBases)
+
   if (typeof window !== 'undefined') {
     try {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    } catch {}
+      const stored = normalizeBase(window.localStorage?.getItem('NLFY_BASE'))
+      if (stored) candidates.push(stored)
+    } catch {
+      // ignore storage access errors
+    }
+
+    const origin = normalizeBase(window.location?.origin)
+    if (origin) candidates.push(origin)
   }
-  return ''
+
+  const fallback = normalizeBase(DEFAULT_NETLIFY_BASE)
+  if (fallback) candidates.push(fallback)
+
+  return Array.from(new Set(candidates))
 }
 
 function resolvePatchTargets(rawId?: string | null): string[] {
@@ -31,8 +65,9 @@ function resolvePatchTargets(rawId?: string | null): string[] {
 
 export default function OrderShippingActions() {
   const doc = useFormValue([]) as any
-  const base = getFnBase() || 'https://fassanity.fasmotorsports.com'
-  const client = useClient({ apiVersion: '2024-04-10' })
+  const client = useClient({apiVersion: SANITY_API_VERSION})
+  const baseCandidates = useMemo(() => getFnBaseCandidates(), [])
+  const lastSuccessfulBaseRef = useRef<string | null>(baseCandidates[0] ?? null)
 
   const [isGenerating, setIsGenerating] = useState(false)
   const packingSlipUrl = typeof doc?.packingSlipUrl === 'string' ? doc.packingSlipUrl : ''
@@ -42,7 +77,74 @@ export default function OrderShippingActions() {
   const autoAttemptedRef = useRef(false)
   const patchTargets = useMemo(() => resolvePatchTargets(doc?._id), [doc?._id])
 
-  const generateSlip = useCallback(async (options: { silent?: boolean } = {}) => {
+  const fetchPackingSlip = useCallback(
+    async (payload: Record<string, any>) => {
+      const attempted = new Set<string>()
+      const payloadBody = JSON.stringify(payload)
+      const bases = Array.from(
+        new Set(
+          [lastSuccessfulBaseRef.current, ...baseCandidates].filter(
+            (candidate): candidate is string => Boolean(candidate),
+          ),
+        ),
+      )
+
+      let lastError: unknown = null
+
+      for (const base of bases) {
+        if (attempted.has(base)) continue
+        attempted.add(base)
+        const url = `${base}/.netlify/functions/generatePackingSlips`
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: payloadBody,
+          })
+
+          if (!response.ok) {
+            const message = await response.text().catch(() => '')
+            const error = new Error(message || 'Packing slip request failed')
+            ;(error as any).status = response.status
+            lastError = error
+            if (response.status === 404) {
+              continue
+            }
+            throw error
+          }
+
+          lastSuccessfulBaseRef.current = base
+
+          if (typeof window !== 'undefined') {
+            try {
+              window.localStorage?.setItem('NLFY_BASE', base)
+            } catch {
+              // ignore storage write errors
+            }
+          }
+
+          return response
+        } catch (err) {
+          lastError = err
+          const rawStatus =
+            (err as any)?.status ??
+            (err as any)?.statusCode ??
+            (err as any)?.response?.status ??
+            (err as any)?.response?.statusCode
+          const status = typeof rawStatus === 'number' ? rawStatus : Number.parseInt(rawStatus, 10)
+          // Only fall back to the next base if the current attempt failed due to a network error.
+          if (!(err instanceof TypeError) && status !== 404) {
+            break
+          }
+        }
+      }
+
+      throw lastError ?? new Error('Packing slip request failed')
+    },
+    [baseCandidates],
+  )
+
+  const generateSlip = useCallback(async (options: {silent?: boolean} = {}) => {
     if (isGenerating) return
     if (!orderId && !invoiceId) {
       if (!options.silent) alert('Missing order or invoice reference for packing slip generation.')
@@ -56,16 +158,7 @@ export default function OrderShippingActions() {
       if (orderId) payload.orderId = orderId
       if (invoiceId) payload.invoiceId = invoiceId
 
-      const res = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const message = await res.text().catch(() => '')
-        throw new Error(message || 'Packing slip request failed')
-      }
+      const res = await fetchPackingSlip(payload)
 
       const contentType = (res.headers.get('content-type') || '').toLowerCase()
       let arrayBuffer: ArrayBuffer
@@ -111,7 +204,7 @@ export default function OrderShippingActions() {
     } finally {
       setIsGenerating(false)
     }
-  }, [base, client, doc?._id, invoiceId, isGenerating, orderId, patchTargets, stripeSessionId])
+  }, [client, doc?._id, fetchPackingSlip, invoiceId, isGenerating, orderId, patchTargets, stripeSessionId])
 
   useEffect(() => {
     if (packingSlipUrl) return

@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState, type CSSProper
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {Spinner, useToast} from '@sanity/ui'
+import {formatOrderNumber} from '../../utils/orderNumber'
 
 type RawInvoice = {
   _id: string
@@ -204,9 +205,11 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
         const isClosed = CLOSED_STATUSES.has(status)
         const isOverdue = !isClosed && Boolean(dueDateMs) && dueDateMs! < now
 
+        const orderRef = formatOrderNumber(invoice.orderNumber) || invoice.orderNumber
+
         return {
           id: invoice._id,
-          invoiceNumber: invoice.invoiceNumber || invoice.orderNumber || invoice._id.slice(-6),
+          invoiceNumber: invoice.invoiceNumber || orderRef || invoice._id.slice(-6),
           customerName: resolveCustomerName(invoice),
           status,
           statusLabel: statusLabel(status),
@@ -217,7 +220,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
           dueDateMs,
           isOverdue,
           isClosed,
-          reference: invoice.invoiceNumber || invoice.orderNumber || '',
+          reference: invoice.invoiceNumber || orderRef || '',
         } satisfies InvoiceRecord
       })
 
@@ -294,6 +297,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
 
         return (
           invoice.invoiceNumber.toLowerCase().includes(searchTerm) ||
+          invoice.reference.toLowerCase().includes(searchTerm) ||
           invoice.customerName.toLowerCase().includes(searchTerm)
         )
       })

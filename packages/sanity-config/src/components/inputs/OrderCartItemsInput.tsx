@@ -1,6 +1,12 @@
 import {useEffect, useMemo} from 'react'
 import {ArrayOfObjectsInputProps, PatchEvent, set, unset} from 'sanity'
-import {normalizeMetadataEntries} from '../../utils/cartItemDetails'
+import {
+  coerceStringArray,
+  deriveOptionsFromMetadata,
+  normalizeMetadataEntries,
+  type NormalizedMetadataEntry,
+  uniqueStrings,
+} from '../../utils/cartItemDetails'
 
 const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function'
 
@@ -84,7 +90,7 @@ const consume = (source: Record<string, unknown>, keys: string[]) => {
 const buildMetadataEntries = (
   ...inputs: Array<unknown>
 ): Array<{_key: string; _type: 'orderCartItemMeta'; key: string; value: string; source?: string}> => {
-  const entries = inputs.flatMap((input) => normalizeMetadataEntries(input))
+  const entries = inputs.flatMap((input) => normalizeMetadataEntries(input as any))
   return entries.map(({key, value}) => ({
     _key: generateKey(),
     _type: 'orderCartItemMeta',
@@ -110,6 +116,179 @@ type OrderCartItem = {
   optionDetails?: string[]
   upgrades?: string[]
   metadata?: ReturnType<typeof buildMetadataEntries>
+}
+
+const arraysEqual = (a?: string[], b?: string[]) => {
+  if (!a?.length && !b?.length) return true
+  if (!a || !b) return false
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+const normalizeCartItemMetadata = (
+  metadata: unknown
+): {
+  typed: ReturnType<typeof buildMetadataEntries>
+  normalized: NormalizedMetadataEntry[]
+  changed: boolean
+} => {
+  if (!metadata) {
+    return {typed: [], normalized: [], changed: false}
+  }
+
+  if (Array.isArray(metadata)) {
+    let changed = false
+    const typed: ReturnType<typeof buildMetadataEntries> = []
+
+    metadata.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        changed = true
+        return
+      }
+      const record = entry as Record<string, unknown>
+      const key = toStringValue(record.key)
+      const value = toStringValue(record.value)
+      if (!key || !value) {
+        changed = true
+        return
+      }
+      const source = toStringValue(record.source)
+      const nextEntry: ReturnType<typeof buildMetadataEntries>[number] = {
+        _key:
+          typeof record._key === 'string' && record._key
+            ? (record._key as string)
+            : generateKey(),
+        _type: 'orderCartItemMeta',
+        key,
+        value,
+      }
+      if (source) nextEntry.source = source
+      if (typeof record._key !== 'string' || !record._key) changed = true
+      if (record._type !== 'orderCartItemMeta') changed = true
+      typed.push(nextEntry)
+    })
+
+    if (typed.length !== metadata.length) changed = true
+
+    const normalized: NormalizedMetadataEntry[] = typed.map(({key, value}) => ({key, value}))
+    return {typed, normalized, changed}
+  }
+
+  if (metadata && typeof metadata === 'object') {
+    const typed = buildMetadataEntries(metadata)
+    const normalized: NormalizedMetadataEntry[] = typed.map(({key, value}) => ({key, value}))
+    return {typed, normalized, changed: typed.length > 0}
+  }
+
+  return {typed: [], normalized: [], changed: false}
+}
+
+const normalizeCartArrayValue = (
+  value: Array<unknown>
+): OrderCartItem[] | undefined => {
+  let changed = false
+  const next: OrderCartItem[] = []
+
+  value.forEach((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      changed = true
+      return
+    }
+
+    const record = item as Record<string, unknown>
+    const normalizedItem: OrderCartItem = {
+      ...(record as OrderCartItem),
+      _type: 'orderCartItem',
+    }
+
+    if (typeof record._key !== 'string' || !record._key) {
+      normalizedItem._key = generateKey()
+      changed = true
+    }
+
+    const metadataResult = normalizeCartItemMetadata(record.metadata)
+    if (metadataResult.changed) {
+      normalizedItem.metadata = metadataResult.typed.length ? metadataResult.typed : undefined
+      changed = true
+    } else if (Array.isArray(record.metadata)) {
+      normalizedItem.metadata = record.metadata as OrderCartItem['metadata']
+    } else if (metadataResult.typed.length) {
+      normalizedItem.metadata = metadataResult.typed
+    } else {
+      delete (normalizedItem as any).metadata
+    }
+
+    const derivedOptions = deriveOptionsFromMetadata(metadataResult.normalized)
+    const existingSummary = toStringValue(record.optionSummary)
+    const trimmedSummary = existingSummary?.trim()
+    const finalSummary = trimmedSummary || derivedOptions.optionSummary
+    if (finalSummary) {
+      if (finalSummary !== record.optionSummary) {
+        normalizedItem.optionSummary = finalSummary
+        changed = true
+      }
+    } else if (record.optionSummary) {
+      delete (normalizedItem as any).optionSummary
+      changed = true
+    }
+
+    const existingDetails = coerceStringArray(record.optionDetails)
+    const finalDetails = uniqueStrings([...existingDetails, ...derivedOptions.optionDetails])
+    if (finalDetails.length) {
+      if (
+        !arraysEqual(finalDetails, existingDetails) ||
+        !Array.isArray(record.optionDetails)
+      ) {
+        normalizedItem.optionDetails = finalDetails
+        changed = true
+      } else {
+        normalizedItem.optionDetails = record.optionDetails as string[]
+      }
+    } else if (record.optionDetails) {
+      const sanitized = coerceStringArray(record.optionDetails)
+      if (sanitized.length) {
+        normalizedItem.optionDetails = sanitized
+        changed = true
+      } else {
+        delete (normalizedItem as any).optionDetails
+        changed = true
+      }
+    }
+
+    const existingUpgrades = coerceStringArray(record.upgrades)
+    const finalUpgrades = uniqueStrings([...existingUpgrades, ...derivedOptions.upgrades])
+    if (finalUpgrades.length) {
+      if (
+        !arraysEqual(finalUpgrades, existingUpgrades) ||
+        !Array.isArray(record.upgrades)
+      ) {
+        normalizedItem.upgrades = finalUpgrades
+        changed = true
+      } else {
+        normalizedItem.upgrades = record.upgrades as string[]
+      }
+    } else if (record.upgrades) {
+      const sanitized = coerceStringArray(record.upgrades)
+      if (sanitized.length) {
+        normalizedItem.upgrades = sanitized
+        changed = true
+      } else {
+        delete (normalizedItem as any).upgrades
+        changed = true
+      }
+    }
+
+    next.push(normalizedItem)
+  })
+
+  if (next.length !== value.length) {
+    changed = true
+  }
+
+  return changed ? next : undefined
 }
 
 const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
@@ -205,11 +384,12 @@ const normalizeLegacyCartValue = (value: LegacyCartValue): OrderCartItem[] | und
 }
 
 const OrderCartItemsInput = (props: ArrayOfObjectsInputProps<OrderCartItem>) => {
-  const {value, onChange, renderDefault} = props
+  const {value, onChange, renderDefault, readOnly} = props
 
   const normalized = useMemo(() => normalizeLegacyCartValue(value), [value])
 
   useEffect(() => {
+    if (readOnly) return
     if (!value) return
     if (Array.isArray(value)) return
 
@@ -219,13 +399,22 @@ const OrderCartItemsInput = (props: ArrayOfObjectsInputProps<OrderCartItem>) => 
     }
 
     onChange(PatchEvent.from(set(normalized)))
-  }, [value, normalized, onChange])
+  }, [value, normalized, onChange, readOnly])
+
+  useEffect(() => {
+    if (readOnly) return
+    if (!Array.isArray(value) || !value.length) return
+    const sanitized = normalizeCartArrayValue(value)
+    if (sanitized) {
+      onChange(PatchEvent.from(set(sanitized)))
+    }
+  }, [value, onChange, readOnly])
 
   if (!Array.isArray(value) && normalized) {
-    return renderDefault({...props, value: normalized})
+    return renderDefault({...props, value: normalized} as any)
   }
 
-  return renderDefault(props)
+  return renderDefault(props as any)
 }
 
 export default OrderCartItemsInput

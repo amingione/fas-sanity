@@ -14,6 +14,7 @@ import {
 } from '@sanity/ui'
 import {ArrowLeftIcon, ArrowRightIcon} from '@sanity/icons'
 import {format, formatDistanceToNow} from 'date-fns'
+import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 const DAY = 24 * 60 * 60 * 1000
 const LOOKBACK_DAYS = 365
@@ -32,6 +33,7 @@ type IntegrationKey = 'orders' | 'payouts' | 'analytics'
 const DASHBOARD_QUERY = `{
   "orders": *[
     _type == "order" &&
+    (${GROQ_FILTER_EXCLUDE_EXPIRED}) &&
     !(_id in path("drafts.**")) &&
     defined(totalAmount) &&
     dateTime(coalesce(createdAt, _createdAt)) >= dateTime($start)

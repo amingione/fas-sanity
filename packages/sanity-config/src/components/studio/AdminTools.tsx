@@ -1,4 +1,5 @@
 import React, {useMemo, useState} from 'react'
+import {Button} from '@sanity/ui'
 
 function getFnBase(): string {
   const envBase = (
@@ -22,21 +23,38 @@ type BackfillResponse = Record<string, any>
 
 const cardStyle: React.CSSProperties = {
   padding: 12,
-  border: '1px solid #eeeeee',
+  border: '1px solid var(--card-border-color)',
   borderRadius: 6,
   marginBottom: 12,
+  backgroundColor: 'var(--card-bg-color)',
+  color: 'var(--card-fg-color)',
+}
+
+const inputBaseStyle: React.CSSProperties = {
+  width: '100%',
+  padding: 8,
+  border: '1px solid var(--input-border-color, var(--card-border-color))',
+  borderRadius: 4,
+  backgroundColor: 'var(--input-bg-color, var(--card-bg-color))',
+  color: 'var(--input-fg-color, var(--card-fg-color))',
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: 8,
-  border: '1px solid #d0d0d0',
-  borderRadius: 4,
+  ...inputBaseStyle,
 }
 
 const inlineInputStyle: React.CSSProperties = {
-  ...inputStyle,
+  ...inputBaseStyle,
   width: 180,
+}
+
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--card-muted-fg-color)',
+}
+
+const descriptionStyle: React.CSSProperties = {
+  color: 'var(--card-muted-fg-color)',
 }
 
 export default function AdminTools() {
@@ -205,12 +223,13 @@ export default function AdminTools() {
     return (
       <pre
         style={{
-          background: '#000000',
-          border: '1px solid #ffffff',
+          background: 'var(--code-bg-color, var(--card-muted-bg-color))',
+          border: '1px solid var(--card-border-color)',
           padding: 8,
           borderRadius: 6,
           marginTop: 10,
           whiteSpace: 'pre-wrap',
+          color: 'var(--code-fg-color, var(--card-fg-color))',
         }}
       >
         {value}
@@ -220,10 +239,7 @@ export default function AdminTools() {
 
   const sharedSecretField = (id: string) => (
     <div style={{marginBottom: 8}}>
-      <label
-        style={{display: 'block', fontSize: 12, color: '#ffffff', marginBottom: 4}}
-        htmlFor={id}
-      >
+      <label style={{...fieldLabelStyle, display: 'block', marginBottom: 4}} htmlFor={id}>
         Optional BACKFILL secret
       </label>
       <input
@@ -238,13 +254,28 @@ export default function AdminTools() {
     </div>
   )
 
+  const renderActionButton = (
+    key: string,
+    label: string,
+    onClick: () => void,
+    tone: 'primary' | 'positive' | 'caution' | 'critical' | 'default' = 'critical',
+  ) => (
+    <Button
+      tone={tone}
+      text={busyKey === key ? 'Running…' : label}
+      onClick={onClick}
+      loading={busyKey === key}
+      disabled={busyKey !== null}
+    />
+  )
+
   return (
     <div style={{padding: 16, maxWidth: 880}}>
       <h2 style={{margin: '8px 0'}}>Admin Tools</h2>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Orders Backfill</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Runs a cleanup across Order documents: normalises cart items, migrates legacy customer
           fields, and removes deprecated properties.
         </p>
@@ -261,31 +292,18 @@ export default function AdminTools() {
           </label>
         </div>
         {sharedSecretField('orders-secret')}
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('orders', 'backfillOrders', {
-              dryRun: globalDryRun,
-              includeDryRunQuery: true,
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'orders' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'orders' ? 'Running…' : 'Run Backfill'}
-        </button>
+        {renderActionButton('orders', 'Run Backfill', () => {
+          invokeBackfill('orders', 'backfillOrders', {
+            dryRun: globalDryRun,
+            includeDryRunQuery: true,
+          })
+        })}
         {renderMessage('orders')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Invoices Backfill</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Fixes invoice line items, migrates legacy references, and reconciles numbering.
         </p>
         <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
@@ -306,7 +324,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="invoices-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="invoices-limit"
               name="invoicesLimit"
@@ -319,37 +337,24 @@ export default function AdminTools() {
           </label>
         </div>
         {sharedSecretField('invoices-secret')}
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('invoices', 'backfillInvoices', {
-              dryRun: globalDryRun,
-              query: {
-                limit: (() => {
-                  const limitValue = parseLimit(invoiceLimit)
-                  return typeof limitValue === 'number' ? String(limitValue) : undefined
-                })(),
-              },
-              includeDryRunQuery: true,
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'invoices' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'invoices' ? 'Running…' : 'Run Backfill'}
-        </button>
+        {renderActionButton('invoices', 'Run Backfill', () => {
+          invokeBackfill('invoices', 'backfillInvoices', {
+            dryRun: globalDryRun,
+            query: {
+              limit: (() => {
+                const limitValue = parseLimit(invoiceLimit)
+                return typeof limitValue === 'number' ? String(limitValue) : undefined
+              })(),
+            },
+            includeDryRunQuery: true,
+          })
+        })}
         {renderMessage('invoices')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Customers Backfill</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Cleans up legacy auth provider IDs, defaults opt-in flags, and refreshes metadata.
         </p>
         <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
@@ -368,31 +373,18 @@ export default function AdminTools() {
           </label>
         </div>
         {sharedSecretField('customers-secret')}
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('customers', 'backfillCustomers', {
-              dryRun: globalDryRun,
-              includeDryRunQuery: true,
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'customers' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'customers' ? 'Running…' : 'Run Backfill'}
-        </button>
+        {renderActionButton('customers', 'Run Backfill', () => {
+          invokeBackfill('customers', 'backfillCustomers', {
+            dryRun: globalDryRun,
+            includeDryRunQuery: true,
+          })
+        })}
         {renderMessage('customers')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Checkout Async Payments</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Replays async Stripe Checkout outcomes to reconcile orders stuck in pending or cancelled
           states.
         </p>
@@ -414,7 +406,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="checkout-status-filter"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Status filter</span>
+            <span style={fieldLabelStyle}>Status filter</span>
             <select
               id="checkout-status-filter"
               name="checkoutStatus"
@@ -433,7 +425,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="checkout-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="checkout-limit"
               name="checkoutLimit"
@@ -450,7 +442,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="checkout-session-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Checkout session ID (optional)</span>
+            <span style={fieldLabelStyle}>Checkout session ID (optional)</span>
             <input
               id="checkout-session-id"
               name="checkoutSessionId"
@@ -465,7 +457,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="checkout-order-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
+            <span style={fieldLabelStyle}>Order ID (optional)</span>
             <input
               id="checkout-order-id"
               name="checkoutOrderId"
@@ -477,36 +469,23 @@ export default function AdminTools() {
             />
           </label>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('checkoutAsync', 'backfillCheckoutAsyncPayments', {
-              dryRun: checkoutDryRun,
-              body: {
-                status: checkoutStatus,
-                limit: parseLimit(checkoutLimit),
-                sessionId: checkoutSessionId.trim() || undefined,
-                orderId: checkoutOrderId.trim() || undefined,
-              },
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'checkoutAsync' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'checkoutAsync' ? 'Running…' : 'Run Async Payment Backfill'}
-        </button>
+        {renderActionButton('checkoutAsync', 'Run Async Payment Backfill', () => {
+          invokeBackfill('checkoutAsync', 'backfillCheckoutAsyncPayments', {
+            dryRun: checkoutDryRun,
+            body: {
+              status: checkoutStatus,
+              limit: parseLimit(checkoutLimit),
+              sessionId: checkoutSessionId.trim() || undefined,
+              orderId: checkoutOrderId.trim() || undefined,
+            },
+          })
+        })}
         {renderMessage('checkoutAsync')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Expired Checkout Sessions</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Reprocesses Stripe checkout sessions that have expired to create the matching order and
           expired cart records in Sanity.
         </p>
@@ -528,7 +507,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="expired-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="expired-limit"
               name="expiredLimit"
@@ -543,7 +522,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="expired-since"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Created since (ISO or Unix)</span>
+            <span style={fieldLabelStyle}>Created since (ISO or Unix)</span>
             <input
               id="expired-since"
               name="expiredSince"
@@ -560,7 +539,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 260px'}}
             htmlFor="expired-session-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Specific session ID (optional)</span>
+            <span style={fieldLabelStyle}>Specific session ID (optional)</span>
             <input
               id="expired-session-id"
               name="expiredSessionId"
@@ -573,36 +552,23 @@ export default function AdminTools() {
           </label>
         </div>
         {sharedSecretField('expired-secret')}
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('expired-checkouts', 'backfillExpiredCheckouts', {
+        {renderActionButton('expired-checkouts', 'Run Expired Checkout Backfill', () => {
+          invokeBackfill('expired-checkouts', 'backfillExpiredCheckouts', {
+            dryRun: expiredDryRun,
+            body: {
               dryRun: expiredDryRun,
-              body: {
-                dryRun: expiredDryRun,
-                limit: parseLimit(expiredLimit),
-                since: expiredSince.trim() || undefined,
-                sessionId: expiredSessionId.trim() || undefined,
-              },
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'expired-checkouts' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'expired-checkouts' ? 'Running…' : 'Run Expired Checkout Backfill'}
-        </button>
+              limit: parseLimit(expiredLimit),
+              since: expiredSince.trim() || undefined,
+              sessionId: expiredSessionId.trim() || undefined,
+            },
+          })
+        })}
         {renderMessage('expired-checkouts')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Order Shipping Backfill</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Replays checkout sessions to backfill packing slips, carrier data, and selected shipping
           services.
         </p>
@@ -624,7 +590,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="shipping-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="shipping-limit"
               name="shippingLimit"
@@ -641,7 +607,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="shipping-order-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
+            <span style={fieldLabelStyle}>Order ID (optional)</span>
             <input
               id="shipping-order-id"
               name="shippingOrderId"
@@ -655,7 +621,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="shipping-session-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Checkout session ID (optional)</span>
+            <span style={fieldLabelStyle}>Checkout session ID (optional)</span>
             <input
               id="shipping-session-id"
               name="shippingSessionId"
@@ -666,35 +632,22 @@ export default function AdminTools() {
             />
           </label>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('orderShipping', 'backfillOrderShipping', {
-              dryRun: shippingDryRun,
-              body: {
-                limit: parseLimit(shippingLimit),
-                orderId: shippingOrderId.trim() || undefined,
-                sessionId: shippingSessionId.trim() || undefined,
-              },
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'orderShipping' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'orderShipping' ? 'Running…' : 'Run Shipping Backfill'}
-        </button>
+        {renderActionButton('orderShipping', 'Run Shipping Backfill', () => {
+          invokeBackfill('orderShipping', 'backfillOrderShipping', {
+            dryRun: shippingDryRun,
+            body: {
+              limit: parseLimit(shippingLimit),
+              orderId: shippingOrderId.trim() || undefined,
+              sessionId: shippingSessionId.trim() || undefined,
+            },
+          })
+        })}
         {renderMessage('orderShipping')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Stripe Order Sync</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Replays Stripe data to fill in checkout sessions, payment intents, or charge metadata on
           orders.
         </p>
@@ -703,7 +656,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="stripe-sync-mode"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Mode</span>
+            <span style={fieldLabelStyle}>Mode</span>
             <select
               id="stripe-sync-mode"
               name="stripeKind"
@@ -728,7 +681,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="stripe-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="stripe-limit"
               name="stripeLimit"
@@ -757,7 +710,7 @@ export default function AdminTools() {
           style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
           htmlFor="stripe-specific-id"
         >
-          <span style={{fontSize: 12, color: '#ffffff'}}>Specific Stripe ID (optional)</span>
+          <span style={fieldLabelStyle}>Specific Stripe ID (optional)</span>
           <input
             id="stripe-specific-id"
             name="stripeId"
@@ -768,35 +721,22 @@ export default function AdminTools() {
             style={inputStyle}
           />
         </label>
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('orderStripe', 'backfillOrderStripe', {
-              dryRun: stripeDryRun,
-              body: {
-                kind: stripeKind,
-                limit: parseLimit(stripeLimit),
-                id: stripeId.trim() || undefined,
-              },
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'orderStripe' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'orderStripe' ? 'Running…' : 'Run Stripe Sync'}
-        </button>
+        {renderActionButton('orderStripe', 'Run Stripe Sync', () => {
+          invokeBackfill('orderStripe', 'backfillOrderStripe', {
+            dryRun: stripeDryRun,
+            body: {
+              kind: stripeKind,
+              limit: parseLimit(stripeLimit),
+              id: stripeId.trim() || undefined,
+            },
+          })
+        })}
         {renderMessage('orderStripe')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Payment Failure Diagnostics</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Pulls failure codes from Stripe and patches orders/invoices with reconciliation details.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
@@ -817,7 +757,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="payment-failures-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="payment-failures-limit"
               name="paymentFailuresLimit"
@@ -834,7 +774,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="payment-failures-order-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
+            <span style={fieldLabelStyle}>Order ID (optional)</span>
             <input
               id="payment-failures-order-id"
               name="paymentFailuresOrderId"
@@ -848,7 +788,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="payment-failures-order-number"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Order number (optional)</span>
+            <span style={fieldLabelStyle}>Order number (optional)</span>
             <input
               id="payment-failures-order-number"
               name="paymentFailuresOrderNumber"
@@ -863,7 +803,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="payment-failures-intent"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Payment intent ID (optional)</span>
+            <span style={fieldLabelStyle}>Payment intent ID (optional)</span>
             <input
               id="payment-failures-intent"
               name="paymentFailuresPaymentIntent"
@@ -875,36 +815,23 @@ export default function AdminTools() {
             />
           </label>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('paymentFailures', 'backfillPaymentFailures', {
-              dryRun: paymentFailuresDryRun,
-              body: {
-                limit: parseLimit(paymentFailuresLimit),
-                orderId: paymentFailuresOrderId.trim() || undefined,
-                orderNumber: paymentFailuresOrderNumber.trim() || undefined,
-                paymentIntentId: paymentFailuresPaymentIntent.trim() || undefined,
-              },
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'paymentFailures' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'paymentFailures' ? 'Running…' : 'Run Payment Failure Backfill'}
-        </button>
+        {renderActionButton('paymentFailures', 'Run Payment Failure Backfill', () => {
+          invokeBackfill('paymentFailures', 'backfillPaymentFailures', {
+            dryRun: paymentFailuresDryRun,
+            body: {
+              limit: parseLimit(paymentFailuresLimit),
+              orderId: paymentFailuresOrderId.trim() || undefined,
+              orderNumber: paymentFailuresOrderNumber.trim() || undefined,
+              paymentIntentId: paymentFailuresPaymentIntent.trim() || undefined,
+            },
+          })
+        })}
         {renderMessage('paymentFailures')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Refund Reconciliation</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Replays Stripe refund webhook events to ensure orders and invoices reflect refund status.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
@@ -925,7 +852,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="refunds-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="refunds-limit"
               name="refundsLimit"
@@ -942,7 +869,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="refunds-order-id"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Order ID (optional)</span>
+            <span style={fieldLabelStyle}>Order ID (optional)</span>
             <input
               id="refunds-order-id"
               name="refundsOrderId"
@@ -956,7 +883,7 @@ export default function AdminTools() {
             style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="refunds-payment-intent"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Payment intent ID (optional)</span>
+            <span style={fieldLabelStyle}>Payment intent ID (optional)</span>
             <input
               id="refunds-payment-intent"
               name="refundsPaymentIntent"
@@ -968,35 +895,22 @@ export default function AdminTools() {
             />
           </label>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            invokeBackfill('refunds', 'backfillRefunds', {
-              dryRun: refundsDryRun,
-              body: {
-                limit: parseLimit(refundsLimit),
-                orderId: refundsOrderId.trim() || undefined,
-                paymentIntentId: refundsPaymentIntent.trim() || undefined,
-              },
-            })
-          }
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'refunds' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'refunds' ? 'Running…' : 'Run Refund Backfill'}
-        </button>
+        {renderActionButton('refunds', 'Run Refund Backfill', () => {
+          invokeBackfill('refunds', 'backfillRefunds', {
+            dryRun: refundsDryRun,
+            body: {
+              limit: parseLimit(refundsLimit),
+              orderId: refundsOrderId.trim() || undefined,
+              paymentIntentId: refundsPaymentIntent.trim() || undefined,
+            },
+          })
+        })}
         {renderMessage('refunds')}
       </section>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Stripe Products Sync</h3>
-        <p style={{color: '#ffffff'}}>
+        <p style={descriptionStyle}>
           Invokes the catalog sync to ensure Sanity products are reflected in Stripe with current
           pricing.
         </p>
@@ -1005,7 +919,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="stripe-product-mode"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Mode</span>
+            <span style={fieldLabelStyle}>Mode</span>
             <select
               id="stripe-product-mode"
               name="productMode"
@@ -1021,7 +935,7 @@ export default function AdminTools() {
             style={{display: 'flex', flexDirection: 'column', gap: 4}}
             htmlFor="stripe-product-limit"
           >
-            <span style={{fontSize: 12, color: '#ffffff'}}>Limit</span>
+            <span style={fieldLabelStyle}>Limit</span>
             <input
               id="stripe-product-limit"
               name="productLimit"
@@ -1038,7 +952,7 @@ export default function AdminTools() {
           style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
           htmlFor="stripe-product-ids"
         >
-          <span style={{fontSize: 12, color: '#ffffff'}}>
+          <span style={fieldLabelStyle}>
             Specific product IDs (optional, comma separated)
           </span>
           <input
@@ -1051,32 +965,19 @@ export default function AdminTools() {
             style={inputStyle}
           />
         </label>
-        <button
-          type="button"
-          onClick={() => {
-            const ids = productIds
-              .split(',')
-              .map((part) => part.trim())
-              .filter(Boolean)
-            invokeBackfill('stripeProducts', 'backfillStripeProducts', {
-              body: {
-                mode: productMode,
-                limit: parseLimit(productLimit),
-                ...(ids.length ? {productIds: ids} : {}),
-              },
-            })
-          }}
-          disabled={busyKey !== null}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid #aa0000ff',
-            background: busyKey === 'stripeProducts' ? '#f3f3f3' : '#aa0000ff',
-            cursor: busyKey ? 'default' : 'pointer',
-          }}
-        >
-          {busyKey === 'stripeProducts' ? 'Running…' : 'Run Stripe Sync'}
-        </button>
+        {renderActionButton('stripeProducts', 'Run Stripe Sync', () => {
+          const ids = productIds
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean)
+          invokeBackfill('stripeProducts', 'backfillStripeProducts', {
+            body: {
+              mode: productMode,
+              limit: parseLimit(productLimit),
+              ...(ids.length ? {productIds: ids} : {}),
+            },
+          })
+        })}
         {renderMessage('stripeProducts')}
       </section>
     </div>

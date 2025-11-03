@@ -1,13 +1,20 @@
 import React from 'react'
-import {Text} from '@sanity/ui'
+import {Inline, Text} from '@sanity/ui'
 import {PaginatedDocumentTable, formatCurrency, formatDate} from './PaginatedDocumentTable'
+import {formatOrderNumber} from '../../../utils/orderNumber'
+import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
+import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
 
 type OrderRowData = {
   orderNumber?: string | null
+  invoiceOrderNumber?: string | null
+  invoiceNumber?: string | null
+  stripeSessionId?: string | null
   status?: string | null
   paymentStatus?: string | null
   customerName?: string | null
   customerEmail?: string | null
+  shippingName?: string | null
   totalAmount?: number | null
   amountRefunded?: number | null
   currency?: string | null
@@ -16,51 +23,99 @@ type OrderRowData = {
 
 const ORDER_PROJECTION = `{
   orderNumber,
+  stripeSessionId,
+  "invoiceOrderNumber": invoiceRef->orderNumber,
+  "invoiceNumber": invoiceRef->invoiceNumber,
   status,
   paymentStatus,
   customerName,
   customerEmail,
+  "shippingName": shippingAddress.name,
   totalAmount,
   amountRefunded,
   currency,
   "createdAt": coalesce(createdAt, _createdAt)
 }`
 
+export const NEW_ORDERS_FILTER =
+  `!defined(fulfilledAt) && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && !(status in ["fulfilled","shipped","cancelled","refunded","closed"])`
+
+const DEFAULT_ORDERINGS: Array<{field: string; direction: 'asc' | 'desc'}> = [
+  {field: '_createdAt', direction: 'desc'},
+]
+
+type OrdersDocumentTableProps = {
+  title?: string
+  filter?: string
+  emptyState?: string
+  orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
+  pageSize?: number
+  excludeCheckoutSessionExpired?: boolean
+}
+
+function resolveOrderNumber(data: OrderRowData & {_id: string}) {
+  const candidates = [
+    data.orderNumber,
+    data.invoiceOrderNumber,
+    data.invoiceNumber,
+  ]
+  for (const candidate of candidates) {
+    const formatted = formatOrderNumber(candidate)
+    if (formatted) return formatted
+  }
+  for (const candidate of candidates) {
+    if (candidate && candidate.trim()) return candidate.trim()
+  }
+  const sessionFormatted = formatOrderNumber(data.stripeSessionId)
+  if (sessionFormatted) return sessionFormatted
+  const trimmedId = data._id.replace(/^drafts\./, '')
+  const fallback = trimmedId.slice(-6).toUpperCase()
+  return fallback ? `#${fallback}` : '—'
+}
+
 function getCustomerLabel(data: OrderRowData) {
-  const candidates = [data.customerName, data.customerEmail]
+  const candidates = [data.customerName, data.shippingName, data.customerEmail]
   for (const value of candidates) {
     if (value && value.trim()) return value
   }
   return '—'
 }
 
-const toTitleCase = (value?: string | null) => {
-  if (!value) return '—'
-  const trimmed = value.trim().replace(/_/g, ' ')
-  if (!trimmed) return '—'
-  return trimmed
-    .split(' ')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(' ')
-}
-
-export default function OrdersDocumentTable() {
+export default function OrdersDocumentTable({
+  title = 'Orders',
+  filter,
+  emptyState = 'No orders found',
+  orderings = DEFAULT_ORDERINGS,
+  pageSize = 8,
+  excludeCheckoutSessionExpired = true,
+}: OrdersDocumentTableProps = {}) {
   type OrderRow = OrderRowData & {_id: string; _type: string}
+
+  const filterClauses: string[] = []
+  if (excludeCheckoutSessionExpired) {
+    filterClauses.push(`(${GROQ_FILTER_EXCLUDE_EXPIRED})`)
+  }
+  if (filter && filter.trim().length > 0) {
+    filterClauses.push(`(${filter.trim()})`)
+  }
+  const combinedFilter = filterClauses.join(' && ')
 
   return (
     <PaginatedDocumentTable<OrderRowData>
-      title="Orders"
+      title={title}
       documentType="order"
       projection={ORDER_PROJECTION}
-      orderings={[{field: '_createdAt', direction: 'desc'}]}
-      pageSize={8}
+      orderings={orderings}
+      pageSize={pageSize}
+      filter={combinedFilter || undefined}
+      emptyState={emptyState}
       columns={[
         {
           key: 'order',
           header: 'Order',
           render: (data: OrderRow) => (
             <Text size={1} weight="medium">
-              {data.orderNumber || '—'}
+              {resolveOrderNumber(data)}
             </Text>
           ),
         },
@@ -72,32 +127,66 @@ export default function OrdersDocumentTable() {
         {
           key: 'status',
           header: 'Status',
-          render: (data: OrderRow) => (
-            <Text size={1} muted>
-              {toTitleCase(data.paymentStatus)}
-              {data.status && data.status !== data.paymentStatus
-                ? ` • ${toTitleCase(data.status)}`
-                : ''}
-            </Text>
-          ),
+          render: (data: OrderRow) => {
+            const badges: React.ReactNode[] = []
+            const paymentLabel = formatBadgeLabel(data.paymentStatus)
+            if (paymentLabel) {
+              badges.push(
+                <DocumentBadge
+                  key="payment-status"
+                  label={paymentLabel}
+                  tone={resolveBadgeTone(data.paymentStatus)}
+                  title={`Payment status: ${paymentLabel}`}
+                />,
+              )
+            }
+
+            const fulfillmentLabel =
+              data.status && data.status !== data.paymentStatus
+                ? formatBadgeLabel(data.status)
+                : null
+
+            if (fulfillmentLabel) {
+              badges.push(
+                <DocumentBadge
+                  key="fulfillment-status"
+                  label={fulfillmentLabel}
+                  tone={resolveBadgeTone(data.status)}
+                  title={`Order status: ${fulfillmentLabel}`}
+                />,
+              )
+            }
+
+            if (!badges.length) {
+              return <Text size={1}>—</Text>
+            }
+
+            return (
+              <Inline space={4} style={{flexWrap: 'wrap', rowGap: '12px'}}>
+                {badges}
+              </Inline>
+            )
+          },
         },
         {
           key: 'amount',
           header: 'Total',
           align: 'right',
-          render: (data: OrderRow) =>
-            <Text size={1}>{formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}</Text>,
+          render: (data: OrderRow) => (
+            <Text size={1}>{formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}</Text>
+          ),
         },
         {
           key: 'refunded',
           header: 'Refunded',
           align: 'right',
-          render: (data: OrderRow) =>
+          render: (data: OrderRow) => (
             <Text size={1}>
               {data.amountRefunded && data.amountRefunded > 0
                 ? formatCurrency(data.amountRefunded, data.currency ?? 'USD')
                 : '—'}
-            </Text>,
+            </Text>
+          ),
         },
         {
           key: 'created',

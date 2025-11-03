@@ -1,6 +1,5 @@
 import React, {Suspense, useMemo, useRef, useState} from 'react'
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -30,6 +29,13 @@ import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 
 import {formatCurrency, formatDate} from './documentTables/PaginatedDocumentTable'
+import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './documentTables/DocumentBadge'
+import {formatOrderNumber} from '../../utils/orderNumber'
+import {
+  EXPIRED_SESSION_PANEL_TITLE,
+  GROQ_FILTER_EXCLUDE_EXPIRED,
+  GROQ_FILTER_ONLY_EXPIRED,
+} from '../../utils/orderFilters'
 
 const API_VERSION = '2024-10-01'
 const PAGE_SIZE = 10
@@ -41,6 +47,7 @@ type FilterDefinition = {
   title: string
   filter?: string
   description?: string
+  skipBaseFilter?: boolean
 }
 
 type SortDefinition = {
@@ -50,7 +57,7 @@ type SortDefinition = {
   direction: 'asc' | 'desc'
 }
 
-const BASE_FILTER = 'count(orderEvents[type == "checkout.session.completed"]) > 0'
+const BASE_FILTER = GROQ_FILTER_EXCLUDE_EXPIRED
 
 const FILTERS: FilterDefinition[] = [
   {id: 'recent', title: 'Recent', description: 'Newest orders first'},
@@ -69,6 +76,13 @@ const FILTERS: FilterDefinition[] = [
     id: 'issues',
     title: 'Payment issues',
     filter: 'paymentStatus in ["cancelled","failed","refunded","partially_refunded"]',
+  },
+  {
+    id: 'expired',
+    title: EXPIRED_SESSION_PANEL_TITLE,
+    filter: GROQ_FILTER_ONLY_EXPIRED,
+    description: 'Checkout sessions that expired before payment completed',
+    skipBaseFilter: true,
   },
 ]
 
@@ -146,22 +160,9 @@ const LOADING_ROW = (
 )
 
 function statusBadge(value?: string | null) {
-  if (!value) return null
-  const normalized = value.toLowerCase()
-  const tone =
-    normalized === 'paid' || normalized === 'fulfilled' || normalized === 'shipped'
-      ? 'positive'
-      : normalized === 'cancelled'
-        ? 'critical'
-        : normalized === 'refunded' || normalized === 'partially_refunded'
-          ? 'caution'
-          : 'default'
-
-  return (
-    <Badge tone={tone} mode="outline">
-      {value.replace(/_/g, ' ')}
-    </Badge>
-  )
+  const label = formatBadgeLabel(value)
+  if (!label) return null
+  return <DocumentBadge label={label} tone={resolveBadgeTone(value)} />
 }
 
 function OrderTableRow({document}: {document: DocumentHandle}) {
@@ -197,6 +198,7 @@ function OrderTableRow({document}: {document: DocumentHandle}) {
 
   const customerLabel = data.customerName || data.customerEmail || '—'
   const imageSrc = data.primaryImage || ORDER_IMAGE_PLACEHOLDER
+  const displayOrderNumber = formatOrderNumber(data.orderNumber) ?? data.orderNumber ?? null
   const paymentBadge = statusBadge(data.paymentStatus)
   const fulfillmentBadge =
     data.status && data.status !== data.paymentStatus ? statusBadge(data.status) : null
@@ -229,14 +231,20 @@ function OrderTableRow({document}: {document: DocumentHandle}) {
         >
           <img
             src={imageSrc}
-            alt={data.orderNumber ? `Preview for ${data.orderNumber}` : 'Order preview'}
+            alt={
+              displayOrderNumber
+                ? `Preview for ${displayOrderNumber}`
+                : data.orderNumber
+                  ? `Preview for ${data.orderNumber}`
+                  : 'Order preview'
+            }
             style={{width: '100%', height: '100%', objectFit: 'cover'}}
           />
         </Box>
       </td>
       <td style={{padding: '12px'}}>
         <Text size={1} weight="medium">
-          {data.orderNumber || '—'}
+          {displayOrderNumber || '—'}
         </Text>
       </td>
       <td style={{padding: '12px'}}>
@@ -288,11 +296,14 @@ function OrdersTableContent() {
 
   const combinedFilter = useMemo(() => {
     const filterExpression = activeFilter.filter?.trim()
+    if (activeFilter.skipBaseFilter) {
+      return filterExpression && filterExpression.length > 0 ? filterExpression : undefined
+    }
     if (filterExpression && filterExpression.length > 0) {
       return `(${BASE_FILTER}) && (${filterExpression})`
     }
     return BASE_FILTER
-  }, [activeFilter.filter])
+  }, [activeFilter.filter, activeFilter.skipBaseFilter])
 
   const {
     data,
@@ -363,23 +374,25 @@ function OrdersTableContent() {
           <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '14px'}}>
             <thead>
               <tr>
-                {['', 'Order', 'Customer', 'Status', 'Total', 'Refunded', 'Created'].map((header) => (
-                  <th
-                    key={header}
-                    style={{
-                      textAlign: header === 'Total' || header === 'Refunded' ? 'right' : 'left',
-                      padding: '12px',
-                      fontSize: '12px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      color: 'var(--card-muted-fg-color)',
-                      fontWeight: 600,
-                      borderBottom: '1px solid var(--card-border-color)',
-                    }}
-                  >
-                    {header}
-                  </th>
-                ))}
+                {['', 'Order', 'Customer', 'Status', 'Total', 'Refunded', 'Created'].map(
+                  (header) => (
+                    <th
+                      key={header}
+                      style={{
+                        textAlign: header === 'Total' || header === 'Refunded' ? 'right' : 'left',
+                        padding: '12px',
+                        fontSize: '12px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        color: 'var(--card-muted-fg-color)',
+                        fontWeight: 600,
+                        borderBottom: '1px solid var(--card-border-color)',
+                      }}
+                    >
+                      {header}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody>
@@ -429,7 +442,11 @@ function OrdersTableContent() {
 }
 
 const OrderListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
-  const client = useClient({apiVersion: API_VERSION})
+  const sourceClient = useClient({apiVersion: API_VERSION})
+  const client = useMemo(
+    () => sourceClient.withConfig({perspective: 'previewDrafts' as const}),
+    [sourceClient],
+  )
 
   const sdkConfig = useMemo(() => {
     const {projectId, dataset} = client.config()
@@ -439,6 +456,7 @@ const OrderListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_
       apiVersion: API_VERSION,
       useCdn: false,
       studioMode: {enabled: true},
+      perspective: 'previewDrafts' as const,
     }
   }, [client])
 

@@ -4,7 +4,7 @@ import {ArrayOfObjectsInputProps, PatchEvent, set, unset} from 'sanity'
 import {normalizeMetadataEntries} from '../../utils/cartItemDetails'
 
 type MetadataEntry = {
-  _key?: string
+  _key: string
   _type?: string
   key?: string
   value?: string
@@ -13,13 +13,13 @@ type MetadataEntry = {
 
 type MetadataValue = MetadataEntry[] | Record<string, unknown> | null | undefined
 
-const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function';
+const HAS_RANDOM_UUID = typeof globalThis.crypto?.randomUUID === 'function'
 
 const generateKey = () => {
   if (HAS_RANDOM_UUID) {
-    return globalThis.crypto.randomUUID();
+    return globalThis.crypto.randomUUID()
   }
-  return Math.random().toString(36).slice(2);
+  return Math.random().toString(36).slice(2)
 }
 
 const toMetadataEntries = (value: Record<string, unknown>): MetadataEntry[] => {

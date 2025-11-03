@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react'
 import {Button, Card, Flex, Heading, Stack, Text} from '@sanity/ui'
 import {useRouter} from 'sanity/router'
 import {useClient} from 'sanity'
+import {GROQ_EXPIRED_ARRAY, GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
 
 const API_VERSION = '2024-10-01'
 
@@ -9,7 +10,7 @@ export type ColumnAlign = 'left' | 'right' | 'center'
 
 export type PaginatedColumn<TData extends Record<string, unknown>> = {
   key: string
-  header: string
+  header: React.ReactNode
   width?: string | number
   align?: ColumnAlign
   render: (data: TData & {_id: string; _type: string}) => React.ReactNode
@@ -25,6 +26,8 @@ export interface PaginatedDocumentTableProps<TData extends Record<string, unknow
   emptyState?: string
   filter?: string
   includeDrafts?: boolean
+  headerActions?: React.ReactNode
+  onPageItemsChange?: (items: Array<RowResult<TData>>) => void
 }
 
 type RowResult<TData extends Record<string, unknown>> = TData & {
@@ -95,8 +98,10 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   emptyState = 'No documents found.',
   filter,
   includeDrafts = false,
+  headerActions,
+  onPageItemsChange,
 }: PaginatedDocumentTableProps<TData>) {
-  const client = useClient({apiVersion: API_VERSION, perspective: 'published'})
+  const client = useClient({apiVersion: API_VERSION})
   const router = useRouter()
   const [items, setItems] = useState<RowResult<TData>[]>([])
   const [total, setTotal] = useState<number>(0)
@@ -107,6 +112,12 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   const orderingClause = useMemo(() => buildOrderingClause(orderings), [orderings])
   const filterFragments = useMemo(() => {
     const fragments = ['_type == $documentType']
+    if (documentType === 'order') {
+      fragments.push(
+        `(${GROQ_FILTER_EXCLUDE_EXPIRED})`,
+        `!(defined(stripeCheckoutStatus) && lower(stripeCheckoutStatus) in ${GROQ_EXPIRED_ARRAY})`,
+      )
+    }
     if (!includeDrafts) {
       fragments.push('!(_id in path("drafts.**"))')
     }
@@ -114,12 +125,31 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
       fragments.push(`(${filter.trim()})`)
     }
     return fragments
-  }, [filter, includeDrafts])
+  }, [documentType, filter, includeDrafts])
   const filterClause = useMemo(() => filterFragments.join(' && '), [filterFragments])
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(total / pageSize))
   }, [total, pageSize])
+
+  const minTableWidth = useMemo(() => {
+    if (!columns.length) return 320
+    return columns.reduce((totalWidth, column) => {
+      if (typeof column.width === 'number') {
+        return totalWidth + column.width
+      }
+      if (typeof column.width === 'string') {
+        const pxMatch = column.width.match(/^(\d+(?:\.\d+)?)px$/i)
+        if (pxMatch) {
+          const parsed = Number.parseFloat(pxMatch[1])
+          if (!Number.isNaN(parsed)) {
+            return totalWidth + parsed
+          }
+        }
+      }
+      return totalWidth + 160
+    }, 0)
+  }, [columns])
 
   useEffect(() => {
     let cancelled = false
@@ -163,11 +193,17 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
         })
         if (!cancelled) {
           setItems(results)
+          if (onPageItemsChange) {
+            onPageItemsChange(results)
+          }
         }
       } catch (err) {
         console.error('PaginatedDocumentTable: failed to load documents', err)
         if (!cancelled) {
           setItems([])
+          if (onPageItemsChange) {
+            onPageItemsChange([])
+          }
         }
       } finally {
         if (!cancelled) {
@@ -189,6 +225,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
     orderingClause,
     pageSize,
     filterClause,
+    onPageItemsChange,
   ])
 
   const handlePrevious = useCallback(() => {
@@ -209,9 +246,12 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   return (
     <Card padding={4} radius={3} shadow={1} tone="transparent">
       <Stack space={4}>
-        <Heading as="h2" size={3}>
-          {title}
-        </Heading>
+        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+          <Heading as="h2" size={3}>
+            {title}
+          </Heading>
+          {headerActions ? <div>{headerActions}</div> : null}
+        </Flex>
 
         <div
           style={{
@@ -223,7 +263,13 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
           }}
         >
           <table
-            style={{width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '14px'}}
+            style={{
+              width: '100%',
+              minWidth: minTableWidth,
+              borderCollapse: 'separate',
+              borderSpacing: 0,
+              fontSize: '14px',
+            }}
           >
             <thead>
               <tr>
@@ -231,6 +277,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
                   <th
                     key={column.key}
                     style={{
+                      width: column.width,
                       textAlign: column.align ?? 'left',
                       padding: '12px 16px',
                       fontSize: '12px',
@@ -284,6 +331,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
                       <td
                         key={column.key}
                         style={{
+                          width: column.width,
                           padding: '16px 18px',
                           textAlign: column.align ?? 'left',
                           verticalAlign: 'middle',

@@ -24,6 +24,7 @@ import {
   Tooltip,
 } from '@sanity/ui'
 import {RefreshIcon, LaunchIcon} from '@sanity/icons'
+import {formatOrderNumber, orderNumberSearchTokens} from '../../utils/orderNumber'
 
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
@@ -149,6 +150,12 @@ function normalizeWebhook(raw: RawWebhook): WebhookRecord {
   const processedAt = raw.processedAt || null
   const orderRefId = raw.orderRef?._id || raw.orderId || null
   const invoiceRefId = raw.invoiceRef?._id || raw.invoiceId || null
+  const normalizedOrderNumber =
+    formatOrderNumber(raw.orderNumber) ||
+    formatOrderNumber(raw.orderRef?.orderNumber) ||
+    raw.orderNumber ||
+    raw.orderRef?.orderNumber ||
+    null
 
   return {
     id: raw._id,
@@ -172,7 +179,7 @@ function normalizeWebhook(raw: RawWebhook): WebhookRecord {
     livemode: Boolean(raw.livemode),
     metadata: raw.metadata || null,
     rawPayload: raw.rawPayload || null,
-    orderNumber: raw.orderNumber || raw.orderRef?.orderNumber || null,
+    orderNumber: normalizedOrderNumber,
     orderId: orderRefId,
     invoiceId: invoiceRefId,
   }
@@ -181,6 +188,7 @@ function normalizeWebhook(raw: RawWebhook): WebhookRecord {
 function matchesSearch(record: WebhookRecord, query: string): boolean {
   const value = query.trim().toLowerCase()
   if (!value) return true
+  const orderTokens = orderNumberSearchTokens(record.orderNumber)
   const haystack = [
     record.summary,
     record.eventType,
@@ -197,6 +205,7 @@ function matchesSearch(record: WebhookRecord, query: string): boolean {
     record.stripeEventId,
   ]
   if (haystack.some((item) => item && item.toLowerCase().includes(value))) return true
+  if (orderTokens.some((token) => token.toLowerCase().includes(value))) return true
   if (record.metadata && record.metadata.toLowerCase().includes(value)) return true
   if (record.rawPayload && record.rawPayload.toLowerCase().includes(value)) return true
   return false

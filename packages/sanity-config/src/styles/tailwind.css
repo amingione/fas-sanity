@@ -505,6 +505,42 @@
     color: inherit !important;
   }
 
+  body.sanity-studio-theme .document-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    background: #e5e7eb;
+    color: #111827;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  body.sanity-studio-theme .document-badge--primary {
+    background: #bfdbfe;
+  }
+
+  body.sanity-studio-theme .document-badge--success {
+    background: #86efac;
+    border-color: rgba(22, 101, 52, 0.25);
+  }
+
+  body.sanity-studio-theme .document-badge--warning {
+    background: #fde68a;
+    border-color: rgba(180, 83, 9, 0.2);
+  }
+
+  body.sanity-studio-theme .document-badge--danger {
+    background: #fca5a5;
+    border-color: rgba(185, 28, 28, 0.25);
+  }
+
   input::placeholder,
   textarea::placeholder {
     color: #4b5563;
