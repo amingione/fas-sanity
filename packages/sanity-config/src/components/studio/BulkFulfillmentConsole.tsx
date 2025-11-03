@@ -8,12 +8,19 @@ import React, {
 } from 'react'
 import {useClient} from 'sanity'
 import {Badge, Button, Card, Checkbox, Stack, Text, useToast} from '@sanity/ui'
+import {formatOrderNumber} from '../../utils/orderNumber'
+import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 const fmt = (n?: number) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
 
 const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order'
-const ORDER_QUERY =
-  '*[_type == "order" && status != "fulfilled"]{_id, orderNumber, customerEmail, totalAmount, status}'
+const ORDER_QUERY = `*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && status != "fulfilled"]{
+  _id,
+  orderNumber,
+  customerEmail,
+  totalAmount,
+  status
+}`
 
 interface Order {
   _id: string
@@ -215,7 +222,7 @@ const BulkFulfillmentConsole = forwardRef<HTMLDivElement, Record<string, never>>
                     onChange={() => toggleSelection(order._id)}
                   />
                   <Text size={1} muted>
-                    {order.orderNumber || order._id}
+                    {formatOrderNumber(order.orderNumber) || order._id}
                   </Text>
                 </label>
                 <Text>{order.customerEmail}</Text>

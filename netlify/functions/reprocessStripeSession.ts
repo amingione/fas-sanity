@@ -10,6 +10,7 @@ import type {CartItem} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
+import {buildOrderV2Record} from '../lib/orderV2'
 
 // CORS helper (same pattern used elsewhere)
 const DEFAULT_ORIGINS = (
@@ -58,6 +59,14 @@ function sanitizeOrderNumber(value?: string | null): string | undefined {
   const digits = trimmed.replace(/\D/g, '')
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
   return undefined
+}
+
+function normalizeOrderNumberForStorage(value?: string | null): string | undefined {
+  const sanitized = sanitizeOrderNumber(value)
+  if (sanitized) return sanitized
+  if (!value) return undefined
+  const trimmed = value.toString().trim().toUpperCase()
+  return trimmed || undefined
 }
 
 function candidateFromSessionId(id?: string | null): string | undefined {
@@ -494,6 +503,7 @@ async function upsertOrder({
   const totalAmount = coerceNumber((session as any)?.amount_total ?? paymentIntent?.amount_received, true)
   const amountSubtotal = coerceNumber((session as any)?.amount_subtotal, true)
   const amountTax = coerceNumber((session as any)?.total_details?.amount_tax, true)
+  const amountDiscount = coerceNumber((session as any)?.total_details?.amount_discount, true)
   const amountShipping = (() => {
     const shippingTotal = coerceNumber((session as any)?.shipping_cost?.amount_total, true)
     if (shippingTotal !== undefined) return shippingTotal
@@ -562,6 +572,8 @@ async function upsertOrder({
       invoiceNumber: metadataInvoiceNumber,
       fallbackId: stripeSessionId,
     }))
+  const normalizedOrderNumber =
+    normalizeOrderNumberForStorage(orderNumber) || orderNumber
 
   const cart = await buildCartFromSession(stripeSessionId, metadata)
   const shippingAddress = extractShippingAddress(session, email || undefined)
@@ -569,6 +581,9 @@ async function upsertOrder({
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined
   const receiptUrl = charge?.receipt_url || undefined
+  const paymentMethodType = Array.isArray(paymentIntent?.payment_method_types)
+    ? paymentIntent.payment_method_types[0]
+    : undefined
 
   const userIdMeta =
     (metadata['auth0_user_id'] || metadata['auth0_sub'] || metadata['userId'] || metadata['user_id'] || '')
@@ -579,7 +594,7 @@ async function upsertOrder({
     _type: 'order',
     stripeSource: 'checkout.session',
     stripeSessionId,
-    orderNumber,
+    orderNumber: normalizedOrderNumber,
     customerName,
     customerEmail: email || undefined,
     totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
@@ -657,7 +672,7 @@ async function upsertOrder({
     baseDoc.shippingMetadata = shippingDetails.metadata
   }
 
-  const orderSlug = createOrderSlug(orderNumber, stripeSessionId)
+  const orderSlug = createOrderSlug(normalizedOrderNumber, stripeSessionId)
   if (orderSlug) baseDoc.slug = {_type: 'slug', current: orderSlug}
 
   if (email) {
@@ -671,6 +686,42 @@ async function upsertOrder({
       console.warn('reprocessStripeSession: failed to lookup customer by email', err)
     }
   }
+
+  baseDoc.orderV2 = buildOrderV2Record({
+    orderId: normalizedOrderNumber,
+    createdAt: baseDoc.createdAt,
+    status: baseDoc.status,
+    customerId: baseDoc.customerRef?._ref,
+    customerRef: baseDoc.customerRef,
+    customerName,
+    customerEmail: email || undefined,
+    customerPhone: shippingAddress?.phone || undefined,
+    shippingAddress,
+    cart,
+    subtotal: amountSubtotal ?? undefined,
+    discount: amountDiscount ?? undefined,
+    shippingFee: shippingAmountForDoc,
+    tax: amountTax ?? undefined,
+    total: totalAmount ?? undefined,
+    paymentStatus,
+    stripePaymentIntentId: paymentIntent?.id || undefined,
+    stripeChargeId: chargeId,
+    receiptUrl,
+    paymentMethod: paymentMethodType,
+    cardBrand,
+    shippingCarrier: baseDoc.shippingCarrier,
+    shippingServiceName: baseDoc.shippingServiceName,
+    shippingTrackingNumber: baseDoc.trackingNumber,
+    shippingStatus: baseDoc.status,
+    shippingEstimatedDelivery: baseDoc.shippingEstimatedDeliveryDate,
+    notes: undefined,
+    webhookNotified: existingOrder ? baseDoc.webhookNotified : true,
+    lastSync: baseDoc.stripeLastSyncedAt,
+    failureReason: undefined,
+    refunds: undefined,
+    disputes: undefined,
+    stripeEventLog: [],
+  })
 
   let orderId = existingOrder?._id || null
   if (orderId) {

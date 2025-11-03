@@ -260,8 +260,9 @@ const documents = [
 
 import {homeType} from './singletons/homeType'
 import {settingsType as siteSettingsType} from './singletons/siteSettingsType'
+import {dashboardViewType} from './singletons/dashboardViewType'
 
-const singletons = [homeType, siteSettingsType]
+const singletons = [homeType, siteSettingsType, dashboardViewType]
 
 export const schemaTypes = [
   ...annotations,

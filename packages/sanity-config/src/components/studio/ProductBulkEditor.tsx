@@ -453,7 +453,7 @@ function matrixToParsedRows(matrix: string[][]): {ok: true; rows: ParsedRow[]} |
   return {ok: true, rows}
 }
 
-export default function ProductBulkEditor() {
+export default function ProductBulkEditor({productIds}: {productIds?: string[]}) {
   const client = useClient({apiVersion: '2024-04-10'})
   const toast = useToast()
   const [products, setProducts] = useState<EditableProduct[]>([])
@@ -508,8 +508,8 @@ export default function ProductBulkEditor() {
     async function fetchProducts() {
       setLoading(true)
       try {
-        const docs: ProductDoc[] = await client.fetch(
-          `*[_type == "product"]{
+        const hasSelection = Array.isArray(productIds) && productIds.length > 0
+        const projection = `{
             _id,
             title,
             slug,
@@ -560,7 +560,25 @@ export default function ProductBulkEditor() {
             "images": images[].asset->url,
             "categories": category[]->title
           }`
-        )
+        const query = hasSelection
+          ? `*[_type == "product" && _id in $ids]${projection}`
+          : `*[_type == "product"]${projection}`
+
+        const params = hasSelection ? {ids: productIds} : {}
+        let docs: ProductDoc[] = await client.fetch(query, params)
+        if (!Array.isArray(docs)) {
+          docs = []
+        }
+        if (hasSelection) {
+          const orderMap = new Map<string, number>(
+            productIds!.map((id, index) => [id, index]),
+          )
+          docs.sort((a, b) => {
+            const aIndex = orderMap.get(a._id) ?? Number.MAX_SAFE_INTEGER
+            const bIndex = orderMap.get(b._id) ?? Number.MAX_SAFE_INTEGER
+            return aIndex - bIndex
+          })
+        }
 
         if (!isMounted) return
 
@@ -582,7 +600,7 @@ export default function ProductBulkEditor() {
     return () => {
       isMounted = false
     }
-  }, [client, toast])
+  }, [client, productIds, toast])
 
   const filteredProducts = useMemo(() => filterProductsByTerm(products, searchTerm), [products, searchTerm])
 

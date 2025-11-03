@@ -3,6 +3,8 @@ import {Button, Card, Dialog, Flex, Spinner, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {format, formatDistanceToNow, parseISO} from 'date-fns'
+import {formatOrderNumber} from '../../utils/orderNumber'
+import {filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 type BasicAddress = {
   name?: string | null
@@ -75,6 +77,13 @@ type StoreCreditTransaction = {
 type StoreCreditSummary = {
   totalRedeemed: number
   transactions: StoreCreditTransaction[]
+}
+
+const normalizeOrderNumberValue = (value?: string | null): string | null => {
+  const formatted = formatOrderNumber(value)
+  if (formatted) return formatted
+  const trimmed = typeof value === 'string' ? value.trim() : value ? String(value).trim() : ''
+  return trimmed ? trimmed : null
 }
 
 type CustomerRecord = {
@@ -234,6 +243,7 @@ const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
   },
   "orderDocuments": *[
     _type == "order" &&
+    (${GROQ_FILTER_EXCLUDE_EXPIRED}) &&
     (
       customerRef._ref == ^._id ||
       customer._ref == ^._id ||
@@ -569,16 +579,17 @@ const computeStoreCreditSummary = (orders?: OrderDocumentLite[] | null): StoreCr
     if (!order) continue
     const cart = Array.isArray(order.cart) ? order.cart : []
     const occurredAt = safeParseDate(order.createdAt) ?? safeParseDate(order._createdAt)
+    const orderNumber = normalizeOrderNumberValue(order.orderNumber)
     cart.forEach((item, index) => {
       if (!isStoreCreditItem(item)) return
       const amount = computeCartItemAmount(item)
       if (amount === null || amount >= 0) return
       const normalized = Math.abs(amount)
       summary.totalRedeemed += normalized
-      const id = `${order._id || order.orderNumber || 'order'}-${item?._key || index}`
+      const id = `${order._id || orderNumber || 'order'}-${item?._key || index}`
       summary.transactions.push({
         id,
-        orderNumber: order.orderNumber,
+        orderNumber,
         amount: normalized,
         occurredAt,
       })
@@ -743,8 +754,40 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
         if (cancelled) return
 
         if (detail) {
+          const normalizedOrders = Array.isArray(detail.orders)
+            ? filterOutExpiredOrders(
+                detail.orders
+                  .map((order) =>
+                    order
+                      ? {
+                          ...order,
+                          orderNumber: normalizeOrderNumberValue(order.orderNumber),
+                        }
+                      : order,
+                  )
+                  .filter((order): order is CustomerOrderSummary => Boolean(order)),
+              )
+            : detail.orders
+
+          const normalizedOrderDocs = Array.isArray(detail.orderDocuments)
+            ? filterOutExpiredOrders(
+                detail.orderDocuments
+                  .map((order) =>
+                    order
+                      ? {
+                          ...order,
+                          orderNumber: normalizeOrderNumberValue(order.orderNumber),
+                        }
+                      : order,
+                  )
+                  .filter((order): order is OrderDocumentLite => Boolean(order)),
+              )
+            : detail.orderDocuments
+
           setActiveProfile({
             ...detail,
+            orders: normalizedOrders as CustomerOrderSummary[] | null,
+            orderDocuments: normalizedOrderDocs as OrderDocumentLite[] | null,
             displayName: buildDisplayName(detail),
             location: buildLocation(detail),
           })

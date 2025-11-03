@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import { filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED } from '../lib/orderFilters'
 
 function decodeJwt(authHeader?: string | null): { sub?: string; email?: string } | null {
   if (!authHeader) return null
@@ -42,18 +43,20 @@ export const handler: Handler = async (event) => {
       return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) }
     }
 
-    const query = `*[_type == "order" && defined(customerEmail) && lower(customerEmail) == $email]{
+    const query = `*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && defined(customerEmail) && lower(customerEmail) == $email]{
       _id,
       customerEmail,
       totalAmount,
       status,
+      paymentStatus,
       createdAt,
       trackingNumber,
       shippingLabelUrl,
       packingSlipUrl
     } | order(createdAt desc)`
 
-    const orders = email ? await sanity.fetch(query, { email }) : []
+    const rawOrders = email ? await sanity.fetch(query, { email }) : []
+    const orders = Array.isArray(rawOrders) ? filterOutExpiredOrders(rawOrders) : []
 
     return {
       statusCode: 200,
@@ -71,4 +74,3 @@ export const handler: Handler = async (event) => {
 }
 
 export default handler
-

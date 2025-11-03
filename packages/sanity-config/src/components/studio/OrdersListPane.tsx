@@ -1,6 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {
-  Badge,
   Box,
   Button,
   Card,
@@ -16,6 +15,13 @@ import {
 } from '@sanity/ui'
 import {DownloadIcon, FilterIcon, SearchIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
+import {formatOrderNumber, orderNumberSearchTokens} from '../../utils/orderNumber'
+import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './documentTables/DocumentBadge'
+import {
+  EXPIRED_SESSION_PANEL_TITLE,
+  filterOutExpiredOrders,
+  isExpiredOrder,
+} from '../../utils/orderFilters'
 
 type OrderRecord = {
   _id: string
@@ -42,7 +48,7 @@ const ORDER_FILTER_LABELS: Record<OrderFilter, string> = {
   shipped: 'Shipped',
   cancelled: 'Cancelled',
   refunded: 'Refunded',
-  expired: 'Expired',
+  expired: EXPIRED_SESSION_PANEL_TITLE,
 }
 
 const ORDER_QUERY = `*[_type == "order"] | order(orderDate desc)[0...250]{
@@ -91,29 +97,6 @@ const toTitleCase = (value?: string | null) => {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
-}
-
-const badgeTone = (
-  status?: string | null,
-): 'default' | 'positive' | 'caution' | 'critical' => {
-  if (!status) return 'default'
-  const normalized = status.toLowerCase()
-  if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
-  if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
-  if (
-    [
-      'cancelled',
-      'canceled',
-      'returned',
-      'refunded',
-      'failed',
-      'exception',
-      'void',
-      'expired',
-    ].includes(normalized)
-  )
-    return 'critical'
-  return 'default'
 }
 
 const includesAny = (value: string, patterns: string[]) => patterns.some((pattern) => value.includes(pattern))
@@ -166,11 +149,15 @@ const FILTER_MATCHERS: Record<Exclude<OrderFilter, 'all'>, (value: string) => bo
     ]) && !includesAny(value, ['not shipped', 'unshipped']),
   cancelled: (value) => includesAny(value, ['cancel', 'void', 'return', 'returned', 'failed', 'declined', 'rejected']),
   refunded: (value) => includesAny(value, ['refund', 'refunded', 'refunding', 'charge refunded', 'payment refunded']),
-  expired: (value) => includesAny(value, ['expired', 'expire', 'abandoned']),
+  expired: () => true,
 }
 
 const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
-  const client = useClient({apiVersion: '2024-10-01'})
+  const sourceClient = useClient({apiVersion: '2024-10-01'})
+  const client = useMemo(
+    () => sourceClient.withConfig({perspective: 'previewDrafts' as const}),
+    [sourceClient],
+  )
   const [orders, setOrders] = useState<OrderRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -205,17 +192,23 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
     }
   }, [client])
 
+  const expiredOrders = useMemo(() => orders.filter((order) => isExpiredOrder(order)), [orders])
+  const activeOrders = useMemo(() => filterOutExpiredOrders(orders), [orders])
+
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase()
+    const dataset = filter === 'expired' ? expiredOrders : activeOrders
 
-    return orders.filter((order) => {
+    return dataset.filter((order) => {
       const matchesTerm =
         !term ||
-        order.orderNumber?.toLowerCase().includes(term) ||
+        orderNumberSearchTokens(order.orderNumber).some((token) =>
+          token.toLowerCase().includes(term),
+        ) ||
         order.customer?.name?.toLowerCase().includes(term)
 
       if (!matchesTerm) return false
-      if (filter === 'all') return true
+      if (filter === 'all' || filter === 'expired') return true
 
       const matcher = FILTER_MATCHERS[filter]
       if (!matcher) return true
@@ -231,7 +224,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
 
       return statuses.some((value) => matcher(value))
     })
-  }, [orders, search, filter])
+  }, [activeOrders, expiredOrders, search, filter])
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => filteredOrders.some((order) => order._id === id)))
@@ -252,6 +245,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
   }
 
   const filterLabel = ORDER_FILTER_LABELS[filter]
+  const totalVisibleOrders = filter === 'expired' ? expiredOrders.length : activeOrders.length
 
   return (
     <Box ref={ref} padding={[4, 5, 6]}>
@@ -264,7 +258,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                   Orders
                 </Text>
                 <Text muted size={1}>
-                  {filteredOrders.length} shown · {orders.length} total
+                  {filteredOrders.length} shown · {totalVisibleOrders} total
                 </Text>
               </Stack>
               <Button icon={DownloadIcon} mode="ghost" text="Export" />
@@ -292,7 +286,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                     <MenuItem text="Shipped" onClick={() => setFilter('shipped')} />
                     <MenuItem text="Cancelled" onClick={() => setFilter('cancelled')} />
                     <MenuItem text="Refunded" onClick={() => setFilter('refunded')} />
-                    <MenuItem text="Expired" onClick={() => setFilter('expired')} />
+                    <MenuItem text={EXPIRED_SESSION_PANEL_TITLE} onClick={() => setFilter('expired')} />
                   </Menu>
                 }
               />
@@ -344,33 +338,38 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                       order.status
                         ? {
                             key: 'order-status',
-                            label: toTitleCase(order.status),
-                            tone: badgeTone(order.status),
+                            label: formatBadgeLabel(order.status),
+                            tone: resolveBadgeTone(order.status),
                           }
                         : null,
                       order.paymentStatus
                         ? {
                             key: 'payment-status',
-                            label: `Payment: ${toTitleCase(order.paymentStatus)}`,
-                            tone: badgeTone(order.paymentStatus),
+                            label: formatBadgeLabel(order.paymentStatus),
+                            tone: resolveBadgeTone(order.paymentStatus),
                           }
                         : null,
                       order.fulfillmentStatus
                         ? {
                             key: 'fulfillment-status',
-                            label: `Fulfillment: ${toTitleCase(order.fulfillmentStatus)}`,
-                            tone: badgeTone(order.fulfillmentStatus),
+                            label: formatBadgeLabel(order.fulfillmentStatus),
+                            tone: resolveBadgeTone(order.fulfillmentStatus),
                           }
                         : null,
                       order.deliveryStatus
                         ? {
                             key: 'delivery-status',
-                            label: `Delivery: ${toTitleCase(order.deliveryStatus)}`,
-                            tone: badgeTone(order.deliveryStatus),
+                            label: formatBadgeLabel(order.deliveryStatus),
+                            tone: resolveBadgeTone(order.deliveryStatus),
                           }
                         : null,
-                    ].filter((badge): badge is {key: string; label: string; tone: 'default' | 'positive' | 'caution' | 'critical'} =>
-                      Boolean(badge),
+                    ].filter(
+                      (badge):
+                        badge is {
+                          key: string
+                          label: string
+                          tone: ReturnType<typeof resolveBadgeTone>
+                        } => Boolean(badge && badge.label),
                     )
 
                     const tagBadges = Array.isArray(order.tags)
@@ -401,10 +400,10 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                             event.stopPropagation()
                             toggleSelect(order._id)
                           }}
-                          aria-label={`Select order ${order.orderNumber || order._id}`}
+                          aria-label={`Select order ${formatOrderNumber(order.orderNumber) || order._id}`}
                         />
                         <Text size={2} style={{flex: 1}}>
-                          {order.orderNumber || '—'}
+                          {formatOrderNumber(order.orderNumber) || '—'}
                         </Text>
                         <Text size={1} muted style={{flex: 1}}>
                           {order.customer?.name || '—'}
@@ -418,33 +417,14 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                               {statusBadges.length > 0 && (
                                 <Flex gap={2} style={{flexWrap: 'wrap'}}>
                                   {statusBadges.map((badge) => (
-                                    <Badge
-                                      key={badge.key}
-                                      tone={badge.tone}
-                                      padding={1}
-                                      radius={2}
-                                      fontSize={0}
-                                      style={{lineHeight: 1}}
-                                    >
-                                      {badge.label}
-                                    </Badge>
+                                    <DocumentBadge key={badge.key} label={badge.label} tone={badge.tone} />
                                   ))}
                                 </Flex>
                               )}
                               {tagBadges.length > 0 && (
                                 <Flex gap={1} style={{flexWrap: 'wrap'}}>
                                   {tagBadges.map((tag) => (
-                                    <Badge
-                                      key={tag}
-                                      tone="default"
-                                      mode="outline"
-                                      padding={1}
-                                      radius={2}
-                                      fontSize={0}
-                                      style={{lineHeight: 1}}
-                                    >
-                                      {toTitleCase(tag)}
-                                    </Badge>
+                                    <DocumentBadge key={tag} label={toTitleCase(tag)} tone="primary" />
                                   ))}
                                 </Flex>
                               )}

@@ -3,6 +3,7 @@ import { useClient } from 'sanity'
 import { Button, Card, Stack, Text, Box, Flex } from '@sanity/ui'
 import { EyeOpenIcon, DownloadIcon } from '@sanity/icons'
 import { format } from 'date-fns'
+import { formatOrderNumber } from '../../utils/orderNumber'
 
 type Invoice = {
   _id: string
@@ -42,7 +43,8 @@ export default function BulkPackingSlipGenerator() {
           doc.billTo?.name ||
           doc.customerEmail ||
           'Customer'
-        const ref = doc.invoiceNumber || doc.orderNumber || doc._id.slice(-6)
+        const orderRef = formatOrderNumber(doc.orderNumber) || doc.orderNumber
+        const ref = doc.invoiceNumber || orderRef || doc._id.slice(-6)
         return {
           _id: doc._id,
           customerName: displayName,

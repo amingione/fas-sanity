@@ -1,4 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
+import {Button, Text} from '@sanity/ui'
 import {set, useClient, useFormValue} from 'sanity'
 import {formatApiError} from '../../utils/formatApiError'
 
@@ -25,6 +26,19 @@ function setFnBase(next: string) {
   try {
     if (typeof window !== 'undefined') window.localStorage?.setItem('NLFY_BASE', next)
   } catch {}
+}
+
+const baseInputStyle: React.CSSProperties = {
+  padding: '4px 6px',
+  borderRadius: 4,
+  border: '1px solid var(--input-border-color, var(--card-border-color))',
+  backgroundColor: 'var(--input-bg-color, var(--card-bg-color))',
+  color: 'var(--input-fg-color, var(--card-fg-color))',
+}
+
+const mutedLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: 'var(--card-muted-fg-color)',
 }
 
 async function safeFetchJson(url: string, init?: RequestInit) {
@@ -167,7 +181,7 @@ export function ServiceRateInput(props: any) {
   return (
     <div>
       <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
-        <label style={{fontSize: 12}}>Functions Base:</label>
+        <label style={mutedLabelStyle}>Functions Base:</label>
         <input
           type="text"
           placeholder="https://fassanity.fasmotorsports.com"
@@ -177,14 +191,30 @@ export function ServiceRateInput(props: any) {
             setBaseOverride(v)
             setFnBase(v)
           }}
-          style={{flex: 1, padding: '4px 6px'}}
+          style={{...baseInputStyle, flex: 1}}
         />
       </div>
-      {!canQuote && <p style={{color: '#b26b00', marginTop: 4}}>Fill required fields: {missing.join(', ')}</p>}
-      {loading && <p>Loading rates…</p>}
-      {error && <p style={{color: 'red'}}>{error}</p>}
+      {!canQuote && (
+        <Text tone="caution" size={1} style={{marginTop: 4}}>
+          Fill required fields: {missing.join(', ')}
+        </Text>
+      )}
+      {loading && (
+        <Text size={1} muted>
+          Loading rates…
+        </Text>
+      )}
+      {error && (
+        <Text tone="critical" size={1}>
+          {error}
+        </Text>
+      )}
       {!loading && !error && (
-        <select value={value || ''} onChange={(e) => onChange(set(e.currentTarget.value))}>
+        <select
+          value={value || ''}
+          onChange={(e) => onChange(set(e.currentTarget.value))}
+          style={{...baseInputStyle}}
+        >
           <option value="">Select a service</option>
           {rates.map((rate) => (
             <option key={rate.serviceCode} value={rate.serviceCode}>
@@ -194,7 +224,9 @@ export function ServiceRateInput(props: any) {
         </select>
       )}
       {!loading && !error && rates?.length === 0 && canQuote && (
-        <p>No rates returned. Adjust details and try again.</p>
+        <Text size={1} muted>
+          No rates returned. Adjust details and try again.
+        </Text>
       )}
     </div>
   )
@@ -217,12 +249,12 @@ export function GenerateAndPrintPanel(props: any) {
   }
 
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<string>('')
+  const [message, setMessage] = useState<{tone: 'positive' | 'critical' | 'default'; text: string} | null>(null)
   const currentBase = getFnBase()
 
   async function handleGenerate() {
     setBusy(true)
-    setMsg('')
+    setMessage(null)
     try {
       if (!doc.serviceSelection) throw new Error('Select a service/rate first.')
       const payload = {
@@ -266,24 +298,37 @@ export function GenerateAndPrintPanel(props: any) {
         .set({trackingNumber, labelUrl})
         .commit({autoGenerateArrayKeys: true})
 
-      setMsg('Label generated. Tracking & label URL saved below.')
+      setMessage({tone: 'positive', text: 'Label generated. Tracking & label URL saved below.'})
       // Optionally, open label
       try {
         window?.open(labelUrl, '_blank')
       } catch {}
     } catch (e: any) {
-      setMsg(String(e?.message || e) || 'Failed to generate label')
+      setMessage({
+        tone: 'critical',
+        text: String(e?.message || e) || 'Failed to generate label',
+      })
     } finally {
       setBusy(false)
     }
   }
 
+  const messageTone = message?.tone === 'default' ? undefined : message?.tone
+
   return (
-    <div style={{borderTop: '1px solid #eee', paddingTop: 12}}>
-      <button disabled={busy} onClick={handleGenerate}>
-        {busy ? 'Generating…' : 'Generate & Print'}
-      </button>
-      {msg && <p style={{marginTop: 8}}>{msg}</p>}
+    <div style={{borderTop: '1px solid var(--card-border-color)', paddingTop: 12}}>
+      <Button
+        tone="primary"
+        text={busy ? 'Generating…' : 'Generate & Print'}
+        onClick={handleGenerate}
+        disabled={busy}
+        loading={busy}
+      />
+      {message ? (
+        <Text size={1} tone={messageTone} style={{marginTop: 8}}>
+          {message.text}
+        </Text>
+      ) : null}
     </div>
   )
 }

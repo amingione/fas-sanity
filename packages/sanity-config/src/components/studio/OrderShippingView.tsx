@@ -14,6 +14,7 @@ import {
 import {DownloadIcon, EnvelopeIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
+import {formatOrderNumber} from '../../utils/orderNumber'
 
 type DocumentViewProps = {
   document?: {
@@ -229,8 +230,15 @@ export default function OrderShippingView(props: DocumentViewProps) {
       }
       const blob = new Blob([buffer], {type: 'application/pdf'})
 
+      const orderRefForFile =
+        formatOrderNumber(order.orderNumber) ||
+        order._id?.replace(/^drafts\./, '') ||
+        order._id ||
+        'order'
+      const filenameSafe = orderRefForFile.replace(/[^a-z0-9_-]/gi, '') || 'order'
+
       const asset = await client.assets.upload('file', blob, {
-        filename: `packing-slip-${order.orderNumber || order._id}.pdf`,
+        filename: `packing-slip-${filenameSafe}.pdf`,
         contentType: 'application/pdf',
       })
       const url = (asset as any)?.url
@@ -254,7 +262,11 @@ export default function OrderShippingView(props: DocumentViewProps) {
   const handleEmailCustomer = useCallback(() => {
     const customerEmail = order?.customerEmail
     if (!customerEmail) return
-    const subject = encodeURIComponent(`Order ${order?.orderNumber || orderId}`)
+    const orderRef =
+      formatOrderNumber(order?.orderNumber) ||
+      orderId.replace(/^drafts\./, '') ||
+      orderId
+    const subject = encodeURIComponent(`Order ${orderRef}`)
     const body = encodeURIComponent(
       [
         `Hi ${order?.customerName || ''},`,
@@ -285,6 +297,11 @@ export default function OrderShippingView(props: DocumentViewProps) {
   }
 
   const shippingLog = Array.isArray(order.shippingLog) ? order.shippingLog : []
+  const orderRefLabel =
+    formatOrderNumber(order.orderNumber) ||
+    (order._id ? order._id.replace(/^drafts\./, '') : '') ||
+    order._id ||
+    'Unknown'
 
   return (
     <Stack space={4} padding={4}>
@@ -292,7 +309,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
         <Flex align={['flex-start', 'center']} justify="space-between" wrap="wrap" gap={3}>
           <Stack space={2}>
             <Heading size={3}>
-              Order {order.orderNumber || order._id.replace(/^drafts\./, '')}
+              Order {orderRefLabel}
             </Heading>
             <Flex gap={2} wrap="wrap">
               <Badge tone={statusMeta.tone} mode="outline" fontSize={0}>

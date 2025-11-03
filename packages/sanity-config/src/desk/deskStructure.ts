@@ -1,3 +1,4 @@
+import React, {type ComponentType} from 'react'
 import type {StructureResolver} from 'sanity/structure'
 import {
   BarChartIcon,
@@ -18,35 +19,34 @@ import {
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
 import ComingSoonPane from '../components/studio/ComingSoonPane'
-import OrderShippingView from '../components/studio/OrderShippingView'
-import OrderListPane from '../components/studio/OrderListPane'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
 import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
 import DownloadsPreviewList from '../components/studio/downloads/DownloadsPreviewList'
+import {EXPIRED_SESSION_PANEL_TITLE} from '../utils/orderFilters'
+import {
+  AbandonedOrdersDocumentTable,
+  OrdersDocumentTable,
+  PaymentLinksDocumentTable,
+  ProductsDocumentTable,
+} from '../components/studio/documentTables'
 
 const API_VERSION = '2024-10-01'
 
-const orderDocumentViews = (S: any) => (documentId: string) =>
+const documentTablePane = (S: any, id: string, title: string, component: ComponentType) =>
   S.document()
-    .schemaType('order')
-    .documentId(documentId)
+    .schemaType('dashboardView')
+    .documentId(`dashboard-${id}`)
+    .title(title)
     .views([
-      S.view.form().title('Form').id('form'),
       S.view
-        .component(OrderShippingView as any)
-        .title('Shipping')
-        .id('shipping'),
+        .component(component as any)
+        .title(title)
+        .id(`${id}-table`),
     ])
 
-const expiredCheckoutsList = (S: any, title: string) =>
-  S.documentList()
-    .apiVersion(API_VERSION)
-    .title(title)
-    .schemaType('order')
-    .filter('_type == "order" && status == "expired"')
-    .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-    .child(orderDocumentViews(S))
+const ProductsAllTableView: ComponentType = () =>
+  React.createElement(ProductsDocumentTable as any, {title: 'All products', pageSize: 12})
 
 const invoicesDocumentList = (S: any, title: string) =>
   S.documentTypeList('invoice')
@@ -88,14 +88,30 @@ const productsByCategory = (S: any) =>
 const createOrdersList = (S: any) =>
   S.listItem()
     .id('orders')
-    .title('Orders')
+    .title('Orders list')
     .icon(TrolleyIcon)
+    .child(documentTablePane(S, 'orders', 'Orders list', OrdersDocumentTable))
+
+const createAbandonedCartsPane = (S: any) =>
+  S.listItem()
+    .id('online-store-abandoned-carts')
+    .title(EXPIRED_SESSION_PANEL_TITLE)
+    .icon(BasketIcon)
     .child(
-      S.component()
-        .id('orders-pane')
-        .title('Orders')
-        .component(OrderListPane as any),
+      documentTablePane(
+        S,
+        'abandoned-carts',
+        EXPIRED_SESSION_PANEL_TITLE,
+        AbandonedOrdersDocumentTable,
+      ),
     )
+
+const createPaymentLinksPane = (S: any) =>
+  S.listItem()
+    .id('online-store-payment-links')
+    .title('Payment links')
+    .icon(LinkIcon)
+    .child(documentTablePane(S, 'payment-links', 'Payment links', PaymentLinksDocumentTable))
 
 const createShippingList = (S: any) =>
   S.listItem()
@@ -159,16 +175,10 @@ const createProductsList = (S: any) =>
       S.list()
         .title('Products')
         .items([
-          S.documentTypeListItem('product')
+          S.listItem()
+            .id('products-all')
             .title('All products')
-            .child(
-              S.documentTypeList('product')
-                .title('All products')
-                .apiVersion(API_VERSION)
-                .filter('_type == "product"')
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
-                .child(productDocumentViews(S)),
-            ),
+            .child(documentTablePane(S, 'products-all', 'All products', ProductsAllTableView)),
           S.divider(),
           S.listItem()
             .id('products-active')
@@ -375,21 +385,8 @@ const createOnlineStoreSection = (S: any) =>
         .items([
           createOrdersList(S),
           S.divider(),
-          S.listItem()
-            .id('online-store-abandoned-carts')
-            .title('Abandoned carts')
-            .icon(BasketIcon)
-            .child(expiredCheckoutsList(S, 'Abandoned carts')),
-          S.listItem()
-            .id('online-store-payment-links')
-            .title('Payment links')
-            .icon(LinkIcon)
-            .child(
-              S.documentTypeList('paymentLink')
-                .apiVersion(API_VERSION)
-                .title('Payment links')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
+          createAbandonedCartsPane(S),
+          createPaymentLinksPane(S),
         ]),
     )
 
@@ -448,11 +445,11 @@ const createSalesOperationsSection = (S: any) =>
 const createBusinessDashboardSection = (S: any) =>
   S.listItem()
     .id('business-dashboard')
-    .title('Business Dashboard')
+    .title('In-Store')
     .icon(BarChartIcon)
     .child(
       S.list()
-        .title('Business Dashboard')
+        .title('In-Store')
         .items([
           createProductsList(S),
           S.divider(),

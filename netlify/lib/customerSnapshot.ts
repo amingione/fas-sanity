@@ -1,5 +1,6 @@
 import type { SanityClient } from '@sanity/client'
 import { mapStripeMetadata } from './stripeMetadata'
+import { filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED } from './orderFilters'
 
 type ShippingLike = {
   name?: string | null
@@ -208,7 +209,7 @@ export async function updateCustomerProfileForOrder({
 
   const stats = await sanity.fetch(
     `{
-      "orders": *[_type == "order" && (
+      "orders": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       )] | order(coalesce(orderDate, createdAt, _createdAt) desc)[0...10]{
@@ -217,11 +218,11 @@ export async function updateCustomerProfileForOrder({
         "orderDate": coalesce(orderDate, createdAt, _createdAt),
         "totalAmount": coalesce(totalAmount, amountSubtotal + amountTax + amountShipping, totalAmount, total)
       },
-      "orderCount": count(*[_type == "order" && (
+      "orderCount": count(*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       )]),
-      "orderTotals": *[_type == "order" && (
+      "orderTotals": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       ) && status != "cancelled"]{
@@ -240,7 +241,7 @@ export async function updateCustomerProfileForOrder({
         ($id != "" && (customer._ref == $id || customerRef._ref == $id)) ||
         ($email != "" && (customer->email == $email || billTo.email == $email))
       )]),
-      "shippingDocs": *[_type == "order" && (
+      "shippingDocs": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       ) && defined(shippingAddress.addressLine1)]{
@@ -251,7 +252,7 @@ export async function updateCustomerProfileForOrder({
   )
 
   const orderSummaries = Array.isArray(stats?.orders)
-    ? stats.orders
+    ? filterOutExpiredOrders(stats.orders)
         .map((order: any) => ({
           _type: 'customerOrderSummary' as const,
           orderNumber: order?.orderNumber || '',

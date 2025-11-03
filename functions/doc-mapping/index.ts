@@ -69,17 +69,123 @@ type NormalizedDocument = SanityDocument & {
   invoiceNumber?: string | null
   invoiceRef?: ReferenceLike | null
   orderRef?: ReferenceLike | null
+  createdAt?: string | null
   shipTo?: Record<string, unknown> | null
+  ship_to?: Record<string, unknown> | null
   ship_from?: Record<string, unknown> | null
   weight?: Record<string, unknown> | null
   dimensions?: Record<string, unknown> | null
   shippingCarrier?: string | null
   shippingLabelUrl?: string | null
   trackingNumber?: string | null
+  trackingUrl?: string | null
+  shipStationOrderId?: string | null
+  shipStationLabelId?: string | null
+  packingSlipUrl?: string | null
   tags?: unknown
   slug?: {current?: string | null} | null
   sku?: string | null
+  customerName?: string | null
+  customerEmail?: string | null
+  customerRef?: ReferenceLike | null
+  customer?: ReferenceLike | null
+  paymentIntentId?: string | null
+  stripePaymentIntentStatus?: string | null
+  cardBrand?: string | null
+  cardLast4?: string | null
+  receiptUrl?: string | null
+  stripeSummary?: Record<string, unknown> | null
+  stripeSource?: string | null
+  stripeCheckoutStatus?: string | null
+  stripeCheckoutMode?: string | null
+  stripeSessionId?: string | null
+  stripeSessionStatus?: string | null
+  stripeCreatedAt?: string | null
+  stripeLastSyncedAt?: string | null
+  amountSubtotal?: number | null
+  amountTax?: number | null
+  amountShipping?: number | null
+  totalAmount?: number | null
+  currency?: string | null
+  cart?: Array<Record<string, unknown>> | null
+  shippingAddress?: Record<string, unknown> | null
+  selectedService?: Record<string, unknown> | null
+  selectedShippingAmount?: number | null
+  selectedShippingCurrency?: string | null
+  shippingDeliveryDays?: number | null
+  shippingEstimatedDeliveryDate?: string | null
+  shippingServiceCode?: string | null
+  shippingServiceName?: string | null
+  shippingMetadata?: Record<string, unknown> | null
+  shippingLog?: Array<Record<string, unknown>> | null
+  orderEvents?: Array<Record<string, unknown>> | null
+  metadata?: Record<string, unknown> | null
+  paymentFailureCode?: string | null
+  paymentFailureMessage?: string | null
+  serviceSelection?: string | null
 }
+
+const PROJECTION_FIELDS = `
+  ...,
+  invoiceRef,
+  orderRef,
+  shipTo,
+  ship_to,
+  ship_from,
+  weight,
+  dimensions,
+  shippingCarrier,
+  shippingLabelUrl,
+  labelUrl,
+  trackingNumber,
+  trackingUrl,
+  shipStationOrderId,
+  shipStationLabelId,
+  packingSlipUrl,
+  orderNumber,
+  invoiceNumber,
+  tags,
+  slug,
+  sku,
+  customerName,
+  customerEmail,
+  customerRef,
+  customer,
+  paymentIntentId,
+  stripePaymentIntentStatus,
+  cardBrand,
+  cardLast4,
+  receiptUrl,
+  stripeSummary,
+  stripeSource,
+  stripeCheckoutStatus,
+  stripeCheckoutMode,
+  stripeSessionId,
+  stripeSessionStatus,
+  stripeCreatedAt,
+  stripeLastSyncedAt,
+  amountSubtotal,
+  amountTax,
+  amountShipping,
+  totalAmount,
+  currency,
+  cart,
+  shippingAddress,
+  selectedService,
+  selectedShippingAmount,
+  selectedShippingCurrency,
+  shippingDeliveryDays,
+  shippingEstimatedDeliveryDate,
+  shippingServiceCode,
+  shippingServiceName,
+  shippingMetadata,
+  shippingLog,
+  orderEvents,
+  metadata,
+  paymentFailureCode,
+  paymentFailureMessage,
+  serviceSelection
+`
 
 const mapIdForDocument = (documentId: string) => `map-${documentId}`
 const mapTypeForDocument = (documentType: string) => `map-${documentType}`
@@ -152,6 +258,302 @@ const extractReferences = (value: unknown, path: (string | number)[] = [], acc: 
 
 const dedupe = <T>(values: T[]): T[] => Array.from(new Set(values))
 
+const isPresent = <T>(value: T | undefined | null): value is T => value !== undefined && value !== null
+
+const toCleanString = (value: unknown): string | undefined => {
+  if (value === null || value === undefined) return undefined
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed ? trimmed : undefined
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return undefined
+}
+
+const toCleanNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  return undefined
+}
+
+const toCleanStringArray = (value: unknown, limit = 10): string[] | undefined => {
+  if (!Array.isArray(value)) return undefined
+  const items = value.map((entry) => toCleanString(entry)).filter(isPresent)
+  if (!items.length) return undefined
+  return items.slice(0, limit)
+}
+
+const limitArray = <T>(value: T[] | undefined, limit = 20): T[] | undefined => {
+  if (!value || value.length === 0) return undefined
+  return value.slice(0, limit)
+}
+
+const cleanValue = (value: unknown): unknown => {
+  if (value === null || value === undefined) return undefined
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed ? trimmed : undefined
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value === 'boolean') return value
+  if (Array.isArray(value)) {
+    const items = value.map((entry) => cleanValue(entry)).filter(isPresent)
+    return items.length ? items : undefined
+  }
+  if (typeof value === 'object') {
+    const obj: Record<string, unknown> = {}
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const cleaned = cleanValue(child)
+      if (cleaned !== undefined) obj[key] = cleaned
+    }
+    return Object.keys(obj).length ? obj : undefined
+  }
+  return undefined
+}
+
+const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown> | undefined => {
+  const metadata = Array.isArray(item.metadata)
+    ? limitArray(
+        item.metadata
+          .map((entry) => {
+            if (!entry || typeof entry !== 'object') return undefined
+            const meta = entry as Record<string, unknown>
+            return cleanValue({
+              key: toCleanString(meta.key),
+              value: toCleanString(meta.value),
+              source: toCleanString(meta.source),
+            }) as Record<string, unknown> | undefined
+          })
+          .filter(isPresent),
+        20,
+      )
+    : undefined
+
+  const result = cleanValue({
+    id: toCleanString(item.id),
+    productSlug: toCleanString(item.productSlug),
+    stripeProductId: toCleanString(item.stripeProductId),
+    stripePriceId: toCleanString(item.stripePriceId),
+    sku: toCleanString(item.sku),
+    name: toCleanString(item.name),
+    productName: toCleanString(item.productName),
+    description: toCleanString(item.description),
+    optionSummary: toCleanString(item.optionSummary),
+    optionDetails: toCleanStringArray(item.optionDetails, 20),
+    upgrades: toCleanStringArray(item.upgrades, 20),
+    price: toCleanNumber(item.price),
+    quantity: toCleanNumber(item.quantity),
+    categories: toCleanStringArray(item.categories, 20),
+    metadata,
+  })
+
+  return (result && typeof result === 'object' ? (result as Record<string, unknown>) : undefined) ?? undefined
+}
+
+const sanitizeOrderEvents = (
+  events: Array<Record<string, unknown>> | undefined | null,
+  limit = 25,
+): Array<Record<string, unknown>> | undefined => {
+  if (!Array.isArray(events)) return undefined
+  const items = events
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return undefined
+      return cleanValue({
+        type: toCleanString(entry.type),
+        status: toCleanString(entry.status),
+        label: toCleanString(entry.label),
+        message: toCleanString(entry.message),
+        amount: toCleanNumber(entry.amount),
+        currency: toCleanString(entry.currency),
+        stripeEventId: toCleanString(entry.stripeEventId),
+        createdAt: toCleanString(entry.createdAt),
+      }) as Record<string, unknown> | undefined
+    })
+    .filter(isPresent)
+
+  if (!items.length) return undefined
+  return items.slice(0, limit)
+}
+
+const sanitizeShippingLog = (
+  entries: Array<Record<string, unknown>> | undefined | null,
+  limit = 25,
+): Array<Record<string, unknown>> | undefined => {
+  if (!Array.isArray(entries)) return undefined
+  const items = entries
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return undefined
+      return cleanValue({
+        status: toCleanString(entry.status),
+        message: toCleanString(entry.message),
+        trackingNumber: toCleanString(entry.trackingNumber),
+        trackingUrl: toCleanString(entry.trackingUrl),
+        createdAt: toCleanString(entry.createdAt),
+      }) as Record<string, unknown> | undefined
+    })
+    .filter(isPresent)
+
+  if (!items.length) return undefined
+  return items.slice(0, limit)
+}
+
+const buildMappingSummary = (document: NormalizedDocument): Record<string, unknown> | null => {
+  const baseMeta = cleanValue({
+    status: normalizeStatus(document) || undefined,
+    tags: Array.from(collectTags(document)),
+    updatedAt: document._updatedAt || document._createdAt || undefined,
+    orderNumber: toCleanString(document.orderNumber),
+    invoiceNumber: toCleanString(document.invoiceNumber),
+    createdAt: toCleanString(document.createdAt || document._createdAt),
+  }) as Record<string, unknown> | undefined
+
+  if (document._type === 'order') {
+    const cartItems = Array.isArray(document.cart)
+      ? limitArray(
+          document.cart
+            .map((item) => (item && typeof item === 'object' ? sanitizeCartItem(item as Record<string, unknown>) : undefined))
+            .filter(isPresent),
+          25,
+        )
+      : undefined
+
+    const summary = cleanValue({
+      ...baseMeta,
+      customer: cleanValue({
+        name: toCleanString(document.customerName),
+        email: toCleanString(document.customerEmail),
+        referenceId: toCleanString(document.customerRef?._ref || document.customer?._ref),
+      }),
+      totals: cleanValue({
+        total: toCleanNumber(document.totalAmount),
+        subtotal: toCleanNumber(document.amountSubtotal),
+        tax: toCleanNumber(document.amountTax),
+        shipping: toCleanNumber(document.amountShipping),
+        currency: toCleanString(document.currency),
+      }),
+      payment: cleanValue({
+        paymentStatus: toCleanString(document.paymentStatus || document.stripePaymentIntentStatus),
+        paymentIntentId: toCleanString(document.paymentIntentId),
+        stripeIntentStatus: toCleanString(document.stripePaymentIntentStatus),
+        cardBrand: toCleanString(document.cardBrand),
+        cardLast4: toCleanString(document.cardLast4),
+        receiptUrl: toCleanString(document.receiptUrl),
+        failureCode: toCleanString(document.paymentFailureCode),
+        failureMessage: toCleanString(document.paymentFailureMessage),
+      }),
+      stripe: cleanValue({
+        source: toCleanString(document.stripeSource),
+        checkoutSessionId: toCleanString(document.stripeSessionId),
+        checkoutStatus: toCleanString(document.stripeCheckoutStatus || document.stripeSessionStatus),
+        checkoutMode: toCleanString(document.stripeCheckoutMode),
+        createdAt: toCleanString(document.stripeCreatedAt),
+        lastSyncedAt: toCleanString(document.stripeLastSyncedAt),
+        summary: cleanValue(document.stripeSummary),
+      }),
+      shipping: cleanValue({
+        address: cleanValue(document.shippingAddress),
+        selectedRate: cleanValue(document.selectedService),
+        selectedAmount: toCleanNumber(document.selectedShippingAmount),
+        selectedCurrency: toCleanString(document.selectedShippingCurrency),
+        deliveryDays: toCleanNumber(document.shippingDeliveryDays),
+        estimatedDeliveryDate: toCleanString(document.shippingEstimatedDeliveryDate),
+        serviceCode: toCleanString(document.shippingServiceCode),
+        serviceName: toCleanString(document.shippingServiceName),
+        metadata: cleanValue(document.shippingMetadata),
+      }),
+      fulfillment: cleanValue({
+        carrier: toCleanString(document.shippingCarrier),
+        weight: cleanValue(document.weight),
+        dimensions: cleanValue(document.dimensions),
+        shippingLabelUrl: toCleanString(document.shippingLabelUrl),
+        trackingNumber: toCleanString(document.trackingNumber),
+        trackingUrl: toCleanString(document.trackingUrl),
+        packingSlipUrl: toCleanString(document.packingSlipUrl),
+        shipStationOrderId: toCleanString(document.shipStationOrderId),
+        shipStationLabelId: toCleanString(document.shipStationLabelId),
+      }),
+      cart: cartItems,
+      events: sanitizeOrderEvents(document.orderEvents),
+      shippingLog: sanitizeShippingLog(document.shippingLog),
+    })
+
+    return summary && typeof summary === 'object' ? (summary as Record<string, unknown>) : null
+  }
+
+  if (document._type === 'invoice') {
+    const summary = cleanValue({
+      ...baseMeta,
+      orderRefId: toCleanString(document.orderRef?._ref),
+      customerRefId: toCleanString(document.customerRef?._ref || document.customer?._ref),
+      status: toCleanString(document.status || document.paymentStatus),
+      amounts: cleanValue({
+        shipping: toCleanNumber(document.amountShipping),
+        currency: toCleanString(document.currency),
+      }),
+      shipping: cleanValue({
+        shipTo: cleanValue(document.shipTo),
+        weight: cleanValue(document.weight),
+        dimensions: cleanValue(document.dimensions),
+        carrier: toCleanString(document.shippingCarrier),
+      }),
+      fulfillment: cleanValue({
+        shippingLabelUrl: toCleanString(document.shippingLabelUrl),
+        trackingNumber: toCleanString(document.trackingNumber),
+        trackingUrl: toCleanString(document.trackingUrl),
+      }),
+      stripe: cleanValue({
+        summary: cleanValue(document.stripeSummary),
+      }),
+    })
+
+    return summary && typeof summary === 'object' ? (summary as Record<string, unknown>) : null
+  }
+
+  if (document._type === 'shippingLabel') {
+    const summary = cleanValue({
+      ...baseMeta,
+      shipFrom: cleanValue(document.ship_from),
+      shipTo: cleanValue(document.shipTo || document.ship_to),
+      weight: cleanValue(document.weight),
+      dimensions: cleanValue(document.dimensions),
+      serviceSelection: toCleanString(document.shippingCarrier) || toCleanString(document.serviceSelection),
+      trackingNumber: toCleanString(document.trackingNumber),
+      labelUrl: toCleanString(document.shippingLabelUrl || (document as any).labelUrl),
+      metadata: cleanValue(document.metadata),
+      links: cleanValue({
+        invoiceId: toCleanString(
+          (document.metadata as Record<string, unknown> | undefined)?.invoiceId,
+        ),
+        orderId: toCleanString(
+          (document.metadata as Record<string, unknown> | undefined)?.orderId,
+        ),
+      }),
+    })
+
+    return summary && typeof summary === 'object' ? (summary as Record<string, unknown>) : null
+  }
+
+  if (document._type === 'product') {
+    const summary = cleanValue({
+      ...baseMeta,
+      slug: toCleanString(document.slug?.current),
+      sku: toCleanString(document.sku),
+    })
+    return summary && typeof summary === 'object' ? (summary as Record<string, unknown>) : null
+  }
+
+  const fallback = cleanValue({
+    ...baseMeta,
+    title: toCleanString((document as Record<string, unknown>).title),
+    slug: toCleanString(document.slug?.current),
+  })
+
+  return fallback && typeof fallback === 'object' ? (fallback as Record<string, unknown>) : null
+}
+
 const defaultShipFrom = {
   name: 'FAS Motorsports',
   address_line1: '123 Warehouse Rd',
@@ -214,6 +616,7 @@ const createOrReplaceMappingDoc = async (
   baseId: string,
   referencedTypes: string[],
   relationships: RelationshipLog[],
+  summary: Record<string, unknown> | null,
 ) => {
   if (!baseId) return
   const mappingId = mapIdForDocument(baseId)
@@ -227,6 +630,7 @@ const createOrReplaceMappingDoc = async (
     sourceTags: Array.from(collectTags(document)),
     referencedTypes,
     updatedAt: new Date().toISOString(),
+    summary: summary || null,
     relationships: relationships.map((rel) => ({
       _key: rel.targetId,
       target: asReference(rel.targetId),
@@ -568,19 +972,32 @@ async function syncRelationships(
   context: DocumentFunctionContext,
   relationships: RelationshipLog[],
   referencedTypes: string[],
+  summary: Record<string, unknown> | null,
 ) {
   const logger = getLogger(context)
   const baseId = normalizeId(document._id)
   if (!baseId) return
 
-  await createOrReplaceMappingDoc(context.client, logger, document, baseId, referencedTypes, relationships)
+  await createOrReplaceMappingDoc(
+    context.client,
+    logger,
+    document,
+    baseId,
+    referencedTypes,
+    relationships,
+    summary,
+  )
 
   // Maintain reverse mapping docs
   for (const relationship of relationships) {
     if (!relationship.targetId) continue
     try {
-      const targetDoc = await context.client.fetch(`*[_id == $id][0]`, {id: relationship.targetId})
+      const targetDoc = await context.client.fetch(
+        `*[_id == $id][0]{${PROJECTION_FIELDS}}`,
+        {id: relationship.targetId},
+      )
       if (!targetDoc) continue
+      const targetSummary = buildMappingSummary(targetDoc as NormalizedDocument)
       await createOrReplaceMappingDoc(
         context.client,
         logger,
@@ -595,6 +1012,7 @@ async function syncRelationships(
             reason: 'Reverse relationship maintained by doc-mapping',
           },
         ],
+        targetSummary,
       )
     } catch (error) {
       logger.warn('[doc-mapping] Failed to synchronize reverse mapping', {
@@ -624,21 +1042,7 @@ export default defineDocumentFunction<NormalizedDocument>({
     'Keeps invoices, shipping labels, and product mapping documents synchronized with source content while logging relationships.',
   on: ['create', 'update'],
   filter: `_type != null && delta::changedAny(*)`,
-  projection: `{
-    ...,
-    invoiceRef,
-    orderRef,
-    shipTo,
-    ship_from,
-    weight,
-    dimensions,
-    shippingCarrier,
-    shippingLabelUrl,
-    trackingNumber,
-    tags,
-    slug,
-    sku
-  }`,
+  projection: `{${PROJECTION_FIELDS}}`,
   execute: async (event, context) => {
     const logger = getLogger(context)
     const document = event.document as NormalizedDocument | undefined | null
@@ -693,11 +1097,20 @@ export default defineDocumentFunction<NormalizedDocument>({
       if (relation) relationships.push(relation)
     }
 
-    if (relationships.length === 0 && referencedTypes.length === 0) {
+    const summary = buildMappingSummary(document)
+
+    if (!summary && relationships.length === 0 && referencedTypes.length === 0) {
       logger.info('[doc-mapping] No relationship updates required', {documentId: baseId, type: document._type})
       return
     }
 
-    await syncRelationships(document, context, relationships, referencedTypes)
+    if (summary && relationships.length === 0 && referencedTypes.length === 0) {
+      logger.info('[doc-mapping] Snapshot refreshed for document without relationships', {
+        documentId: baseId,
+        type: document._type,
+      })
+    }
+
+    await syncRelationships(document, context, relationships, referencedTypes, summary)
   },
 })
