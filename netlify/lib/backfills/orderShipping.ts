@@ -131,19 +131,25 @@ export async function runOrderShippingBackfill(
   let skipped = 0
   let failures = 0
 
-  for (const order of orders) {
+  const maxConcurrencyEnv = Number(process.env.BACKFILL_ORDER_SHIPPING_CONCURRENCY)
+  const maxConcurrency = Number.isFinite(maxConcurrencyEnv) && maxConcurrencyEnv > 0
+    ? Math.floor(maxConcurrencyEnv)
+    : 4
+  const concurrency = Math.min(maxConcurrency, orders.length)
+
+  const processOrder = async (order: OrderDoc) => {
     const sessionId = order.stripeSessionId?.trim()
     const label = order.orderNumber || order._id
     if (!sessionId) {
       skipped += 1
       options.logger?.(`Skipping ${label} (missing stripeSessionId)`)
-      continue
+      return
     }
 
     if (options.dryRun) {
       processed += 1
       options.logger?.(`[dry-run] Would reprocess ${label} (session ${sessionId}).`)
-      continue
+      return
     }
 
     try {
@@ -164,7 +170,7 @@ export async function runOrderShippingBackfill(
       if (!response) {
         failures += 1
         options.logger?.(`⚠️ ${label} • session=${sessionId} • handler returned no response`)
-        continue
+        return
       }
 
       const ok = response.statusCode >= 200 && response.statusCode < 300
@@ -181,6 +187,30 @@ export async function runOrderShippingBackfill(
       failures += 1
       options.logger?.(`❌ Failed to reprocess ${label}: ${(err as any)?.message || err}`)
     }
+  }
+
+  if (concurrency <= 1) {
+    for (const order of orders) {
+      await processOrder(order)
+    }
+  } else {
+    let index = 0
+    const nextOrder = () => {
+      if (index >= orders.length) return undefined
+      const order = orders[index]
+      index += 1
+      return order
+    }
+
+    const workers = Array.from({length: concurrency}, async () => {
+      while (true) {
+        const order = nextOrder()
+        if (!order) break
+        await processOrder(order)
+      }
+    })
+
+    await Promise.all(workers)
   }
 
   return {

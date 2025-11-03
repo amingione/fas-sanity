@@ -76,13 +76,6 @@ const CustomersRecentlyAddedTableView: ComponentType = () =>
     pageSize: 10,
   })
 
-const invoicesDocumentList = (S: any, title: string) =>
-  S.documentTypeList('invoice')
-    .title(title)
-    .apiVersion(API_VERSION)
-    .filter('_type == "invoice"')
-    .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}])
-
 const productDocumentViews = (S: any) => (documentId: string) =>
   S.document()
     .schemaType('product')
