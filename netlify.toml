@@ -53,6 +53,13 @@
   to = "/assets/:splat"
   status = 200
 
+[[redirects]]
+  from = "/*"
+  to = "https://www.fasmotorsports.com/:splat"
+  status = 301
+  force = true
+  conditions = { Host = ["fasmotorsports.us", "www.fasmotorsports.us"] }
+
 # Catch-all redirect for everything else
 [[redirects]]
   from = "/*"
