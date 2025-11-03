@@ -23,6 +23,8 @@ export interface PaginatedDocumentTableProps<TData extends Record<string, unknow
   orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
   pageSize?: number
   emptyState?: string
+  filter?: string
+  includeDrafts?: boolean
 }
 
 type RowResult<TData extends Record<string, unknown>> = TData & {
@@ -91,8 +93,10 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   orderings,
   pageSize = 8,
   emptyState = 'No documents found.',
+  filter,
+  includeDrafts = false,
 }: PaginatedDocumentTableProps<TData>) {
-  const client = useClient({apiVersion: API_VERSION})
+  const client = useClient({apiVersion: API_VERSION, perspective: 'published'})
   const router = useRouter()
   const [items, setItems] = useState<RowResult<TData>[]>([])
   const [total, setTotal] = useState<number>(0)
@@ -101,6 +105,17 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
 
   const normalizedProjection = useMemo(() => normalizeProjection(projection), [projection])
   const orderingClause = useMemo(() => buildOrderingClause(orderings), [orderings])
+  const filterFragments = useMemo(() => {
+    const fragments = ['_type == $documentType']
+    if (!includeDrafts) {
+      fragments.push('!(_id in path("drafts.**"))')
+    }
+    if (filter && filter.trim().length > 0) {
+      fragments.push(`(${filter.trim()})`)
+    }
+    return fragments
+  }, [filter, includeDrafts])
+  const filterClause = useMemo(() => filterFragments.join(' && '), [filterFragments])
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(total / pageSize))
@@ -111,7 +126,8 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
 
     const fetchTotal = async () => {
       try {
-        const count = await client.fetch<number>(`count(*[_type == $documentType])`, {documentType})
+        const countQuery = `count(*[${filterClause}])`
+        const count = await client.fetch<number>(countQuery, {documentType})
         if (!cancelled) {
           setTotal(count)
           if (currentPage > Math.max(1, Math.ceil(count / pageSize))) {
@@ -128,7 +144,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
     return () => {
       cancelled = true
     }
-  }, [client, documentType, pageSize, currentPage])
+  }, [client, documentType, pageSize, currentPage, filterClause])
 
   useEffect(() => {
     let cancelled = false
@@ -137,7 +153,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
       setLoading(true)
       const start = (currentPage - 1) * pageSize
       const end = start + pageSize
-      const query = `*[_type == $documentType] | order(${orderingClause})[$start...$end]${normalizedProjection}`
+      const query = `*[${filterClause}] | order(${orderingClause})[$start...$end]${normalizedProjection}`
 
       try {
         const results = await client.fetch<RowResult<TData>[]>(query, {
@@ -165,7 +181,15 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
     return () => {
       cancelled = true
     }
-  }, [client, currentPage, documentType, normalizedProjection, orderingClause, pageSize])
+  }, [
+    client,
+    currentPage,
+    documentType,
+    normalizedProjection,
+    orderingClause,
+    pageSize,
+    filterClause,
+  ])
 
   const handlePrevious = useCallback(() => {
     setCurrentPage((prev) => Math.max(1, prev - 1))
