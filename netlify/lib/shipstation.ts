@@ -5,6 +5,96 @@ const SHIPSTATION_API_BASE = process.env.SHIPSTATION_API_BASE || 'https://ssapi.
 const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || ''
 const SHIPSTATION_API_SECRET = process.env.SHIPSTATION_API_SECRET || ''
 
+const US_STATE_ABBREVIATIONS: Record<string, string> = {
+  alabama: 'AL',
+  alaska: 'AK',
+  arizona: 'AZ',
+  arkansas: 'AR',
+  california: 'CA',
+  colorado: 'CO',
+  connecticut: 'CT',
+  delaware: 'DE',
+  florida: 'FL',
+  georgia: 'GA',
+  hawaii: 'HI',
+  idaho: 'ID',
+  illinois: 'IL',
+  indiana: 'IN',
+  iowa: 'IA',
+  kansas: 'KS',
+  kentucky: 'KY',
+  louisiana: 'LA',
+  maine: 'ME',
+  maryland: 'MD',
+  massachusetts: 'MA',
+  michigan: 'MI',
+  minnesota: 'MN',
+  mississippi: 'MS',
+  missouri: 'MO',
+  montana: 'MT',
+  nebraska: 'NE',
+  nevada: 'NV',
+  'new hampshire': 'NH',
+  'new jersey': 'NJ',
+  'new mexico': 'NM',
+  'new york': 'NY',
+  'north carolina': 'NC',
+  'north dakota': 'ND',
+  ohio: 'OH',
+  oklahoma: 'OK',
+  oregon: 'OR',
+  pennsylvania: 'PA',
+  'rhode island': 'RI',
+  'south carolina': 'SC',
+  'south dakota': 'SD',
+  tennessee: 'TN',
+  texas: 'TX',
+  utah: 'UT',
+  vermont: 'VT',
+  virginia: 'VA',
+  washington: 'WA',
+  'west virginia': 'WV',
+  wisconsin: 'WI',
+  wyoming: 'WY',
+  'district of columbia': 'DC',
+  'washington dc': 'DC',
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined) return undefined
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) ? num : undefined
+}
+
+function normalizeString(value?: string | null) {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function normalizeCountry(country?: string | null) {
+  return (normalizeString(country) || 'US').toUpperCase()
+}
+
+function normalizeState(state?: string | null, country?: string | null) {
+  const normalizedCountry = normalizeCountry(country)
+  const trimmed = normalizeString(state)
+  if (!trimmed) return undefined
+  if (trimmed.length === 2) return trimmed.toUpperCase()
+  if (normalizedCountry === 'US') {
+    const fromMap = US_STATE_ABBREVIATIONS[trimmed.toLowerCase()]
+    if (fromMap) return fromMap
+  }
+  return trimmed
+}
+
+function normalizePostalCode(value?: string | number | null) {
+  if (value === null || value === undefined) return undefined
+  const stringValue = typeof value === 'string' ? value : String(value)
+  const trimmed = stringValue.trim()
+  return trimmed ? trimmed : undefined
+}
+
 type SanityOrderForShipStation = {
   _id: string
   orderNumber?: string
@@ -110,38 +200,55 @@ async function shipStationRequest<T = any>(path: string, init: RequestInit): Pro
 
 function toShipStationAddress(order: SanityOrderForShipStation['shippingAddress']) {
   if (!order) return undefined
+  const country = normalizeCountry(order.country)
   return {
-    name: order.name || order.email || 'Customer',
-    street1: order.addressLine1 || '',
-    street2: order.addressLine2 || '',
-    city: order.city || '',
-    state: order.state || '',
-    postalCode: order.postalCode || '',
-    country: order.country || 'US',
-    phone: order.phone || '',
-    email: order.email || '',
+    name: normalizeString(order.name) || normalizeString(order.email) || 'Customer',
+    street1: normalizeString(order.addressLine1) || '',
+    street2: normalizeString(order.addressLine2),
+    city: normalizeString(order.city) || '',
+    state: normalizeState(order.state, country) || '',
+    postalCode: normalizePostalCode(order.postalCode) || '',
+    country,
+    phone: normalizeString(order.phone),
+    email: normalizeString(order.email),
+  }
+}
+
+function assertValidShipTo(
+  orderId: string,
+  shipTo: ReturnType<typeof toShipStationAddress>
+): asserts shipTo is NonNullable<ReturnType<typeof toShipStationAddress>> {
+  if (!shipTo) throw new Error('Order missing shipping address; cannot sync to ShipStation')
+  const missing = ['street1', 'city', 'state', 'postalCode', 'country'].filter((field) => {
+    const value = shipTo[field as keyof typeof shipTo]
+    return typeof value !== 'string' || !value.trim()
+  })
+  if (missing.length > 0) {
+    throw new Error(`Order ${orderId} has incomplete shipping address (missing ${missing.join(', ')})`)
   }
 }
 
 function normalizeWeight(weight?: { value?: number; unit?: string }) {
-  if (!weight || typeof weight.value !== 'number' || weight.value <= 0) return undefined
+  if (!weight) return undefined
+  const parsedValue = toFiniteNumber(weight.value)
+  if (!parsedValue || parsedValue <= 0) return undefined
   const unit = (weight.unit || 'pound').toLowerCase()
   switch (unit) {
     case 'pound':
     case 'lb':
     case 'lbs':
-      return { value: weight.value, units: 'pounds' as const }
+      return { value: parsedValue, units: 'pounds' as const }
     case 'ounce':
     case 'oz':
-      return { value: weight.value, units: 'ounces' as const }
+      return { value: parsedValue, units: 'ounces' as const }
     case 'gram':
     case 'g':
-      return { value: weight.value, units: 'grams' as const }
+      return { value: parsedValue, units: 'grams' as const }
     case 'kilogram':
     case 'kg':
-      return { value: weight.value, units: 'kilograms' as const }
+      return { value: parsedValue, units: 'kilograms' as const }
     default:
-      return { value: weight.value, units: 'pounds' as const }
+      return { value: parsedValue, units: 'pounds' as const }
   }
 }
 
@@ -185,28 +292,27 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
   }
 
   const shipTo = toShipStationAddress(order.shippingAddress)
-  if (!shipTo || !shipTo.street1) {
-    throw new Error('Order missing shipping address; cannot sync to ShipStation')
-  }
+  assertValidShipTo(order._id, shipTo)
   const shipFrom = getShipStationFromAddress()
 
   const items = Array.isArray(order.cart) && order.cart.length > 0
-    ? order.cart.map((item, idx) => ({
-        lineItemKey: item._key || `${order._id}-line-${idx}`,
-        sku: item.sku || undefined,
-        name: item.name || item.sku || 'Line Item',
-        quantity: Number(item.quantity || 1),
-        unitPrice: Number.isFinite(item.price) ? Number(item.price) : undefined,
-      }))
+    ? order.cart.map((item, idx) => {
+        const quantity = toFiniteNumber(item.quantity)
+        return {
+          lineItemKey: item._key || `${order._id}-line-${idx}`,
+          sku: item.sku || undefined,
+          name: item.name || item.sku || 'Line Item',
+          quantity: quantity && quantity > 0 ? Math.round(quantity) : 1,
+          unitPrice: toFiniteNumber(item.price) ?? 0,
+        }
+      })
     : [
         {
           lineItemKey: `${order._id}-line-0`,
           sku: undefined,
           name: 'Order Item',
           quantity: 1,
-          unitPrice: Number.isFinite(order.totalAmount || order.amountSubtotal || 0)
-            ? Number(order.totalAmount || order.amountSubtotal || 0)
-            : undefined,
+          unitPrice: toFiniteNumber(order.totalAmount ?? order.amountSubtotal) ?? 0,
         },
       ]
 
@@ -220,9 +326,9 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
     customerUsername: order.customerEmail || undefined,
     customerNotes: '',
     internalNotes: '',
-    amountPaid: Number.isFinite(order.totalAmount || 0) ? Number(order.totalAmount || 0) : undefined,
-    taxAmount: Number.isFinite(order.amountTax || 0) ? Number(order.amountTax || 0) : undefined,
-    shippingAmount: Number.isFinite(order.amountShipping || 0) ? Number(order.amountShipping || 0) : undefined,
+    amountPaid: toFiniteNumber(order.totalAmount),
+    taxAmount: toFiniteNumber(order.amountTax),
+    shippingAmount: toFiniteNumber(order.amountShipping),
     requestedShippingService: order.selectedService?.service || order.selectedService?.serviceCode || undefined,
     carrierCode: normalizeCarrierCode(order),
     serviceCode: normalizeServiceCode(order),
@@ -231,14 +337,19 @@ export async function syncOrderToShipStation(sanity: SanityClient, orderId: stri
     shipFrom,
     items,
     weight: normalizeWeight(order.weight),
-    dimensions: order.dimensions
-      ? {
-          units: 'inches',
-          length: Number(order.dimensions.length || 0),
-          width: Number(order.dimensions.width || 0),
-          height: Number(order.dimensions.height || 0),
-        }
-      : undefined,
+    dimensions: (() => {
+      const length = toFiniteNumber(order.dimensions?.length)
+      const width = toFiniteNumber(order.dimensions?.width)
+      const height = toFiniteNumber(order.dimensions?.height)
+      if (!length || !width || !height) return undefined
+      if (length <= 0 || width <= 0 || height <= 0) return undefined
+      return {
+        units: 'inches',
+        length,
+        width,
+        height,
+      }
+    })(),
     advancedOptions: {
       customField1: order._id,
       customField2: order.stripeSessionId || undefined,
@@ -356,14 +467,19 @@ async function maybeCreateLabelForOrder(sanity: SanityClient, order: SanityOrder
   if (!carrierCode || !serviceCode) return
 
   const weight = normalizeWeight(order.weight)
-  const dims = order.dimensions
-    ? {
-        units: 'inches',
-        length: Number(order.dimensions.length || 0),
-        width: Number(order.dimensions.width || 0),
-        height: Number(order.dimensions.height || 0),
-      }
-    : undefined
+  const dims = (() => {
+    const length = toFiniteNumber(order.dimensions?.length)
+    const width = toFiniteNumber(order.dimensions?.width)
+    const height = toFiniteNumber(order.dimensions?.height)
+    if (!length || !width || !height) return undefined
+    if (length <= 0 || width <= 0 || height <= 0) return undefined
+    return {
+      units: 'inches',
+      length,
+      width,
+      height,
+    }
+  })()
 
   const payload: Record<string, any> = {
     carrierCode,
