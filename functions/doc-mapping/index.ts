@@ -129,6 +129,46 @@ const normalizeStatus = (document: NormalizedDocument): string => {
   return ''
 }
 
+const resolveInvoiceStatus = (
+  document: NormalizedDocument,
+  normalizedStatus: string,
+): 'pending' | 'paid' | 'refunded' | 'cancelled' => {
+  const candidates = [
+    normalizedStatus,
+    document.paymentStatus,
+    document.status,
+    document.orderStatus,
+    document.state,
+  ]
+    .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : ''))
+    .filter((value): value is string => Boolean(value))
+
+  for (const candidate of candidates) {
+    if (candidate.includes('refund')) return 'refunded'
+  }
+
+  for (const candidate of candidates) {
+    if (candidate.includes('cancel') || candidate.includes('void') || candidate.includes('fail')) return 'cancelled'
+    if (candidate === 'expired' || candidate.includes('dispute')) return 'cancelled'
+  }
+
+  for (const candidate of candidates) {
+    if (
+      candidate.includes('paid') ||
+      candidate.includes('fulfill') ||
+      candidate.includes('ship') ||
+      candidate.includes('complete') ||
+      candidate === 'succeeded' ||
+      candidate === 'captured' ||
+      candidate === 'closed'
+    ) {
+      return 'paid'
+    }
+  }
+
+  return 'pending'
+}
+
 const extractReferences = (value: unknown, path: (string | number)[] = [], acc: string[] = []): string[] => {
   if (!value) return acc
   if (Array.isArray(value)) {
@@ -295,6 +335,8 @@ const ensureInvoiceForOrder = async (
     (typeof invoiceDoc?.invoiceNumber === 'string' && invoiceDoc.invoiceNumber) ||
     (orderNumber && /^[a-z0-9-]+$/i.test(orderNumber) ? orderNumber : await generateInvoiceNumber(client, prefix))
 
+  const desiredStatus = resolveInvoiceStatus(document, status)
+
   const invoicePayload: Record<string, unknown> = {
     _id: invoiceIdentifier,
     _type: 'invoice',
@@ -302,7 +344,7 @@ const ensureInvoiceForOrder = async (
     invoiceNumber,
     orderNumber: orderNumber || invoiceNumber,
     orderRef: asReference(baseId),
-    status: invoiceDoc?.status || (status === 'paid' ? 'paid' : 'pending'),
+    status: desiredStatus,
     customerRef: document.customerRef || document.customer || undefined,
     shipTo: document.shipTo || invoiceDoc?.shipTo || null,
     weight: document.weight || invoiceDoc?.weight || null,
@@ -327,6 +369,9 @@ const ensureInvoiceForOrder = async (
       }
       if (!invoiceDoc.invoiceNumber) patchSet.invoiceNumber = invoiceNumber
       if (!invoiceDoc.orderNumber && orderNumber) patchSet.orderNumber = orderNumber
+      if (invoiceDoc.status !== desiredStatus) {
+        patchSet.status = desiredStatus
+      }
       if (document.shipTo && JSON.stringify(document.shipTo) !== JSON.stringify(invoiceDoc.shipTo)) {
         patchSet.shipTo = document.shipTo
       }
