@@ -44,16 +44,36 @@ const formatLocation = (data: CustomerRowData) => {
   return parts.length ? parts.join(', ') : '—'
 }
 
-export default function CustomersDocumentTable() {
+type CustomersDocumentTableProps = {
+  title?: string
+  filter?: string
+  emptyState?: string
+  pageSize?: number
+  orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
+}
+
+export default function CustomersDocumentTable({
+  title = 'Customers',
+  filter,
+  emptyState = 'No customers',
+  pageSize = 8,
+  orderings,
+}: CustomersDocumentTableProps = {}) {
   type CustomerRow = CustomerRowData & {_id: string; _type: string}
+  const resolvedOrderings = orderings ?? [
+    {field: '_updatedAt', direction: 'desc' as const},
+    {field: '_createdAt', direction: 'desc' as const},
+  ]
 
   return (
     <PaginatedDocumentTable<CustomerRowData>
-      title="Customers"
+      title={title}
       documentType="customer"
       projection={CUSTOMER_PROJECTION}
-      orderings={[{field: '_updatedAt', direction: 'desc'}]}
-      pageSize={8}
+      orderings={resolvedOrderings}
+      pageSize={pageSize}
+      filter={filter}
+      emptyState={emptyState}
       columns={[
         {
           key: 'name',

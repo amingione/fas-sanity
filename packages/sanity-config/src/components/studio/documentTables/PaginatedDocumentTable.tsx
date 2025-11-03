@@ -26,6 +26,7 @@ export interface PaginatedDocumentTableProps<TData extends Record<string, unknow
   emptyState?: string
   filter?: string
   includeDrafts?: boolean
+  excludeExpired?: boolean
   headerActions?: React.ReactNode
   onPageItemsChange?: (items: Array<RowResult<TData>>) => void
 }
@@ -98,6 +99,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   emptyState = 'No documents found.',
   filter,
   includeDrafts = false,
+  excludeExpired = true,
   headerActions,
   onPageItemsChange,
 }: PaginatedDocumentTableProps<TData>) {
@@ -112,7 +114,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   const orderingClause = useMemo(() => buildOrderingClause(orderings), [orderings])
   const filterFragments = useMemo(() => {
     const fragments = ['_type == $documentType']
-    if (documentType === 'order') {
+    if (documentType === 'order' && excludeExpired) {
       fragments.push(
         `(${GROQ_FILTER_EXCLUDE_EXPIRED})`,
         `!(defined(stripeCheckoutStatus) && lower(stripeCheckoutStatus) in ${GROQ_EXPIRED_ARRAY})`,
@@ -125,7 +127,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
       fragments.push(`(${filter.trim()})`)
     }
     return fragments
-  }, [documentType, filter, includeDrafts])
+  }, [documentType, excludeExpired, filter, includeDrafts])
   const filterClause = useMemo(() => filterFragments.join(' && '), [filterFragments])
 
   const totalPages = useMemo(() => {
