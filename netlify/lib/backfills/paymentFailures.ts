@@ -422,7 +422,7 @@ async function updateInvoice(
   diagnostics: PaymentFailureDiagnostics,
   options: {
     paymentStatus?: string
-    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled' | 'expired'
+    invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'partially_refunded' | 'cancelled' | 'expired'
     invoiceStripeStatus?: string
     dryRun?: boolean
     paymentIntent?: Stripe.PaymentIntent | null
@@ -491,7 +491,7 @@ async function processOrder(
   let diagnostics: PaymentFailureDiagnostics | null = null
   let paymentStatus: string | undefined
   let orderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' | undefined
-  let invoiceStatus: 'pending' | 'paid' | 'refunded' | 'cancelled' | 'expired' | undefined
+  let invoiceStatus: 'pending' | 'paid' | 'refunded' | 'partially_refunded' | 'cancelled' | 'expired' | undefined
   let invoiceStripeStatus: string | undefined
 
   if (paymentIntent) {
