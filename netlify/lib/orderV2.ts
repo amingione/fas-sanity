@@ -188,7 +188,7 @@ const parseLegacyCombinedStreet = (value: string):
   | null => {
   const trimmed = value.trim()
   if (!trimmed) return null
-  const pattern = /^(.+?)\s+([A-Za-z\-\.\s]+?),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/
+  const pattern = /^(.+?)\s+([A-Za-z.\s-]+?),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/
   const match = trimmed.match(pattern)
   if (!match) return null
   const [, street, city, state, zip] = match
