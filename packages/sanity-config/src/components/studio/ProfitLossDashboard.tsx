@@ -24,10 +24,11 @@ const ProfitLossDashboard = React.forwardRef<HTMLDivElement, Record<string, neve
       try {
         const result = await client.fetch(
           `{
-            "invoiceIncome": *[_type == "invoice" && status in ["paid","refunded"]]{
+            "invoiceIncome": *[_type == "invoice" && status in ["paid", "refunded", "partially_refunded"]]{
               _key,
               total,
-              status
+              status,
+              amountRefunded
             },
             "checks": *[_type == "check" && status != "void"]{
               amount,
@@ -44,10 +45,21 @@ const ProfitLossDashboard = React.forwardRef<HTMLDivElement, Record<string, neve
         const incomeMap = new Map<string, number>()
         const expenseMap = new Map<string, number>()
 
-        const invoices: Array<{total?: number; status?: string}> = result.invoiceIncome || []
+        const invoices: Array<{total?: number; status?: string; amountRefunded?: number}> = result.invoiceIncome || []
         invoices.forEach((invoice) => {
           const value = Number(invoice.total) || 0
-          const adjusted = invoice.status === 'refunded' ? -Math.abs(value) : value
+          const refundedAmount = Number(invoice.amountRefunded) || 0
+          let adjusted: number
+          if (invoice.status === 'refunded') {
+            // Fully refunded - negate the entire amount
+            adjusted = -Math.abs(value)
+          } else if (invoice.status === 'partially_refunded') {
+            // Partially refunded - include revenue minus the refunded portion
+            adjusted = value - refundedAmount
+          } else {
+            // Paid or other status - include full amount
+            adjusted = value
+          }
           incomeMap.set('Sales Revenue', (incomeMap.get('Sales Revenue') || 0) + adjusted)
         })
 

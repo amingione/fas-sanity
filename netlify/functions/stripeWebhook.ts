@@ -2193,6 +2193,29 @@ function formatShippingAddress(shipping?: Stripe.Customer.Shipping | null): stri
   return lines.filter(Boolean).join('\n') || undefined
 }
 
+function buildShippingAddress(shipping?: Stripe.Customer.Shipping | null) {
+  if (!shipping?.address) return undefined
+  const address = shipping.address
+  const hasContent =
+    address.line1 ||
+    address.line2 ||
+    address.city ||
+    address.state ||
+    address.postal_code ||
+    address.country
+  if (!hasContent) return undefined
+  const street = [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
+  return {
+    _type: 'customerBillingAddress',
+    name: shipping.name || undefined,
+    street,
+    city: address.city || undefined,
+    state: address.state || undefined,
+    postalCode: address.postal_code || undefined,
+    country: address.country || undefined,
+  }
+}
+
 function buildBillingAddress(address?: Stripe.Address | null, name?: string | null) {
   if (!address) return undefined
   const hasContent =
@@ -2239,6 +2262,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
 
   const {firstName, lastName} = splitName(customer.name || customer.shipping?.name)
   const shippingText = formatShippingAddress(customer.shipping)
+  const shippingAddress = buildShippingAddress(customer.shipping)
   const billingAddress = buildBillingAddress(
     customer.address,
     customer.name || customer.shipping?.name,
@@ -2250,6 +2274,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
   }
 
   if (shippingText) setOps.address = shippingText
+  if (shippingAddress) setOps.shippingAddress = shippingAddress
   if (billingAddress) setOps.billingAddress = billingAddress
   if (customer.phone) setOps.phone = customer.phone
   if (firstName && !existing?.firstName) setOps.firstName = firstName
@@ -2274,6 +2299,7 @@ async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
     if (lastName) payload.lastName = lastName
     if (customer.phone) payload.phone = customer.phone
     if (shippingText) payload.address = shippingText
+    if (shippingAddress) payload.shippingAddress = shippingAddress
     if (billingAddress) payload.billingAddress = billingAddress
 
     try {
@@ -2514,7 +2540,7 @@ async function fetchPaymentIntentResource(
 type OrderPaymentStatusInput = {
   paymentStatus?: string
   orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
-  invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
+  invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'partially_refunded' | 'cancelled'
   invoiceStripeStatus?: string
   paymentIntentId?: string
   chargeId?: string
@@ -2830,7 +2856,7 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
       chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
       paymentStatus,
       orderStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
-      invoiceStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
+      invoiceStatus: refundSucceeded ? (isFullRefund ? 'refunded' : 'partially_refunded') : undefined,
       invoiceStripeStatus: webhookEvent.type,
       additionalOrderFields: {
         ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),

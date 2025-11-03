@@ -451,6 +451,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
     if (invoice.isOverdue) return 'text-rose-600 bg-rose-50 border border-rose-100'
     if (invoice.status === 'paid') return 'text-emerald-600 bg-emerald-50 border border-emerald-100'
     if (invoice.status === 'refunded') return 'text-sky-600 bg-sky-50 border border-sky-100'
+    if (invoice.status === 'partially_refunded') return 'text-amber-600 bg-amber-50 border border-amber-100'
     if (invoice.status === 'cancelled') return 'text-[var(--studio-muted)] bg-[var(--studio-surface-soft)] border border-[var(--studio-border)]'
     return 'text-amber-600 bg-amber-50 border border-amber-100'
   }
