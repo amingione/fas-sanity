@@ -24,7 +24,7 @@ const ProfitLossDashboard = React.forwardRef<HTMLDivElement, Record<string, neve
       try {
         const result = await client.fetch(
           `{
-            "invoiceIncome": *[_type == "invoice" && status in ["paid","refunded","partially_refunded"]]{
+            "invoiceIncome": *[_type == "invoice" && status in ["paid", "refunded", "partially_refunded"]]{
               _key,
               total,
               status,
