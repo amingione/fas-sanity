@@ -153,19 +153,51 @@ const resolveCustomerId = (
 
 const mapShippingAddress = (address: Record<string, any> | null | undefined) => {
   if (!isObject(address)) return undefined
-  const street =
+  let street =
     address.street ||
     address.addressLine1 ||
     address.line1 ||
     [address.addressLine1, address.addressLine2].filter(Boolean).join(' ') ||
     undefined
+
+  let city = address.city || address.locality || undefined
+  let state = address.state || address.region || undefined
+  let zip = address.zip || address.postalCode || address.postal_code || undefined
+
+  if (street && !city && !state && !zip) {
+    const parsed = parseLegacyCombinedStreet(street)
+    if (parsed) {
+      street = parsed.street
+      city = parsed.city || city
+      state = parsed.state || state
+      zip = parsed.zip || zip
+    }
+  }
+
   return prune({
     street,
-    city: address.city || address.locality || undefined,
-    state: address.state || address.region || undefined,
-    zip: address.zip || address.postalCode || address.postal_code || undefined,
+    city,
+    state,
+    zip,
     country: address.country,
   })
+}
+
+const parseLegacyCombinedStreet = (value: string):
+  | {street: string; city?: string; state?: string; zip?: string}
+  | null => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const pattern = /^(.+?)\s+([A-Za-z\-\.\s]+?),?\s+([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$/
+  const match = trimmed.match(pattern)
+  if (!match) return null
+  const [, street, city, state, zip] = match
+  return {
+    street: street.trim(),
+    city: city?.trim() || undefined,
+    state: state?.trim() || undefined,
+    zip: zip?.trim() || undefined,
+  }
 }
 
 const mapRefunds = (refunds: RefundInput[] | null | undefined) => {
@@ -232,6 +264,17 @@ const buildPaymentMethod = (explicit?: string | null, cardBrand?: string | null)
 }
 
 export function buildOrderV2Record(input: BuildOrderV2Input) {
+  const normalizedDiscount =
+    typeof input.discount === 'number' && input.discount > 0 ? input.discount : undefined
+  const normalizedShippingFee =
+    typeof input.shippingFee === 'number' && input.shippingFee >= 0 ? input.shippingFee : undefined
+  const normalizedTax =
+    typeof input.tax === 'number' && input.tax >= 0 ? input.tax : undefined
+  const normalizedSubtotal =
+    typeof input.subtotal === 'number' && input.subtotal >= 0 ? input.subtotal : undefined
+  const normalizedTotal =
+    typeof input.total === 'number' && input.total >= 0 ? input.total : undefined
+
   const orderV2 = prune({
     orderId: input.orderId,
     createdAt: input.createdAt,
@@ -245,11 +288,11 @@ export function buildOrderV2Record(input: BuildOrderV2Input) {
     }),
     items: mapItems(input.cart ?? undefined),
     orderSummary: prune({
-      subtotal: input.subtotal,
-      discount: input.discount,
-      shippingFee: input.shippingFee,
-      tax: input.tax,
-      total: input.total,
+      subtotal: normalizedSubtotal,
+      discount: normalizedDiscount,
+      shippingFee: normalizedShippingFee,
+      tax: normalizedTax,
+      total: normalizedTotal,
     }),
     payment: prune({
       status: input.paymentStatus,
@@ -278,4 +321,3 @@ export function buildOrderV2Record(input: BuildOrderV2Input) {
 
   return orderV2 ?? {}
 }
-

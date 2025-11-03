@@ -2,6 +2,7 @@ import React from 'react'
 import {Inline, Text} from '@sanity/ui'
 import {PaginatedDocumentTable, formatCurrency, formatDate} from './PaginatedDocumentTable'
 import {formatOrderNumber} from '../../../utils/orderNumber'
+import {deriveOrderDisplay, type OrderV2Snapshot} from '../../../utils/orderV2'
 import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
 import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
 
@@ -19,6 +20,7 @@ type OrderRowData = {
   amountRefunded?: number | null
   currency?: string | null
   createdAt?: string | null
+  orderV2?: OrderV2Snapshot | null
 }
 
 const ORDER_PROJECTION = `{
@@ -34,7 +36,8 @@ const ORDER_PROJECTION = `{
   totalAmount,
   amountRefunded,
   currency,
-  "createdAt": coalesce(createdAt, _createdAt)
+  "createdAt": coalesce(createdAt, _createdAt),
+  orderV2
 }`
 
 export const NEW_ORDERS_FILTER =
@@ -54,27 +57,27 @@ type OrdersDocumentTableProps = {
 }
 
 function resolveOrderNumber(data: OrderRowData & {_id: string}) {
-  const candidates = [
-    data.orderNumber,
-    data.invoiceOrderNumber,
-    data.invoiceNumber,
-  ]
-  for (const candidate of candidates) {
+  const display = deriveOrderDisplay(data)
+  const candidate = display.identifiers.find((id) => formatOrderNumber(id))
+  if (candidate) {
     const formatted = formatOrderNumber(candidate)
     if (formatted) return formatted
   }
-  for (const candidate of candidates) {
-    if (candidate && candidate.trim()) return candidate.trim()
-  }
+
+  const fallback = display.identifiers.find((id) => id && id.trim())
+  if (fallback) return fallback
+
   const sessionFormatted = formatOrderNumber(data.stripeSessionId)
   if (sessionFormatted) return sessionFormatted
+
   const trimmedId = data._id.replace(/^drafts\./, '')
-  const fallback = trimmedId.slice(-6).toUpperCase()
-  return fallback ? `#${fallback}` : '—'
+  const randomFallback = trimmedId.slice(-6).toUpperCase()
+  return randomFallback ? `#${randomFallback}` : '—'
 }
 
 function getCustomerLabel(data: OrderRowData) {
-  const candidates = [data.customerName, data.shippingName, data.customerEmail]
+  const display = deriveOrderDisplay(data)
+  const candidates = [display.customerName, display.shippingName, display.customerEmail]
   for (const value of candidates) {
     if (value && value.trim()) return value
   }
@@ -109,6 +112,7 @@ export default function OrdersDocumentTable({
       pageSize={pageSize}
       filter={combinedFilter || undefined}
       emptyState={emptyState}
+      excludeExpired={excludeCheckoutSessionExpired}
       columns={[
         {
           key: 'order',
@@ -128,22 +132,23 @@ export default function OrdersDocumentTable({
           key: 'status',
           header: 'Status',
           render: (data: OrderRow) => {
+            const display = deriveOrderDisplay(data)
             const badges: React.ReactNode[] = []
-            const paymentLabel = formatBadgeLabel(data.paymentStatus)
+            const paymentLabel = formatBadgeLabel(display.paymentStatus)
             if (paymentLabel) {
               badges.push(
                 <DocumentBadge
                   key="payment-status"
                   label={paymentLabel}
-                  tone={resolveBadgeTone(data.paymentStatus)}
+                  tone={resolveBadgeTone(display.paymentStatus)}
                   title={`Payment status: ${paymentLabel}`}
                 />,
               )
             }
 
             const fulfillmentLabel =
-              data.status && data.status !== data.paymentStatus
-                ? formatBadgeLabel(data.status)
+              display.status && display.status !== display.paymentStatus
+                ? formatBadgeLabel(display.status)
                 : null
 
             if (fulfillmentLabel) {
@@ -151,7 +156,7 @@ export default function OrdersDocumentTable({
                 <DocumentBadge
                   key="fulfillment-status"
                   label={fulfillmentLabel}
-                  tone={resolveBadgeTone(data.status)}
+                  tone={resolveBadgeTone(display.status)}
                   title={`Order status: ${fulfillmentLabel}`}
                 />,
               )
@@ -172,26 +177,36 @@ export default function OrdersDocumentTable({
           key: 'amount',
           header: 'Total',
           align: 'right',
-          render: (data: OrderRow) => (
-            <Text size={1}>{formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}</Text>
-          ),
+          render: (data: OrderRow) => {
+            const display = deriveOrderDisplay(data)
+            return (
+              <Text size={1}>
+                {formatCurrency(display.totalAmount ?? null, display.currency ?? 'USD')}
+              </Text>
+            )
+          },
         },
         {
           key: 'refunded',
           header: 'Refunded',
           align: 'right',
-          render: (data: OrderRow) => (
-            <Text size={1}>
-              {data.amountRefunded && data.amountRefunded > 0
-                ? formatCurrency(data.amountRefunded, data.currency ?? 'USD')
-                : '—'}
-            </Text>
-          ),
+          render: (data: OrderRow) => {
+            const display = deriveOrderDisplay(data)
+            const value = display.amountRefunded
+            return (
+              <Text size={1}>
+                {value && value > 0 ? formatCurrency(value, display.currency ?? 'USD') : '—'}
+              </Text>
+            )
+          },
         },
         {
           key: 'created',
           header: 'Created',
-          render: (data: OrderRow) => <Text size={1}>{formatDate(data.createdAt)}</Text>,
+          render: (data: OrderRow) => {
+            const display = deriveOrderDisplay(data)
+            return <Text size={1}>{formatDate(display.createdAt)}</Text>
+          },
         },
       ]}
     />

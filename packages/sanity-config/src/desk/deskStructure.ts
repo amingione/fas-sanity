@@ -1,7 +1,6 @@
 import React, {type ComponentType} from 'react'
 import type {StructureResolver} from 'sanity/structure'
 import {
-  BarChartIcon,
   BasketIcon,
   BillIcon,
   CalendarIcon,
@@ -18,7 +17,6 @@ import {
   WrenchIcon,
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
-import ComingSoonPane from '../components/studio/ComingSoonPane'
 import ProductEditorPane from '../components/studio/ProductEditorPane'
 import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
@@ -29,6 +27,7 @@ import {
   OrdersDocumentTable,
   PaymentLinksDocumentTable,
   ProductsDocumentTable,
+  CustomersDocumentTable,
 } from '../components/studio/documentTables'
 
 const API_VERSION = '2024-10-01'
@@ -47,6 +46,35 @@ const documentTablePane = (S: any, id: string, title: string, component: Compone
 
 const ProductsAllTableView: ComponentType = () =>
   React.createElement(ProductsDocumentTable as any, {title: 'All products', pageSize: 12})
+
+const CustomersAllTableView: ComponentType = () =>
+  React.createElement(CustomersDocumentTable as any, {title: 'All customers', pageSize: 10})
+
+const CustomersSubscribedTableView: ComponentType = () =>
+  React.createElement(CustomersDocumentTable as any, {
+    title: 'Subscribed to email',
+    filter: '(emailOptIn == true || marketingOptIn == true)',
+    emptyState: 'No subscribed customers',
+    pageSize: 10,
+  })
+
+const CustomersNoOrdersTableView: ComponentType = () =>
+  React.createElement(CustomersDocumentTable as any, {
+    title: 'No orders yet',
+    filter: 'coalesce(orderCount, 0) == 0',
+    emptyState: 'All customers have orders',
+    pageSize: 10,
+  })
+
+const CustomersRecentlyAddedTableView: ComponentType = () =>
+  React.createElement(CustomersDocumentTable as any, {
+    title: 'Recently added',
+    orderings: [
+      {field: '_createdAt', direction: 'desc'},
+      {field: '_updatedAt', direction: 'desc'},
+    ],
+    pageSize: 10,
+  })
 
 const invoicesDocumentList = (S: any, title: string) =>
   S.documentTypeList('invoice')
@@ -124,45 +152,6 @@ const createShippingList = (S: any) =>
         .items([
           S.documentTypeListItem('shippingLabel').title('Shipping labels'),
           S.documentTypeListItem('shippingOption').title('Shipping options'),
-        ]),
-    )
-
-const createQuotesList = (S: any) =>
-  S.listItem()
-    .id('quotes')
-    .title('Quotes')
-    .icon(DocumentIcon)
-    .child(
-      S.list()
-        .title('Quotes')
-        .items([
-          S.documentTypeListItem('quote')
-            .title('All quotes')
-            .child(
-              S.documentTypeList('quote')
-                .title('All quotes')
-                .apiVersion(API_VERSION)
-                .filter('_type == "quote"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
-          S.documentTypeListItem('freightQuote')
-            .title('Freight quotes')
-            .child(
-              S.documentTypeList('freightQuote')
-                .title('Freight quotes')
-                .apiVersion(API_VERSION)
-                .filter('_type == "freightQuote"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
-          S.documentTypeListItem('wheelQuote')
-            .title('Wheel quotes')
-            .child(
-              S.documentTypeList('wheelQuote')
-                .title('Wheel quotes')
-                .apiVersion(API_VERSION)
-                .filter('_type == "wheelQuote"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
         ]),
     )
 
@@ -259,51 +248,43 @@ const createCustomersList = (S: any) =>
       S.list()
         .title('Customers')
         .items([
-          S.documentTypeListItem('customer')
+          S.listItem()
+            .id('customers-all')
             .title('All customers')
-            .child(
-              S.documentTypeList('customer')
-                .apiVersion(API_VERSION)
-                .title('All customers')
-                .filter('_type == "customer"')
-                .defaultOrdering([
-                  {field: 'lifetimeSpend', direction: 'desc'},
-                  {field: 'orderCount', direction: 'desc'},
-                ]),
-            ),
+            .child(documentTablePane(S, 'customers-all', 'All customers', CustomersAllTableView)),
           S.divider(),
           S.listItem()
             .id('customers-subscribed')
             .title('Subscribed to email')
             .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Subscribed customers')
-                .schemaType('customer')
-                .filter('_type == "customer" && (emailOptIn == true || marketingOptIn == true)')
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}]),
+              documentTablePane(
+                S,
+                'customers-subscribed',
+                'Subscribed to email',
+                CustomersSubscribedTableView,
+              ),
             ),
           S.listItem()
             .id('customers-inactive')
             .title('No orders yet')
             .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Customers with no orders')
-                .schemaType('customer')
-                .filter('_type == "customer" && coalesce(orderCount, 0) == 0')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+              documentTablePane(
+                S,
+                'customers-no-orders',
+                'No orders yet',
+                CustomersNoOrdersTableView,
+              ),
             ),
           S.listItem()
             .id('customers-recent')
             .title('Recently added')
             .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Recently added customers')
-                .schemaType('customer')
-                .filter('_type == "customer"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+              documentTablePane(
+                S,
+                'customers-recent',
+                'Recently added',
+                CustomersRecentlyAddedTableView,
+              ),
             ),
         ]),
     )
@@ -374,46 +355,6 @@ const createSettingsList = (S: any) =>
         ]),
     )
 
-const createOnlineStoreSection = (S: any) =>
-  S.listItem()
-    .id('sales-online-store')
-    .title('Online Store')
-    .icon(BasketIcon)
-    .child(
-      S.list()
-        .title('Online Store')
-        .items([
-          createOrdersList(S),
-          S.divider(),
-          createAbandonedCartsPane(S),
-          createPaymentLinksPane(S),
-        ]),
-    )
-
-const createInStoreSection = (S: any) =>
-  S.listItem()
-    .id('in-store-service')
-    .title('In-Store & Service')
-    .icon(PackageIcon)
-    .child(
-      S.list()
-        .title('In-Store & Service')
-        .items([
-          createQuotesList(S),
-          S.listItem()
-            .id('in-store-invoices')
-            .title('Invoices')
-            .icon(DocumentIcon)
-            // Note: in-store manual invoices only—must not auto-link to website orders.
-            .child(invoicesDocumentList(S, 'Invoices')),
-          S.listItem()
-            .id('in-store-appointments')
-            .title('Appointments')
-            .icon(CalendarIcon)
-            .child(S.documentTypeList('booking').apiVersion(API_VERSION).title('Appointments')),
-        ]),
-    )
-
 const createSalesOperationsSection = (S: any) =>
   S.listItem()
     .id('sales-operations')
@@ -423,9 +364,11 @@ const createSalesOperationsSection = (S: any) =>
       S.list()
         .title('Sales & Operations')
         .items([
-          createOnlineStoreSection(S),
+          createOrdersList(S),
           S.divider(),
-          createInStoreSection(S),
+          createAbandonedCartsPane(S),
+          S.divider(),
+          createPaymentLinksPane(S),
           S.divider(),
           createShippingList(S),
           S.divider(),
@@ -442,32 +385,16 @@ const createSalesOperationsSection = (S: any) =>
         ]),
     )
 
-const createBusinessDashboardSection = (S: any) =>
+const createSalesChannelsList = (S: any) =>
   S.listItem()
-    .id('business-dashboard')
-    .title('In-Store')
-    .icon(BarChartIcon)
+    .id('sales-channels')
+    .title('Sales channels')
+    .icon(TagIcon)
     .child(
-      S.list()
-        .title('In-Store')
-        .items([
-          createProductsList(S),
-          S.divider(),
-          createCustomersList(S),
-          S.divider(),
-          createFinanceList(S),
-          S.divider(),
-          S.listItem()
-            .id('business-sales-channels')
-            .title('Sales channels')
-            .icon(TagIcon)
-            .child(
-              S.documentTypeList('marketingChannel')
-                .apiVersion(API_VERSION)
-                .title('Sales channels')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
-        ]),
+      S.documentTypeList('marketingChannel')
+        .apiVersion(API_VERSION)
+        .title('Sales channels')
+        .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
     )
 
 const createMarketingSection = (S: any) =>
@@ -504,6 +431,8 @@ const createAdministrationSection = (S: any) =>
                 .component(AdminTools as any),
             ),
           S.divider(),
+          createFinanceList(S),
+          S.divider(),
           createSettingsList(S),
           S.divider(),
           S.listItem()
@@ -526,23 +455,6 @@ const createAdministrationSection = (S: any) =>
         ]),
     )
 
-const createOnlineStorePlaceholder = (S: any) =>
-  S.listItem()
-    .id('online-store')
-    .title('Online store tooling')
-    .icon(BasketIcon)
-    .child(
-      S.component()
-        .id('online-store-pane')
-        .title('Online store')
-        .component(ComingSoonPane as any)
-        .options({
-          title: 'Online store tooling',
-          description:
-            'Integration with the FAS CMS is on the roadmap. Soon you will be able to edit storefront content from here.',
-        }),
-    )
-
 export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('FAS Dashboard')
@@ -558,9 +470,13 @@ export const deskStructure: StructureResolver = (S) =>
             .component(HomePane as any),
         ),
       S.divider(),
-      createSalesOperationsSection(S),
+      createProductsList(S),
       S.divider(),
-      createBusinessDashboardSection(S),
+      createCustomersList(S),
+      S.divider(),
+      createSalesChannelsList(S),
+      S.divider(),
+      createSalesOperationsSection(S),
       S.divider(),
       createMarketingSection(S),
       S.divider(),
@@ -576,8 +492,6 @@ export const deskStructure: StructureResolver = (S) =>
             .title('Downloads')
             .component(DownloadsPreviewList as any),
         ),
-      S.divider(),
-      createOnlineStorePlaceholder(S),
     ])
 
 export default deskStructure
