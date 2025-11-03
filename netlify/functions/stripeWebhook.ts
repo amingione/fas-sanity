@@ -2540,7 +2540,7 @@ async function fetchPaymentIntentResource(
 type OrderPaymentStatusInput = {
   paymentStatus?: string
   orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
-  invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'cancelled'
+  invoiceStatus?: 'pending' | 'paid' | 'refunded' | 'partially_refunded' | 'cancelled'
   invoiceStripeStatus?: string
   paymentIntentId?: string
   chargeId?: string
@@ -2856,7 +2856,7 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
       chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
       paymentStatus,
       orderStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
-      invoiceStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
+      invoiceStatus: refundSucceeded ? (isFullRefund ? 'refunded' : 'partially_refunded') : undefined,
       invoiceStripeStatus: webhookEvent.type,
       additionalOrderFields: {
         ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
