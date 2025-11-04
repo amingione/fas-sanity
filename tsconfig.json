@@ -26,6 +26,7 @@
     "netlify/functions",
     "netlify/lib",
     "scripts",
+    "shared",
     "packages/sanity-config",
     "env.d.ts",
     "*.ts",

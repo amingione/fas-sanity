@@ -3,22 +3,17 @@ import type {StructureResolver} from 'sanity/structure'
 import {
   BasketIcon,
   BillIcon,
-  CalendarIcon,
   ChartUpwardIcon,
-  CogIcon,
   DocumentIcon,
   HomeIcon,
   LinkIcon,
   PackageIcon,
-  PlugIcon,
   TagIcon,
   TrolleyIcon,
   UserIcon,
   WrenchIcon,
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
-import ProductEditorPane from '../components/studio/ProductEditorPane'
-import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
 import DownloadsPreviewList from '../components/studio/downloads/DownloadsPreviewList'
 import {EXPIRED_SESSION_PANEL_TITLE} from '../utils/orderFilters'
@@ -76,36 +71,6 @@ const CustomersRecentlyAddedTableView: ComponentType = () =>
     pageSize: 10,
   })
 
-const productDocumentViews = (S: any) => (documentId: string) =>
-  S.document()
-    .schemaType('product')
-    .documentId(documentId)
-    .views([
-      S.view.form().title('Details').id('form'),
-      S.view
-        .component(ProductEditorPane as any)
-        .title('Editor')
-        .id('editor'),
-    ])
-
-const productsByCategory = (S: any) =>
-  S.listItem()
-    .id('products-by-category')
-    .title('Products by category')
-    .child(
-      S.documentTypeList('category')
-        .apiVersion(API_VERSION)
-        .title('Categories')
-        .child((categoryId: string) =>
-          S.documentList()
-            .apiVersion(API_VERSION)
-            .title('Products')
-            .schemaType('product')
-            .filter('_type == "product" && $categoryId in category[]._ref')
-            .params({categoryId}),
-        ),
-    )
-
 const createOrdersList = (S: any) =>
   S.listItem()
     .id('orders')
@@ -133,20 +98,6 @@ const createPaymentLinksPane = (S: any) =>
     .title('Payment links')
     .icon(LinkIcon)
     .child(documentTablePane(S, 'payment-links', 'Payment links', PaymentLinksDocumentTable))
-
-const createShippingList = (S: any) =>
-  S.listItem()
-    .id('shipping')
-    .title('Shipping')
-    .icon(PackageIcon)
-    .child(
-      S.list()
-        .title('Shipping')
-        .items([
-          S.documentTypeListItem('shippingLabel').title('Shipping labels'),
-          S.documentTypeListItem('shippingOption').title('Shipping options'),
-        ]),
-    )
 
 const createProductsList = (S: any) =>
   S.listItem()
