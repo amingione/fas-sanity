@@ -1,6 +1,7 @@
 import React from 'react'
 import {defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
+import ManualTrackingInput from '../../components/inputs/ManualTrackingInput'
 import OrderCartItemsInput from '../../components/inputs/OrderCartItemsInput'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
 
@@ -17,6 +18,7 @@ const ORDER_GROUPS = [
   {name: 'checkout', title: 'Checkout'},
   {name: 'shipping', title: 'Shipping'},
   {name: 'fulfillment', title: 'Fulfillment'},
+  {name: 'actions', title: 'Actions'},
   {name: 'activity', title: 'Activity'},
 ]
 
@@ -569,6 +571,15 @@ export default defineType({
       readOnly: true,
       components: {input: OrderShippingActions as any},
       group: 'fulfillment',
+    }),
+    defineField({
+      name: 'manualTrackingNumber',
+      title: 'Manual Tracking Number',
+      type: 'string',
+      description:
+        'Provide a tracking number to mark the order as fulfilled and trigger a customer update email.',
+      group: 'actions',
+      components: {input: ManualTrackingInput as any},
     }),
     defineField({
       name: 'shippingLog',

@@ -1,5 +1,11 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import {
+  formatOrderNumberForDisplay as getDisplayOrderNumber,
+  isValidEmail,
+  normalizeEmail,
+  resolveCustomerName,
+} from '../lib/orderFormatting'
 import { getShipEngineFromAddress } from '../lib/ship-from'
 
 const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY || ''
@@ -49,34 +55,6 @@ function makeBaseUrl(): string | null {
   return base && base.startsWith('http') ? base.replace(/\/$/, '') : null
 }
 
-const ORDER_NUMBER_PREFIX = 'FAS'
-
-function sanitizeOrderNumber(value?: string | null): string | undefined {
-  if (!value) return undefined
-  const trimmed = value.toString().trim().toUpperCase()
-  if (!trimmed) return undefined
-  if (/^FAS-\d{6}$/.test(trimmed)) return trimmed
-  const digits = trimmed.replace(/\D/g, '')
-  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
-  return undefined
-}
-
-function orderNumberFromSessionId(id?: string | null): string | undefined {
-  if (!id) return undefined
-  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
-  const digits = core.replace(/\D/g, '')
-  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
-  return undefined
-}
-
-function formatOrderNumberForDisplay(opts: { orderNumber?: string | null; stripeSessionId?: string | null; fallbackId?: string | null }): string | undefined {
-  return (
-    sanitizeOrderNumber(opts.orderNumber) ||
-    orderNumberFromSessionId(opts.stripeSessionId) ||
-    sanitizeOrderNumber(opts.fallbackId) ||
-    undefined
-  )
-}
 
 export const handler: Handler = async (event) => {
   const originHeader = event.headers?.origin || event.headers?.Origin
@@ -118,26 +96,33 @@ export const handler: Handler = async (event) => {
 
     async function sendTrackingEmail(trackingNumber: string, trackingUrl?: string, packingSlipBase64?: string) {
       if (!RESEND_API_KEY) return
-      const emailTo = to?.email || order.customerEmail
-      if (!emailTo) return
+      const emailCandidates = [to?.email, order.customerEmail]
+        .map((candidate) => normalizeEmail(candidate))
+        .filter((candidate) => candidate.length > 0)
+      const emailTo = emailCandidates.find((candidate) => isValidEmail(candidate))
+      if (!emailTo) {
+        if (emailCandidates.length) {
+          console.warn('fulfill-order: invalid customer email candidates', {
+            orderId,
+            emailCandidates,
+          })
+        } else {
+          console.warn('fulfill-order: missing customer email', {orderId})
+        }
+        return
+      }
 
-      const orderNumber = formatOrderNumberForDisplay({
+      const orderNumber = getDisplayOrderNumber({
         orderNumber: order.orderNumber,
         stripeSessionId: order.stripeSessionId,
         fallbackId: (order as any)?._id || orderId,
       })
 
-      const rawName = (
-        order.customerName ||
-        order.shippingAddress?.name ||
-        (order.customerEmail ? order.customerEmail.split('@')[0] : '') ||
-        ''
-      ).toString()
-      const trimmedName = rawName.trim()
-      const greetingLine = trimmedName
-        ? `Hi ${trimmedName}, we just handed your package to the carrier.`
+      const customerName = resolveCustomerName(order)
+      const greetingLine = customerName
+        ? `Hi ${customerName}, we just handed your package to the carrier.`
         : 'We just handed your package to the carrier.'
-      const salutationPlain = trimmedName ? `Hi ${trimmedName}` : 'Hi there'
+      const salutationPlain = customerName ? `Hi ${customerName}` : 'Hi there'
 
       const items = Array.isArray(order.cart) ? order.cart : []
       const formatCurrency = (value?: number) => {
@@ -253,7 +238,8 @@ export const handler: Handler = async (event) => {
       textLines.push('')
       textLines.push('— F.A.S. Motorsports')
 
-      await fetch('https://api.resend.com/emails', {
+      const emailTimestamp = new Date().toISOString()
+      const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -276,6 +262,41 @@ export const handler: Handler = async (event) => {
             : [],
         }),
       })
+
+      let resendPayload: any = null
+      try {
+        resendPayload = await resendResponse.json()
+      } catch {
+        resendPayload = null
+      }
+
+      if (!resendResponse.ok) {
+        console.warn('Resend email failed:', {
+          orderId,
+          trackingNumber,
+          recipient: emailTo,
+          status: resendResponse.status,
+          timestamp: emailTimestamp,
+          body: resendPayload,
+        })
+        return
+      }
+
+      const resendId = resendPayload?.data?.id || resendPayload?.id || null
+      console.log(
+        JSON.stringify({
+          event: 'fulfill-order',
+          level: 'info',
+          message: 'resend email queued',
+          timestamp: emailTimestamp,
+          orderId,
+          trackingNumber,
+          trackingUrl,
+          recipient: emailTo,
+          deliveryState: 'queued',
+          resendId,
+        }),
+      )
     }
 
     const existingTrackingNumber = order.trackingNumber ? String(order.trackingNumber).trim() : ''
@@ -736,7 +757,12 @@ export const handler: Handler = async (event) => {
           await sendTrackingEmail(trackingNumber, trackingUrl, pdfBase64 || undefined)
         }
       } catch (e) {
-        console.warn('Resend email failed:', e)
+        console.warn('Resend email failed:', {
+          orderId,
+          trackingNumber: createdLabels[0]?.tracking ? String(createdLabels[0].tracking) : undefined,
+          timestamp: new Date().toISOString(),
+          error: e instanceof Error ? {message: e.message, stack: e.stack} : e,
+        })
       }
     }
 
