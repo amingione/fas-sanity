@@ -524,7 +524,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
       if (!records.length) return ''
       if (records.length === 1) return records[0]
       const [first, second, ...rest] = records
-      return rest.length > 0 ? `${first}, ${second}${rest.length ? ` +${rest.length} more` : ''}` : `${first}, ${second}`
+      return rest.length > 0 ? `${first}, ${second} +${rest.length} more` : `${first}, ${second}`
     }
 
     if (createdSummaries.length > 0) {
