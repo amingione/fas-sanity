@@ -139,7 +139,7 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(function 
           <Section title="Sanity" keys={['SANITY_STUDIO_PROJECT_ID','SANITY_STUDIO_DATASET','SANITY_API_TOKEN']} />
           <Section title="Stripe" keys={['STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET']} />
           <Section title="Resend" keys={['RESEND_API_KEY','RESEND_FROM']} />
-          <Section title="ShipEngine" keys={['SHIPENGINE_API_KEY']} />
+          <Section title="EasyPost" keys={['EASYPOST_API_KEY','EASYPOST_WEBHOOK_SECRET','SHIP_FROM_NAME','SHIP_FROM_ADDRESS1','SHIP_FROM_CITY','SHIP_FROM_STATE','SHIP_FROM_POSTAL','SHIP_FROM_COUNTRY']} />
           <Section title="CORS" keys={['CORS_ALLOW','CORS_ORIGIN']} />
           <Section title="Base URL" keys={['SANITY_STUDIO_NETLIFY_BASE']} />
           {data?.extras && (

@@ -3,7 +3,6 @@ import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
 import {randomUUID} from 'crypto'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
-import {syncOrderToShipStation} from '../lib/shipstation'
 import {mapStripeLineItem} from '../lib/stripeCartItem'
 import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import type {CartItem} from '../lib/cartEnrichment'
@@ -77,6 +76,29 @@ function candidateFromSessionId(id?: string | null): string | undefined {
     .replace(/^cs_(?:test|live)_/i, '')
   const digits = core.replace(/\D/g, '')
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+const ORDER_METADATA_NUMBER_KEYS = [
+  'sanity_order_number',
+  'sanityOrderNumber',
+  'order_number',
+  'orderNumber',
+  'orderNo',
+  'website_order_number',
+  'websiteOrderNumber',
+] as const
+
+const extractMetadataOrderNumber = (
+  metadata: Record<string, unknown> | null | undefined,
+): string | undefined => {
+  if (!metadata) return undefined
+  for (const key of ORDER_METADATA_NUMBER_KEYS) {
+    const raw = metadata[key]
+    if (typeof raw === 'string' && raw.trim()) {
+      return raw.trim()
+    }
+  }
   return undefined
 }
 
@@ -466,14 +488,11 @@ async function upsertOrder({
   invoiceId?: string
   paymentStatus?: string
   packingSlipUploaded?: boolean
-  shipStationOrderId?: string
 }> {
   if (!sanity) throw new Error('Sanity client unavailable')
 
   const stripeSessionId = session.id
-  const metadataOrderNumberRaw = (metadata['order_number'] || metadata['orderNo'] || metadata['website_order_number'] || '')
-    .toString()
-    .trim()
+  const metadataOrderNumberRaw = extractMetadataOrderNumber(metadata) || ''
   const metadataInvoiceNumber = (metadata['sanity_invoice_number'] || metadata['invoice_number'] || '')
     .toString()
     .trim()
@@ -752,14 +771,6 @@ async function upsertOrder({
     }
   }
 
-  let shipStationOrderId: string | undefined = undefined
-  if (autoFulfill && orderId) {
-    try {
-      shipStationOrderId = await syncOrderToShipStation(sanity, orderId)
-    } catch (err) {
-      console.warn('reprocessStripeSession: ShipStation sync failed', err)
-    }
-  }
 
   try {
     await updateCustomerProfileForOrder({
@@ -810,7 +821,6 @@ async function upsertOrder({
     invoiceId: linkedInvoiceId,
     paymentStatus,
     packingSlipUploaded,
-    shipStationOrderId,
   }
 }
 
@@ -882,7 +892,6 @@ export const handler: Handler = async (event) => {
       invoiceId: result.invoiceId,
       paymentStatus: result.paymentStatus,
       packingSlipUploaded: result.packingSlipUploaded,
-      shipStationOrderId: result.shipStationOrderId,
     }
 
     if (DEBUG_REPROCESS) {

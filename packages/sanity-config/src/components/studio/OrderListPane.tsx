@@ -456,7 +456,7 @@ function OrdersTableContent() {
 const OrderListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const sourceClient = useClient({apiVersion: API_VERSION})
   const client = useMemo(
-    () => sourceClient.withConfig({perspective: 'previewDrafts' as const}),
+    () => sourceClient.withConfig({perspective: 'drafts' as const}),
     [sourceClient],
   )
 
@@ -468,7 +468,7 @@ const OrderListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_
       apiVersion: API_VERSION,
       useCdn: false,
       studioMode: {enabled: true},
-      perspective: 'previewDrafts' as const,
+      perspective: 'drafts' as const,
     }
   }, [client])
 
