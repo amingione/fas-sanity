@@ -1,13 +1,35 @@
 import {defineCliConfig} from 'sanity/cli'
 
+const normalizeHostname = (value?: string | null): string | undefined => {
+  const trimmed = value?.trim()
+  return trimmed && trimmed !== '::' ? trimmed : undefined
+}
+
+const parsePort = (value?: string | null): number | undefined => {
+  if (!value) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
+const resolvedHostname =
+  normalizeHostname(process.env.SANITY_STUDIO_HOSTNAME) ||
+  normalizeHostname(process.env.SANITY_HOST) ||
+  normalizeHostname(process.env.HOST) ||
+  '0.0.0.0'
+
+const resolvedPort =
+  parsePort(process.env.SANITY_STUDIO_PORT) ||
+  parsePort(process.env.PORT) ||
+  3333
+
 export default defineCliConfig({
   api: {
     projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
     dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
   },
   server: {
-    hostname: 'localhost',
-    port: 3333,
+    hostname: resolvedHostname,
+    port: resolvedPort,
   },
   graphql: [
     {

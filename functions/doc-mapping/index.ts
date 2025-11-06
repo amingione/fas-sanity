@@ -1,4 +1,5 @@
 import type {SanityClient, SanityDocument} from '@sanity/client'
+import {coerceStringArray, uniqueStrings} from '@fas/sanity-config/utils/cartItemDetails'
 
 /**
  * Lightweight helper mirroring the Sanity defineDocumentFunction API shape.
@@ -276,10 +277,9 @@ const toCleanNumber = (value: unknown): number | undefined => {
 }
 
 const toCleanStringArray = (value: unknown, limit = 10): string[] | undefined => {
-  if (!Array.isArray(value)) return undefined
-  const items = value.map((entry) => toCleanString(entry)).filter(isPresent)
-  if (!items.length) return undefined
-  return items.slice(0, limit)
+  const coerced = uniqueStrings(coerceStringArray(value)).map((entry) => toCleanString(entry)).filter(isPresent)
+  if (!coerced.length) return undefined
+  return coerced.slice(0, limit)
 }
 
 const limitArray = <T>(value: T[] | undefined, limit = 20): T[] | undefined => {
