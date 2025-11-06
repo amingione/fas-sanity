@@ -1,6 +1,6 @@
-import type { SanityClient } from '@sanity/client'
-import { normalizeMetadataEntries } from '@fas/sanity-config/utils/cartItemDetails'
-import type { CartMetadataEntry } from './stripeCartItem'
+import type {SanityClient} from '@sanity/client'
+import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
+import type {CartMetadataEntry} from './stripeCartItem'
 
 export type CartItem = {
   _type: 'orderCartItem'
@@ -23,32 +23,64 @@ export type CartItem = {
   metadata?: CartMetadataEntry[] | Record<string, unknown> | null
 }
 
-type ProductSummary = {
+export type CartProductSummary = {
   _id: string
   title?: string
   sku?: string
-  slug?: { current?: string }
+  slug?: {current?: string}
   categories?: string[]
+  shippingWeight?: number | null
+  boxDimensions?: string | null
+  shipsAlone?: boolean | null
+  shippingClass?: string | null
+}
+
+type ShipmentWeight = {
+  _type: 'shipmentWeight'
+  value: number
+  unit: 'pound'
+}
+
+type PackageDimensions = {
+  _type: 'packageDimensions'
+  length: number
+  width: number
+  height: number
+}
+
+export type ShippingMetrics = {
+  weight?: ShipmentWeight
+  dimensions?: PackageDimensions
 }
 
 const CART_METADATA_TYPE = 'orderCartItemMeta'
+const DIMENSION_PATTERN =
+  /(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)/i
 
 function slugifyValue(value?: string | null): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
   if (!trimmed) return undefined
-  return trimmed
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 96) || undefined
+  return (
+    trimmed
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 96) || undefined
+  )
 }
 
 function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
   if (Array.isArray(item.metadata)) {
     const filtered = item.metadata.filter(
       (entry): entry is CartMetadataEntry =>
-        Boolean(entry && typeof entry === 'object' && entry._type === CART_METADATA_TYPE && entry.key && entry.value)
+        Boolean(
+          entry &&
+            typeof entry === 'object' &&
+            entry._type === CART_METADATA_TYPE &&
+            entry.key &&
+            entry.value,
+        ),
     )
     if (filtered.length !== item.metadata.length) {
       item.metadata = filtered
@@ -59,7 +91,7 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
   if (item.metadata && typeof item.metadata === 'object') {
     const normalized = normalizeMetadataEntries(item.metadata as Record<string, unknown>)
     if (normalized.length) {
-      const upgraded = normalized.map<CartMetadataEntry>(({ key, value }) => ({
+      const upgraded = normalized.map<CartMetadataEntry>(({key, value}) => ({
         _type: CART_METADATA_TYPE,
         key,
         value,
@@ -73,11 +105,19 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
   return []
 }
 
-function appendMetadata(item: CartItem, key: string, value: string, source: CartMetadataEntry['source']) {
+function appendMetadata(
+  item: CartItem,
+  key: string,
+  value: string,
+  source: CartMetadataEntry['source'],
+) {
   const normalizedValue = value.trim()
   if (!normalizedValue) return
   const metadata = ensureMetadataArray(item)
-  const already = metadata.find((entry) => entry.key === key && entry.value === normalizedValue && entry.source === source)
+  const already = metadata.find(
+    (entry) =>
+      entry.key === key && entry.value === normalizedValue && entry.source === source,
+  )
   if (already) return
   metadata.push({
     _type: CART_METADATA_TYPE,
@@ -93,23 +133,25 @@ function looksLikeSanityId(value?: string | null): boolean {
   return /^[a-zA-Z0-9]{1,2}[-a-zA-Z0-9]{8,}/.test(value) || value.startsWith('product-')
 }
 
-function findProductForItem(item: CartItem, products: ProductSummary[]): ProductSummary | null {
+function findProductForItem(
+  item: CartItem,
+  products: CartProductSummary[],
+): CartProductSummary | null {
+  if (!Array.isArray(products) || products.length === 0) return null
   const sku = item.sku?.trim().toLowerCase()
   if (sku) {
     const bySku = products.find((p) => (p.sku || '').toLowerCase() === sku)
     if (bySku) return bySku
   }
 
-  const slugCandidates = [
-    item.productSlug,
-    slugifyValue(item.productName),
-    slugifyValue(item.name),
-  ].map((slug) => slug?.trim()).filter(Boolean) as string[]
-
+  const slugCandidates = [item.productSlug, slugifyValue(item.productName), slugifyValue(item.name)]
+    .map((slug) => slug?.trim())
+    .filter(Boolean) as string[]
   for (const slug of slugCandidates) {
-    if (!slug) continue
-    const bySlug = products.find((p) => (p.slug?.current || '').toLowerCase() === slug.toLowerCase())
-    if (bySlug) return bySlug
+    const match = products.find(
+      (p) => (p.slug?.current || '').toLowerCase() === slug.toLowerCase(),
+    )
+    if (match) return match
   }
 
   const ids = [item.id].filter((id): id is string => Boolean(id && looksLikeSanityId(id)))
@@ -118,9 +160,13 @@ function findProductForItem(item: CartItem, products: ProductSummary[]): Product
     if (byId) return byId
   }
 
-  const titleCandidates = [item.productName, item.name].map((v) => v?.trim()).filter(Boolean) as string[]
+  const titleCandidates = [item.productName, item.name]
+    .map((v) => v?.trim())
+    .filter(Boolean) as string[]
   for (const title of titleCandidates) {
-    const byTitle = products.find((p) => (p.title || '').trim().toLowerCase() === title.toLowerCase())
+    const byTitle = products.find(
+      (p) => (p.title || '').trim().toLowerCase() === title.toLowerCase(),
+    )
     if (byTitle) return byTitle
   }
 
@@ -138,7 +184,6 @@ function sanitizeCategories(categories: unknown): string[] | undefined {
       return undefined
     })
     .filter((value): value is string => Boolean(value))
-
   const unique = Array.from(new Set(normalized))
   return unique.length ? unique : undefined
 }
@@ -151,20 +196,13 @@ function collectProductQueries(cart: CartItem[]) {
 
   cart.forEach((item) => {
     if (!item || typeof item !== 'object') return
-    const slugCandidates = [
-      item.productSlug,
-      slugifyValue(item.productName),
-      slugifyValue(item.name),
-    ]
+    const slugCandidates = [item.productSlug, slugifyValue(item.productName), slugifyValue(item.name)]
     slugCandidates.forEach((slug) => {
       if (slug) slugs.add(slug)
     })
-
     if (item.sku) skus.add(item.sku.trim())
-
     if (item.productName) titles.add(item.productName.trim())
     if (item.name) titles.add(item.name.trim())
-
     if (item.id && looksLikeSanityId(item.id)) ids.add(item.id)
   })
 
@@ -176,36 +214,117 @@ function collectProductQueries(cart: CartItem[]) {
   }
 }
 
-export async function enrichCartItemsFromSanity(cart: CartItem[], sanity: SanityClient): Promise<CartItem[]> {
-  if (!Array.isArray(cart) || cart.length === 0) return cart
+function parseBoxDimensions(value?: string | null): {length: number; width: number; height: number} | null {
+  if (!value) return null
+  const match = String(value).match(DIMENSION_PATTERN)
+  if (!match) return null
+  const [, rawLength, rawWidth, rawHeight] = match
+  const length = Number(rawLength)
+  const width = Number(rawWidth)
+  const height = Number(rawHeight)
+  if (!Number.isFinite(length) || !Number.isFinite(width) || !Number.isFinite(height)) {
+    return null
+  }
+  if (length <= 0 || width <= 0 || height <= 0) return null
+  return {length, width, height}
+}
 
+function toPositiveNumber(value: unknown): number | null {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return null
+  return num
+}
+
+function resolveQuantity(value: unknown): number {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return 1
+  return Math.max(1, Math.round(num))
+}
+
+function resolveDefaultDimensions(): {length: number; width: number; height: number} {
+  const fallback = {length: 12, width: 9, height: 4}
+  const length = toPositiveNumber(process.env.DEFAULT_PACKAGE_LENGTH_IN) ?? fallback.length
+  const width = toPositiveNumber(process.env.DEFAULT_PACKAGE_WIDTH_IN) ?? fallback.width
+  const height = toPositiveNumber(process.env.DEFAULT_PACKAGE_HEIGHT_IN) ?? fallback.height
+  return {
+    length,
+    width,
+    height,
+  }
+}
+
+function resolveDefaultWeight(): number | null {
+  const envWeight = toPositiveNumber(process.env.DEFAULT_PACKAGE_WEIGHT_LBS)
+  if (envWeight) return envWeight
+  return 5
+}
+
+export async function fetchProductsForCart(
+  cart: CartItem[],
+  sanity: SanityClient,
+): Promise<CartProductSummary[]> {
+  if (!Array.isArray(cart) || cart.length === 0) return []
   const lookup = collectProductQueries(cart)
-  if (lookup.slugs.length === 0 && lookup.skus.length === 0 && lookup.titles.length === 0 && lookup.ids.length === 0) {
-    return cart
+  if (
+    lookup.slugs.length === 0 &&
+    lookup.skus.length === 0 &&
+    lookup.titles.length === 0 &&
+    lookup.ids.length === 0
+  ) {
+    return []
   }
 
-  let products: ProductSummary[] = []
   try {
-    products = await sanity.fetch<ProductSummary[]>(
+    const result = await sanity.fetch<CartProductSummary[]>(
       `*[_type == "product" && (
         slug.current in $slugs ||
         sku in $skus ||
         title in $titles ||
         _id in $ids
-      )]{ _id, title, sku, slug, "categories": category[]->title }`,
-      {
-        slugs: lookup.slugs,
-        skus: lookup.skus,
-        titles: lookup.titles,
-        ids: lookup.ids,
-      }
+      )]{
+        _id,
+        title,
+        sku,
+        slug,
+        "categories": category[]->title,
+        shippingWeight,
+        boxDimensions,
+        shipsAlone,
+        shippingClass
+      }`,
+      lookup,
     )
+
+    if (!Array.isArray(result) || result.length === 0) return []
+    const deduped = new Map<string, CartProductSummary>()
+    for (const product of result) {
+      if (!product || typeof product !== 'object') continue
+      if (typeof product._id !== 'string' || !product._id) continue
+      deduped.set(product._id, product)
+    }
+    return Array.from(deduped.values())
   } catch (err) {
     console.warn('cartEnrichment: failed to fetch product summaries', err)
-    return cart
+    return []
   }
+}
 
-  if (!products || products.length === 0) return cart
+export async function enrichCartItemsFromSanity(
+  cart: CartItem[],
+  sanity: SanityClient,
+  options: {onProducts?: (list: CartProductSummary[]) => void} = {},
+): Promise<CartItem[]> {
+  if (!Array.isArray(cart) || cart.length === 0) return cart
+
+  const products = await fetchProductsForCart(cart, sanity)
+  if (!products.length) return cart
+  if (options.onProducts) {
+    try {
+      options.onProducts(products)
+    } catch (err) {
+      console.warn('cartEnrichment: onProducts callback failed', err)
+    }
+  }
 
   return cart.map((item) => {
     if (!item || typeof item !== 'object') return item
@@ -236,3 +355,78 @@ export async function enrichCartItemsFromSanity(cart: CartItem[], sanity: Sanity
     return item
   })
 }
+
+export function computeShippingMetrics(
+  cart: CartItem[],
+  products: CartProductSummary[],
+): ShippingMetrics {
+  if (!Array.isArray(cart) || cart.length === 0) return {}
+
+  const defaults = resolveDefaultDimensions()
+  const fallbackWeight = resolveDefaultWeight()
+
+  let totalWeight = 0
+  let maxLength = 0
+  let maxWidth = 0
+  let stackedHeight = 0
+  let hasDimensionData = false
+
+  for (const item of cart) {
+    if (!item || typeof item !== 'object') continue
+    const product = findProductForItem(item, products)
+    if (!product) continue
+
+    const shippingClass = String(product.shippingClass || '').toLowerCase()
+    if (shippingClass.includes('install')) {
+      continue
+    }
+
+    const quantity = resolveQuantity(item.quantity)
+    const weight = toPositiveNumber(product.shippingWeight)
+    if (weight) {
+      totalWeight += weight * quantity
+    }
+
+    const dims = parseBoxDimensions(product.boxDimensions)
+    if (dims) {
+      hasDimensionData = true
+      maxLength = Math.max(maxLength, dims.length)
+      maxWidth = Math.max(maxWidth, dims.width)
+      stackedHeight += dims.height * quantity
+    }
+  }
+
+  const metrics: ShippingMetrics = {}
+  const resolvedWeight = totalWeight > 0 ? totalWeight : fallbackWeight
+  if (resolvedWeight && resolvedWeight > 0) {
+    metrics.weight = {
+      _type: 'shipmentWeight',
+      value: Number(resolvedWeight.toFixed(2)),
+      unit: 'pound',
+    }
+  }
+
+  if (hasDimensionData) {
+    const length = maxLength > 0 ? maxLength : defaults.length
+    const width = maxWidth > 0 ? maxWidth : defaults.width
+    const height = stackedHeight > 0 ? stackedHeight : defaults.height
+    if (length > 0 && width > 0 && height > 0) {
+      metrics.dimensions = {
+        _type: 'packageDimensions',
+        length: Number(length.toFixed(2)),
+        width: Number(width.toFixed(2)),
+        height: Number(height.toFixed(2)),
+      }
+    }
+  } else if (defaults.length > 0 && defaults.width > 0 && defaults.height > 0) {
+    metrics.dimensions = {
+      _type: 'packageDimensions',
+      length: defaults.length,
+      width: defaults.width,
+      height: defaults.height,
+    }
+  }
+
+  return metrics
+}
+

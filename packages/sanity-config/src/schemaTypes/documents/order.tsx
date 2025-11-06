@@ -1,8 +1,11 @@
 import React from 'react'
 import {defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
+import ManualTrackingInput from '../../components/inputs/ManualTrackingInput'
 import OrderCartItemsInput from '../../components/inputs/OrderCartItemsInput'
+import OrderNumberInput from '../../components/inputs/OrderNumberInput'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
+import {formatOrderNumber} from '../../utils/orderNumber'
 
 const ORDER_MEDIA_URL =
   'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
@@ -17,6 +20,7 @@ const ORDER_GROUPS = [
   {name: 'checkout', title: 'Checkout'},
   {name: 'shipping', title: 'Shipping'},
   {name: 'fulfillment', title: 'Fulfillment'},
+  {name: 'actions', title: 'Actions'},
   {name: 'activity', title: 'Activity'},
 ]
 
@@ -30,8 +34,12 @@ export default defineType({
       name: 'orderNumber',
       title: 'Order Number',
       type: 'string',
-      description: 'Customer-facing order number shared across Stripe emails, invoices, and Studio.',
+      description:
+        'Customer-facing order number shared across Stripe emails, invoices, and Studio.',
       readOnly: true,
+      components: {
+        input: OrderNumberInput as any,
+      },
       group: 'overview',
     }),
     defineField({
@@ -133,7 +141,8 @@ export default defineType({
       name: 'userId',
       title: 'User ID (Portal)',
       type: 'string',
-      description: 'Legacy external id for the purchasing customer. FAS Auth uses the document _id.',
+      description:
+        'Legacy external id for the purchasing customer. FAS Auth uses the document _id.',
       readOnly: true,
       group: 'customer',
     }),
@@ -517,13 +526,38 @@ export default defineType({
       fields: [
         defineField({name: 'shipping_amount', title: 'Amount', type: 'string', readOnly: true}),
         defineField({name: 'shipping_carrier', title: 'Carrier', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_carrier_id', title: 'Carrier ID', type: 'string', readOnly: true}),
+        defineField({
+          name: 'shipping_carrier_id',
+          title: 'Carrier ID',
+          type: 'string',
+          readOnly: true,
+        }),
         defineField({name: 'shipping_currency', title: 'Currency', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_delivery_days', title: 'Delivery Days', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_estimated_delivery_date', title: 'Estimated Delivery', type: 'string', readOnly: true}),
+        defineField({
+          name: 'shipping_delivery_days',
+          title: 'Delivery Days',
+          type: 'string',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'shipping_estimated_delivery_date',
+          title: 'Estimated Delivery',
+          type: 'string',
+          readOnly: true,
+        }),
         defineField({name: 'shipping_service', title: 'Service', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_service_code', title: 'Service Code', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_service_name', title: 'Service Name', type: 'string', readOnly: true}),
+        defineField({
+          name: 'shipping_service_code',
+          title: 'Service Code',
+          type: 'string',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'shipping_service_name',
+          title: 'Service Name',
+          type: 'string',
+          readOnly: true,
+        }),
       ],
       group: 'shipping',
     }),
@@ -555,6 +589,25 @@ export default defineType({
       group: 'fulfillment',
     }),
     defineField({
+      name: 'shippingStatus',
+      title: 'Shipping Status',
+      type: 'object',
+      readOnly: true,
+      options: {columns: 2},
+      fields: [
+        defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
+        defineField({name: 'service', title: 'Service', type: 'string'}),
+        defineField({name: 'labelUrl', title: 'Label URL', type: 'url'}),
+        defineField({name: 'trackingCode', title: 'Tracking Code', type: 'string'}),
+        defineField({name: 'trackingUrl', title: 'Tracking URL', type: 'url'}),
+        defineField({name: 'status', title: 'Status', type: 'string'}),
+        defineField({name: 'cost', title: 'Cost', type: 'number'}),
+        defineField({name: 'currency', title: 'Currency', type: 'string'}),
+        defineField({name: 'lastEventAt', title: 'Last Event At', type: 'datetime'}),
+      ],
+      group: 'fulfillment',
+    }),
+    defineField({
       name: 'shippingLabelUrl',
       title: 'Shipping Label URL',
       type: 'url',
@@ -583,15 +636,15 @@ export default defineType({
       group: 'fulfillment',
     }),
     defineField({
-      name: 'shipStationOrderId',
-      title: 'ShipStation Order ID',
+      name: 'easyPostShipmentId',
+      title: 'EasyPost Shipment ID',
       type: 'string',
       readOnly: true,
       group: 'fulfillment',
     }),
     defineField({
-      name: 'shipStationLabelId',
-      title: 'ShipStation Label ID',
+      name: 'easyPostTrackerId',
+      title: 'EasyPost Tracker ID',
       type: 'string',
       readOnly: true,
       group: 'fulfillment',
@@ -610,6 +663,15 @@ export default defineType({
       readOnly: true,
       components: {input: OrderShippingActions as any},
       group: 'fulfillment',
+    }),
+    defineField({
+      name: 'manualTrackingNumber',
+      title: 'Manual Tracking Number',
+      type: 'string',
+      description:
+        'Provide a tracking number to mark the order as fulfilled and trigger a customer update email.',
+      group: 'actions',
+      components: {input: ManualTrackingInput as any},
     }),
     defineField({
       name: 'shippingLog',
@@ -667,11 +729,23 @@ export default defineType({
       shippingName,
       createdAt,
     }) {
-      const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'Order')
+      const formattedOrderNumber = formatOrderNumber(orderNumber)
+      const ref =
+        formattedOrderNumber ||
+        (orderNumber ? orderNumber : stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'Order')
       const name = customerName || shippingName || email || 'Customer'
-      const amount = typeof total === 'number' ? `• ${new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)}` : ''
+      const amount =
+        typeof total === 'number'
+          ? `• ${new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)}`
+          : ''
       const statusLabel = (status || 'paid').toLowerCase()
-      const dateLabel = createdAt ? new Intl.DateTimeFormat(undefined, {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(createdAt)) : ''
+      const dateLabel = createdAt
+        ? new Intl.DateTimeFormat(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }).format(new Date(createdAt))
+        : ''
 
       const tone: Record<string, {bg: string; fg: string; border: string}> = {
         fulfilled: {bg: '#ECFDF5', fg: '#047857', border: '#A7F3D0'},
@@ -733,39 +807,35 @@ export default defineType({
       title: 'Created Date (Newest)',
       name: 'createdAtDesc',
       by: [
-        { field: 'createdAt', direction: 'desc' },
-        { field: '_createdAt', direction: 'desc' },
+        {field: 'createdAt', direction: 'desc'},
+        {field: '_createdAt', direction: 'desc'},
       ],
     },
     {
       title: 'Created Date (Oldest)',
       name: 'createdAtAsc',
       by: [
-        { field: 'createdAt', direction: 'asc' },
-        { field: '_createdAt', direction: 'asc' },
+        {field: 'createdAt', direction: 'asc'},
+        {field: '_createdAt', direction: 'asc'},
       ],
     },
     {
       title: 'Fulfilled Date (Newest)',
       name: 'fulfilledAtDesc',
       by: [
-        { field: 'fulfilledAt', direction: 'desc' },
-        { field: 'createdAt', direction: 'desc' },
+        {field: 'fulfilledAt', direction: 'desc'},
+        {field: 'createdAt', direction: 'desc'},
       ],
     },
     {
       title: 'Order Total (High → Low)',
       name: 'totalAmountDesc',
-      by: [
-        { field: 'totalAmount', direction: 'desc' },
-      ],
+      by: [{field: 'totalAmount', direction: 'desc'}],
     },
     {
       title: 'Order Number (A → Z)',
       name: 'orderNumberAsc',
-      by: [
-        { field: 'orderNumber', direction: 'asc' },
-      ],
+      by: [{field: 'orderNumber', direction: 'asc'}],
     },
   ],
 })

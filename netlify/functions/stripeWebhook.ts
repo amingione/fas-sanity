@@ -1,16 +1,25 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
-import type {CartItem} from '../lib/cartEnrichment'
+import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'
 import {createClient} from '@sanity/client'
 import {randomUUID} from 'crypto'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
-import {syncOrderToShipStation} from '../lib/shipstation'
-import {mapStripeLineItem} from '../lib/stripeCartItem'
-import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
+import {mapStripeLineItem, type CartMetadataEntry} from '../lib/stripeCartItem'
+import {
+  enrichCartItemsFromSanity,
+  computeShippingMetrics,
+  fetchProductsForCart,
+} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
-import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
+import {
+  normalizeMetadataEntries,
+  deriveOptionsFromMetadata,
+  remainingMetadataEntries,
+  coerceStringArray,
+  uniqueStrings,
+} from '@fas/sanity-config/utils/cartItemDetails'
 import {buildOrderV2Record} from '../lib/orderV2'
 import {
   hydrateDiscountResources,
@@ -223,6 +232,17 @@ function summarizeEventType(eventType?: string): string {
   const friendly = eventType.replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim()
   if (!friendly) return 'Processed event'
   return friendly.charAt(0).toUpperCase() + friendly.slice(1)
+}
+
+type ComputedShippingMetrics = ReturnType<typeof computeShippingMetrics>
+
+function applyShippingMetrics(
+  target: Record<string, any>,
+  metrics: ComputedShippingMetrics | null | undefined,
+) {
+  if (!metrics) return
+  if (metrics.weight) target.weight = metrics.weight
+  if (metrics.dimensions) target.dimensions = metrics.dimensions
 }
 
 async function findInvoiceDocumentIdForEvent(input: {
@@ -660,6 +680,275 @@ const parseCartMetadataString = (value: unknown): string | undefined => {
   return undefined
 }
 
+const FALLBACK_OPTION_SUMMARY_KEYS = [
+  'option_summary_display',
+  'option_summary',
+  'options_readable',
+  'selected_options_display',
+  'selected_options',
+]
+
+const OPTION_DETAIL_FIELD_KEYS = [
+  'optionDetails',
+  'option_details',
+  'selected_options',
+  'selected_options_json',
+  'option_values',
+  'option_value_display',
+]
+
+const UPGRADE_FIELD_KEYS = [
+  'upgrades',
+  'upgrade_list',
+  'upgrade_summary',
+  'upgrade_details',
+  'addons',
+  'add_ons',
+  'addOns',
+]
+
+const CATEGORY_FIELD_KEYS = [
+  'categories',
+  'category',
+  'category_list',
+  'category_tags',
+  'categoryTags',
+]
+
+const CART_METADATA_SOURCE_VALUES: CartMetadataEntry['source'][] = [
+  'lineItem',
+  'price',
+  'product',
+  'session',
+  'derived',
+  'legacy',
+]
+
+const CART_METADATA_SOURCE_SET = new Set(CART_METADATA_SOURCE_VALUES)
+
+const normalizeCartMetadataSource = (value: unknown): CartMetadataEntry['source'] => {
+  if (typeof value === 'string') {
+    const normalized = value.trim() as CartMetadataEntry['source']
+    if (normalized && CART_METADATA_SOURCE_SET.has(normalized)) {
+      return normalized
+    }
+  }
+  return 'legacy'
+}
+
+const consumeRecordValue = (source: Record<string, unknown>, keys: string[]): unknown => {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key]
+      delete source[key]
+      return value
+    }
+  }
+  return undefined
+}
+
+const extractSlugFromUrl = (value?: string | null): string | undefined => {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const segments = trimmed.split('/').filter(Boolean)
+  if (!segments.length) return trimmed
+  return segments[segments.length - 1] || trimmed
+}
+
+const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
+  if (!entry || typeof entry !== 'object') return null
+
+  const record = entry as Record<string, unknown>
+  const working = {...record}
+
+  delete working._type
+  const existingKey =
+    typeof (record as any)._key === 'string' ? ((record as any)._key as string) : undefined
+  delete working._key
+
+  const metadataInputs: unknown[] = []
+  const metadataValue = consumeRecordValue(working, ['metadata'])
+  if (metadataValue !== undefined) metadataInputs.push(metadataValue)
+  const rawMetadataValue = consumeRecordValue(working, ['raw_metadata', 'rawMetadata'])
+  if (rawMetadataValue !== undefined) metadataInputs.push(rawMetadataValue)
+
+  const stripeProductId = parseCartMetadataString(
+    consumeRecordValue(working, ['stripeProductId', 'stripe_product_id']),
+  )
+  const stripePriceId = parseCartMetadataString(
+    consumeRecordValue(working, ['stripePriceId', 'stripe_price_id', 'price_id']),
+  )
+  let productSlug = parseCartMetadataString(
+    consumeRecordValue(working, ['productSlug', 'product_slug', 'slug', 'handle']),
+  )
+  const productName = parseCartMetadataString(
+    consumeRecordValue(working, ['productName', 'product_name', 'stripe_product_name']),
+  )
+  const sku = parseCartMetadataString(
+    consumeRecordValue(working, ['sku', 'SKU', 'product_sku', 'productSku', 'item_sku', 'variant_sku', 'inventory_sku']),
+  )
+  const id = parseCartMetadataString(
+    consumeRecordValue(working, [
+      'id',
+      'productId',
+      'product_id',
+      'sanity_product_id',
+      'sanityProductId',
+      'item_id',
+      'itemId',
+    ]),
+  )
+
+  const rawUrl =
+    parseCartMetadataString((record.url as string | undefined)) ||
+    parseCartMetadataString((record.product_url as string | undefined)) ||
+    parseCartMetadataString((record.productUrl as string | undefined)) ||
+    undefined
+  if (!productSlug && rawUrl) {
+    productSlug = extractSlugFromUrl(rawUrl)
+  }
+
+  const quantity = parseCartMetadataNumber(
+    consumeRecordValue(working, ['quantity', 'qty', 'amount', 'q']),
+  )
+  const price = parseCartMetadataNumber(
+    consumeRecordValue(working, [
+      'price',
+      'unit_price',
+      'base_price',
+      'amount',
+      'total',
+      'line_total',
+      'line_amount',
+      'p',
+      'amount_total',
+    ]),
+  )
+
+  const optionSummaryFromRecord = parseCartMetadataString(
+    consumeRecordValue(working, [
+      'optionSummary',
+      'option_summary',
+      'option_summary_display',
+      'options_readable',
+      'selected_options_display',
+    ]),
+  )
+  const optionDetailsValue = consumeRecordValue(working, OPTION_DETAIL_FIELD_KEYS)
+  const upgradesValue = consumeRecordValue(working, UPGRADE_FIELD_KEYS)
+  const categoriesValue = consumeRecordValue(working, CATEGORY_FIELD_KEYS)
+
+  const nameCandidate =
+    parseCartMetadataString(consumeRecordValue(working, ['name', 'display_name', 'title', 'n'])) ||
+    productName ||
+    productSlug ||
+    sku ||
+    id ||
+    'Item'
+
+  if (Object.keys(working).length > 0) {
+    metadataInputs.push(working)
+  }
+
+  const normalizedMetadata = metadataInputs.flatMap((input) =>
+    normalizeMetadataEntries(input as any),
+  )
+  const derivedOptions = deriveOptionsFromMetadata(normalizedMetadata)
+
+  const metadataMap: Record<string, string> = {}
+  for (const {key, value} of normalizedMetadata) {
+    const lower = key.toLowerCase()
+    if (!metadataMap[lower]) metadataMap[lower] = value
+  }
+  const fallbackSummary =
+    FALLBACK_OPTION_SUMMARY_KEYS.map((key) => metadataMap[key]).find(
+      (value) => value && value.trim(),
+    ) || undefined
+
+  const optionSummary =
+    optionSummaryFromRecord || derivedOptions.optionSummary || fallbackSummary || undefined
+
+  const optionDetailsCandidates = uniqueStrings([
+    ...coerceStringArray(optionDetailsValue),
+    ...derivedOptions.optionDetails,
+  ])
+  const summarySegments = optionSummary ? coerceStringArray(optionSummary) : []
+  const optionDetails = uniqueStrings([...optionDetailsCandidates, ...summarySegments])
+
+  const upgrades = uniqueStrings([
+    ...coerceStringArray(upgradesValue),
+    ...derivedOptions.upgrades,
+  ])
+  const categories = uniqueStrings(coerceStringArray(categoriesValue))
+
+  const typedMetadata: CartMetadataEntry[] = []
+  const seenMetaKeys = new Set<string>()
+
+  if (Array.isArray(metadataValue)) {
+    for (const candidate of metadataValue) {
+      if (!candidate || typeof candidate !== 'object') continue
+      const key = parseCartMetadataString((candidate as any).key)
+      const value = parseCartMetadataString((candidate as any).value)
+      if (!key || !value) continue
+      const dedupeKey = `${key.toLowerCase()}:::${value}`
+      if (seenMetaKeys.has(dedupeKey)) continue
+      seenMetaKeys.add(dedupeKey)
+      typedMetadata.push({
+        _type: 'orderCartItemMeta',
+        key,
+        value,
+        source: normalizeCartMetadataSource((candidate as any).source),
+      })
+    }
+  }
+
+  const remainingEntries = remainingMetadataEntries(
+    normalizedMetadata,
+    derivedOptions.consumedKeys,
+  )
+  for (const {key, value} of remainingEntries) {
+    const trimmedKey = key.trim()
+    const trimmedValue = value.trim()
+    if (!trimmedKey || !trimmedValue) continue
+    const dedupeKey = `${trimmedKey.toLowerCase()}:::${trimmedValue}`
+    if (seenMetaKeys.has(dedupeKey)) continue
+    seenMetaKeys.add(dedupeKey)
+    typedMetadata.push({
+      _type: 'orderCartItemMeta',
+      key: trimmedKey,
+      value: trimmedValue,
+      source: 'legacy',
+    })
+  }
+
+  const item: CartItem = {
+    _type: 'orderCartItem',
+    _key: existingKey || randomUUID(),
+    name: nameCandidate,
+  }
+
+  if (id) item.id = id
+  if (sku) item.sku = sku
+  if (productSlug) item.productSlug = productSlug
+  if (productName) item.productName = productName
+  if (stripeProductId) item.stripeProductId = stripeProductId
+  if (stripePriceId) item.stripePriceId = stripePriceId
+  if (typeof quantity === 'number' && Number.isFinite(quantity)) {
+    item.quantity = Math.max(1, Math.round(quantity))
+  }
+  if (typeof price === 'number' && Number.isFinite(price)) {
+    item.price = Number(price)
+  }
+  if (optionSummary) item.optionSummary = optionSummary
+  if (optionDetails.length) item.optionDetails = optionDetails
+  if (upgrades.length) item.upgrades = upgrades
+  if (categories.length) item.categories = categories
+  if (typedMetadata.length) item.metadata = typedMetadata
+
+  return item
+}
+
 function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
   const rawCandidates = [
     metadata['cart'],
@@ -674,44 +963,8 @@ function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
     if (!Array.isArray(parsed)) return []
     const items: CartItem[] = []
     for (const entry of parsed) {
-      if (!entry || typeof entry !== 'object') continue
-      const record = entry as Record<string, unknown>
-      const quantity = parseCartMetadataNumber(record.q ?? record.quantity ?? 1)
-      const price = parseCartMetadataNumber(
-        record.p ?? record.price ?? record.unit_price ?? record.amount ?? record.total,
-      )
-      const slug =
-        parseCartMetadataString(
-          (record.slug as string) ??
-            (record.productSlug as string) ??
-            (record.handle as string) ??
-            (record.url as string)?.split('/').filter(Boolean).pop(),
-        ) || undefined
-      const name =
-        parseCartMetadataString(
-          (record.n as string) ??
-            (record.name as string) ??
-            (record.title as string) ??
-            (record.productName as string),
-        ) ||
-        slug ||
-        parseCartMetadataString(record.sku) ||
-        'Item'
-      const item: CartItem = {
-        _type: 'orderCartItem',
-        _key: randomUUID(),
-        name,
-        productSlug: slug,
-        sku: parseCartMetadataString(record.sku),
-        id: parseCartMetadataString((record.id as string) ?? (record.i as string)),
-      }
-      if (typeof quantity === 'number' && Number.isFinite(quantity)) {
-        item.quantity = Math.max(1, Math.round(quantity))
-      }
-      if (typeof price === 'number' && Number.isFinite(price)) {
-        item.price = Number(price)
-      }
-      items.push(item)
+      const item = convertLegacyCartEntry(entry)
+      if (item) items.push(item)
     }
     return items
   } catch (err) {
@@ -723,8 +976,8 @@ function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
 async function buildCartFromSessionLineItems(
   sessionId: string,
   metadata: Record<string, string>,
-): Promise<CartItem[]> {
-  if (!stripe) return []
+): Promise<{items: CartItem[]; products: CartProductSummary[]}> {
+  if (!stripe) return {items: [], products: []}
   try {
     const items = await stripe.checkout.sessions.listLineItems(sessionId, {
       limit: 100,
@@ -738,16 +991,38 @@ async function buildCartFromSessionLineItems(
     if (!cartItems.length) {
       cartItems = cartItemsFromMetadata(metadata)
     }
-    if (!cartItems.length) return []
-    return await enrichCartItemsFromSanity(cartItems, sanity)
+    if (!cartItems.length) return {items: [], products: []}
+
+    let productSummaries: CartProductSummary[] = []
+    const enriched = await enrichCartItemsFromSanity(cartItems, sanity, {
+      onProducts: (list) => {
+        productSummaries = list
+      },
+    })
+    cartItems = enriched
+    if (!productSummaries.length && cartItems.length) {
+      productSummaries = await fetchProductsForCart(cartItems, sanity)
+    }
+    return {items: cartItems, products: productSummaries}
   } catch (err) {
     console.warn('stripeWebhook: listLineItems failed', err)
-    const fallback = cartItemsFromMetadata(metadata)
-    if (!fallback.length) return []
+    let fallback = cartItemsFromMetadata(metadata)
+    if (!fallback.length) return {items: [], products: []}
     try {
-      return await enrichCartItemsFromSanity(fallback, sanity)
+      let productSummaries: CartProductSummary[] = []
+      const enriched = await enrichCartItemsFromSanity(fallback, sanity, {
+        onProducts: (list) => {
+          productSummaries = list
+        },
+      })
+      fallback = enriched
+      if (!productSummaries.length && fallback.length) {
+        productSummaries = await fetchProductsForCart(fallback, sanity)
+      }
+      return {items: fallback, products: productSummaries}
     } catch {
-      return fallback
+      const productSummaries = fallback.length ? await fetchProductsForCart(fallback, sanity) : []
+      return {items: fallback, products: productSummaries}
     }
   }
 }
@@ -765,9 +1040,18 @@ async function recordExpiredCart(
   },
 ) {
   const metadata = (session.metadata || {}) as Record<string, string>
-  const cart = Array.isArray(opts.preloadedCart)
-    ? opts.preloadedCart
-    : await buildCartFromSessionLineItems(session.id, metadata)
+  let cart: CartItem[] = []
+  if (Array.isArray(opts.preloadedCart) && opts.preloadedCart.length) {
+    cart = opts.preloadedCart
+  } else {
+    try {
+      const cartResult = await buildCartFromSessionLineItems(session.id, metadata)
+      cart = cartResult.items
+    } catch (err) {
+      console.warn('stripeWebhook: failed to load cart for expired session', err)
+      cart = cartItemsFromMetadata(metadata)
+    }
+  }
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const customerName =
     (session.customer_details?.name || (session.metadata?.customer_name as string) || email || '')
@@ -964,9 +1248,12 @@ const PAYMENT_LINK_METADATA_ORDER_KEYS = ['sanity_order_id', 'order_id', 'orderI
 const ORDER_METADATA_ID_KEYS = ['sanity_order_id', 'order_id', 'orderId', 'sanityOrderId']
 const ORDER_METADATA_NUMBER_KEYS = [
   'sanity_order_number',
+  'sanityOrderNumber',
   'order_number',
   'orderNumber',
-  'sanityOrderNumber',
+  'orderNo',
+  'website_order_number',
+  'websiteOrderNumber',
 ]
 const SESSION_METADATA_KEYS = [
   'stripe_session_id',
@@ -993,6 +1280,15 @@ function normalizeSanityId(value?: string | null): string | undefined {
   const trimmed = value.toString().trim()
   if (!trimmed) return undefined
   return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
+}
+
+const extractMetadataOrderNumber = (
+  metadata: Record<string, unknown> | null | undefined,
+): string | undefined => {
+  if (!metadata) return undefined
+  return firstString(
+    ORDER_METADATA_NUMBER_KEYS.map((key) => metadata[key]),
+  )
 }
 
 function slugifyValue(value: string): string {
@@ -2204,7 +2500,8 @@ function buildShippingAddress(shipping?: Stripe.Customer.Shipping | null) {
     address.postal_code ||
     address.country
   if (!hasContent) return undefined
-  const street = [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
+  const street =
+    [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
   return {
     _type: 'customerBillingAddress',
     name: shipping.name || undefined,
@@ -2856,7 +3153,11 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
       chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
       paymentStatus,
       orderStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
-      invoiceStatus: refundSucceeded ? (isFullRefund ? 'refunded' : 'partially_refunded') : undefined,
+      invoiceStatus: refundSucceeded
+        ? isFullRefund
+          ? 'refunded'
+          : 'partially_refunded'
+        : undefined,
       invoiceStripeStatus: webhookEvent.type,
       additionalOrderFields: {
         ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
@@ -3258,7 +3559,8 @@ async function handleCheckoutExpired(
   const timestamp = new Date().toISOString()
   const failureCode = 'checkout.session.expired'
   const metadata = (session.metadata || {}) as Record<string, string>
-  const cart = await buildCartFromSessionLineItems(session.id, metadata)
+  const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(session.id, metadata)
+  const shippingMetrics = computeShippingMetrics(cart, cartProducts)
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const expiresAt =
     typeof session.expires_at === 'number'
@@ -3348,28 +3650,19 @@ async function handleCheckoutExpired(
   let orderId = existingOrderId
   if (!orderId) {
     try {
-      const metadataOrderNumber = (
-        metadata['order_number'] ||
-        metadata['orderNo'] ||
-        metadata['website_order_number'] ||
-        ''
-      )
-        .toString()
-        .trim()
-      const metadataInvoiceNumber = (
-        metadata['sanity_invoice_number'] ||
-        metadata['invoice_number'] ||
-        ''
-      )
-        .toString()
-        .trim()
+      const metadataOrderNumber = extractMetadataOrderNumber(metadata) || ''
+      const metadataInvoiceNumber =
+        firstString(
+          INVOICE_METADATA_NUMBER_KEYS.map(
+            (key) => metadata[key as keyof typeof metadata],
+          ),
+        ) || ''
       const orderNumber = await resolveOrderNumber({
         metadataOrderNumber,
         invoiceNumber: metadataInvoiceNumber,
         fallbackId: session.id,
       })
-      const normalizedOrderNumber =
-        normalizeOrderNumberForStorage(orderNumber) || orderNumber
+      const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
       const orderSlug = createOrderSlug(normalizedOrderNumber, session.id)
       const baseDoc: Record<string, any> = pruneUndefined({
         _type: 'order',
@@ -3395,13 +3688,15 @@ async function handleCheckoutExpired(
         stripeCheckoutMode: session.mode || undefined,
         stripePaymentIntentStatus: session.payment_status || undefined,
         stripeLastSyncedAt: timestamp,
-        stripeSummary: summary,
-        paymentFailureCode: failureCode,
-        paymentFailureMessage: failureMessage,
-        cart: cart.length ? cart : undefined,
-        shippingAddress,
-        webhookNotified: true,
-      })
+    stripeSummary: summary,
+    paymentFailureCode: failureCode,
+    paymentFailureMessage: failureMessage,
+    cart: cart.length ? cart : undefined,
+    shippingAddress,
+    weight: shippingMetrics.weight,
+    dimensions: shippingMetrics.dimensions,
+    webhookNotified: true,
+  })
 
       const selectedService = pruneUndefined({
         carrierId: shippingDetails.carrierId,
@@ -3519,6 +3814,8 @@ async function handleCheckoutExpired(
         currency: currencyLower,
         cart: cart.length ? cart : undefined,
         shippingAddress,
+        weight: shippingMetrics.weight,
+        dimensions: shippingMetrics.dimensions,
         shippingCarrier: shippingDetails.carrier || undefined,
         shippingServiceCode: shippingDetails.serviceCode || undefined,
         shippingServiceName: shippingDetails.serviceName || undefined,
@@ -4520,7 +4817,9 @@ export const handler: Handler = async (event) => {
         const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
           ? Number((session as any)?.total_details?.amount_tax) / 100
           : undefined
-        const amountDiscount = Number.isFinite(Number((session as any)?.total_details?.amount_discount))
+        const amountDiscount = Number.isFinite(
+          Number((session as any)?.total_details?.amount_discount),
+        )
           ? Number((session as any)?.total_details?.amount_discount) / 100
           : undefined
         let amountShipping = (() => {
@@ -4546,21 +4845,13 @@ export const handler: Handler = async (event) => {
           }
         } catch {}
 
-        const metadataOrderNumberRaw = (
-          metadata['order_number'] ||
-          metadata['orderNo'] ||
-          metadata['website_order_number'] ||
-          ''
-        )
-          .toString()
-          .trim()
-        const metadataInvoiceNumber = (
-          metadata['sanity_invoice_number'] ||
-          metadata['invoice_number'] ||
-          ''
-        )
-          .toString()
-          .trim()
+        const metadataOrderNumberRaw = extractMetadataOrderNumber(metadata) || ''
+        const metadataInvoiceNumber =
+          firstString(
+            INVOICE_METADATA_NUMBER_KEYS.map(
+              (key) => metadata[key as keyof typeof metadata],
+            ),
+          ) || ''
         // Use the shared helper so metadata fallbacks and live Stripe rate
         // lookups stay in sync across reprocessing + webhook flows.
         const shippingDetails = await resolveStripeShippingDetails({
@@ -4578,8 +4869,7 @@ export const handler: Handler = async (event) => {
           invoiceNumber: metadataInvoiceNumber,
           fallbackId: stripeSessionId,
         })
-        const normalizedOrderNumber =
-          normalizeOrderNumberForStorage(orderNumber) || orderNumber
+        const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
 
         const invoiceId = metadata['sanity_invoice_id']
         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '')
@@ -4591,8 +4881,11 @@ export const handler: Handler = async (event) => {
           : undefined
 
         // 2) Gather enriched data: line items + shipping
-        const cart: CartItem[] = await buildCartFromSessionLineItems(stripeSessionId, metadata)
-
+        const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
+          stripeSessionId,
+          metadata,
+        )
+        const shippingMetrics = computeShippingMetrics(cart, cartProducts)
         let shippingAddress: any = undefined
         try {
           const cd = session.customer_details
@@ -4670,6 +4963,7 @@ export const handler: Handler = async (event) => {
             ...(userIdMeta ? {userId: userIdMeta} : {}),
             ...(cart.length ? {cart} : {}),
           }
+          applyShippingMetrics(baseDoc, shippingMetrics)
           baseDoc.stripeSummary = buildStripeSummary({
             session,
             paymentIntent,
@@ -4828,11 +5122,6 @@ export const handler: Handler = async (event) => {
             } catch (err) {
               console.warn('stripeWebhook: packing slip auto upload failed', err)
             }
-            try {
-              await syncOrderToShipStation(sanity, orderId)
-            } catch (err) {
-              console.warn('stripeWebhook: ShipStation sync failed', err)
-            }
           }
 
           try {
@@ -4922,8 +5211,8 @@ export const handler: Handler = async (event) => {
 
         // Create a minimal Order if none exists yet
         try {
-        const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
-        const email =
+          const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
+          const email =
             (pi as any)?.charges?.data?.[0]?.billing_details?.email ||
             (pi as any)?.receipt_email ||
             undefined
@@ -4943,21 +5232,13 @@ export const handler: Handler = async (event) => {
           let derivedOrderStatus: 'paid' | 'cancelled' =
             paymentStatus === 'cancelled' ? 'cancelled' : 'paid'
 
-          const metadataOrderNumberRaw = (
-            meta['order_number'] ||
-            meta['orderNo'] ||
-            meta['website_order_number'] ||
-            ''
-          )
-            .toString()
-            .trim()
-          const metadataInvoiceNumber = (
-            meta['sanity_invoice_number'] ||
-            meta['invoice_number'] ||
-            ''
-          )
-            .toString()
-            .trim()
+          const metadataOrderNumberRaw = extractMetadataOrderNumber(meta) || ''
+          const metadataInvoiceNumber =
+            firstString(
+              INVOICE_METADATA_NUMBER_KEYS.map(
+                (key) => meta[key as keyof typeof meta],
+              ),
+            ) || ''
           const shippingDetails = await resolveStripeShippingDetails({
             metadata: meta,
             paymentIntent: pi,
@@ -4969,8 +5250,7 @@ export const handler: Handler = async (event) => {
             invoiceNumber: metadataInvoiceNumber,
             fallbackId: pi.id,
           })
-          const normalizedOrderNumber =
-            normalizeOrderNumberForStorage(orderNumber) || orderNumber
+          const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
           const customerName =
             (
               (pi as any)?.shipping?.name ||
@@ -4981,6 +5261,41 @@ export const handler: Handler = async (event) => {
             )
               .toString()
               .trim() || undefined
+
+          let cart: CartItem[] = []
+          let cartProducts: CartProductSummary[] = []
+          if (checkoutSessionMeta) {
+            try {
+              const cartResult = await buildCartFromSessionLineItems(checkoutSessionMeta, meta)
+              cart = cartResult.items
+              cartProducts = cartResult.products
+            } catch (err) {
+              console.warn('stripeWebhook: failed to load cart from checkout metadata', err)
+            }
+          }
+          if (!cart.length) {
+            cart = cartItemsFromMetadata(meta)
+          }
+          if (cart.length && !cartProducts.length) {
+            try {
+              const enriched = await enrichCartItemsFromSanity(cart, sanity, {
+                onProducts: (list: CartProductSummary[]) => {
+                  cartProducts = list
+                },
+              })
+              cart = enriched
+            } catch (err) {
+              console.warn('stripeWebhook: failed to enrich payment intent cart', err)
+            }
+          }
+          if (cart.length && !cartProducts.length) {
+            try {
+              cartProducts = await fetchProductsForCart(cart, sanity)
+            } catch (err) {
+              console.warn('stripeWebhook: failed to fetch product summaries for payment intent', err)
+            }
+          }
+          const shippingMetrics = computeShippingMetrics(cart, cartProducts)
 
           const existingOrder = await sanity.fetch(
             `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl, orderV2}`,
@@ -5025,7 +5340,9 @@ export const handler: Handler = async (event) => {
                   },
                 }
               : {}),
+            ...(cart.length ? {cart} : {}),
           }
+          applyShippingMetrics(baseDoc, shippingMetrics)
           baseDoc.stripeSummary = buildStripeSummary({
             paymentIntent: pi,
             eventType: webhookEvent.type,
@@ -5092,7 +5409,7 @@ export const handler: Handler = async (event) => {
             customerEmail: email || undefined,
             customerPhone: (pi as any)?.shipping?.phone || undefined,
             shippingAddress: baseDoc.shippingAddress,
-            cart: undefined,
+            cart: cart.length ? cart : undefined,
             subtotal: undefined,
             discount: undefined,
             shippingFee: shippingAmountForDoc,
@@ -5168,11 +5485,6 @@ export const handler: Handler = async (event) => {
             } catch (err) {
               console.warn('stripeWebhook: packing slip auto upload failed', err)
             }
-            try {
-              await syncOrderToShipStation(sanity, orderId)
-            } catch (err) {
-              console.warn('stripeWebhook: ShipStation sync failed', err)
-            }
           }
 
           if (shouldSendConfirmation && orderId) {
@@ -5181,7 +5493,7 @@ export const handler: Handler = async (event) => {
                 to: normalizedEmail,
                 orderNumber,
                 customerName,
-                items: [],
+                items: cart,
                 totalAmount,
                 shippingAmount:
                   typeof shippingDetails.amount === 'number' ? shippingDetails.amount : undefined,

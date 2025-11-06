@@ -57,7 +57,7 @@ async function safeFetchJson(url: string, init?: RequestInit) {
 }
 
 /**
- * Custom input to fetch live ShipEngine rates and select a service.
+ * Custom input to fetch live EasyPost rates and select a service.
  * Reads sibling fields from the form: ship_to, ship_from, weight, dimensions
  */
 export function ServiceRateInput(props: any) {
@@ -114,7 +114,7 @@ export function ServiceRateInput(props: any) {
       setError('')
       try {
         const data = (await safeFetchJson(
-          `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/getShipEngineRates`,
+          `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/getEasyPostRates`,
           {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -256,11 +256,9 @@ export function GenerateAndPrintPanel(props: any) {
     setBusy(true)
     setMessage(null)
     try {
-      if (!doc.serviceSelection) throw new Error('Select a service/rate first.')
       const payload = {
         ship_to: doc.ship_to,
         ship_from: doc.ship_from,
-        service_code: doc.serviceSelection,
         package_details: {
           weight: {value: Number(doc?.weight?.value) || 1, unit: doc?.weight?.unit || 'pound'},
           dimensions: doc.dimensions
@@ -274,7 +272,7 @@ export function GenerateAndPrintPanel(props: any) {
         },
       }
       const res = (await safeFetchJson(
-        `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/createShippingLabel`,
+          `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/easypostCreateLabel`,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -298,7 +296,7 @@ export function GenerateAndPrintPanel(props: any) {
         .set({trackingNumber, labelUrl})
         .commit({autoGenerateArrayKeys: true})
 
-      setMessage({tone: 'positive', text: 'Label generated. Tracking & label URL saved below.'})
+      setMessage({tone: 'positive', text: 'EasyPost label generated. Tracking & label URL saved below.'})
       // Optionally, open label
       try {
         window?.open(labelUrl, '_blank')

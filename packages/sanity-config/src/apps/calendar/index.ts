@@ -4,10 +4,10 @@ import {definePlugin} from 'sanity'
 import CalendarApp from './CalendarApp'
 
 export const calendarApp = definePlugin({
-  name: 'fas-office-calendar',
+  name: 'fas-calendar-app',
   tools: [
     {
-      name: 'office-calendar',
+      name: 'calendar-app',
       title: 'Calendar',
       icon: CalendarIcon,
       component: CalendarApp,

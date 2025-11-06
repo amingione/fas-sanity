@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
-import { getShipEngineFromAddress } from '../lib/ship-from'
+import { getEasyPostFromAddress } from '../lib/ship-from'
+import { getEasyPostClient } from '../lib/easypostClient'
 
 // CORS helper (uses CORS_ALLOW like other functions)
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
@@ -27,7 +28,6 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const SHIPENGINE_API_KEY = process.env.SHIPENGINE_API_KEY || ''
 
 function parseDims(s?: string): { length: number; width: number; height: number; unit: 'inch' } | null {
   if (!s) return null
@@ -37,7 +37,6 @@ function parseDims(s?: string): { length: number; width: number; height: number;
   return { length: Number(L), width: Number(W), height: Number(H), unit: 'inch' as const }
 }
 
-const looksLikeCarrierId = (s?: string) => typeof s === 'string' && /[a-f0-9]{8}-[a-f0-9]{4}-/i.test(s)
 const isInstallOnlyClass = (value?: string) => typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
 
 export const handler: Handler = async (event) => {
@@ -46,10 +45,6 @@ export const handler: Handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method Not Allowed' }) }
-
-  if (!SHIPENGINE_API_KEY) {
-    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing SHIPENGINE_API_KEY' }) }
-  }
 
   type CartItem = {
     sku?: string
@@ -107,7 +102,7 @@ export const handler: Handler = async (event) => {
     country_code: (dest.country || dest.country_code) as string,
   }
 
-  const fromAddress = getShipEngineFromAddress()
+  const fromAddress = getEasyPostFromAddress()
 
   try {
     const normalizeId = (value?: string) => {
@@ -285,68 +280,76 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    // Carrier selection
-    const FALLBACK_CARRIER_IDS = ['se-2300833', 'se-2945844', 'se-2300834'] // UPS + FedEx + GlobalPost
-    const FALLBACK_SERVICE_CODES = ['ups_ground', 'ups_2nd_day_air', 'fedex_ground', 'fedex_express_saver', 'globalpost_priority']
+    const primaryPackage = packages[0]
+    if (!primaryPackage) {
+      return {
+        statusCode: 200,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: true, rates: [], packages, installOnlySkus: installOnlyItems, missingProducts }),
+      }
+    }
 
-    let serviceCode = process.env.SHIPENGINE_SERVICE_CODE || process.env.DEFAULT_SHIPENGINE_SERVICE_CODE || ''
-    let carrierId = process.env.SHIPENGINE_CARRIER_ID || process.env.DEFAULT_SHIPENGINE_CARRIER_ID || ''
-    if (!looksLikeCarrierId(carrierId)) carrierId = ''
+    const easyPostToAddress = {
+      name: toAddress.name,
+      street1: toAddress.address_line1,
+      street2: toAddress.address_line2,
+      city: toAddress.city_locality,
+      state: toAddress.state_province,
+      zip: toAddress.postal_code,
+      country: toAddress.country_code,
+      phone: toAddress.phone,
+    }
 
-    let carrierIds: string[] = []
-    if (carrierId) carrierIds = [carrierId]
-    else {
-      const carriersResp = await fetch('https://api.shipengine.com/v1/carriers', {
-        headers: { 'API-Key': SHIPENGINE_API_KEY, 'Content-Type': 'application/json' },
+    const easyPostFromAddress = {
+      name: fromAddress.name,
+      street1: fromAddress.street1,
+      street2: fromAddress.street2,
+      city: fromAddress.city,
+      state: fromAddress.state,
+      zip: fromAddress.zip,
+      country: fromAddress.country,
+      phone: fromAddress.phone,
+      email: fromAddress.email,
+    }
+
+    const client = getEasyPostClient()
+    const shipment = await client.Shipment.create({
+      to_address: easyPostToAddress,
+      from_address: easyPostFromAddress,
+      parcel: {
+        length: Number(primaryPackage.dimensions.length.toFixed(2)),
+        width: Number(primaryPackage.dimensions.width.toFixed(2)),
+        height: Number(primaryPackage.dimensions.height.toFixed(2)),
+        weight: Math.max(1, Math.round(primaryPackage.weight.value * 16)),
+      },
+    } as any)
+
+    const ratesArr: any[] = Array.isArray(shipment?.rates) ? shipment.rates : []
+    const rates = ratesArr
+      .map((rate: any) => {
+        const amount = Number.parseFloat(rate?.rate || '0')
+        return {
+          rateId: rate?.id,
+          carrierId: rate?.carrier_account_id || '',
+          carrierCode: rate?.carrier || '',
+          carrier: rate?.carrier_display_name || rate?.carrier || '',
+          service: rate?.service || '',
+          serviceCode: rate?.service_code || '',
+          amount: Number.isFinite(amount) ? amount : 0,
+          currency: rate?.currency || 'USD',
+          deliveryDays: typeof rate?.delivery_days === 'number' ? rate.delivery_days : null,
+          estimatedDeliveryDate: rate?.delivery_date
+            ? new Date(rate.delivery_date).toISOString()
+            : null,
+        }
       })
-      const carriersJson: any = await carriersResp.json().catch(() => null)
-      carrierIds = Array.isArray(carriersJson)
-        ? carriersJson
-            .map((c: any) => c.carrier_id)
-            .filter((id: string | undefined) => FALLBACK_CARRIER_IDS.includes(id || ''))
-        : FALLBACK_CARRIER_IDS
-    }
+      .filter((rate) => Number.isFinite(rate.amount) && rate.amount > 0)
+      .sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0))
 
-    const ratesResp = await fetch('https://api.shipengine.com/v1/rates', {
-      method: 'POST',
-      headers: { 'API-Key': SHIPENGINE_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        rate_options: { carrier_ids: carrierIds },
-          shipment: {
-            ship_to: toAddress,
-            ship_from: fromAddress,
-            packages,
-          },
-      }),
-    })
-
-    const ratesJson: any = await ratesResp.json().catch(() => null)
-    if (!ratesResp.ok) {
-      return { statusCode: ratesResp.status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: ratesJson }) }
-    }
-
-    const ratesArr: any[] = Array.isArray(ratesJson?.rate_response?.rates) ? ratesJson.rate_response.rates : []
-    const rates = ratesArr.map((rate: any) => ({
-      rateId: rate.rate_id,
-      carrierId: rate.carrier_id,
-      carrierCode: rate.carrier_code,
-      carrier: rate.carrier_friendly_name,
-      service: rate.service_friendly_name || rate.service_type || rate.service_code,
-      serviceCode: rate.service_code,
-      amount: Number(rate.shipping_amount?.amount ?? 0),
-      currency: rate.shipping_amount?.currency || 'USD',
-      deliveryDays: rate.delivery_days ?? null,
-      estimatedDeliveryDate: rate.estimated_delivery_date ?? null,
-    }))
-
-    rates.sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0))
     const bestRate = rates[0] || null
 
-    if (bestRate && !serviceCode) serviceCode = bestRate.serviceCode
-    if (bestRate && !carrierId) carrierId = bestRate.carrierId
-
-    if (!serviceCode) serviceCode = FALLBACK_SERVICE_CODES[0]
-    if (!carrierId) carrierId = FALLBACK_CARRIER_IDS[0]
+    const carrierId = bestRate?.carrierId || null
+    const serviceCode = bestRate?.serviceCode || null
 
     return {
       statusCode: 200,

@@ -125,7 +125,7 @@ export async function resolveStripeShippingDetails(
     meta['shippingServiceName'] ||
     meta['shippingService']
   const metaServiceCode = meta['shipping_service_code'] || meta['shippingServiceCode']
-  const metaRateId = meta['shipping_rate_id'] || meta['shipengine_rate_id']
+  const metaRateId = meta['shipping_rate_id']
   const metaDeliveryDays = coerceInteger(
     meta['shipping_delivery_days'] || meta['shippingDeliveryDays'],
   )
@@ -200,51 +200,43 @@ export async function resolveStripeShippingDetails(
     if (amount === undefined) {
       const metaAmount =
         coerceNumber(rateMeta['shipping_amount']) ||
-        coerceNumber(rateMeta['shippingAmount']) ||
-        coerceNumber(rateMeta['shipengine_amount'])
+        coerceNumber(rateMeta['shippingAmount'])
       if (metaAmount !== undefined) amount = metaAmount
     }
     if (!currency) {
       const metaCurrency =
         normalizeCurrency(rateMeta['shipping_currency']) ||
-        normalizeCurrency(rateMeta['shippingCurrency']) ||
-        normalizeCurrency(rateMeta['shipengine_currency'])
+        normalizeCurrency(rateMeta['shippingCurrency'])
       if (metaCurrency) currency = metaCurrency
     }
-    if (!carrier && (rateMeta['shipping_carrier'] || rateMeta['shipengine_carrier'])) {
-      carrier = rateMeta['shipping_carrier'] || rateMeta['shipengine_carrier']
+    if (!carrier && rateMeta['shipping_carrier']) {
+      carrier = rateMeta['shipping_carrier']
     }
     if (!carrierId) {
       carrierId =
         rateMeta['shipping_carrier_id'] ||
         rateMeta['shipping_carrier_code'] ||
-        rateMeta['shipengine_carrier_id'] ||
-        rateMeta['shipengine_carrier_code'] ||
         carrierId
     }
     if (!serviceName) {
       serviceName =
         rateMeta['shipping_service_name'] ||
         rateMeta['shipping_service'] ||
-        rateMeta['shipengine_service'] ||
         serviceName
     }
     if (!serviceCode) {
       serviceCode =
         rateMeta['shipping_service_code'] ||
-        rateMeta['shipengine_service_code'] ||
         serviceCode
     }
     if (deliveryDays === undefined) {
       const metaDeliveryDays =
-        coerceInteger(rateMeta['shipping_delivery_days']) ||
-        coerceInteger(rateMeta['shipengine_delivery_days'])
+        coerceInteger(rateMeta['shipping_delivery_days'])
       if (metaDeliveryDays !== undefined) deliveryDays = metaDeliveryDays
     }
     if (!estimatedDeliveryDate) {
       const metaEstimatedDate =
-        rateMeta['shipping_estimated_delivery_date'] ||
-        rateMeta['shipengine_estimated_delivery_date']
+        rateMeta['shipping_estimated_delivery_date']
       if (metaEstimatedDate) estimatedDeliveryDate = metaEstimatedDate
     }
 
@@ -280,7 +272,7 @@ export async function resolveStripeShippingDetails(
 
   if (shippingRateMetadata) {
     const metaRateId =
-      shippingRateMetadata['shipping_rate_id'] || shippingRateMetadata['shipengine_rate_id']
+      shippingRateMetadata['shipping_rate_id']
     if (metaRateId && !metadataForDoc.shipping_rate_id) metadataForDoc.shipping_rate_id = metaRateId
     for (const [key, value] of Object.entries(shippingRateMetadata)) {
       if (!value) continue

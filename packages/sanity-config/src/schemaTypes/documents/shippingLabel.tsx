@@ -47,7 +47,7 @@ export default defineType({
       name: 'serviceSelection',
       title: 'Service / Rate',
       type: 'string',
-      description: 'Live ShipEngine rates – choose a service to use for this label.',
+      description: 'Live EasyPost rates – choose a service to use for this label.',
       components: {input: ServiceRateInput},
       validation: (Rule) => Rule.required(),
     }),
