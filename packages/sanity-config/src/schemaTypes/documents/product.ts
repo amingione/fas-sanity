@@ -472,10 +472,11 @@ const product = defineType({
       name: 'canonicalUrl',
       title: 'Canonical URL',
       type: 'url',
-      description: 'Auto-filled from the product slug; override only when a custom canonical is required.',
-      initialValue: ({document}) => {
+      description:
+        'Auto-filled from the product slug; override only when a custom canonical is required.',
+      initialValue: ({document}: {document?: any}) => {
         const slug = document?.slug?.current
-        return slug ? `https://fasmotorsports.com/shop/${slug}` : undefined
+        return slug ? `https://fasmotorsports.com/shop/${slug}` : ''
       },
       group: 'seo',
     }),
