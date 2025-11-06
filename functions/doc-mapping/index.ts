@@ -79,8 +79,6 @@ type NormalizedDocument = SanityDocument & {
   shippingLabelUrl?: string | null
   trackingNumber?: string | null
   trackingUrl?: string | null
-  shipStationOrderId?: string | null
-  shipStationLabelId?: string | null
   packingSlipUrl?: string | null
   tags?: unknown
   slug?: {current?: string | null} | null
@@ -139,8 +137,6 @@ const PROJECTION_FIELDS = `
   labelUrl,
   trackingNumber,
   trackingUrl,
-  shipStationOrderId,
-  shipStationLabelId,
   packingSlipUrl,
   orderNumber,
   invoiceNumber,
@@ -472,8 +468,6 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
         trackingNumber: toCleanString(document.trackingNumber),
         trackingUrl: toCleanString(document.trackingUrl),
         packingSlipUrl: toCleanString(document.packingSlipUrl),
-        shipStationOrderId: toCleanString(document.shipStationOrderId),
-        shipStationLabelId: toCleanString(document.shipStationLabelId),
       }),
       cart: cartItems,
       events: sanitizeOrderEvents(document.orderEvents),

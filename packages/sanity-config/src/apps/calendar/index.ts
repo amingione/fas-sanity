@@ -8,7 +8,7 @@ export const calendarApp = definePlugin({
   tools: [
     {
       name: 'calendar-app',
-      title: 'Appointments',
+      title: 'Calendar',
       icon: CalendarIcon,
       component: CalendarApp,
     },

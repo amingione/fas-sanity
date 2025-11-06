@@ -3,7 +3,7 @@ import { useClient } from 'sanity'
 import { Card, Button, Stack, Text, Box } from '@sanity/ui'
 import { formatApiError } from '../../utils/formatApiError'
 
-type ShipEngineAddress = {
+type EasyPostAddress = {
   name?: string
   phone?: string
   email?: string
@@ -27,8 +27,8 @@ type ShippingLabelDoc = {
   _id: string
   name?: string
   serviceSelection?: string
-  ship_from?: ShipEngineAddress
-  ship_to?: ShipEngineAddress
+  ship_from?: EasyPostAddress
+  ship_to?: EasyPostAddress
   weight?: ShipmentWeight
   dimensions?: ShipmentDimensions
 }
@@ -81,7 +81,7 @@ function normalizeDimensions(dimensions: ShipmentDimensions): { unit: 'inch' | '
   return { unit, length, width, height }
 }
 
-function summarizeAddress(addr?: ShipEngineAddress): string {
+function summarizeAddress(addr?: EasyPostAddress): string {
   if (!addr) return 'No destination address'
   const parts = [addr.name, addr.address_line1, addr.city_locality, addr.state_province, addr.postal_code, addr.country_code]
   return parts.filter(Boolean).join(', ')
@@ -151,7 +151,6 @@ export default function BulkLabelGenerator() {
       return true
     }
 
-    if (!guard(Boolean(label.serviceSelection), 'Missing service selection')) return
     if (!guard(isValidWeight(label.weight), 'Missing or invalid weight')) return
     if (!guard(isValidDimensions(label.dimensions), 'Missing or invalid dimensions')) return
 
@@ -164,15 +163,13 @@ export default function BulkLabelGenerator() {
       const payload = {
         ship_to: label.ship_to,
         ship_from: label.ship_from,
-        service_code: label.serviceSelection,
-        labelSize: '4x6' as const,
         package_details: {
           weight: weightPayload,
           dimensions: dimensionsPayload,
         },
       }
 
-      const res = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
+      const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -196,7 +193,7 @@ export default function BulkLabelGenerator() {
         .set({ trackingNumber, labelUrl, ...(trackingUrl ? { trackingUrl } : {}) })
         .commit({ autoGenerateArrayKeys: true })
 
-      setStatus((prev) => ({ ...prev, [id]: '✅ Label created' }))
+      setStatus((prev) => ({ ...prev, [id]: '✅ EasyPost label created' }))
       setLabels((prev) => prev.filter((item) => item._id !== id))
     } catch (error: any) {
       console.error('BulkLabelGenerator: create label failed', error)

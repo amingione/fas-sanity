@@ -13,7 +13,14 @@ import {
   Tooltip,
   useToast,
 } from '@sanity/ui'
-import {AddIcon, BellIcon, ChevronLeftIcon, ChevronRightIcon, EditIcon, RefreshIcon} from '@sanity/icons'
+import {
+  AddIcon,
+  BellIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EditIcon,
+  RefreshIcon,
+} from '@sanity/icons'
 import {
   addMonths,
   eachDayOfInterval,
@@ -70,8 +77,8 @@ const BOOKING_PROJECTION = `{
   status,
   notes,
   createdAt,
-  "documentId": select(startsWith(_id, "drafts.") => replace(_id, "drafts.", ""), _id),
-  "isDraft": startsWith(_id, "drafts."),
+  "documentId": select(string::startsWith(_id, "drafts.") => substring(_id, 7), _id),
+  "isDraft": string::startsWith(_id, "drafts."),
   customer->${CUSTOMER_PROJECTION}
 }`
 
@@ -235,8 +242,8 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
     setError(null)
     try {
       const [bookingDocs, taskDocs] = await Promise.all([
-        client.fetch<BookingQueryResult[]>(BOOKING_QUERY, {}, {perspective: 'previewDrafts'}),
-        client.fetch<TaskQueryResult[]>(TASK_QUERY, {}, {perspective: 'previewDrafts'}),
+        client.fetch<BookingQueryResult[]>(BOOKING_QUERY, {}, {perspective: 'drafts'}),
+        client.fetch<TaskQueryResult[]>(TASK_QUERY, {}, {perspective: 'drafts'}),
       ])
       setBookings(normalizeBookings(bookingDocs))
       setTasks(normalizeTasks(taskDocs))
@@ -432,7 +439,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
           const existingCount = await client.fetch<number>(
             'count(*[_type == "calendarTask" && references($bookingId)])',
             {bookingId: booking.documentId},
-            {perspective: 'previewDrafts'},
+            {perspective: 'drafts'},
           )
 
           if (existingCount > 0) {
@@ -538,7 +545,10 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
     if (completedSummaries.length > 0) {
       pushToast({
         status: 'success',
-        title: completedSummaries.length === 1 ? 'Task completed automatically' : 'Tasks completed automatically',
+        title:
+          completedSummaries.length === 1
+            ? 'Task completed automatically'
+            : 'Tasks completed automatically',
         description: `Marked reminders done for ${summarize(completedSummaries)} based on booking status.`,
       })
     }
@@ -565,7 +575,10 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
       counts.set(status, (counts.get(status) || 0) + 1)
     })
     const entries = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-    return [{id: 'all', label: 'All', count: bookings.length}, ...entries.map(([id, count]) => ({id, label: id, count}))]
+    return [
+      {id: 'all', label: 'All', count: bookings.length},
+      ...entries.map(([id, count]) => ({id, label: id, count})),
+    ]
   }, [bookings])
 
   const handleNavigateMonth = (direction: 'previous' | 'next' | 'today') => {
@@ -736,7 +749,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
         pushToast({
           status: 'success',
           title: 'Reminder snoozed',
-          description: `We will remind you ${format(nextReminder, "MMM d, h:mm a")}.`,
+          description: `We will remind you ${format(nextReminder, 'MMM d, h:mm a')}.`,
         })
       } catch (err) {
         console.error('Failed to snooze calendar task', err)
@@ -823,7 +836,9 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                       ...task,
                       dueAt: dueAtIso,
                       remindAt: remindAtIso,
-                      booking: task.booking ? {...task.booking, scheduledAt: nextIso} : task.booking,
+                      booking: task.booking
+                        ? {...task.booking, scheduledAt: nextIso}
+                        : task.booking,
                     }
                   : task,
               ),
@@ -832,7 +847,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
             pushToast({
               status: 'success',
               title: 'Reminder updated',
-              description: `Task timing synced to ${format(nextDate ?? new Date(dueAtIso), "MMM d, h:mm a")}.`,
+              description: `Task timing synced to ${format(nextDate ?? new Date(dueAtIso), 'MMM d, h:mm a')}.`,
             })
           } catch (taskErr) {
             console.error('Failed to update calendar task timing', taskErr)
@@ -841,16 +856,16 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
 
         pushToast({
           status: 'success',
-          title: nextIso ? 'Appointment rescheduled' : 'Appointment unscheduled',
+          title: nextIso ? 'Event rescheduled' : 'Event unscheduled',
           description: nextIso
             ? format(parseISO(nextIso), "MMMM d, yyyy 'at' h:mmaaa")
-            : 'This appointment is now unscheduled.',
+            : 'This event is now unscheduled.',
         })
       } catch (err) {
         console.error('Failed to reschedule booking', err)
         pushToast({
           status: 'error',
-          title: 'Unable to update appointment',
+          title: 'Unable to update event',
           description: err instanceof Error ? err.message : 'An unexpected error occurred.',
         })
         loadCalendarData()
@@ -872,7 +887,9 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
       if (!booking) return
 
       const originalIso =
-        event.dataTransfer.getData('application/x-calendar-original-start') || booking.scheduledAt || ''
+        event.dataTransfer.getData('application/x-calendar-original-start') ||
+        booking.scheduledAt ||
+        ''
 
       const [year, month, day] = dateKey.split('-').map((segment) => parseInt(segment, 10))
       const base = new Date(year, month - 1, day)
@@ -928,17 +945,17 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
       <header className="studio-header">
         <div className="studio-header__inner">
           <div className="studio-header__titles">
-            <h1 className="studio-header__title">Appointments calendar</h1>
+            <h1 className="studio-header__title">Office calendar</h1>
             <p className="studio-header__description">
-              Use the calendar to monitor service bookings and general meetings. Drag and drop appointments
-              to reschedule.
+              Track shared office events, reminders, and schedules. Drag and drop items to
+              reschedule.
             </p>
           </div>
           <Flex gap={2} align="center" wrap="wrap">
             <Button
               icon={AddIcon}
               mode="ghost"
-              text="New appointment"
+              text="New event"
               tone="primary"
               onClick={() => handleCreateBooking(selectedDate)}
             />
@@ -953,7 +970,12 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
           </Flex>
         </div>
         <Card padding={[3, 4]} radius={3} shadow={1} tone="transparent" className="mt-6 w-full">
-          <Flex direction={['column', 'column', 'row']} align={['stretch', 'stretch', 'center']} gap={3} wrap="wrap">
+          <Flex
+            direction={['column', 'column', 'row']}
+            align={['stretch', 'stretch', 'center']}
+            gap={3}
+            wrap="wrap"
+          >
             <Flex gap={2} align="center">
               <Button
                 icon={ChevronLeftIcon}
@@ -997,7 +1019,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
           <Card padding={4} radius={3} shadow={1} tone="transparent">
             <Flex gap={3} align="center">
               <Spinner />
-              <Text size={2}>Loading appointments…</Text>
+              <Text size={2}>Loading events…</Text>
             </Flex>
           </Card>
         )}
@@ -1014,7 +1036,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
 
         {!loading && !error && (
           <Flex direction={['column', 'column', 'row']} gap={4}>
-            <Box flex={2} minWidth={0}>
+            <Box flex={2} style={{minWidth: 0}}>
               <Card padding={[3, 4]} radius={3} shadow={1} tone="transparent">
                 <Stack space={4}>
                   <div
@@ -1047,14 +1069,18 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                       const visibleEvents =
                         statusFilter === 'all'
                           ? day.events
-                          : day.events.filter((event) => (event.status || 'unspecified') === statusFilter)
+                          : day.events.filter(
+                              (event) => (event.status || 'unspecified') === statusFilter,
+                            )
                       const dayTasks = day.events
                         .map((event) => tasksByBookingId.get(event.documentId))
                         .filter((task): task is CalendarTask => Boolean(task))
 
                       const dayTaskCount = dayTasks.length
                       const dayTaskVariant = dayTasks.length ? summarizeTaskBadges(dayTasks) : null
-                      const dayTaskStyles = dayTaskVariant ? TASK_BADGE_STYLES[dayTaskVariant] : null
+                      const dayTaskStyles = dayTaskVariant
+                        ? (TASK_BADGE_STYLES as any)[dayTaskVariant]
+                        : null
 
                       return (
                         <Card
@@ -1068,13 +1094,13 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                             background: day.isSelected
                               ? 'rgba(59,130,246,0.14)'
                               : day.isCurrentMonth
-                              ? 'rgba(15,23,42,0.55)'
-                              : 'rgba(15,23,42,0.25)',
+                                ? 'rgba(15,23,42,0.55)'
+                                : 'rgba(15,23,42,0.25)',
                             border: isHovered
                               ? '1px solid rgba(59,130,246,0.5)'
                               : day.isToday
-                              ? '1px solid rgba(148,163,184,0.5)'
-                              : '1px solid transparent',
+                                ? '1px solid rgba(148,163,184,0.5)'
+                                : '1px solid transparent',
                             transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                           }}
                           onDragOver={(event) => {
@@ -1121,7 +1147,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                   icon={AddIcon}
                                   mode="bleed"
                                   tone="default"
-                                  aria-label="Create appointment"
+                                  aria-label="Create event"
                                   onClick={() => handleCreateBooking(day.date)}
                                 />
                               </Inline>
@@ -1130,19 +1156,24 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                             <Stack space={2}>
                               {visibleEvents.length === 0 ? (
                                 <Text size={1} muted>
-                                  {day.events.length === 0 ? 'Available' : 'No events match this filter'}
+                                  {day.events.length === 0
+                                    ? 'Available'
+                                    : 'No events match this filter'}
                                 </Text>
                               ) : (
                                 visibleEvents.map((event) => {
                                   const tone = event.status ? STATUS_TONES[event.status] : undefined
                                   const isUpdating = reschedulingId === event.documentId
                                   const associatedTask = tasksByBookingId.get(event.documentId)
-                                  const taskBadge = associatedTask ? resolveTaskBadge(associatedTask) : null
+                                  const taskBadge = associatedTask
+                                    ? resolveTaskBadge(associatedTask)
+                                    : null
                                   const taskBadgeStyles = taskBadge
                                     ? TASK_BADGE_STYLES[taskBadge.variant]
                                     : null
                                   const matchesFilter =
-                                    statusFilter === 'all' || (event.status || 'unspecified') === statusFilter
+                                    statusFilter === 'all' ||
+                                    (event.status || 'unspecified') === statusFilter
 
                                   return (
                                     <Card
@@ -1177,7 +1208,9 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                                 content={
                                                   <Box padding={2} style={{maxWidth: 220}}>
                                                     <Text size={1}>
-                                                      {TASK_BADGE_DESCRIPTIONS[taskBadge.variant]}
+                                                      {taskBadge
+                                                        ? TASK_BADGE_DESCRIPTIONS[taskBadge.variant]
+                                                        : ''}
                                                     </Text>
                                                   </Box>
                                                 }
@@ -1202,7 +1235,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                               icon={EditIcon}
                                               mode="bleed"
                                               tone="default"
-                                              aria-label="Open appointment"
+                                              aria-label="Open event"
                                               onClick={() => handleOpenDocument(event)}
                                             />
                                           </Inline>
@@ -1240,24 +1273,31 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
               </Card>
             </Box>
 
-            <Box flex={1} minWidth={0}>
+            <Box flex={1} style={{minWidth: 0}}>
               <Stack space={4}>
                 <Card padding={[3, 4]} radius={3} shadow={1} tone="transparent">
                   <Stack space={4}>
-                    <Flex align={['flex-start', 'center']} justify="space-between" wrap="wrap" gap={2}>
+                    <Flex
+                      align={['flex-start', 'center']}
+                      justify="space-between"
+                      wrap="wrap"
+                      gap={2}
+                    >
                       <Heading size={1}>{selectedDayLabel}</Heading>
                       <Button
                         icon={AddIcon}
                         mode="ghost"
                         tone="primary"
-                        text="New appointment"
+                        text="New event"
                         onClick={() => handleCreateBooking(selectedDate)}
                       />
                     </Flex>
                     <Stack space={3}>
-                      <Heading size={1}>Appointments</Heading>
+                      <Heading size={1}>Day schedule</Heading>
                       {selectedDateEvents.length === 0 ? (
-                        <Text size={1} muted>No appointments for this day yet.</Text>
+                        <Text size={1} muted>
+                          No events for this day yet.
+                        </Text>
                       ) : (
                         <Stack space={3}>
                           {selectedDateEvents.map((event) => {
@@ -1287,7 +1327,8 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                       <Badge
                                         tone="default"
                                         style={{
-                                          backgroundColor: tone?.background || 'rgba(148,163,184,0.15)',
+                                          backgroundColor:
+                                            tone?.background || 'rgba(148,163,184,0.15)',
                                           color: tone?.color || '#e2e8f0',
                                         }}
                                       >
@@ -1302,7 +1343,12 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                     </Text>
                                   )}
                                   <Inline space={2}>
-                                    <Button text="Open" tone="primary" mode="ghost" onClick={() => handleOpenDocument(event)} />
+                                    <Button
+                                      text="Open"
+                                      tone="primary"
+                                      mode="ghost"
+                                      onClick={() => handleOpenDocument(event)}
+                                    />
                                     <Button
                                       text="Reschedule"
                                       mode="ghost"
@@ -1322,7 +1368,12 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                       )}
                     </Stack>
                     <Stack space={3}>
-                      <Flex align={['flex-start', 'center']} justify="space-between" gap={2} wrap="wrap">
+                      <Flex
+                        align={['flex-start', 'center']}
+                        justify="space-between"
+                        gap={2}
+                        wrap="wrap"
+                      >
                         <Flex align="center" gap={2}>
                           <BellIcon />
                           <Heading size={1}>Tasks & reminders</Heading>
@@ -1337,7 +1388,9 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                         )}
                       </Flex>
                       {selectedDateTasks.length === 0 ? (
-                        <Text size={1} muted>No active reminders for this day.</Text>
+                        <Text size={1} muted>
+                          No active reminders for this day.
+                        </Text>
                       ) : (
                         <Stack space={3}>
                           {selectedDateTasks.map((task) => {
@@ -1354,13 +1407,17 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                 radius={2}
                                 shadow={1}
                                 style={{
-                                  background: isCompleted ? 'rgba(34,197,94,0.08)' : 'rgba(15,23,42,0.8)',
+                                  background: isCompleted
+                                    ? 'rgba(34,197,94,0.08)'
+                                    : 'rgba(15,23,42,0.8)',
                                   opacity: isCompleted ? 0.85 : 1,
                                 }}
                               >
                                 <Stack space={2}>
                                   <Flex align="center" justify="space-between">
-                                    <Text size={1} weight="semibold">{task.title}</Text>
+                                    <Text size={1} weight="semibold">
+                                      {task.title}
+                                    </Text>
                                     <Tooltip
                                       portal
                                       content={
@@ -1384,10 +1441,13 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                   </Flex>
                                   {dueDate ? (
                                     <Text size={0} muted>
-                                      Due {format(dueDate, 'MMM d, h:mm a')} · {formatDistanceToNow(dueDate, {addSuffix: true})}
+                                      Due {format(dueDate, 'MMM d, h:mm a')} ·{' '}
+                                      {formatDistanceToNow(dueDate, {addSuffix: true})}
                                     </Text>
                                   ) : (
-                                    <Text size={0} muted>No due date set</Text>
+                                    <Text size={0} muted>
+                                      No due date set
+                                    </Text>
                                   )}
                                   {remindDate && (
                                     <Text size={0} muted>
@@ -1444,7 +1504,9 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                       <Heading size={1}>Upcoming reminders</Heading>
                     </Flex>
                     {upcomingTaskReminders.length === 0 ? (
-                      <Text size={1} muted>No upcoming reminders.</Text>
+                      <Text size={1} muted>
+                        No upcoming reminders.
+                      </Text>
                     ) : (
                       <Stack space={3}>
                         {upcomingTaskReminders.slice(0, 8).map(({task, due, remind}) => {
@@ -1452,76 +1514,79 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                           const badgeStyles = TASK_BADGE_STYLES[variant]
                           const isSaving = pendingTaskIds.includes(task._id)
                           return (
-                          <Card
-                            key={`reminder-${task._id}`}
-                            padding={3}
-                            radius={2}
-                            shadow={1}
-                            style={{background: 'rgba(15,23,42,0.8)'}}
-                          >
-                            <Stack space={1}>
-                              <Flex align="center" justify="space-between">
-                                <Text size={1} weight="semibold">{task.title}</Text>
-                                <Tooltip
-                                  portal
-                                  content={
-                                    <Box padding={2} style={{maxWidth: 220}}>
-                                      <Text size={1}>{TASK_BADGE_DESCRIPTIONS[variant]}</Text>
-                                    </Box>
-                                  }
-                                >
-                                  <Badge
-                                    tone={badgeStyles.tone}
-                                    style={{
-                                      borderColor: badgeStyles.borderColor,
-                                      background: badgeStyles.background,
-                                      color: badgeStyles.textColor,
-                                      textTransform: 'capitalize',
-                                    }}
+                            <Card
+                              key={`reminder-${task._id}`}
+                              padding={3}
+                              radius={2}
+                              shadow={1}
+                              style={{background: 'rgba(15,23,42,0.8)'}}
+                            >
+                              <Stack space={1}>
+                                <Flex align="center" justify="space-between">
+                                  <Text size={1} weight="semibold">
+                                    {task.title}
+                                  </Text>
+                                  <Tooltip
+                                    portal
+                                    content={
+                                      <Box padding={2} style={{maxWidth: 220}}>
+                                        <Text size={1}>{TASK_BADGE_DESCRIPTIONS[variant]}</Text>
+                                      </Box>
+                                    }
                                   >
-                                    {badgeStyles.label}
-                                  </Badge>
-                                </Tooltip>
-                              </Flex>
-                              <Text size={0} muted>
-                                {remind
-                                  ? `Reminder ${formatDistanceToNow(remind, {addSuffix: true})}`
-                                  : 'Reminder scheduled'}
-                              </Text>
-                              {due && (
+                                    <Badge
+                                      tone={badgeStyles.tone}
+                                      style={{
+                                        borderColor: badgeStyles.borderColor,
+                                        background: badgeStyles.background,
+                                        color: badgeStyles.textColor,
+                                        textTransform: 'capitalize',
+                                      }}
+                                    >
+                                      {badgeStyles.label}
+                                    </Badge>
+                                  </Tooltip>
+                                </Flex>
                                 <Text size={0} muted>
-                                  Due {format(due, 'MMM d, h:mm a')}
+                                  {remind
+                                    ? `Reminder ${formatDistanceToNow(remind, {addSuffix: true})}`
+                                    : 'Reminder scheduled'}
                                 </Text>
-                              )}
-                              <Inline space={2}>
-                                <Button
-                                  text="Open"
-                                  mode="ghost"
-                                  tone="primary"
-                                  onClick={() => handleOpenTask(task)}
-                                  disabled={isSaving}
-                                />
-                                <Button
-                                  text="Complete"
-                                  mode="ghost"
-                                  onClick={() => handleCompleteTask(task)}
-                                  disabled={isSaving}
-                                  loading={isSaving}
-                                />
-                                {variant !== 'completed' && (
+                                {due && (
+                                  <Text size={0} muted>
+                                    Due {format(due, 'MMM d, h:mm a')}
+                                  </Text>
+                                )}
+                                <Inline space={2}>
                                   <Button
-                                    text="Snooze"
+                                    text="Open"
                                     mode="ghost"
-                                    tone="default"
-                                    onClick={() => handleSnoozeTask(task)}
+                                    tone="primary"
+                                    onClick={() => handleOpenTask(task)}
+                                    disabled={isSaving}
+                                  />
+                                  <Button
+                                    text="Complete"
+                                    mode="ghost"
+                                    onClick={() => handleCompleteTask(task)}
                                     disabled={isSaving}
                                     loading={isSaving}
                                   />
-                                )}
-                              </Inline>
-                            </Stack>
-                          </Card>
-                        )})}
+                                  {variant !== 'completed' && (
+                                    <Button
+                                      text="Snooze"
+                                      mode="ghost"
+                                      tone="default"
+                                      onClick={() => handleSnoozeTask(task)}
+                                      disabled={isSaving}
+                                      loading={isSaving}
+                                    />
+                                  )}
+                                </Inline>
+                              </Stack>
+                            </Card>
+                          )
+                        })}
                       </Stack>
                     )}
                   </Stack>
@@ -1529,9 +1594,11 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
 
                 <Card padding={[3, 4]} radius={3} shadow={1} tone="transparent">
                   <Stack space={3}>
-                    <Heading size={1}>Upcoming appointments</Heading>
+                    <Heading size={1}>Upcoming events</Heading>
                     {filteredUpcoming.length === 0 ? (
-                      <Text size={1} muted>No appointments match the selected filter.</Text>
+                      <Text size={1} muted>
+                        No events match the selected filter.
+                      </Text>
                     ) : (
                       <Stack space={3}>
                         {filteredUpcoming.slice(0, 15).map((event) => (
@@ -1551,7 +1618,9 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                 </Text>
                                 <Text size={0} muted>
                                   {event.scheduledAt
-                                    ? formatDistanceToNow(parseISO(event.scheduledAt), {addSuffix: true})
+                                    ? formatDistanceToNow(parseISO(event.scheduledAt), {
+                                        addSuffix: true,
+                                      })
                                     : ''}
                                 </Text>
                               </Flex>
@@ -1562,7 +1631,12 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                 </Text>
                               )}
                               <Inline space={2}>
-                                <Button text="Open" mode="ghost" tone="primary" onClick={() => handleOpenDocument(event)} />
+                                <Button
+                                  text="Open"
+                                  mode="ghost"
+                                  tone="primary"
+                                  onClick={() => handleOpenDocument(event)}
+                                />
                                 <Button
                                   text="Focus day"
                                   mode="ghost"
@@ -1596,11 +1670,13 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                   <Stack space={3}>
                     <Heading size={1}>Unscheduled queue</Heading>
                     <Text size={0} muted>
-                      Drop any appointment here to remove it from the calendar. Drag items from this list onto a
-                      day to schedule them.
+                      Drop any event here to remove it from the calendar. Drag items from this list
+                      onto a day to schedule them.
                     </Text>
                     {unscheduledBookings.length === 0 ? (
-                      <Text size={1} muted>Nothing waiting. Create a new appointment to get started.</Text>
+                      <Text size={1} muted>
+                        Nothing waiting. Create a new event to get started.
+                      </Text>
                     ) : (
                       <Stack space={3}>
                         {unscheduledBookings.map((event) => (
@@ -1614,14 +1690,21 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                             style={{background: 'rgba(15,23,42,0.8)', cursor: 'grab'}}
                           >
                             <Stack space={2}>
-                              <Text size={1} weight="semibold">{getCustomerName(event.customer)}</Text>
+                              <Text size={1} weight="semibold">
+                                {getCustomerName(event.customer)}
+                              </Text>
                               {event.service && (
                                 <Text size={0} muted>
                                   {event.service}
                                 </Text>
                               )}
                               <Inline space={2}>
-                                <Button text="Open" mode="ghost" tone="primary" onClick={() => handleOpenDocument(event)} />
+                                <Button
+                                  text="Open"
+                                  mode="ghost"
+                                  tone="primary"
+                                  onClick={() => handleOpenDocument(event)}
+                                />
                                 <Button
                                   text="Schedule"
                                   mode="ghost"

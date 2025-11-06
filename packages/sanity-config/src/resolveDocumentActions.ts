@@ -7,6 +7,7 @@ import { backfillInvoicesAction } from './schemaTypes/documentActions/backfillIn
 import { backfillOrdersAction } from './schemaTypes/documentActions/backfillOrdersAction'
 import { backfillCustomersAction } from './schemaTypes/documentActions/backfillCustomersAction'
 import { forceDeleteUnlinkAction } from './schemaTypes/documentActions/forceDeleteUnlinkAction'
+import { createEasyPostLabelAction } from './schemaTypes/documentActions/createEasyPostLabelAction'
 import {
   refundStripeInvoiceAction,
   refundStripeOrderAction,
@@ -25,6 +26,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(backfillOrdersAction)
     list.push(cancelStripeOrderAction)
     list.push(refundStripeOrderAction)
+    list.push(createEasyPostLabelAction)
   }
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)

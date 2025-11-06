@@ -35,6 +35,7 @@
     "sanity"
   ],
   "dependencies": {
+    "@easypost/api": "^8.2.0",
     "@netlify/functions": "^3.0.4",
     "@operationnation/sanity-plugin-schema-markup": "^2.0.0",
     "@sanity/asset-utils": "latest",
@@ -42,6 +43,7 @@
     "@sanity/cli": "^4.11.0",
     "@sanity/client": "^7.12.0",
     "@sanity/code-input": "latest",
+    "@sanity/color": "latest",
     "@sanity/icons": "latest",
     "@sanity/presentation": "^1.9.1",
     "@sanity/sdk-react": "^2.3.1",
@@ -74,7 +76,6 @@
     "sanity": "^4.11.0",
     "sanity-plugin-hotspot-array": "^3.0.1",
     "sanity-plugin-media": "^4.0.0",
-    "shipengine": "^1.0.7",
     "slug": "^8.2.2",
     "ssh2-sftp-client": "^10.0.1",
     "stripe": "^18.0.0",
@@ -92,6 +93,7 @@
     "@types/ssh2-sftp-client": "^9.0.5",
     "@typescript-eslint/eslint-plugin": "^8.46.2",
     "@typescript-eslint/parser": "^8.46.2",
+    "@tailwindcss/vite": "^4.1.16",
     "autoprefixer": "^10.4.21",
     "canvas": "^3.0.0",
     "eslint": "^9.38.0",
