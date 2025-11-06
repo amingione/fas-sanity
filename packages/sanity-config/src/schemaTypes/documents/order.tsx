@@ -161,6 +161,47 @@ export default defineType({
       group: 'cart',
     }),
     defineField({
+      name: 'orderV2',
+      title: 'Order v2',
+      type: 'object',
+      readOnly: true,
+      options: {collapsible: true, collapsed: false},
+      group: 'cart',
+      fields: [
+        defineField({
+          name: 'cartDetails',
+          title: 'Cart Details',
+          type: 'object',
+          options: {collapsible: true, collapsed: false},
+          fields: [
+            defineField({
+              name: 'items',
+              title: 'Items',
+              type: 'array',
+              of: [{type: 'orderCartItem'}],
+              readOnly: true,
+              hidden: true,
+            }),
+            defineField({
+              name: 'cartTable',
+              title: 'Order Table View',
+              type: 'table',
+              options: {
+                columns: [
+                  {title: 'Product', key: 'productName'},
+                  {title: 'Qty', key: 'quantity'},
+                  {title: 'Price', key: 'price'},
+                  {title: 'Subtotal', key: 'subtotal'},
+                  {title: 'Shipping Class', key: 'shippingClass'},
+                ],
+              },
+              readOnly: true,
+            }),
+          ],
+        }),
+      ],
+    }),
+    defineField({
       name: 'totalAmount',
       title: 'Total Amount (USD)',
       type: 'number',

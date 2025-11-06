@@ -5,10 +5,14 @@ module.exports = {
     './sanity.config.ts',
     './src/components/**/*.{js,jsx,ts,tsx}',
     './src/schemaTypes/**/*.{js,jsx,ts,tsx}',
-    './src/**/*.{js,jsx,ts,tsx}',
+    './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }

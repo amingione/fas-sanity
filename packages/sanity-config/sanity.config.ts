@@ -1,6 +1,7 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
 import {defaultTheme, defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
-import './src/styles/tailwind.css'
+import '../../src/styles/inter.css'
+import '../../src/styles/tailwind.css'
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
 import * as _desk from 'sanity/desk'
@@ -16,6 +17,7 @@ const deskTool: DeskToolFactory =
     : deskModule.deskTool || deskModule.default || (_desk as unknown as DeskToolFactory)
 import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
+import {table} from '@sanity/table'
 import {media} from 'sanity-plugin-media'
 import {presentationTool} from '@sanity/presentation'
 import {definePreviewUrl} from '@sanity/preview-url-secret/define-preview-url'
@@ -230,6 +232,7 @@ export default defineConfig({
     calendarApp(),
     media(),
     codeInput(),
+    table(),
     schemaMarkup(),
     presentationTool({
       previewUrl: previewUrlResolver,
@@ -279,6 +282,10 @@ export default defineConfig({
           find,
           replacement,
         })),
+        {
+          find: /^tailwindcss$/,
+          replacement: joinSegments(packageRoot, 'src', 'styles', 'tailwind.css'),
+        },
         {
           // Work around CJS/ESM interop glitches with react-refractor across workspace packages.
           find: /^react-refractor(?:\/dist\/index\.js)?$/,
