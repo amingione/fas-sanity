@@ -1,5 +1,6 @@
 import {CalendarIcon} from '@sanity/icons'
 import {definePlugin} from 'sanity'
+import type {ComponentType} from 'react'
 
 import CalendarApp from './CalendarApp'
 
@@ -8,9 +9,9 @@ export const calendarApp = definePlugin({
   tools: [
     {
       name: 'calendar-app',
-      title: 'Calendar',
+      title: 'Appointments',
       icon: CalendarIcon,
-      component: CalendarApp,
+      component: CalendarApp as unknown as ComponentType<{tool: any}>,
     },
   ],
 })
