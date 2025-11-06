@@ -28,6 +28,7 @@ const product = defineType({
     {name: 'media', title: 'Images & Media'},
     {name: 'options', title: 'Options & Add-ons'},
     {name: 'compatibility', title: 'Vehicle Compatibility'},
+    {name: 'shipping', title: 'Shipping & Logistics'},
     {name: 'seo', title: 'SEO & Metadata'},
     {name: 'advanced', title: 'Advanced Settings'},
   ],
@@ -39,13 +40,13 @@ const product = defineType({
     },
     {
       name: 'shipping',
-      title: 'Shipping Configuration (Optional)',
-      options: {collapsible: true, collapsed: true},
+      title: 'Shipping Configuration (Required)',
+      options: {collapsible: true, collapsed: false},
     },
     {
-      name: 'unused',
-      title: 'Unused Fields (Legacy/Google Shopping)',
-      options: {collapsible: true, collapsed: true},
+      name: 'merchant',
+      title: 'Google Merchant Center (Required)',
+      options: {collapsible: true, collapsed: false},
     },
   ],
   fields: [
@@ -471,7 +472,11 @@ const product = defineType({
       name: 'canonicalUrl',
       title: 'Canonical URL',
       type: 'url',
-      description: 'Override URL to prevent duplicate content',
+      description: 'Auto-filled from the product slug; override only when a custom canonical is required.',
+      initialValue: ({document}) => {
+        const slug = document?.slug?.current
+        return slug ? `https://fasmotorsports.com/shop/${slug}` : undefined
+      },
       group: 'seo',
     }),
     defineField({
@@ -515,13 +520,13 @@ const product = defineType({
       group: 'advanced',
     }),
 
-    // Shipping Configuration (Collapsed by default)
+    // Shipping Configuration (Required)
     defineField({
       name: 'shippingWeight',
       title: 'Weight (lbs)',
       type: 'number',
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
     }),
     defineField({
       name: 'boxDimensions',
@@ -529,7 +534,16 @@ const product = defineType({
       type: 'string',
       description: 'Format: 18x12x10 inches',
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'handlingTime',
+      title: 'Handling Time (Days)',
+      type: 'number',
+      description: 'Business days needed to prepare and hand off the shipment.',
+      validation: (Rule) => Rule.min(0),
+      fieldset: 'shipping',
+      group: 'shipping',
     }),
     defineField({
       name: 'installOnly',
@@ -538,7 +552,7 @@ const product = defineType({
       description: 'In-store installation only',
       initialValue: false,
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingClass',
@@ -548,7 +562,7 @@ const product = defineType({
         list: ['Standard', 'Oversized', 'Freight', 'Free Shipping', 'Install Only'],
       },
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
     }),
     defineField({
       name: 'shipsAlone',
@@ -556,10 +570,19 @@ const product = defineType({
       type: 'boolean',
       description: 'Cannot ship with other items',
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'specialShippingNotes',
+      title: 'Special Shipping Notes',
+      type: 'text',
+      rows: 4,
+      description: 'Internal or customer-facing shipping notes that must accompany orders.',
+      fieldset: 'shipping',
+      group: 'shipping',
     }),
 
-    // Unused Fields (Collapsed, kept for legacy/Google Shopping)
+    // Google Merchant Center Requirements
     defineField({
       name: 'availability',
       title: 'Availability Status',
@@ -573,7 +596,7 @@ const product = defineType({
         ],
       },
       initialValue: 'in_stock',
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -588,7 +611,7 @@ const product = defineType({
         ],
       },
       initialValue: 'new',
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -596,7 +619,7 @@ const product = defineType({
       title: 'Inventory Count',
       type: 'number',
       validation: (Rule) => Rule.min(0),
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -606,7 +629,7 @@ const product = defineType({
       options: {
         list: googleProductCategories.map((category) => ({title: category, value: category})),
       },
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -620,7 +643,7 @@ const product = defineType({
         ],
       },
       initialValue: 'taxable',
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -628,7 +651,7 @@ const product = defineType({
       title: 'Bulk Pricing Tiers',
       type: 'array',
       of: [{type: 'pricingTier'}],
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
 
