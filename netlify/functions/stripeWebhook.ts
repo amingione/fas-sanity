@@ -1,12 +1,16 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
-import type {CartItem} from '../lib/cartEnrichment'
+import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'
 import {createClient} from '@sanity/client'
 import {randomUUID} from 'crypto'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
 import {syncOrderToShipStation} from '../lib/shipstation'
 import {mapStripeLineItem} from '../lib/stripeCartItem'
-import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
+import {
+  enrichCartItemsFromSanity,
+  computeShippingMetrics,
+  fetchProductsForCart,
+} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
@@ -223,6 +227,17 @@ function summarizeEventType(eventType?: string): string {
   const friendly = eventType.replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim()
   if (!friendly) return 'Processed event'
   return friendly.charAt(0).toUpperCase() + friendly.slice(1)
+}
+
+type ComputedShippingMetrics = ReturnType<typeof computeShippingMetrics>
+
+function applyShippingMetrics(
+  target: Record<string, any>,
+  metrics: ComputedShippingMetrics | null | undefined,
+) {
+  if (!metrics) return
+  if (metrics.weight) target.weight = metrics.weight
+  if (metrics.dimensions) target.dimensions = metrics.dimensions
 }
 
 async function findInvoiceDocumentIdForEvent(input: {
@@ -723,8 +738,8 @@ function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
 async function buildCartFromSessionLineItems(
   sessionId: string,
   metadata: Record<string, string>,
-): Promise<CartItem[]> {
-  if (!stripe) return []
+): Promise<{items: CartItem[]; products: CartProductSummary[]}> {
+  if (!stripe) return {items: [], products: []}
   try {
     const items = await stripe.checkout.sessions.listLineItems(sessionId, {
       limit: 100,
@@ -738,16 +753,38 @@ async function buildCartFromSessionLineItems(
     if (!cartItems.length) {
       cartItems = cartItemsFromMetadata(metadata)
     }
-    if (!cartItems.length) return []
-    return await enrichCartItemsFromSanity(cartItems, sanity)
+    if (!cartItems.length) return {items: [], products: []}
+
+    let productSummaries: CartProductSummary[] = []
+    const enriched = await enrichCartItemsFromSanity(cartItems, sanity, {
+      onProducts: (list) => {
+        productSummaries = list
+      },
+    })
+    cartItems = enriched
+    if (!productSummaries.length && cartItems.length) {
+      productSummaries = await fetchProductsForCart(cartItems, sanity)
+    }
+    return {items: cartItems, products: productSummaries}
   } catch (err) {
     console.warn('stripeWebhook: listLineItems failed', err)
-    const fallback = cartItemsFromMetadata(metadata)
-    if (!fallback.length) return []
+    let fallback = cartItemsFromMetadata(metadata)
+    if (!fallback.length) return {items: [], products: []}
     try {
-      return await enrichCartItemsFromSanity(fallback, sanity)
+      let productSummaries: CartProductSummary[] = []
+      const enriched = await enrichCartItemsFromSanity(fallback, sanity, {
+        onProducts: (list) => {
+          productSummaries = list
+        },
+      })
+      fallback = enriched
+      if (!productSummaries.length && fallback.length) {
+        productSummaries = await fetchProductsForCart(fallback, sanity)
+      }
+      return {items: fallback, products: productSummaries}
     } catch {
-      return fallback
+      const productSummaries = fallback.length ? await fetchProductsForCart(fallback, sanity) : []
+      return {items: fallback, products: productSummaries}
     }
   }
 }
@@ -765,9 +802,18 @@ async function recordExpiredCart(
   },
 ) {
   const metadata = (session.metadata || {}) as Record<string, string>
-  const cart = Array.isArray(opts.preloadedCart)
-    ? opts.preloadedCart
-    : await buildCartFromSessionLineItems(session.id, metadata)
+  let cart: CartItem[] = []
+  if (Array.isArray(opts.preloadedCart) && opts.preloadedCart.length) {
+    cart = opts.preloadedCart
+  } else {
+    try {
+      const cartResult = await buildCartFromSessionLineItems(session.id, metadata)
+      cart = cartResult.items
+    } catch (err) {
+      console.warn('stripeWebhook: failed to load cart for expired session', err)
+      cart = cartItemsFromMetadata(metadata)
+    }
+  }
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const customerName =
     (session.customer_details?.name || (session.metadata?.customer_name as string) || email || '')
@@ -2204,7 +2250,8 @@ function buildShippingAddress(shipping?: Stripe.Customer.Shipping | null) {
     address.postal_code ||
     address.country
   if (!hasContent) return undefined
-  const street = [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
+  const street =
+    [address.line1, address.line2].filter(Boolean).join(', ') || address.line1 || undefined
   return {
     _type: 'customerBillingAddress',
     name: shipping.name || undefined,
@@ -2856,7 +2903,11 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
       chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
       paymentStatus,
       orderStatus: refundSucceeded && isFullRefund ? 'refunded' : undefined,
-      invoiceStatus: refundSucceeded ? (isFullRefund ? 'refunded' : 'partially_refunded') : undefined,
+      invoiceStatus: refundSucceeded
+        ? isFullRefund
+          ? 'refunded'
+          : 'partially_refunded'
+        : undefined,
       invoiceStripeStatus: webhookEvent.type,
       additionalOrderFields: {
         ...(refundedAmount !== undefined ? {amountRefunded: refundedAmount} : {}),
@@ -3258,7 +3309,8 @@ async function handleCheckoutExpired(
   const timestamp = new Date().toISOString()
   const failureCode = 'checkout.session.expired'
   const metadata = (session.metadata || {}) as Record<string, string>
-  const cart = await buildCartFromSessionLineItems(session.id, metadata)
+  const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(session.id, metadata)
+  const shippingMetrics = computeShippingMetrics(cart, cartProducts)
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const expiresAt =
     typeof session.expires_at === 'number'
@@ -3368,8 +3420,7 @@ async function handleCheckoutExpired(
         invoiceNumber: metadataInvoiceNumber,
         fallbackId: session.id,
       })
-      const normalizedOrderNumber =
-        normalizeOrderNumberForStorage(orderNumber) || orderNumber
+      const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
       const orderSlug = createOrderSlug(normalizedOrderNumber, session.id)
       const baseDoc: Record<string, any> = pruneUndefined({
         _type: 'order',
@@ -3395,13 +3446,15 @@ async function handleCheckoutExpired(
         stripeCheckoutMode: session.mode || undefined,
         stripePaymentIntentStatus: session.payment_status || undefined,
         stripeLastSyncedAt: timestamp,
-        stripeSummary: summary,
-        paymentFailureCode: failureCode,
-        paymentFailureMessage: failureMessage,
-        cart: cart.length ? cart : undefined,
-        shippingAddress,
-        webhookNotified: true,
-      })
+    stripeSummary: summary,
+    paymentFailureCode: failureCode,
+    paymentFailureMessage: failureMessage,
+    cart: cart.length ? cart : undefined,
+    shippingAddress,
+    weight: shippingMetrics.weight,
+    dimensions: shippingMetrics.dimensions,
+    webhookNotified: true,
+  })
 
       const selectedService = pruneUndefined({
         carrierId: shippingDetails.carrierId,
@@ -3519,6 +3572,8 @@ async function handleCheckoutExpired(
         currency: currencyLower,
         cart: cart.length ? cart : undefined,
         shippingAddress,
+        weight: shippingMetrics.weight,
+        dimensions: shippingMetrics.dimensions,
         shippingCarrier: shippingDetails.carrier || undefined,
         shippingServiceCode: shippingDetails.serviceCode || undefined,
         shippingServiceName: shippingDetails.serviceName || undefined,
@@ -4520,7 +4575,9 @@ export const handler: Handler = async (event) => {
         const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
           ? Number((session as any)?.total_details?.amount_tax) / 100
           : undefined
-        const amountDiscount = Number.isFinite(Number((session as any)?.total_details?.amount_discount))
+        const amountDiscount = Number.isFinite(
+          Number((session as any)?.total_details?.amount_discount),
+        )
           ? Number((session as any)?.total_details?.amount_discount) / 100
           : undefined
         let amountShipping = (() => {
@@ -4578,8 +4635,7 @@ export const handler: Handler = async (event) => {
           invoiceNumber: metadataInvoiceNumber,
           fallbackId: stripeSessionId,
         })
-        const normalizedOrderNumber =
-          normalizeOrderNumberForStorage(orderNumber) || orderNumber
+        const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
 
         const invoiceId = metadata['sanity_invoice_id']
         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '')
@@ -4591,8 +4647,11 @@ export const handler: Handler = async (event) => {
           : undefined
 
         // 2) Gather enriched data: line items + shipping
-        const cart: CartItem[] = await buildCartFromSessionLineItems(stripeSessionId, metadata)
-
+        const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
+          stripeSessionId,
+          metadata,
+        )
+        const shippingMetrics = computeShippingMetrics(cart, cartProducts)
         let shippingAddress: any = undefined
         try {
           const cd = session.customer_details
@@ -4670,6 +4729,7 @@ export const handler: Handler = async (event) => {
             ...(userIdMeta ? {userId: userIdMeta} : {}),
             ...(cart.length ? {cart} : {}),
           }
+          applyShippingMetrics(baseDoc, shippingMetrics)
           baseDoc.stripeSummary = buildStripeSummary({
             session,
             paymentIntent,
@@ -4922,8 +4982,8 @@ export const handler: Handler = async (event) => {
 
         // Create a minimal Order if none exists yet
         try {
-        const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
-        const email =
+          const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
+          const email =
             (pi as any)?.charges?.data?.[0]?.billing_details?.email ||
             (pi as any)?.receipt_email ||
             undefined
@@ -4969,8 +5029,7 @@ export const handler: Handler = async (event) => {
             invoiceNumber: metadataInvoiceNumber,
             fallbackId: pi.id,
           })
-          const normalizedOrderNumber =
-            normalizeOrderNumberForStorage(orderNumber) || orderNumber
+          const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
           const customerName =
             (
               (pi as any)?.shipping?.name ||
@@ -4981,6 +5040,41 @@ export const handler: Handler = async (event) => {
             )
               .toString()
               .trim() || undefined
+
+          let cart: CartItem[] = []
+          let cartProducts: CartProductSummary[] = []
+          if (checkoutSessionMeta) {
+            try {
+              const cartResult = await buildCartFromSessionLineItems(checkoutSessionMeta, meta)
+              cart = cartResult.items
+              cartProducts = cartResult.products
+            } catch (err) {
+              console.warn('stripeWebhook: failed to load cart from checkout metadata', err)
+            }
+          }
+          if (!cart.length) {
+            cart = cartItemsFromMetadata(meta)
+          }
+          if (cart.length && !cartProducts.length) {
+            try {
+              const enriched = await enrichCartItemsFromSanity(cart, sanity, {
+                onProducts: (list: CartProductSummary[]) => {
+                  cartProducts = list
+                },
+              })
+              cart = enriched
+            } catch (err) {
+              console.warn('stripeWebhook: failed to enrich payment intent cart', err)
+            }
+          }
+          if (cart.length && !cartProducts.length) {
+            try {
+              cartProducts = await fetchProductsForCart(cart, sanity)
+            } catch (err) {
+              console.warn('stripeWebhook: failed to fetch product summaries for payment intent', err)
+            }
+          }
+          const shippingMetrics = computeShippingMetrics(cart, cartProducts)
 
           const existingOrder = await sanity.fetch(
             `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl, orderV2}`,
@@ -5025,7 +5119,9 @@ export const handler: Handler = async (event) => {
                   },
                 }
               : {}),
+            ...(cart.length ? {cart} : {}),
           }
+          applyShippingMetrics(baseDoc, shippingMetrics)
           baseDoc.stripeSummary = buildStripeSummary({
             paymentIntent: pi,
             eventType: webhookEvent.type,
@@ -5092,7 +5188,7 @@ export const handler: Handler = async (event) => {
             customerEmail: email || undefined,
             customerPhone: (pi as any)?.shipping?.phone || undefined,
             shippingAddress: baseDoc.shippingAddress,
-            cart: undefined,
+            cart: cart.length ? cart : undefined,
             subtotal: undefined,
             discount: undefined,
             shippingFee: shippingAmountForDoc,
@@ -5181,7 +5277,7 @@ export const handler: Handler = async (event) => {
                 to: normalizedEmail,
                 orderNumber,
                 customerName,
-                items: [],
+                items: cart,
                 totalAmount,
                 shippingAmount:
                   typeof shippingDetails.amount === 'number' ? shippingDetails.amount : undefined,
