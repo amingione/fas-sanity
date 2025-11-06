@@ -220,7 +220,8 @@ import freightQuote from './documents/freightQuote'
 import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
-import calendarEvent from './documents/calendarEvent'
+import booking from './documents/booking'
+import calendarTask from './documents/calendarTask'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
 
 const documents = [
@@ -250,7 +251,8 @@ const documents = [
   tune,
   wheelQuote,
   expense,
-  calendarEvent,
+  booking,
+  calendarTask,
   stripeWebhookEvent,
   campaign,
   attribution,
