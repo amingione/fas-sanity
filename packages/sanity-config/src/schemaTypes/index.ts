@@ -221,6 +221,7 @@ import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
 import booking from './documents/booking'
+import calendarTask from './documents/calendarTask'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
 
 const documents = [
@@ -251,6 +252,7 @@ const documents = [
   wheelQuote,
   expense,
   booking,
+  calendarTask,
   stripeWebhookEvent,
   campaign,
   attribution,

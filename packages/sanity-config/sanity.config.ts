@@ -28,6 +28,7 @@ import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 import {fasBrandTheme} from './src/theme/fasBrandTheme'
+import {calendarApp} from './src/apps/calendar'
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -226,6 +227,7 @@ export default defineConfig({
       structure: deskStructure,
     }),
     deskStructureBuilderTool(),
+    calendarApp(),
     media(),
     codeInput(),
     schemaMarkup(),
