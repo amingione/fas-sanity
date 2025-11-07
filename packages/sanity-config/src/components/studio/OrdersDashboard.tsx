@@ -19,7 +19,7 @@ import {
   TextInput,
   useToast,
 } from '@sanity/ui'
-import {SearchIcon} from '@sanity/icons'
+import {OkHandIcon, RobotIcon, SearchIcon} from '@sanity/icons'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata,
@@ -89,6 +89,7 @@ type OrderRow = {
   total: number
   paymentStatus: string
   fulfillmentStatus: string
+  fulfillmentStatusBase: string
   itemsCount: number
   deliveryStatus: string
   deliveryMethod: string
@@ -309,7 +310,12 @@ function normalizeStatusLabel(value: string | null | undefined): string {
 
 function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'default' {
   const normalized = status.toLowerCase()
-  if (['paid', 'fulfilled', 'delivered', 'succeeded', 'completed'].includes(normalized)) return 'positive'
+  if (
+    normalized.startsWith('fulfilled') ||
+    ['paid', 'delivered', 'succeeded', 'completed'].includes(normalized)
+  ) {
+    return 'positive'
+  }
   if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
   if (
     [
@@ -392,7 +398,15 @@ function normalizeOrder(raw: RawOrder): OrderRow {
   const locationKey = locationLabel ? locationLabel.toLowerCase() : null
 
   const paymentStatus = normalizeStatusLabel(raw.paymentStatus)
-  const fulfillmentStatus = normalizeStatusLabel(raw.status)
+  const normalizedFulfillment = normalizeStatusLabel(raw.status)
+  const baseFulfillmentStatus = normalizedFulfillment.toLowerCase()
+  const hasManualFulfillment = shippingEvents.some((event) => event.status === 'fulfilled_manual')
+  let fulfillmentStatus = normalizedFulfillment
+  let fulfillmentStatusBase = baseFulfillmentStatus
+  if (baseFulfillmentStatus === 'fulfilled') {
+    fulfillmentStatus = hasManualFulfillment ? 'Fulfilled (Manual)' : 'Fulfilled (Auto)'
+    fulfillmentStatusBase = 'fulfilled'
+  }
   const deliveryMethod = raw.selectedService?.service || raw.shippingCarrier || '—'
 
   const searchTokens = [
@@ -417,6 +431,7 @@ function normalizeOrder(raw: RawOrder): OrderRow {
     total,
     paymentStatus,
     fulfillmentStatus,
+    fulfillmentStatusBase,
     itemsCount,
     deliveryStatus,
     deliveryMethod,
@@ -428,9 +443,9 @@ function normalizeOrder(raw: RawOrder): OrderRow {
 }
 
 function matchesTab(order: OrderRow, key: TabKey): boolean {
-  const fulfillment = order.fulfillmentStatus.toLowerCase()
+  const fulfillment = order.fulfillmentStatusBase
   const payment = order.paymentStatus.toLowerCase()
-  const fulfillmentCancelled = isCancelledStatus(order.fulfillmentStatus)
+  const fulfillmentCancelled = isCancelledStatus(order.fulfillmentStatusBase)
   const paymentClosed = isClosedPaymentStatus(order.paymentStatus)
   switch (key) {
     case 'all':
@@ -598,7 +613,7 @@ export default function OrdersDashboard() {
     const itemsOrdered = filteredOrders.reduce((sum, order) => sum + order.itemsCount, 0)
     const returns = filteredOrders.filter((order) => order.tags.some((tag) => tag.toLowerCase().includes('return')))
       .length
-    const fulfilled = filteredOrders.filter((order) => order.fulfillmentStatus.toLowerCase() === 'fulfilled').length
+    const fulfilled = filteredOrders.filter((order) => order.fulfillmentStatusBase === 'fulfilled').length
     const delivered = filteredOrders.filter((order) => order.deliveryStatus.toLowerCase().includes('deliver')).length
 
     const durations = filteredOrders
@@ -687,7 +702,8 @@ export default function OrdersDashboard() {
           const deliveryStatus = normalizedDelivery.includes('deliver') ? order.deliveryStatus : 'Fulfilled'
           return {
             ...order,
-            fulfillmentStatus: 'Fulfilled',
+            fulfillmentStatus: 'Fulfilled (Manual)',
+            fulfillmentStatusBase: 'fulfilled',
             fulfilledAtValue: Date.parse(timestamp),
             deliveryStatus,
           }
@@ -777,6 +793,7 @@ export default function OrdersDashboard() {
           return {
             ...order,
             fulfillmentStatus: 'Cancelled',
+            fulfillmentStatusBase: 'cancelled',
             paymentStatus: 'Cancelled',
             deliveryStatus: 'Cancelled',
             fulfilledAtValue: null,
@@ -1108,7 +1125,26 @@ export default function OrdersDashboard() {
                         <Badge tone={badgeTone(order.paymentStatus)}>{order.paymentStatus}</Badge>
                       </span>
                       <span>
-                        <Badge tone={badgeTone(order.fulfillmentStatus)}>{order.fulfillmentStatus}</Badge>
+                        <Badge tone={badgeTone(order.fulfillmentStatus)}>
+                          {order.fulfillmentStatusBase === 'fulfilled' ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              {order.fulfillmentStatus.toLowerCase().includes('manual') ? (
+                                <OkHandIcon aria-hidden style={{width: 14, height: 14}} />
+                              ) : (
+                                <RobotIcon aria-hidden style={{width: 14, height: 14}} />
+                              )}
+                              <span>{order.fulfillmentStatus}</span>
+                            </span>
+                          ) : (
+                            order.fulfillmentStatus
+                          )}
+                        </Badge>
                       </span>
                       <span>{formatItems(order.itemsCount)}</span>
                       <span>
@@ -1392,10 +1428,26 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
   const statusBadges = useMemo(() => {
     if (!order) return []
     const badges: Array<{label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}> = []
-    if (order.status) badges.push({label: normalizeStatusLabel(order.status), tone: badgeTone(order.status)})
+    if (order.status) {
+      const normalized = normalizeStatusLabel(order.status)
+      const manualFulfillment = Array.isArray(order.shippingLog)
+        ? order.shippingLog.some(
+            (entry) =>
+              entry && typeof entry.status === 'string' && entry.status.toLowerCase() === 'fulfilled_manual',
+          )
+        : false
+      const statusLabel =
+        (order.status || '').toLowerCase() === 'fulfilled'
+          ? manualFulfillment
+            ? 'Fulfilled (Manual)'
+            : 'Fulfilled (Auto)'
+          : normalized
+      badges.push({label: statusLabel, tone: badgeTone(statusLabel)})
+    }
     if (order.paymentStatus)
       badges.push({label: `Payment: ${normalizeStatusLabel(order.paymentStatus)}`, tone: badgeTone(order.paymentStatus)})
-    if (order.fulfilledAt) badges.push({label: 'Fulfilled', tone: 'positive'})
+    if (order.fulfilledAt && !badges.some((badge) => badge.label.toLowerCase().startsWith('fulfilled')))
+      badges.push({label: 'Fulfilled', tone: 'positive'})
     return badges
   }, [order])
 

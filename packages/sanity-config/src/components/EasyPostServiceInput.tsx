@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { FormField, PatchEvent, set, unset, useFormValue } from 'sanity'
-import { useId } from 'react'
-import { Stack, Card, Text } from '@sanity/ui'
+import React, {useEffect, useMemo, useState} from 'react'
+import {FormField, PatchEvent, set, unset, useFormValue} from 'sanity'
+import {useId} from 'react'
+import {Stack, Card, Text} from '@sanity/ui'
 
 type RateOption = {
+  rateId: string
   carrierId: string
   carrierCode: string
   carrier: string
@@ -15,36 +16,38 @@ type RateOption = {
   estimatedDeliveryDate: string | null
 }
 
-type FetchRatesResponse = { title: string; value: string }[]
+type FetchRatesResponse = {title: string; value: string}[]
 
-type ShipEngineServiceInputProps = {
-  value?: string // we will store JSON string: { serviceCode, carrierId }
+type EasyPostServiceInputProps = {
+  value?: string
   onChange: (event: PatchEvent) => void
-  fetchRates?: () => Promise<FetchRatesResponse> // optional legacy prop
+  fetchRates?: () => Promise<FetchRatesResponse>
 }
 
-function asShipEngineAddress(raw: any | undefined) {
+function asEasyPostPayload(raw: any | undefined) {
   if (!raw) return null
   return {
     name: raw.name || `${raw.firstName ?? ''} ${raw.lastName ?? ''}`.trim() || undefined,
     address_line1: raw.address_line1 || raw.street || raw.line1 || undefined,
+    address_line2: raw.address_line2 || raw.line2 || undefined,
     city_locality: raw.city_locality || raw.city || undefined,
     state_province: raw.state_province || raw.state || undefined,
     postal_code: raw.postal_code || raw.postalCode || undefined,
     country_code: raw.country_code || raw.country || 'US',
+    phone: raw.phone || undefined,
+    email: raw.email || undefined,
   }
 }
 
-export default function ShipEngineServiceInput({ value, onChange, fetchRates }: ShipEngineServiceInputProps) {
+export default function EasyPostServiceInput({value, onChange, fetchRates}: EasyPostServiceInputProps) {
   const inputId = useId()
-  const [options, setOptions] = useState<{ title: string; value: string }[]>([])
+  const [options, setOptions] = useState<{title: string; value: string}[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Pull contextual values from the current document
   const weight = useFormValue(['weight']) as number | string | undefined
   const dimensions = useFormValue(['dimensions']) as
-    | { length?: number | string; width?: number | string; height?: number | string }
+    | {length?: number | string; width?: number | string; height?: number | string}
     | undefined
   const primaryShipTo = useFormValue(['shipTo'])
   const fallbackShipTo = useFormValue(['shippingAddress'])
@@ -56,8 +59,8 @@ export default function ShipEngineServiceInput({ value, onChange, fetchRates }: 
   const shipToVal = (primaryShipTo || fallbackShipTo || invoiceShipTo) as any
   const shipFromVal = (primaryShipFrom || warehouseShipFrom || originShipFrom) as any
 
-  const ship_to = useMemo(() => asShipEngineAddress(shipToVal), [shipToVal])
-  const ship_from = useMemo(() => asShipEngineAddress(shipFromVal), [shipFromVal])
+  const ship_to = useMemo(() => asEasyPostPayload(shipToVal), [shipToVal])
+  const ship_from = useMemo(() => asEasyPostPayload(shipFromVal), [shipFromVal])
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +69,6 @@ export default function ShipEngineServiceInput({ value, onChange, fetchRates }: 
       setError(null)
 
       try {
-        // Prefer provided fetchRates() if schema wired one; otherwise call Netlify function directly
         if (fetchRates) {
           const services = await fetchRates()
           if (!Array.isArray(services)) throw new Error('Invalid services format')
@@ -74,19 +76,18 @@ export default function ShipEngineServiceInput({ value, onChange, fetchRates }: 
           return
         }
 
-        // Validate basics for ShipEngine request
         if (!ship_to || !ship_from) {
           throw new Error('Missing Ship To / Ship From addresses on this document')
         }
 
-        const res = await fetch('/.netlify/functions/getShipEngineRates', {
+        const res = await fetch('/.netlify/functions/getEasyPostRates', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             ship_to,
             ship_from,
             package_details: {
-              weight: { value: Number(weight) || 1, unit: 'pound' },
+              weight: {value: Number(weight) || 1, unit: 'pound'},
               dimensions: dimensions
                 ? {
                     unit: 'inch',
@@ -107,8 +108,7 @@ export default function ShipEngineServiceInput({ value, onChange, fetchRates }: 
           title: `${r.carrier} — ${r.service} (${r.serviceCode}) — $${(r.amount ?? 0).toFixed(2)}${
             r.deliveryDays ? ` • ${r.deliveryDays}d` : ''
           }`,
-          // Store JSON string so downstream code can parse both values
-          value: JSON.stringify({ serviceCode: r.serviceCode, carrierId: r.carrierId }),
+          value: JSON.stringify({serviceCode: r.serviceCode, carrierId: r.carrierId, rateId: r.rateId}),
         }))
 
         if (!cancelled) setOptions(opts)

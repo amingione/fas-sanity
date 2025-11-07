@@ -1,4 +1,5 @@
 import type {SanityClient, SanityDocument} from '@sanity/client'
+import {coerceStringArray, uniqueStrings} from '@fas/sanity-config/utils/cartItemDetails'
 
 /**
  * Lightweight helper mirroring the Sanity defineDocumentFunction API shape.
@@ -79,8 +80,6 @@ type NormalizedDocument = SanityDocument & {
   shippingLabelUrl?: string | null
   trackingNumber?: string | null
   trackingUrl?: string | null
-  shipStationOrderId?: string | null
-  shipStationLabelId?: string | null
   packingSlipUrl?: string | null
   tags?: unknown
   slug?: {current?: string | null} | null
@@ -139,8 +138,6 @@ const PROJECTION_FIELDS = `
   labelUrl,
   trackingNumber,
   trackingUrl,
-  shipStationOrderId,
-  shipStationLabelId,
   packingSlipUrl,
   orderNumber,
   invoiceNumber,
@@ -280,10 +277,9 @@ const toCleanNumber = (value: unknown): number | undefined => {
 }
 
 const toCleanStringArray = (value: unknown, limit = 10): string[] | undefined => {
-  if (!Array.isArray(value)) return undefined
-  const items = value.map((entry) => toCleanString(entry)).filter(isPresent)
-  if (!items.length) return undefined
-  return items.slice(0, limit)
+  const coerced = uniqueStrings(coerceStringArray(value));
+  if (!coerced.length) return undefined;
+  return coerced.slice(0, limit);
 }
 
 const limitArray = <T>(value: T[] | undefined, limit = 20): T[] | undefined => {
@@ -472,8 +468,6 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
         trackingNumber: toCleanString(document.trackingNumber),
         trackingUrl: toCleanString(document.trackingUrl),
         packingSlipUrl: toCleanString(document.packingSlipUrl),
-        shipStationOrderId: toCleanString(document.shipStationOrderId),
-        shipStationLabelId: toCleanString(document.shipStationLabelId),
       }),
       cart: cartItems,
       events: sanitizeOrderEvents(document.orderEvents),

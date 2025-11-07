@@ -1,5 +1,6 @@
 import {useEffect} from 'react'
 import type {LayoutProps} from 'sanity'
+import {StyleSheetManager} from 'styled-components'
 import PaneLimiter from './PaneLimiter'
 
 export default function StudioLayout(props: LayoutProps) {
@@ -31,10 +32,19 @@ export default function StudioLayout(props: LayoutProps) {
     }
   }, [])
 
+  const shouldForwardProp = (propName: string, elementToBeCreated: unknown) => {
+    if (typeof elementToBeCreated === 'string' && propName === 'tone') {
+      return false
+    }
+    return true
+  }
+
   return (
-    <>
-      <PaneLimiter maxPanes={2} />
-      {props.renderDefault(props)}
-    </>
+    <StyleSheetManager shouldForwardProp={shouldForwardProp}>
+      <>
+        <PaneLimiter maxPanes={2} />
+        {props.renderDefault(props)}
+      </>
+    </StyleSheetManager>
   )
 }

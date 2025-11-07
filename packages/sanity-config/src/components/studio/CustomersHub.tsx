@@ -6,12 +6,12 @@ import CustomerDashboard from './CustomerDashboard'
 import QuotesDashboard from './QuotesDashboard'
 import BookingCalendar from './BookingCalendar'
 
-type CustomerTab = 'overview' | 'quotes' | 'appointments'
+type CustomerTab = 'overview' | 'quotes' | 'calendar'
 
 const tabs: Array<{id: CustomerTab; label: string; description: string}> = [
   {id: 'overview', label: 'Overview', description: 'Recent activity, top customers, and quick actions.'},
   {id: 'quotes', label: 'Quotes', description: 'Manage estimates, send proposals, and convert wins into invoices.'},
-  {id: 'appointments', label: 'Appointments', description: 'View and manage upcoming service bookings.'},
+  {id: 'calendar', label: 'Calendar', description: 'View and manage upcoming service bookings.'},
 ]
 
 const CustomersHub = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
