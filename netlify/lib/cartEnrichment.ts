@@ -1,5 +1,6 @@
 import type {SanityClient} from '@sanity/client'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
+import {validateCartSelections} from '../../shared/cartValidation'
 import type {CartMetadataEntry} from './stripeCartItem'
 
 export type CartItem = {
@@ -10,6 +11,9 @@ export type CartItem = {
   name?: string
   productName?: string
   productSlug?: string
+  description?: string
+  image?: string
+  productUrl?: string
   stripeProductId?: string
   stripePriceId?: string
   quantity?: number
@@ -19,7 +23,10 @@ export type CartItem = {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  customizations?: string[]
   categories?: string[]
+  productRef?: {_type: 'reference'; _ref: string}
+  validationIssues?: string[]
   metadata?: CartMetadataEntry[] | Record<string, unknown> | null
 }
 
@@ -33,6 +40,9 @@ export type CartProductSummary = {
   boxDimensions?: string | null
   shipsAlone?: boolean | null
   shippingClass?: string | null
+  productType?: string | null
+  optionRequirements?: Array<{name?: string | null; required?: boolean | null}>
+  customizationRequirements?: Array<{name?: string | null; required?: boolean | null}>
 }
 
 type ShipmentWeight = {
@@ -290,7 +300,16 @@ export async function fetchProductsForCart(
         shippingWeight,
         boxDimensions,
         shipsAlone,
-        shippingClass
+        shippingClass,
+        productType,
+        "optionRequirements": coalesce(options[]{
+          "name": coalesce(title, name),
+          "required": select(defined(required) => required, true)
+        }, []),
+        "customizationRequirements": coalesce(customizations[]{
+          "name": coalesce(title, name),
+          "required": select(defined(required) => required, false)
+        }, [])
       }`,
       lookup,
     )
@@ -347,9 +366,37 @@ export async function enrichCartItemsFromSanity(
       else item.id = product._id
     }
 
+    if (product._id) {
+      item.productRef = {_type: 'reference', _ref: product._id}
+      appendMetadata(item, 'sanity_product_ref', product._id, 'derived')
+    }
+
     const categories = sanitizeCategories(product.categories)
     if ((!item.categories || item.categories.length === 0) && categories) {
       item.categories = categories
+    }
+
+    const issues = validateCartSelections(
+      {
+        productTitle: product.title,
+        options: product.optionRequirements,
+        customizations: product.customizationRequirements,
+      },
+      {
+        optionSummary: item.optionSummary,
+        optionDetails: item.optionDetails,
+        customizations: item.customizations,
+      },
+    )
+
+    if (issues.length) {
+      const messages = Array.from(new Set(issues.map((issue) => issue.message.trim()).filter(Boolean)))
+      if (messages.length) {
+        item.validationIssues = messages
+        messages.forEach((message) => appendMetadata(item, 'validation_issue', message, 'derived'))
+      }
+    } else if (item.validationIssues?.length) {
+      delete item.validationIssues
     }
 
     return item

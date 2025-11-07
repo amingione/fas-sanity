@@ -18,6 +18,13 @@ export const customProductOptionSizeType = defineField({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'required',
+      type: 'boolean',
+      title: 'Required',
+      description: 'Customers must select a value before adding this product to the cart.',
+      initialValue: true,
+    }),
+    defineField({
       name: 'sizes',
       type: 'array',
       of: [{type: 'customProductOption.sizeObject'}],
@@ -40,10 +47,13 @@ export const customProductOptionSizeType = defineField({
     select: {
       sizes: 'sizes',
       title: 'title',
+      required: 'required',
     },
-    prepare({sizes, title}) {
+    prepare({sizes, title, required}: {sizes: any[]; title?: string; required?: boolean}) {
+      const pieces = [sizes.length > 0 ? pluralize('size', sizes.length, true) : 'No sizes']
+      pieces.push(required === false ? 'Optional' : 'Required')
       return {
-        subtitle: sizes.length > 0 ? pluralize('size', sizes.length, true) : 'No sizes',
+        subtitle: pieces.join(' • '),
         title,
       }
     },

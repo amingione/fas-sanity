@@ -707,6 +707,115 @@ const UPGRADE_FIELD_KEYS = [
   'addOns',
 ]
 
+const CUSTOMIZATION_FIELD_KEYS = [
+  'customizations',
+  'customization',
+  'customization_details',
+  'custom_details',
+  'custom_detail',
+  'customization_detail',
+  'custom_text',
+  'customText',
+  'custom_message',
+  'customMessage',
+  'personalization',
+  'personalisation',
+  'personalized_message',
+  'personalizedMessage',
+  'personalised_message',
+  'personalisedMessage',
+  'engraving',
+  'engraving_text',
+  'engravingText',
+  'gift_message',
+  'giftMessage',
+  'item_note',
+  'itemNote',
+  'product_note',
+  'productNote',
+  'order_item_note',
+  'orderItemNote',
+]
+
+const DESCRIPTION_METADATA_KEYS = [
+  'description',
+  'line_description',
+  'linedescription',
+  'product_description',
+  'productdescription',
+  'item_description',
+  'itemdescription',
+  'stripe_line_description',
+]
+
+const IMAGE_METADATA_KEYS = [
+  'image',
+  'image_url',
+  'imageurl',
+  'image_link',
+  'imagelink',
+  'imageUrl',
+  'product_image',
+  'productimage',
+  'productImage',
+  'product_image_url',
+  'productimageurl',
+  'featured_image',
+  'featuredimage',
+  'thumbnail',
+  'thumb',
+  'thumb_url',
+  'thumburl',
+  'photo',
+  'product_photo',
+]
+
+const PRODUCT_URL_METADATA_KEYS = [
+  'product_url',
+  'producturl',
+  'productUrl',
+  'product_link',
+  'productlink',
+  'productLink',
+  'product_page',
+  'productpage',
+  'product_permalink',
+  'productpermalink',
+  'url',
+]
+
+const LINE_TOTAL_METADATA_KEYS = [
+  'line_total',
+  'linetotal',
+  'lineTotal',
+  'line_amount',
+  'lineamount',
+  'amount_total',
+  'amounttotal',
+  'amountTotal',
+  'subtotal',
+  'sub_total',
+  'item_total',
+  'itemtotal',
+  'itemTotal',
+]
+
+const TOTAL_METADATA_KEYS = [
+  'total',
+  'total_amount',
+  'totalamount',
+  'totalAmount',
+  'grand_total',
+  'grandtotal',
+  'grandTotal',
+  'order_total',
+  'ordertotal',
+  'orderTotal',
+  'amount_total',
+  'amounttotal',
+  'amountTotal',
+]
+
 const CATEGORY_FIELD_KEYS = [
   'categories',
   'category',
@@ -743,6 +852,22 @@ const consumeRecordValue = (source: Record<string, unknown>, keys: string[]): un
       delete source[key]
       return value
     }
+  }
+  return undefined
+}
+
+const normalizeMetadataKey = (key: string): string => key.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+const findMetadataValue = (
+  map: Record<string, string>,
+  normalized: Record<string, string>,
+  ...keys: string[]
+): string | undefined => {
+  for (const key of keys) {
+    const lower = key.toLowerCase()
+    if (map[lower]) return map[lower]
+    const normalizedKey = normalizeMetadataKey(key)
+    if (normalizedKey && normalized[normalizedKey]) return normalized[normalizedKey]
   }
   return undefined
 }
@@ -837,6 +962,7 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   )
   const optionDetailsValue = consumeRecordValue(working, OPTION_DETAIL_FIELD_KEYS)
   const upgradesValue = consumeRecordValue(working, UPGRADE_FIELD_KEYS)
+  const customizationsValue = consumeRecordValue(working, CUSTOMIZATION_FIELD_KEYS)
   const categoriesValue = consumeRecordValue(working, CATEGORY_FIELD_KEYS)
 
   const nameCandidate =
@@ -857,14 +983,46 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   const derivedOptions = deriveOptionsFromMetadata(normalizedMetadata)
 
   const metadataMap: Record<string, string> = {}
+  const normalizedMetadataMap: Record<string, string> = {}
   for (const {key, value} of normalizedMetadata) {
     const lower = key.toLowerCase()
     if (!metadataMap[lower]) metadataMap[lower] = value
+    const normalizedKey = normalizeMetadataKey(key)
+    if (normalizedKey && !normalizedMetadataMap[normalizedKey]) {
+      normalizedMetadataMap[normalizedKey] = value
+    }
   }
   const fallbackSummary =
-    FALLBACK_OPTION_SUMMARY_KEYS.map((key) => metadataMap[key]).find(
-      (value) => value && value.trim(),
-    ) || undefined
+    findMetadataValue(metadataMap, normalizedMetadataMap, ...FALLBACK_OPTION_SUMMARY_KEYS) ||
+    undefined
+
+  const metadataDescription = findMetadataValue(
+    metadataMap,
+    normalizedMetadataMap,
+    ...DESCRIPTION_METADATA_KEYS,
+  )
+  const metadataImage = findMetadataValue(
+    metadataMap,
+    normalizedMetadataMap,
+    ...IMAGE_METADATA_KEYS,
+  )
+  const metadataProductUrl = findMetadataValue(
+    metadataMap,
+    normalizedMetadataMap,
+    ...PRODUCT_URL_METADATA_KEYS,
+  )
+  const metadataLineTotalValue = findMetadataValue(
+    metadataMap,
+    normalizedMetadataMap,
+    ...LINE_TOTAL_METADATA_KEYS,
+  )
+  const metadataTotalValue = findMetadataValue(
+    metadataMap,
+    normalizedMetadataMap,
+    ...TOTAL_METADATA_KEYS,
+  )
+  const metadataLineTotal = parseCartMetadataNumber(metadataLineTotalValue)
+  const metadataTotal = parseCartMetadataNumber(metadataTotalValue)
 
   const optionSummary =
     optionSummaryFromRecord || derivedOptions.optionSummary || fallbackSummary || undefined
@@ -880,7 +1038,21 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
     ...coerceStringArray(upgradesValue),
     ...derivedOptions.upgrades,
   ])
+  const customizations = uniqueStrings([
+    ...coerceStringArray(customizationsValue),
+    ...derivedOptions.customizations,
+  ])
   const categories = uniqueStrings(coerceStringArray(categoriesValue))
+
+  const resolvedDescription =
+    parseCartMetadataString(metadataDescription) ||
+    parseCartMetadataString((record as any).description) ||
+    undefined
+  const resolvedImage = parseCartMetadataString(metadataImage) || undefined
+  const resolvedProductUrl =
+    parseCartMetadataString(metadataProductUrl) ||
+    parseCartMetadataString(rawUrl) ||
+    undefined
 
   const typedMetadata: CartMetadataEntry[] = []
   const seenMetaKeys = new Set<string>()
@@ -940,10 +1112,34 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   if (typeof price === 'number' && Number.isFinite(price)) {
     item.price = Number(price)
   }
+  if (resolvedDescription) item.description = resolvedDescription
+  if (resolvedImage) item.image = resolvedImage
+  if (resolvedProductUrl) item.productUrl = resolvedProductUrl
   if (optionSummary) item.optionSummary = optionSummary
   if (optionDetails.length) item.optionDetails = optionDetails
   if (upgrades.length) item.upgrades = upgrades
+  if (customizations.length) item.customizations = customizations
   if (categories.length) item.categories = categories
+  const resolvedQuantityValue =
+    typeof item.quantity === 'number' && Number.isFinite(item.quantity)
+      ? item.quantity
+      : undefined
+  const resolvedPriceValue =
+    typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : undefined
+  const derivedLineTotal =
+    metadataLineTotal !== undefined
+      ? metadataLineTotal
+      : resolvedPriceValue !== undefined && resolvedQuantityValue !== undefined
+        ? resolvedPriceValue * resolvedQuantityValue
+        : undefined
+  const derivedTotal =
+    metadataTotal !== undefined
+      ? metadataTotal
+      : derivedLineTotal !== undefined
+        ? derivedLineTotal
+        : undefined
+  if (derivedLineTotal !== undefined) item.lineTotal = derivedLineTotal
+  if (derivedTotal !== undefined) item.total = derivedTotal
   if (typedMetadata.length) item.metadata = typedMetadata
 
   return item

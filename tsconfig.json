@@ -25,6 +25,7 @@
     "sanity.cli.ts",
     "netlify/functions",
     "netlify/lib",
+    "src",
     "scripts",
     "shared",
     "packages/sanity-config",

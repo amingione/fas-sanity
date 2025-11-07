@@ -18,6 +18,13 @@ export const customProductOptionColorType = defineField({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'required',
+      type: 'boolean',
+      title: 'Required',
+      description: 'Customers must select a value before adding this product to the cart.',
+      initialValue: true,
+    }),
+    defineField({
       name: 'colors',
       type: 'array',
       of: [{type: 'customProductOption.colorObject'}],
@@ -40,13 +47,20 @@ export const customProductOptionColorType = defineField({
     select: {
       colors: 'colors',
       title: 'title',
+      required: 'required',
     },
     prepare(selection) {
-      const {colors, title} = selection as {colors?: unknown; title?: string}
+      const {colors, title, required} = selection as {
+        colors?: unknown
+        title?: string
+        required?: boolean
+      }
       const list = Array.isArray(colors) ? colors : []
       const count = list.length
+      const pieces = [count ? pluralize('color', count, true) : 'No colors']
+      pieces.push(required === false ? 'Optional' : 'Required')
       return {
-        subtitle: count ? pluralize('color', count, true) : 'No colors',
+        subtitle: pieces.join(' • '),
         title: title || 'Color options',
       }
     },
