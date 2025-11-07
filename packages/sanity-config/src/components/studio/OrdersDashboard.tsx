@@ -150,6 +150,9 @@ const ORDER_PREVIEW_QUERY = `*[_type == "order" && _id == $id][0]{
     optionSummary,
     optionDetails,
     upgrades,
+    customizations,
+    validationIssues,
+    productRef->{_id, title, slug},
     metadata[]{key,value}
   },
   shippingLog[]{
@@ -1211,10 +1214,18 @@ type OrderPreviewDoc = {
         quantity?: number | null
         price?: number | null
         lineTotal?: number | null
+        total?: number | null
         optionSummary?: string | null
         optionDetails?: string[] | string | null
         upgrades?: string[] | string | null
+        customizations?: string[] | string | null
         metadata?: Array<{key?: string; value?: string}>
+        validationIssues?: string[] | string | null
+        productRef?: {
+          _id?: string
+          title?: string
+          slug?: {current?: string | null}
+        } | null
       }
   > | null
   shippingLog?: Array<
@@ -1353,6 +1364,27 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
           ...derived.upgrades,
         ])
         if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
+
+        const customizations = uniqueStrings([
+          ...coerceStringArray(item.customizations),
+          ...derived.customizations,
+        ])
+        customizations.forEach((detail) => {
+          detail
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .forEach((part) => addDetail(part))
+        })
+
+        const validationIssues = uniqueStrings(coerceStringArray((item as any).validationIssues))
+        if (validationIssues.length) {
+          validationIssues.forEach((issue) => {
+            const normalizedIssue = issue.trim()
+            if (!normalizedIssue) return
+            addDetail(`⚠️ ${normalizedIssue}`)
+          })
+        }
 
         if (item.sku) addDetail(`SKU ${item.sku}`)
 

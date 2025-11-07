@@ -134,8 +134,16 @@ const mapItems = (cart: CartItem[] | null | undefined) => {
         productName: item.name || item.productName || undefined,
         quantity: item.quantity,
         price: item.price,
+        lineTotal: item.lineTotal,
+        total: item.total,
         options: mapOptions(item.optionDetails),
         upgrades: mapUpgrades(item.upgrades),
+        customizations: mapOptions(item.customizations),
+        productRef: item.productRef,
+        validationIssues:
+          Array.isArray(item.validationIssues) && item.validationIssues.length
+            ? item.validationIssues
+            : undefined,
       }),
     )
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))

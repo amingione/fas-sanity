@@ -205,6 +205,8 @@ const buildDetailList = (opts: {
   summary?: string | null
   optionDetails?: string[]
   upgrades?: string[]
+  customizations?: string[]
+  validationIssues?: string[]
 }): string[] => {
   const details: string[] = []
   const seen = new Set<string>()
@@ -242,6 +244,17 @@ const buildDetailList = (opts: {
     if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
   }
 
+  if (opts.customizations?.length) {
+    uniqueStrings(opts.customizations).forEach(addDetail)
+  }
+
+  if (opts.validationIssues?.length) {
+    uniqueStrings(opts.validationIssues)
+      .map((issue) => issue.trim())
+      .filter(Boolean)
+      .forEach((issue) => addDetail(`⚠️ ${issue}`))
+  }
+
   return details
 }
 
@@ -257,6 +270,7 @@ const prepareItemPresentation = (source: {
   optionSummary?: unknown
   optionDetails?: unknown
   upgrades?: unknown
+  customizations?: unknown
   metadata?: unknown
 }): {title: string; details: string[]} => {
   const metadataEntries = normalizeMetadataEntries(source.metadata as any)
@@ -276,10 +290,16 @@ const prepareItemPresentation = (source: {
     ...coerceStringArray(source.upgrades),
     ...derived.upgrades,
   ])
+  const customizations = uniqueStrings([
+    ...coerceStringArray(source.customizations),
+    ...derived.customizations,
+  ])
   const details = buildDetailList({
     summary,
     optionDetails,
     upgrades,
+    customizations,
+    validationIssues: coerceStringArray((source as any).validationIssues),
   })
   const detailSet = new Set(details.map((detail) => detail.toLowerCase()))
   const appendDetail = (detail?: string) => {
@@ -546,7 +566,21 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           stripeSessionId,
           customerEmail,
           shippingAddress,
-          cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades, metadata[]{key, value} },
+          cart[]{
+            name,
+            sku,
+            quantity,
+            price,
+            lineTotal,
+            total,
+            optionSummary,
+            optionDetails,
+            upgrades,
+            customizations,
+            validationIssues,
+            productRef->{ _id, title, slug },
+            metadata[]{key, value}
+          },
         }
       }`,
       { id: cleanInvoiceId }
@@ -566,7 +600,21 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         customerEmail,
         shippingAddress,
         billingAddress,
-        cart[]{ name, sku, quantity, optionSummary, optionDetails, upgrades, metadata[]{key, value} },
+        cart[]{
+          name,
+          sku,
+          quantity,
+          price,
+          lineTotal,
+          total,
+          optionSummary,
+          optionDetails,
+          upgrades,
+          customizations,
+          validationIssues,
+          productRef->{ _id, title, slug },
+          metadata[]{key, value}
+        },
         notes,
         invoiceRef
       }`,
@@ -594,6 +642,10 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           kind,
           product->{ title, sku },
           unitPrice,
+          optionSummary,
+          optionDetails,
+          upgrades,
+          customizations,
           metadata[]{key, value}
         }
       }`,
@@ -690,6 +742,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         optionSummary: ci.optionSummary,
         optionDetails: ci.optionDetails,
         upgrades: ci.upgrades,
+        customizations: ci.customizations,
         metadata: ci.metadata,
       })
       const quantity = Number(ci.quantity || 1)
@@ -728,6 +781,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         optionSummary: (li as any)?.optionSummary,
         optionDetails: (li as any)?.optionDetails,
         upgrades: (li as any)?.upgrades,
+        customizations: (li as any)?.customizations,
         metadata: (li as any)?.metadata,
       })
       items.push({

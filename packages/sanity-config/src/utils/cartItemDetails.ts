@@ -11,6 +11,22 @@ export type NormalizedMetadataEntry = {
 
 const OPTION_KEYWORDS = ['option', 'vehicle', 'fitment', 'model', 'variant', 'trim', 'package', 'selection', 'config', 'size', 'color']
 const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addon', 'addOn', 'accessory']
+const CUSTOMIZATION_KEYWORDS = [
+  'custom',
+  'customization',
+  'personalization',
+  'personalise',
+  'personalize',
+  'engraving',
+  'engrave',
+  'monogram',
+  'message',
+  'inscription',
+  'note',
+  'text',
+  'initial',
+  'initials',
+]
 const IGNORE_OPTION_KEYS = [
   'shipping_option',
   'shipping_options',
@@ -301,6 +317,26 @@ const extractUpgrades = (
   return {upgrades: unique, consumedKeys: consumed}
 }
 
+const extractCustomizations = (
+  entries: NormalizedMetadataEntry[]
+): {customizations: string[]; consumedKeys: Set<string>} => {
+  const customizations: string[] = []
+  const consumed = new Set<string>()
+
+  for (const {key, value} of entries) {
+    const lowerKey = key.toLowerCase()
+    if (!CUSTOMIZATION_KEYWORDS.some((kw) => lowerKey.includes(kw))) continue
+    const segments = parseListValue(value)
+    if (segments.length) {
+      customizations.push(...segments)
+      consumed.add(key)
+    }
+  }
+
+  const unique = Array.from(new Set(customizations.filter(Boolean)))
+  return {customizations: unique, consumedKeys: consumed}
+}
+
 export const coerceStringArray = (input: unknown): string[] => {
   if (!input) return []
 
@@ -363,24 +399,34 @@ export const deriveOptionsFromMetadata = (
   optionSummary?: string
   optionDetails: string[]
   upgrades: string[]
+  customizations: string[]
   consumedKeys: string[]
 } => {
   const normalized = normalizeMetadataEntries(metadata)
   if (!normalized.length) {
-    return {optionSummary: undefined, optionDetails: [], upgrades: [], consumedKeys: []}
+    return {
+      optionSummary: undefined,
+      optionDetails: [],
+      upgrades: [],
+      customizations: [],
+      consumedKeys: [],
+    }
   }
 
   const {summary, details, consumedKeys: optionKeys} = extractOptionDetails(normalized)
   const {upgrades, consumedKeys: upgradeKeys} = extractUpgrades(normalized)
+  const {customizations, consumedKeys: customizationKeys} = extractCustomizations(normalized)
 
   const consumed = new Set<string>()
   optionKeys.forEach((key) => consumed.add(key))
   upgradeKeys.forEach((key) => consumed.add(key))
+  customizationKeys.forEach((key) => consumed.add(key))
 
   return {
     optionSummary: summary,
     optionDetails: details,
     upgrades,
+    customizations,
     consumedKeys: Array.from(consumed),
   }
 }
