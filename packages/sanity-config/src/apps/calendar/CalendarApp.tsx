@@ -1177,7 +1177,7 @@ const CalendarApp = React.forwardRef<HTMLDivElement>((_props, ref) => {
                                                 content={
                                                   <Box padding={2} style={{maxWidth: 220}}>
                                                     <Text size={1}>
-                                                      {TASK_BADGE_DESCRIPTIONS[variant]}
+                                                      {TASK_BADGE_DESCRIPTIONS[taskBadge.variant]}
                                                     </Text>
                                                   </Box>
                                                 }
