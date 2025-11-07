@@ -4,14 +4,12 @@ import {useRouter} from 'sanity/router'
 
 import CustomerDashboard from './CustomerDashboard'
 import QuotesDashboard from './QuotesDashboard'
-import BookingCalendar from './BookingCalendar'
 
-type CustomerTab = 'overview' | 'quotes' | 'calendar'
+type CustomerTab = 'overview' | 'quotes'
 
 const tabs: Array<{id: CustomerTab; label: string; description: string}> = [
   {id: 'overview', label: 'Overview', description: 'Recent activity, top customers, and quick actions.'},
   {id: 'quotes', label: 'Quotes', description: 'Manage estimates, send proposals, and convert wins into invoices.'},
-  {id: 'calendar', label: 'Calendar', description: 'View and manage upcoming service bookings.'},
 ]
 
 const CustomersHub = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
@@ -123,13 +121,7 @@ const CustomersHub = React.forwardRef<HTMLDivElement, Record<string, never>>((_p
       </header>
 
       <main className="studio-content">
-        {activeTab === 'overview' ? (
-          <CustomerDashboard />
-        ) : activeTab === 'quotes' ? (
-          <QuotesDashboard />
-        ) : (
-          <BookingCalendar />
-        )}
+        {activeTab === 'overview' ? <CustomerDashboard /> : <QuotesDashboard />}
       </main>
     </div>
   )

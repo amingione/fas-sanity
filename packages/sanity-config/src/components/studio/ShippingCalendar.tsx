@@ -1,7 +1,6 @@
-import React, {useEffect, useMemo, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {Card, Heading, Text, Stack, Box} from '@sanity/ui'
 import {useWorkspaceClient} from '../../utils/useWorkspaceClient'
-import {readStudioEnv} from '../../utils/studioEnv'
 
 type RawShippingLabel = {
   _id: string
@@ -43,13 +42,6 @@ export default function ShippingCalendar() {
   const client = useWorkspaceClient({apiVersion: '2024-04-10'})
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState<boolean>(true)
-  const calcomEmbedUrl = useMemo(() => {
-    return (
-      readStudioEnv('SANITY_STUDIO_CALCOM_EMBED_URL') ||
-      readStudioEnv('VITE_CALCOM_EMBED_URL') ||
-      undefined
-    )
-  }, [])
 
   useEffect(() => {
     const query = `
@@ -132,81 +124,54 @@ export default function ShippingCalendar() {
 
   return (
     <Card padding={4}>
-      <Heading size={2}>📆 Shipping Calendar + Booking</Heading>
-      <Box display="flex" paddingTop={4} style={{flexDirection: 'row', gap: '2rem'}}>
-        {/* Calendar Column */}
-        <Box flex={2}>
-          <Stack space={4}>
-            {loading && <Text>Loading...</Text>}
-              {!loading && events.length === 0 && <Text>No shipments scheduled.</Text>}
-            {!loading && events.length > 0 && (
-              <>
-                {Object.entries(
-                  events.reduce((acc, event) => {
-                    const dateKey = new Date(event.shipDate).toDateString()
-                    acc[dateKey] = acc[dateKey] || []
-                    acc[dateKey].push(event)
-                    return acc
-                  }, {} as Record<string, Event[]>)
-                ).map(([date, dayEvents]) => (
-                  <Card
-                    key={date}
-                    padding={3}
-                    shadow={1}
-                    radius={2}
-                    style={{
-                      backgroundColor: new Date(date).toDateString() === new Date().toDateString() ? '#fef9e7' : undefined
-                    }}
-                  >
-                    <Heading size={1}>{date}</Heading>
-                    <Stack space={2} marginTop={2}>
-                      {dayEvents.map((event) => (
-                        <Text key={event._id}>
-                          🚚 {event.customerName} — 
-                          <StatusBadge status={event.status} />
-                          {event.trackingUrl && (
-                            <a href={event.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 12 }}>
-                              📦 Track
-                            </a>
-                          )}
-                          {event.labelUrl && (
-                            <a href={event.labelUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
-                              🧾 Label
-                            </a>
-                          )}
-                        </Text>
-                      ))}
-                    </Stack>
-                  </Card>
-                ))}
-              </>
-            )}
-          </Stack>
-        </Box>
-
-        {/* Calendly Sidebar */}
-        <Box flex={1} style={{ minWidth: '400px', height: '700px' }}>
-          {calcomEmbedUrl ? (
-            <iframe
-              src={calcomEmbedUrl}
-              title="Cal.com Booking"
-              style={{ border: 'none', width: '100%', height: '100%', borderRadius: 8 }}
-              allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
-            />
-          ) : (
-            <Card padding={4} tone="caution" radius={2} shadow={1}>
-              <Stack space={3}>
-                <Heading as="h3" size={1}>
-                  Cal.com embed not configured
-                </Heading>
-                <Text>
-                  Provide `SANITY_STUDIO_CALCOM_EMBED_URL` (or `VITE_CALCOM_EMBED_URL`) in your environment to show the
-                  booking widget.
-                </Text>
-              </Stack>
-            </Card>
+      <Heading size={2}>📆 Shipping Calendar</Heading>
+      <Box paddingTop={4}>
+        <Stack space={4}>
+          {loading && <Text>Loading...</Text>}
+          {!loading && events.length === 0 && <Text>No shipments scheduled.</Text>}
+          {!loading && events.length > 0 && (
+            <>
+              {Object.entries(
+                events.reduce((acc, event) => {
+                  const dateKey = new Date(event.shipDate).toDateString()
+                  acc[dateKey] = acc[dateKey] || []
+                  acc[dateKey].push(event)
+                  return acc
+                }, {} as Record<string, Event[]>)
+              ).map(([date, dayEvents]) => (
+                <Card
+                  key={date}
+                  padding={3}
+                  shadow={1}
+                  radius={2}
+                  style={{
+                    backgroundColor: new Date(date).toDateString() === new Date().toDateString() ? '#fef9e7' : undefined
+                  }}
+                >
+                  <Heading size={1}>{date}</Heading>
+                  <Stack space={2} marginTop={2}>
+                    {dayEvents.map((event) => (
+                      <Text key={event._id}>
+                        🚚 {event.customerName} — 
+                        <StatusBadge status={event.status} />
+                        {event.trackingUrl && (
+                          <a href={event.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 12 }}>
+                            📦 Track
+                          </a>
+                        )}
+                        {event.labelUrl && (
+                          <a href={event.labelUrl} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 8 }}>
+                            🧾 Label
+                          </a>
+                        )}
+                      </Text>
+                    ))}
+                  </Stack>
+                </Card>
+              ))}
+            </>
           )}
-        </Box>
+        </Stack>
       </Box>
     </Card>
   )
