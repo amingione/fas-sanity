@@ -1679,15 +1679,6 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                                   {item.details.join(' • ')}
                                 </Text>
                               )}
-                              {item.metadataInfo.length > 0 && (
-                                <Stack space={1}>
-                                  {item.metadataInfo.map((info, idx) => (
-                                    <Text key={`${item._key}-meta-${idx}`} size={1} muted>
-                                      {info}
-                                    </Text>
-                                  ))}
-                                </Stack>
-                              )}
                             </Stack>
                             <Stack
                               space={1}

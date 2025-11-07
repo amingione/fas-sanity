@@ -1,5 +1,4 @@
-import {useEffect, useMemo} from 'react'
-import {Badge, Card, Flex, Stack, Text} from '@sanity/ui'
+import {useEffect} from 'react'
 import {ArrayOfObjectsInputProps, PatchEvent, set, unset} from 'sanity'
 import {normalizeMetadataEntries} from '../../utils/cartItemDetails'
 
@@ -61,46 +60,7 @@ const OrderCartItemMetadataInput = (props: ArrayOfObjectsInputProps<MetadataEntr
     onChange(PatchEvent.from(set(next)))
   }, [value, onChange])
 
-  const entries = useMemo(() => (Array.isArray(value) ? (value as MetadataEntry[]) : []), [value])
-
-  if (!entries.length) {
-    return (
-      <Card padding={3} tone="transparent" radius={2} border>
-        <Text size={1} muted>
-          No metadata available
-        </Text>
-      </Card>
-    )
-  }
-
-  return (
-    <Stack space={2} paddingY={1}>
-      {entries.map((entry) => {
-        const key = entry._key || entry.key || generateKey()
-        return (
-          <Card key={key} padding={3} radius={2} tone="transparent" border>
-            <Stack space={2}>
-              <Text size={1} weight="semibold">
-                {entry.key || 'Untitled'}
-              </Text>
-              {entry.value && (
-                <Text size={1} style={{wordBreak: 'break-word'}}>
-                  {entry.value}
-                </Text>
-              )}
-              {entry.source && (
-                <Flex>
-                  <Badge mode="outline" tone="primary" padding={2} radius={3}>
-                    Source: {entry.source}
-                  </Badge>
-                </Flex>
-              )}
-            </Stack>
-          </Card>
-        )
-      })}
-    </Stack>
-  )
+  return null
 }
 
 export default OrderCartItemMetadataInput
