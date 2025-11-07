@@ -34,6 +34,8 @@ export type InvoiceLineItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
+  customizations?: Array<string | null> | string | null
+  validationIssues?: Array<string | null> | string | null
   metadata?: Array<Record<string, unknown>> | null
   _key?: string | null
 }
@@ -50,6 +52,8 @@ export type OrderCartItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
+  customizations?: Array<string | null> | string | null
+  validationIssues?: Array<string | null> | string | null
   metadata?: Array<{ key?: string | null; value?: unknown }> | null
 }
 
@@ -323,9 +327,22 @@ function combineLineItems(
     derived.upgrades
   )
 
+  const customizations = mergeUniqueStrings(
+    toStringArray((invoiceItem as any)?.customizations),
+    toStringArray(cartItem?.customizations),
+    derived.customizations
+  )
+
+  const validationIssues = mergeUniqueStrings(
+    toStringArray((invoiceItem as any)?.validationIssues),
+    toStringArray(cartItem?.validationIssues),
+  )
+
   if (optionSummary) merged.optionSummary = optionSummary
   if (optionDetails.length) merged.optionDetails = optionDetails
   if (upgrades.length) merged.upgrades = upgrades
+  if (customizations.length) merged.customizations = customizations
+  if (validationIssues.length) merged.validationIssues = validationIssues
 
   if (!merged.sku) merged.sku = coalesceString(invoiceItem?.sku, cartItem?.sku)
 
@@ -1096,9 +1113,15 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
   )
 
   const optionSummary = normalizeString((item as any)?.optionSummary)
+  const validationIssuesList = mergeUniqueStrings(
+    toStringArray((item as any)?.validationIssues),
+  )
+
   const optionDetails = mergeUniqueStrings(
     toStringArray((item as any)?.optionDetails),
-    optionSummary ? [optionSummary] : []
+    optionSummary ? [optionSummary] : [],
+    toStringArray((item as any)?.customizations),
+    validationIssuesList.map((issue) => `⚠️ ${issue}`)
   )
 
   const extrasList = collectMetadataExtras(

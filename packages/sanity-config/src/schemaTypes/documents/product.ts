@@ -356,7 +356,8 @@ const product = defineType({
     defineField({
       name: 'options',
       title: 'Product Options',
-      description: 'Color, Size, or custom options for variable products',
+      description:
+        'Color, Size, or custom selectors customers must choose before adding to cart. Use the Required toggle on each option to enforce selection.',
       type: 'array',
       of: [
         {type: 'customProductOption.color'},
@@ -384,10 +385,20 @@ const product = defineType({
     }),
     defineField({
       name: 'addOns',
-      title: 'Optional Add-ons & Upgrades',
+      title: 'Upgrades & Add-ons (Optional)',
       type: 'array',
       of: [{type: 'addOn'}],
-      description: 'Checkbox add-ons (ceramic bearings +$500, paint service +$X)',
+      description:
+        'Upsell extras the customer may choose in addition to required product options (e.g., ceramic bearings, install kits).',
+      group: 'options',
+    }),
+    defineField({
+      name: 'customizations',
+      title: 'Customizations & Personalization',
+      type: 'array',
+      of: [{type: 'productCustomization'}],
+      description:
+        'Collect engraving text, initials, or other personalization details. Mark fields as required to block checkout until completed.',
       group: 'options',
     }),
 

@@ -112,9 +112,14 @@ type OrderCartItem = {
   image?: string
   price?: number
   quantity?: number
+  lineTotal?: number
+  total?: number
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  customizations?: string[]
+  productRef?: {_type: 'reference'; _ref: string}
+  validationIssues?: string[]
   metadata?: ReturnType<typeof buildMetadataEntries>
 }
 
@@ -281,6 +286,57 @@ const normalizeCartArrayValue = (
       }
     }
 
+    const existingCustomizations = coerceStringArray(record.customizations)
+    const finalCustomizations = uniqueStrings([
+      ...existingCustomizations,
+      ...derivedOptions.customizations,
+    ])
+    if (finalCustomizations.length) {
+      if (
+        !arraysEqual(finalCustomizations, existingCustomizations) ||
+        !Array.isArray(record.customizations)
+      ) {
+        normalizedItem.customizations = finalCustomizations
+        changed = true
+      } else {
+        normalizedItem.customizations = record.customizations as string[]
+      }
+    } else if (record.customizations) {
+      const sanitized = coerceStringArray(record.customizations)
+      if (sanitized.length) {
+        normalizedItem.customizations = sanitized
+        changed = true
+      } else {
+        delete (normalizedItem as any).customizations
+        changed = true
+      }
+    }
+
+    const validationIssues = coerceStringArray((record as any).validationIssues)
+    if (validationIssues.length) {
+      normalizedItem.validationIssues = validationIssues
+      if (!Array.isArray((record as any).validationIssues)) {
+        changed = true
+      }
+    } else if ((record as any).validationIssues) {
+      delete (normalizedItem as any).validationIssues
+      changed = true
+    }
+
+    const lineTotal = toNumberValue((record as any).lineTotal)
+    if (typeof lineTotal === 'number') {
+      normalizedItem.lineTotal = lineTotal
+    } else if ('lineTotal' in record) {
+      delete (normalizedItem as any).lineTotal
+    }
+
+    const total = toNumberValue((record as any).total)
+    if (typeof total === 'number') {
+      normalizedItem.total = total
+    } else if ('total' in record) {
+      delete (normalizedItem as any).total
+    }
+
     next.push(normalizedItem)
   })
 
@@ -314,6 +370,12 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   )
   const price = toNumberValue(consume(source, ['price', 'unit_price', 'base_price']))
   const quantity = toNumberValue(consume(source, ['quantity', 'qty', 'amount']))
+  const lineTotal = toNumberValue(
+    consume(source, ['lineTotal', 'line_total', 'amount_total', 'amountTotal'])
+  )
+  const total = toNumberValue(
+    consume(source, ['total', 'item_total', 'itemTotal', 'total_amount'])
+  )
   const optionSummary = toStringValue(
     consume(source, ['optionSummary', 'option_summary', 'options_readable'])
   )
@@ -321,6 +383,36 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
     consume(source, ['optionDetails', 'option_details', 'selected_options'])
   )
   const upgrades = toStringArray(consume(source, ['upgrades', 'upgrade_list']))
+  const customizations = toStringArray(
+    consume(
+      source,
+      [
+        'customizations',
+        'customization',
+        'customization_details',
+        'custom_details',
+        'custom_detail',
+        'custom_message',
+        'custom_text',
+        'personalization',
+        'personalisation',
+        'personalized_message',
+        'personalised_message',
+        'engraving',
+        'engraving_text',
+        'gift_message',
+        'item_note',
+        'product_note',
+        'order_item_note',
+      ],
+    )
+  )
+  const validationIssues = toStringArray(
+    consume(source, ['validationIssues', 'validation_issues', 'validationErrors'])
+  )
+  const productRefValue = toStringValue(
+    consume(source, ['productRef', 'product_ref', 'sanity_product_ref'])
+  )
 
   const metadataValues: unknown[] = []
   if ('metadata' in source) {
@@ -347,9 +439,16 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   if (image) cartItem.image = image
   if (typeof price === 'number') cartItem.price = price
   if (typeof quantity === 'number') cartItem.quantity = quantity
+  if (typeof lineTotal === 'number') cartItem.lineTotal = lineTotal
+  if (typeof total === 'number') cartItem.total = total
   if (optionSummary) cartItem.optionSummary = optionSummary
   if (optionDetails?.length) cartItem.optionDetails = optionDetails
   if (upgrades?.length) cartItem.upgrades = upgrades
+  if (customizations?.length) cartItem.customizations = customizations
+  if (validationIssues?.length) cartItem.validationIssues = validationIssues
+  if (productRefValue) {
+    cartItem.productRef = {_type: 'reference', _ref: productRefValue}
+  }
   if (metadata.length) cartItem.metadata = metadata
 
   return cartItem

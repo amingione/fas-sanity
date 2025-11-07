@@ -19,6 +19,13 @@ export const customProductOptionCustomType = defineField({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'required',
+      type: 'boolean',
+      title: 'Required',
+      description: 'Customers must select a value before adding this product to the cart.',
+      initialValue: true,
+    }),
+    defineField({
       name: 'values',
       title: 'Choices',
       type: 'array',
@@ -43,12 +50,15 @@ export const customProductOptionCustomType = defineField({
     select: {
       values: 'values',
       title: 'title',
+      required: 'required',
     },
-    prepare({values, title}: {values?: unknown; title?: string}) {
+    prepare({values, title, required}: {values?: unknown; title?: string; required?: boolean}) {
       const list = Array.isArray(values) ? values : []
       const count = list.length
+      const pieces = [count ? pluralize('choice', count, true) : 'No choices']
+      pieces.push(required === false ? 'Optional' : 'Required')
       return {
-        subtitle: count ? pluralize('choice', count, true) : 'No choices',
+        subtitle: pieces.join(' • '),
         title: title || 'Custom Option',
       }
     },
