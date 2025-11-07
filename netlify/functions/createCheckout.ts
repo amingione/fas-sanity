@@ -307,8 +307,8 @@ export const handler: Handler = async (event) => {
               pushMeta('shipping_delivery_days', Math.max(1, Math.round(deliveryDays)))
             }
             pushMeta('shipping_estimated_delivery_date', rate?.estimatedDeliveryDate)
-            pushMeta('shipengine_rate_id', rate?.rateId)
-            pushMeta('shipping_rate_source', 'shipengine')
+            pushMeta('shipping_rate_id', rate?.rateId)
+            pushMeta('shipping_rate_source', 'easypost')
 
             return {
               shipping_rate_data: {

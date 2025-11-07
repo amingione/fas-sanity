@@ -2,55 +2,14 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {Button, Flex} from '@sanity/ui'
 import {useClient, useFormValue} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
+import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
 import ShippingLabelActions from './ShippingLabelActions'
 
-const DEFAULT_NETLIFY_BASE = 'https://fassanity.fasmotorsports.com'
 const SANITY_API_VERSION =
   (typeof process !== 'undefined'
     ? ((process as any)?.env?.SANITY_STUDIO_API_VERSION ||
         (process as any)?.env?.SANITY_API_VERSION) ?? null
     : null) || '2024-10-01'
-
-function normalizeBase(value?: string | null): string | null {
-  if (!value) return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  if (!/^https?:\/\//i.test(trimmed)) return null
-  return trimmed.replace(/\/+$/, '')
-}
-
-function getFnBaseCandidates(): string[] {
-  const candidates: string[] = []
-  const envBase = normalizeBase(
-    (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as
-      | string
-      | undefined,
-  )
-  if (envBase) candidates.push(envBase)
-
-  const localNetlifyBases = [
-    normalizeBase('http://localhost:8888'),
-    normalizeBase('http://127.0.0.1:8888'),
-  ].filter((candidate): candidate is string => Boolean(candidate))
-  candidates.push(...localNetlifyBases)
-
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = normalizeBase(window.localStorage?.getItem('NLFY_BASE'))
-      if (stored) candidates.push(stored)
-    } catch {
-      // ignore storage access errors
-    }
-
-    const origin = normalizeBase(window.location?.origin)
-    if (origin) candidates.push(origin)
-  }
-
-  const fallback = normalizeBase(DEFAULT_NETLIFY_BASE)
-  if (fallback) candidates.push(fallback)
-
-  return Array.from(new Set(candidates))
-}
 
 function resolvePatchTargets(rawId?: string | null): string[] {
   if (!rawId) return []
@@ -66,7 +25,7 @@ function resolvePatchTargets(rawId?: string | null): string[] {
 export default function OrderShippingActions() {
   const doc = useFormValue([]) as any
   const client = useClient({apiVersion: SANITY_API_VERSION})
-  const baseCandidates = useMemo(() => getFnBaseCandidates(), [])
+  const baseCandidates = useMemo(() => getNetlifyFunctionBaseCandidates(), [])
   const lastSuccessfulBaseRef = useRef<string | null>(baseCandidates[0] ?? null)
 
   const [isGenerating, setIsGenerating] = useState(false)

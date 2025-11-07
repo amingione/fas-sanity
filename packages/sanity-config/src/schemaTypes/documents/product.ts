@@ -1,8 +1,7 @@
 import {defineType, defineField} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 
-const PRODUCT_PLACEHOLDER_ASSET =
-  'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
+const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 
 /**
  * SIMPLIFIED PRODUCT SCHEMA
@@ -23,30 +22,31 @@ const product = defineType({
   title: 'Product',
   type: 'document',
   groups: [
-    { name: 'essentials', title: '✓ Essentials', default: true },
-    { name: 'content', title: 'Content & Description' },
-    { name: 'pricing', title: 'Pricing & Sale' },
-    { name: 'media', title: 'Images & Media' },
-    { name: 'options', title: 'Options & Add-ons' },
-    { name: 'compatibility', title: 'Vehicle Compatibility' },
-    { name: 'seo', title: 'SEO & Metadata' },
-    { name: 'advanced', title: 'Advanced Settings' },
+    {name: 'essentials', title: '✓ Essentials', default: true},
+    {name: 'content', title: 'Content & Description'},
+    {name: 'pricing', title: 'Pricing & Sale'},
+    {name: 'media', title: 'Images & Media'},
+    {name: 'options', title: 'Options & Add-ons'},
+    {name: 'compatibility', title: 'Vehicle Compatibility'},
+    {name: 'shipping', title: 'Shipping & Logistics'},
+    {name: 'seo', title: 'SEO & Metadata'},
+    {name: 'advanced', title: 'Advanced Settings'},
   ],
   fieldsets: [
     {
       name: 'stripe',
       title: 'Stripe Integration (Auto-synced - Read Only)',
-      options: { collapsible: true, collapsed: true },
+      options: {collapsible: true, collapsed: true},
     },
     {
       name: 'shipping',
-      title: 'Shipping Configuration (Optional)',
-      options: { collapsible: true, collapsed: true },
+      title: 'Shipping Configuration (Required)',
+      options: {collapsible: true, collapsed: false},
     },
     {
-      name: 'unused',
-      title: 'Unused Fields (Legacy/Google Shopping)',
-      options: { collapsible: true, collapsed: true },
+      name: 'merchant',
+      title: 'Google Merchant Center (Required)',
+      options: {collapsible: true, collapsed: false},
     },
   ],
   fields: [
@@ -58,17 +58,17 @@ const product = defineType({
       title: 'Product Title',
       type: 'string',
       description: 'The name of your product as it appears on the website',
-      validation: Rule => Rule.required(),
-      group: 'essentials'
+      validation: (Rule) => Rule.required(),
+      group: 'essentials',
     }),
     defineField({
       name: 'slug',
       title: 'URL Slug',
       type: 'slug',
-      options: { source: 'title', maxLength: 96 },
+      options: {source: 'title', maxLength: 96},
       description: 'Auto-generated from title. Used in product URL',
-      validation: Rule => Rule.required(),
-      group: 'essentials'
+      validation: (Rule) => Rule.required(),
+      group: 'essentials',
     }),
     defineField({
       name: 'status',
@@ -91,16 +91,16 @@ const product = defineType({
       name: 'category',
       title: 'Categories',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'category' }] }],
+      of: [{type: 'reference', to: [{type: 'category'}]}],
       description: 'Organize products into categories for shop filtering',
-      group: 'essentials'
+      group: 'essentials',
     }),
     defineField({
       name: 'sku',
       title: 'SKU',
       type: 'string',
       description: 'Stock Keeping Unit - unique product identifier',
-      group: 'essentials'
+      group: 'essentials',
     }),
     defineField({
       name: 'featured',
@@ -108,7 +108,7 @@ const product = defineType({
       type: 'boolean',
       description: 'Show this product in featured sections',
       initialValue: false,
-      group: 'essentials'
+      group: 'essentials',
     }),
 
     // ============================================
@@ -119,8 +119,8 @@ const product = defineType({
       title: 'Regular Price (USD)',
       type: 'number',
       description: 'Base product price',
-      validation: Rule => Rule.min(0),
-      group: 'pricing'
+      validation: (Rule) => Rule.min(0),
+      group: 'pricing',
     }),
     defineField({
       name: 'onSale',
@@ -128,16 +128,16 @@ const product = defineType({
       type: 'boolean',
       description: 'Enable to show sale pricing',
       initialValue: false,
-      group: 'pricing'
+      group: 'pricing',
     }),
     defineField({
       name: 'salePrice',
       title: 'Sale Price (USD)',
       type: 'number',
       description: 'Discounted price when on sale',
-      validation: Rule => Rule.min(0),
-      hidden: ({ parent }) => !parent?.onSale,
-      group: 'pricing'
+      validation: (Rule) => Rule.min(0),
+      hidden: ({parent}) => !parent?.onSale,
+      group: 'pricing',
     }),
 
     // Stripe Integration (Auto-managed, collapsible)
@@ -193,7 +193,7 @@ const product = defineType({
       name: 'stripePrices',
       title: 'Stripe Price History',
       type: 'array',
-      of: [{ type: 'stripePriceSnapshot' }],
+      of: [{type: 'stripePriceSnapshot'}],
       readOnly: true,
       fieldset: 'stripe',
       group: 'pricing',
@@ -202,7 +202,7 @@ const product = defineType({
       name: 'stripeMetadata',
       title: 'Stripe Metadata',
       type: 'array',
-      of: [{ type: 'stripeMetadataEntry' }],
+      of: [{type: 'stripeMetadataEntry'}],
       readOnly: true,
       fieldset: 'stripe',
       group: 'pricing',
@@ -218,19 +218,19 @@ const product = defineType({
       of: [
         {
           type: 'block',
-          styles: [{ title: 'Normal', value: 'normal' }],
-          lists: [{ title: 'Bullet', value: 'bullet' }],
+          styles: [{title: 'Normal', value: 'normal'}],
+          lists: [{title: 'Bullet', value: 'bullet'}],
           marks: {
             decorators: [
-              { title: 'Bold', value: 'strong' },
-              { title: 'Italic', value: 'em' }
+              {title: 'Bold', value: 'strong'},
+              {title: 'Italic', value: 'em'},
             ],
-          }
+          },
         },
       ],
       description: 'Brief intro shown near title/price (1-2 sentences)',
       validation: (Rule) => Rule.max(2).warning('Keep it concise'),
-      group: 'content'
+      group: 'content',
     }),
     defineField({
       name: 'description',
@@ -240,66 +240,66 @@ const product = defineType({
         {
           type: 'block',
           styles: [
-            { title: 'Normal', value: 'normal' },
-            { title: 'H2', value: 'h2' },
-            { title: 'H3', value: 'h3' }
+            {title: 'Normal', value: 'normal'},
+            {title: 'H2', value: 'h2'},
+            {title: 'H3', value: 'h3'},
           ],
           lists: [
-            { title: 'Bullet', value: 'bullet' },
-            { title: 'Numbered', value: 'number' }
+            {title: 'Bullet', value: 'bullet'},
+            {title: 'Numbered', value: 'number'},
           ],
           marks: {
             decorators: [
-              { title: 'Bold', value: 'strong' },
-              { title: 'Italic', value: 'em' },
-              { title: 'Underline', value: 'underline' }
+              {title: 'Bold', value: 'strong'},
+              {title: 'Italic', value: 'em'},
+              {title: 'Underline', value: 'underline'},
             ],
             annotations: [
               {
                 name: 'link',
                 type: 'object',
                 title: 'Link',
-                fields: [{ name: 'href', type: 'url', title: 'URL' }]
-              }
-            ]
-          }
+                fields: [{name: 'href', type: 'url', title: 'URL'}],
+              },
+            ],
+          },
         },
-        { type: 'image', options: { hotspot: true } },
+        {type: 'image', options: {hotspot: true}},
       ],
       description: 'Full product description with formatting',
-      group: 'content'
+      group: 'content',
     }),
     defineField({
       name: 'importantNotes',
       title: 'Important Notes / Warnings',
       type: 'array',
-      of: [{ type: 'block' }],
+      of: [{type: 'block'}],
       description: 'Critical info displayed prominently (e.g., fitment requirements, warnings)',
-      group: 'content'
+      group: 'content',
     }),
     defineField({
       name: 'specifications',
       title: 'Technical Specifications',
       type: 'array',
       description: 'Key/value specs shown in table (Material, Weight, Dimensions, etc.)',
-      of: [ { type: 'specItem' } ],
-      group: 'content'
+      of: [{type: 'specItem'}],
+      group: 'content',
     }),
     defineField({
       name: 'attributes',
       title: 'Product Attributes',
       type: 'array',
-      of: [ { type: 'attribute' } ],
+      of: [{type: 'attribute'}],
       description: 'Additional attributes (Color: Black, Finish: Anodized, etc.)',
-      group: 'content'
+      group: 'content',
     }),
     defineField({
       name: 'includedInKit',
-      title: 'What\'s Included',
+      title: "What's Included",
       type: 'array',
-      of: [ { type: 'kitItem' } ],
+      of: [{type: 'kitItem'}],
       description: 'List items included in the kit (bolts, gaskets, instructions)',
-      group: 'content'
+      group: 'content',
     }),
 
     // ============================================
@@ -309,26 +309,30 @@ const product = defineType({
       name: 'images',
       title: 'Product Images',
       type: 'array',
-      of: [{
-        type: 'image',
-        fields: [{
-          name: 'alt',
-          title: 'Alt Text',
-          type: 'string',
-          description: 'Describe the image for accessibility & SEO'
-        }],
-        options: { hotspot: true }
-      }],
+      of: [
+        {
+          type: 'image',
+          fields: [
+            {
+              name: 'alt',
+              title: 'Alt Text',
+              type: 'string',
+              description: 'Describe the image for accessibility & SEO',
+            },
+          ],
+          options: {hotspot: true},
+        },
+      ],
       description: 'Main product gallery images',
-      group: 'media'
+      group: 'media',
     }),
     defineField({
       name: 'mediaAssets',
       title: 'Additional Media',
       type: 'array',
-      of: [ { type: 'mediaItem' } ],
+      of: [{type: 'mediaItem'}],
       description: 'Videos, PDFs, installation guides, etc.',
-      group: 'media'
+      group: 'media',
     }),
 
     // ============================================
@@ -342,12 +346,12 @@ const product = defineType({
       initialValue: 'simple',
       options: {
         list: [
-          { title: 'Simple Product', value: 'simple' },
-          { title: 'Variable Product (has options)', value: 'variable' },
+          {title: 'Simple Product', value: 'simple'},
+          {title: 'Variable Product (has options)', value: 'variable'},
         ],
-        layout: 'radio'
+        layout: 'radio',
       },
-      group: 'options'
+      group: 'options',
     }),
     defineField({
       name: 'options',
@@ -355,11 +359,11 @@ const product = defineType({
       description: 'Color, Size, or custom options for variable products',
       type: 'array',
       of: [
-        { type: 'customProductOption.color' },
-        { type: 'customProductOption.size' },
-        { type: 'customProductOption.custom' }
+        {type: 'customProductOption.color'},
+        {type: 'customProductOption.size'},
+        {type: 'customProductOption.custom'},
       ],
-      hidden: ({ parent }) => parent?.productType !== 'variable',
+      hidden: ({parent}) => parent?.productType !== 'variable',
       validation: (Rule) =>
         Rule.custom((options, context) => {
           const productType = (context?.parent as {productType?: string} | undefined)?.productType
@@ -369,22 +373,22 @@ const product = defineType({
           }
           return true
         }),
-      group: 'options'
+      group: 'options',
     }),
     defineField({
       name: 'customPaint',
       title: 'Custom Paint Options',
       type: 'customPaint',
       description: 'Enable custom paint color selection',
-      group: 'options'
+      group: 'options',
     }),
     defineField({
       name: 'addOns',
       title: 'Optional Add-ons & Upgrades',
       type: 'array',
-      of: [ { type: 'addOn' } ],
+      of: [{type: 'addOn'}],
       description: 'Checkbox add-ons (ceramic bearings +$500, paint service +$X)',
-      group: 'options'
+      group: 'options',
     }),
 
     // ============================================
@@ -394,24 +398,24 @@ const product = defineType({
       name: 'compatibleVehicles',
       title: 'Compatible Vehicles',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'vehicleModel' }] }],
+      of: [{type: 'reference', to: [{type: 'vehicleModel'}]}],
       description: 'Link to compatible vehicle models',
-      group: 'compatibility'
+      group: 'compatibility',
     }),
     defineField({
       name: 'tune',
       title: 'Associated Tune',
       type: 'reference',
-      to: [{ type: 'tune' }],
+      to: [{type: 'tune'}],
       description: 'Link to tune if applicable',
-      group: 'compatibility'
+      group: 'compatibility',
     }),
     defineField({
       name: 'averageHorsepower',
       title: 'Average Horsepower Gain',
       type: 'number',
       description: 'Expected HP increase',
-      group: 'compatibility'
+      group: 'compatibility',
     }),
 
     // ============================================
@@ -422,8 +426,8 @@ const product = defineType({
       title: 'Meta Title',
       type: 'string',
       description: 'SEO title (50-60 chars recommended)',
-      validation: Rule => Rule.max(60).warning('Keep under 60 characters'),
-      group: 'seo'
+      validation: (Rule) => Rule.max(60).warning('Keep under 60 characters'),
+      group: 'seo',
     }),
     defineField({
       name: 'metaDescription',
@@ -431,45 +435,50 @@ const product = defineType({
       type: 'text',
       rows: 3,
       description: 'SEO description (140-160 chars recommended)',
-      validation: Rule => Rule.max(160).warning('Keep under 160 characters'),
-      group: 'seo'
+      validation: (Rule) => Rule.max(160).warning('Keep under 160 characters'),
+      group: 'seo',
     }),
     defineField({
       name: 'brand',
       title: 'Brand / Manufacturer',
       type: 'string',
       description: 'Brand name for schema.org markup',
-      group: 'seo'
+      group: 'seo',
     }),
     defineField({
       name: 'gtin',
       title: 'GTIN (UPC/EAN)',
       type: 'string',
       description: 'Product barcode for Google Shopping',
-      group: 'seo'
+      group: 'seo',
     }),
     defineField({
       name: 'mpn',
       title: 'MPN',
       type: 'string',
       description: 'Manufacturer Part Number',
-      group: 'seo'
+      group: 'seo',
     }),
     defineField({
       name: 'socialImage',
       title: 'Social Share Image',
       type: 'image',
-      options: { hotspot: true },
-      fields: [{ name: 'alt', title: 'Alt Text', type: 'string' }],
+      options: {hotspot: true},
+      fields: [{name: 'alt', title: 'Alt Text', type: 'string'}],
       description: 'Custom image for social media sharing (1200×630px)',
-      group: 'seo'
+      group: 'seo',
     }),
     defineField({
       name: 'canonicalUrl',
       title: 'Canonical URL',
       type: 'url',
-      description: 'Override URL to prevent duplicate content',
-      group: 'seo'
+      description:
+        'Auto-filled from the product slug; override only when a custom canonical is required.',
+      initialValue: ({document}: {document?: any}) => {
+        const slug = document?.slug?.current
+        return slug ? `https://fasmotorsports.com/shop/${slug}` : ''
+      },
+      group: 'seo',
     }),
     defineField({
       name: 'noindex',
@@ -477,7 +486,7 @@ const product = defineType({
       type: 'boolean',
       initialValue: false,
       description: 'Prevent search engines from indexing',
-      group: 'seo'
+      group: 'seo',
     }),
 
     // ============================================
@@ -489,17 +498,17 @@ const product = defineType({
       name: 'relatedProducts',
       title: 'Related Products',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      of: [{type: 'reference', to: [{type: 'product'}]}],
       description: 'Manually curated related products (auto-computed by default)',
-      group: 'advanced'
+      group: 'advanced',
     }),
     defineField({
       name: 'upsellProducts',
       title: 'Upsell Products',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      of: [{type: 'reference', to: [{type: 'product'}]}],
       description: 'Premium alternatives to suggest',
-      group: 'advanced'
+      group: 'advanced',
     }),
 
     // Product Tags
@@ -507,18 +516,18 @@ const product = defineType({
       name: 'filters',
       title: 'Filter Tags',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'filterTag' }] }],
+      of: [{type: 'reference', to: [{type: 'filterTag'}]}],
       description: 'Tags for shop filtering',
-      group: 'advanced'
+      group: 'advanced',
     }),
 
-    // Shipping Configuration (Collapsed by default)
+    // Shipping Configuration (Required)
     defineField({
       name: 'shippingWeight',
       title: 'Weight (lbs)',
       type: 'number',
       fieldset: 'shipping',
-      group: 'advanced'
+      group: 'shipping',
     }),
     defineField({
       name: 'boxDimensions',
@@ -526,7 +535,16 @@ const product = defineType({
       type: 'string',
       description: 'Format: 18x12x10 inches',
       fieldset: 'shipping',
-      group: 'advanced'
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'handlingTime',
+      title: 'Handling Time (Days)',
+      type: 'number',
+      description: 'Business days needed to prepare and hand off the shipment.',
+      validation: (Rule) => Rule.min(0),
+      fieldset: 'shipping',
+      group: 'shipping',
     }),
     defineField({
       name: 'installOnly',
@@ -535,7 +553,7 @@ const product = defineType({
       description: 'In-store installation only',
       initialValue: false,
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingClass',
@@ -545,7 +563,7 @@ const product = defineType({
         list: ['Standard', 'Oversized', 'Freight', 'Free Shipping', 'Install Only'],
       },
       fieldset: 'shipping',
-      group: 'advanced',
+      group: 'shipping',
     }),
     defineField({
       name: 'shipsAlone',
@@ -553,10 +571,19 @@ const product = defineType({
       type: 'boolean',
       description: 'Cannot ship with other items',
       fieldset: 'shipping',
-      group: 'advanced'
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'specialShippingNotes',
+      title: 'Special Shipping Notes',
+      type: 'text',
+      rows: 4,
+      description: 'Internal or customer-facing shipping notes that must accompany orders.',
+      fieldset: 'shipping',
+      group: 'shipping',
     }),
 
-    // Unused Fields (Collapsed, kept for legacy/Google Shopping)
+    // Google Merchant Center Requirements
     defineField({
       name: 'availability',
       title: 'Availability Status',
@@ -570,7 +597,7 @@ const product = defineType({
         ],
       },
       initialValue: 'in_stock',
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -585,7 +612,7 @@ const product = defineType({
         ],
       },
       initialValue: 'new',
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -593,7 +620,7 @@ const product = defineType({
       title: 'Inventory Count',
       type: 'number',
       validation: (Rule) => Rule.min(0),
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -603,7 +630,7 @@ const product = defineType({
       options: {
         list: googleProductCategories.map((category) => ({title: category, value: category})),
       },
-      fieldset: 'unused',
+      fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
@@ -617,16 +644,16 @@ const product = defineType({
         ],
       },
       initialValue: 'taxable',
-      fieldset: 'unused',
-      group: 'advanced'
+      fieldset: 'merchant',
+      group: 'advanced',
     }),
     defineField({
       name: 'pricingTiers',
       title: 'Bulk Pricing Tiers',
       type: 'array',
-      of: [{ type: 'pricingTier' }],
-      fieldset: 'unused',
-      group: 'advanced'
+      of: [{type: 'pricingTier'}],
+      fieldset: 'merchant',
+      group: 'advanced',
     }),
 
     // Deprecated fields (hidden unless they have values)
@@ -634,34 +661,35 @@ const product = defineType({
       name: 'variationOptions',
       title: 'Variation Options (deprecated)',
       type: 'array',
-      of: [{ type: 'string' }],
+      of: [{type: 'string'}],
       readOnly: true,
-      hidden: ({ parent }) => !Array.isArray(parent?.variationOptions) || parent.variationOptions.length === 0,
-      group: 'advanced'
+      hidden: ({parent}) =>
+        !Array.isArray(parent?.variationOptions) || parent.variationOptions.length === 0,
+      group: 'advanced',
     }),
     defineField({
       name: 'color',
       title: 'Color (legacy)',
       type: 'string',
-      hidden: ({ parent }) => !parent?.color,
+      hidden: ({parent}) => !parent?.color,
       readOnly: true,
-      group: 'advanced'
+      group: 'advanced',
     }),
     defineField({
       name: 'size',
       title: 'Size (legacy)',
       type: 'string',
-      hidden: ({ parent }) => !parent?.size,
+      hidden: ({parent}) => !parent?.size,
       readOnly: true,
-      group: 'advanced'
+      group: 'advanced',
     }),
     defineField({
       name: 'material',
       title: 'Material (legacy)',
       type: 'string',
-      hidden: ({ parent }) => !parent?.material,
+      hidden: ({parent}) => !parent?.material,
       readOnly: true,
-      group: 'advanced'
+      group: 'advanced',
     }),
   ],
 
@@ -686,10 +714,10 @@ const product = defineType({
       return {
         title: title || 'Untitled Product',
         subtitle: [subtitle, priceDisplay, status?.toUpperCase()].filter(Boolean).join(' • '),
-        media,
+        media: media as any,
       }
     },
   },
-});
+})
 
-export default product;
+export default product

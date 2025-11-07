@@ -45,6 +45,7 @@ const DASHBOARD_QUERY = `{
     amountSubtotal,
     amountTax,
     amountShipping,
+    amountRefunded,
     status,
     paymentStatus
   } | order(coalesce(createdAt, _createdAt) desc),
@@ -86,6 +87,7 @@ type RawOrder = {
   amountSubtotal?: number | null
   amountTax?: number | null
   amountShipping?: number | null
+  amountRefunded?: number | null
   status?: string | null
   paymentStatus?: string | null
 }
@@ -120,6 +122,7 @@ type NormalizedOrder = {
   id: string
   timestamp: number
   total: number
+  refundedAmount: number
   status: string
   paymentStatus: string
 }
@@ -1383,6 +1386,7 @@ function normalize(raw: FetchResult): NormalizedData {
         id: order._id,
         timestamp,
         total: computeOrderTotal(order),
+        refundedAmount: Number(order.amountRefunded) || 0,
         status: (order.status || 'pending').toLowerCase(),
         paymentStatus: (order.paymentStatus || '').toLowerCase(),
       }
@@ -1432,11 +1436,29 @@ function summarize(data: NormalizedData, rangeDays: RangePreset): Summary {
   const previousGrossSales = previousOrders.reduce((sum, order) => (isCancelled(order.status) ? sum : sum + order.total), 0)
 
   const refunds = currentOrders.reduce(
-    (sum, order) => (order.paymentStatus.includes('refund') || isCancelled(order.status) ? sum + order.total : sum),
+    (sum, order) => {
+      if (isCancelled(order.status)) {
+        // Cancelled orders - count full amount as refunded
+        return sum + order.total
+      } else if (order.paymentStatus.includes('refund')) {
+        // Refunded or partially refunded - use actual refunded amount
+        return sum + order.refundedAmount
+      }
+      return sum
+    },
     0,
   )
   const previousRefunds = previousOrders.reduce(
-    (sum, order) => (order.paymentStatus.includes('refund') || isCancelled(order.status) ? sum + order.total : sum),
+    (sum, order) => {
+      if (isCancelled(order.status)) {
+        // Cancelled orders - count full amount as refunded
+        return sum + order.total
+      } else if (order.paymentStatus.includes('refund')) {
+        // Refunded or partially refunded - use actual refunded amount
+        return sum + order.refundedAmount
+      }
+      return sum
+    },
     0,
   )
 

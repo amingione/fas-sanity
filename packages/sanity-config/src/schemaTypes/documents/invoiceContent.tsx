@@ -520,12 +520,6 @@ function useInvoiceActions(): InvoiceActionSet {
     if (creatingShippingLabel) return
     setCreatingShippingLabel(true)
     try {
-      const serviceCode =
-        typeof window !== 'undefined'
-          ? (window.prompt('Enter ShipEngine service_code (e.g., usps_ground):', 'usps_ground') || '').trim()
-          : ''
-      if (!serviceCode) return
-
       const weightValue =
         typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1'
       const dimensionValue =
@@ -539,12 +533,11 @@ function useInvoiceActions(): InvoiceActionSet {
       const weight = Number(weightValue)
       if (!Number.isFinite(weight) || weight <= 0) throw new Error('Invalid weight')
 
-      const response = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
+      const response = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           invoiceId,
-          service_code: serviceCode,
           package_details: {
             weight: {value: weight, unit: 'pound'},
             dimensions: {unit: 'inch', length, width, height},
@@ -555,16 +548,15 @@ function useInvoiceActions(): InvoiceActionSet {
       if (!response.ok || data?.error) {
         throw new Error(data?.error || `HTTP ${response.status}`)
       }
-      if (data?.labelUrl) {
+      const labelUrl = data?.labelUrl || data?.trackingUrl
+      if (labelUrl) {
         try {
-          window.open(data.labelUrl, '_blank')
+          window.open(labelUrl, '_blank')
         } catch {
-          window.location.href = data.labelUrl
+          window.location.href = labelUrl
         }
-        alert(`Label created. Tracking: ${data?.trackingNumber || 'n/a'}`)
-      } else {
-        alert('Label created, but no download URL returned.')
       }
+      alert(`EasyPost label created. Tracking: ${data?.trackingNumber || 'n/a'}`)
     } catch (error: any) {
       if (error?.message) alert(`Create label failed: ${error.message}`)
     } finally {

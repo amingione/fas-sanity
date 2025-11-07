@@ -24,8 +24,6 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
     onHandle: async () => {
       try {
         const base = getFnBase().replace(/\/$/, '')
-        const svc = (typeof window !== 'undefined' ? (window.prompt('Enter ShipEngine service_code (e.g., usps_priority_mail):', 'usps_priority_mail') || '').trim() : '')
-        if (!svc) return onComplete()
         const weightStr = (typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1')
         const dimsStr = (typeof window !== 'undefined' ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim() : '10x8x4')
         const m = dimsStr.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
@@ -34,12 +32,11 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
         const wt = Number(weightStr)
         if (!Number.isFinite(wt) || wt <= 0) throw new Error('Invalid weight')
 
-        const res = await fetch(`${base}/.netlify/functions/createShippingLabel`, {
+        const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             invoiceId: id,
-            service_code: svc,
             package_details: { weight: { value: wt, unit: 'pound' }, dimensions: { unit: 'inch', length: L, width: W, height: H } }
           })
         })
@@ -49,15 +46,15 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
         }
         if (result?.labelUrl) {
           try { window.open(result.labelUrl, '_blank') } catch {}
-          alert(`Label created. Tracking: ${result?.trackingNumber || 'n/a'}`)
+          alert(`EasyPost label created. Tracking: ${result?.trackingNumber || 'n/a'}`)
         } else {
-          alert('Label created, but URL missing. Check Shipping Label doc or Order shipping log.')
+          alert('Label created, but URL missing. Check order shipping log.')
         }
       } catch (error) {
         console.error('Request failed', String((error as any)?.message || error))
       }
 
-      onComplete() // 🧼 finish action
+      onComplete()
     }
   }
 }

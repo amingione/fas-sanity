@@ -40,7 +40,7 @@ const CUSTOMER_PROJECTION = `{
   phone
 }`
 
-const TASK_WIDGET_QUERY = `*[_type == "calendarTask"] | order(remindAt asc nulls last, dueAt asc nulls last) {
+const TASK_WIDGET_QUERY = `*[_type == "calendarTask"] | order(coalesce(remindAt, dueAt, dateTime("9999-12-31T23:59:59Z")) asc, coalesce(dueAt, remindAt, dateTime("9999-12-31T23:59:59Z")) asc) {
   _id,
   title,
   status,
@@ -50,9 +50,9 @@ const TASK_WIDGET_QUERY = `*[_type == "calendarTask"] | order(remindAt asc nulls
     _id,
     scheduledAt,
     status,
-    "documentId": select(startsWith(_id, "drafts.") => replace(_id, "drafts.", ""), _id),
-    "draftId": select(startsWith(_id, "drafts.") => _id, null),
-    "publishedId": select(startsWith(_id, "drafts.") => null, _id),
+    "documentId": select(string::startsWith(_id, "drafts.") => substring(_id, 7), _id),
+    "draftId": select(string::startsWith(_id, "drafts.") => _id, null),
+    "publishedId": select(string::startsWith(_id, "drafts.") => null, _id),
     customer->${CUSTOMER_PROJECTION}
   },
   assignedTo->${CUSTOMER_PROJECTION}
@@ -142,7 +142,11 @@ const CalendarTasksWidget: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const records = await client.fetch<TaskResult[]>(TASK_WIDGET_QUERY, {}, {perspective: 'previewDrafts'})
+      const records = await client.fetch<TaskResult[]>(
+        TASK_WIDGET_QUERY,
+        {},
+        {perspective: 'drafts'},
+      )
       setTasks(records.map(normalizeTask))
     } catch (err) {
       console.error('Failed to load calendar tasks', err)
@@ -257,9 +261,7 @@ const CalendarTasksWidget: React.FC = () => {
 
         const updatedTask: CalendarTask = {...task, status: 'completed'}
 
-        setTasks((prev) =>
-          prev.map((item) => (item._id === task._id ? updatedTask : item)),
-        )
+        setTasks((prev) => prev.map((item) => (item._id === task._id ? updatedTask : item)))
 
         await syncBookingStatus('complete', updatedTask)
 
@@ -296,9 +298,7 @@ const CalendarTasksWidget: React.FC = () => {
         )
 
         setTasks((prev) =>
-          prev.map((item) =>
-            item._id === task._id ? {...item, remindAt: nextReminderIso} : item,
-          ),
+          prev.map((item) => (item._id === task._id ? {...item, remindAt: nextReminderIso} : item)),
         )
 
         await syncBookingStatus('snooze', task)
@@ -306,7 +306,7 @@ const CalendarTasksWidget: React.FC = () => {
         pushToast({
           status: 'success',
           title: 'Reminder snoozed',
-          description: `We will remind you ${format(nextReminder, "MMM d, h:mm a")}.`,
+          description: `We will remind you ${format(nextReminder, 'MMM d, h:mm a')}.`,
         })
       } catch (err) {
         console.error('Failed to snooze calendar task', err)
@@ -323,7 +323,7 @@ const CalendarTasksWidget: React.FC = () => {
   )
 
   const handleOpenCalendar = useCallback(() => {
-    router.navigateUrl('/desk/calendar-app')
+    router.navigateUrl({path: '/desk/calendar-app'})
   }, [router])
 
   const hasPending = pendingTaskIds.length > 0
@@ -339,7 +339,9 @@ const CalendarTasksWidget: React.FC = () => {
           {hasPending && (
             <Inline space={2} style={{alignItems: 'center', display: 'flex'}}>
               <Spinner size={1} />
-              <Text size={0} muted>Saving reminder updates…</Text>
+              <Text size={0} muted>
+                Saving reminder updates…
+              </Text>
             </Inline>
           )}
         </Flex>
@@ -352,7 +354,7 @@ const CalendarTasksWidget: React.FC = () => {
         )}
 
         {error && (
-          <Text size={1} tone="critical">
+          <Text size={1} style={{color: '#ef4444'}}>
             {error}
           </Text>
         )}
@@ -408,7 +410,8 @@ const CalendarTasksWidget: React.FC = () => {
                     </Text>
                     {due && (
                       <Text size={0} muted>
-                        Due {format(due, 'MMM d, h:mm a')} · {formatDistanceToNow(due, {addSuffix: true})}
+                        Due {format(due, 'MMM d, h:mm a')} ·{' '}
+                        {formatDistanceToNow(due, {addSuffix: true})}
                       </Text>
                     )}
                     {remind && (

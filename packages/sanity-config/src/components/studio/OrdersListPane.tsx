@@ -155,7 +155,7 @@ const FILTER_MATCHERS: Record<Exclude<OrderFilter, 'all'>, (value: string) => bo
 const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const sourceClient = useClient({apiVersion: '2024-10-01'})
   const client = useMemo(
-    () => sourceClient.withConfig({perspective: 'previewDrafts' as const}),
+    () => sourceClient.withConfig({perspective: 'drafts' as const}),
     [sourceClient],
   )
   const [orders, setOrders] = useState<OrderRecord[]>([])

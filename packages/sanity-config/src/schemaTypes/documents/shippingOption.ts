@@ -1,8 +1,8 @@
 import { PatchEvent, defineType, set } from 'sanity'
 import React from 'react'
-import ShipEngineServiceInput from '../../components/ShipEngineServiceInput'
+import EasyPostServiceInput from '../../components/EasyPostServiceInput'
 
-interface ShipEngineFieldProps {
+interface EasyPostFieldProps {
   value: string
   onChange: (event: PatchEvent) => void
   type: any
@@ -12,7 +12,7 @@ interface ShipEngineFieldProps {
   document: any
 }
 
-function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
+function CustomEasyPostServiceField(props: EasyPostFieldProps) {
   const [rates, setRates] = React.useState<{ title: string; value: string; amount: number }[]>([])
   const [showOptions, setShowOptions] = React.useState(false)
 
@@ -47,7 +47,7 @@ function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
     }
 
     try {
-      const res = await fetch('/.netlify/functions/getShipEngineRates', {
+        const res = await fetch('/.netlify/functions/getEasyPostRates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -106,7 +106,7 @@ function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
                   onClick: () => {
                     props.onChange(
                       PatchEvent.from([
-                        set(rate.value, ['shipEngineService']),
+                        set(rate.value, ['easyPostService']),
                         set(rate.amount, ['shippingCost']),
                       ]),
                     )
@@ -125,7 +125,7 @@ function CustomShipEngineServiceField(props: ShipEngineFieldProps) {
             )
           )
         ),
-      React.createElement(ShipEngineServiceInput, {
+      React.createElement(EasyPostServiceInput, {
         ...props,
         fetchRates: () => Promise.resolve(rates.map(({ title, value }) => ({ title, value }))),
       }),
@@ -154,13 +154,13 @@ const shippingOption = defineType({
     { name: 'customerAddress', title: 'Customer Address', type: 'shippingOptionCustomerAddress' },
     { name: 'packageDetails', title: 'Package Details', type: 'packageDetails' },
     {
-      name: 'shipEngineService',
-      title: 'ShipEngine Service',
+      name: 'easyPostService',
+      title: 'EasyPost Service',
       type: 'string',
       components: {
-        field: CustomShipEngineServiceField,
+        field: CustomEasyPostServiceField,
       },
-      description: 'Select a shipping service level. Pulled dynamically from ShipEngine.',
+      description: 'Select a shipping service level. Pulled dynamically from EasyPost.',
     },
     {
       name: 'shippingCost',

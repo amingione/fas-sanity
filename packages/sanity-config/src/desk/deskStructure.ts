@@ -3,22 +3,17 @@ import type {StructureResolver} from 'sanity/structure'
 import {
   BasketIcon,
   BillIcon,
-  CalendarIcon,
   ChartUpwardIcon,
-  CogIcon,
   DocumentIcon,
   HomeIcon,
   LinkIcon,
   PackageIcon,
-  PlugIcon,
   TagIcon,
   TrolleyIcon,
   UserIcon,
   WrenchIcon,
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
-import ProductEditorPane from '../components/studio/ProductEditorPane'
-import ShippingCalendar from '../components/studio/ShippingCalendar'
 import AdminTools from '../components/studio/AdminTools'
 import DownloadsPreviewList from '../components/studio/downloads/DownloadsPreviewList'
 import {EXPIRED_SESSION_PANEL_TITLE} from '../utils/orderFilters'
@@ -76,36 +71,6 @@ const CustomersRecentlyAddedTableView: ComponentType = () =>
     pageSize: 10,
   })
 
-const productDocumentViews = (S: any) => (documentId: string) =>
-  S.document()
-    .schemaType('product')
-    .documentId(documentId)
-    .views([
-      S.view.form().title('Details').id('form'),
-      S.view
-        .component(ProductEditorPane as any)
-        .title('Editor')
-        .id('editor'),
-    ])
-
-const productsByCategory = (S: any) =>
-  S.listItem()
-    .id('products-by-category')
-    .title('Products by category')
-    .child(
-      S.documentTypeList('category')
-        .apiVersion(API_VERSION)
-        .title('Categories')
-        .child((categoryId: string) =>
-          S.documentList()
-            .apiVersion(API_VERSION)
-            .title('Products')
-            .schemaType('product')
-            .filter('_type == "product" && $categoryId in category[]._ref')
-            .params({categoryId}),
-        ),
-    )
-
 const createOrdersList = (S: any) =>
   S.listItem()
     .id('orders')
@@ -134,20 +99,6 @@ const createPaymentLinksPane = (S: any) =>
     .icon(LinkIcon)
     .child(documentTablePane(S, 'payment-links', 'Payment links', PaymentLinksDocumentTable))
 
-const createShippingList = (S: any) =>
-  S.listItem()
-    .id('shipping')
-    .title('Shipping')
-    .icon(PackageIcon)
-    .child(
-      S.list()
-        .title('Shipping')
-        .items([
-          S.documentTypeListItem('shippingLabel').title('Shipping labels'),
-          S.documentTypeListItem('shippingOption').title('Shipping options'),
-        ]),
-    )
-
 const createProductsList = (S: any) =>
   S.listItem()
     .id('products')
@@ -162,70 +113,8 @@ const createProductsList = (S: any) =>
             .title('All products')
             .child(documentTablePane(S, 'products-all', 'All products', ProductsAllTableView)),
           S.divider(),
-          S.listItem()
-            .id('products-active')
-            .title('Active')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Active products')
-                .schemaType('product')
-                .filter('_type == "product" && (status == "active" || !defined(status))')
-                .defaultOrdering([{field: 'title', direction: 'asc'}])
-                .child(productDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('products-draft')
-            .title('Draft')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Draft products')
-                .schemaType('product')
-                .filter('_type == "product" && status == "draft"')
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
-                .child(productDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('products-paused')
-            .title('Paused')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Paused products')
-                .schemaType('product')
-                .filter('_type == "product" && status == "paused"')
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
-                .child(productDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('products-archived')
-            .title('Archived')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Archived products')
-                .schemaType('product')
-                .filter('_type == "product" && status == "archived"')
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}])
-                .child(productDocumentViews(S)),
-            ),
-          S.listItem()
-            .id('products-out-of-stock')
-            .title('Out of stock')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Out of stock products')
-                .schemaType('product')
-                .filter('_type == "product" && coalesce(inventory.quantity, 0) <= 0')
-                .defaultOrdering([{field: 'title', direction: 'asc'}])
-                .child(productDocumentViews(S)),
-            ),
           S.divider(),
           S.documentTypeListItem('category').title('Categories'),
-          productsByCategory(S),
-          S.documentTypeListItem('collection').title('Collections'),
           S.documentTypeListItem('productBundle').title('Bundles'),
           S.documentTypeListItem('vehicleModel').title('Vehicle models'),
           S.documentTypeListItem('tune').title('Tunes'),
@@ -333,48 +222,20 @@ const createFinanceList = (S: any) =>
         ]),
     )
 
-const createSettingsList = (S: any) =>
-  S.listItem()
-    .id('settings')
-    .title('Studio settings')
-    .icon(CogIcon)
-    .child(
-      S.list()
-        .title('Studio settings')
-        .items([
-          S.documentTypeListItem('filterTag').title('Filter tags'),
-          S.documentTypeListItem('colorTheme').title('Color themes'),
-          S.documentTypeListItem('page').title('Pages'),
-        ]),
-    )
-
 const createSalesOperationsSection = (S: any) =>
   S.listItem()
-    .id('sales-operations')
-    .title('Sales & Operations')
+    .id('Orders')
+    .title('Orders')
     .icon(TrolleyIcon)
     .child(
       S.list()
-        .title('Sales & Operations')
+        .title('Orders')
         .items([
           createOrdersList(S),
           S.divider(),
           createAbandonedCartsPane(S),
           S.divider(),
           createPaymentLinksPane(S),
-          S.divider(),
-          createShippingList(S),
-          S.divider(),
-          S.listItem()
-            .id('shipping-calendar')
-            .title('Shipping calendar')
-            .icon(CalendarIcon)
-            .child(
-              S.component()
-                .id('shipping-calendar-pane')
-                .title('Shipping calendar')
-                .component(ShippingCalendar as any),
-            ),
         ]),
     )
 
@@ -401,6 +262,7 @@ const createMarketingSection = (S: any) =>
         .items([
           S.documentTypeListItem('campaign').title('Campaigns'),
           S.documentTypeListItem('attribution').title('Attribution'),
+          createSalesChannelsList(S),
         ]),
     )
 
@@ -426,25 +288,6 @@ const createAdministrationSection = (S: any) =>
           S.divider(),
           createFinanceList(S),
           S.divider(),
-          createSettingsList(S),
-          S.divider(),
-          S.listItem()
-            .id('administration-site-settings')
-            .title('Site settings')
-            .icon(CogIcon)
-            .child(S.document().schemaType('settings').documentId('settings')),
-          S.listItem()
-            .id('administration-integrations')
-            .title('Integrations')
-            .icon(PlugIcon)
-            .child(
-              S.list()
-                .title('Integrations')
-                .items([
-                  S.documentTypeListItem('stripeWebhook').title('Stripe webhooks'),
-                  S.documentTypeListItem('stripeWebhookEvent').title('Stripe webhook events'),
-                ]),
-            ),
         ]),
     )
 
@@ -463,13 +306,11 @@ export const deskStructure: StructureResolver = (S) =>
             .component(HomePane as any),
         ),
       S.divider(),
+      createSalesOperationsSection(S),
+      S.divider(),
       createProductsList(S),
       S.divider(),
       createCustomersList(S),
-      S.divider(),
-      createSalesChannelsList(S),
-      S.divider(),
-      createSalesOperationsSection(S),
       S.divider(),
       createMarketingSection(S),
       S.divider(),

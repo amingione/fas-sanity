@@ -1,23 +1,27 @@
 import React from 'react'
-import type {ArrayOptions} from '@sanity/types'
 import {defineField, defineType} from 'sanity'
 import FulfillmentBadge from '../../components/inputs/FulfillmentBadge'
+import ManualTrackingInput from '../../components/inputs/ManualTrackingInput'
 import OrderCartItemsInput from '../../components/inputs/OrderCartItemsInput'
+import OrderNumberInput from '../../components/inputs/OrderNumberInput'
 import OrderShippingActions from '../../components/studio/OrderShippingActions'
+import {formatOrderNumber} from '../../utils/orderNumber'
 
 const ORDER_MEDIA_URL =
   'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
 
-const COLLAPSIBLE_ARRAY_OPTIONS: ArrayOptions & {collapsible?: boolean; collapsed?: boolean} = {
-  collapsible: true,
-  collapsed: true,
-}
-
-const LEGACY_GROUP = 'legacy'
-
 const ORDER_GROUPS = [
-  {name: 'orderV2', title: 'Order v2', default: true},
-  {name: LEGACY_GROUP, title: 'Legacy (v1) Order Data'},
+  {name: 'overview', title: 'Overview', default: true},
+  {name: 'customer', title: 'Customer'},
+  {name: 'cart', title: 'Cart'},
+  {name: 'amounts', title: 'Amounts'},
+  {name: 'payment', title: 'Payment'},
+  {name: 'refunds', title: 'Refunds'},
+  {name: 'checkout', title: 'Checkout'},
+  {name: 'shipping', title: 'Shipping'},
+  {name: 'fulfillment', title: 'Fulfillment'},
+  {name: 'actions', title: 'Actions'},
+  {name: 'activity', title: 'Activity'},
 ]
 
 export default defineType({
@@ -30,9 +34,13 @@ export default defineType({
       name: 'orderNumber',
       title: 'Order Number',
       type: 'string',
-      description: 'Customer-facing order number shared across Stripe emails, invoices, and Studio.',
+      description:
+        'Customer-facing order number shared across Stripe emails, invoices, and Studio.',
       readOnly: true,
-      group: LEGACY_GROUP,
+      components: {
+        input: OrderNumberInput as any,
+      },
+      group: 'overview',
     }),
     defineField({
       name: 'status',
@@ -46,7 +54,7 @@ export default defineType({
       components: {
         input: FulfillmentBadge as any,
       },
-      group: LEGACY_GROUP,
+      group: 'overview',
     }),
     defineField({
       name: 'paymentStatus',
@@ -54,7 +62,7 @@ export default defineType({
       type: 'string',
       description: 'Raw Stripe payment status (e.g. succeeded, processing).',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'createdAt',
@@ -62,14 +70,14 @@ export default defineType({
       type: 'datetime',
       readOnly: true,
       initialValue: () => new Date().toISOString(),
-      group: LEGACY_GROUP,
+      group: 'overview',
     }),
     defineField({
       name: 'stripeLastSyncedAt',
       title: 'Stripe Last Synced',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'overview',
     }),
     defineField({
       name: 'invoiceRef',
@@ -77,7 +85,7 @@ export default defineType({
       type: 'reference',
       to: [{type: 'invoice'}],
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'overview',
     }),
     defineField({
       name: 'slug',
@@ -102,14 +110,14 @@ export default defineType({
       title: 'Customer Name',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'customer',
     }),
     defineField({
       name: 'customerEmail',
       title: 'Customer Email',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'customer',
     }),
     defineField({
       name: 'customerRef',
@@ -117,7 +125,7 @@ export default defineType({
       type: 'reference',
       to: [{type: 'customer'}],
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'customer',
     }),
     defineField({
       name: 'customer',
@@ -127,15 +135,16 @@ export default defineType({
       hidden: true,
       options: {disableNew: true},
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'customer',
     }),
     defineField({
       name: 'userId',
       title: 'User ID (Portal)',
       type: 'string',
-      description: 'Legacy external id for the purchasing customer. FAS Auth uses the document _id.',
+      description:
+        'Legacy external id for the purchasing customer. FAS Auth uses the document _id.',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'customer',
     }),
     defineField({
       name: 'cart',
@@ -146,7 +155,7 @@ export default defineType({
       components: {
         input: OrderCartItemsInput as any,
       },
-      group: LEGACY_GROUP,
+      group: 'cart',
     }),
     defineField({
       name: 'lineItems',
@@ -158,14 +167,14 @@ export default defineType({
       components: {
         input: OrderCartItemsInput as any,
       },
-      group: LEGACY_GROUP,
+      group: 'cart',
     }),
     defineField({
       name: 'totalAmount',
       title: 'Total Amount (USD)',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'amounts',
     }),
     defineField({
       name: 'amountSubtotal',
@@ -173,203 +182,203 @@ export default defineType({
       type: 'number',
       readOnly: true,
       description: 'Order subtotal before shipping/tax',
-      group: LEGACY_GROUP,
+      group: 'amounts',
     }),
     defineField({
       name: 'amountTax',
       title: 'Tax Amount',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'amounts',
     }),
     defineField({
       name: 'amountShipping',
       title: 'Shipping Amount',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'amounts',
     }),
     defineField({
       name: 'currency',
       title: 'Currency',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'amounts',
     }),
     defineField({
       name: 'paymentIntentId',
       title: 'Payment Intent ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'stripePaymentIntentStatus',
       title: 'Payment Intent Status',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'chargeId',
       title: 'Charge ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'cardBrand',
       title: 'Card Brand',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'cardLast4',
       title: 'Card Last4',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'receiptUrl',
       title: 'Receipt URL',
       type: 'url',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'amountRefunded',
       title: 'Total Refunded',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'refunds',
     }),
     defineField({
       name: 'lastRefundId',
       title: 'Last Refund ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'refunds',
     }),
     defineField({
       name: 'lastRefundStatus',
       title: 'Last Refund Status',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'refunds',
     }),
     defineField({
       name: 'lastRefundReason',
       title: 'Last Refund Reason',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'refunds',
     }),
     defineField({
       name: 'lastRefundedAt',
       title: 'Last Refunded At',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'refunds',
     }),
     defineField({
       name: 'lastDisputeId',
       title: 'Last Dispute ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'lastDisputeStatus',
       title: 'Last Dispute Status',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'lastDisputeReason',
       title: 'Last Dispute Reason',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'lastDisputeAmount',
       title: 'Last Dispute Amount',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'lastDisputeCurrency',
       title: 'Last Dispute Currency',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'lastDisputeCreatedAt',
       title: 'Last Dispute Created',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'lastDisputeDueBy',
       title: 'Last Dispute Evidence Due',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'paymentFailureCode',
       title: 'Payment Failure Code',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'paymentFailureMessage',
       title: 'Payment Failure Message',
       type: 'text',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'stripeSummary',
       title: 'Stripe Snapshot',
       type: 'stripeOrderSummary',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'payment',
     }),
     defineField({
       name: 'stripeSessionId',
       title: 'Stripe Session ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'stripeSource',
       title: 'Stripe Source',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'stripeCheckoutStatus',
       title: 'Checkout Status',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'stripeSessionStatus',
       title: 'Checkout Status (legacy)',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
       hidden: ({document}) => !document?.stripeSessionStatus,
     }),
     defineField({
@@ -377,21 +386,21 @@ export default defineType({
       title: 'Checkout Mode',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'stripeCreatedAt',
       title: 'Stripe Session Created',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'stripeExpiresAt',
       title: 'Stripe Session Expired',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'checkoutDraft',
@@ -399,13 +408,13 @@ export default defineType({
       description: 'True when the checkout did not complete payment on the first attempt.',
       type: 'boolean',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'checkout',
     }),
     defineField({
       name: 'shippingAddress',
       title: 'Shipping Address',
       type: 'shippingAddress',
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'selectedService',
@@ -423,76 +432,93 @@ export default defineType({
         defineField({name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number'}),
         defineField({name: 'estimatedDeliveryDate', title: 'Est. Delivery Date', type: 'datetime'}),
       ],
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'selectedShippingAmount',
       title: 'Selected Shipping Amount',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'selectedShippingCurrency',
       title: 'Selected Shipping Currency',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingDeliveryDays',
       title: 'Shipping Delivery Days',
       type: 'number',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingEstimatedDeliveryDate',
       title: 'Shipping Estimated Delivery',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingServiceCode',
       title: 'Shipping Service Code',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingServiceName',
       title: 'Shipping Service Name',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'shippingMetadata',
       title: 'Shipping Metadata',
       type: 'object',
       readOnly: true,
-      options: COLLAPSIBLE_ARRAY_OPTIONS,
+      options: {collapsible: true, collapsed: true},
       fields: [
         defineField({name: 'shipping_amount', title: 'Amount', type: 'string', readOnly: true}),
         defineField({name: 'shipping_carrier', title: 'Carrier', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_carrier_id', title: 'Carrier ID', type: 'string', readOnly: true}),
+        defineField({
+          name: 'shipping_carrier_id',
+          title: 'Carrier ID',
+          type: 'string',
+          readOnly: true,
+        }),
         defineField({name: 'shipping_currency', title: 'Currency', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_delivery_days', title: 'Delivery Days', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_estimated_delivery_date', title: 'Estimated Delivery', type: 'string', readOnly: true}),
+        defineField({
+          name: 'shipping_delivery_days',
+          title: 'Delivery Days',
+          type: 'string',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'shipping_estimated_delivery_date',
+          title: 'Estimated Delivery',
+          type: 'string',
+          readOnly: true,
+        }),
         defineField({name: 'shipping_service', title: 'Service', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_service_code', title: 'Service Code', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_service_name', title: 'Service Name', type: 'string', readOnly: true}),
-        defineField({name: 'amount', title: 'Amount (raw)', type: 'string', readOnly: true}),
-        defineField({name: 'carrier', title: 'Carrier (raw)', type: 'string', readOnly: true}),
-        defineField({name: 'carrier_id', title: 'Carrier ID (raw)', type: 'string', readOnly: true}),
-        defineField({name: 'currency', title: 'Currency (raw)', type: 'string', readOnly: true}),
-        defineField({name: 'service', title: 'Service (raw)', type: 'string', readOnly: true}),
-        defineField({name: 'service_code', title: 'Service Code (raw)', type: 'string', readOnly: true}),
-        defineField({name: 'shipping_rate_id', title: 'Shipping Rate ID', type: 'string', readOnly: true}),
-        defineField({name: 'source', title: 'Source', type: 'string', readOnly: true}),
+        defineField({
+          name: 'shipping_service_code',
+          title: 'Service Code',
+          type: 'string',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'shipping_service_name',
+          title: 'Service Name',
+          type: 'string',
+          readOnly: true,
+        }),
       ],
-      group: LEGACY_GROUP,
+      group: 'shipping',
     }),
     defineField({
       name: 'weight',
@@ -500,7 +526,7 @@ export default defineType({
       type: 'shipmentWeight',
       description: 'Auto-calculated from cart items.',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'dimensions',
@@ -508,7 +534,7 @@ export default defineType({
       type: 'packageDimensions',
       description: 'Auto-filled using product defaults.',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'shippingCarrier',
@@ -519,56 +545,75 @@ export default defineType({
         list: ['UPS', 'FedEx', 'USPS', 'Other'],
         layout: 'dropdown',
       },
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
+    }),
+    defineField({
+      name: 'shippingStatus',
+      title: 'Shipping Status',
+      type: 'object',
+      readOnly: true,
+      options: {columns: 2},
+      fields: [
+        defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
+        defineField({name: 'service', title: 'Service', type: 'string'}),
+        defineField({name: 'labelUrl', title: 'Label URL', type: 'url'}),
+        defineField({name: 'trackingCode', title: 'Tracking Code', type: 'string'}),
+        defineField({name: 'trackingUrl', title: 'Tracking URL', type: 'url'}),
+        defineField({name: 'status', title: 'Status', type: 'string'}),
+        defineField({name: 'cost', title: 'Cost', type: 'number'}),
+        defineField({name: 'currency', title: 'Currency', type: 'string'}),
+        defineField({name: 'lastEventAt', title: 'Last Event At', type: 'datetime'}),
+      ],
+      group: 'fulfillment',
     }),
     defineField({
       name: 'shippingLabelUrl',
       title: 'Shipping Label URL',
       type: 'url',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'trackingNumber',
       title: 'Tracking Number',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'trackingUrl',
       title: 'Tracking URL',
       type: 'url',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'packingSlipUrl',
       title: 'Packing Slip PDF URL',
       type: 'url',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
-      name: 'shipStationOrderId',
-      title: 'ShipStation Order ID',
+      name: 'easyPostShipmentId',
+      title: 'EasyPost Shipment ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
-      name: 'shipStationLabelId',
-      title: 'ShipStation Label ID',
+      name: 'easyPostTrackerId',
+      title: 'EasyPost Tracker ID',
       type: 'string',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'fulfilledAt',
       title: 'Fulfilled Date',
       type: 'datetime',
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
     }),
     defineField({
       name: 'shippingActions',
@@ -576,7 +621,16 @@ export default defineType({
       type: 'string',
       readOnly: true,
       components: {input: OrderShippingActions as any},
-      group: LEGACY_GROUP,
+      group: 'fulfillment',
+    }),
+    defineField({
+      name: 'manualTrackingNumber',
+      title: 'Manual Tracking Number',
+      type: 'string',
+      description:
+        'Provide a tracking number to mark the order as fulfilled and trigger a customer update email.',
+      group: 'actions',
+      components: {input: ManualTrackingInput as any},
     }),
     defineField({
       name: 'shippingLog',
@@ -584,7 +638,7 @@ export default defineType({
       type: 'array',
       of: [{type: 'shippingLogEntry'}],
       readOnly: true,
-      group: LEGACY_GROUP,
+      group: 'activity',
     }),
     defineField({
       name: 'orderEvents',
@@ -593,7 +647,7 @@ export default defineType({
       readOnly: true,
       of: [{type: 'orderEvent'}],
       options: {layout: 'grid'},
-      group: LEGACY_GROUP,
+      group: 'activity',
     }),
     defineField({
       name: 'webhookNotified',
@@ -601,7 +655,7 @@ export default defineType({
       type: 'boolean',
       readOnly: true,
       initialValue: false,
-      group: LEGACY_GROUP,
+      group: 'activity',
     }),
     defineField({
       name: 'confirmationEmailSent',
@@ -609,238 +663,7 @@ export default defineType({
       type: 'boolean',
       readOnly: true,
       initialValue: false,
-      group: LEGACY_GROUP,
-    }),
-    defineField({
-      name: 'orderV2',
-      title: 'Order v2',
-      type: 'object',
-      group: 'orderV2',
-      options: COLLAPSIBLE_ARRAY_OPTIONS,
-      fields: [
-        defineField({name: 'orderId', title: 'Order ID', type: 'string'}),
-        defineField({
-          name: 'createdAt',
-          title: 'Created At',
-          type: 'datetime',
-          initialValue: () => new Date().toISOString(),
-        }),
-        defineField({
-          name: 'status',
-          title: 'Status',
-          type: 'string',
-          options: {
-            list: [
-              {title: 'Paid', value: 'paid'},
-              {title: 'Pending', value: 'pending'},
-              {title: 'Failed', value: 'failed'},
-              {title: 'Canceled', value: 'canceled'},
-              {title: 'Shipped', value: 'shipped'},
-              {title: 'Refunded', value: 'refunded'},
-            ],
-            layout: 'dropdown',
-          },
-        }),
-        defineField({
-          name: 'customer',
-          title: 'Customer',
-          type: 'object',
-          options: {columns: 2},
-          fields: [
-            defineField({name: 'customerId', title: 'Customer ID', type: 'string'}),
-            defineField({name: 'name', title: 'Name', type: 'string'}),
-            defineField({name: 'email', title: 'Email', type: 'string'}),
-            defineField({name: 'phone', title: 'Phone', type: 'string'}),
-            defineField({
-              name: 'shippingAddress',
-              title: 'Shipping Address',
-              type: 'object',
-              options: {columns: 2},
-              fields: [
-                defineField({name: 'street', title: 'Street', type: 'string'}),
-                defineField({name: 'city', title: 'City', type: 'string'}),
-                defineField({name: 'state', title: 'State', type: 'string'}),
-                defineField({name: 'zip', title: 'ZIP / Postal Code', type: 'string'}),
-                defineField({name: 'country', title: 'Country', type: 'string'}),
-              ],
-            }),
-          ],
-        }),
-        defineField({
-          name: 'items',
-          title: 'Items',
-          type: 'array',
-          of: [
-            defineField({
-              type: 'object',
-              name: 'orderV2Item',
-              title: 'Item',
-              fields: [
-                defineField({name: 'productId', title: 'Product ID', type: 'string'}),
-                defineField({name: 'productName', title: 'Product Name', type: 'string'}),
-                defineField({name: 'quantity', title: 'Quantity', type: 'number'}),
-                defineField({name: 'price', title: 'Unit Price', type: 'number'}),
-                defineField({
-                  name: 'options',
-                  title: 'Options',
-                  type: 'array',
-                  of: [
-                    defineField({
-                      type: 'object',
-                      name: 'orderV2ItemOption',
-                      title: 'Option',
-                      fields: [
-                        defineField({name: 'optionId', title: 'Option ID', type: 'string'}),
-                        defineField({name: 'optionName', title: 'Option Name', type: 'string'}),
-                        defineField({name: 'optionValue', title: 'Option Value', type: 'string'}),
-                      ],
-                    }),
-                  ],
-                  options: {layout: 'tags'},
-                }),
-                defineField({
-                  name: 'upgrades',
-                  title: 'Upgrades',
-                  type: 'array',
-                  of: [
-                    defineField({
-                      type: 'object',
-                      name: 'orderV2ItemUpgrade',
-                      title: 'Upgrade',
-                      fields: [
-                        defineField({name: 'upgradeId', title: 'Upgrade ID', type: 'string'}),
-                        defineField({name: 'upgradeName', title: 'Upgrade Name', type: 'string'}),
-                        defineField({name: 'upgradeValue', title: 'Upgrade Value', type: 'string'}),
-                      ],
-                    }),
-                  ],
-                  options: {layout: 'tags'},
-                }),
-              ],
-            }),
-          ],
-        }),
-        defineField({
-          name: 'orderSummary',
-          title: 'Order Summary',
-          type: 'object',
-          options: {columns: 2},
-          fields: [
-            defineField({name: 'subtotal', title: 'Subtotal', type: 'number'}),
-            defineField({name: 'discount', title: 'Discount', type: 'number'}),
-            defineField({name: 'shippingFee', title: 'Shipping Fee', type: 'number'}),
-            defineField({name: 'tax', title: 'Tax', type: 'number'}),
-            defineField({name: 'total', title: 'Total', type: 'number'}),
-          ],
-        }),
-        defineField({
-          name: 'payment',
-          title: 'Payment',
-          type: 'object',
-          options: {columns: 2},
-          fields: [
-            defineField({name: 'status', title: 'Payment Status', type: 'string'}),
-            defineField({
-              name: 'stripePaymentIntentId',
-              title: 'Stripe Payment Intent ID',
-              type: 'string',
-            }),
-            defineField({name: 'stripeChargeId', title: 'Stripe Charge ID', type: 'string'}),
-            defineField({name: 'receiptUrl', title: 'Receipt URL', type: 'url'}),
-            defineField({name: 'method', title: 'Payment Method', type: 'string'}),
-          ],
-        }),
-        defineField({
-          name: 'shipping',
-          title: 'Shipping',
-          type: 'object',
-          options: {columns: 2},
-          fields: [
-            defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
-            defineField({name: 'serviceName', title: 'Service Name', type: 'string'}),
-            defineField({name: 'trackingNumber', title: 'Tracking Number', type: 'string'}),
-            defineField({name: 'status', title: 'Shipping Status', type: 'string'}),
-            defineField({
-              name: 'estimatedDelivery',
-              title: 'Estimated Delivery',
-              type: 'datetime',
-            }),
-          ],
-        }),
-        defineField({name: 'notes', title: 'Notes', type: 'text'}),
-        defineField({
-          name: 'admin',
-          title: 'Admin',
-          type: 'object',
-          options: {columns: 2},
-          fields: [
-            defineField({name: 'webhookStatus', title: 'Webhook Status', type: 'string'}),
-            defineField({name: 'lastSync', title: 'Last Sync', type: 'datetime'}),
-            defineField({
-              name: 'stripeEventLog',
-              title: 'Stripe Event Log',
-              type: 'array',
-              of: [
-                defineField({
-                  type: 'object',
-                  name: 'orderV2StripeEvent',
-                  title: 'Stripe Event',
-                  fields: [
-                    defineField({name: 'eventType', title: 'Event Type', type: 'string'}),
-                    defineField({name: 'timestamp', title: 'Timestamp', type: 'datetime'}),
-                    defineField({name: 'details', title: 'Details', type: 'text'}),
-                  ],
-                }),
-              ],
-              options: COLLAPSIBLE_ARRAY_OPTIONS,
-            }),
-            defineField({
-              name: 'failureReason',
-              title: 'Failure Reason',
-              type: 'string',
-              description: 'Populated when status is failed or canceled.',
-            }),
-            defineField({
-              name: 'refunds',
-              title: 'Refunds',
-              type: 'array',
-              of: [
-                defineField({
-                  type: 'object',
-                  name: 'orderV2Refund',
-                  title: 'Refund',
-                  fields: [
-                    defineField({name: 'refundId', title: 'Refund ID', type: 'string'}),
-                    defineField({name: 'amount', title: 'Amount', type: 'number'}),
-                    defineField({name: 'date', title: 'Date', type: 'datetime'}),
-                    defineField({name: 'reason', title: 'Reason', type: 'string'}),
-                  ],
-                }),
-              ],
-              options: COLLAPSIBLE_ARRAY_OPTIONS,
-            }),
-            defineField({
-              name: 'disputes',
-              title: 'Disputes',
-              type: 'array',
-              of: [
-                defineField({
-                  type: 'object',
-                  name: 'orderV2Dispute',
-                  title: 'Dispute',
-                  fields: [
-                    defineField({name: 'disputeId', title: 'Dispute ID', type: 'string'}),
-                    defineField({name: 'status', title: 'Status', type: 'string'}),
-                    defineField({name: 'date', title: 'Date', type: 'datetime'}),
-                    defineField({name: 'reason', title: 'Reason', type: 'string'}),
-                  ],
-                }),
-              ],
-              options: COLLAPSIBLE_ARRAY_OPTIONS,
-            }),
-          ],
-        }),
-      ],
+      group: 'activity',
     }),
   ],
 
@@ -865,11 +688,23 @@ export default defineType({
       shippingName,
       createdAt,
     }) {
-      const ref = orderNumber || (stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'Order')
+      const formattedOrderNumber = formatOrderNumber(orderNumber)
+      const ref =
+        formattedOrderNumber ||
+        (orderNumber ? orderNumber : stripeSessionId ? `#${stripeSessionId.slice(-6)}` : 'Order')
       const name = customerName || shippingName || email || 'Customer'
-      const amount = typeof total === 'number' ? `• ${new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)}` : ''
+      const amount =
+        typeof total === 'number'
+          ? `• ${new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)}`
+          : ''
       const statusLabel = (status || 'paid').toLowerCase()
-      const dateLabel = createdAt ? new Intl.DateTimeFormat(undefined, {year: 'numeric', month: 'short', day: 'numeric'}).format(new Date(createdAt)) : ''
+      const dateLabel = createdAt
+        ? new Intl.DateTimeFormat(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }).format(new Date(createdAt))
+        : ''
 
       const tone: Record<string, {bg: string; fg: string; border: string}> = {
         fulfilled: {bg: '#ECFDF5', fg: '#047857', border: '#A7F3D0'},
@@ -931,57 +766,35 @@ export default defineType({
       title: 'Created Date (Newest)',
       name: 'createdAtDesc',
       by: [
-        { field: 'createdAt', direction: 'desc' },
-        { field: '_createdAt', direction: 'desc' },
+        {field: 'createdAt', direction: 'desc'},
+        {field: '_createdAt', direction: 'desc'},
       ],
     },
     {
       title: 'Created Date (Oldest)',
       name: 'createdAtAsc',
       by: [
-        { field: 'createdAt', direction: 'asc' },
-        { field: '_createdAt', direction: 'asc' },
+        {field: 'createdAt', direction: 'asc'},
+        {field: '_createdAt', direction: 'asc'},
       ],
     },
     {
       title: 'Fulfilled Date (Newest)',
       name: 'fulfilledAtDesc',
       by: [
-        { field: 'fulfilledAt', direction: 'desc' },
-        { field: 'createdAt', direction: 'desc' },
+        {field: 'fulfilledAt', direction: 'desc'},
+        {field: 'createdAt', direction: 'desc'},
       ],
     },
     {
       title: 'Order Total (High → Low)',
       name: 'totalAmountDesc',
-      by: [
-        { field: 'totalAmount', direction: 'desc' },
-      ],
+      by: [{field: 'totalAmount', direction: 'desc'}],
     },
     {
       title: 'Order Number (A → Z)',
       name: 'orderNumberAsc',
-      by: [
-        { field: 'orderNumber', direction: 'asc' },
-      ],
-    },
-    {
-      title: 'Order Status (A → Z)',
-      name: 'orderStatusAsc',
-      by: [
-        { field: 'status', direction: 'asc' },
-        { field: 'paymentStatus', direction: 'asc' },
-        { field: 'createdAt', direction: 'desc' },
-      ],
-    },
-    {
-      title: 'Order Status (Z → A)',
-      name: 'orderStatusDesc',
-      by: [
-        { field: 'status', direction: 'desc' },
-        { field: 'paymentStatus', direction: 'desc' },
-        { field: 'createdAt', direction: 'desc' },
-      ],
+      by: [{field: 'orderNumber', direction: 'asc'}],
     },
   ],
 })
