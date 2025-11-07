@@ -277,9 +277,9 @@ const toCleanNumber = (value: unknown): number | undefined => {
 }
 
 const toCleanStringArray = (value: unknown, limit = 10): string[] | undefined => {
-  const coerced = uniqueStrings(coerceStringArray(value)).map((entry) => toCleanString(entry)).filter(isPresent)
-  if (!coerced.length) return undefined
-  return coerced.slice(0, limit)
+  const coerced = uniqueStrings(coerceStringArray(value));
+  if (!coerced.length) return undefined;
+  return coerced.slice(0, limit);
 }
 
 const limitArray = <T>(value: T[] | undefined, limit = 20): T[] | undefined => {
