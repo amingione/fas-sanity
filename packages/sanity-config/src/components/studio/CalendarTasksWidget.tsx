@@ -50,7 +50,7 @@ const TASK_WIDGET_QUERY = `*[_type == "calendarTask"] | order(coalesce(remindAt,
     _id,
     scheduledAt,
     status,
-    "documentId": select(string::startsWith(_id, "drafts.") => substring(_id, 7), _id),
+    "documentId": select(string::startsWith(_id, "drafts.") => _id[7:], _id),
     "draftId": select(string::startsWith(_id, "drafts.") => _id, null),
     "publishedId": select(string::startsWith(_id, "drafts.") => null, _id),
     customer->${CUSTOMER_PROJECTION}
