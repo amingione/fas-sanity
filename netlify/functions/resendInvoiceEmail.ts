@@ -140,6 +140,7 @@ const handler: Handler = async (event) => {
         optionSummary,
         optionDetails,
         upgrades,
+        customizations,
         metadata[]{key, value}
       },
       orderRef->{
@@ -164,6 +165,7 @@ const handler: Handler = async (event) => {
           optionSummary,
           optionDetails,
           upgrades,
+          customizations,
           metadata[]{key, value}
         }
       },
@@ -177,7 +179,7 @@ const handler: Handler = async (event) => {
         trackingNumber,
         shippingLabelUrl,
         selectedService->{carrier, service, amount},
-          cart[]{
+        cart[]{
             _key,
             name,
             productName,
@@ -189,6 +191,7 @@ const handler: Handler = async (event) => {
           optionSummary,
           optionDetails,
           upgrades,
+          customizations,
           metadata[]{key, value}
         }
       },

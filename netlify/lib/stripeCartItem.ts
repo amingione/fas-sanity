@@ -27,12 +27,19 @@ export type MappedCartItem = {
   name?: string
   productName?: string
   description?: string
+  image?: string
+  productUrl?: string
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  customizations?: string[]
   price?: number
   quantity?: number
   categories?: string[]
+  lineTotal?: number
+  total?: number
+  productRef?: {_type: 'reference'; _ref: string}
+  validationIssues?: string[]
   metadata?: CartMetadataEntry[]
 }
 
@@ -109,6 +116,169 @@ function normalizeDetails(...values: Array<unknown>): string[] {
   )
 }
 
+type MetadataMatcher = (...keys: string[]) => string | undefined
+
+function createMetadataMatcher(map: Record<string, string>): MetadataMatcher {
+  const entries = Object.entries(map).map(([key, value]) => ({
+    raw: key,
+    normalized: key.toLowerCase().replace(/[^a-z0-9]/g, ''),
+    value,
+  }))
+
+  return (...keys: string[]) => {
+    for (const candidate of keys) {
+      if (!candidate) continue
+      const normalizedCandidate = candidate.toLowerCase().replace(/[^a-z0-9]/g, '')
+      for (const entry of entries) {
+        if (entry.raw === candidate) return entry.value
+        if (normalizedCandidate && entry.normalized === normalizedCandidate) {
+          return entry.value
+        }
+      }
+    }
+    return undefined
+  }
+}
+
+function pickString(...values: Array<unknown>): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) return trimmed
+    }
+  }
+  return undefined
+}
+
+function parseAmountValue(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.-]/g, '')
+    if (!cleaned) return undefined
+    const parsed = Number(cleaned)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  return undefined
+}
+
+const PRODUCT_IMAGE_METADATA_KEYS = [
+  'product_image_url',
+  'product_image',
+  'productimage',
+  'productImage',
+  'image_url',
+  'imageurl',
+  'image',
+  'imageUrl',
+  'featured_image',
+  'featuredimage',
+  'thumbnail',
+  'thumb',
+  'thumb_url',
+  'thumburl',
+  'photo',
+  'product_photo',
+]
+
+const PRODUCT_URL_METADATA_KEYS = [
+  'product_url',
+  'producturl',
+  'productUrl',
+  'product_link',
+  'productlink',
+  'productLink',
+  'product_page',
+  'productpage',
+  'product_permalink',
+  'productpermalink',
+  'url',
+]
+
+const LINE_TOTAL_METADATA_KEYS = [
+  'line_total',
+  'linetotal',
+  'lineTotal',
+  'line_amount',
+  'lineamount',
+  'amount_total',
+  'amounttotal',
+  'amountTotal',
+  'subtotal',
+  'sub_total',
+  'item_total',
+  'itemtotal',
+  'itemTotal',
+]
+
+const TOTAL_METADATA_KEYS = [
+  'total',
+  'total_amount',
+  'totalamount',
+  'totalAmount',
+  'grand_total',
+  'grandtotal',
+  'grandTotal',
+  'order_total',
+  'ordertotal',
+  'orderTotal',
+  'amount_total',
+  'amounttotal',
+  'amountTotal',
+]
+
+const CUSTOMIZATION_METADATA_KEYS = [
+  'customizations',
+  'customization',
+  'custom_details',
+  'custom_detail',
+  'customDetails',
+  'customDetail',
+  'customization_details',
+  'customization_detail',
+  'customizationDetails',
+  'customizationDetail',
+  'custom_text',
+  'customtext',
+  'customText',
+  'custom_message',
+  'custommessage',
+  'customMessage',
+  'custom_notes',
+  'customnotes',
+  'customNotes',
+  'engraving',
+  'engraving_text',
+  'engravingtext',
+  'engrave_text',
+  'engravingText',
+  'personalization',
+  'personalisation',
+  'personalized_message',
+  'personalizedmessage',
+  'personalised_message',
+  'personalizedMessage',
+  'personalisedMessage',
+  'monogram',
+  'monogram_text',
+  'monogramText',
+  'inscription',
+  'inscription_text',
+  'inscriptionText',
+  'gift_message',
+  'giftmessage',
+  'giftMessage',
+  'item_note',
+  'product_note',
+  'order_item_note',
+  'itemNote',
+  'productNote',
+  'orderItemNote',
+]
+
 function extractCategories(product: Stripe.Product | null, metadataMap: Record<string, string>): string[] | undefined {
   const categories: string[] = []
   const metaCandidate = metadataMap.categories || metadataMap.category
@@ -158,6 +328,8 @@ export function mapStripeLineItem(
     { source: 'session', data: options?.sessionMetadata },
   ])
 
+  const getMetadataValue = createMetadataMatcher(metadata.map)
+
   const sku =
     pickFirst(metadata.map, [
       'sku',
@@ -198,7 +370,16 @@ export function mapStripeLineItem(
         ? (lineItem as any)?.unit_price?.amount_total / 100
         : undefined
 
-  const description = toStringValue(lineItem.description)
+  const metadataDescription = getMetadataValue(
+    'line_description',
+    'linedescription',
+    'description',
+    'product_description',
+    'productdescription',
+    'item_description',
+    'itemdescription',
+  )
+  const description = toStringValue(lineItem.description) || metadataDescription
   const productName = toStringValue(productObj?.name)
   const fallbackName =
     toStringValue(metadata.map.line_item_name) ||
@@ -243,8 +424,41 @@ export function mapStripeLineItem(
         }),
       )
     : undefined
+  const customizationCandidates = normalizeDetails(
+    derivedOptions.customizations,
+    ...CUSTOMIZATION_METADATA_KEYS.map((key) => metadata.map[key]),
+  )
+  const customizations = customizationCandidates.length ? customizationCandidates : undefined
   const name = baseName || undefined
   const categories = extractCategories(productObj, metadata.map)
+
+  const productImage = Array.isArray(productObj?.images)
+    ? productObj?.images.find((img) => typeof img === 'string' && img.trim())
+    : undefined
+  const image = pickString(getMetadataValue(...PRODUCT_IMAGE_METADATA_KEYS), productImage)
+
+  const productUrl = pickString(
+    getMetadataValue(...PRODUCT_URL_METADATA_KEYS),
+    (typeof (productObj as any)?.url === 'string' && (productObj as any)?.url) || undefined,
+  )
+
+  const metadataLineTotal = parseAmountValue(getMetadataValue(...LINE_TOTAL_METADATA_KEYS))
+  const metadataTotal = parseAmountValue(getMetadataValue(...TOTAL_METADATA_KEYS))
+  const amountTotal =
+    typeof lineItem.amount_total === 'number' && Number.isFinite(lineItem.amount_total)
+      ? lineItem.amount_total / 100
+      : undefined
+  const amountSubtotal =
+    typeof lineItem.amount_subtotal === 'number' && Number.isFinite(lineItem.amount_subtotal)
+      ? lineItem.amount_subtotal / 100
+      : undefined
+  const quantityValue = Number.isFinite(quantity) && quantity > 0 ? quantity : undefined
+  const derivedLineTotal =
+    metadataLineTotal ??
+    amountTotal ??
+    amountSubtotal ??
+    (typeof price === 'number' && quantityValue ? price * quantityValue : undefined)
+  const derivedTotal = metadataTotal ?? amountTotal ?? amountSubtotal ?? derivedLineTotal
 
   return {
     id: productId,
@@ -255,12 +469,17 @@ export function mapStripeLineItem(
     name,
     productName,
     description,
+    image,
+    productUrl,
     optionSummary: summary,
     optionDetails,
     upgrades,
+    customizations,
     price,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,
     categories,
+    lineTotal: derivedLineTotal,
+    total: derivedTotal,
     metadata: metadata.entries.length ? metadata.entries : undefined,
   }
 }

@@ -340,6 +340,7 @@ const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown
     optionSummary: toCleanString(item.optionSummary),
     optionDetails: toCleanStringArray(item.optionDetails, 20),
     upgrades: toCleanStringArray(item.upgrades, 20),
+    customizations: toCleanStringArray(item.customizations, 20),
     price: toCleanNumber(item.price),
     quantity: toCleanNumber(item.quantity),
     categories: toCleanStringArray(item.categories, 20),
