@@ -10,16 +10,9 @@ import {
   Spinner,
   Stack,
   Text,
-  Tooltip,
-  useToast,
-} from '@sanity/ui'
-import {AddIcon, BellIcon, ChevronLeftIcon, ChevronRightIcon, EditIcon, RefreshIcon} from '@sanity/icons'
   Menu,
   MenuButton,
   MenuItem,
-  Spinner,
-  Stack,
-  Text,
   useToast,
 } from '@sanity/ui'
 import {AddIcon, EditIcon, RefreshIcon} from '@sanity/icons'
