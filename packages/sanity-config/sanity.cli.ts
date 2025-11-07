@@ -11,11 +11,12 @@ const parsePort = (value?: string | null): number | undefined => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
+// By default, bind to 'localhost' for security. To allow external access, set SANITY_STUDIO_HOSTNAME, SANITY_HOST, or HOST env variable.
 const resolvedHostname =
   normalizeHostname(process.env.SANITY_STUDIO_HOSTNAME) ||
   normalizeHostname(process.env.SANITY_HOST) ||
   normalizeHostname(process.env.HOST) ||
-  '0.0.0.0'
+  'localhost'
 
 const resolvedPort =
   parsePort(process.env.SANITY_STUDIO_PORT) ||
