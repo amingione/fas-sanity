@@ -319,7 +319,8 @@ function badgeTone(status: string): 'positive' | 'caution' | 'critical' | 'defau
   ) {
     return 'positive'
   }
-  if (['pending', 'processing', 'in transit', 'label created'].includes(normalized)) return 'caution'
+  if (['pending', 'processing', 'in transit', 'label created'].includes(normalized))
+    return 'caution'
   if (
     [
       'cancelled',
@@ -359,7 +360,11 @@ function deriveTags(order: RawOrder, shippingStatuses: string[]): string[] {
 
   if (payment.includes('refund')) tags.add('Refunded')
   if (payment.includes('failed')) tags.add('Payment failed')
-  if (isCancelledStatus(order.status) || payment.includes('cancel') || isClosedPaymentStatus(order.paymentStatus)) {
+  if (
+    isCancelledStatus(order.status) ||
+    payment.includes('cancel') ||
+    isClosedPaymentStatus(order.paymentStatus)
+  ) {
     tags.add('Cancelled')
   }
   if (shippingStatuses.some((status) => status.includes('return'))) tags.add('Return')
@@ -373,11 +378,13 @@ function normalizeOrder(raw: RawOrder): OrderRow {
   const createdAtValue = Date.parse(createdISO) || Date.now()
   const fulfilledAtValue = raw.fulfilledAt ? Date.parse(raw.fulfilledAt) || null : null
 
-  const customerName = raw.customerName || raw.shippingAddress?.name || raw.customerEmail || 'Customer'
+  const customerName =
+    raw.customerName || raw.shippingAddress?.name || raw.customerEmail || 'Customer'
   const formattedOrderNumber = formatOrderNumber(raw.orderNumber)
   const orderRef = formattedOrderNumber || `#${raw._id.slice(-6).toUpperCase()}`
   const channel = raw.stripeSessionId ? 'Online Store' : 'Manual Entry'
-  const total = typeof raw.totalAmount === 'number' && Number.isFinite(raw.totalAmount) ? raw.totalAmount : 0
+  const total =
+    typeof raw.totalAmount === 'number' && Number.isFinite(raw.totalAmount) ? raw.totalAmount : 0
   const itemsCount = (raw.cart || []).reduce((sum, item) => {
     const qty = item?.quantity
     if (typeof qty === 'number' && Number.isFinite(qty)) return sum + qty
@@ -614,14 +621,19 @@ export default function OrdersDashboard() {
   const metrics = useMemo(() => {
     const ordersCount = filteredOrders.length
     const itemsOrdered = filteredOrders.reduce((sum, order) => sum + order.itemsCount, 0)
-    const returns = filteredOrders.filter((order) => order.tags.some((tag) => tag.toLowerCase().includes('return')))
-      .length
-    const fulfilled = filteredOrders.filter((order) => order.fulfillmentStatusBase === 'fulfilled').length
-    const delivered = filteredOrders.filter((order) => order.deliveryStatus.toLowerCase().includes('deliver')).length
+    const returns = filteredOrders.filter((order) =>
+      order.tags.some((tag) => tag.toLowerCase().includes('return')),
+    ).length
+    const fulfilled = filteredOrders.filter(
+      (order) => order.fulfillmentStatusBase === 'fulfilled',
+    ).length
+    const delivered = filteredOrders.filter((order) =>
+      order.deliveryStatus.toLowerCase().includes('deliver'),
+    ).length
 
     const durations = filteredOrders
       .filter((order) => order.fulfilledAtValue && order.fulfilledAtValue > order.createdAtValue)
-      .map((order) => (order.fulfilledAtValue! - order.createdAtValue))
+      .map((order) => order.fulfilledAtValue! - order.createdAtValue)
 
     const averageDuration = durations.length
       ? durations.reduce((sum, diff) => sum + diff, 0) / durations.length
@@ -671,7 +683,7 @@ export default function OrdersDashboard() {
               fulfilledAt: timestamp,
             })
             .setIfMissing({shippingLog: []})
-            .append('shippingLog', [buildLogEntry()])
+            .append('shippingLog', [buildLogEntry()]),
         )
       })
 
@@ -695,14 +707,16 @@ export default function OrdersDashboard() {
               console.warn(`Orders dashboard: failed to update draft ${id}`, err)
             }
           }
-        })
+        }),
       )
 
       setOrders((prev) =>
         prev.map((order) => {
           if (!selectedIds.has(order.id)) return order
           const normalizedDelivery = (order.deliveryStatus || '').toLowerCase()
-          const deliveryStatus = normalizedDelivery.includes('deliver') ? order.deliveryStatus : 'Fulfilled'
+          const deliveryStatus = normalizedDelivery.includes('deliver')
+            ? order.deliveryStatus
+            : 'Fulfilled'
           return {
             ...order,
             fulfillmentStatus: 'Fulfilled (Manual)',
@@ -710,7 +724,7 @@ export default function OrdersDashboard() {
             fulfilledAtValue: Date.parse(timestamp),
             deliveryStatus,
           }
-        })
+        }),
       )
 
       setSelectedIds(new Set())
@@ -760,7 +774,7 @@ export default function OrdersDashboard() {
               fulfilledAt: null,
             })
             .setIfMissing({shippingLog: []})
-            .append('shippingLog', [buildLogEntry()])
+            .append('shippingLog', [buildLogEntry()]),
         )
       })
 
@@ -785,7 +799,7 @@ export default function OrdersDashboard() {
               console.warn(`Orders dashboard: failed to update draft ${id}`, err)
             }
           }
-        })
+        }),
       )
 
       setOrders((prev) =>
@@ -802,7 +816,7 @@ export default function OrdersDashboard() {
             fulfilledAtValue: null,
             tags: Array.from(updatedTags),
           }
-        })
+        }),
       )
 
       setSelectedIds(new Set())
@@ -860,7 +874,10 @@ export default function OrdersDashboard() {
                 <Text size={1} muted>
                   Location
                 </Text>
-                <Select value={locationFilter} onChange={(event) => setLocationFilter(event.currentTarget.value)}>
+                <Select
+                  value={locationFilter}
+                  onChange={(event) => setLocationFilter(event.currentTarget.value)}
+                >
                   <option value="all">All locations</option>
                   {locationOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -873,7 +890,10 @@ export default function OrdersDashboard() {
                 <Text size={1} muted>
                   Date range
                 </Text>
-                <Select value={datePreset} onChange={(event) => setDatePreset(event.currentTarget.value as DatePreset)}>
+                <Select
+                  value={datePreset}
+                  onChange={(event) => setDatePreset(event.currentTarget.value as DatePreset)}
+                >
                   {datePresets.map((preset) => (
                     <option key={preset.value} value={preset.value}>
                       {preset.label}
@@ -886,15 +906,28 @@ export default function OrdersDashboard() {
               <Button text="Export" mode="ghost" disabled={filteredOrders.length === 0} />
               <MenuButton
                 id="orders-dashboard-more-actions"
-                button={<Button text="More actions" mode="ghost" disabled={selectedIds.size === 0 || actionLoading} />}
+                button={
+                  <Button
+                    text="More actions"
+                    mode="ghost"
+                    disabled={selectedIds.size === 0 || actionLoading}
+                  />
+                }
                 menu={
                   <Menu>
                     <MenuItem
-                      text={actionInProgress === 'fulfill' ? 'Marking as fulfilled…' : 'Mark as fulfilled'}
+                      text={
+                        actionInProgress === 'fulfill'
+                          ? 'Marking as fulfilled…'
+                          : 'Mark as fulfilled'
+                      }
                       disabled={selectedIds.size === 0 || actionLoading}
                       onClick={markSelectedFulfilled}
                     />
-                    <MenuItem text="Send receipt" disabled={selectedIds.size === 0 || actionLoading} />
+                    <MenuItem
+                      text="Send receipt"
+                      disabled={selectedIds.size === 0 || actionLoading}
+                    />
                     <MenuItem
                       text={actionInProgress === 'archive' ? 'Archiving…' : 'Archive'}
                       disabled={selectedIds.size === 0 || actionLoading}
@@ -1028,10 +1061,20 @@ export default function OrdersDashboard() {
                     background: HEADER_BACKGROUND_COLOR,
                   }}
                 >
-                  <span style={{...STICKY_CHECKBOX_BASE, background: HEADER_BACKGROUND_COLOR, zIndex: 4}}>
+                  <span
+                    style={{
+                      ...STICKY_CHECKBOX_BASE,
+                      background: HEADER_BACKGROUND_COLOR,
+                      zIndex: 4,
+                    }}
+                  >
                     <Checkbox
-                      checked={selectedIds.size === filteredOrders.length && filteredOrders.length > 0}
-                      indeterminate={selectedIds.size > 0 && selectedIds.size < filteredOrders.length}
+                      checked={
+                        selectedIds.size === filteredOrders.length && filteredOrders.length > 0
+                      }
+                      indeterminate={
+                        selectedIds.size > 0 && selectedIds.size < filteredOrders.length
+                      }
                       onChange={(event) => handleSelectAll(event.currentTarget.checked)}
                     />
                   </span>
@@ -1063,8 +1106,8 @@ export default function OrdersDashboard() {
                   const rowBackground = isSelected
                     ? ROW_SELECTED_BACKGROUND
                     : isActive
-                    ? '#f8fafc'
-                    : ROW_BACKGROUND_COLOR
+                      ? '#f8fafc'
+                      : ROW_BACKGROUND_COLOR
 
                   return (
                     <Flex
@@ -1205,41 +1248,35 @@ type OrderPreviewDoc = {
   customerEmail?: string | null
   customerName?: string | null
   shippingAddress?: RawShippingAddress | null
-  cart?: Array<
-    | null
-    | {
-        _key?: string
-        name?: string
-        sku?: string
-        quantity?: number | null
-        price?: number | null
-        lineTotal?: number | null
-        total?: number | null
-        optionSummary?: string | null
-        optionDetails?: string[] | string | null
-        upgrades?: string[] | string | null
-        customizations?: string[] | string | null
-        metadata?: Array<{key?: string; value?: string}>
-        validationIssues?: string[] | string | null
-        productRef?: {
-          _id?: string
-          title?: string
-          slug?: {current?: string | null}
-        } | null
-      }
-  > | null
-  shippingLog?: Array<
-    | null
-    | {
-        _key?: string
-        status?: string | null
-        message?: string | null
-        trackingNumber?: string | null
-        trackingUrl?: string | null
-        labelUrl?: string | null
-        createdAt?: string | null
-      }
-  > | null
+  cart?: Array<null | {
+    _key?: string
+    name?: string
+    sku?: string
+    quantity?: number | null
+    price?: number | null
+    lineTotal?: number | null
+    total?: number | null
+    optionSummary?: string | null
+    optionDetails?: string[] | string | null
+    upgrades?: string[] | string | null
+    customizations?: string[] | string | null
+    metadata?: Array<{key?: string; value?: string}>
+    validationIssues?: string[] | string | null
+    productRef?: {
+      _id?: string
+      title?: string
+      slug?: {current?: string | null}
+    } | null
+  }> | null
+  shippingLog?: Array<null | {
+    _key?: string
+    status?: string | null
+    message?: string | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    labelUrl?: string | null
+    createdAt?: string | null
+  }> | null
 }
 
 type CartItem = NonNullable<NonNullable<OrderPreviewDoc['cart']>[number]>
@@ -1307,8 +1344,8 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
           typeof item.lineTotal === 'number'
             ? item.lineTotal
             : typeof item.price === 'number'
-            ? item.price * quantity
-            : null
+              ? item.price * quantity
+              : null
         const metadataEntries = normalizeMetadataEntries(item.metadata || [])
         const rawName = (item.name || item.sku || 'Item').toString()
         const displayName = rawName.split('•')[0]?.trim() || rawName
@@ -1324,7 +1361,10 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
           if (rest.length === 0) return trimmed.toLowerCase()
           const value = rest.join(':').trim().toLowerCase()
           let label = rawLabel.toLowerCase()
-          label = label.replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+          label = label.replace(
+            /\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g,
+            '',
+          )
           label = label.replace(/[^a-z0-9]+/g, ' ').trim()
           if (label && label === value) return null
           if (!label) return value ? `value:${value}` : trimmed.toLowerCase()
@@ -1359,10 +1399,7 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
             .forEach((part) => addDetail(part))
         })
 
-        const upgrades = uniqueStrings([
-          ...coerceStringArray(item.upgrades),
-          ...derived.upgrades,
-        ])
+        const upgrades = uniqueStrings([...coerceStringArray(item.upgrades), ...derived.upgrades])
         if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
 
         const customizations = uniqueStrings([
@@ -1465,7 +1502,9 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
       const manualFulfillment = Array.isArray(order.shippingLog)
         ? order.shippingLog.some(
             (entry) =>
-              entry && typeof entry.status === 'string' && entry.status.toLowerCase() === 'fulfilled_manual',
+              entry &&
+              typeof entry.status === 'string' &&
+              entry.status.toLowerCase() === 'fulfilled_manual',
           )
         : false
       const statusLabel =
@@ -1477,8 +1516,14 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
       badges.push({label: statusLabel, tone: badgeTone(statusLabel)})
     }
     if (order.paymentStatus)
-      badges.push({label: `Payment: ${normalizeStatusLabel(order.paymentStatus)}`, tone: badgeTone(order.paymentStatus)})
-    if (order.fulfilledAt && !badges.some((badge) => badge.label.toLowerCase().startsWith('fulfilled')))
+      badges.push({
+        label: `Payment: ${normalizeStatusLabel(order.paymentStatus)}`,
+        tone: badgeTone(order.paymentStatus),
+      })
+    if (
+      order.fulfilledAt &&
+      !badges.some((badge) => badge.label.toLowerCase().startsWith('fulfilled'))
+    )
       badges.push({label: 'Fulfilled', tone: 'positive'})
     return badges
   }, [order])
@@ -1547,7 +1592,13 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
             </Flex>
           ) : (
             <>
-              <Card padding={3} radius={3} shadow={1} tone="transparent" style={{gap: 12, display: 'flex', flexDirection: 'column'}}>
+              <Card
+                padding={3}
+                radius={3}
+                shadow={1}
+                tone="transparent"
+                style={{gap: 12, display: 'flex', flexDirection: 'column'}}
+              >
                 <Stack space={2}>
                   <Text size={1} muted>
                     Summary
@@ -1609,11 +1660,15 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                     <Text size={1} muted>
                       Subtotal
                     </Text>
-                    <Text style={{textAlign: 'right'}}>{currencyFormatter.format(totals.subtotal)}</Text>
+                    <Text style={{textAlign: 'right'}}>
+                      {currencyFormatter.format(totals.subtotal)}
+                    </Text>
                     <Text size={1} muted>
                       Shipping
                     </Text>
-                    <Text style={{textAlign: 'right'}}>{currencyFormatter.format(totals.shipping)}</Text>
+                    <Text style={{textAlign: 'right'}}>
+                      {currencyFormatter.format(totals.shipping)}
+                    </Text>
                     <Text size={1} muted>
                       Tax
                     </Text>
@@ -1661,7 +1716,9 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                 <Stack space={2} style={{wordBreak: 'break-word'}}>
                   <Text weight="semibold">Items</Text>
                   {items.length === 0 ? (
-                    <Text size={1} muted>No items recorded.</Text>
+                    <Text size={1} muted>
+                      No items recorded.
+                    </Text>
                   ) : (
                     <Stack space={3}>
                       {items.map((item) => (
@@ -1697,7 +1754,9 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                                 </Text>
                               )}
                               {typeof item.total === 'number' && (
-                                <Text weight="semibold">{currencyFormatter.format(item.total)}</Text>
+                                <Text weight="semibold">
+                                  {currencyFormatter.format(item.total)}
+                                </Text>
                               )}
                             </Stack>
                           </Flex>
@@ -1712,7 +1771,9 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                 <Stack space={2} style={{wordBreak: 'break-word'}}>
                   <Text weight="semibold">Timeline</Text>
                   {timeline.length === 0 ? (
-                    <Text size={1} muted>No shipping updates yet.</Text>
+                    <Text size={1} muted>
+                      No shipping updates yet.
+                    </Text>
                   ) : (
                     <Stack space={2}>
                       {timeline.map((entry) => (
@@ -1739,7 +1800,9 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                                 text="View tracking"
                                 tone="primary"
                                 mode="bleed"
-                                onClick={() => window.open(entry.trackingUrl!, '_blank', 'noopener')}
+                                onClick={() =>
+                                  window.open(entry.trackingUrl!, '_blank', 'noopener')
+                                }
                               />
                             )}
                           </Stack>

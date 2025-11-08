@@ -36,7 +36,7 @@ export const customProductOptionCustomType = defineField({
           .custom((options: CustomOptionValue[] | undefined) => {
             if (options) {
               const uniqueTitles = new Set(
-                options.map((option) => option?.title?.trim()?.toLowerCase()).filter(Boolean)
+                options.map((option) => option?.title?.trim()?.toLowerCase()).filter(Boolean),
               )
               if (options.length > uniqueTitles.size) {
                 return 'Each choice must have a unique label'

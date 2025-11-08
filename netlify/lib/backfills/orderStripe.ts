@@ -42,7 +42,7 @@ function createSanityClient(): SanityClient {
 
   if (!projectId || !dataset || !token) {
     throw new Error(
-      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).'
+      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).',
     )
   }
 
@@ -130,7 +130,7 @@ function selectStripeId(doc: OrderDoc, kind: StripeBackfillKind): string | null 
 async function fetchOrders(
   sanity: SanityClient,
   kind: StripeBackfillKind,
-  limit: number
+  limit: number,
 ): Promise<OrderDoc[]> {
   const query = ORDER_QUERIES[kind]
   if (!query) return []
@@ -138,7 +138,7 @@ async function fetchOrders(
 }
 
 export async function runOrderStripeBackfill(
-  rawOptions: OrderStripeBackfillOptions
+  rawOptions: OrderStripeBackfillOptions,
 ): Promise<OrderStripeBackfillResult> {
   const kind = rawOptions.kind
   if (!kind) {
@@ -238,7 +238,7 @@ export async function runOrderStripeBackfill(
     logger?.(
       `Done. ${succeeded} succeeded${failed ? `, ${failed} failed` : ''}${
         rawOptions.id ? '' : `, processed ${processed} records`
-      }.`
+      }.`,
     )
   }
 

@@ -1,8 +1,4 @@
-import type {
-  DocumentBadgeComponent,
-  DocumentBadgeDescription,
-  DocumentBadgesResolver,
-} from 'sanity'
+import type {DocumentBadgeComponent, DocumentBadgeDescription, DocumentBadgesResolver} from 'sanity'
 
 type BadgeColor = NonNullable<DocumentBadgeDescription['color']>
 

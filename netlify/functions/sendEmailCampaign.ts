@@ -51,8 +51,9 @@ function portableTextToHtml(blocks: any[]): string {
 
 function generateEmailHtml(campaign: any, unsubscribeUrl: string): string {
   const contentHtml = portableTextToHtml(campaign.content || [])
-  const ctaButton = campaign.ctaButton?.text && campaign.ctaButton?.url
-    ? `
+  const ctaButton =
+    campaign.ctaButton?.text && campaign.ctaButton?.url
+      ? `
       <table role="presentation" style="margin: 30px auto;">
         <tr>
           <td style="border-radius: 4px; background: #0066cc;">
@@ -63,7 +64,7 @@ function generateEmailHtml(campaign: any, unsubscribeUrl: string): string {
         </tr>
       </table>
     `
-    : ''
+      : ''
 
   return `
     <!DOCTYPE html>
@@ -164,7 +165,8 @@ export const handler: Handler = async (event) => {
     if (isTest && campaign.testEmail) {
       customers = [{email: campaign.testEmail, name: 'Test User', _id: 'test'}]
     } else {
-      const query = campaign.segment === 'custom' ? campaign.customQuery : SEGMENT_QUERIES[campaign.segment]
+      const query =
+        campaign.segment === 'custom' ? campaign.customQuery : SEGMENT_QUERIES[campaign.segment]
 
       if (!query) {
         return {

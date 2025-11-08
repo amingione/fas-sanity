@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 const path = require('path')
 const dotenv = require('dotenv')
-const { createClient } = require('@sanity/client')
+const {createClient} = require('@sanity/client')
 
 for (const file of ['.env.local', '.env.development', '.env']) {
   const full = path.resolve(process.cwd(), file)
   try {
-    dotenv.config({ path: full, override: false })
+    dotenv.config({path: full, override: false})
   } catch {}
 }
 
@@ -40,7 +40,7 @@ async function run() {
       shippingDeliveryDays,
       shippingEstimatedDeliveryDate,
       shippingMetadata
-    }`
+    }`,
   )
 
   console.log(`Found ${docs.length} orders to migrate`)
@@ -52,8 +52,8 @@ async function run() {
       typeof doc.selectedShippingAmount === 'number'
         ? doc.selectedShippingAmount
         : meta.shipping_amount
-        ? Number(meta.shipping_amount)
-        : undefined
+          ? Number(meta.shipping_amount)
+          : undefined
 
     const currency =
       doc.selectedShippingCurrency ||
@@ -68,8 +68,8 @@ async function run() {
       typeof doc.shippingDeliveryDays === 'number'
         ? doc.shippingDeliveryDays
         : meta.shipping_delivery_days
-        ? Number(meta.shipping_delivery_days)
-        : undefined
+          ? Number(meta.shipping_delivery_days)
+          : undefined
     const estimatedDate =
       doc.shippingEstimatedDeliveryDate || meta.shipping_estimated_delivery_date || undefined
 
@@ -108,7 +108,7 @@ async function run() {
         'shippingEstimatedDeliveryDate',
         'shippingMetadata',
       ])
-      .commit({ autoGenerateArrayKeys: true })
+      .commit({autoGenerateArrayKeys: true})
   }
 
   console.log('Migration complete')
@@ -118,4 +118,3 @@ run().catch((err) => {
   console.error(err)
   process.exit(1)
 })
-

@@ -1,4 +1,4 @@
-import { defineType, defineField } from 'sanity'
+import {defineType, defineField} from 'sanity'
 
 export default defineType({
   name: 'vendor',
@@ -9,35 +9,35 @@ export default defineType({
       name: 'name',
       title: 'Vendor Name',
       type: 'string',
-      validation: Rule => Rule.required()
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'email',
       title: 'Email',
       type: 'string',
-      validation: Rule => Rule.required().email()
+      validation: (Rule) => Rule.required().email(),
     }),
     defineField({
       name: 'passwordHash',
       title: 'Password Hash',
       type: 'string',
       hidden: true,
-      readOnly: true
+      readOnly: true,
     }),
     defineField({
       name: 'phone',
       title: 'Phone Number',
-      type: 'string'
+      type: 'string',
     }),
     defineField({
       name: 'address',
       title: 'Address',
-      type: 'text'
+      type: 'text',
     }),
     defineField({
       name: 'notes',
       title: 'Notes',
-      type: 'text'
+      type: 'text',
     }),
     defineField({
       name: 'status',
@@ -46,123 +46,134 @@ export default defineType({
       initialValue: 'Pending',
       options: {
         list: ['Pending', 'Approved', 'Rejected'],
-        layout: 'radio'
+        layout: 'radio',
       },
-      validation: Rule => Rule.required()
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'companyName',
       title: 'Company Name',
-      type: 'string'
+      type: 'string',
     }),
     defineField({
       name: 'website',
       title: 'Company Website',
-      type: 'url'
+      type: 'url',
     }),
     defineField({
       name: 'appliedAt',
       title: 'Date Applied',
-      type: 'datetime'
+      type: 'datetime',
     }),
     defineField({
       name: 'contactPerson',
       title: 'Main Contact Person',
-      type: 'string'
+      type: 'string',
     }),
     // Business verification fields
     defineField({
       name: 'resaleCertificateId',
       title: 'Resale Certificate ID',
       type: 'string',
-      validation: Rule => Rule.required()
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'taxId',
       title: 'Tax ID (EIN)',
       type: 'string',
-      validation: Rule => Rule.required()
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'businessAddress',
       title: 'Business Address',
       type: 'string',
-      validation: Rule => Rule.required()
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'businessType',
       title: 'Business Type',
       type: 'string',
       options: {
-        list: ['LLC', 'Corporation', 'Sole Proprietor', 'Partnership', 'Other']
-      }
+        list: ['LLC', 'Corporation', 'Sole Proprietor', 'Partnership', 'Other'],
+      },
     }),
     defineField({
       name: 'yearsInBusiness',
       title: 'Years in Business',
-      type: 'number'
+      type: 'number',
     }),
     defineField({
       name: 'licenseDocument',
       title: 'Business License Upload',
-      type: 'file'
+      type: 'file',
     }),
     defineField({
       name: 'roles',
       title: 'Roles',
       type: 'array',
-      of: [{ type: 'string' }],
+      of: [{type: 'string'}],
       initialValue: ['vendor'],
       options: {
         list: [
-          { title: 'Vendor', value: 'vendor' },
-          { title: 'Customer', value: 'customer' },
-          { title: 'Admin', value: 'admin' },
+          {title: 'Vendor', value: 'vendor'},
+          {title: 'Customer', value: 'customer'},
+          {title: 'Admin', value: 'admin'},
         ],
       },
-      description: 'Controls access to vendor portal features. Most vendors should keep the Vendor role.',
+      description:
+        'Controls access to vendor portal features. Most vendors should keep the Vendor role.',
       validation: (Rule) => Rule.required().min(1),
     }),
     defineField({
       name: 'approved',
       title: 'Approved Vendor',
       type: 'boolean',
-      initialValue: false
+      initialValue: false,
     }),
     defineField({
       name: 'partnershipType',
       title: 'Partnership Type',
       type: 'string',
       options: {
-        list: ['Reseller', 'Installer', 'Wholesaler', 'Service Center']
-      }
+        list: ['Reseller', 'Installer', 'Wholesaler', 'Service Center'],
+      },
     }),
     defineField({
       name: 'logo',
       title: 'Company Logo',
       type: 'image',
       options: {
-        hotspot: true
-      }
+        hotspot: true,
+      },
     }),
-    defineField({ name: 'orders', title: 'Orders', type: 'array', of: [ { type: 'vendorOrderSummary' } ] }),
-    defineField({ name: 'quotes', title: 'Submitted Quotes', type: 'array', of: [ { type: 'vendorQuoteSummary' } ] }),
+    defineField({
+      name: 'orders',
+      title: 'Orders',
+      type: 'array',
+      of: [{type: 'vendorOrderSummary'}],
+    }),
+    defineField({
+      name: 'quotes',
+      title: 'Submitted Quotes',
+      type: 'array',
+      of: [{type: 'vendorQuoteSummary'}],
+    }),
     defineField({
       name: 'assignedCustomers',
       title: 'Assigned Customers',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'customer' }] }]
+      of: [{type: 'reference', to: [{type: 'customer'}]}],
     }),
     defineField({
       name: 'lastLogin',
       title: 'Last Login Date',
-      type: 'datetime'
+      type: 'datetime',
     }),
     defineField({
       name: 'active',
       title: 'Active Status',
       type: 'boolean',
-      initialValue: true
-    })
-  ]
+      initialValue: true,
+    }),
+  ],
 })

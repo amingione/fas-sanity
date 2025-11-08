@@ -18,18 +18,175 @@ import {format, formatDistanceToNow} from 'date-fns'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 
-import {
-  BookingCustomer,
-  CalendarBooking,
-  CalendarTask,
-  TASK_BADGE_DESCRIPTIONS,
-  TASK_BADGE_STYLES,
-  computeSnoozedReminder,
-  deriveBookingStatusFromTaskAction,
-  formatDateForStorage,
-  resolveTaskBadge,
-  withRetry,
-} from '../../apps/calendar/shared'
+type BookingCustomer = {
+  _id?: string
+  firstName?: string | null
+  lastName?: string | null
+  name?: string | null
+  email?: string | null
+  phone?: string | null
+}
+
+type CalendarBooking = {
+  documentId: string
+  draftId?: string
+  publishedId?: string
+  bookingId: string | null
+  service: string | null
+  scheduledAt: string | null
+  status: string | null
+  notes: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  customer: BookingCustomer | null
+}
+
+type CalendarTask = {
+  _id: string
+  title: string
+  status: string
+  dueAt: string | null
+  remindAt: string | null
+  notes: string | null
+  booking: CalendarBooking | null
+  assignedTo: BookingCustomer | null
+}
+
+type BadgeVariant =
+  | 'caution'
+  | 'critical'
+  | 'positive'
+  | 'default'
+  | 'neutral'
+  | 'primary'
+  | 'suggest'
+
+const TASK_BADGE_DESCRIPTIONS: Record<BadgeVariant, string> = {
+  critical: 'Overdue reminder',
+  caution: 'Due soon',
+  primary: 'Due today',
+  suggest: 'Upcoming reminder',
+  neutral: 'Upcoming reminder',
+  default: 'On your radar',
+  positive: 'Ready to go',
+}
+
+const TASK_BADGE_STYLES: Record<
+  BadgeVariant,
+  {tone: BadgeVariant; borderColor: string; background: string; textColor: string; label: string}
+> = {
+  critical: {
+    tone: 'critical',
+    borderColor: '#dc2626',
+    background: '#fee2e2',
+    textColor: '#7f1d1d',
+    label: 'Overdue',
+  },
+  caution: {
+    tone: 'caution',
+    borderColor: '#f97316',
+    background: '#fff7ed',
+    textColor: '#7c2d12',
+    label: 'Due soon',
+  },
+  primary: {
+    tone: 'primary',
+    borderColor: '#2563eb',
+    background: '#dbeafe',
+    textColor: '#1d4ed8',
+    label: 'Due today',
+  },
+  suggest: {
+    tone: 'suggest',
+    borderColor: '#0f766e',
+    background: '#ccfbf1',
+    textColor: '#115e59',
+    label: 'Reminder',
+  },
+  neutral: {
+    tone: 'neutral',
+    borderColor: '#94a3b8',
+    background: '#f8fafc',
+    textColor: '#475569',
+    label: 'Upcoming',
+  },
+  default: {
+    tone: 'default',
+    borderColor: '#e5e7eb',
+    background: '#ffffff',
+    textColor: '#111827',
+    label: 'Pending',
+  },
+  positive: {
+    tone: 'positive',
+    borderColor: '#15803d',
+    background: '#dcfce7',
+    textColor: '#166534',
+    label: 'Ready',
+  },
+}
+
+const computeSnoozedReminder = (task: CalendarTask): Date => {
+  const base = task.remindAt
+    ? new Date(task.remindAt)
+    : task.dueAt
+      ? new Date(task.dueAt)
+      : new Date()
+  const nextReminder = new Date(Math.max(Date.now(), base.getTime()))
+  nextReminder.setMinutes(nextReminder.getMinutes() + 15)
+  return nextReminder
+}
+
+const formatDateForStorage = (value: Date): string => value.toISOString()
+
+const deriveBookingStatusFromTaskAction = (
+  action: 'complete' | 'snooze',
+  current?: string | null,
+) => {
+  if (action === 'complete') return 'completed'
+  if (action === 'snooze') return current && current !== 'pending' ? 'pending' : current
+  return current
+}
+
+const resolveTaskBadge = (task: CalendarTask) => {
+  const due = task.dueAt ? new Date(task.dueAt) : null
+  const remind = task.remindAt ? new Date(task.remindAt) : null
+  const now = new Date()
+  const getDiff = (date: Date | null) =>
+    date ? date.getTime() - now.getTime() : Number.POSITIVE_INFINITY
+
+  if ((due && due < now) || (remind && remind < now)) {
+    return {due, remind, variant: 'critical' as BadgeVariant}
+  }
+  if (due && getDiff(due) <= 2 * 60 * 60 * 1000) {
+    return {due, remind, variant: 'caution' as BadgeVariant}
+  }
+  if (remind && getDiff(remind) <= 2 * 60 * 60 * 1000) {
+    return {due, remind, variant: 'suggest' as BadgeVariant}
+  }
+  if (due && getDiff(due) <= 24 * 60 * 60 * 1000) {
+    return {due, remind, variant: 'primary' as BadgeVariant}
+  }
+  if (!due && !remind) {
+    return {due, remind, variant: 'default' as BadgeVariant}
+  }
+  return {due, remind, variant: 'neutral' as BadgeVariant}
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 150): Promise<T> {
+  let attempt = 0
+  while (true) {
+    try {
+      return await fn()
+    } catch (error) {
+      attempt += 1
+      if (attempt >= retries) {
+        throw error
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay * attempt))
+    }
+  }
+}
 
 const CUSTOMER_PROJECTION = `{
   _id,
@@ -50,9 +207,6 @@ const TASK_WIDGET_QUERY = `*[_type == "calendarTask"] | order(coalesce(remindAt,
     _id,
     scheduledAt,
     status,
-    "documentId": select(string::startsWith(_id, "drafts.") => _id[7:], _id),
-    "draftId": select(string::startsWith(_id, "drafts.") => _id, null),
-    "publishedId": select(string::startsWith(_id, "drafts.") => null, _id),
     customer->${CUSTOMER_PROJECTION}
   },
   assignedTo->${CUSTOMER_PROJECTION}
@@ -62,9 +216,6 @@ const TASK_WIDGET_LISTEN_QUERY = '*[_type == "calendarTask"]'
 
 type BookingResult = {
   _id: string
-  documentId: string
-  draftId?: string | null
-  publishedId?: string | null
   scheduledAt?: string | null
   status?: string | null
   customer?: BookingCustomer | null
@@ -93,10 +244,13 @@ function getDisplayName(customer?: BookingCustomer | null) {
 
 function normalizeBooking(record?: BookingResult | null): CalendarBooking | null {
   if (!record) return null
+  const rawId = record._id
+  const isDraft = rawId?.startsWith('drafts.')
+  const baseId = isDraft ? rawId.substring(7) : rawId
   return {
-    documentId: record.documentId,
-    draftId: record.draftId ?? undefined,
-    publishedId: record.publishedId ?? undefined,
+    documentId: baseId,
+    draftId: isDraft ? rawId : undefined,
+    publishedId: isDraft ? baseId : rawId,
     bookingId: null,
     service: null,
     scheduledAt: record.scheduledAt ?? null,

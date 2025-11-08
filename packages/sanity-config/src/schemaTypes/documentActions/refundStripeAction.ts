@@ -3,7 +3,14 @@ import {getNetlifyFnBase} from './netlifyFnBase'
 
 const normalizeId = (id: string) => id.replace(/^drafts\./, '').trim()
 
-const allowedStatuses = new Set(['paid', 'fulfilled', 'shipped', 'closed', 'refunded', 'partially_refunded'])
+const allowedStatuses = new Set([
+  'paid',
+  'fulfilled',
+  'shipped',
+  'closed',
+  'refunded',
+  'partially_refunded',
+])
 
 const parseAmountInput = (value: string): number | undefined => {
   const trimmed = value.trim()
@@ -39,11 +46,12 @@ const confirmAndCollect = (options: {
 
   const {reference, remaining, currency, suggestedAmount} = options
   const remainingLabel =
-    typeof remaining === 'number' ? `Remaining balance: ${formatMoney(remaining, currency) || remaining}` : ''
-  const promptText =
-    `Enter refund amount for ${reference} (leave blank for ${
-      remainingLabel || 'full available amount'
-    }).\nUse decimals for partial refunds.`.trim()
+    typeof remaining === 'number'
+      ? `Remaining balance: ${formatMoney(remaining, currency) || remaining}`
+      : ''
+  const promptText = `Enter refund amount for ${reference} (leave blank for ${
+    remainingLabel || 'full available amount'
+  }).\nUse decimals for partial refunds.`.trim()
   const defaultValue =
     typeof suggestedAmount === 'number'
       ? suggestedAmount.toFixed(2)
@@ -63,7 +71,9 @@ const handleResponse = async (response: Response) => {
     if (typeof window !== 'undefined') window.alert(`Refund failed: ${message}`)
   } else if (typeof window !== 'undefined') {
     const amount = typeof data.amount === 'number' ? formatMoney(data.amount, data.currency) : null
-    const label = amount ? `${amount} • status=${data.stripeStatus || 'n/a'}` : `status=${data.stripeStatus || 'n/a'}`
+    const label = amount
+      ? `${amount} • status=${data.stripeStatus || 'n/a'}`
+      : `status=${data.stripeStatus || 'n/a'}`
     window.alert(`Refund created: ${data.refundId || 'n/a'} (${label})`)
   }
 }
@@ -82,10 +92,13 @@ export const refundStripeOrderAction: DocumentActionComponent = (props) => {
 
   const totalAmount = typeof doc.totalAmount === 'number' ? doc.totalAmount : undefined
   const amountRefunded = typeof doc.amountRefunded === 'number' ? doc.amountRefunded : 0
-  const remaining = typeof totalAmount === 'number' ? Math.max(totalAmount - (amountRefunded || 0), 0) : undefined
+  const remaining =
+    typeof totalAmount === 'number' ? Math.max(totalAmount - (amountRefunded || 0), 0) : undefined
   const currency = typeof doc.currency === 'string' ? doc.currency : 'USD'
   const reference =
-    (typeof doc.orderNumber === 'string' && doc.orderNumber) || (typeof doc.slug?.current === 'string' && doc.slug.current) || id
+    (typeof doc.orderNumber === 'string' && doc.orderNumber) ||
+    (typeof doc.slug?.current === 'string' && doc.slug.current) ||
+    id
 
   return {
     label: 'Issue Refund',
@@ -176,4 +189,3 @@ export const refundStripeInvoiceAction: DocumentActionComponent = (props) => {
     },
   }
 }
-

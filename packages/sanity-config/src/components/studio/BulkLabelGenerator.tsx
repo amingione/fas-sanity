@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { useClient } from 'sanity'
-import { Card, Button, Stack, Text, Box } from '@sanity/ui'
-import { formatApiError } from '../../utils/formatApiError'
+import React, {useState, useEffect, useMemo} from 'react'
+import {useClient} from 'sanity'
+import {Card, Button, Stack, Text, Box} from '@sanity/ui'
+import {formatApiError} from '../../utils/formatApiError'
 
 type EasyPostAddress = {
   name?: string
@@ -15,13 +15,16 @@ type EasyPostAddress = {
   country_code?: string
 }
 
-type ShipmentWeight = { value: number; unit?: string } | number | null | undefined
-type ShipmentDimensions = {
-  unit?: string
-  length?: number | null
-  width?: number | null
-  height?: number | null
-} | null | undefined
+type ShipmentWeight = {value: number; unit?: string} | number | null | undefined
+type ShipmentDimensions =
+  | {
+      unit?: string
+      length?: number | null
+      width?: number | null
+      height?: number | null
+    }
+  | null
+  | undefined
 
 type ShippingLabelDoc = {
   _id: string
@@ -34,7 +37,9 @@ type ShippingLabelDoc = {
 }
 
 function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     try {
@@ -64,32 +69,47 @@ function isValidDimensions(dimensions: ShipmentDimensions): boolean {
   return [length, width, height].every((val) => Number.isFinite(val) && val > 0)
 }
 
-function normalizeWeight(weight: ShipmentWeight): { value: number; unit: 'pound' | 'ounce' } {
+function normalizeWeight(weight: ShipmentWeight): {value: number; unit: 'pound' | 'ounce'} {
   if (typeof weight === 'number') {
-    return { value: weight, unit: 'pound' }
+    return {value: weight, unit: 'pound'}
   }
   const value = Number(weight?.value) || 1
-  const unit = (weight && typeof weight === 'object' && weight.unit === 'ounce') ? 'ounce' : 'pound'
-  return { value, unit }
+  const unit = weight && typeof weight === 'object' && weight.unit === 'ounce' ? 'ounce' : 'pound'
+  return {value, unit}
 }
 
-function normalizeDimensions(dimensions: ShipmentDimensions): { unit: 'inch' | 'centimeter'; length: number; width: number; height: number } {
-  const unit = (dimensions && typeof dimensions === 'object' && dimensions.unit === 'centimeter') ? 'centimeter' : 'inch'
+function normalizeDimensions(dimensions: ShipmentDimensions): {
+  unit: 'inch' | 'centimeter'
+  length: number
+  width: number
+  height: number
+} {
+  const unit =
+    dimensions && typeof dimensions === 'object' && dimensions.unit === 'centimeter'
+      ? 'centimeter'
+      : 'inch'
   const length = Number(dimensions?.length) || 0
   const width = Number(dimensions?.width) || 0
   const height = Number(dimensions?.height) || 0
-  return { unit, length, width, height }
+  return {unit, length, width, height}
 }
 
 function summarizeAddress(addr?: EasyPostAddress): string {
   if (!addr) return 'No destination address'
-  const parts = [addr.name, addr.address_line1, addr.city_locality, addr.state_province, addr.postal_code, addr.country_code]
+  const parts = [
+    addr.name,
+    addr.address_line1,
+    addr.city_locality,
+    addr.state_province,
+    addr.postal_code,
+    addr.country_code,
+  ]
   return parts.filter(Boolean).join(', ')
 }
 
 function stringifyDimensions(dimensions?: ShipmentDimensions): string {
   if (!dimensions) return '—'
-  const { length, width, height, unit } = dimensions
+  const {length, width, height, unit} = dimensions
   if (![length, width, height].every((v) => Number(v) > 0)) return 'Incomplete'
   return `${length}×${width}×${height} ${unit || 'in'}`
 }
@@ -103,7 +123,7 @@ function stringifyWeight(weight?: ShipmentWeight): string {
 }
 
 export default function BulkLabelGenerator() {
-  const client = useClient({ apiVersion: '2024-04-10' })
+  const client = useClient({apiVersion: '2024-04-10'})
   const [labels, setLabels] = useState<ShippingLabelDoc[]>([])
   const [status, setStatus] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState<boolean>(true)
@@ -124,7 +144,7 @@ export default function BulkLabelGenerator() {
             ship_to,
             weight,
             dimensions
-          } | order(_createdAt asc)`
+          } | order(_createdAt asc)`,
         )
         if (!cancelled) setLabels(result)
       } catch (err) {
@@ -145,7 +165,7 @@ export default function BulkLabelGenerator() {
     const id = label._id
     const guard = (cond: boolean, message: string) => {
       if (!cond) {
-        setStatus((prev) => ({ ...prev, [id]: `⚠️ ${message}` }))
+        setStatus((prev) => ({...prev, [id]: `⚠️ ${message}`}))
         return false
       }
       return true
@@ -154,7 +174,7 @@ export default function BulkLabelGenerator() {
     if (!guard(isValidWeight(label.weight), 'Missing or invalid weight')) return
     if (!guard(isValidDimensions(label.dimensions), 'Missing or invalid dimensions')) return
 
-    setStatus((prev) => ({ ...prev, [id]: 'Generating…' }))
+    setStatus((prev) => ({...prev, [id]: 'Generating…'}))
 
     try {
       const weightPayload = normalizeWeight(label.weight)
@@ -171,7 +191,7 @@ export default function BulkLabelGenerator() {
 
       const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
       })
 
@@ -190,21 +210,23 @@ export default function BulkLabelGenerator() {
 
       await client
         .patch(id)
-        .set({ trackingNumber, labelUrl, ...(trackingUrl ? { trackingUrl } : {}) })
-        .commit({ autoGenerateArrayKeys: true })
+        .set({trackingNumber, labelUrl, ...(trackingUrl ? {trackingUrl} : {})})
+        .commit({autoGenerateArrayKeys: true})
 
-      setStatus((prev) => ({ ...prev, [id]: '✅ EasyPost label created' }))
+      setStatus((prev) => ({...prev, [id]: '✅ EasyPost label created'}))
       setLabels((prev) => prev.filter((item) => item._id !== id))
     } catch (error: any) {
       console.error('BulkLabelGenerator: create label failed', error)
-      setStatus((prev) => ({ ...prev, [id]: `❌ ${error?.message || 'Failed'}` }))
+      setStatus((prev) => ({...prev, [id]: `❌ ${error?.message || 'Failed'}`}))
     }
   }
 
   return (
     <Card padding={4}>
       <Stack space={5}>
-        <Text size={2} weight="semibold">📦 Bulk Shipping Label Generator</Text>
+        <Text size={2} weight="semibold">
+          📦 Bulk Shipping Label Generator
+        </Text>
         <Box marginTop={3}>
           {loading ? (
             <Text>Loading shipping labels…</Text>
@@ -216,7 +238,9 @@ export default function BulkLabelGenerator() {
                 <Card key={label._id} padding={3} shadow={1} radius={2}>
                   <Stack space={3}>
                     <Text weight="semibold">{label.name || 'Shipping Label'}</Text>
-                    <Text size={1} muted>{summarizeAddress(label.ship_to)}</Text>
+                    <Text size={1} muted>
+                      {summarizeAddress(label.ship_to)}
+                    </Text>
                     <Text size={1}>Service Code: {label.serviceSelection || '—'}</Text>
                     <Text size={1}>Weight: {stringifyWeight(label.weight)}</Text>
                     <Text size={1}>Dimensions: {stringifyDimensions(label.dimensions)}</Text>
@@ -226,7 +250,9 @@ export default function BulkLabelGenerator() {
                       tone="primary"
                       disabled={status[label._id] === 'Generating…'}
                     />
-                    <Text size={1} muted>{status[label._id]}</Text>
+                    <Text size={1} muted>
+                      {status[label._id]}
+                    </Text>
                   </Stack>
                 </Card>
               ))}

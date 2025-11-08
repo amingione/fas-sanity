@@ -5,7 +5,5 @@ export default defineStructure<ListItemBuilder>((S) =>
   S.listItem()
     .title('Color themes')
     .schemaType('colorTheme')
-    .child(
-      S.documentTypeList('colorTheme').apiVersion('2024-10-01')
-    )
+    .child(S.documentTypeList('colorTheme').apiVersion('2024-10-01')),
 )

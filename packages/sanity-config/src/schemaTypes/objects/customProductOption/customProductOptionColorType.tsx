@@ -32,15 +32,17 @@ export const customProductOptionColorType = defineField({
         Rule.min(1)
           .error('Add at least one color choice')
           .custom((options: ColorOption[] | undefined) => {
-          // Each color must have a unique title
-          if (options) {
-            const uniqueTitles = new Set((options || []).map((option) => option?.title?.trim()?.toLowerCase()))
-            if (options.length > uniqueTitles.size) {
-              return 'Each color option must have a unique title'
+            // Each color must have a unique title
+            if (options) {
+              const uniqueTitles = new Set(
+                (options || []).map((option) => option?.title?.trim()?.toLowerCase()),
+              )
+              if (options.length > uniqueTitles.size) {
+                return 'Each color option must have a unique title'
+              }
             }
-          }
-          return true
-        }),
+            return true
+          }),
     }),
   ],
   preview: {

@@ -32,7 +32,8 @@ function isMeaningful(value?: string | null): boolean {
   return true
 }
 
-const NORMALIZE_LABEL_PATTERN = /\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/gi
+const NORMALIZE_LABEL_PATTERN =
+  /\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/gi
 
 function normalizeLabel(label?: string | null): string {
   if (!label) return ''
@@ -154,7 +155,9 @@ export function validateCartSelections(
   selection: CartSelection,
 ): CartValidationIssue[] {
   const issues: CartValidationIssue[] = []
-  const requiredOptions = (context.options || []).filter((option) => option?.name && option.required !== false)
+  const requiredOptions = (context.options || []).filter(
+    (option) => option?.name && option.required !== false,
+  )
   const optionSelections = collectOptionSelections(selection.optionSummary, selection.optionDetails)
 
   const totalRequiredOptions = requiredOptions.length
@@ -202,7 +205,9 @@ type SelectionRecord = Record<string, unknown> | null | undefined
 
 function toMeaningfulStrings(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.flatMap((entry) => toMeaningfulStrings(entry)).filter((entry) => isMeaningful(entry))
+    return value
+      .flatMap((entry) => toMeaningfulStrings(entry))
+      .filter((entry) => isMeaningful(entry))
   }
 
   if (value && typeof value === 'object') {

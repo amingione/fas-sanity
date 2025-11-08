@@ -136,7 +136,10 @@ export default deskStructure`
 
           <Stack space={2} style={{minWidth: 200}}>
             <Label>Parent section (optional)</Label>
-            <Select value={newParentId} onChange={(event) => setNewParentId(event.currentTarget.value)}>
+            <Select
+              value={newParentId}
+              onChange={(event) => setNewParentId(event.currentTarget.value)}
+            >
               <option value="">Root</option>
               {sections.map((section) => (
                 <option key={section.id} value={section.id}>
@@ -155,15 +158,15 @@ export default deskStructure`
         </Flex>
 
         <Card padding={4} radius={3} tone="transparent">
-          <Text size={2} muted>
+          <Text size={3} muted>
             Sections added:
           </Text>
           {sections.length === 0 && (
-            <Text size={2} muted>
+            <Text size={2} muted style={{marginTop: 12}}>
               No sections yet. Add a title to begin.
             </Text>
           )}
-          <Stack space={4} marginTop={3}>
+          <Stack space={6} marginTop={3}>
             {sections.map((section) => {
               const parent = section.parentId
                 ? sections.find((candidate) => candidate.id === section.parentId)

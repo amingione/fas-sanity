@@ -4,7 +4,11 @@ import type {DocumentActionComponent} from 'sanity'
 
 function readEnv(name: string): string {
   try {
-    return ((typeof process !== 'undefined' ? (process as any)?.env?.[name] : undefined) as string | undefined) || ''
+    return (
+      ((typeof process !== 'undefined' ? (process as any)?.env?.[name] : undefined) as
+        | string
+        | undefined) || ''
+    )
   } catch (err) {
     console.warn('Failed reading env variable', name, err)
     return ''
@@ -52,7 +56,11 @@ type BackfillActionConfig = {
   resultSummary: (data: Record<string, any>, dryRun: boolean) => string
 }
 
-export function createBackfillAction({label, functionName, resultSummary}: BackfillActionConfig): DocumentActionComponent {
+export function createBackfillAction({
+  label,
+  functionName,
+  resultSummary,
+}: BackfillActionConfig): DocumentActionComponent {
   return (props) => {
     const {onComplete} = props
     const toast = useToast()
@@ -127,7 +135,8 @@ export function createBackfillAction({label, functionName, resultSummary}: Backf
                       {label}
                     </Text>
                     <Text size={1} style={{color: 'var(--card-fg-color)'}}>
-                      Runs Netlify function `{functionName}` using base {baseUrl}. Adjust options below.
+                      Runs Netlify function `{functionName}` using base {baseUrl}. Adjust options
+                      below.
                     </Text>
                   </Box>
                   <Flex align="center" gap={3}>

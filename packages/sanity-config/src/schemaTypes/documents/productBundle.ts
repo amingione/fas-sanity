@@ -1,4 +1,4 @@
-import { defineType, defineField } from 'sanity'
+import {defineType, defineField} from 'sanity'
 
 export const productBundle = defineType({
   name: 'productBundle',
@@ -9,7 +9,7 @@ export const productBundle = defineType({
       name: 'title',
       title: 'Bundle Name',
       type: 'string',
-      validation: Rule => Rule.required()
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'slug',
@@ -17,25 +17,25 @@ export const productBundle = defineType({
       type: 'slug',
       options: {
         source: 'title',
-        maxLength: 96
-      }
+        maxLength: 96,
+      },
     }),
     defineField({
       name: 'products',
       title: 'Products in this Bundle',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }]
+      of: [{type: 'reference', to: [{type: 'product'}]}],
     }),
     defineField({
       name: 'bundlePrice',
       title: 'Bundle Price',
-      type: 'number'
+      type: 'number',
     }),
     defineField({
       name: 'description',
       title: 'Description',
       type: 'array',
-      of: [{ type: 'block' }]
-    })
-  ]
+      of: [{type: 'block'}],
+    }),
+  ],
 })

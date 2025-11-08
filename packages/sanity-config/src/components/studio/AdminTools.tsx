@@ -280,7 +280,10 @@ export default function AdminTools() {
           fields, and removes deprecated properties.
         </p>
         <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="orders-global-dry-run">
+          <label
+            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            htmlFor="orders-global-dry-run"
+          >
             <input
               id="orders-global-dry-run"
               name="globalDryRun"
@@ -490,10 +493,7 @@ export default function AdminTools() {
           expired cart records in Sanity.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
-            htmlFor="expired-dry-run"
-          >
+          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="expired-dry-run">
             <input
               id="expired-dry-run"
               name="expiredDryRun"
@@ -503,10 +503,7 @@ export default function AdminTools() {
             />{' '}
             Dry run
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="expired-limit"
-          >
+          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="expired-limit">
             <span style={fieldLabelStyle}>Limit</span>
             <input
               id="expired-limit"
@@ -518,10 +515,7 @@ export default function AdminTools() {
               style={inlineInputStyle}
             />
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="expired-since"
-          >
+          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="expired-since">
             <span style={fieldLabelStyle}>Created since (ISO or Unix)</span>
             <input
               id="expired-since"
@@ -573,10 +567,7 @@ export default function AdminTools() {
           services.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
-            htmlFor="shipping-dry-run"
-          >
+          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="shipping-dry-run">
             <input
               id="shipping-dry-run"
               name="shippingDryRun"
@@ -677,10 +668,7 @@ export default function AdminTools() {
               <option value="charge">Charge</option>
             </select>
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="stripe-limit"
-          >
+          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="stripe-limit">
             <span style={fieldLabelStyle}>Limit</span>
             <input
               id="stripe-limit"
@@ -692,10 +680,7 @@ export default function AdminTools() {
               style={inlineInputStyle}
             />
           </label>
-          <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
-            htmlFor="stripe-dry-run"
-          >
+          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="stripe-dry-run">
             <input
               id="stripe-dry-run"
               name="stripeDryRun"
@@ -835,10 +820,7 @@ export default function AdminTools() {
           Replays Stripe refund webhook events to ensure orders and invoices reflect refund status.
         </p>
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
-            htmlFor="refunds-dry-run"
-          >
+          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="refunds-dry-run">
             <input
               id="refunds-dry-run"
               name="refundsDryRun"
@@ -848,10 +830,7 @@ export default function AdminTools() {
             />{' '}
             Dry run
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="refunds-limit"
-          >
+          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="refunds-limit">
             <span style={fieldLabelStyle}>Limit</span>
             <input
               id="refunds-limit"
@@ -952,9 +931,7 @@ export default function AdminTools() {
           style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
           htmlFor="stripe-product-ids"
         >
-          <span style={fieldLabelStyle}>
-            Specific product IDs (optional, comma separated)
-          </span>
+          <span style={fieldLabelStyle}>Specific product IDs (optional, comma separated)</span>
           <input
             id="stripe-product-ids"
             name="productIds"

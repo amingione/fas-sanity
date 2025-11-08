@@ -89,7 +89,13 @@ const consume = (source: Record<string, unknown>, keys: string[]) => {
 
 const buildMetadataEntries = (
   ...inputs: Array<unknown>
-): Array<{_key: string; _type: 'orderCartItemMeta'; key: string; value: string; source?: string}> => {
+): Array<{
+  _key: string
+  _type: 'orderCartItemMeta'
+  key: string
+  value: string
+  source?: string
+}> => {
   const entries = inputs.flatMap((input) => normalizeMetadataEntries(input as any))
   return entries.map(({key, value}) => ({
     _key: generateKey(),
@@ -134,7 +140,7 @@ const arraysEqual = (a?: string[], b?: string[]) => {
 }
 
 const normalizeCartItemMetadata = (
-  metadata: unknown
+  metadata: unknown,
 ): {
   typed: ReturnType<typeof buildMetadataEntries>
   normalized: NormalizedMetadataEntry[]
@@ -163,9 +169,7 @@ const normalizeCartItemMetadata = (
       const source = toStringValue(record.source)
       const nextEntry: ReturnType<typeof buildMetadataEntries>[number] = {
         _key:
-          typeof record._key === 'string' && record._key
-            ? (record._key as string)
-            : generateKey(),
+          typeof record._key === 'string' && record._key ? (record._key as string) : generateKey(),
         _type: 'orderCartItemMeta',
         key,
         value,
@@ -191,9 +195,7 @@ const normalizeCartItemMetadata = (
   return {typed: [], normalized: [], changed: false}
 }
 
-const normalizeCartArrayValue = (
-  value: Array<unknown>
-): OrderCartItem[] | undefined => {
+const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undefined => {
   let changed = false
   const next: OrderCartItem[] = []
 
@@ -243,10 +245,7 @@ const normalizeCartArrayValue = (
     const existingDetails = coerceStringArray(record.optionDetails)
     const finalDetails = uniqueStrings([...existingDetails, ...derivedOptions.optionDetails])
     if (finalDetails.length) {
-      if (
-        !arraysEqual(finalDetails, existingDetails) ||
-        !Array.isArray(record.optionDetails)
-      ) {
+      if (!arraysEqual(finalDetails, existingDetails) || !Array.isArray(record.optionDetails)) {
         normalizedItem.optionDetails = finalDetails
         changed = true
       } else {
@@ -266,10 +265,7 @@ const normalizeCartArrayValue = (
     const existingUpgrades = coerceStringArray(record.upgrades)
     const finalUpgrades = uniqueStrings([...existingUpgrades, ...derivedOptions.upgrades])
     if (finalUpgrades.length) {
-      if (
-        !arraysEqual(finalUpgrades, existingUpgrades) ||
-        !Array.isArray(record.upgrades)
-      ) {
+      if (!arraysEqual(finalUpgrades, existingUpgrades) || !Array.isArray(record.upgrades)) {
         normalizedItem.upgrades = finalUpgrades
         changed = true
       } else {
@@ -355,63 +351,54 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   delete source._type
   delete source._key
 
-  const id = toStringValue(
-    consume(source, ['id', 'sanity_product_id', 'productId', 'product_id'])
-  )
+  const id = toStringValue(consume(source, ['id', 'sanity_product_id', 'productId', 'product_id']))
   const productName = toStringValue(
-    consume(source, ['productName', 'product_name', 'stripe_product_name'])
+    consume(source, ['productName', 'product_name', 'stripe_product_name']),
   )
   const name = toStringValue(consume(source, ['name', 'display_name'])) || productName || id
   const productUrl = toStringValue(
-    consume(source, ['productUrl', 'product_url', 'url', 'product_path'])
+    consume(source, ['productUrl', 'product_url', 'url', 'product_path']),
   )
-  const image = toStringValue(
-    consume(source, ['image', 'product_image', 'imageUrl', 'image_url'])
-  )
+  const image = toStringValue(consume(source, ['image', 'product_image', 'imageUrl', 'image_url']))
   const price = toNumberValue(consume(source, ['price', 'unit_price', 'base_price']))
   const quantity = toNumberValue(consume(source, ['quantity', 'qty', 'amount']))
   const lineTotal = toNumberValue(
-    consume(source, ['lineTotal', 'line_total', 'amount_total', 'amountTotal'])
+    consume(source, ['lineTotal', 'line_total', 'amount_total', 'amountTotal']),
   )
-  const total = toNumberValue(
-    consume(source, ['total', 'item_total', 'itemTotal', 'total_amount'])
-  )
+  const total = toNumberValue(consume(source, ['total', 'item_total', 'itemTotal', 'total_amount']))
   const optionSummary = toStringValue(
-    consume(source, ['optionSummary', 'option_summary', 'options_readable'])
+    consume(source, ['optionSummary', 'option_summary', 'options_readable']),
   )
   const optionDetails = toStringArray(
-    consume(source, ['optionDetails', 'option_details', 'selected_options'])
+    consume(source, ['optionDetails', 'option_details', 'selected_options']),
   )
   const upgrades = toStringArray(consume(source, ['upgrades', 'upgrade_list']))
   const customizations = toStringArray(
-    consume(
-      source,
-      [
-        'customizations',
-        'customization',
-        'customization_details',
-        'custom_details',
-        'custom_detail',
-        'custom_message',
-        'custom_text',
-        'personalization',
-        'personalisation',
-        'personalized_message',
-        'personalised_message',
-        'engraving',
-        'engraving_text',
-        'gift_message',
-        'item_note',
-        'product_note',
-        'order_item_note',
-      ],
-    )
+    consume(source, [
+      'customizations',
+      'customization',
+      'customization_details',
+      'custom_details',
+      'custom_detail',
+      'custom_message',
+      'custom_text',
+      'personalization',
+      'personalisation',
+      'personalized_message',
+      'personalised_message',
+      'engraving',
+      'engraving_text',
+      'gift_message',
+      'item_note',
+      'product_note',
+      'order_item_note',
+    ]),
   )
   const validationIssues = toStringArray(
-    consume(source, ['validationIssues', 'validation_issues', 'validationErrors'])
+    consume(source, ['validationIssues', 'validation_issues', 'validationErrors']),
   )
   const productRefValue = toStringValue(
-    consume(source, ['productRef', 'product_ref', 'sanity_product_ref'])
+    consume(source, ['productRef', 'product_ref', 'sanity_product_ref']),
   )
 
   const metadataValues: unknown[] = []

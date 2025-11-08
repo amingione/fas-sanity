@@ -1,8 +1,5 @@
 import {defineField, defineType} from 'sanity'
-import {
-  GenerateAndPrintPanel,
-  ServiceRateInput,
-} from './shippingLabelComponents'
+import {GenerateAndPrintPanel, ServiceRateInput} from './shippingLabelComponents'
 
 export default defineType({
   name: 'shippingLabel',

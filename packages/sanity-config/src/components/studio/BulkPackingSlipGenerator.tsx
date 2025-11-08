@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { useClient } from 'sanity'
-import { Button, Card, Stack, Text, Box, Flex } from '@sanity/ui'
-import { EyeOpenIcon, DownloadIcon } from '@sanity/icons'
-import { format } from 'date-fns'
-import { formatOrderNumber } from '../../utils/orderNumber'
+import React, {useEffect, useState} from 'react'
+import {useClient} from 'sanity'
+import {Button, Card, Stack, Text, Box, Flex} from '@sanity/ui'
+import {EyeOpenIcon, DownloadIcon} from '@sanity/icons'
+import {format} from 'date-fns'
+import {formatOrderNumber} from '../../utils/orderNumber'
 
 type Invoice = {
   _id: string
@@ -18,7 +18,7 @@ type FileMeta = {
 }
 
 export default function BulkPackingSlipGenerator() {
-  const client = useClient({ apiVersion: '2024-04-10' })
+  const client = useClient({apiVersion: '2024-04-10'})
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [status, setStatus] = useState<Record<string, string>>({})
   const [lastGenerated, setLastGenerated] = useState<Record<string, string>>({})
@@ -38,11 +38,7 @@ export default function BulkPackingSlipGenerator() {
 
       const formatted = result.map((doc: any) => {
         const items = Array.isArray(doc.lineItems) ? doc.lineItems.length : 0
-        const displayName =
-          doc.shipTo?.name ||
-          doc.billTo?.name ||
-          doc.customerEmail ||
-          'Customer'
+        const displayName = doc.shipTo?.name || doc.billTo?.name || doc.customerEmail || 'Customer'
         const orderRef = formatOrderNumber(doc.orderNumber) || doc.orderNumber
         const ref = doc.invoiceNumber || orderRef || doc._id.slice(-6)
         return {
@@ -60,11 +56,11 @@ export default function BulkPackingSlipGenerator() {
 
   const generateSlip = async (invoice: Invoice) => {
     try {
-      setStatus(prev => ({ ...prev, [invoice._id]: 'Generating...' }))
+      setStatus((prev) => ({...prev, [invoice._id]: 'Generating...'}))
       const res = await fetch('/.netlify/functions/generatePackingSlips', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice._id })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({invoiceId: invoice._id}),
       })
 
       const blob = await res.blob()
@@ -79,18 +75,18 @@ export default function BulkPackingSlipGenerator() {
       const size = Math.round(blob.size / 1024)
       const pages = Math.max(1, Math.ceil(Math.max(invoice.itemCount, 1) / 15))
 
-      setFileMeta(prev => ({
+      setFileMeta((prev) => ({
         ...prev,
-        [invoice._id]: { size, pages }
+        [invoice._id]: {size, pages},
       }))
-      setStatus(prev => ({ ...prev, [invoice._id]: '✅ Downloaded' }))
-      setLastGenerated(prev => ({
+      setStatus((prev) => ({...prev, [invoice._id]: '✅ Downloaded'}))
+      setLastGenerated((prev) => ({
         ...prev,
-        [invoice._id]: format(new Date(), 'PPpp')
+        [invoice._id]: format(new Date(), 'PPpp'),
       }))
     } catch (err) {
       console.error(err)
-      setStatus(prev => ({ ...prev, [invoice._id]: '❌ Failed' }))
+      setStatus((prev) => ({...prev, [invoice._id]: '❌ Failed'}))
     }
   }
 
@@ -98,8 +94,8 @@ export default function BulkPackingSlipGenerator() {
     try {
       const res = await fetch('/.netlify/functions/generatePackingSlips', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice._id })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({invoiceId: invoice._id}),
       })
 
       const blob = await res.blob()
@@ -109,9 +105,9 @@ export default function BulkPackingSlipGenerator() {
       const size = Math.round(blob.size / 1024)
       const pages = Math.max(1, Math.ceil(Math.max(invoice.itemCount, 1) / 15))
 
-      setFileMeta(prev => ({
+      setFileMeta((prev) => ({
         ...prev,
-        [invoice._id]: { size, pages }
+        [invoice._id]: {size, pages},
       }))
     } catch (err) {
       console.error('Preview failed:', err)
@@ -123,16 +119,20 @@ export default function BulkPackingSlipGenerator() {
       <img
         src="/media/New Red FAS Logo.png"
         alt="FAS Logo"
-        style={{ width: '150px', marginBottom: '1rem' }}
+        style={{width: '150px', marginBottom: '1rem'}}
       />
       <Box marginBottom={3}>
-        <Text size={2} weight="semibold" align="center">📦 Bulk Packing Slip Generator</Text>
+        <Text size={2} weight="semibold" align="center">
+          📦 Bulk Packing Slip Generator
+        </Text>
       </Box>
       <Stack space={5}>
         {invoices.map((invoice) => (
           <Card key={invoice._id} padding={4} shadow={1} radius={3}>
             <Stack space={3}>
-              <Text size={2}>🧾 {invoice.customerName} — {invoice.reference}</Text>
+              <Text size={2}>
+                🧾 {invoice.customerName} — {invoice.reference}
+              </Text>
               <Flex gap={2}>
                 <Button
                   text="Download"

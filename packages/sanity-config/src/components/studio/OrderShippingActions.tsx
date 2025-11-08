@@ -7,8 +7,9 @@ import ShippingLabelActions from './ShippingLabelActions'
 
 const SANITY_API_VERSION =
   (typeof process !== 'undefined'
-    ? ((process as any)?.env?.SANITY_STUDIO_API_VERSION ||
-        (process as any)?.env?.SANITY_API_VERSION) ?? null
+    ? (((process as any)?.env?.SANITY_STUDIO_API_VERSION ||
+        (process as any)?.env?.SANITY_API_VERSION) ??
+      null)
     : null) || '2024-10-01'
 
 function resolvePatchTargets(rawId?: string | null): string[] {
@@ -103,74 +104,90 @@ export default function OrderShippingActions() {
     [baseCandidates],
   )
 
-  const generateSlip = useCallback(async (options: {silent?: boolean} = {}) => {
-    if (isGenerating) return
-    if (!orderId && !invoiceId) {
-      if (!options.silent) alert('Missing order or invoice reference for packing slip generation.')
-      return
-    }
-
-    try {
-      setIsGenerating(true)
-
-      const payload: Record<string, any> = {}
-      if (orderId) payload.orderId = orderId
-      if (invoiceId) payload.invoiceId = invoiceId
-
-      const res = await fetchPackingSlip(payload)
-
-      const contentType = (res.headers.get('content-type') || '').toLowerCase()
-      let arrayBuffer: ArrayBuffer
-      if (contentType.includes('application/pdf')) {
-        arrayBuffer = await res.arrayBuffer()
-      } else {
-        const base64 = (await res.text()).replace(/^"|"$/g, '')
-        arrayBuffer = decodeBase64ToArrayBuffer(base64)
+  const generateSlip = useCallback(
+    async (options: {silent?: boolean} = {}) => {
+      if (isGenerating) return
+      if (!orderId && !invoiceId) {
+        if (!options.silent)
+          alert('Missing order or invoice reference for packing slip generation.')
+        return
       }
 
-      const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-      const filename = `packing-slip-${orderId || stripeSessionId || doc?._id || 'order'}.pdf`
+      try {
+        setIsGenerating(true)
 
-      const asset = await client.assets.upload('file', blob, {
-        filename,
-        contentType: 'application/pdf',
-      })
+        const payload: Record<string, any> = {}
+        if (orderId) payload.orderId = orderId
+        if (invoiceId) payload.invoiceId = invoiceId
 
-      const url = (asset as any)?.url
-      if (!url) throw new Error('Unable to upload packing slip asset')
+        const res = await fetchPackingSlip(payload)
 
-      for (const targetId of patchTargets) {
-        try {
-          await client.patch(targetId).set({ packingSlipUrl: url }).commit({ autoGenerateArrayKeys: true })
-        } catch (patchErr: any) {
-          const statusCode = patchErr?.statusCode || patchErr?.response?.statusCode
-          if (!statusCode || statusCode !== 404) {
-            throw patchErr
+        const contentType = (res.headers.get('content-type') || '').toLowerCase()
+        let arrayBuffer: ArrayBuffer
+        if (contentType.includes('application/pdf')) {
+          arrayBuffer = await res.arrayBuffer()
+        } else {
+          const base64 = (await res.text()).replace(/^"|"$/g, '')
+          arrayBuffer = decodeBase64ToArrayBuffer(base64)
+        }
+
+        const blob = new Blob([arrayBuffer], {type: 'application/pdf'})
+        const filename = `packing-slip-${orderId || stripeSessionId || doc?._id || 'order'}.pdf`
+
+        const asset = await client.assets.upload('file', blob, {
+          filename,
+          contentType: 'application/pdf',
+        })
+
+        const url = (asset as any)?.url
+        if (!url) throw new Error('Unable to upload packing slip asset')
+
+        for (const targetId of patchTargets) {
+          try {
+            await client
+              .patch(targetId)
+              .set({packingSlipUrl: url})
+              .commit({autoGenerateArrayKeys: true})
+          } catch (patchErr: any) {
+            const statusCode = patchErr?.statusCode || patchErr?.response?.statusCode
+            if (!statusCode || statusCode !== 404) {
+              throw patchErr
+            }
           }
         }
-      }
 
-      if (!options.silent) {
-        try {
-          window.open(url, '_blank', 'noopener')
-        } catch {
-          window.location.href = url
+        if (!options.silent) {
+          try {
+            window.open(url, '_blank', 'noopener')
+          } catch {
+            window.location.href = url
+          }
         }
+      } catch (err: any) {
+        console.error('Packing slip generation failed', err)
+        if (!options.silent) alert(`Packing slip failed: ${err?.message || err}`)
+      } finally {
+        setIsGenerating(false)
       }
-    } catch (err: any) {
-      console.error('Packing slip generation failed', err)
-      if (!options.silent) alert(`Packing slip failed: ${err?.message || err}`)
-    } finally {
-      setIsGenerating(false)
-    }
-  }, [client, doc?._id, fetchPackingSlip, invoiceId, isGenerating, orderId, patchTargets, stripeSessionId])
+    },
+    [
+      client,
+      doc?._id,
+      fetchPackingSlip,
+      invoiceId,
+      isGenerating,
+      orderId,
+      patchTargets,
+      stripeSessionId,
+    ],
+  )
 
   useEffect(() => {
     if (packingSlipUrl) return
     if (!orderId && !invoiceId) return
     if (autoAttemptedRef.current) return
     autoAttemptedRef.current = true
-    generateSlip({ silent: true })
+    generateSlip({silent: true})
   }, [generateSlip, invoiceId, orderId, packingSlipUrl])
 
   const hasPackingSlip = Boolean(packingSlipUrl)
@@ -178,23 +195,22 @@ export default function OrderShippingActions() {
   return (
     <Flex direction="column" gap={3}>
       <ShippingLabelActions doc={doc} />
+      <Button
+        text={isGenerating ? 'Generating packing slip…' : '🧾 Download Packing Slip'}
+        tone="primary"
+        disabled={isGenerating}
+        onClick={() => generateSlip()}
+      />
       {hasPackingSlip ? (
         <Button
-          text="🧾 Download Packing Slip"
-          tone="primary"
+          text="Open current saved PDF"
+          mode="bleed"
           as="a"
           href={packingSlipUrl}
           rel="noopener noreferrer"
           target="_blank"
         />
-      ) : (
-        <Button
-          text={isGenerating ? 'Generating packing slip…' : 'Generate Packing Slip'}
-          tone="default"
-          disabled={isGenerating}
-          onClick={() => generateSlip()}
-        />
-      )}
+      ) : null}
     </Flex>
   )
 }

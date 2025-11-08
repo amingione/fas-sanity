@@ -137,7 +137,9 @@ export async function fetchProductRequirements({
 
   const customizations = (Array.isArray(document.customizations) ? document.customizations : [])
     .map(normalizeCustomization)
-    .filter((customization): customization is ProductCustomizationRequirement => Boolean(customization))
+    .filter((customization): customization is ProductCustomizationRequirement =>
+      Boolean(customization),
+    )
 
   return {
     id: document._id as string,

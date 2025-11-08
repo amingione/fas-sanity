@@ -11,7 +11,9 @@ function fmt(value?: number) {
 export default function QuoteLineItemInput(props: any) {
   const {value, onChange} = props
   const client = useClient({apiVersion: '2024-10-01'})
-  const [mode, setMode] = useState<'product' | 'custom'>(value?.kind || (value?.product ? 'product' : 'custom'))
+  const [mode, setMode] = useState<'product' | 'custom'>(
+    value?.kind || (value?.product ? 'product' : 'custom'),
+  )
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<any[]>([])
 
@@ -29,7 +31,7 @@ export default function QuoteLineItemInput(props: any) {
       try {
         const matches = await client.fetch(
           `*[_type == "product" && (title match $q || sku match $q)][0...8]{_id, title, sku, price}`,
-          {q: `${term}*`}
+          {q: `${term}*`},
         )
         setResults(Array.isArray(matches) ? matches : [])
       } catch {
@@ -48,7 +50,7 @@ export default function QuoteLineItemInput(props: any) {
       sku: product.sku,
       unitPrice: typeof product.price === 'number' ? product.price : Number(product.price || 0),
       quantity: value?.quantity || 1,
-      lineTotal: undefined
+      lineTotal: undefined,
     }
     onChange(set(patch))
   }
@@ -106,7 +108,9 @@ export default function QuoteLineItemInput(props: any) {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => onPickProduct(product)}
                   >
-                    <span className="quote-line-item__product-title">{product.title || 'Untitled product'}</span>
+                    <span className="quote-line-item__product-title">
+                      {product.title || 'Untitled product'}
+                    </span>
                     <span className="quote-line-item__product-meta">
                       {[product.sku || '—', `$${fmt(product.price)}`].filter(Boolean).join(' • ')}
                     </span>
@@ -145,13 +149,17 @@ export default function QuoteLineItemInput(props: any) {
               className="quote-line-item__field quote-line-item__field--wide"
               placeholder="Item name"
               value={value?.customName || ''}
-              onChange={(event) => onChange(set({...(value || {}), customName: event.currentTarget.value}))}
+              onChange={(event) =>
+                onChange(set({...(value || {}), customName: event.currentTarget.value}))
+              }
             />
             <input
               className="quote-line-item__field"
               placeholder="SKU"
               value={value?.sku || ''}
-              onChange={(event) => onChange(set({...(value || {}), sku: event.currentTarget.value}))}
+              onChange={(event) =>
+                onChange(set({...(value || {}), sku: event.currentTarget.value}))
+              }
             />
           </div>
           <div className="quote-line-item__custom-row">
@@ -159,7 +167,9 @@ export default function QuoteLineItemInput(props: any) {
               className="quote-line-item__field quote-line-item__field--wide"
               placeholder="Description"
               value={value?.description || ''}
-              onChange={(event) => onChange(set({...(value || {}), description: event.currentTarget.value}))}
+              onChange={(event) =>
+                onChange(set({...(value || {}), description: event.currentTarget.value}))
+              }
             />
           </div>
           <div className="quote-line-item__custom-row quote-line-item__custom-row--numeric">

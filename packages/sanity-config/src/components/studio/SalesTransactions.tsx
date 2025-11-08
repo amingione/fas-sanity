@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useClient } from 'sanity'
+import React, {useEffect, useMemo, useState} from 'react'
+import {useClient} from 'sanity'
 import {
   Badge,
   Box,
@@ -14,8 +14,8 @@ import {
   Text,
   TextInput,
 } from '@sanity/ui'
-import { formatOrderNumber } from '../../utils/orderNumber'
-import { GROQ_FILTER_EXCLUDE_EXPIRED } from '../../utils/orderFilters'
+import {formatOrderNumber} from '../../utils/orderNumber'
+import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 type RawOrder = {
   _id: string
@@ -33,7 +33,7 @@ type RawInvoice = {
   _id: string
   invoiceNumber?: string
   orderNumber?: string
-  billTo?: { name?: string | null } | null
+  billTo?: {name?: string | null} | null
   total?: number
   status?: string
   invoiceDate?: string
@@ -54,21 +54,21 @@ type Transaction = {
   dateValue: number
 }
 
-const numberFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
-const dateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: 'UTC' })
+const numberFormatter = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'})
+const dateFormatter = new Intl.DateTimeFormat('en-US', {dateStyle: 'medium', timeZone: 'UTC'})
 
 const DATE_OPTIONS = [
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-  { value: '180', label: 'Last 6 months' },
-  { value: '365', label: 'Last 12 months' },
-  { value: 'all', label: 'All time' },
+  {value: '30', label: 'Last 30 days'},
+  {value: '90', label: 'Last 90 days'},
+  {value: '180', label: 'Last 6 months'},
+  {value: '365', label: 'Last 12 months'},
+  {value: 'all', label: 'All time'},
 ]
 
-const TYPE_OPTIONS: Array<{ value: 'all' | TransactionKind; label: string }> = [
-  { value: 'all', label: 'All transactions' },
-  { value: 'order', label: 'Orders' },
-  { value: 'invoice', label: 'Invoices' },
+const TYPE_OPTIONS: Array<{value: 'all' | TransactionKind; label: string}> = [
+  {value: 'all', label: 'All transactions'},
+  {value: 'order', label: 'Orders'},
+  {value: 'invoice', label: 'Invoices'},
 ]
 
 const query = `{
@@ -95,18 +95,22 @@ const query = `{
   }
 }`
 
-function normalizeTransactions(payload: { orders?: RawOrder[]; invoices?: RawInvoice[] }): Transaction[] {
+function normalizeTransactions(payload: {
+  orders?: RawOrder[]
+  invoices?: RawInvoice[]
+}): Transaction[] {
   const orders = Array.isArray(payload?.orders) ? payload.orders : []
   const invoices = Array.isArray(payload?.invoices) ? payload.invoices : []
 
   const mappedOrders: Transaction[] = orders.map((order) => {
     const dateISO = order.createdAt || order._createdAt || ''
     const dateValue = dateISO ? Date.parse(dateISO) : NaN
-    const ref =
-      formatOrderNumber(order.orderNumber) || order.stripeSessionId || order._id
+    const ref = formatOrderNumber(order.orderNumber) || order.stripeSessionId || order._id
     const customer = order.customerName || order.customerEmail || 'Customer'
     const total =
-      typeof order.totalAmount === 'number' && Number.isFinite(order.totalAmount) ? order.totalAmount : 0
+      typeof order.totalAmount === 'number' && Number.isFinite(order.totalAmount)
+        ? order.totalAmount
+        : 0
     return {
       id: order._id,
       kind: 'order',
@@ -126,7 +130,8 @@ function normalizeTransactions(payload: { orders?: RawOrder[]; invoices?: RawInv
     const orderRef = formatOrderNumber(invoice.orderNumber) || invoice.orderNumber
     const ref = invoice.invoiceNumber || orderRef || invoice._id
     const customer = invoice.billTo?.name || 'Invoice'
-    const total = typeof invoice.total === 'number' && Number.isFinite(invoice.total) ? invoice.total : 0
+    const total =
+      typeof invoice.total === 'number' && Number.isFinite(invoice.total) ? invoice.total : 0
     return {
       id: invoice._id,
       kind: 'invoice',
@@ -143,16 +148,21 @@ function normalizeTransactions(payload: { orders?: RawOrder[]; invoices?: RawInv
   return [...mappedOrders, ...mappedInvoices].sort((a, b) => b.dateValue - a.dateValue)
 }
 
-function getBadgeTone(kind: TransactionKind, status: string): 'positive' | 'caution' | 'primary' | 'critical' {
+function getBadgeTone(
+  kind: TransactionKind,
+  status: string,
+): 'positive' | 'caution' | 'primary' | 'critical' {
   const normalized = status.toLowerCase()
-  if (normalized === 'paid' || normalized === 'fulfilled' || normalized === 'succeeded') return 'positive'
+  if (normalized === 'paid' || normalized === 'fulfilled' || normalized === 'succeeded')
+    return 'positive'
   if (normalized === 'pending' || normalized === 'processing') return 'caution'
-  if (normalized === 'cancelled' || normalized === 'refunded' || normalized === 'failed') return 'critical'
+  if (normalized === 'cancelled' || normalized === 'refunded' || normalized === 'failed')
+    return 'critical'
   return kind === 'order' ? 'primary' : 'caution'
 }
 
 export default function SalesTransactions() {
-  const client = useClient({ apiVersion: '2024-10-01' })
+  const client = useClient({apiVersion: '2024-10-01'})
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionKind>('all')
   const [dateFilter, setDateFilter] = useState<string>('365')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -182,10 +192,14 @@ export default function SalesTransactions() {
     }
 
     load()
-    const sub = client.listen(query, {}, { tag: 'sales-transactions', visibility: 'query' }).subscribe(load)
+    const sub = client
+      .listen(query, {}, {tag: 'sales-transactions', visibility: 'query'})
+      .subscribe(load)
     return () => {
       cancelled = true
-      try { sub.unsubscribe() } catch {}
+      try {
+        sub.unsubscribe()
+      } catch {}
     }
   }, [client])
 
@@ -207,14 +221,14 @@ export default function SalesTransactions() {
     const totalRevenue = filtered.reduce((sum, txn) => sum + txn.total, 0)
     const orderCount = filtered.filter((txn) => txn.kind === 'order').length
     const invoiceCount = filtered.filter((txn) => txn.kind === 'invoice').length
-    return { totalRevenue, orderCount, invoiceCount }
+    return {totalRevenue, orderCount, invoiceCount}
   }, [filtered])
 
   const statusBuckets = useMemo(() => {
-    const map = new Map<string, { count: number; total: number }>()
+    const map = new Map<string, {count: number; total: number}>()
     filtered.forEach((txn) => {
       const key = txn.status.toLowerCase()
-      if (!map.has(key)) map.set(key, { count: 0, total: 0 })
+      if (!map.has(key)) map.set(key, {count: 0, total: 0})
       const bucket = map.get(key)!
       bucket.count += 1
       bucket.total += txn.total
@@ -232,7 +246,7 @@ export default function SalesTransactions() {
 
   const activeTransaction = useMemo(
     () => filtered.find((txn) => txn.id === activeId) || null,
-    [filtered, activeId]
+    [filtered, activeId],
   )
 
   function handleOpenDocument(txn: Transaction) {
@@ -262,14 +276,19 @@ export default function SalesTransactions() {
 
   return (
     <Flex height="fill">
-      <Box padding={4} style={{ flex: 1, overflow: 'auto' }}>
+      <Box padding={4} style={{flex: 1, overflow: 'auto'}}>
         <Stack space={4}>
           <Flex justify="space-between" align="center">
             <Text size={3} weight="bold">
               Sales Transactions
             </Text>
             <Flex gap={3}>
-              <Button text="Batch actions" mode="ghost" tone="positive" disabled={selectedIds.size === 0} />
+              <Button
+                text="Batch actions"
+                mode="ghost"
+                tone="positive"
+                disabled={selectedIds.size === 0}
+              />
               <Button text="New transaction" tone="primary" />
             </Flex>
           </Flex>
@@ -313,7 +332,13 @@ export default function SalesTransactions() {
                 const palette = ['#2563eb', '#8b5cf6', '#f97316', '#9ca3af', '#16a34a']
                 const color = palette[index % palette.length]
                 return (
-                  <Card key={status} padding={3} radius={2} shadow={1} style={{ borderLeft: `6px solid ${color}` }}>
+                  <Card
+                    key={status}
+                    padding={3}
+                    radius={2}
+                    shadow={1}
+                    style={{borderLeft: `6px solid ${color}`}}
+                  >
                     <Stack space={2}>
                       <Text size={1} muted>
                         {status.toUpperCase()}
@@ -333,7 +358,7 @@ export default function SalesTransactions() {
 
           <Card padding={3} radius={3} shadow={1}>
             <Flex gap={3} style={{flexWrap: 'wrap'}}>
-              <Flex direction="column" style={{ minWidth: 200 }}>
+              <Flex direction="column" style={{minWidth: 200}}>
                 <Text size={1} muted>
                   Type
                 </Text>
@@ -349,7 +374,7 @@ export default function SalesTransactions() {
                   ))}
                 </Select>
               </Flex>
-              <Flex direction="column" style={{ minWidth: 200 }}>
+              <Flex direction="column" style={{minWidth: 200}}>
                 <Text size={1} muted>
                   Date
                 </Text>
@@ -365,7 +390,7 @@ export default function SalesTransactions() {
                   ))}
                 </Select>
               </Flex>
-              <Flex direction="column" style={{ minWidth: 220 }}>
+              <Flex direction="column" style={{minWidth: 220}}>
                 <Text size={1} muted>
                   Customer
                 </Text>
@@ -376,7 +401,7 @@ export default function SalesTransactions() {
                   onChange={(event) => setCustomerSearch(event.currentTarget.value)}
                 />
               </Flex>
-              <Flex direction="column" style={{ minWidth: 200 }}>
+              <Flex direction="column" style={{minWidth: 200}}>
                 <Text size={1} muted>
                   Status
                 </Text>
@@ -410,7 +435,7 @@ export default function SalesTransactions() {
             </Card>
           ) : (
             <Card padding={0} radius={3} shadow={1} tone="transparent">
-              <Box style={{ borderBottom: '1px solid var(--card-border-color)' }}>
+              <Box style={{borderBottom: '1px solid var(--card-border-color)'}}>
                 <Flex
                   style={{
                     padding: '12px 16px',
@@ -435,7 +460,7 @@ export default function SalesTransactions() {
                   <span>No.</span>
                   <span>Customer</span>
                   <span>Memo</span>
-                  <span style={{ textAlign: 'right' }}>Amount</span>
+                  <span style={{textAlign: 'right'}}>Amount</span>
                   <span>Status</span>
                 </Flex>
               </Box>
@@ -469,11 +494,13 @@ export default function SalesTransactions() {
                     <span>{txn.ref}</span>
                     <span>{txn.customer}</span>
                     <span>{txn.kind === 'order' ? 'Website checkout' : 'Invoice'}</span>
-                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}}>
                       {numberFormatter.format(txn.total)}
                     </span>
                     <span>
-                      <Badge tone={getBadgeTone(txn.kind, txn.status)}>{txn.status || 'unknown'}</Badge>
+                      <Badge tone={getBadgeTone(txn.kind, txn.status)}>
+                        {txn.status || 'unknown'}
+                      </Badge>
                     </span>
                   </Flex>
                 ))}

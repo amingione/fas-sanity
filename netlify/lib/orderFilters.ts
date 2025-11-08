@@ -34,9 +34,8 @@ export function isExpiredOrder({
   )
 }
 
-export function filterOutExpiredOrders<T extends {status?: string | null; paymentStatus?: string | null}>(
-  orders: T[],
-) {
+export function filterOutExpiredOrders<
+  T extends {status?: string | null; paymentStatus?: string | null},
+>(orders: T[]) {
   return orders.filter((order) => !isExpiredOrder(order))
 }
-

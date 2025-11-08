@@ -87,7 +87,7 @@ function createSanityClient(): SanityClient {
 
   if (!projectId || !dataset || !token) {
     throw new Error(
-      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).'
+      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).',
     )
   }
 
@@ -109,10 +109,14 @@ async function loadWebhookHandlers() {
 
 async function fetchOrders(
   sanity: SanityClient,
-  options: CheckoutAsyncBackfillOptions
+  options: CheckoutAsyncBackfillOptions,
 ): Promise<OrderDoc[]> {
   const limit = options.limit && options.limit > 0 ? Math.floor(options.limit) : 200
-  const conditions = ['_type == "order"', 'stripeSource == "checkout.session"', 'defined(stripeSessionId)']
+  const conditions = [
+    '_type == "order"',
+    'stripeSource == "checkout.session"',
+    'defined(stripeSessionId)',
+  ]
   const params: Record<string, unknown> = {limit}
 
   if (options.sessionId) {
@@ -124,7 +128,9 @@ async function fetchOrders(
     conditions.push('_id in $orderIds')
     params.orderIds = [normalized, `drafts.${normalized}`]
   } else {
-    conditions.push('(!defined(paymentStatus) || paymentStatus == "" || paymentStatus in $targetStatuses)')
+    conditions.push(
+      '(!defined(paymentStatus) || paymentStatus == "" || paymentStatus in $targetStatuses)',
+    )
     params.targetStatuses = TARGET_PAYMENT_STATUSES
   }
 
@@ -145,7 +151,7 @@ type Outcome = 'success' | 'failure' | 'pending' | 'expired'
 
 function determineOutcome(
   session: Stripe.Checkout.Session,
-  paymentIntent: Stripe.PaymentIntent | null
+  paymentIntent: Stripe.PaymentIntent | null,
 ): Outcome {
   const sessionStatus = (session.status || '').toLowerCase()
   const sessionPaymentStatus = (session.payment_status || '').toLowerCase()
@@ -169,7 +175,7 @@ function determineOutcome(
 }
 
 export async function runCheckoutAsyncPaymentsBackfill(
-  rawOptions: CheckoutAsyncBackfillOptions = {}
+  rawOptions: CheckoutAsyncBackfillOptions = {},
 ): Promise<CheckoutAsyncBackfillResult> {
   const options: CheckoutAsyncBackfillOptions = {
     dryRun: Boolean(rawOptions.dryRun),
@@ -219,7 +225,7 @@ export async function runCheckoutAsyncPaymentsBackfill(
       options.logger?.(
         `⚠️ Unable to load checkout session ${order.stripeSessionId} for ${formatOrderRef(order)}: ${
           (err as any)?.message || err
-        }`
+        }`,
       )
       skipped += 1
       continue
@@ -235,7 +241,7 @@ export async function runCheckoutAsyncPaymentsBackfill(
 
     if (outcome === 'expired') {
       options.logger?.(
-        `- Skipping ${formatOrderRef(order)}: checkout session ${session.id} already expired.`
+        `- Skipping ${formatOrderRef(order)}: checkout session ${session.id} already expired.`,
       )
       skipped += 1
       continue
@@ -244,7 +250,7 @@ export async function runCheckoutAsyncPaymentsBackfill(
       options.logger?.(
         `- Skipping ${formatOrderRef(order)}: payment still pending (session status ${
           session.payment_status || 'unknown'
-        }).`
+        }).`,
       )
       skipped += 1
       continue
@@ -259,7 +265,7 @@ export async function runCheckoutAsyncPaymentsBackfill(
     }
     if (outcome === 'success' && orderStatus === 'paid') {
       options.logger?.(
-        `- Skipping ${formatOrderRef(order)}: already marked paid (session ${session.id}).`
+        `- Skipping ${formatOrderRef(order)}: already marked paid (session ${session.id}).`,
       )
       skipped += 1
       continue
@@ -270,7 +276,7 @@ export async function runCheckoutAsyncPaymentsBackfill(
       (order.status || '').toLowerCase() === 'cancelled'
     ) {
       options.logger?.(
-        `- Skipping ${formatOrderRef(order)}: already marked cancelled (session ${session.id}).`
+        `- Skipping ${formatOrderRef(order)}: already marked cancelled (session ${session.id}).`,
       )
       skipped += 1
       continue
@@ -279,7 +285,7 @@ export async function runCheckoutAsyncPaymentsBackfill(
     const prefix = options.dryRun ? '[dry-run] ' : ''
     const outcomeLabel = outcome === 'success' ? 'success' : 'failure'
     options.logger?.(
-      `- ${prefix}Applying async ${outcomeLabel} for ${formatOrderRef(order)} (session ${session.id}).`
+      `- ${prefix}Applying async ${outcomeLabel} for ${formatOrderRef(order)} (session ${session.id}).`,
     )
 
     if (!options.dryRun) {

@@ -39,7 +39,11 @@ function asEasyPostPayload(raw: any | undefined) {
   }
 }
 
-export default function EasyPostServiceInput({value, onChange, fetchRates}: EasyPostServiceInputProps) {
+export default function EasyPostServiceInput({
+  value,
+  onChange,
+  fetchRates,
+}: EasyPostServiceInputProps) {
   const inputId = useId()
   const [options, setOptions] = useState<{title: string; value: string}[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -108,7 +112,11 @@ export default function EasyPostServiceInput({value, onChange, fetchRates}: Easy
           title: `${r.carrier} — ${r.service} (${r.serviceCode}) — $${(r.amount ?? 0).toFixed(2)}${
             r.deliveryDays ? ` • ${r.deliveryDays}d` : ''
           }`,
-          value: JSON.stringify({serviceCode: r.serviceCode, carrierId: r.carrierId, rateId: r.rateId}),
+          value: JSON.stringify({
+            serviceCode: r.serviceCode,
+            carrierId: r.carrierId,
+            rateId: r.rateId,
+          }),
         }))
 
         if (!cancelled) setOptions(opts)
@@ -150,7 +158,12 @@ export default function EasyPostServiceInput({value, onChange, fetchRates}: Easy
         ) : null}
 
         <Card padding={2} radius={2} shadow={1} tone="default">
-          <select id={inputId} value={value || ''} onChange={handleChange} disabled={loading || options.length === 0}>
+          <select
+            id={inputId}
+            value={value || ''}
+            onChange={handleChange}
+            disabled={loading || options.length === 0}
+          >
             <option value="">{loading ? 'Loading…' : 'Select a service…'}</option>
             {options.map((opt) => (
               <option key={opt.value} value={opt.value}>

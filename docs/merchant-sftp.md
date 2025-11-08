@@ -6,17 +6,17 @@ Use the `upload:merchant-feed` script to generate a tab-separated product feed f
 
 Configure these in your Netlify/CI environment (and locally through `.env.development` as needed):
 
-| Variable | Example | Notes |
-| --- | --- | --- |
-| `GOOGLE_MERCHANT_SFTP_HOST` / `GMC_SFTP_HOST` | `partnerupload.google.com` | Optional; defaults to Google’s host. |
-| `GOOGLE_MERCHANT_SFTP_PORT` / `GMC_SFTP_PORT` | `19321` | Optional; defaults to Google’s SFTP port. |
-| `GOOGLE_MERCHANT_SFTP_USERNAME` / `GMC_SFTP_USERNAME` | `mc-sftp-…` | **Required** – provided in Merchant Center. |
-| `GOOGLE_MERCHANT_SFTP_PASSWORD` / `GMC_SFTP_PASSWORD` | `••••` | **Required** – use the generated password from Merchant Center. |
-| `GOOGLE_MERCHANT_SFTP_REMOTE_DIR` / `GMC_SFTP_REMOTE_DIR` | `/` | Optional; folder to upload into (trailing slash optional). |
-| `GOOGLE_MERCHANT_SFTP_FILENAME` / `GMC_SFTP_FEED_FILENAME` | `fas-products-feed.txt` | Optional; defaults to `products.txt`. |
-| `GOOGLE_MERCHANT_FEED_CURRENCY` / `GMC_FEED_CURRENCY` | `USD` | Optional; sets currency for price columns. |
-| `GOOGLE_MERCHANT_FEED_BASE_URL` / `GMC_FEED_BASE_URL` | `https://www.fasmotorsports.com` | Optional; falls back to `SITE_BASE_URL`/`PUBLIC_SITE_URL`. |
-| `GOOGLE_MERCHANT_FEED_OUTPUT_DIR` / `GMC_FEED_OUTPUT_DIR` | `./tmp` | Optional; where the local feed file is written. |
+| Variable                                                   | Example                          | Notes                                                           |
+| ---------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------- |
+| `GOOGLE_MERCHANT_SFTP_HOST` / `GMC_SFTP_HOST`              | `partnerupload.google.com`       | Optional; defaults to Google’s host.                            |
+| `GOOGLE_MERCHANT_SFTP_PORT` / `GMC_SFTP_PORT`              | `19321`                          | Optional; defaults to Google’s SFTP port.                       |
+| `GOOGLE_MERCHANT_SFTP_USERNAME` / `GMC_SFTP_USERNAME`      | `mc-sftp-…`                      | **Required** – provided in Merchant Center.                     |
+| `GOOGLE_MERCHANT_SFTP_PASSWORD` / `GMC_SFTP_PASSWORD`      | `••••`                           | **Required** – use the generated password from Merchant Center. |
+| `GOOGLE_MERCHANT_SFTP_REMOTE_DIR` / `GMC_SFTP_REMOTE_DIR`  | `/`                              | Optional; folder to upload into (trailing slash optional).      |
+| `GOOGLE_MERCHANT_SFTP_FILENAME` / `GMC_SFTP_FEED_FILENAME` | `fas-products-feed.txt`          | Optional; defaults to `products.txt`.                           |
+| `GOOGLE_MERCHANT_FEED_CURRENCY` / `GMC_FEED_CURRENCY`      | `USD`                            | Optional; sets currency for price columns.                      |
+| `GOOGLE_MERCHANT_FEED_BASE_URL` / `GMC_FEED_BASE_URL`      | `https://www.fasmotorsports.com` | Optional; falls back to `SITE_BASE_URL`/`PUBLIC_SITE_URL`.      |
+| `GOOGLE_MERCHANT_FEED_OUTPUT_DIR` / `GMC_FEED_OUTPUT_DIR`  | `./tmp`                          | Optional; where the local feed file is written.                 |
 
 Make sure the standard Sanity environment variables (`SANITY_PROJECT_ID`, `SANITY_DATASET`, etc.) are also configured so the script can pull product data.
 

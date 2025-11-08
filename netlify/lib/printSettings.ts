@@ -95,11 +95,7 @@ export function hexToRgb(hex?: string | null, fallback?: RgbColorValue): RgbColo
   return {r, g, b}
 }
 
-export function mixRgb(
-  a: RgbColorValue,
-  b: RgbColorValue,
-  weight = 0.5,
-): RgbColorValue {
+export function mixRgb(a: RgbColorValue, b: RgbColorValue, weight = 0.5): RgbColorValue {
   const clamp = (value: number) => Math.max(0, Math.min(1, value))
   return {
     r: clamp(a.r * (1 - weight) + b.r * weight),

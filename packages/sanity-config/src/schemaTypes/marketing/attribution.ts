@@ -172,10 +172,14 @@ export default defineType({
     prepare({title, subtitle, date, revenue}) {
       const formattedDate = date ? new Date(date).toLocaleDateString() : 'No sync date'
       const revenueLabel =
-        typeof revenue === 'number' && Number.isFinite(revenue) ? `Revenue $${revenue.toFixed(2)}` : null
+        typeof revenue === 'number' && Number.isFinite(revenue)
+          ? `Revenue $${revenue.toFixed(2)}`
+          : null
       return {
         title: title || 'Untitled campaign',
-        subtitle: [subtitle || 'unknown source', formattedDate, revenueLabel].filter(Boolean).join(' • '),
+        subtitle: [subtitle || 'unknown source', formattedDate, revenueLabel]
+          .filter(Boolean)
+          .join(' • '),
       }
     },
   },

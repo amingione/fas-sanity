@@ -15,10 +15,12 @@ type SummaryInput = {
 }
 
 type CleanValue = string | number | boolean | null | undefined | CleanObject | CleanValue[]
-type CleanObject = { [key: string]: CleanValue }
+type CleanObject = {[key: string]: CleanValue}
 
 const toISOStringFromSeconds = (timestamp?: number | null) =>
-  typeof timestamp === 'number' && Number.isFinite(timestamp) ? new Date(timestamp * 1000).toISOString() : undefined
+  typeof timestamp === 'number' && Number.isFinite(timestamp)
+    ? new Date(timestamp * 1000).toISOString()
+    : undefined
 
 const prune = (input: CleanObject): CleanObject => {
   const output: CleanObject = {}
@@ -52,7 +54,7 @@ const prune = (input: CleanObject): CleanObject => {
             entry !== null &&
             entry !== undefined &&
             (!Array.isArray(entry) || entry.length > 0) &&
-            (typeof entry !== 'object' || Object.keys(entry as Record<string, unknown>).length > 0)
+            (typeof entry !== 'object' || Object.keys(entry as Record<string, unknown>).length > 0),
         )
       if (cleaned.length > 0) output[key] = cleaned as CleanValue[]
       continue
@@ -66,7 +68,12 @@ const prune = (input: CleanObject): CleanObject => {
   return output
 }
 
-const normalizeAddress = (address?: Stripe.Address | null, name?: string | null, email?: string | null, phone?: string | null) =>
+const normalizeAddress = (
+  address?: Stripe.Address | null,
+  name?: string | null,
+  email?: string | null,
+  phone?: string | null,
+) =>
   prune({
     name,
     email,
@@ -79,8 +86,10 @@ const normalizeAddress = (address?: Stripe.Address | null, name?: string | null,
     country: address?.country,
   })
 
-const buildMetadataEntries = (sources: Array<{ data?: Record<string, string> | null; label: string }>) => {
-  const entries: Array<{ key: string; value: string; source: string }> = []
+const buildMetadataEntries = (
+  sources: Array<{data?: Record<string, string> | null; label: string}>,
+) => {
+  const entries: Array<{key: string; value: string; source: string}> = []
   const seen = new Set<string>()
   for (const source of sources) {
     const data = source.data || {}
@@ -90,14 +99,20 @@ const buildMetadataEntries = (sources: Array<{ data?: Record<string, string> | n
       const dedupeKey = `${source.label}:${key}`
       if (seen.has(dedupeKey)) continue
       seen.add(dedupeKey)
-      entries.push({ key, value, source: source.label })
+      entries.push({key, value, source: source.label})
     }
   }
   return entries
 }
 
 const buildAttemptEntries = (pi?: PaymentLike, charge?: ChargeLike) => {
-  const attempts: Array<{ type: string; status?: string; created?: string; code?: string; message?: string }> = []
+  const attempts: Array<{
+    type: string
+    status?: string
+    created?: string
+    code?: string
+    message?: string
+  }> = []
 
   const piAny = pi as any
   const lastError = piAny?.last_payment_error
@@ -106,7 +121,7 @@ const buildAttemptEntries = (pi?: PaymentLike, charge?: ChargeLike) => {
       type: 'payment_intent.last_payment_error',
       status: piAny?.status,
       created: toISOStringFromSeconds(lastError.created) || undefined,
-      code: (lastError.code || lastError.decline_code || '') || undefined,
+      code: lastError.code || lastError.decline_code || '' || undefined,
       message: lastError.message || undefined,
     })
   }
@@ -134,16 +149,22 @@ const buildLineItemEntries = (session?: SessionLike) => {
         name: item?.custom?.name || item?.price?.product?.name || item?.description,
         sku: item?.price?.product?.metadata?.sku || item?.sku || item?.id,
         quantity: item?.quantity,
-        amount: typeof item?.amount_subtotal === 'number' ? item.amount_subtotal / 100 : item?.amount_total,
-        metadata: item?.price?.product?.metadata ? JSON.stringify(item.price.product.metadata) : undefined,
-      })
+        amount:
+          typeof item?.amount_subtotal === 'number'
+            ? item.amount_subtotal / 100
+            : item?.amount_total,
+        metadata: item?.price?.product?.metadata
+          ? JSON.stringify(item.price.product.metadata)
+          : undefined,
+      }),
     )
     .filter((entry) => Object.keys(entry).length > 0)
 }
 
 const buildPaymentMethodDetails = (pi?: PaymentLike, charge?: ChargeLike) => {
   const card = charge?.payment_method_details?.card || (pi as any)?.payment_method?.card
-  const wallet = card?.wallet && typeof card.wallet === 'object' ? Object.keys(card.wallet)[0] : undefined
+  const wallet =
+    card?.wallet && typeof card.wallet === 'object' ? Object.keys(card.wallet)[0] : undefined
 
   return prune({
     type: charge?.payment_method_details?.type || pi?.payment_method_types?.[0],
@@ -152,7 +173,9 @@ const buildPaymentMethodDetails = (pi?: PaymentLike, charge?: ChargeLike) => {
     exp: card?.exp_month && card?.exp_year ? `${card.exp_month}/${card.exp_year}` : undefined,
     wallet,
     issuer: card?.issuer,
-    riskLevel: charge?.outcome?.risk_level || (charge?.outcome?.risk_score !== undefined ? String(charge.outcome.risk_score) : undefined),
+    riskLevel:
+      charge?.outcome?.risk_level ||
+      (charge?.outcome?.risk_score !== undefined ? String(charge.outcome.risk_score) : undefined),
   })
 }
 
@@ -186,18 +209,25 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
     updatedAt: new Date().toISOString(),
     status: paymentIntent?.status || session?.payment_status || session?.status,
     lastEventType: input.eventType,
-    lastEventCreated: input.eventCreated ? new Date(input.eventCreated * 1000).toISOString() : undefined,
+    lastEventCreated: input.eventCreated
+      ? new Date(input.eventCreated * 1000).toISOString()
+      : undefined,
     failureCode,
     failureMessage,
     paymentIntentId: paymentIntent?.id,
-    paymentIntentCreated: paymentIntent?.created ? new Date(paymentIntent.created * 1000).toISOString() : undefined,
+    paymentIntentCreated: paymentIntent?.created
+      ? new Date(paymentIntent.created * 1000).toISOString()
+      : undefined,
     checkoutSessionId:
       session?.id ||
-      (typeof (paymentIntent?.metadata as Record<string, any> | undefined)?.checkout_session_id === 'string'
+      (typeof (paymentIntent?.metadata as Record<string, any> | undefined)?.checkout_session_id ===
+      'string'
         ? (paymentIntent?.metadata as Record<string, any>).checkout_session_id
         : undefined),
     checkoutStatus: session?.status || undefined,
-    checkoutExpiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : undefined,
+    checkoutExpiresAt: session?.expires_at
+      ? new Date(session.expires_at * 1000).toISOString()
+      : undefined,
     checkoutUrl: session?.url,
     amounts: prune({
       total:
@@ -205,7 +235,7 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
           ? session.amount_total / 100
           : typeof piAny?.amount_received === 'number'
             ? piAny.amount_received / 100
-          : undefined,
+            : undefined,
       subtotal:
         typeof session?.amount_subtotal === 'number'
           ? session.amount_subtotal / 100
@@ -223,9 +253,15 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
             ? piAny.shipping.amount_subtotal / 100
             : undefined,
       currency:
-        (session?.currency || paymentIntent?.currency || chargeAny?.currency || '').toString().toUpperCase() || undefined,
-      captured: typeof piAny?.amount_capturable === 'number' ? piAny.amount_capturable / 100 : undefined,
-      refunded: typeof chargeAny?.amount_refunded === 'number' ? chargeAny.amount_refunded / 100 : undefined,
+        (session?.currency || paymentIntent?.currency || chargeAny?.currency || '')
+          .toString()
+          .toUpperCase() || undefined,
+      captured:
+        typeof piAny?.amount_capturable === 'number' ? piAny.amount_capturable / 100 : undefined,
+      refunded:
+        typeof chargeAny?.amount_refunded === 'number'
+          ? chargeAny.amount_refunded / 100
+          : undefined,
     }),
     customer: prune({
       id: typeof paymentIntent?.customer === 'string' ? paymentIntent.customer : undefined,
@@ -246,10 +282,12 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
     }),
     paymentMethod: buildPaymentMethodDetails(paymentIntent, charge || null),
     shippingAddress: normalizeAddress(
-      piAny?.shipping?.address || sessionAny?.shipping_details?.address || sessionAny?.customer_details?.address,
+      piAny?.shipping?.address ||
+        sessionAny?.shipping_details?.address ||
+        sessionAny?.customer_details?.address,
       piAny?.shipping?.name || sessionAny?.shipping_details?.name,
       session?.customer_details?.email || piAny?.shipping?.phone || undefined,
-      session?.customer_details?.phone || piAny?.shipping?.phone
+      session?.customer_details?.phone || piAny?.shipping?.phone,
     ),
     billingAddress: normalizeAddress(
       piAny?.charges?.data?.[0]?.billing_details?.address ||
@@ -257,13 +295,13 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
         piAny?.billing_details?.address,
       piAny?.charges?.data?.[0]?.billing_details?.name,
       piAny?.charges?.data?.[0]?.billing_details?.email,
-      piAny?.charges?.data?.[0]?.billing_details?.phone
+      piAny?.charges?.data?.[0]?.billing_details?.phone,
     ),
     lineItems: buildLineItemEntries(session || piAny?.line_items),
     metadata: buildMetadataEntries([
-      { data: session?.metadata || null, label: 'checkout_session' },
-      { data: (piAny?.metadata as Record<string, string>) || null, label: 'payment_intent' },
-      { data: (chargeAny?.metadata as Record<string, string>) || null, label: 'charge' },
+      {data: session?.metadata || null, label: 'checkout_session'},
+      {data: (piAny?.metadata as Record<string, string>) || null, label: 'payment_intent'},
+      {data: (chargeAny?.metadata as Record<string, string>) || null, label: 'charge'},
     ]),
     attempts: buildAttemptEntries(paymentIntent || null, charge || null),
   })

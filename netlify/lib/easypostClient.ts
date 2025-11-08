@@ -19,19 +19,17 @@ export function getEasyPostClient(): EasyPostClient {
 export const MIN_OUNCES = 1
 export const MIN_DIMENSION_INCHES = 1
 
-export type WeightInput =
-  | { value?: number; unit?: string }
-  | number
-  | string
-  | null
-  | undefined
+export type WeightInput = {value?: number; unit?: string} | number | string | null | undefined
 
 export type DimensionsInput =
-  | { length?: number; width?: number; height?: number; unit?: string }
+  | {length?: number; width?: number; height?: number; unit?: string}
   | null
   | undefined
 
-export function resolveWeight(input: WeightInput, fallback: WeightInput): { ounces: number; pounds: number } {
+export function resolveWeight(
+  input: WeightInput,
+  fallback: WeightInput,
+): {ounces: number; pounds: number} {
   const source = input ?? fallback
   let value = 0
   let unit = 'pound'
@@ -103,7 +101,10 @@ export function resolveWeight(input: WeightInput, fallback: WeightInput): { ounc
   }
 }
 
-export function resolveDimensions(input: DimensionsInput, fallback: DimensionsInput): {
+export function resolveDimensions(
+  input: DimensionsInput,
+  fallback: DimensionsInput,
+): {
   length: number
   width: number
   height: number

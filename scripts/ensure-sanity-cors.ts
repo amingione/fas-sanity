@@ -2,9 +2,7 @@ import 'dotenv/config'
 import fetch from 'node-fetch'
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
 const token =
   process.env.SANITY_API_TOKEN ||
   process.env.SANITY_AUTH_TOKEN ||

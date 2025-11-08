@@ -1,5 +1,42 @@
 import type {SanityClient, SanityDocument} from '@sanity/client'
-import {coerceStringArray, uniqueStrings} from '@fas/sanity-config/utils/cartItemDetails'
+
+/**
+ * Local fallbacks for cart item detail utilities to avoid relying on an external package.
+ * These implementations provide minimal, defensive behavior expected by this module.
+ */
+const coerceStringArray = (value: unknown): string[] => {
+  if (value === null || value === undefined) return []
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : ''))
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  if (typeof value === 'string') {
+    // Accept comma-separated strings as a convenience
+    return value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return [String(value)]
+  }
+  return []
+}
+
+const uniqueStrings = (values: string[]): string[] => {
+  const seen = new Set<string>()
+  const output: string[] = []
+  for (const v of values) {
+    const s = v?.toString().trim()
+    if (s && !seen.has(s)) {
+      seen.add(s)
+      output.push(s)
+    }
+  }
+  return output
+}
 
 /**
  * Lightweight helper mirroring the Sanity defineDocumentFunction API shape.
@@ -45,7 +82,10 @@ export type DocumentFunctionDefinition<TDocument extends SanityDocument = Sanity
    * Core handler executed when a document matches the filter & projection.
    * Returning void signals success; thrown errors propagate to the runtime.
    */
-  execute: (event: DocumentFunctionEvent<TDocument>, context: DocumentFunctionContext) => Promise<void>
+  execute: (
+    event: DocumentFunctionEvent<TDocument>,
+    context: DocumentFunctionContext,
+  ) => Promise<void>
 }
 
 export const defineDocumentFunction = <TDocument extends SanityDocument>(
@@ -232,7 +272,11 @@ const normalizeStatus = (document: NormalizedDocument): string => {
   return ''
 }
 
-const extractReferences = (value: unknown, path: (string | number)[] = [], acc: string[] = []): string[] => {
+const extractReferences = (
+  value: unknown,
+  path: (string | number)[] = [],
+  acc: string[] = [],
+): string[] => {
   if (!value) return acc
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index++) {
@@ -255,7 +299,8 @@ const extractReferences = (value: unknown, path: (string | number)[] = [], acc: 
 
 const dedupe = <T>(values: T[]): T[] => Array.from(new Set(values))
 
-const isPresent = <T>(value: T | undefined | null): value is T => value !== undefined && value !== null
+const isPresent = <T>(value: T | undefined | null): value is T =>
+  value !== undefined && value !== null
 
 const toCleanString = (value: unknown): string | undefined => {
   if (value === null || value === undefined) return undefined
@@ -277,9 +322,9 @@ const toCleanNumber = (value: unknown): number | undefined => {
 }
 
 const toCleanStringArray = (value: unknown, limit = 10): string[] | undefined => {
-  const coerced = uniqueStrings(coerceStringArray(value));
-  if (!coerced.length) return undefined;
-  return coerced.slice(0, limit);
+  const coerced = uniqueStrings(coerceStringArray(value))
+  if (!coerced.length) return undefined
+  return coerced.slice(0, limit)
 }
 
 const limitArray = <T>(value: T[] | undefined, limit = 20): T[] | undefined => {
@@ -347,7 +392,10 @@ const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown
     metadata,
   })
 
-  return (result && typeof result === 'object' ? (result as Record<string, unknown>) : undefined) ?? undefined
+  return (
+    (result && typeof result === 'object' ? (result as Record<string, unknown>) : undefined) ??
+    undefined
+  )
 }
 
 const sanitizeOrderEvents = (
@@ -411,7 +459,11 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
     const cartItems = Array.isArray(document.cart)
       ? limitArray(
           document.cart
-            .map((item) => (item && typeof item === 'object' ? sanitizeCartItem(item as Record<string, unknown>) : undefined))
+            .map((item) =>
+              item && typeof item === 'object'
+                ? sanitizeCartItem(item as Record<string, unknown>)
+                : undefined,
+            )
             .filter(isPresent),
           25,
         )
@@ -444,7 +496,9 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
       stripe: cleanValue({
         source: toCleanString(document.stripeSource),
         checkoutSessionId: toCleanString(document.stripeSessionId),
-        checkoutStatus: toCleanString(document.stripeCheckoutStatus || document.stripeSessionStatus),
+        checkoutStatus: toCleanString(
+          document.stripeCheckoutStatus || document.stripeSessionStatus,
+        ),
         checkoutMode: toCleanString(document.stripeCheckoutMode),
         createdAt: toCleanString(document.stripeCreatedAt),
         lastSyncedAt: toCleanString(document.stripeLastSyncedAt),
@@ -514,7 +568,8 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
       shipTo: cleanValue(document.shipTo || document.ship_to),
       weight: cleanValue(document.weight),
       dimensions: cleanValue(document.dimensions),
-      serviceSelection: toCleanString(document.shippingCarrier) || toCleanString(document.serviceSelection),
+      serviceSelection:
+        toCleanString(document.shippingCarrier) || toCleanString(document.serviceSelection),
       trackingNumber: toCleanString(document.trackingNumber),
       labelUrl: toCleanString(document.shippingLabelUrl || (document as any).labelUrl),
       metadata: cleanValue(document.metadata),
@@ -522,9 +577,7 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
         invoiceId: toCleanString(
           (document.metadata as Record<string, unknown> | undefined)?.invoiceId,
         ),
-        orderId: toCleanString(
-          (document.metadata as Record<string, unknown> | undefined)?.orderId,
-        ),
+        orderId: toCleanString((document.metadata as Record<string, unknown> | undefined)?.orderId),
       }),
     })
 
@@ -600,7 +653,12 @@ const ensureReferenceField = async (
       .set({[fieldName]: asReference(referenceId)})
       .commit({autoGenerateArrayKeys: true})
   } catch (error) {
-    logger.warn('[doc-mapping] Failed to set reference field', {documentId, fieldName, referenceId, error})
+    logger.warn('[doc-mapping] Failed to set reference field', {
+      documentId,
+      fieldName,
+      referenceId,
+      error,
+    })
   }
 }
 
@@ -658,9 +716,10 @@ const ensureInvoiceForOrder = async (
     ['paid', 'fulfilled', 'shipped', 'completed', 'complete'].includes(status)
 
   const existingRef = document.invoiceRef?._ref ? normalizeId(document.invoiceRef?._ref) : ''
-  const orderNumber = typeof document.orderNumber === 'string' && document.orderNumber.trim()
-    ? document.orderNumber.trim()
-    : undefined
+  const orderNumber =
+    typeof document.orderNumber === 'string' && document.orderNumber.trim()
+      ? document.orderNumber.trim()
+      : undefined
   const invoiceIdentifier = existingRef || `invoice-${orderNumber || baseId}`
 
   if (!shouldCreate) {
@@ -685,14 +744,17 @@ const ensureInvoiceForOrder = async (
   }
 
   let action: RelationshipLog['action'] = 'unchanged'
-  const prefix = (process.env.SANITY_STUDIO_INVOICE_PREFIX || process.env.INVOICE_PREFIX || 'INV')
-    .toString()
-    .replace(/[^a-z0-9]/gi, '')
-    .toUpperCase() || 'INV'
+  const prefix =
+    (process.env.SANITY_STUDIO_INVOICE_PREFIX || process.env.INVOICE_PREFIX || 'INV')
+      .toString()
+      .replace(/[^a-z0-9]/gi, '')
+      .toUpperCase() || 'INV'
 
   const invoiceNumber =
     (typeof invoiceDoc?.invoiceNumber === 'string' && invoiceDoc.invoiceNumber) ||
-    (orderNumber && /^[a-z0-9-]+$/i.test(orderNumber) ? orderNumber : await generateInvoiceNumber(client, prefix))
+    (orderNumber && /^[a-z0-9-]+$/i.test(orderNumber)
+      ? orderNumber
+      : await generateInvoiceNumber(client, prefix))
 
   const invoicePayload: Record<string, unknown> = {
     _id: invoiceIdentifier,
@@ -716,9 +778,12 @@ const ensureInvoiceForOrder = async (
 
   try {
     if (!invoiceDoc) {
-      await client.create(invoicePayload)
+      await client.create(invoicePayload as unknown as SanityDocument)
       action = 'created'
-      logger.info('[doc-mapping] Created invoice for order', {orderId: baseId, invoiceId: invoiceIdentifier})
+      logger.info('[doc-mapping] Created invoice for order', {
+        orderId: baseId,
+        invoiceId: invoiceIdentifier,
+      })
     } else {
       const patchSet: Record<string, unknown> = {}
       if (!invoiceDoc.orderRef?._ref || normalizeId(invoiceDoc.orderRef._ref) !== baseId) {
@@ -726,13 +791,22 @@ const ensureInvoiceForOrder = async (
       }
       if (!invoiceDoc.invoiceNumber) patchSet.invoiceNumber = invoiceNumber
       if (!invoiceDoc.orderNumber && orderNumber) patchSet.orderNumber = orderNumber
-      if (document.shipTo && JSON.stringify(document.shipTo) !== JSON.stringify(invoiceDoc.shipTo)) {
+      if (
+        document.shipTo &&
+        JSON.stringify(document.shipTo) !== JSON.stringify(invoiceDoc.shipTo)
+      ) {
         patchSet.shipTo = document.shipTo
       }
-      if (document.weight && JSON.stringify(document.weight) !== JSON.stringify(invoiceDoc.weight)) {
+      if (
+        document.weight &&
+        JSON.stringify(document.weight) !== JSON.stringify(invoiceDoc.weight)
+      ) {
         patchSet.weight = document.weight
       }
-      if (document.dimensions && JSON.stringify(document.dimensions) !== JSON.stringify(invoiceDoc.dimensions)) {
+      if (
+        document.dimensions &&
+        JSON.stringify(document.dimensions) !== JSON.stringify(invoiceDoc.dimensions)
+      ) {
         patchSet.dimensions = document.dimensions
       }
       if (document.amountShipping && document.amountShipping !== invoiceDoc.amountShipping) {
@@ -741,11 +815,19 @@ const ensureInvoiceForOrder = async (
       if (Object.keys(patchSet).length > 0) {
         await client.patch(invoiceIdentifier).set(patchSet).commit({autoGenerateArrayKeys: true})
         action = 'updated'
-        logger.info('[doc-mapping] Updated invoice linkage', {orderId: baseId, invoiceId: invoiceIdentifier, patchSet})
+        logger.info('[doc-mapping] Updated invoice linkage', {
+          orderId: baseId,
+          invoiceId: invoiceIdentifier,
+          patchSet,
+        })
       }
     }
   } catch (error) {
-    logger.error('[doc-mapping] Failed to upsert invoice', {orderId: baseId, invoiceId: invoiceIdentifier, error})
+    logger.error('[doc-mapping] Failed to upsert invoice', {
+      orderId: baseId,
+      invoiceId: invoiceIdentifier,
+      error,
+    })
     return {
       targetId: invoiceIdentifier,
       targetType: 'invoice',
@@ -762,7 +844,8 @@ const ensureInvoiceForOrder = async (
     targetId: invoiceIdentifier,
     targetType: 'invoice',
     action,
-    reason: action === 'created' ? 'Invoice created for fulfilled order' : 'Invoice synced with order',
+    reason:
+      action === 'created' ? 'Invoice created for fulfilled order' : 'Invoice synced with order',
   }
 }
 
@@ -807,10 +890,18 @@ const ensureShippingLabelForInvoice = async (
     logger.warn('[doc-mapping] Unable to read shipping label candidate', {shippingLabelId, error})
   }
 
-  const shipTo = (document.shipTo as Record<string, unknown> | null) || shippingDoc?.ship_to || defaultShipTo
-  const shipFrom = (document.ship_from as Record<string, unknown> | null) || shippingDoc?.ship_from || defaultShipFrom
-  const weight = (document.weight as Record<string, unknown> | null) || shippingDoc?.weight || defaultWeight
-  const dimensions = (document.dimensions as Record<string, unknown> | null) || shippingDoc?.dimensions || defaultDimensions
+  const shipTo =
+    (document.shipTo as Record<string, unknown> | null) || shippingDoc?.ship_to || defaultShipTo
+  const shipFrom =
+    (document.ship_from as Record<string, unknown> | null) ||
+    shippingDoc?.ship_from ||
+    defaultShipFrom
+  const weight =
+    (document.weight as Record<string, unknown> | null) || shippingDoc?.weight || defaultWeight
+  const dimensions =
+    (document.dimensions as Record<string, unknown> | null) ||
+    shippingDoc?.dimensions ||
+    defaultDimensions
 
   const payload = {
     _id: shippingLabelId,
@@ -833,7 +924,7 @@ const ensureShippingLabelForInvoice = async (
   let action: RelationshipLog['action'] = 'unchanged'
   try {
     if (!shippingDoc) {
-      await client.create(payload)
+      await client.create(payload as unknown as SanityDocument)
       action = 'created'
       logger.info('[doc-mapping] Created shipping label shell', {
         invoiceId: baseId,
@@ -842,9 +933,11 @@ const ensureShippingLabelForInvoice = async (
     } else {
       const patchSet: Record<string, unknown> = {}
       if (JSON.stringify(shipTo) !== JSON.stringify(shippingDoc.ship_to)) patchSet.ship_to = shipTo
-      if (JSON.stringify(shipFrom) !== JSON.stringify(shippingDoc.ship_from)) patchSet.ship_from = shipFrom
+      if (JSON.stringify(shipFrom) !== JSON.stringify(shippingDoc.ship_from))
+        patchSet.ship_from = shipFrom
       if (JSON.stringify(weight) !== JSON.stringify(shippingDoc.weight)) patchSet.weight = weight
-      if (JSON.stringify(dimensions) !== JSON.stringify(shippingDoc.dimensions)) patchSet.dimensions = dimensions
+      if (JSON.stringify(dimensions) !== JSON.stringify(shippingDoc.dimensions))
+        patchSet.dimensions = dimensions
       if (document.shippingCarrier && document.shippingCarrier !== shippingDoc.serviceSelection) {
         patchSet.serviceSelection = document.shippingCarrier
       }
@@ -866,7 +959,11 @@ const ensureShippingLabelForInvoice = async (
       }
     }
   } catch (error) {
-    logger.error('[doc-mapping] Failed to upsert shipping label', {invoiceId: baseId, shippingLabelId, error})
+    logger.error('[doc-mapping] Failed to upsert shipping label', {
+      invoiceId: baseId,
+      shippingLabelId,
+      error,
+    })
     return {
       targetId: shippingLabelId,
       targetType: 'shippingLabel',
@@ -918,12 +1015,13 @@ const ensureProductMap = async (
   try {
     const existing = await client.fetch(`*[_id == $id][0]`, {id: mapDocId})
     if (!existing) {
-      await client.create(payload)
+      await client.create(payload as unknown as SanityDocument)
       action = 'created'
       logger.info('[doc-mapping] Created product mapping', {productId: baseId, mapId: mapDocId})
     } else {
       const patchSet: Record<string, unknown> = {}
-      if (JSON.stringify(existing.tags || []) !== JSON.stringify(payload.tags)) patchSet.tags = payload.tags
+      if (JSON.stringify(existing.tags || []) !== JSON.stringify(payload.tags))
+        patchSet.tags = payload.tags
       if (existing.status !== payload.status) patchSet.status = payload.status
       if (JSON.stringify(existing.referencedTypes || []) !== JSON.stringify(referencedTypes)) {
         patchSet.referencedTypes = referencedTypes
@@ -936,11 +1034,19 @@ const ensureProductMap = async (
         patchSet.syncedAt = new Date().toISOString()
         await client.patch(mapDocId).set(patchSet).commit({autoGenerateArrayKeys: true})
         action = 'updated'
-        logger.info('[doc-mapping] Updated product mapping', {productId: baseId, mapId: mapDocId, patchSet})
+        logger.info('[doc-mapping] Updated product mapping', {
+          productId: baseId,
+          mapId: mapDocId,
+          patchSet,
+        })
       }
     }
   } catch (error) {
-    logger.error('[doc-mapping] Failed to upsert product mapping', {productId: baseId, mapDocId, error})
+    logger.error('[doc-mapping] Failed to upsert product mapping', {
+      productId: baseId,
+      mapDocId,
+      error,
+    })
     return {
       targetId: mapDocId,
       targetType: 'productMap',
@@ -987,10 +1093,9 @@ async function syncRelationships(
   for (const relationship of relationships) {
     if (!relationship.targetId) continue
     try {
-      const targetDoc = await context.client.fetch(
-        `*[_id == $id][0]{${PROJECTION_FIELDS}}`,
-        {id: relationship.targetId},
-      )
+      const targetDoc = await context.client.fetch(`*[_id == $id][0]{${PROJECTION_FIELDS}}`, {
+        id: relationship.targetId,
+      })
       if (!targetDoc) continue
       const targetSummary = buildMappingSummary(targetDoc as NormalizedDocument)
       await createOrReplaceMappingDoc(
@@ -1059,10 +1164,9 @@ export default defineDocumentFunction<NormalizedDocument>({
 
     if (referenceIds.length > 0) {
       try {
-        const results = await context.client.fetch(
-          `*[_id in $ids]{_id, _type}`,
-          {ids: referenceIds},
-        )
+        const results = await context.client.fetch(`*[_id in $ids]{_id, _type}`, {
+          ids: referenceIds,
+        })
         if (Array.isArray(results)) {
           referencedTypes = dedupe(
             results
@@ -1071,7 +1175,10 @@ export default defineDocumentFunction<NormalizedDocument>({
           )
         }
       } catch (error) {
-        logger.warn('[doc-mapping] Failed to resolve referenced document types', {referenceIds, error})
+        logger.warn('[doc-mapping] Failed to resolve referenced document types', {
+          referenceIds,
+          error,
+        })
       }
     }
 
@@ -1095,7 +1202,10 @@ export default defineDocumentFunction<NormalizedDocument>({
     const summary = buildMappingSummary(document)
 
     if (!summary && relationships.length === 0 && referencedTypes.length === 0) {
-      logger.info('[doc-mapping] No relationship updates required', {documentId: baseId, type: document._type})
+      logger.info('[doc-mapping] No relationship updates required', {
+        documentId: baseId,
+        type: document._type,
+      })
       return
     }
 

@@ -64,8 +64,7 @@ export type ShippingMetrics = {
 }
 
 const CART_METADATA_TYPE = 'orderCartItemMeta'
-const DIMENSION_PATTERN =
-  /(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)/i
+const DIMENSION_PATTERN = /(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)\s*(?:x|×)\s*(\d+(?:\.\d+)?)/i
 
 function slugifyValue(value?: string | null): string | undefined {
   if (!value) return undefined
@@ -82,15 +81,14 @@ function slugifyValue(value?: string | null): string | undefined {
 
 function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
   if (Array.isArray(item.metadata)) {
-    const filtered = item.metadata.filter(
-      (entry): entry is CartMetadataEntry =>
-        Boolean(
-          entry &&
-            typeof entry === 'object' &&
-            entry._type === CART_METADATA_TYPE &&
-            entry.key &&
-            entry.value,
-        ),
+    const filtered = item.metadata.filter((entry): entry is CartMetadataEntry =>
+      Boolean(
+        entry &&
+          typeof entry === 'object' &&
+          entry._type === CART_METADATA_TYPE &&
+          entry.key &&
+          entry.value,
+      ),
     )
     if (filtered.length !== item.metadata.length) {
       item.metadata = filtered
@@ -125,8 +123,7 @@ function appendMetadata(
   if (!normalizedValue) return
   const metadata = ensureMetadataArray(item)
   const already = metadata.find(
-    (entry) =>
-      entry.key === key && entry.value === normalizedValue && entry.source === source,
+    (entry) => entry.key === key && entry.value === normalizedValue && entry.source === source,
   )
   if (already) return
   metadata.push({
@@ -158,9 +155,7 @@ function findProductForItem(
     .map((slug) => slug?.trim())
     .filter(Boolean) as string[]
   for (const slug of slugCandidates) {
-    const match = products.find(
-      (p) => (p.slug?.current || '').toLowerCase() === slug.toLowerCase(),
-    )
+    const match = products.find((p) => (p.slug?.current || '').toLowerCase() === slug.toLowerCase())
     if (match) return match
   }
 
@@ -206,7 +201,11 @@ function collectProductQueries(cart: CartItem[]) {
 
   cart.forEach((item) => {
     if (!item || typeof item !== 'object') return
-    const slugCandidates = [item.productSlug, slugifyValue(item.productName), slugifyValue(item.name)]
+    const slugCandidates = [
+      item.productSlug,
+      slugifyValue(item.productName),
+      slugifyValue(item.name),
+    ]
     slugCandidates.forEach((slug) => {
       if (slug) slugs.add(slug)
     })
@@ -224,7 +223,9 @@ function collectProductQueries(cart: CartItem[]) {
   }
 }
 
-function parseBoxDimensions(value?: string | null): {length: number; width: number; height: number} | null {
+function parseBoxDimensions(
+  value?: string | null,
+): {length: number; width: number; height: number} | null {
   if (!value) return null
   const match = String(value).match(DIMENSION_PATTERN)
   if (!match) return null
@@ -390,7 +391,9 @@ export async function enrichCartItemsFromSanity(
     )
 
     if (issues.length) {
-      const messages = Array.from(new Set(issues.map((issue) => issue.message.trim()).filter(Boolean)))
+      const messages = Array.from(
+        new Set(issues.map((issue) => issue.message.trim()).filter(Boolean)),
+      )
       if (messages.length) {
         item.validationIssues = messages
         messages.forEach((message) => appendMetadata(item, 'validation_issue', message, 'derived'))
@@ -476,4 +479,3 @@ export function computeShippingMetrics(
 
   return metrics
 }
-

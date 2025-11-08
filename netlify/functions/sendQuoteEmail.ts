@@ -1,20 +1,14 @@
-import { Resend } from 'resend'
-import { createClient } from '@sanity/client'
-import type { Handler } from '@netlify/functions'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import {Resend} from 'resend'
+import {createClient} from '@sanity/client'
+import type {Handler} from '@netlify/functions'
+import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Prefer the single write token you set up; no fallback to PUBLIC_*
 const sanity = createClient({
-  projectId:
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    'r4og35qd',
-  dataset:
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    'production',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
+  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
   apiVersion: '2024-04-10',
   useCdn: false,
   token: process.env.SANITY_API_TOKEN,
@@ -44,12 +38,16 @@ function computeTotals(quote: any) {
   const taxRate = Number(quote?.taxRate || 0) || 0
 
   const discount =
-    discountType === 'percent' ? subtotal * (discountValue / 100) : discountType === 'amount' ? discountValue : 0
+    discountType === 'percent'
+      ? subtotal * (discountValue / 100)
+      : discountType === 'amount'
+        ? discountValue
+        : 0
   const taxable = Math.max(subtotal - discount, 0)
   const taxAmount = taxable * (taxRate / 100)
   const total = taxable + taxAmount
 
-  return { subtotal, discount, taxAmount, total }
+  return {subtotal, discount, taxAmount, total}
 }
 
 async function fetchQuote(id: string) {
@@ -60,15 +58,15 @@ async function fetchQuote(id: string) {
     discountType, discountValue, taxRate,
     subtotal, taxAmount, total
   }`
-  return sanity.fetch(q, { id })
+  return sanity.fetch(q, {id})
 }
 
 async function buildPdf(quote: any): Promise<Uint8Array> {
-  const { subtotal, discount, taxAmount, total } = computeTotals(quote)
+  const {subtotal, discount, taxAmount, total} = computeTotals(quote)
 
   const pdf = await PDFDocument.create()
   let page = pdf.addPage([612, 792]) // US Letter
-  const { width, height } = page.getSize()
+  const {width, height} = page.getSize()
 
   const black = rgb(0, 0, 0)
   const gray = rgb(0.4, 0.4, 0.4)
@@ -80,15 +78,27 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
   let y = height - 40
 
   // Business header
-  page.drawText('F.A.S. Motorsports LLC', { x: 40, y: y - 10, size: 16, font: bold, color: black })
-  page.drawText('6161 Riverside Dr', { x: 40, y: y - 28, size: 10, font, color: gray })
-  page.drawText('Punta Gorda, FL 33982', { x: 40, y: y - 42, size: 10, font, color: gray })
-  page.drawText('(812) 200-9012 • sales@fasmotorsports.com', { x: 40, y: y - 56, size: 10, font, color: gray })
+  page.drawText('F.A.S. Motorsports LLC', {x: 40, y: y - 10, size: 16, font: bold, color: black})
+  page.drawText('6161 Riverside Dr', {x: 40, y: y - 28, size: 10, font, color: gray})
+  page.drawText('Punta Gorda, FL 33982', {x: 40, y: y - 42, size: 10, font, color: gray})
+  page.drawText('(812) 200-9012 • sales@fasmotorsports.com', {
+    x: 40,
+    y: y - 56,
+    size: 10,
+    font,
+    color: gray,
+  })
 
-  page.drawText('QUOTE', { x: width - 140, y: y - 10, size: 22, font: bold, color: black })
+  page.drawText('QUOTE', {x: width - 140, y: y - 10, size: 22, font: bold, color: black})
   const qNum = safe(quote.quoteNumber || quote._id)
-  page.drawText(`Quote # ${qNum}`, { x: width - 220, y: y - 36, size: 10, font, color: gray })
-  page.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: width - 220, y: y - 50, size: 10, font, color: gray })
+  page.drawText(`Quote # ${qNum}`, {x: width - 220, y: y - 36, size: 10, font, color: gray})
+  page.drawText(`Date: ${new Date().toLocaleDateString()}`, {
+    x: width - 220,
+    y: y - 50,
+    size: 10,
+    font,
+    color: gray,
+  })
 
   y -= 90
 
@@ -99,7 +109,9 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
     if (obj?.phone) lines.push(safe(obj.phone))
     const l1 = [obj?.address_line1, obj?.address_line2].filter(Boolean).join(', ')
     if (l1) lines.push(l1)
-    const l2 = [obj?.city_locality, obj?.state_province, obj?.postal_code].filter(Boolean).join(', ')
+    const l2 = [obj?.city_locality, obj?.state_province, obj?.postal_code]
+      .filter(Boolean)
+      .join(', ')
     if (l2) lines.push(l2)
     if (obj?.country_code) lines.push(safe(obj.country_code))
     return lines
@@ -108,27 +120,52 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
   // Bill To / Ship To boxes
   const boxW = (width - 80 - 20) / 2
   const boxH = 90
-  page.drawRectangle({ x: 40, y: y - boxH, width: boxW, height: boxH, color: light, opacity: 0.4 })
-  page.drawRectangle({ x: 40, y: y - boxH, width: boxW, height: boxH, borderColor: gray, borderWidth: 1 })
-  page.drawRectangle({ x: 60 + boxW, y: y - boxH, width: boxW, height: boxH, color: light, opacity: 0.4 })
-  page.drawRectangle({ x: 60 + boxW, y: y - boxH, width: boxW, height: boxH, borderColor: gray, borderWidth: 1 })
+  page.drawRectangle({x: 40, y: y - boxH, width: boxW, height: boxH, color: light, opacity: 0.4})
+  page.drawRectangle({
+    x: 40,
+    y: y - boxH,
+    width: boxW,
+    height: boxH,
+    borderColor: gray,
+    borderWidth: 1,
+  })
+  page.drawRectangle({
+    x: 60 + boxW,
+    y: y - boxH,
+    width: boxW,
+    height: boxH,
+    color: light,
+    opacity: 0.4,
+  })
+  page.drawRectangle({
+    x: 60 + boxW,
+    y: y - boxH,
+    width: boxW,
+    height: boxH,
+    borderColor: gray,
+    borderWidth: 1,
+  })
 
-  page.drawText('Bill To', { x: 48, y: y - 16, size: 10, font: bold, color: black })
-  page.drawText('Ship To', { x: 68 + boxW, y: y - 16, size: 10, font: bold, color: black })
+  page.drawText('Bill To', {x: 48, y: y - 16, size: 10, font: bold, color: black})
+  page.drawText('Ship To', {x: 68 + boxW, y: y - 16, size: 10, font: bold, color: black})
 
   const bill = addrLines(quote.billTo || {})
   const ship = addrLines(quote.shipTo || {})
-  bill.forEach((t, i) => page.drawText(t, { x: 48, y: y - 32 - i * 12, size: 10, font, color: black }))
-  ship.forEach((t, i) => page.drawText(t, { x: 68 + boxW, y: y - 32 - i * 12, size: 10, font, color: black }))
+  bill.forEach((t, i) =>
+    page.drawText(t, {x: 48, y: y - 32 - i * 12, size: 10, font, color: black}),
+  )
+  ship.forEach((t, i) =>
+    page.drawText(t, {x: 68 + boxW, y: y - 32 - i * 12, size: 10, font, color: black}),
+  )
 
   y -= boxH + 20
 
   // Items header
-  page.drawRectangle({ x: 40, y: y - 20, width: width - 80, height: 20, color: light, opacity: 0.6 })
-  page.drawText('Description', { x: 48, y: y - 15, size: 10, font: bold, color: black })
-  page.drawText('Qty', { x: width - 220, y: y - 15, size: 10, font: bold, color: black })
-  page.drawText('Unit', { x: width - 170, y: y - 15, size: 10, font: bold, color: black })
-  page.drawText('Amount', { x: width - 110, y: y - 15, size: 10, font: bold, color: black })
+  page.drawRectangle({x: 40, y: y - 20, width: width - 80, height: 20, color: light, opacity: 0.6})
+  page.drawText('Description', {x: 48, y: y - 15, size: 10, font: bold, color: black})
+  page.drawText('Qty', {x: width - 220, y: y - 15, size: 10, font: bold, color: black})
+  page.drawText('Unit', {x: width - 170, y: y - 15, size: 10, font: bold, color: black})
+  page.drawText('Amount', {x: width - 110, y: y - 15, size: 10, font: bold, color: black})
 
   y -= 26
 
@@ -141,14 +178,22 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
     const desc = safe(li?.description || '')
     const line = [title, desc].filter(Boolean).join(' — ')
 
-    page.drawText(line, { x: 48, y: y - 12, size: 10, font, color: black, maxWidth: width - 80 - 240, lineHeight: 12 })
-    page.drawText(String(qty), { x: width - 220, y: y - 12, size: 10, font, color: black })
-    page.drawText(money(unit), { x: width - 170, y: y - 12, size: 10, font, color: black })
-    page.drawText(money(amount), { x: width - 110, y: y - 12, size: 10, font, color: black })
+    page.drawText(line, {
+      x: 48,
+      y: y - 12,
+      size: 10,
+      font,
+      color: black,
+      maxWidth: width - 80 - 240,
+      lineHeight: 12,
+    })
+    page.drawText(String(qty), {x: width - 220, y: y - 12, size: 10, font, color: black})
+    page.drawText(money(unit), {x: width - 170, y: y - 12, size: 10, font, color: black})
+    page.drawText(money(amount), {x: width - 110, y: y - 12, size: 10, font, color: black})
 
     y -= 18
     if (y < 120) {
-      page.drawText('Continued…', { x: width - 140, y: 40, size: 10, font, color: gray })
+      page.drawText('Continued…', {x: width - 140, y: 40, size: 10, font, color: gray})
       const p = pdf.addPage([612, 792])
       y = p.getSize().height - 40
       page = p
@@ -159,8 +204,14 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
   const totalsX = width - 240
   let ty = Math.max(y - 6, 140)
   function row(label: string, value: string, boldRow = false) {
-    page.drawText(label, { x: totalsX, y: ty, size: 10, font: boldRow ? bold : font, color: black })
-    page.drawText(value, { x: width - 110, y: ty, size: 10, font: boldRow ? bold : font, color: black })
+    page.drawText(label, {x: totalsX, y: ty, size: 10, font: boldRow ? bold : font, color: black})
+    page.drawText(value, {
+      x: width - 110,
+      y: ty,
+      size: 10,
+      font: boldRow ? bold : font,
+      color: black,
+    })
     ty -= 14
   }
   row('Subtotal', money(subtotal))
@@ -168,7 +219,13 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
   row('Tax', money(taxAmount))
   row('Total', money(total), true)
 
-  page.drawText('Thank you for the opportunity to earn your business.', { x: 40, y: 40, size: 10, font, color: gray })
+  page.drawText('Thank you for the opportunity to earn your business.', {
+    x: 40,
+    y: 40,
+    size: 10,
+    font,
+    color: gray,
+  })
 
   const bytes = await pdf.save()
   return bytes
@@ -178,15 +235,15 @@ export const handler: Handler = async (event) => {
   try {
     const body = event.body ? JSON.parse(event.body) : {}
     const quoteId = body?.quoteId || body?.id
-    if (!quoteId) return { statusCode: 400, body: 'Missing quoteId' }
+    if (!quoteId) return {statusCode: 400, body: 'Missing quoteId'}
 
     const quote = await fetchQuote(quoteId)
-    if (!quote) return { statusCode: 404, body: 'Quote not found' }
+    if (!quote) return {statusCode: 404, body: 'Quote not found'}
 
     const toEmail = quote?.billTo?.email || ''
-    if (!toEmail) return { statusCode: 400, body: 'Missing customer email (billTo.email)' }
+    if (!toEmail) return {statusCode: 400, body: 'Missing customer email (billTo.email)'}
 
-    const { subtotal, discount, taxAmount, total } = computeTotals(quote)
+    const {subtotal, discount, taxAmount, total} = computeTotals(quote)
 
     // Build a concise HTML summary + CTA
     const baseUrl = process.env.SANITY_STUDIO_NETLIFY_BASE || 'https://fassanity.fasmotorsports.com'
@@ -228,12 +285,15 @@ export const handler: Handler = async (event) => {
       ],
     })
 
-    return { statusCode: 200, body: JSON.stringify({ message: 'Quote email sent', to: toEmail }) }
+    return {statusCode: 200, body: JSON.stringify({message: 'Quote email sent', to: toEmail})}
   } catch (error: any) {
     console.error('sendQuoteEmail failed', error?.message || error)
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to send email', details: error?.message || 'Unknown error' }),
+      body: JSON.stringify({
+        error: 'Failed to send email',
+        details: error?.message || 'Unknown error',
+      }),
     }
   }
 }

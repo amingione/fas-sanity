@@ -67,7 +67,12 @@ export const bankAccountType = defineType({
       options: {collapsible: true, collapsed: true},
       fields: [
         defineField({name: 'lastSyncedAt', title: 'Last Synced', type: 'datetime', readOnly: true}),
-        defineField({name: 'linkSessionId', title: 'Stripe Session ID', type: 'string', readOnly: true}),
+        defineField({
+          name: 'linkSessionId',
+          title: 'Stripe Session ID',
+          type: 'string',
+          readOnly: true,
+        }),
       ],
     }),
   ],
@@ -83,7 +88,9 @@ export const bankAccountType = defineType({
       const suffix = last4 ? `••••${last4}` : ''
       return {
         title: display,
-        subtitle: [institution, suffix, status ? status.toUpperCase() : null].filter(Boolean).join(' • '),
+        subtitle: [institution, suffix, status ? status.toUpperCase() : null]
+          .filter(Boolean)
+          .join(' • '),
       }
     },
   },

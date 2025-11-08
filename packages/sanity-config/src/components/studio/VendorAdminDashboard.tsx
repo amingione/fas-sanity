@@ -1,6 +1,6 @@
 // components/studio/VendorAdminDashboard.tsx
-import { useCallback, useEffect, useState } from 'react'
-import { useClient } from 'sanity'
+import {useCallback, useEffect, useState} from 'react'
+import {useClient} from 'sanity'
 
 interface Vendor {
   _id: string
@@ -29,7 +29,7 @@ export default function VendorAdminDashboard() {
           status,
           approved,
           _createdAt
-        } | order(_createdAt desc)`
+        } | order(_createdAt desc)`,
       )
       .then(setVendors)
       .catch((err) => console.error('Failed to load vendors', err))
@@ -43,7 +43,7 @@ export default function VendorAdminDashboard() {
     try {
       await client
         .patch(id)
-        .set({ approved, status: approved ? 'Approved' : 'Rejected' })
+        .set({approved, status: approved ? 'Approved' : 'Rejected'})
         .commit()
       fetchVendors()
     } catch (err) {
@@ -52,7 +52,7 @@ export default function VendorAdminDashboard() {
   }
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div style={{padding: '2rem'}}>
       <h1>Vendor Applications</h1>
       <table>
         <thead>

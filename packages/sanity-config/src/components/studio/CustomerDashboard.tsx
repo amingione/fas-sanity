@@ -323,7 +323,10 @@ const buildLocation = (customer: CustomerRecord) => {
     return parts.join(', ')
   }
   if (customer.address) {
-    const condensed = customer.address.split(/\n|,/).map((piece) => piece.trim()).filter(Boolean)
+    const condensed = customer.address
+      .split(/\n|,/)
+      .map((piece) => piece.trim())
+      .filter(Boolean)
     if (condensed.length > 0) {
       return condensed[0]
     }
@@ -405,9 +408,14 @@ const sumOrderTotals = (orders: CustomerOrderSummary[]) => {
   return orders.reduce((total, order) => total + (order.total ?? 0), 0)
 }
 
-const classifyRfmGroup = (orderCount: number, recencyDays: number | null, lifetimeSpend: number) => {
+const classifyRfmGroup = (
+  orderCount: number,
+  recencyDays: number | null,
+  lifetimeSpend: number,
+) => {
   if (orderCount === 0) return 'Prospect'
-  if (recencyDays !== null && recencyDays <= 45 && orderCount >= 3 && lifetimeSpend >= 150) return 'Champion'
+  if (recencyDays !== null && recencyDays <= 45 && orderCount >= 3 && lifetimeSpend >= 150)
+    return 'Champion'
   if (recencyDays !== null && recencyDays <= 90 && orderCount >= 2) return 'Loyal'
   if (recencyDays !== null && recencyDays <= 180) return 'Active'
   if (recencyDays !== null && recencyDays > 365) return 'At risk'
@@ -449,7 +457,10 @@ const isStoreCreditItem = (item?: OrderCartItem | null) => {
     if (!entry) continue
     if (matchStoreCreditText(entry.value)) return true
     if (matchStoreCreditText(entry.key)) return true
-    if ((entry.key || '').toLowerCase() === 'type' && (entry.value || '').toLowerCase() === 'store_credit') {
+    if (
+      (entry.key || '').toLowerCase() === 'type' &&
+      (entry.value || '').toLowerCase() === 'store_credit'
+    ) {
       return true
     }
   }
@@ -522,7 +533,10 @@ const computePaymentMethods = (
       const existing = summary.get(key)
       if (existing) {
         existing.lastUsed = pickLatestDate(existing.lastUsed, createdAt)
-        existing.orderCount = Math.max(existing.orderCount, method.isDefault ? 1 : existing.orderCount)
+        existing.orderCount = Math.max(
+          existing.orderCount,
+          method.isDefault ? 1 : existing.orderCount,
+        )
       } else {
         summary.set(key, {
           key,
@@ -573,7 +587,7 @@ const pickLatestDate = (a: Date | null, b: Date | null): Date | null => {
 }
 
 const computeStoreCreditSummary = (orders?: OrderDocumentLite[] | null): StoreCreditSummary => {
-  const summary: StoreCreditSummary = { totalRedeemed: 0, transactions: [] }
+  const summary: StoreCreditSummary = {totalRedeemed: 0, transactions: []}
   if (!orders || orders.length === 0) return summary
   for (const order of orders) {
     if (!order) continue
@@ -714,7 +728,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   }, [client, previewId, previewOpen])
 
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)))
+    setSelectedIds((prev) =>
+      prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)),
+    )
   }, [filteredCustomers])
 
   useEffect(() => {
@@ -750,7 +766,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
       setProfileError(null)
 
       try {
-        const detail = await client.fetch<CustomerDetail | null>(CUSTOMER_DETAIL_QUERY, {id: activeCustomerId})
+        const detail = await client.fetch<CustomerDetail | null>(CUSTOMER_DETAIL_QUERY, {
+          id: activeCustomerId,
+        })
         if (cancelled) return
 
         if (detail) {
@@ -765,7 +783,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         }
                       : order,
                   )
-                  .filter((order): order is CustomerOrderSummary => Boolean(order)),
+                  .filter(Boolean) as CustomerOrderSummary[],
               )
             : detail.orders
 
@@ -780,7 +798,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         }
                       : order,
                   )
-                  .filter((order): order is OrderDocumentLite => Boolean(order)),
+                  .filter(Boolean) as OrderDocumentLite[],
               )
             : detail.orderDocuments
 
@@ -817,7 +835,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   const sortedOrders = useMemo(() => {
     if (!activeProfile?.orders?.length) return []
     return [...activeProfile.orders]
-      .filter((order): order is CustomerOrderSummary => Boolean(order && (order.orderNumber || order.orderDate || order.total)))
+      .filter((order): order is CustomerOrderSummary =>
+        Boolean(order && (order.orderNumber || order.orderDate || order.total)),
+      )
       .sort((a, b) => {
         const dateA = safeParseDate(a.orderDate)
         const dateB = safeParseDate(b.orderDate)
@@ -838,7 +858,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
   const orderCountValue = activeProfile?.orderCount ?? sortedOrders.length
   const lifetimeSpendValue = activeProfile?.lifetimeSpend ?? sumOrderTotals(sortedOrders)
-  const recencyDays = latestOrderDate ? Math.floor((Date.now() - latestOrderDate.getTime()) / (1000 * 60 * 60 * 24)) : null
+  const recencyDays = latestOrderDate
+    ? Math.floor((Date.now() - latestOrderDate.getTime()) / (1000 * 60 * 60 * 24))
+    : null
   const rfmGroup = classifyRfmGroup(orderCountValue, recencyDays, lifetimeSpendValue)
   const customerSinceText = customerSinceDate
     ? capitalizeFirst(formatDistanceToNow(customerSinceDate, {addSuffix: false}))
@@ -876,9 +898,11 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
       const timeLabel = orderDate ? format(orderDate, 'p') : null
 
       const statusText = order.status ? `Status: ${order.status}` : null
-      const totalText = typeof order.total === 'number' ? `Total: ${formatCurrency(order.total)}` : null
+      const totalText =
+        typeof order.total === 'number' ? `Total: ${formatCurrency(order.total)}` : null
       const descriptionParts = [statusText, totalText].filter(Boolean)
-      const description = descriptionParts.length > 0 ? descriptionParts.join(' · ') : 'Order recorded'
+      const description =
+        descriptionParts.length > 0 ? descriptionParts.join(' · ') : 'Order recorded'
 
       const entry: TimelineEntry = {
         id: `${order.orderNumber ?? 'order'}-${index}`,
@@ -912,7 +936,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
   const shippingLines = formatAddressLines(activeProfile?.shippingAddress, activeProfile?.address)
   const billingLines = formatAddressLines(activeProfile?.billingAddress)
-  const roleTags = activeProfile?.roles && activeProfile.roles.length > 0 ? activeProfile.roles : ['customer']
+  const roleTags =
+    activeProfile?.roles && activeProfile.roles.length > 0 ? activeProfile.roles : ['customer']
 
   const marketingStatuses = [
     {label: 'Email', subscribed: Boolean(activeProfile?.emailOptIn)},
@@ -920,7 +945,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
     {label: 'SMS', subscribed: Boolean(activeProfile?.textOptIn)},
   ]
 
-  const allSelected = filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
+  const allSelected =
+    filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
 
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -931,14 +957,18 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   }
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]))
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id],
+    )
   }
 
   const handleRowNavigate = (id: string) => {
     router.navigateIntent('edit', {id, type: 'customer'})
   }
 
-  const filteredActiveIndex = filteredCustomers.findIndex((customer) => customer._id === activeCustomerId)
+  const filteredActiveIndex = filteredCustomers.findIndex(
+    (customer) => customer._id === activeCustomerId,
+  )
   const canGoPrevious = filteredActiveIndex > 0
   const canGoNext = filteredActiveIndex !== -1 && filteredActiveIndex < filteredCustomers.length - 1
 
@@ -976,7 +1006,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
     }
   }, [])
 
-  const activeDisplayName = activeProfile?.displayName ?? activeSummary?.displayName ?? 'Select a customer'
+  const activeDisplayName =
+    activeProfile?.displayName ?? activeSummary?.displayName ?? 'Select a customer'
   const activeEmail = activeProfile?.email ?? activeSummary?.email ?? ''
 
   const openPreview = useCallback((id: string) => {
@@ -1024,7 +1055,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                   <div>
                     <h1 className="text-xl font-semibold text-[var(--studio-text)]">Customers</h1>
                     <p className="mt-1 text-sm text-[var(--studio-muted)]">
-                      {customerCount.toLocaleString()} customers · {customerCount > 0 ? '100% of your customer base' : 'No customers yet'}
+                      {customerCount.toLocaleString()} customers ·{' '}
+                      {customerCount > 0 ? '100% of your customer base' : 'No customers yet'}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1052,7 +1084,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                   </div>
                 </div>
                 {error && (
-                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
                 )}
               </div>
 
@@ -1067,7 +1101,12 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                       onChange={(event) => setSearchTerm(event.target.value)}
                     />
                     <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[rgba(148,163,184,0.7)]">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        className="h-4 w-4"
+                      >
                         <path
                           fillRule="evenodd"
                           d="M9 3.5a5.5 5.5 0 013.74 9.54l3.61 3.61a.75.75 0 11-1.06 1.06l-3.61-3.61A5.5 5.5 0 119 3.5zm0 1.5a4 4 0 100 8 4 4 0 000-8z"
@@ -1122,7 +1161,10 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                     <tbody className="divide-y divide-slate-200 text-sm text-[var(--studio-text)]">
                       {filteredCustomers.length === 0 && !loading ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-10 text-center text-sm text-[var(--studio-muted)]">
+                          <td
+                            colSpan={6}
+                            className="px-6 py-10 text-center text-sm text-[var(--studio-muted)]"
+                          >
                             No customers match your filters.
                           </td>
                         </tr>
@@ -1134,7 +1176,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                             <tr
                               key={customer._id}
                               className={`group cursor-pointer transition ${
-                                isActive ? 'bg-[var(--studio-surface-soft)]' : 'bg-[var(--studio-surface-strong)] hover:bg-[var(--studio-surface-soft)]'
+                                isActive
+                                  ? 'bg-[var(--studio-surface-soft)]'
+                                  : 'bg-[var(--studio-surface-strong)] hover:bg-[var(--studio-surface-soft)]'
                               }`}
                               onClick={() => setActiveCustomerId(customer._id)}
                               onDoubleClick={() => handleRowNavigate(customer._id)}
@@ -1162,19 +1206,32 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     openPreview(customer._id)
                                   }}
                                   className="font-medium text-[var(--studio-text)] transition hover:text-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                  style={{background: 'transparent', border: 'none', padding: 0, textAlign: 'left'}}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    padding: 0,
+                                    textAlign: 'left',
+                                  }}
                                 >
                                   {customer.displayName}
                                 </button>
-                                {customer.email && <div className="text-xs text-[var(--studio-muted)]">{customer.email}</div>}
+                                {customer.email && (
+                                  <div className="text-xs text-[var(--studio-muted)]">
+                                    {customer.email}
+                                  </div>
+                                )}
                               </td>
                               <td className="px-3 py-4">
                                 <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
                                   {getSubscriptionStatus(customer)}
                                 </span>
                               </td>
-                              <td className="px-3 py-4 text-[var(--studio-muted)]">{customer.location}</td>
-                              <td className="px-3 py-4 text-[var(--studio-muted)]">{formatOrders(customer.orderCount ?? 0)}</td>
+                              <td className="px-3 py-4 text-[var(--studio-muted)]">
+                                {customer.location}
+                              </td>
+                              <td className="px-3 py-4 text-[var(--studio-muted)]">
+                                {formatOrders(customer.orderCount ?? 0)}
+                              </td>
                               <td className="px-6 py-4 text-right font-medium text-[var(--studio-text)]">
                                 {formatCurrency(customer.lifetimeSpend ?? 0)}
                               </td>
@@ -1191,16 +1248,22 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
           <div className="flex-1 overflow-hidden rounded-2xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
             {profileLoading ? (
-              <div className="flex h-full items-center justify-center"><Spinner muted size={4} /></div>
+              <div className="flex h-full items-center justify-center">
+                <Spinner muted size={4} />
+              </div>
             ) : activeCustomerId ? (
               <div className="flex h-full flex-col">
                 <header className="border-b border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-6 py-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-col gap-3">
                       <nav className="flex items-center gap-2 text-sm text-[var(--studio-muted)]">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--studio-surface-soft)] text-sm font-semibold text-[var(--studio-muted)]">C</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--studio-surface-soft)] text-sm font-semibold text-[var(--studio-muted)]">
+                          C
+                        </span>
                         <span className="text-[rgba(148,163,184,0.7)]">/</span>
-                        <span className="truncate font-medium text-[var(--studio-muted)]">Customers</span>
+                        <span className="truncate font-medium text-[var(--studio-muted)]">
+                          Customers
+                        </span>
                         <span className="text-[rgba(148,163,184,0.7)]">/</span>
                         <button
                           type="button"
@@ -1212,7 +1275,10 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         </button>
                       </nav>
                       <div className="min-w-0">
-                        <h2 className="truncate text-2xl font-semibold text-[var(--studio-text)]" title={activeDisplayName}>
+                        <h2
+                          className="truncate text-2xl font-semibold text-[var(--studio-text)]"
+                          title={activeDisplayName}
+                        >
                           <button
                             type="button"
                             onClick={handleOpenInStudio}
@@ -1221,7 +1287,11 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                             {activeDisplayName}
                           </button>
                         </h2>
-                        {activeEmail && <p className="truncate text-sm text-[var(--studio-muted)]">{activeEmail}</p>}
+                        {activeEmail && (
+                          <p className="truncate text-sm text-[var(--studio-muted)]">
+                            {activeEmail}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -1231,7 +1301,12 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         onClick={handleOpenInStudio}
                       >
                         More actions
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                        >
                           <path d="M6 6.75a.75.75 0 111.5 0A.75.75 0 016 6.75zM9.25 6.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM13.5 6.75a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" />
                         </svg>
                       </button>
@@ -1241,11 +1316,18 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           onClick={goToPrevious}
                           disabled={!canGoPrevious}
                           className={`flex h-9 w-10 items-center justify-center text-[var(--studio-muted)] transition ${
-                            canGoPrevious ? 'hover:bg-[var(--studio-surface-soft)]' : 'cursor-not-allowed opacity-40'
+                            canGoPrevious
+                              ? 'hover:bg-[var(--studio-surface-soft)]'
+                              : 'cursor-not-allowed opacity-40'
                           }`}
                           aria-label="Previous customer"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="h-4 w-4"
+                          >
                             <path d="M11.03 5.47a.75.75 0 010 1.06L8.56 9l2.47 2.47a.75.75 0 11-1.06 1.06l-3-3a.75.75 0 010-1.06l3-3a.75.75 0 011.06 0z" />
                           </svg>
                         </button>
@@ -1255,11 +1337,18 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           onClick={goToNext}
                           disabled={!canGoNext}
                           className={`flex h-9 w-10 items-center justify-center text-[var(--studio-muted)] transition ${
-                            canGoNext ? 'hover:bg-[var(--studio-surface-soft)]' : 'cursor-not-allowed opacity-40'
+                            canGoNext
+                              ? 'hover:bg-[var(--studio-surface-soft)]'
+                              : 'cursor-not-allowed opacity-40'
                           }`}
                           aria-label="Next customer"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="h-4 w-4"
+                          >
                             <path d="M8.97 5.47a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06L11.44 9 8.97 6.53a.75.75 0 010-1.06z" />
                           </svg>
                         </button>
@@ -1267,11 +1356,16 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                     </div>
                   </div>
                   {profileError && (
-                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{profileError}</div>
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {profileError}
+                    </div>
                   )}
                 </header>
 
-                <div className="flex-1 overflow-auto" style={{background: 'var(--studio-surface-overlay)'}}>
+                <div
+                  className="flex-1 overflow-auto"
+                  style={{background: 'var(--studio-surface-overlay)'}}
+                >
                   <div className="flex flex-col gap-6 px-6 py-6">
                     <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:justify-between">
@@ -1285,7 +1379,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <span className="text-xs font-medium uppercase tracking-wide text-[var(--studio-muted)]">
                                 {metric.label}
                               </span>
-                              <span className="mt-2 text-lg font-semibold text-[var(--studio-text)]">{metric.value}</span>
+                              <span className="mt-2 text-lg font-semibold text-[var(--studio-text)]">
+                                {metric.value}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -1298,7 +1394,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex flex-wrap items-center justify-between gap-4">
                               <div>
-                                <h3 className="text-lg font-semibold text-[var(--studio-text)]">Last order placed</h3>
+                                <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                                  Last order placed
+                                </h3>
                                 {latestOrderDate && (
                                   <p className="text-sm text-[var(--studio-muted)]">
                                     {format(latestOrderDate, "MMMM d, yyyy 'at' h:mm a")}
@@ -1328,9 +1426,13 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <div className="flex flex-col gap-4">
                                 <div className="flex flex-wrap items-center gap-3">
                                   {latestOrder.orderNumber ? (
-                                    <span className="text-base font-semibold text-[var(--studio-text)]">#{latestOrder.orderNumber}</span>
+                                    <span className="text-base font-semibold text-[var(--studio-text)]">
+                                      #{latestOrder.orderNumber}
+                                    </span>
                                   ) : (
-                                    <span className="text-base font-semibold text-[var(--studio-text)]">Order</span>
+                                    <span className="text-base font-semibold text-[var(--studio-text)]">
+                                      Order
+                                    </span>
                                   )}
                                   {latestOrder.status && (
                                     <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
@@ -1345,7 +1447,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                 </div>
                                 <div className="flex flex-wrap items-baseline justify-between gap-4 text-[var(--studio-text)]">
                                   <div>
-                                    <p className="text-sm text-[var(--studio-muted)]">Order total</p>
+                                    <p className="text-sm text-[var(--studio-muted)]">
+                                      Order total
+                                    </p>
                                     <p className="text-xl font-semibold text-[var(--studio-text)]">
                                       {formatCurrency(latestOrder.total ?? 0)}
                                     </p>
@@ -1353,18 +1457,24 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-sm text-[var(--studio-muted)]">This customer has not placed any orders yet.</p>
+                              <p className="text-sm text-[var(--studio-muted)]">
+                                This customer has not placed any orders yet.
+                              </p>
                             )}
                           </div>
                         </section>
 
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
-                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Timeline</h3>
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                              Timeline
+                            </h3>
                           </div>
                           <div className="px-6 py-5">
                             {timelineSections.length === 0 ? (
-                              <p className="text-sm text-[var(--studio-muted)]">Order activity will appear here once this customer places an order.</p>
+                              <p className="text-sm text-[var(--studio-muted)]">
+                                Order activity will appear here once this customer places an order.
+                              </p>
                             ) : (
                               <div className="space-y-6">
                                 {timelineSections.map((section) => (
@@ -1375,12 +1485,21 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     <ul className="mt-3 space-y-4 border-l border-[var(--studio-border)] pl-5">
                                       {section.entries.map((entry) => (
                                         <li key={entry.id} className="relative">
-                                          <span className="absolute -left-[29px] mt-1 h-2.5 w-2.5 rounded-full bg-slate-400" aria-hidden="true" />
+                                          <span
+                                            className="absolute -left-[29px] mt-1 h-2.5 w-2.5 rounded-full bg-slate-400"
+                                            aria-hidden="true"
+                                          />
                                           <div className="flex flex-col gap-1">
-                                            <p className="text-sm font-medium text-[var(--studio-text)]">{entry.title}</p>
-                                            <p className="text-sm text-[var(--studio-muted)]">{entry.description}</p>
+                                            <p className="text-sm font-medium text-[var(--studio-text)]">
+                                              {entry.title}
+                                            </p>
+                                            <p className="text-sm text-[var(--studio-muted)]">
+                                              {entry.description}
+                                            </p>
                                             {entry.timeLabel && (
-                                              <p className="text-xs text-[rgba(148,163,184,0.7)]">{entry.timeLabel}</p>
+                                              <p className="text-xs text-[rgba(148,163,184,0.7)]">
+                                                {entry.timeLabel}
+                                              </p>
                                             )}
                                           </div>
                                         </li>
@@ -1398,14 +1517,21 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">Customer</h3>
+                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                                Customer
+                              </h3>
                               <button
                                 type="button"
                                 onClick={handleOpenInStudio}
                                 className="rounded-md p-1.5 text-[var(--studio-muted)] transition hover:bg-[var(--studio-surface-soft)] hover:text-[var(--studio-text)]"
                                 aria-label="Open customer document"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="h-4 w-4"
+                                >
                                   <path d="M10 3a1 1 0 01.894.553l.382.764a1 1 0 00.724.547l.843.13a1 1 0 01.554 1.706l-.61.595a1 1 0 00-.287.885l.144.84a1 1 0 01-1.451 1.054l-.755-.397a1 1 0 00-.931 0l-.755.397a1 1 0 01-1.451-1.054l.144-.84a1 1 0 00-.287-.885l-.61-.595a1 1 0 01.554-1.706l.843-.13a1 1 0 00.724-.547l.382-.764A1 1 0 0110 3z" />
                                 </svg>
                               </button>
@@ -1413,7 +1539,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           </div>
                           <div className="space-y-6 px-6 py-5 text-sm text-[var(--studio-text)]">
                             <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Contact information</h4>
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                Contact information
+                              </h4>
                               <div className="flex flex-wrap items-center gap-2">
                                 {activeEmail ? (
                                   <button
@@ -1422,22 +1550,33 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     className="inline-flex items-center gap-2 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-sm font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                                   >
                                     {activeEmail}
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                      className="h-4 w-4"
+                                    >
                                       <path d="M5 6a2 2 0 012-2h4a2 2 0 012 2v1h-1.5V6a.5.5 0 00-.5-.5H7A.5.5 0 006.5 6v8a.5.5 0 00.5.5h4a.5.5 0 00.5-.5v-1H13v1a2 2 0 01-2 2H7a2 2 0 01-2-2V6z" />
                                       <path d="M9 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-6a1 1 0 01-1-1V8z" />
                                     </svg>
                                   </button>
                                 ) : (
-                                  <span className="text-[var(--studio-muted)]">No email on file</span>
+                                  <span className="text-[var(--studio-muted)]">
+                                    No email on file
+                                  </span>
                                 )}
                               </div>
                               {activeProfile?.phone && (
-                                <div className="text-[var(--studio-muted)]">{activeProfile.phone}</div>
+                                <div className="text-[var(--studio-muted)]">
+                                  {activeProfile.phone}
+                                </div>
                               )}
                             </div>
 
                             <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Default address</h4>
+                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                Default address
+                              </h4>
                               {shippingLines.length > 0 ? (
                                 <address className="not-italic leading-relaxed text-[var(--studio-text)]">
                                   {shippingLines.map((line) => (
@@ -1445,13 +1584,17 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                   ))}
                                 </address>
                               ) : (
-                                <p className="text-[var(--studio-muted)]">No shipping address stored.</p>
+                                <p className="text-[var(--studio-muted)]">
+                                  No shipping address stored.
+                                </p>
                               )}
                             </div>
 
                             {billingLines.length > 0 && (
                               <div className="space-y-2">
-                                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Billing address</h4>
+                                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                  Billing address
+                                </h4>
                                 <address className="not-italic leading-relaxed text-[var(--studio-text)]">
                                   {billingLines.map((line) => (
                                     <div key={line}>{line}</div>
@@ -1464,18 +1607,25 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
-                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Marketing</h3>
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                              Marketing
+                            </h3>
                           </div>
                           <div className="space-y-3 px-6 py-5 text-sm">
                             {marketingStatuses.map((status) => (
-                              <div key={status.label} className="flex items-center gap-2 text-[var(--studio-text)]">
+                              <div
+                                key={status.label}
+                                className="flex items-center gap-2 text-[var(--studio-text)]"
+                              >
                                 <span
                                   className={`h-2.5 w-2.5 rounded-full ${
                                     status.subscribed ? 'bg-emerald-500' : 'bg-slate-300'
                                   }`}
                                   aria-hidden="true"
                                 />
-                                <span className="font-medium text-[var(--studio-text)]">{status.label}</span>
+                                <span className="font-medium text-[var(--studio-text)]">
+                                  {status.label}
+                                </span>
                                 <span className="text-[var(--studio-muted)]">
                                   {status.subscribed ? 'Subscribed' : 'Not subscribed'}
                                 </span>
@@ -1486,16 +1636,23 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
-                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Payment method</h3>
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                              Payment method
+                            </h3>
                           </div>
                           <div className="px-6 py-5 text-sm">
                             {paymentMethods.length > 0 ? (
                               <ul className="space-y-3 text-[var(--studio-text)]">
                                 {paymentMethods.slice(0, 3).map((method) => (
-                                  <li key={method.key} className="flex items-center justify-between gap-3">
+                                  <li
+                                    key={method.key}
+                                    className="flex items-center justify-between gap-3"
+                                  >
                                     <div>
                                       <div className="font-medium text-[var(--studio-text)]">
-                                        {method.last4 ? `${method.brand} •••• ${method.last4}` : method.brand}
+                                        {method.last4
+                                          ? `${method.brand} •••• ${method.last4}`
+                                          : method.brand}
                                       </div>
                                       <div className="text-xs text-[var(--studio-muted)]">
                                         {method.lastUsed
@@ -1504,20 +1661,25 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                       </div>
                                     </div>
                                     <span className="rounded-full bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
-                                      {method.orderCount} {method.orderCount === 1 ? 'order' : 'orders'}
+                                      {method.orderCount}{' '}
+                                      {method.orderCount === 1 ? 'order' : 'orders'}
                                     </span>
                                   </li>
                                 ))}
                               </ul>
                             ) : (
-                              <p className="text-[var(--studio-muted)]">We haven’t recorded any card payments for this customer yet.</p>
+                              <p className="text-[var(--studio-muted)]">
+                                We haven’t recorded any card payments for this customer yet.
+                              </p>
                             )}
                           </div>
                         </section>
 
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
-                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">Store credit</h3>
+                            <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                              Store credit
+                            </h3>
                           </div>
                           <div className="px-6 py-5 text-sm">
                             {storeCreditSummary.transactions.length > 0 ? (
@@ -1541,32 +1703,39 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                   </div>
                                 </div>
                                 <ul className="space-y-3">
-                                  {storeCreditSummary.transactions.slice(0, 5).map((transaction) => (
-                                    <li key={transaction.id} className="flex flex-col gap-0.5">
-                                      <div className="flex items-center justify-between text-sm">
-                                        <span className="font-medium text-[var(--studio-text)]">
-                                          Redeemed {formatCurrency(transaction.amount)}
+                                  {storeCreditSummary.transactions
+                                    .slice(0, 5)
+                                    .map((transaction) => (
+                                      <li key={transaction.id} className="flex flex-col gap-0.5">
+                                        <div className="flex items-center justify-between text-sm">
+                                          <span className="font-medium text-[var(--studio-text)]">
+                                            Redeemed {formatCurrency(transaction.amount)}
+                                          </span>
+                                          {transaction.orderNumber ? (
+                                            <span className="text-xs text-[var(--studio-muted)]">
+                                              Order {transaction.orderNumber}
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                        <span className="text-xs text-[var(--studio-muted)]">
+                                          {transaction.occurredAt
+                                            ? `${format(transaction.occurredAt, 'MMM d, yyyy')} • ${formatDistanceToNow(transaction.occurredAt, {addSuffix: true})}`
+                                            : 'Date unavailable'}
                                         </span>
-                                        {transaction.orderNumber ? (
-                                          <span className="text-xs text-[var(--studio-muted)]">Order {transaction.orderNumber}</span>
-                                        ) : null}
-                                      </div>
-                                      <span className="text-xs text-[var(--studio-muted)]">
-                                        {transaction.occurredAt
-                                          ? `${format(transaction.occurredAt, 'MMM d, yyyy')} • ${formatDistanceToNow(transaction.occurredAt, {addSuffix: true})}`
-                                          : 'Date unavailable'}
-                                      </span>
-                                    </li>
-                                  ))}
+                                      </li>
+                                    ))}
                                 </ul>
                                 {storeCreditSummary.transactions.length > 5 ? (
                                   <p className="text-xs text-[var(--studio-muted)]">
-                                    Showing the 5 most recent credits out of {storeCreditSummary.transactions.length}.
+                                    Showing the 5 most recent credits out of{' '}
+                                    {storeCreditSummary.transactions.length}.
                                   </p>
                                 ) : null}
                               </div>
                             ) : (
-                              <p className="text-[var(--studio-muted)]">No store credit usage found in recent orders.</p>
+                              <p className="text-[var(--studio-muted)]">
+                                No store credit usage found in recent orders.
+                              </p>
                             )}
                           </div>
                         </section>
@@ -1574,14 +1743,21 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex items-center justify-between gap-2">
-                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">Tags</h3>
+                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                                Tags
+                              </h3>
                               <button
                                 type="button"
                                 onClick={handleOpenInStudio}
                                 className="rounded-md p-1.5 text-[var(--studio-muted)] transition hover:bg-[var(--studio-surface-soft)] hover:text-[var(--studio-text)]"
                                 aria-label="Manage tags"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="h-4 w-4"
+                                >
                                   <path d="M5 10a1 1 0 011-1h3V6a1 1 0 112 0v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 01-1-1z" />
                                 </svg>
                               </button>
@@ -1589,7 +1765,10 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           </div>
                           <div className="flex flex-wrap gap-2 px-6 py-5 text-sm text-[var(--studio-text)]">
                             {roleTags.map((tag) => (
-                              <span key={tag} className="inline-flex items-center rounded-full bg-[var(--studio-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--studio-muted)]">
+                              <span
+                                key={tag}
+                                className="inline-flex items-center rounded-full bg-[var(--studio-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--studio-muted)]"
+                              >
                                 {tag}
                               </span>
                             ))}
@@ -1599,21 +1778,30 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                         <section className="overflow-hidden rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
                           <div className="border-b border-[var(--studio-border)] px-6 py-4">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">Notes</h3>
+                              <h3 className="text-lg font-semibold text-[var(--studio-text)]">
+                                Notes
+                              </h3>
                               <button
                                 type="button"
                                 onClick={handleOpenInStudio}
                                 className="rounded-md p-1.5 text-[var(--studio-muted)] transition hover:bg-[var(--studio-surface-soft)] hover:text-[var(--studio-text)]"
                                 aria-label="Edit notes"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  className="h-4 w-4"
+                                >
                                   <path d="M5.433 13.917l-.318 1.59a.75.75 0 00.884.884l1.59-.318a5.75 5.75 0 002.742-1.503l5.06-5.06a2.25 2.25 0 00-3.182-3.182l-5.06 5.06a5.75 5.75 0 00-1.503 2.742z" />
                                   <path d="M3.5 5.75a2.25 2.25 0 012.25-2.25h4a.75.75 0 010 1.5h-4a.75.75 0 00-.75.75v10a.75.75 0 00.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0114.25 17h-8.5A2.25 2.25 0 013.5 14.75v-9z" />
                                 </svg>
                               </button>
                             </div>
                           </div>
-                          <div className="px-6 py-5 text-sm text-[var(--studio-muted)]">No notes recorded for this customer.</div>
+                          <div className="px-6 py-5 text-sm text-[var(--studio-muted)]">
+                            No notes recorded for this customer.
+                          </div>
                         </section>
                       </div>
                     </div>
@@ -1629,7 +1817,13 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
         </div>
       </div>
       {previewOpen && (
-        <Dialog header={previewDisplayName} id="customer-preview" onClose={closePreview} width={1} zOffset={1000}>
+        <Dialog
+          header={previewDisplayName}
+          id="customer-preview"
+          onClose={closePreview}
+          width={1}
+          zOffset={1000}
+        >
           <Card padding={4} tone="transparent">
             {previewLoading ? (
               <Flex align="center" justify="center" style={{minHeight: 160}}>
@@ -1726,7 +1920,14 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                     </Text>
                     <Flex gap={2} wrap="wrap">
                       {previewProfile.roles.map((role) => (
-                        <Card key={role} paddingX={3} paddingY={1} radius={2} shadow={0} tone="transparent">
+                        <Card
+                          key={role}
+                          paddingX={3}
+                          paddingY={1}
+                          radius={2}
+                          shadow={0}
+                          tone="transparent"
+                        >
                           <Text size={1} muted>
                             {role}
                           </Text>

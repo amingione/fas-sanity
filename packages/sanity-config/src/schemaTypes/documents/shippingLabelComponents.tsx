@@ -6,9 +6,9 @@ import {formatApiError} from '../../utils/formatApiError'
 // Resolve the Netlify functions base dynamically.
 // Priority: ENV -> localStorage -> empty (caller must set)
 function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as
-    | string
-    | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     const saved = window.localStorage?.getItem('NLFY_BASE') || ''
@@ -137,8 +137,7 @@ export function ServiceRateInput(props: any) {
         )) as any
         if (!cancelled) {
           if (data?.error) {
-            const errMsg =
-              typeof data.error === 'string' ? data.error : JSON.stringify(data.error)
+            const errMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error)
             throw new Error(errMsg)
           }
           setRates(Array.isArray(data?.rates) ? data.rates : [])
@@ -249,7 +248,10 @@ export function GenerateAndPrintPanel(props: any) {
   }
 
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<{tone: 'positive' | 'critical' | 'default'; text: string} | null>(null)
+  const [message, setMessage] = useState<{
+    tone: 'positive' | 'critical' | 'default'
+    text: string
+  } | null>(null)
   const currentBase = getFnBase()
 
   async function handleGenerate() {
@@ -272,7 +274,7 @@ export function GenerateAndPrintPanel(props: any) {
         },
       }
       const res = (await safeFetchJson(
-          `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/easypostCreateLabel`,
+        `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/easypostCreateLabel`,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -291,12 +293,12 @@ export function GenerateAndPrintPanel(props: any) {
         throw new Error('Label created but missing tracking or label URL in response')
       }
 
-      await client
-        .patch(_id)
-        .set({trackingNumber, labelUrl})
-        .commit({autoGenerateArrayKeys: true})
+      await client.patch(_id).set({trackingNumber, labelUrl}).commit({autoGenerateArrayKeys: true})
 
-      setMessage({tone: 'positive', text: 'EasyPost label generated. Tracking & label URL saved below.'})
+      setMessage({
+        tone: 'positive',
+        text: 'EasyPost label generated. Tracking & label URL saved below.',
+      })
       // Optionally, open label
       try {
         window?.open(labelUrl, '_blank')

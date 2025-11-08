@@ -127,10 +127,7 @@ const STATUS_TONE: Record<WebhookStatus, 'positive' | 'caution' | 'critical'> = 
 function friendlySummary(summary?: string | null, eventType?: string | null): string {
   if (summary && summary.trim()) return summary.trim()
   if (!eventType) return 'Webhook event'
-  const formatted = eventType
-    .replace(/[._]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  const formatted = eventType.replace(/[._]/g, ' ').replace(/\s+/g, ' ').trim()
   if (!formatted) return 'Webhook event'
   return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
@@ -336,7 +333,8 @@ const WebhooksDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
             <Stack space={2} style={{minWidth: 240}}>
               <Heading size={3}>Stripe webhooks</Heading>
               <Text muted size={1}>
-                Monitor recent Stripe webhook deliveries and jump straight to related orders and invoices.
+                Monitor recent Stripe webhook deliveries and jump straight to related orders and
+                invoices.
               </Text>
               <Text muted size={1}>
                 Showing {filteredEvents.length} of {totalEvents} events
@@ -447,7 +445,9 @@ const WebhooksDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           <Button
                             icon={LaunchIcon}
                             mode="ghost"
-                            text={event.invoiceNumber ? `Invoice ${event.invoiceNumber}` : 'Invoice'}
+                            text={
+                              event.invoiceNumber ? `Invoice ${event.invoiceNumber}` : 'Invoice'
+                            }
                             onClick={() => handleOpenInvoice(event.invoiceId)}
                           />
                         </Tooltip>

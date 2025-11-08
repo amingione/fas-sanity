@@ -32,7 +32,10 @@ export type ProductOptionValidationState = {
   message?: string
 }
 
-function formatMessage(missingOptions: string[], missingCustomizations: string[]): string | undefined {
+function formatMessage(
+  missingOptions: string[],
+  missingCustomizations: string[],
+): string | undefined {
   if (missingOptions.length && missingCustomizations.length) {
     return `Select ${missingOptions.join(', ')} and provide ${missingCustomizations.join(', ')}`
   }
@@ -61,7 +64,9 @@ export function useProductOptionValidation({
   apiVersion,
   perspective,
 }: UseProductOptionValidationOptions): ProductOptionValidationState {
-  const [requirements, setRequirements] = useState<ProductRequirements | undefined>(initialRequirements)
+  const [requirements, setRequirements] = useState<ProductRequirements | undefined>(
+    initialRequirements,
+  )
   const [loading, setLoading] = useState<boolean>(!initialRequirements)
   const [error, setError] = useState<Error | undefined>(undefined)
 

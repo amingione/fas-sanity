@@ -38,24 +38,23 @@ export const handler: Handler = async (event) => {
     }
 
     const payload = JSON.parse(event.body || '{}')
-    const returnUrl = typeof payload?.returnUrl === 'string' ? payload.returnUrl : DEFAULT_RETURN_URL
+    const returnUrl =
+      typeof payload?.returnUrl === 'string' ? payload.returnUrl : DEFAULT_RETURN_URL
 
-    const session = await stripe.financialConnections.sessions.create(
-      {
-        account_holder: {
-          type: 'company',
-          company: {
-            name: BUSINESS_NAME,
-          },
+    const session = await stripe.financialConnections.sessions.create({
+      account_holder: {
+        type: 'company',
+        company: {
+          name: BUSINESS_NAME,
         },
-        permissions: ['account_numbers', 'balances'],
-        filters: {
-          account_subtypes: ['checking', 'savings'],
-        },
-        payment_method_types: ['us_bank_account'],
-        return_url: returnUrl,
-      } as any
-    )
+      },
+      permissions: ['account_numbers', 'balances'],
+      filters: {
+        account_subtypes: ['checking', 'savings'],
+      },
+      payment_method_types: ['us_bank_account'],
+      return_url: returnUrl,
+    } as any)
 
     if (!session.client_secret) {
       return {

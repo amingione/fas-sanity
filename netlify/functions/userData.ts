@@ -1,8 +1,8 @@
-import type { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
-import { filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED } from '../lib/orderFilters'
+import type {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
+import {filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED} from '../lib/orderFilters'
 
-function decodeJwt(authHeader?: string | null): { sub?: string; email?: string } | null {
+function decodeJwt(authHeader?: string | null): {sub?: string; email?: string} | null {
   if (!authHeader) return null
   const m = authHeader.match(/^Bearer\s+(.+)$/i)
   if (!m) return null
@@ -12,7 +12,7 @@ function decodeJwt(authHeader?: string | null): { sub?: string; email?: string }
   try {
     const payloadJson = Buffer.from(parts[1], 'base64').toString()
     const payload = JSON.parse(payloadJson)
-    return { sub: payload?.sub, email: payload?.email }
+    return {sub: payload?.sub, email: payload?.email}
   } catch {
     return null
   }
@@ -29,10 +29,10 @@ const sanity = createClient({
 export const handler: Handler = async (event) => {
   try {
     if (event.httpMethod === 'OPTIONS') {
-      return { statusCode: 200, body: '' }
+      return {statusCode: 200, body: ''}
     }
     if (event.httpMethod !== 'GET' && event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) }
+      return {statusCode: 405, body: JSON.stringify({message: 'Method Not Allowed'})}
     }
 
     const auth = decodeJwt(event.headers?.authorization || null)
@@ -40,7 +40,7 @@ export const handler: Handler = async (event) => {
     const email = (auth?.email || '').trim().toLowerCase()
 
     if (!userId) {
-      return { statusCode: 401, body: JSON.stringify({ message: 'Unauthorized' }) }
+      return {statusCode: 401, body: JSON.stringify({message: 'Unauthorized'})}
     }
 
     const query = `*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && defined(customerEmail) && lower(customerEmail) == $email]{
@@ -55,20 +55,20 @@ export const handler: Handler = async (event) => {
       packingSlipUrl
     } | order(createdAt desc)`
 
-    const rawOrders = email ? await sanity.fetch(query, { email }) : []
+    const rawOrders = email ? await sanity.fetch(query, {email}) : []
     const orders = Array.isArray(rawOrders) ? filterOutExpiredOrders(rawOrders) : []
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders }),
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({orders}),
     }
   } catch (error: any) {
     console.error('userData function error:', error)
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Failed to fetch user orders' }),
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Failed to fetch user orders'}),
     }
   }
 }

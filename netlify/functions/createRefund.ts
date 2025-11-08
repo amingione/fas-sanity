@@ -225,27 +225,27 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const allowableStatuses = ['paid', 'fulfilled', 'shipped', 'closed', 'refunded', 'partially_refunded']
+    const allowableStatuses = [
+      'paid',
+      'fulfilled',
+      'shipped',
+      'closed',
+      'refunded',
+      'partially_refunded',
+    ]
     const orderStatus = (order?.paymentStatus || '').toLowerCase()
     const invoiceStatus = (invoice?.status || '').toLowerCase()
 
-    if (
-      order &&
-      order.paymentStatus &&
-      !allowableStatuses.includes(orderStatus)
-    ) {
+    if (order && order.paymentStatus && !allowableStatuses.includes(orderStatus)) {
       return {
         statusCode: 400,
         headers: {...cors, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: `Order payment status "${order.paymentStatus}" does not allow refunds`}),
+        body: JSON.stringify({
+          error: `Order payment status "${order.paymentStatus}" does not allow refunds`,
+        }),
       }
     }
-    if (
-      !order &&
-      invoice &&
-      invoice.status &&
-      !allowableStatuses.includes(invoiceStatus)
-    ) {
+    if (!order && invoice && invoice.status && !allowableStatuses.includes(invoiceStatus)) {
       return {
         statusCode: 400,
         headers: {...cors, 'Content-Type': 'application/json'},

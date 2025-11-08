@@ -1,6 +1,6 @@
-import type { SanityClient } from '@sanity/client'
-import { mapStripeMetadata } from './stripeMetadata'
-import { filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED } from './orderFilters'
+import type {SanityClient} from '@sanity/client'
+import {mapStripeMetadata} from './stripeMetadata'
+import {filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED} from './orderFilters'
 
 type ShippingLike = {
   name?: string | null
@@ -36,7 +36,7 @@ type UpdateCustomerArgs = {
   defaultRoles?: string[]
 }
 
-function splitName(value?: string | null): { firstName?: string; lastName?: string } {
+function splitName(value?: string | null): {firstName?: string; lastName?: string} {
   if (!value) return {}
   const trimmed = value.trim()
   if (!trimmed) return {}
@@ -56,18 +56,18 @@ function normalizeShippingAddress(address: ShippingLike | null | undefined) {
     address.street ||
     address.street1 ||
     (typeof address === 'object' && 'address' in address ? (address as any).address : undefined)
-    const line2 = address.addressLine2 || address.street2 || undefined
+  const line2 = address.addressLine2 || address.street2 || undefined
   const city = address.city || undefined
   const state = address.state || address.stateProvince || address.region || undefined
   const postalCode = address.postalCode || address.postal_code || address.zip || undefined
   const country = address.country || address.country_code || undefined
   if (!line1 && !city && !postalCode) return undefined
-      return {
-        _type: 'customerBillingAddress' as const,
-        name: address.name || undefined,
-        street: line1 || undefined,
-        street2: line2 || undefined,
-        city: city || undefined,
+  return {
+    _type: 'customerBillingAddress' as const,
+    name: address.name || undefined,
+    street: line1 || undefined,
+    street2: line2 || undefined,
+    city: city || undefined,
     state: state || undefined,
     postalCode: postalCode || undefined,
     country: country || undefined,
@@ -84,13 +84,12 @@ type CustomerAddressEntry = {
   country?: string
 }
 
-function toCustomerAddressEntry(address: ShippingLike | undefined, labelHint?: string): CustomerAddressEntry | undefined {
+function toCustomerAddressEntry(
+  address: ShippingLike | undefined,
+  labelHint?: string,
+): CustomerAddressEntry | undefined {
   if (!address) return undefined
-  const street =
-    address.addressLine1 ||
-    address.street ||
-    address.street1 ||
-    undefined
+  const street = address.addressLine1 || address.street || address.street1 || undefined
   const city = address.city || undefined
   const state = address.state || address.stateProvince || address.region || undefined
   const zip = address.postalCode || address.postal_code || address.zip || undefined
@@ -139,10 +138,16 @@ export async function updateCustomerProfileForOrder({
   let customerDoc: any = null
 
   if (customerId) {
-    customerDoc = await sanity.fetch(`*[_type == "customer" && _id == $id][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}`, { id: customerId })
+    customerDoc = await sanity.fetch(
+      `*[_type == "customer" && _id == $id][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}`,
+      {id: customerId},
+    )
   }
   if (!customerDoc && email) {
-    customerDoc = await sanity.fetch(`*[_type == "customer" && email == $email][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}`, { email })
+    customerDoc = await sanity.fetch(
+      `*[_type == "customer" && email == $email][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}`,
+      {email},
+    )
   }
   if (customerDoc) {
     customerId = customerDoc._id
@@ -189,15 +194,15 @@ export async function updateCustomerProfileForOrder({
         : undefined,
       stripeCustomerId: stripeCustomerId || undefined,
       stripeLastSyncedAt: stripeSyncTimestamp || undefined,
-      ...(shippingFromOrder?.phone ? { phone: shippingFromOrder.phone } : {}),
-      ...(metadataEntries ? { stripeMetadata: metadataEntries } : {}),
+      ...(shippingFromOrder?.phone ? {phone: shippingFromOrder.phone} : {}),
+      ...(metadataEntries ? {stripeMetadata: metadataEntries} : {}),
       updatedAt: new Date().toISOString(),
     }
     try {
-      const created = await sanity.create(payload as any, { autoGenerateArrayKeys: true })
+      const created = await sanity.create(payload as any, {autoGenerateArrayKeys: true})
       if (created?._id) {
         customerId = created._id
-        customerDoc = { ...payload, _id: created._id }
+        customerDoc = {...payload, _id: created._id}
       }
     } catch (err) {
       console.warn('customerSnapshot: failed to create customer', err)
@@ -248,7 +253,7 @@ export async function updateCustomerProfileForOrder({
         shippingAddress
       }
     }`,
-    { id: customerId, email }
+    {id: customerId, email},
   )
 
   const orderSummaries = Array.isArray(stats?.orders)
@@ -295,7 +300,7 @@ export async function updateCustomerProfileForOrder({
   })
 
   if (customerDoc?.address && typeof customerDoc.address === 'string') {
-    const legacyEntry = toCustomerAddressEntry({ addressLine1: customerDoc.address }, 'Shipping')
+    const legacyEntry = toCustomerAddressEntry({addressLine1: customerDoc.address}, 'Shipping')
     const key = addressKey(legacyEntry)
     if (key && legacyEntry) addressesSet.set(key, legacyEntry)
   }
@@ -353,14 +358,17 @@ export async function updateCustomerProfileForOrder({
   if (!hasRoles && roles.length) patch.roles = roles
 
   try {
-    await sanity.patch(customerId).set(patch).commit({ autoGenerateArrayKeys: true })
+    await sanity.patch(customerId).set(patch).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('customerSnapshot: failed to update customer aggregate fields', err)
   }
 
   if (orderId) {
     try {
-      await sanity.patch(orderId).set({ customerRef: { _type: 'reference', _ref: customerId } }).commit({ autoGenerateArrayKeys: true })
+      await sanity
+        .patch(orderId)
+        .set({customerRef: {_type: 'reference', _ref: customerId}})
+        .commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('customerSnapshot: failed to ensure order.customerRef linkage', err)
     }

@@ -12,7 +12,10 @@ function sanitizeOrderNumber(value?: string | null): string | undefined {
 
 function orderNumberFromSessionId(id?: string | null): string | undefined {
   if (!id) return undefined
-  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
+  const core = id
+    .toString()
+    .trim()
+    .replace(/^cs_(?:test|live)_/i, '')
   const digits = core.replace(/\D/g, '')
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
   return undefined

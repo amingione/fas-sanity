@@ -1,4 +1,4 @@
-import type { Handler } from '@netlify/functions'
+import type {Handler} from '@netlify/functions'
 
 type Group = 'sanity' | 'stripe' | 'resend' | 'cors' | 'base'
 
@@ -18,7 +18,9 @@ function presence(name: string): boolean {
 }
 
 // --- CORS (align with other functions)
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   const o = origin && DEFAULT_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGINS[0]
   return {
@@ -33,7 +35,7 @@ export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
   const all: Record<string, boolean> = {}
   const missing: Partial<Record<Group, string[]>> = {}
   let ok = true
@@ -59,7 +61,7 @@ export const handler: Handler = async (event) => {
 
   return {
     statusCode: ok ? 200 : 200,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ok, missing, present: all, extras }, null, 2),
+    headers: {...CORS, 'Content-Type': 'application/json'},
+    body: JSON.stringify({ok, missing, present: all, extras}, null, 2),
   }
 }

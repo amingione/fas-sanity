@@ -1,9 +1,9 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
-import type { PDFFont, PDFImage, PDFPage } from 'pdf-lib'
+import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
+import type {PDFFont, PDFImage, PDFPage} from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
-import { deriveOptionsFromMetadata } from './stripeCartItem'
-import { PrintSettings, darkenRgb, hexToRgb, lightenRgb } from './printSettings'
+import {deriveOptionsFromMetadata} from './stripeCartItem'
+import {PrintSettings, darkenRgb, hexToRgb, lightenRgb} from './printSettings'
 
 export type InvoiceAddress = {
   name?: string | null
@@ -55,7 +55,7 @@ export type OrderCartItem = {
   upgrades?: Array<string | null> | string | null
   customizations?: Array<string | null> | string | null
   validationIssues?: Array<string | null> | string | null
-  metadata?: Array<{ key?: string | null; value?: unknown }> | null
+  metadata?: Array<{key?: string | null; value?: unknown}> | null
 }
 
 export type InvoiceLike = {
@@ -85,7 +85,11 @@ export type InvoiceLike = {
     shippingCarrier?: string | null
     trackingNumber?: string | null
     shippingLabelUrl?: string | null
-    selectedService?: { carrier?: string | null; service?: string | null; amount?: number | null } | null
+    selectedService?: {
+      carrier?: string | null
+      service?: string | null
+      amount?: number | null
+    } | null
   } | null
   orderRef?: {
     cart?: OrderCartItem[] | null
@@ -95,7 +99,11 @@ export type InvoiceLike = {
     shippingCarrier?: string | null
     trackingNumber?: string | null
     shippingLabelUrl?: string | null
-    selectedService?: { carrier?: string | null; service?: string | null; amount?: number | null } | null
+    selectedService?: {
+      carrier?: string | null
+      service?: string | null
+      amount?: number | null
+    } | null
   } | null
   [key: string]: unknown
 }
@@ -207,18 +215,22 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
   const taxAmount = taxableBase * (taxRate / 100)
   const total = Math.max(0, taxableBase + taxAmount + shipping)
 
-  return { subtotal, discountAmt, taxAmount, shipping, total }
+  return {subtotal, discountAmt, taxAmount, shipping, total}
 }
 
 function prepareInvoice(invoice: InvoiceLike | null | undefined): InvoiceLike {
-  const clone: InvoiceLike = { ...(invoice || {}) }
+  const clone: InvoiceLike = {...(invoice || {})}
   clone.lineItems = normalizeInvoiceLineItems(invoice)
   clone.amountShipping = extractShippingAmount(clone)
   return clone
 }
 
-export function normalizeInvoiceLineItems(invoice: InvoiceLike | null | undefined): InvoiceLineItem[] {
-  const invoiceItems = Array.isArray(invoice?.lineItems) ? (invoice?.lineItems || []).filter(Boolean) : []
+export function normalizeInvoiceLineItems(
+  invoice: InvoiceLike | null | undefined,
+): InvoiceLineItem[] {
+  const invoiceItems = Array.isArray(invoice?.lineItems)
+    ? (invoice?.lineItems || []).filter(Boolean)
+    : []
   const cartItems = extractCartItems(invoice)
   const usedIndices = new Set<number>()
   const normalized: InvoiceLineItem[] = []
@@ -264,7 +276,7 @@ function extractCartItems(invoice: InvoiceLike | null | undefined): OrderCartIte
 function findMatchingCartItem(
   lineItem: InvoiceLineItem,
   cartItems: OrderCartItem[],
-  used: Set<number>
+  used: Set<number>,
 ): number {
   const sku = normalizeString(lineItem?.sku)
   if (sku) {
@@ -288,7 +300,7 @@ function findMatchingCartItem(
 
 function combineLineItems(
   invoiceItem?: InvoiceLineItem | null,
-  cartItem?: OrderCartItem | null
+  cartItem?: OrderCartItem | null,
 ): InvoiceLineItem | null {
   const source = invoiceItem || cartItem
   if (!source) return null
@@ -300,14 +312,14 @@ function combineLineItems(
   const quantity = coalesceNumber(
     invoiceItem?.quantity,
     (invoiceItem as any)?.qty,
-    cartItem?.quantity
+    cartItem?.quantity,
   )
   if (quantity !== undefined) merged.quantity = quantity
 
   const unitPrice = coalesceNumber(
     invoiceItem?.unitPrice,
     (invoiceItem as any)?.amount,
-    cartItem?.price
+    cartItem?.price,
   )
   if (unitPrice !== undefined) merged.unitPrice = unitPrice
 
@@ -316,16 +328,20 @@ function combineLineItems(
     (invoiceItem as any)?.total,
     cartItem?.lineTotal,
     cartItem?.total,
-    typeof unitPrice === 'number' && typeof quantity === 'number' ? unitPrice * quantity : undefined
+    typeof unitPrice === 'number' && typeof quantity === 'number'
+      ? unitPrice * quantity
+      : undefined,
   )
   if (lineTotal !== undefined) merged.lineTotal = lineTotal
 
-  const collectedMetadata: Array<{ key?: string | null; value?: unknown }> = []
+  const collectedMetadata: Array<{key?: string | null; value?: unknown}> = []
   if (Array.isArray((invoiceItem as any)?.metadata)) {
-    collectedMetadata.push(...((invoiceItem as any)?.metadata as Array<{ key?: string | null; value?: unknown }>))
+    collectedMetadata.push(
+      ...((invoiceItem as any)?.metadata as Array<{key?: string | null; value?: unknown}>),
+    )
   }
   if (Array.isArray(cartItem?.metadata)) {
-    collectedMetadata.push(...(cartItem?.metadata as Array<{ key?: string | null; value?: unknown }>))
+    collectedMetadata.push(...(cartItem?.metadata as Array<{key?: string | null; value?: unknown}>))
   }
   const derived = deriveOptionsFromMetadata(collectedMetadata.length ? collectedMetadata : null)
 
@@ -333,27 +349,27 @@ function combineLineItems(
     (invoiceItem as any)?.optionSummary,
     (invoiceItem as any)?.optionsSummary,
     cartItem?.optionSummary,
-    derived.optionSummary
+    derived.optionSummary,
   )
 
   const optionDetails = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.optionDetails),
     toStringArray((invoiceItem as any)?.options),
     toStringArray(cartItem?.optionDetails),
-    derived.optionDetails
+    derived.optionDetails,
   )
 
   const upgrades = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.upgrades),
     toStringArray((invoiceItem as any)?.upgradeOptions),
     toStringArray(cartItem?.upgrades),
-    derived.upgrades
+    derived.upgrades,
   )
 
   const customizations = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.customizations),
     toStringArray(cartItem?.customizations),
-    derived.customizations
+    derived.customizations,
   )
 
   const validationIssues = mergeUniqueStrings(
@@ -372,7 +388,7 @@ function combineLineItems(
   const nameCandidate = coalesceString(
     (invoiceItem as any)?.name,
     cartItem?.name,
-    cartItem?.productName
+    cartItem?.productName,
   )
   if (!normalizeString(merged.description) && nameCandidate) {
     merged.description = nameCandidate
@@ -504,11 +520,11 @@ export async function renderInvoicePdf(
 ): Promise<InvoicePdfResult> {
   const settings = options.printSettings ?? null
   const pdf = await PDFDocument.create()
-  const pageSize =
-    settings?.layout?.pageSize === 'a4' ? [595.28, 841.89] : [612, 792]
+  const pageSize = settings?.layout?.pageSize === 'a4' ? [595.28, 841.89] : [612, 792]
   const page = pdf.addPage(pageSize as [number, number])
 
-  const familyKey = (settings?.typography?.fontFamily ?? DEFAULT_FONT_FAMILY) as keyof typeof FONT_FAMILY_MAP
+  const familyKey = (settings?.typography?.fontFamily ??
+    DEFAULT_FONT_FAMILY) as keyof typeof FONT_FAMILY_MAP
   const selection = FONT_FAMILY_MAP[familyKey] ?? FONT_FAMILY_MAP[DEFAULT_FONT_FAMILY]
   const fonts: Fonts = {
     regular: await pdf.embedFont(selection.regular),
@@ -599,8 +615,8 @@ export async function renderInvoicePdf(
     headerText,
   })
 
-  const bytes = await pdf.save({ useObjectStreams: false })
-  return { bytes, base64: Buffer.from(bytes).toString('base64') }
+  const bytes = await pdf.save({useObjectStreams: false})
+  return {bytes, base64: Buffer.from(bytes).toString('base64')}
 }
 
 type DrawContext = {
@@ -641,14 +657,10 @@ function drawInvoice({
   const textColor = brand.slate
   const mutedText = brand.slateMuted
   const borderColor = brand.borderColor ?? rgb(226 / 255, 232 / 255, 240 / 255)
-  const headerLineColor =
-    brand.headerLineColor ?? rgb(203 / 255, 213 / 255, 225 / 255)
-  const tableHeaderBg =
-    brand.tableHeaderBg ?? rgb(241 / 255, 245 / 255, 249 / 255)
-  const tableAltBg =
-    brand.tableAltBg ?? rgb(249 / 255, 250 / 255, 251 / 255)
-  const totalsHighlight =
-    brand.totalsHighlight ?? rgb(236 / 255, 254 / 255, 255 / 255)
+  const headerLineColor = brand.headerLineColor ?? rgb(203 / 255, 213 / 255, 225 / 255)
+  const tableHeaderBg = brand.tableHeaderBg ?? rgb(241 / 255, 245 / 255, 249 / 255)
+  const tableAltBg = brand.tableAltBg ?? rgb(249 / 255, 250 / 255, 251 / 255)
+  const totalsHighlight = brand.totalsHighlight ?? rgb(236 / 255, 254 / 255, 255 / 255)
 
   // Header block
   const headerTop = y
@@ -660,21 +672,33 @@ function drawInvoice({
     const logoWidth = logo.width * scale
     const logoHeight = logo.height * scale
     const logoY = headerTop - logoHeight
-    page.drawImage(logo, { x: containerLeft, y: logoY, width: logoWidth, height: logoHeight })
+    page.drawImage(logo, {x: containerLeft, y: logoY, width: logoWidth, height: logoHeight})
     infoX += logoWidth + 16
     headerBaseline = Math.min(headerBaseline, logoY - 4)
   }
 
   let infoY = headerTop - 8
-  page.drawText(brand.name, { x: infoX, y: infoY, size: 17, font: fonts.bold, color: rgb(0, 0, 0) })
+  page.drawText(brand.name, {x: infoX, y: infoY, size: 17, font: fonts.bold, color: rgb(0, 0, 0)})
   infoY -= 18
-  page.drawText(brand.street, { x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor })
+  page.drawText(brand.street, {x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor})
   infoY -= 12
-  page.drawText(brand.city, { x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor })
+  page.drawText(brand.city, {x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor})
   infoY -= 12
-  page.drawText(`Phone: ${brand.phone}`, { x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor })
+  page.drawText(`Phone: ${brand.phone}`, {
+    x: infoX,
+    y: infoY,
+    size: 10,
+    font: fonts.regular,
+    color: textColor,
+  })
   infoY -= 12
-  page.drawText(`Email: ${brand.email}`, { x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor })
+  page.drawText(`Email: ${brand.email}`, {
+    x: infoX,
+    y: infoY,
+    size: 10,
+    font: fonts.regular,
+    color: textColor,
+  })
 
   const invoiceTitle = headerText || 'INVOICE'
   const invoiceTitleSize = 32
@@ -689,8 +713,8 @@ function drawInvoice({
 
   y = Math.min(infoY, headerBaseline) - 18
   page.drawLine({
-    start: { x: containerLeft, y },
-    end: { x: containerRight, y },
+    start: {x: containerLeft, y},
+    end: {x: containerRight, y},
     color: headerLineColor,
     thickness: 1,
   })
@@ -721,7 +745,7 @@ function drawInvoice({
     label: 'Ship To:',
     x: shipX,
     startY: detailTop,
-    address: ((invoice.shipTo as InvoiceAddress) ?? invoice.billTo ?? undefined),
+    address: (invoice.shipTo as InvoiceAddress) ?? invoice.billTo ?? undefined,
     textColor,
     labelColor: headingColor,
     extraLines: shippingLines,
@@ -731,9 +755,9 @@ function drawInvoice({
     page,
     fonts,
     entries: [
-      { label: 'Invoice #', value: invoiceNumber },
-      { label: 'Date', value: invoiceDate },
-      { label: 'Due Date', value: dueDate },
+      {label: 'Invoice #', value: invoiceNumber},
+      {label: 'Date', value: invoiceDate},
+      {label: 'Due Date', value: dueDate},
     ],
     rightEdge: metaRight,
     startY: detailTop,
@@ -750,7 +774,7 @@ function drawInvoice({
     startY: y,
     left: containerLeft,
     right: containerRight,
-    items: Array.isArray(invoice.lineItems) ? invoice.lineItems ?? [] : [],
+    items: Array.isArray(invoice.lineItems) ? (invoice.lineItems ?? []) : [],
     totals,
     borderColor,
     headerColor: headingColor,
@@ -763,8 +787,8 @@ function drawInvoice({
 
   const footerLineY = Math.max(tableBottom - 30, margin + 60)
   page.drawLine({
-    start: { x: containerLeft, y: footerLineY },
-    end: { x: containerRight, y: footerLineY },
+    start: {x: containerLeft, y: footerLineY},
+    end: {x: containerRight, y: footerLineY},
     color: headerLineColor,
     thickness: 1,
   })
@@ -817,11 +841,11 @@ function drawAddressBlock({
   y -= 14
   const lines = buildAddressLines(address)
   if (lines.length === 0) {
-    page.drawText('—', { x, y, size: 10, font: fonts.regular, color: textColor })
+    page.drawText('—', {x, y, size: 10, font: fonts.regular, color: textColor})
     y -= 12
   } else {
     for (const line of lines) {
-      page.drawText(line, { x, y, size: 10, font: fonts.regular, color: textColor })
+      page.drawText(line, {x, y, size: 10, font: fonts.regular, color: textColor})
       y -= 12
     }
   }
@@ -830,7 +854,7 @@ function drawAddressBlock({
     for (const line of extraLines) {
       const content = line.trim()
       if (!content) continue
-      page.drawText(content, { x, y, size: 10, font: fonts.regular, color: textColor })
+      page.drawText(content, {x, y, size: 10, font: fonts.regular, color: textColor})
       y -= 12
     }
   }
@@ -846,11 +870,11 @@ function collectShippingLines(invoice: InvoiceLike, shippingAmount: number): str
     (invoice as any)?.orderRef?.shippingCarrier,
     (invoice as any)?.order?.shippingCarrier,
     (invoice as any)?.orderRef?.selectedService?.carrier,
-    (invoice as any)?.order?.selectedService?.carrier
+    (invoice as any)?.order?.selectedService?.carrier,
   )
   const service = coalesceString(
     (invoice as any)?.orderRef?.selectedService?.service,
-    (invoice as any)?.order?.selectedService?.service
+    (invoice as any)?.order?.selectedService?.service,
   )
   const method = [carrier, service].filter(Boolean).join(' – ')
   if (method) lines.push(`Method: ${method}`)
@@ -858,7 +882,7 @@ function collectShippingLines(invoice: InvoiceLike, shippingAmount: number): str
   const tracking = coalesceString(
     invoice.trackingNumber,
     (invoice as any)?.orderRef?.trackingNumber,
-    (invoice as any)?.order?.trackingNumber
+    (invoice as any)?.order?.trackingNumber,
   )
   if (tracking) lines.push(`Tracking: ${tracking}`)
 
@@ -868,7 +892,7 @@ function collectShippingLines(invoice: InvoiceLike, shippingAmount: number): str
 type MetaBlockOptions = {
   page: PDFPage
   fonts: Fonts
-  entries: Array<{ label: string; value: string }>
+  entries: Array<{label: string; value: string}>
   rightEdge: number
   startY: number
   textColor: ReturnType<typeof rgb>
@@ -973,13 +997,13 @@ function drawInvoiceTable({
   const maxLineItems = 14
 
   const baseColumns: ColumnDefinition[] = [
-    { key: 'item', width: 90, align: 'left', title: 'Item' },
-    { key: 'upgrades', width: 70, align: 'left', title: 'Upgrades' },
-    { key: 'options', width: 70, align: 'left', title: 'Options' },
-    { key: 'extras', width: 70, align: 'left', title: 'Extras' },
-    { key: 'description', width: 120, align: 'left', title: 'Description' },
-    { key: 'quantity', width: 35, align: 'right', title: 'Qty' },
-    { key: 'price', width: 45, align: 'right', title: 'Price' },
+    {key: 'item', width: 90, align: 'left', title: 'Item'},
+    {key: 'upgrades', width: 70, align: 'left', title: 'Upgrades'},
+    {key: 'options', width: 70, align: 'left', title: 'Options'},
+    {key: 'extras', width: 70, align: 'left', title: 'Extras'},
+    {key: 'description', width: 120, align: 'left', title: 'Description'},
+    {key: 'quantity', width: 35, align: 'right', title: 'Qty'},
+    {key: 'price', width: 45, align: 'right', title: 'Price'},
   ]
 
   let usedWidth = baseColumns.reduce((sum, column) => sum + column.width, 0)
@@ -1002,7 +1026,7 @@ function drawInvoiceTable({
 
   const columns: ColumnDefinition[] = [
     ...baseColumns,
-    { key: 'total', width: Math.max(60, remaining), align: 'right', title: 'Total' },
+    {key: 'total', width: Math.max(60, remaining), align: 'right', title: 'Total'},
   ]
 
   const columnPositions: number[] = [left]
@@ -1014,8 +1038,8 @@ function drawInvoiceTable({
   let y = startY
 
   page.drawLine({
-    start: { x: left, y },
-    end: { x: right, y },
+    start: {x: left, y},
+    end: {x: right, y},
     color: borderColor,
     thickness: 1,
   })
@@ -1038,14 +1062,14 @@ function drawInvoiceTable({
       columnPositions[idx],
       columnPositions[idx + 1],
       headerColor,
-      column.align
+      column.align,
     )
   })
 
   y -= headerHeight
   page.drawLine({
-    start: { x: left, y },
-    end: { x: right, y },
+    start: {x: left, y},
+    end: {x: right, y},
     color: borderColor,
     thickness: 1,
   })
@@ -1064,12 +1088,12 @@ function drawInvoiceTable({
       columnPositions[1],
       columnPositions[columnPositions.length - 2],
       textColor,
-      'left'
+      'left',
     )
     y -= rowHeight
     page.drawLine({
-      start: { x: left, y },
-      end: { x: right, y },
+      start: {x: left, y},
+      end: {x: right, y},
       color: borderColor,
       thickness: 1,
     })
@@ -1097,14 +1121,14 @@ function drawInvoiceTable({
           columnPositions[colIdx],
           columnPositions[colIdx + 1],
           textColor,
-          column.align
+          column.align,
         )
       })
 
       y = rowBottom
       page.drawLine({
-        start: { x: left, y },
-        end: { x: right, y },
+        start: {x: left, y},
+        end: {x: right, y},
         color: borderColor,
         thickness: 1,
       })
@@ -1123,19 +1147,19 @@ function drawInvoiceTable({
       columnPositions[1],
       columnPositions[columnPositions.length - 2],
       textColor,
-      'left'
+      'left',
     )
     y = rowBottom
     page.drawLine({
-      start: { x: left, y },
-      end: { x: right, y },
+      start: {x: left, y},
+      end: {x: right, y},
       color: borderColor,
       thickness: 1,
     })
   }
 
-  const totalsRows: Array<{ label: string; value: string; bold?: boolean }> = [
-    { label: 'Subtotal', value: money(totals.subtotal) },
+  const totalsRows: Array<{label: string; value: string; bold?: boolean}> = [
+    {label: 'Subtotal', value: money(totals.subtotal)},
   ]
 
   if (totals.discountAmt > 0) {
@@ -1148,12 +1172,14 @@ function drawInvoiceTable({
   const hasTax = totals.taxAmount > 0 || taxRate > 0
   if (hasTax) {
     const rateForLabel =
-      Number.isFinite(taxRate) && taxRate > 0 ? ` (${taxRate.toFixed(2).replace(/\.00$/, '')}%)` : ''
-    totalsRows.push({ label: `Tax${rateForLabel}`, value: money(totals.taxAmount) })
+      Number.isFinite(taxRate) && taxRate > 0
+        ? ` (${taxRate.toFixed(2).replace(/\.00$/, '')}%)`
+        : ''
+    totalsRows.push({label: `Tax${rateForLabel}`, value: money(totals.taxAmount)})
   }
 
-  totalsRows.push({ label: 'Shipping', value: money(totals.shipping) })
-  totalsRows.push({ label: 'Total Due', value: money(totals.total), bold: true })
+  totalsRows.push({label: 'Shipping', value: money(totals.shipping)})
+  totalsRows.push({label: 'Total Due', value: money(totals.total), bold: true})
 
   const totalValueStart = columnPositions[columnPositions.length - 2]
   const totalValueEnd = columnPositions[columnPositions.length - 1]
@@ -1182,14 +1208,23 @@ function drawInvoiceTable({
       columnPositions[0],
       totalValueStart,
       headerColor,
-      'right'
+      'right',
     )
-    drawColumnText(page, valueFont, row.value, baseline, totalValueStart, totalValueEnd, headerColor, 'right')
+    drawColumnText(
+      page,
+      valueFont,
+      row.value,
+      baseline,
+      totalValueStart,
+      totalValueEnd,
+      headerColor,
+      'right',
+    )
 
     y = rowBottom
     page.drawLine({
-      start: { x: left, y },
-      end: { x: right, y },
+      start: {x: left, y},
+      end: {x: right, y},
       color: borderColor,
       thickness: 1,
     })
@@ -1197,8 +1232,8 @@ function drawInvoiceTable({
 
   for (const xPos of columnPositions) {
     page.drawLine({
-      start: { x: xPos, y: startY },
-      end: { x: xPos, y },
+      start: {x: xPos, y: startY},
+      end: {x: xPos, y},
       color: borderColor,
       thickness: 1,
     })
@@ -1231,26 +1266,24 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
   const itemName = resolveItemName(item, index)
   const upgradesList = mergeUniqueStrings(
     toStringArray((item as any)?.upgrades),
-    toStringArray((item as any)?.upgradeOptions)
+    toStringArray((item as any)?.upgradeOptions),
   )
 
   const optionSummary = normalizeString((item as any)?.optionSummary)
-  const validationIssuesList = mergeUniqueStrings(
-    toStringArray((item as any)?.validationIssues),
-  )
+  const validationIssuesList = mergeUniqueStrings(toStringArray((item as any)?.validationIssues))
 
   const optionDetails = mergeUniqueStrings(
     toStringArray((item as any)?.optionDetails),
     optionSummary ? [optionSummary] : [],
     toStringArray((item as any)?.customizations),
-    validationIssuesList.map((issue) => `⚠️ ${issue}`)
+    validationIssuesList.map((issue) => `⚠️ ${issue}`),
   )
 
   const extrasList = collectMetadataExtras(
     Array.isArray((item as any)?.metadata)
-      ? ((item as any)?.metadata as Array<{ key?: string | null; value?: unknown }>)
+      ? ((item as any)?.metadata as Array<{key?: string | null; value?: unknown}>)
       : undefined,
-    [...upgradesList, ...optionDetails]
+    [...upgradesList, ...optionDetails],
   )
 
   const description = resolveDescription(item)
@@ -1278,8 +1311,8 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
 }
 
 function collectMetadataExtras(
-  metadata: Array<{ key?: string | null; value?: unknown }> | null | undefined,
-  excludeValues: string[] = []
+  metadata: Array<{key?: string | null; value?: unknown}> | null | undefined,
+  excludeValues: string[] = [],
 ): string[] {
   if (!Array.isArray(metadata) || metadata.length === 0) return []
   const extras: string[] = []
@@ -1326,7 +1359,7 @@ function drawColumnText(
   columnStart: number,
   columnEnd: number,
   color: ReturnType<typeof rgb>,
-  align: 'left' | 'right'
+  align: 'left' | 'right',
 ) {
   const size = 10
   const content = text?.trim?.() ? text.trim() : '—'
@@ -1335,9 +1368,7 @@ function drawColumnText(
   const clipped = width > maxWidth ? clipText(content, font, size, maxWidth) : content
   const textWidth = font.widthOfTextAtSize(clipped, size)
   const x =
-    align === 'right'
-      ? columnEnd - 4 - textWidth
-      : Math.max(columnStart + 4, columnEnd - maxWidth)
+    align === 'right' ? columnEnd - 4 - textWidth : Math.max(columnStart + 4, columnEnd - maxWidth)
   page.drawText(clipped, {
     x,
     y: baseline,
@@ -1421,7 +1452,10 @@ function resolveLineTotal(item: InvoiceLineItem): string {
   return money(total)
 }
 
-function collectNotes(invoice: InvoiceLike | null | undefined, includePaymentTerms = true): string[] {
+function collectNotes(
+  invoice: InvoiceLike | null | undefined,
+  includePaymentTerms = true,
+): string[] {
   const custom = typeof invoice.customerNotes === 'string' ? invoice.customerNotes : ''
   if (custom.trim()) {
     return custom
@@ -1439,7 +1473,11 @@ function collectNotes(invoice: InvoiceLike | null | undefined, includePaymentTer
   return []
 }
 
-async function loadLogo(pdf: PDFDocument, logoPath: string, logoUrl?: string): Promise<PDFImage | null> {
+async function loadLogo(
+  pdf: PDFDocument,
+  logoPath: string,
+  logoUrl?: string,
+): Promise<PDFImage | null> {
   const embedData = async (data: Uint8Array | ArrayBuffer) => {
     try {
       return await pdf.embedPng(data)
@@ -1486,10 +1524,14 @@ function buildAddressLines(address?: InvoiceAddress | null): string[] {
   if (name) lines.push(name)
   if (company && company !== name) lines.push(company)
 
-  const streetParts = [address.address_line1, address.address_line2].map(normalizeString).filter(Boolean)
+  const streetParts = [address.address_line1, address.address_line2]
+    .map(normalizeString)
+    .filter(Boolean)
   if (streetParts.length) lines.push(streetParts.join(', '))
 
-  const cityParts = [address.city_locality, address.state_province].map(normalizeString).filter(Boolean)
+  const cityParts = [address.city_locality, address.state_province]
+    .map(normalizeString)
+    .filter(Boolean)
   let cityLine = ''
   if (cityParts.length) cityLine = cityParts.join(', ')
   const postal = normalizeString(address.postal_code)

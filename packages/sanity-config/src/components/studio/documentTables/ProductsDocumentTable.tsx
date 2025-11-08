@@ -15,7 +15,12 @@ import {
   TextInput,
 } from '@sanity/ui'
 import {CheckmarkIcon, EllipsisVerticalIcon} from '@sanity/icons'
-import {PaginatedDocumentTable, formatBoolean, formatCurrency, formatDate} from './PaginatedDocumentTable'
+import {
+  PaginatedDocumentTable,
+  formatBoolean,
+  formatCurrency,
+  formatDate,
+} from './PaginatedDocumentTable'
 import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
 import ProductBulkEditor from '../ProductBulkEditor'
 
@@ -206,7 +211,8 @@ export default function ProductsDocumentTable({
   const toggleAllOnPage = useCallback(() => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      const everySelected = currentItems.length > 0 && currentItems.every((item) => next.has(item._id))
+      const everySelected =
+        currentItems.length > 0 && currentItems.every((item) => next.has(item._id))
       if (everySelected) {
         currentItems.forEach((item) => next.delete(item._id))
       } else {
@@ -347,7 +353,9 @@ export default function ProductsDocumentTable({
         key: 'stripe',
         header: 'Stripe',
         width: 100,
-        render: (data: ProductRow) => <Text size={1}>{formatBoolean(Boolean(data.stripeActive))}</Text>,
+        render: (data: ProductRow) => (
+          <Text size={1}>{formatBoolean(Boolean(data.stripeActive))}</Text>
+        ),
       },
       {
         key: 'updatedAt',
@@ -356,7 +364,13 @@ export default function ProductsDocumentTable({
         render: (data: ProductRow) => <Text size={1}>{formatDate(data.updatedAt)}</Text>,
       },
     ],
-    [selectionMeta.allSelected, selectionMeta.someSelected, selectedIds, toggleAllOnPage, toggleSelection],
+    [
+      selectionMeta.allSelected,
+      selectionMeta.someSelected,
+      selectedIds,
+      toggleAllOnPage,
+      toggleSelection,
+    ],
   )
 
   const headerActions = (
@@ -372,7 +386,9 @@ export default function ProductsDocumentTable({
       ) : null}
       <MenuButton
         id="products-table-menu"
-        button={<Button icon={EllipsisVerticalIcon} mode="ghost" aria-label="Product list options" />}
+        button={
+          <Button icon={EllipsisVerticalIcon} mode="ghost" aria-label="Product list options" />
+        }
         menu={
           <Menu>
             <MenuItem text="Filter by status" disabled tone="primary" />

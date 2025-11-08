@@ -17,10 +17,7 @@ const nodeGlobals = {
 
 export default [
   {
-    ignores: [
-      '.netlify/**',
-      '**/.netlify/**',
-    ],
+    ignores: ['.netlify/**', '**/.netlify/**'],
   },
   ...studio,
   {
@@ -32,7 +29,7 @@ export default [
       'packages/sanity-config/sanity.config.ts',
       'packages/sanity-config/sanity.cli.ts',
       'sanity.config.ts',
-      'sanity.cli.ts'
+      'sanity.cli.ts',
     ],
     languageOptions: {
       globals: nodeGlobals,

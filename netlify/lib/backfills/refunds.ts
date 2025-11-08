@@ -72,7 +72,7 @@ function getSanity(): SanityClient {
 
   if (!projectId || !dataset || !token) {
     throw new Error(
-      'Missing Sanity configuration. Ensure SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, and SANITY_API_TOKEN are set.'
+      'Missing Sanity configuration. Ensure SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, and SANITY_API_TOKEN are set.',
     )
   }
 
@@ -104,7 +104,9 @@ function shouldProcessRefund(order: OrderDoc, refund: Stripe.Refund): boolean {
   if (normalizedStatus !== (refund.status || '').toLowerCase()) return true
   const recordedAmount = typeof order.amountRefunded === 'number' ? order.amountRefunded : undefined
   const refundAmount =
-    typeof refund.amount === 'number' && Number.isFinite(refund.amount) ? refund.amount / 100 : undefined
+    typeof refund.amount === 'number' && Number.isFinite(refund.amount)
+      ? refund.amount / 100
+      : undefined
   if (refundAmount !== undefined && recordedAmount !== undefined) {
     const delta = Math.abs(refundAmount - recordedAmount)
     if (delta >= 0.01) return true
@@ -128,7 +130,7 @@ async function fetchOrders(options: RefundBackfillOptions): Promise<OrderDoc[]> 
   } else {
     conditions.push('(defined(paymentIntentId) || defined(chargeId))')
     conditions.push(
-      '(!defined(lastRefundId) || lastRefundId == "" || !defined(lastRefundStatus) || lastRefundStatus == "" || (!defined(amountRefunded) || amountRefunded == 0) || paymentStatus in ["refunded","partially_refunded"])'
+      '(!defined(lastRefundId) || lastRefundId == "" || !defined(lastRefundStatus) || lastRefundStatus == "" || (!defined(amountRefunded) || amountRefunded == 0) || paymentStatus in ["refunded","partially_refunded"])',
     )
   }
 
@@ -153,7 +155,10 @@ async function fetchOrders(options: RefundBackfillOptions): Promise<OrderDoc[]> 
   return sanity.fetch<OrderDoc[]>(query, params)
 }
 
-async function listRefunds(order: OrderDoc, logger?: (message: string) => void): Promise<Stripe.Refund[]> {
+async function listRefunds(
+  order: OrderDoc,
+  logger?: (message: string) => void,
+): Promise<Stripe.Refund[]> {
   const stripe = getStripe()
   const ids = [order.paymentIntentId, order.chargeId].filter(Boolean) as string[]
 
@@ -166,7 +171,7 @@ async function listRefunds(order: OrderDoc, logger?: (message: string) => void):
       if (results.data.length) return results.data
     } catch (err) {
       logger?.(
-        `⚠️ Unable to list refunds for ${formatOrderRef(order)} (${id}): ${(err as any)?.message || err}`
+        `⚠️ Unable to list refunds for ${formatOrderRef(order)} (${id}): ${(err as any)?.message || err}`,
       )
     }
   }
@@ -175,7 +180,7 @@ async function listRefunds(order: OrderDoc, logger?: (message: string) => void):
 }
 
 export async function runRefundBackfill(
-  rawOptions: RefundBackfillOptions = {}
+  rawOptions: RefundBackfillOptions = {},
 ): Promise<RefundBackfillResult> {
   ensureEnvLoaded()
   const options: RefundBackfillOptions = {
@@ -267,7 +272,7 @@ export async function runRefundBackfill(
     options.logger?.(`Dry run complete. ${processedRefunds} refunds evaluated.`)
   } else {
     options.logger?.(
-      `Backfill complete. ${applied} refund events applied (${processedRefunds} evaluated).`
+      `Backfill complete. ${applied} refund events applied (${processedRefunds} evaluated).`,
     )
   }
 

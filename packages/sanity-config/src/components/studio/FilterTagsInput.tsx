@@ -26,7 +26,7 @@ export default function FilterTagsInput(props: Props) {
     async function load() {
       try {
         const tags: string[] = await client.fetch(
-          'array::unique(*[_type == "product" && defined(filters)][].filters[])'
+          'array::unique(*[_type == "product" && defined(filters)][].filters[])',
         )
         if (!cancelled) {
           const cleaned = (Array.isArray(tags) ? tags : [])
@@ -90,7 +90,10 @@ export default function FilterTagsInput(props: Props) {
       const raw = query
       if (!raw) return
       // Support comma-separated multi-add
-      const parts = raw.split(',').map((s) => normalizeTag(s)).filter(Boolean)
+      const parts = raw
+        .split(',')
+        .map((s) => normalizeTag(s))
+        .filter(Boolean)
       if (parts.length === 0) return
       commit([...(current || []), ...parts])
       setQuery('')
@@ -104,38 +107,87 @@ export default function FilterTagsInput(props: Props) {
     <div style={{display: 'grid', gap: 8}}>
       <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
         {current.length === 0 ? (
-          <span style={{fontSize: 12, color: '#666'}}>No filters yet. Type to add or pick from suggestions.</span>
+          <span style={{fontSize: 12, color: '#666'}}>
+            No filters yet. Type to add or pick from suggestions.
+          </span>
         ) : (
           current.map((t) => (
-            <span key={t} style={{display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 8px', border: '1px solid #ccc', background: '#f2f2f2', color: '#111', borderRadius: 12}}>
+            <span
+              key={t}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '2px 8px',
+                border: '1px solid #ccc',
+                background: '#f2f2f2',
+                color: '#111',
+                borderRadius: 12,
+              }}
+            >
               <span>{t}</span>
-              <button type="button" onClick={() => removeTag(t)} style={{border: 'none', background: 'transparent', cursor: 'pointer', color: '#444'}} aria-label={`Remove ${t}`}>
+              <button
+                type="button"
+                onClick={() => removeTag(t)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: '#444',
+                }}
+                aria-label={`Remove ${t}`}
+              >
                 ×
               </button>
             </span>
           ))
         )}
       </div>
-      <div style={{ position: 'relative' }}>
+      <div style={{position: 'relative'}}>
         <input
           type="text"
           value={query}
-          onChange={(e) => { setQuery(e.currentTarget.value); setOpen(true) }}
+          onChange={(e) => {
+            setQuery(e.currentTarget.value)
+            setOpen(true)
+          }}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={onKeyDown}
           placeholder="Add filter… (press Enter)"
-          style={{width: '100%', padding: '6px 8px', border: '1px solid #ddd', borderRadius: 4, background: '#fff', color: '#000'}}
+          style={{
+            width: '100%',
+            padding: '6px 8px',
+            border: '1px solid #ddd',
+            borderRadius: 4,
+            background: '#fff',
+            color: '#000',
+          }}
         />
 
         {open && filteredSuggestions.length > 0 && (
-          <div style={{ position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, background: '#fff', color: '#000', border: '1px solid #ddd', borderTop: 'none', maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
+          <div
+            style={{
+              position: 'absolute',
+              zIndex: 20,
+              top: '100%',
+              left: 0,
+              right: 0,
+              background: '#fff',
+              color: '#000',
+              border: '1px solid #ddd',
+              borderTop: 'none',
+              maxHeight: 220,
+              overflowY: 'auto',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            }}
+          >
             {filteredSuggestions.slice(0, 100).map((s) => (
               <div
                 key={s}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => addTag(s)}
-                style={{ padding: '8px 10px', cursor: 'pointer', borderTop: '1px solid #eee' }}
+                style={{padding: '8px 10px', cursor: 'pointer', borderTop: '1px solid #eee'}}
               >
                 {s}
               </div>

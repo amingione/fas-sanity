@@ -56,9 +56,12 @@ const ForceDeleteUnlinkAction: DocumentActionComponent = (props) => {
   async function handleConfirm() {
     setBusy(true)
     try {
-      const refDocs: {_id: string; _type: string}[] = await client.fetch('*[references($id)]{_id,_type}[0...1000]', {
-        id: baseId,
-      })
+      const refDocs: {_id: string; _type: string}[] = await client.fetch(
+        '*[references($id)]{_id,_type}[0...1000]',
+        {
+          id: baseId,
+        },
+      )
       const ids = new Set([baseId, `drafts.${baseId}`])
 
       for (const r of refDocs) {
@@ -109,11 +112,18 @@ const ForceDeleteUnlinkAction: DocumentActionComponent = (props) => {
                   Force delete this {type}?
                 </Text>
                 <Text size={1} muted>
-                  This removes references to the selected document from up to 1000 related documents and then deletes both draft and published versions. This action cannot be undone.
+                  This removes references to the selected document from up to 1000 related documents
+                  and then deletes both draft and published versions. This action cannot be undone.
                 </Text>
                 <Flex justify="flex-end" gap={3}>
                   <Button text="Cancel" mode="ghost" onClick={close} disabled={busy} />
-                  <Button text="Delete" tone="critical" onClick={handleConfirm} disabled={busy} loading={busy} />
+                  <Button
+                    text="Delete"
+                    tone="critical"
+                    onClick={handleConfirm}
+                    disabled={busy}
+                    loading={busy}
+                  />
                 </Flex>
               </Stack>
             </Box>

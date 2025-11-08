@@ -1,4 +1,4 @@
-import {ListItemBuilder, StructureResolver} from 'sanity/structure';
+import {ListItemBuilder, StructureResolver} from 'sanity/structure'
 import collections from './collectionStructure'
 import colorThemes from './colorThemeStructure'
 import home from './homeStructure'
@@ -63,9 +63,7 @@ export const structure: StructureResolver = (S, context) =>
         .title('Shipping Labels')
         .schemaType('shippingLabel')
         .child(
-          S.documentTypeList('shippingLabel')
-            .apiVersion('2024-10-01')
-            .title('Shipping Labels')
+          S.documentTypeList('shippingLabel').apiVersion('2024-10-01').title('Shipping Labels'),
         ),
       S.divider(),
       ...S.documentTypeListItems().filter(hiddenDocTypes),

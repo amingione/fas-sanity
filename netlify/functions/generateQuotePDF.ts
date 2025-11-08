@@ -1,10 +1,10 @@
-import type { Handler } from '@netlify/functions'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import type {Handler} from '@netlify/functions'
+import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 import fs from 'fs'
 import imageUrlBuilder from '@sanity/image-url'
 import path from 'path'
-import { createClient } from '@sanity/client'
-import { fetchPrintSettings, hexToRgb, lightenRgb } from '../lib/printSettings'
+import {createClient} from '@sanity/client'
+import {fetchPrintSettings, hexToRgb, lightenRgb} from '../lib/printSettings'
 
 // ---------- Config ----------
 const CORS = {
@@ -14,14 +14,8 @@ const CORS = {
 }
 
 const sanity = createClient({
-  projectId:
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    'r4og35qd',
-  dataset:
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    'production',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
+  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
   apiVersion: '2024-04-10',
   token: process.env.SANITY_API_TOKEN || undefined, // optional; read works without in public datasets
   useCdn: false,
@@ -40,11 +34,11 @@ const BUSINESS = {
 
 type QuoteFontKey = 'Helvetica' | 'Arial' | 'Times' | 'Courier'
 
-const QUOTE_FONT_FAMILIES: Record<QuoteFontKey, { regular: StandardFonts; bold: StandardFonts }> = {
-  Helvetica: { regular: StandardFonts.Helvetica, bold: StandardFonts.HelveticaBold },
-  Arial: { regular: StandardFonts.Helvetica, bold: StandardFonts.HelveticaBold },
-  Times: { regular: StandardFonts.TimesRoman, bold: StandardFonts.TimesRomanBold },
-  Courier: { regular: StandardFonts.Courier, bold: StandardFonts.CourierBold },
+const QUOTE_FONT_FAMILIES: Record<QuoteFontKey, {regular: StandardFonts; bold: StandardFonts}> = {
+  Helvetica: {regular: StandardFonts.Helvetica, bold: StandardFonts.HelveticaBold},
+  Arial: {regular: StandardFonts.Helvetica, bold: StandardFonts.HelveticaBold},
+  Times: {regular: StandardFonts.TimesRoman, bold: StandardFonts.TimesRomanBold},
+  Courier: {regular: StandardFonts.Courier, bold: StandardFonts.CourierBold},
 }
 
 // ---------- Helpers ----------
@@ -71,12 +65,16 @@ function computeTotals(quote: any) {
   const taxRate = Number(quote?.taxRate || 0) || 0
 
   const discount =
-    discountType === 'percent' ? subtotal * (discountValue / 100) : discountType === 'amount' ? discountValue : 0
+    discountType === 'percent'
+      ? subtotal * (discountValue / 100)
+      : discountType === 'amount'
+        ? discountValue
+        : 0
   const taxable = Math.max(subtotal - discount, 0)
   const taxAmount = taxable * (taxRate / 100)
   const total = taxable + taxAmount
 
-  return { subtotal, discount, taxAmount, total }
+  return {subtotal, discount, taxAmount, total}
 }
 
 async function fetchQuote(id: string) {
@@ -87,7 +85,7 @@ async function fetchQuote(id: string) {
     discountType, discountValue, taxRate,
     subtotal, taxAmount, total
   }`
-  return sanity.fetch(q, { id })
+  return sanity.fetch(q, {id})
 }
 
 async function tryLoadLogoBytes(logoUrl?: string): Promise<Uint8Array | null> {
@@ -137,20 +135,20 @@ function drawAddress(blockTitle: string, obj: any) {
 
 // ---------- Handler ----------
 export const handler: Handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
   if (event.httpMethod !== 'POST')
-    return { statusCode: 405, headers: CORS, body: JSON.stringify({ message: 'Method Not Allowed' }) }
+    return {statusCode: 405, headers: CORS, body: JSON.stringify({message: 'Method Not Allowed'})}
 
   try {
     const body = event.body ? JSON.parse(event.body) : {}
     const quoteId: string = body?.quoteId || body?.id || ''
     if (!quoteId) {
-      return { statusCode: 400, headers: CORS, body: JSON.stringify({ message: 'quoteId required' }) }
+      return {statusCode: 400, headers: CORS, body: JSON.stringify({message: 'quoteId required'})}
     }
 
     const quote = await fetchQuote(quoteId)
     if (!quote) {
-      return { statusCode: 404, headers: CORS, body: JSON.stringify({ message: 'Quote not found' }) }
+      return {statusCode: 404, headers: CORS, body: JSON.stringify({message: 'Quote not found'})}
     }
 
     const printSettings = await fetchPrintSettings(sanity)
@@ -163,7 +161,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const { subtotal, discount, taxAmount, total } = computeTotals(quote)
+    const {subtotal, discount, taxAmount, total} = computeTotals(quote)
     const typography = printSettings?.typography
     const fontFamily = (typography?.fontFamily ?? 'Helvetica') as keyof typeof QUOTE_FONT_FAMILIES
     const fontSelection = QUOTE_FONT_FAMILIES[fontFamily] ?? QUOTE_FONT_FAMILIES.Helvetica
@@ -186,8 +184,8 @@ export const handler: Handler = async (event) => {
     const companyPhone = printSettings?.companyPhone?.trim() || BUSINESS.phone
     const companyEmail = printSettings?.companyEmail?.trim() || BUSINESS.email
     const companyWebsite = printSettings?.companyWebsite?.trim() || BUSINESS.website
-    const accentColor = hexToRgb(printSettings?.primaryColor?.hex, { r: 0.86, g: 0.23, b: 0.18 })
-    const baseTextColor = hexToRgb(printSettings?.textColor?.hex, { r: 0, g: 0, b: 0 })
+    const accentColor = hexToRgb(printSettings?.primaryColor?.hex, {r: 0.86, g: 0.23, b: 0.18})
+    const baseTextColor = hexToRgb(printSettings?.textColor?.hex, {r: 0, g: 0, b: 0})
     const secondaryColor = printSettings?.secondaryColor?.hex
       ? hexToRgb(printSettings.secondaryColor.hex, lightenRgb(baseTextColor, 0.4))
       : lightenRgb(baseTextColor, 0.35)
@@ -202,7 +200,7 @@ export const handler: Handler = async (event) => {
 
     const pdf = await PDFDocument.create()
     let page = pdf.addPage([612, 792]) // US Letter (72 dpi)
-    const { width, height } = page.getSize()
+    const {width, height} = page.getSize()
 
     const font = await pdf.embedFont(fontSelection.regular)
     const fontBold = await pdf.embedFont(fontSelection.bold)
@@ -222,7 +220,7 @@ export const handler: Handler = async (event) => {
         const logoW = 160
         const scale = logoW / img.width
         const logoH = img.height * scale
-        page.drawImage(img, { x: 40, y: y - logoH, width: logoW, height: logoH })
+        page.drawImage(img, {x: 40, y: y - logoH, width: logoW, height: logoH})
       } catch {
         // ignore logo failure
       }
@@ -340,10 +338,10 @@ export const handler: Handler = async (event) => {
 
     let by = y - 18
     billLines.forEach((line, i) =>
-      page.drawText(line, { x: 48, y: by - i * 14, size: 10, font, color: textColorRgb }),
+      page.drawText(line, {x: 48, y: by - i * 14, size: 10, font, color: textColorRgb}),
     )
     shipLines.forEach((line, i) =>
-      page.drawText(line, { x: 68 + boxW, y: by - i * 14, size: 10, font, color: textColorRgb }),
+      page.drawText(line, {x: 68 + boxW, y: by - i * 14, size: 10, font, color: textColorRgb}),
     )
 
     y -= boxH + 24
@@ -432,7 +430,7 @@ export const handler: Handler = async (event) => {
       y -= 18
       if (y < 120) {
         // footer before page break
-        page.drawText('Continued…', { x: width - 140, y: 40, size: 10, font, color: gray })
+        page.drawText('Continued…', {x: width - 140, y: 40, size: 10, font, color: gray})
         // new page
         const p = pdf.addPage([612, 792])
         y = p.getSize().height - 40
@@ -447,8 +445,8 @@ export const handler: Handler = async (event) => {
     function row(label: string, value: string, bold = false) {
       const fontToUse = bold ? fontBold : font
       const colorToUse = bold ? accentRgbColor : textColorRgb
-      page.drawText(label, { x: totalsX, y: ty, size: 10, font: fontToUse, color: colorToUse })
-      page.drawText(value, { x: width - 110, y: ty, size: 10, font: fontToUse, color: colorToUse })
+      page.drawText(label, {x: totalsX, y: ty, size: 10, font: fontToUse, color: colorToUse})
+      page.drawText(value, {x: width - 110, y: ty, size: 10, font: fontToUse, color: colorToUse})
       ty -= 14
     }
 
@@ -460,7 +458,7 @@ export const handler: Handler = async (event) => {
     // Footer note
     let footerY = 40
     footerLines.forEach((line) => {
-      page.drawText(line, { x: 40, y: footerY, size: 10, font, color: mutedRgb })
+      page.drawText(line, {x: 40, y: footerY, size: 10, font, color: mutedRgb})
       footerY -= 14
     })
 
@@ -479,6 +477,10 @@ export const handler: Handler = async (event) => {
     }
   } catch (e: any) {
     console.error('generateQuotePDF failed', e?.message || e)
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ message: 'Failed to generate quote PDF', error: e?.message || e }) }
+    return {
+      statusCode: 500,
+      headers: CORS,
+      body: JSON.stringify({message: 'Failed to generate quote PDF', error: e?.message || e}),
+    }
   }
 }

@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { useClient } from 'sanity'
-import { Card, Heading, Text, Stack } from '@sanity/ui'
+import React, {useEffect, useState} from 'react'
+import {useClient} from 'sanity'
+import {Card, Heading, Text, Stack} from '@sanity/ui'
 
 export default function ProfitLossReport() {
-  const client = useClient({ apiVersion: '2024-04-10' })
+  const client = useClient({apiVersion: '2024-04-10'})
   const [revenue, setRevenue] = useState(0)
   const [expenses, setExpenses] = useState(0)
   const [net, setNet] = useState(0)
@@ -58,7 +58,9 @@ export default function ProfitLossReport() {
         <Stack marginTop={3}>
           <Text weight="semibold">Expense Breakdown:</Text>
           {Object.entries(categories).map(([cat, amt]) => (
-            <Text key={cat}>• {cat}: ${amt.toFixed(2)}</Text>
+            <Text key={cat}>
+              • {cat}: ${amt.toFixed(2)}
+            </Text>
           ))}
         </Stack>
       </Stack>

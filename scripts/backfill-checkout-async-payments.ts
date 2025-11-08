@@ -85,7 +85,7 @@ async function main() {
 
   const result = await runCheckoutAsyncPaymentsBackfill(normalized)
   console.log(
-    `Processed ${result.processed} session(s); skipped ${result.skipped}; total considered ${result.total}.`
+    `Processed ${result.processed} session(s); skipped ${result.skipped}; total considered ${result.total}.`,
   )
 }
 

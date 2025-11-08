@@ -9,7 +9,7 @@ const ENV_FILES = ['.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
   const full = path.resolve(process.cwd(), filename)
   if (fs.existsSync(full)) {
-    dotenv.config({ path: full, override: false })
+    dotenv.config({path: full, override: false})
   }
 }
 
@@ -20,7 +20,7 @@ type CliOptions = {
 
 function parseArgs(): CliOptions {
   const args = process.argv.slice(2)
-  const options: CliOptions = { autoFulfill: false }
+  const options: CliOptions = {autoFulfill: false}
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -38,13 +38,15 @@ function parseArgs(): CliOptions {
 }
 
 async function main() {
-  const { id, autoFulfill } = parseArgs()
+  const {id, autoFulfill} = parseArgs()
   if (!id) {
-    console.error('Usage: pnpm tsx scripts/reprocess-stripe-resource.ts --id <pi_or_cs_id> [--auto-fulfill]')
+    console.error(
+      'Usage: pnpm tsx scripts/reprocess-stripe-resource.ts --id <pi_or_cs_id> [--auto-fulfill]',
+    )
     process.exit(1)
   }
 
-  const payload = { id, autoFulfill }
+  const payload = {id, autoFulfill}
   const event: HandlerEvent = {
     httpMethod: 'POST',
     headers: {},

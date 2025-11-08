@@ -14,7 +14,9 @@ export default function StudioLayout(props: LayoutProps) {
 
     let bridgeScript: HTMLScriptElement | null = null
     const bridgeSrc = 'https://core.sanity-cdn.com/bridge.js'
-    const existingBridge = document.head.querySelector<HTMLScriptElement>('script[data-sanity-bridge]')
+    const existingBridge = document.head.querySelector<HTMLScriptElement>(
+      'script[data-sanity-bridge]',
+    )
     if (!existingBridge) {
       bridgeScript = document.createElement('script')
       bridgeScript.src = bridgeSrc

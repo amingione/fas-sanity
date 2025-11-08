@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 import fs from 'node:fs'
 import path from 'node:path'
-import type { HandlerEvent } from '@netlify/functions'
-import { config as loadEnv } from 'dotenv'
+import type {HandlerEvent} from '@netlify/functions'
+import {config as loadEnv} from 'dotenv'
 
 type CliOptions = {
   mode: 'all' | 'missing'
@@ -11,13 +11,11 @@ type CliOptions = {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  const opts: CliOptions = { mode: 'missing' }
+  const opts: CliOptions = {mode: 'missing'}
 
   for (const arg of argv.slice(2)) {
     if (!arg) continue
-    const [rawKey, rawValue] = arg.includes('=')
-      ? arg.split('=')
-      : [arg.replace(/^--/, ''), 'true']
+    const [rawKey, rawValue] = arg.includes('=') ? arg.split('=') : [arg.replace(/^--/, ''), 'true']
     const key = rawKey.replace(/^--/, '').toLowerCase()
     const value = rawValue === undefined ? 'true' : rawValue
 
@@ -68,7 +66,7 @@ async function main() {
   const options = parseArgs(process.argv)
   bootstrapEnv()
 
-  const { default: handler } = await import('../netlify/functions/syncStripeCatalog')
+  const {default: handler} = await import('../netlify/functions/syncStripeCatalog')
   const secret = (process.env.STRIPE_SYNC_SECRET || '').trim()
 
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -93,7 +91,7 @@ async function main() {
 
   const event: HandlerEvent = {
     httpMethod: 'POST',
-    headers: secret ? { authorization: `Bearer ${secret}` } : {},
+    headers: secret ? {authorization: `Bearer ${secret}`} : {},
     multiValueHeaders: secret ? {authorization: [`Bearer ${secret}`]} : {},
     body: JSON.stringify(body),
     isBase64Encoded: false,
@@ -147,7 +145,9 @@ async function main() {
       const label = `${result.title || result.docId || 'Product'}`
       const price = result.stripePriceId ? ` price=${result.stripePriceId}` : ''
       const productId = result.stripeProductId ? ` product=${result.stripeProductId}` : ''
-      console.log(` - [${status}] ${label}${productId}${price}${result.reason ? ` (${result.reason})` : ''}`)
+      console.log(
+        ` - [${status}] ${label}${productId}${price}${result.reason ? ` (${result.reason})` : ''}`,
+      )
     }
   }
 
@@ -180,7 +180,7 @@ function bootstrapEnv() {
   for (const file of candidates) {
     const filePath = path.resolve(cwd, file)
     if (fs.existsSync(filePath)) {
-      loadEnv({ path: filePath, override: false })
+      loadEnv({path: filePath, override: false})
     }
   }
 }

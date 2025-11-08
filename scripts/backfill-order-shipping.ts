@@ -63,7 +63,7 @@ async function main() {
     logger: (message) => console.log(message),
   })
   console.log(
-    `Done. processed=${result.processed}, failures=${result.failures}, skipped=${result.skipped}, total=${result.total}`
+    `Done. processed=${result.processed}, failures=${result.failures}, skipped=${result.skipped}, total=${result.total}`,
   )
 }
 

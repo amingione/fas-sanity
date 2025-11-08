@@ -114,7 +114,7 @@ function getSanity(): SanityClient {
 
   if (!projectId || !dataset || !token) {
     throw new Error(
-      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).'
+      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).',
     )
   }
 
@@ -154,7 +154,7 @@ async function fetchOrders(options: PaymentFailuresBackfillOptions): Promise<Ord
   } else {
     conditions.push('(defined(paymentIntentId) || defined(stripeSessionId))')
     conditions.push(
-      '(!defined(paymentFailureCode) || paymentFailureCode == "" || !defined(paymentFailureMessage) || paymentFailureMessage == "")'
+      '(!defined(paymentFailureCode) || paymentFailureCode == "" || !defined(paymentFailureMessage) || paymentFailureMessage == "")',
     )
     conditions.push('(!defined(paymentStatus) || paymentStatus in $statuses)')
     params.statuses = TARGET_PAYMENT_STATUSES
@@ -199,7 +199,7 @@ async function fetchPaymentIntent(order: OrderDoc, logger?: (message: string) =>
       logger?.(
         `⚠️ Unable to load PaymentIntent ${order.paymentIntentId} (${order.orderNumber || order._id}): ${
           (err as any)?.message || err
-        }`
+        }`,
       )
     }
   }
@@ -221,7 +221,7 @@ async function fetchPaymentIntent(order: OrderDoc, logger?: (message: string) =>
           logger?.(
             `⚠️ Failed retrieving PI ${paymentIntent} referenced by ${order.orderNumber || order._id}: ${
               (err as any)?.message || err
-            }`
+            }`,
           )
         }
       }
@@ -229,7 +229,7 @@ async function fetchPaymentIntent(order: OrderDoc, logger?: (message: string) =>
       logger?.(
         `⚠️ Unable to load Checkout session ${order.stripeSessionId} (${order.orderNumber || order._id}): ${
           (err as any)?.message || err
-        }`
+        }`,
       )
     }
   }
@@ -251,12 +251,18 @@ async function fetchCheckoutSession(id: string, logger?: (message: string) => vo
   }
 }
 
-function resolveCheckoutExpirationDiagnostics(session: Stripe.Checkout.Session): SessionFailureResult {
+function resolveCheckoutExpirationDiagnostics(
+  session: Stripe.Checkout.Session,
+): SessionFailureResult {
   const email =
-    (session.customer_details?.email ||
+    (
+      session.customer_details?.email ||
       session.customer_email ||
       (session.metadata || {})['customer_email'] ||
-      '')?.toString().trim() || ''
+      ''
+    )
+      ?.toString()
+      .trim() || ''
   const expiresAt =
     typeof session.expires_at === 'number'
       ? new Date(session.expires_at * 1000).toISOString()
@@ -281,7 +287,7 @@ function resolveCheckoutExpirationDiagnostics(session: Stripe.Checkout.Session):
 
 async function resolvePaymentFailureDiagnostics(
   pi: Stripe.PaymentIntent,
-  logger?: (message: string) => void
+  logger?: (message: string) => void,
 ): Promise<PaymentFailureDiagnostics> {
   const stripe = getStripe()
   const failure = pi.last_payment_error
@@ -299,8 +305,7 @@ async function resolvePaymentFailureDiagnostics(
   }
 
   const shouldLoadCharge =
-    Boolean(stripe) &&
-    (typeof pi.latest_charge === 'string' || !failureCode || !failureMessage)
+    Boolean(stripe) && (typeof pi.latest_charge === 'string' || !failureCode || !failureMessage)
 
   if (shouldLoadCharge) {
     try {
@@ -350,7 +355,7 @@ async function resolvePaymentFailureDiagnostics(
       }
     } catch (err) {
       logger?.(
-        `⚠️ Failed to load charge for payment failure details: ${(err as any)?.message || err}`
+        `⚠️ Failed to load charge for payment failure details: ${(err as any)?.message || err}`,
       )
     }
   }
@@ -358,9 +363,9 @@ async function resolvePaymentFailureDiagnostics(
   const codes = Array.from(
     new Set(
       [failureCode, ...additionalCodes].filter(
-        (code): code is string => typeof code === 'string' && Boolean(code.trim())
-      )
-    )
+        (code): code is string => typeof code === 'string' && Boolean(code.trim()),
+      ),
+    ),
   )
 
   if (codes.length === 0) {
@@ -397,7 +402,7 @@ async function findInvoiceId(order: OrderDoc, paymentIntentId?: string): Promise
   if (paymentIntentId) {
     const byPI = await sanity.fetch<string | null>(
       `*[_type == "invoice" && paymentIntentId == $pi][0]._id`,
-      {pi: paymentIntentId}
+      {pi: paymentIntentId},
     )
     if (byPI) return normalizeSanityId(byPI) || byPI
   }
@@ -409,7 +414,7 @@ async function findInvoiceId(order: OrderDoc, paymentIntentId?: string): Promise
         orderRef._ref == $orderId ||
         orderRef->_ref == $orderId
       )][0]._id`,
-      {orderNumber: order.orderNumber, orderId: order._id}
+      {orderNumber: order.orderNumber, orderId: order._id},
     )
     if (byOrderNumber) return normalizeSanityId(byOrderNumber) || byOrderNumber
   }
@@ -428,11 +433,18 @@ async function updateInvoice(
     paymentIntent?: Stripe.PaymentIntent | null
     session?: Stripe.Checkout.Session | null
     logger?: (message: string) => void
-  } = {}
+  } = {},
 ) {
   const sanity = getSanity()
-  const {paymentStatus, invoiceStatus, invoiceStripeStatus, dryRun, paymentIntent, session, logger} =
-    options
+  const {
+    paymentStatus,
+    invoiceStatus,
+    invoiceStripeStatus,
+    dryRun,
+    paymentIntent,
+    session,
+    logger,
+  } = options
   const patch: Record<string, any> = {}
   let hasChanges = false
 
@@ -480,7 +492,7 @@ async function updateInvoice(
 
 async function processOrder(
   order: OrderDoc,
-  options: PaymentFailuresBackfillOptions
+  options: PaymentFailuresBackfillOptions,
 ): Promise<{changed: boolean; skippedReason?: string}> {
   const logger = options.logger
   const label = order.orderNumber || order._id
@@ -491,14 +503,22 @@ async function processOrder(
   let diagnostics: PaymentFailureDiagnostics | null = null
   let paymentStatus: string | undefined
   let orderStatus: 'pending' | 'paid' | 'fulfilled' | 'cancelled' | 'expired' | undefined
-  let invoiceStatus: 'pending' | 'paid' | 'refunded' | 'partially_refunded' | 'cancelled' | 'expired' | undefined
+  let invoiceStatus:
+    | 'pending'
+    | 'paid'
+    | 'refunded'
+    | 'partially_refunded'
+    | 'cancelled'
+    | 'expired'
+    | undefined
   let invoiceStripeStatus: string | undefined
 
   if (paymentIntent) {
     diagnostics = await resolvePaymentFailureDiagnostics(paymentIntent, logger)
     const normalizedPiStatus = (paymentIntent.status || '').toLowerCase()
     paymentStatus =
-      normalizedPiStatus && !['succeeded', 'processing', 'requires_capture'].includes(normalizedPiStatus)
+      normalizedPiStatus &&
+      !['succeeded', 'processing', 'requires_capture'].includes(normalizedPiStatus)
         ? 'failed'
         : normalizedPiStatus || undefined
     if (normalizedPiStatus === 'canceled') {
@@ -595,7 +615,7 @@ async function processOrder(
 }
 
 export async function runPaymentFailuresBackfill(
-  rawOptions: PaymentFailuresBackfillOptions = {}
+  rawOptions: PaymentFailuresBackfillOptions = {},
 ): Promise<PaymentFailuresBackfillResult> {
   ensureEnvLoaded()
   const options: PaymentFailuresBackfillOptions = {
@@ -639,14 +659,14 @@ export async function runPaymentFailuresBackfill(
     } catch (err) {
       skipped += 1
       options.logger?.(
-        `❌ Error processing ${order.orderNumber || order._id}: ${(err as any)?.message || err}`
+        `❌ Error processing ${order.orderNumber || order._id}: ${(err as any)?.message || err}`,
       )
     }
   }
 
   const suffix = options.dryRun ? ' (dry run)' : ''
   options.logger?.(
-    `Done. Updated ${updated}/${orders.length} order${orders.length === 1 ? '' : 's'}${suffix}.`
+    `Done. Updated ${updated}/${orders.length} order${orders.length === 1 ? '' : 's'}${suffix}.`,
   )
 
   return {

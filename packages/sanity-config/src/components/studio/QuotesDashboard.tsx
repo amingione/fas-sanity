@@ -47,8 +47,7 @@ const DATE_OPTIONS: Array<{value: string; label: string; days?: number}> = [
   {value: 'all', label: 'All time'},
 ]
 
-const GRID_TEMPLATE_COLUMNS =
-  '40px 160px 160px 160px minmax(220px, 1fr) 140px 160px 140px'
+const GRID_TEMPLATE_COLUMNS = '40px 160px 160px 160px minmax(220px, 1fr) 140px 160px 140px'
 const GRID_COLUMN_GAP = 12
 const STICKY_LEFT = 40 + GRID_COLUMN_GAP
 const HEADER_BACKGROUND = 'var(--card-background-color)'
@@ -140,7 +139,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
           subtotal,
           taxAmount,
           billTo{ name, email }
-        } | order(coalesce(quoteDate, _createdAt) desc)`
+        } | order(coalesce(quoteDate, _createdAt) desc)`,
       )
 
       const now = Date.now()
@@ -151,8 +150,10 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
         const expirationDateIso = quote.expirationDate || null
         const expirationDateMs = expirationDateIso ? Date.parse(expirationDateIso) : null
         const status = normalizeStatus(quote.status)
-        const conversionStatus = quote.conversionStatus || (status === 'Invoiced' ? 'Converted' : 'Open')
-        const isConverted = conversionStatus?.toLowerCase() === 'converted' || status?.toLowerCase() === 'invoiced'
+        const conversionStatus =
+          quote.conversionStatus || (status === 'Invoiced' ? 'Converted' : 'Open')
+        const isConverted =
+          conversionStatus?.toLowerCase() === 'converted' || status?.toLowerCase() === 'invoiced'
 
         return {
           id: quote._id,
@@ -202,7 +203,8 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
         }
       }
       if (term) {
-        const haystack = `${quote.quoteNumber}|${quote.customerName}|${quote.status}|${quote.conversionStatus}`.toLowerCase()
+        const haystack =
+          `${quote.quoteNumber}|${quote.customerName}|${quote.status}|${quote.conversionStatus}`.toLowerCase()
         if (!haystack.includes(term)) return false
       }
       return true
@@ -239,7 +241,9 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
   const handleConvert = async (quoteId: string) => {
     setConvertingIds((prev) => new Set(prev).add(quoteId))
     try {
-      const quote = await client.fetch<RawQuote & {lineItems?: any[]; customer?: {_ref?: string}; customerRef?: {_ref?: string}}> (
+      const quote = await client.fetch<
+        RawQuote & {lineItems?: any[]; customer?: {_ref?: string}; customerRef?: {_ref?: string}}
+      >(
         `*[_type == "quote" && _id == $id][0]{
           _id,
           quoteNumber,
@@ -254,7 +258,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
           taxAmount,
           lineItems
         }`,
-        {id: quoteId}
+        {id: quoteId},
       )
 
       if (!quote?._id) throw new Error('Quote not found')
@@ -268,7 +272,10 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
         {
           _type: 'invoice',
           quote: {_type: 'reference', _ref: quote._id},
-          customerRef: {_type: 'reference', _ref: (quote.customer?._ref || quote.customerRef?._ref)!},
+          customerRef: {
+            _type: 'reference',
+            _ref: (quote.customer?._ref || quote.customerRef?._ref)!,
+          },
           billTo: quote.billTo || undefined,
           lineItems,
           total: typeof quote.total === 'number' ? quote.total : undefined,
@@ -278,7 +285,7 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
           invoiceDate: new Date().toISOString().slice(0, 10),
           status: 'pending',
         },
-        {autoGenerateArrayKeys: true}
+        {autoGenerateArrayKeys: true},
       )
 
       await client
@@ -319,7 +326,9 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
       >
         <div className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Quotes &amp; Estimates</h2>
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">
+              Quotes &amp; Estimates
+            </h2>
             <p className="text-sm text-[var(--studio-muted)]">
               Track drafts, send proposals, and convert accepted quotes to invoices.
             </p>
@@ -395,7 +404,9 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                     background: HEADER_BACKGROUND,
                   }}
                 >
-                  <span style={{...STICKY_CHECKBOX_STYLE, background: HEADER_BACKGROUND, zIndex: 4}}>
+                  <span
+                    style={{...STICKY_CHECKBOX_STYLE, background: HEADER_BACKGROUND, zIndex: 4}}
+                  >
                     <input
                       type="checkbox"
                       ref={selectAllRef}
@@ -495,10 +506,14 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                           {quote.quoteNumber}
                         </span>
                         <span className="text-[var(--studio-muted)]">
-                          {quote.quoteDateIso ? shortDate.format(new Date(quote.quoteDateIso)) : '—'}
+                          {quote.quoteDateIso
+                            ? shortDate.format(new Date(quote.quoteDateIso))
+                            : '—'}
                         </span>
                         <span className="text-[var(--studio-muted)]">
-                          {quote.expirationDateIso ? shortDate.format(new Date(quote.expirationDateIso)) : '—'}
+                          {quote.expirationDateIso
+                            ? shortDate.format(new Date(quote.expirationDateIso))
+                            : '—'}
                         </span>
                         <span className="text-[var(--studio-text)]">{quote.customerName}</span>
                         <span
@@ -547,7 +562,11 @@ const QuotesDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
                                   : 'text-emerald-600 hover:text-emerald-500'
                               } disabled:cursor-not-allowed`}
                             >
-                              {isConverting ? 'Converting…' : quote.isConverted ? 'Converted' : 'Convert'}
+                              {isConverting
+                                ? 'Converting…'
+                                : quote.isConverted
+                                  ? 'Converted'
+                                  : 'Convert'}
                             </button>
                           </div>
                         </span>

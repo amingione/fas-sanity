@@ -46,10 +46,11 @@ export const handler: Handler = async (event) => {
   }
 
   const expected = (process.env.BACKFILL_SECRET || '').trim()
-  const presented =
-    ((event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
-      event.queryStringParameters?.token ||
-      '').trim()
+  const presented = (
+    (event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
+    event.queryStringParameters?.token ||
+    ''
+  ).trim()
   if (expected && presented !== expected) {
     return {
       statusCode: 401,

@@ -29,7 +29,10 @@ export function evaluateProductSelections(
   requirements: ProductRequirementContext | null | undefined,
   maps: SelectionMaps,
 ): SelectionEvaluation {
-  const selection = buildCartSelectionFromMaps(maps.options || undefined, maps.customizations || undefined)
+  const selection = buildCartSelectionFromMaps(
+    maps.options || undefined,
+    maps.customizations || undefined,
+  )
 
   if (!requirements) {
     return {
@@ -42,7 +45,9 @@ export function evaluateProductSelections(
   }
 
   const issues = validateCartSelections(requirements, selection)
-  const missingOptions = issues.filter((issue) => issue.type === 'option').map((issue) => issue.field)
+  const missingOptions = issues
+    .filter((issue) => issue.type === 'option')
+    .map((issue) => issue.field)
   const missingCustomizations = issues
     .filter((issue) => issue.type === 'customization')
     .map((issue) => issue.field)

@@ -3,9 +3,7 @@
 const {spawn} = require('node:child_process')
 
 const token =
-  process.env.SANITY_AUTH_TOKEN ||
-  process.env.SANITY_DEPLOY_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN
+  process.env.SANITY_AUTH_TOKEN || process.env.SANITY_DEPLOY_TOKEN || process.env.SANITY_WRITE_TOKEN
 
 if (!token) {
   console.log(

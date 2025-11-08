@@ -37,10 +37,7 @@ const parseLimit = (value: unknown): number | undefined => {
 }
 
 const resolveSecret = (): string => {
-  const overrides = [
-    process.env.SANITY_STUDIO_BACKFILL_SECRET,
-    process.env.BACKFILL_SECRET,
-  ]
+  const overrides = [process.env.SANITY_STUDIO_BACKFILL_SECRET, process.env.BACKFILL_SECRET]
   for (const value of overrides) {
     if (value && value.trim()) return value.trim()
   }
@@ -65,9 +62,11 @@ export const handler: Handler = async (event) => {
 
   const expectedSecret = resolveSecret()
   const presented =
-    ((event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
+    (
+      (event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
       event.queryStringParameters?.token ||
-      '')?.trim() || ''
+      ''
+    )?.trim() || ''
   if (expectedSecret && presented !== expectedSecret) {
     return {
       statusCode: 401,

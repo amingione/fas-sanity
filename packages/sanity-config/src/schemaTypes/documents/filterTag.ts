@@ -1,4 +1,4 @@
-import { defineType, defineField } from 'sanity'
+import {defineType, defineField} from 'sanity'
 
 export default defineType({
   name: 'filterTag',
@@ -15,7 +15,11 @@ export default defineType({
       name: 'slug',
       title: 'Slug',
       type: 'slug',
-      options: { source: 'title', maxLength: 80, slugify: (v: string) => v.toLowerCase().trim().replace(/\s+/g, '-') },
+      options: {
+        source: 'title',
+        maxLength: 80,
+        slugify: (v: string) => v.toLowerCase().trim().replace(/\s+/g, '-'),
+      },
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -25,4 +29,3 @@ export default defineType({
     }),
   ],
 })
-

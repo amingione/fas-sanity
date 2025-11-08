@@ -17,7 +17,9 @@ describe('cartValidation', () => {
 
     expect(issues).toHaveLength(1)
     expect(issues[0]).toMatchObject({type: 'option', field: 'Size'})
-    expect(hasBlockingSelectionIssues({options: [{name: 'Size', required: true}]}, {optionDetails: []})).toBe(true)
+    expect(
+      hasBlockingSelectionIssues({options: [{name: 'Size', required: true}]}, {optionDetails: []}),
+    ).toBe(true)
   })
 
   it('accepts provided required options', () => {

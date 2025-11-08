@@ -1,13 +1,15 @@
-import { Handler } from '@netlify/functions'
-import { Resend } from 'resend'
-import { createClient } from '@sanity/client'
+import {Handler} from '@netlify/functions'
+import {Resend} from 'resend'
+import {createClient} from '@sanity/client'
 import imageUrlBuilder from '@sanity/image-url'
 import Stripe from 'stripe'
-import { renderInvoicePdf, computeInvoiceTotals } from '../lib/invoicePdf'
-import { fetchPrintSettings } from '../lib/printSettings'
+import {renderInvoicePdf, computeInvoiceTotals} from '../lib/invoicePdf'
+import {fetchPrintSettings} from '../lib/printSettings'
 
 // --- CORS (more permissive localhost-aware)
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   let o = DEFAULT_ORIGINS[0]
   if (origin) {
@@ -27,7 +29,9 @@ function makeCORS(origin?: string) {
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY as string) : (null as any)
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY as string)
+  : (null as any)
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -46,7 +50,7 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
   if (inv?.paymentLinkUrl) return String(inv.paymentLinkUrl)
   if (!stripe) return ''
 
-  const { total } = computeInvoiceTotals(inv)
+  const {total} = computeInvoiceTotals(inv)
   const unitAmount = Math.round(Number(total || 0) * 100)
   if (!Number.isFinite(unitAmount) || unitAmount <= 0) return ''
 
@@ -58,7 +62,7 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
         {
           price_data: {
             currency: 'usd',
-            product_data: { name: `Invoice ${inv?.invoiceNumber || ''}`.trim() || 'Invoice Payment' },
+            product_data: {name: `Invoice ${inv?.invoiceNumber || ''}`.trim() || 'Invoice Payment'},
             unit_amount: unitAmount,
           },
           quantity: 1,
@@ -86,10 +90,12 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
   const url = session?.url || ''
   if (url && CAN_PATCH) {
     try {
-      await sanity.patch(invoiceId).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
+      await sanity.patch(invoiceId).set({paymentLinkUrl: url}).commit({autoGenerateArrayKeys: true})
     } catch (e: any) {
       const code = (e?.response?.statusCode || e?.statusCode || '').toString()
-      console.warn(`resendInvoiceEmail: could not save paymentLinkUrl (status ${code || 'unknown'}) — continuing without persisting.`)
+      console.warn(
+        `resendInvoiceEmail: could not save paymentLinkUrl (status ${code || 'unknown'}) — continuing without persisting.`,
+      )
     }
   }
   return url
@@ -99,8 +105,13 @@ const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Method Not Allowed' }) }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
+  if (event.httpMethod !== 'POST')
+    return {
+      statusCode: 405,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Method Not Allowed'}),
+    }
 
   let email = ''
   let invoiceId = ''
@@ -109,10 +120,19 @@ const handler: Handler = async (event) => {
     email = String(payload.email || '').trim()
     invoiceId = String(payload.invoiceId || '').trim()
   } catch {
-    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invalid JSON' }) }
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Invalid JSON'}),
+    }
   }
 
-  if (!invoiceId) return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Missing invoiceId' }) }
+  if (!invoiceId)
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Missing invoiceId'}),
+    }
 
   try {
     const invoice = await sanity.fetch(
@@ -205,15 +225,30 @@ const handler: Handler = async (event) => {
         terms,
         paymentLinkUrl,
       }`,
-      { id: invoiceId }
+      {id: invoiceId},
     )
 
-    if (!invoice) return { statusCode: 404, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice not found' }) }
+    if (!invoice)
+      return {
+        statusCode: 404,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Invoice not found'}),
+      }
 
     // Derive email
     if (!email) email = String(invoice?.billTo?.email || '').trim()
-    if (!email) return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'No email provided and none found on the invoice.' }) }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invalid email format' }) }
+    if (!email)
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'No email provided and none found on the invoice.'}),
+      }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Invalid email format'}),
+      }
 
     // Ensure there is a payment link (reuse stored URL or create & patch it)
     const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3333'
@@ -221,7 +256,7 @@ const handler: Handler = async (event) => {
       String(invoice?.paymentLinkUrl || '') ||
       (await ensureCheckoutUrl(invoiceId, invoice, baseUrl))
     if (!payUrl) {
-        const { total } = computeInvoiceTotals(invoice)
+      const {total} = computeInvoiceTotals(invoice)
       const unitAmount = Math.round(Number(total || 0) * 100)
       console.error('resendInvoiceEmail: No payment link generated', {
         invoiceId,
@@ -239,8 +274,8 @@ const handler: Handler = async (event) => {
           hint: !process.env.STRIPE_SECRET_KEY
             ? 'Missing STRIPE_SECRET_KEY'
             : unitAmount < 50
-            ? 'Total must be at least $0.50'
-            : 'Check Stripe logs for a session creation error',
+              ? 'Total must be at least $0.50'
+              : 'Check Stripe logs for a session creation error',
         }),
       }
     }
@@ -273,14 +308,18 @@ const handler: Handler = async (event) => {
           <p style="margin:0 0 6px;">Hello ${customerName},</p>
           <p style="margin:0 0 10px;">Please find your invoice ${invoice.invoiceNumber ? `#<strong>${invoice.invoiceNumber}</strong>` : ''} attached as a PDF for your records.</p>
         </div>
-        ${payUrl ? `
+        ${
+          payUrl
+            ? `
         <div style="margin:14px 0 10px;">
           <a href="${payUrl}" target="_blank" style="display:inline-block;padding:12px 18px;background:#dc362e;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Pay Invoice Securely</a>
         </div>
         <p style="margin:8px 0 10px;font-size:13px;color:#444;">If the button doesn’t work, copy and paste this link into your browser:<br/>
           <a href="${payUrl}" target="_blank" style="color:#0a66c2;text-decoration:underline;word-break:break-all;">${payUrl}</a>
         </p>
-        ` : ''}
+        `
+            : ''
+        }
         <p style="margin:16px 0 0;">Thank you for your business.<br/>— F.A.S. Motorsports</p>
       </div>
     `
@@ -301,11 +340,19 @@ const handler: Handler = async (event) => {
       ],
     })
 
-    return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice email sent with PDF attachment.', to: email, payUrl }) }
+    return {
+      statusCode: 200,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Invoice email sent with PDF attachment.', to: email, payUrl}),
+    }
   } catch (err: any) {
     console.error('Failed to send invoice email:', err)
-    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Email send failed.', error: String(err?.message || err) }) }
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Email send failed.', error: String(err?.message || err)}),
+    }
   }
 }
 
-export { handler }
+export {handler}

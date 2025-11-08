@@ -59,7 +59,8 @@ async function backfill(): Promise<void> {
       const nextInvoiceNumber = sanitizeOrderNumber(doc.invoiceNumber)
 
       const setOps: Record<string, string> = {}
-      if (nextOrderNumber && nextOrderNumber !== doc.orderNumber) setOps.orderNumber = nextOrderNumber
+      if (nextOrderNumber && nextOrderNumber !== doc.orderNumber)
+        setOps.orderNumber = nextOrderNumber
       if (nextInvoiceNumber && nextInvoiceNumber !== doc.invoiceNumber)
         setOps.invoiceNumber = nextInvoiceNumber
 
@@ -92,4 +93,3 @@ backfill().catch((err) => {
   console.error('[backfill-order-numbers] Failed', err)
   process.exit(1)
 })
-

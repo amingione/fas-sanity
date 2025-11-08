@@ -86,7 +86,9 @@ export default function PaymentLinksDocumentTable() {
           key: 'livemode',
           header: 'Mode',
           render: (data: PaymentLinkRow) => (
-            <Text size={1}>{typeof data.livemode === 'boolean' ? (data.livemode ? 'Live' : 'Test') : '—'}</Text>
+            <Text size={1}>
+              {typeof data.livemode === 'boolean' ? (data.livemode ? 'Live' : 'Test') : '—'}
+            </Text>
           ),
         },
         {
@@ -100,7 +102,9 @@ export default function PaymentLinksDocumentTable() {
         {
           key: 'synced',
           header: 'Last synced',
-          render: (data: PaymentLinkRow) => <Text size={1}>{formatDate(data.stripeLastSyncedAt)}</Text>,
+          render: (data: PaymentLinkRow) => (
+            <Text size={1}>{formatDate(data.stripeLastSyncedAt)}</Text>
+          ),
         },
       ]}
     />

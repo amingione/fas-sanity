@@ -6,14 +6,37 @@ export default defineType({
   type: 'document',
   fields: [
     defineField({name: 'title', title: 'Title', type: 'string'}),
-    defineField({name: 'stripePaymentLinkId', title: 'Stripe Payment Link ID', type: 'string', readOnly: true}),
+    defineField({
+      name: 'stripePaymentLinkId',
+      title: 'Stripe Payment Link ID',
+      type: 'string',
+      readOnly: true,
+    }),
     defineField({name: 'status', title: 'Status', type: 'string', readOnly: true}),
     defineField({name: 'url', title: 'Payment URL', type: 'url', readOnly: true}),
     defineField({name: 'livemode', title: 'Live Mode', type: 'boolean', readOnly: true}),
     defineField({name: 'active', title: 'Active', type: 'boolean', readOnly: true}),
-    defineField({name: 'customerRef', title: 'Customer', type: 'reference', to: [{type: 'customer'}], readOnly: true}),
-    defineField({name: 'quoteRef', title: 'Quote', type: 'reference', to: [{type: 'quote'}], readOnly: true}),
-    defineField({name: 'orderRef', title: 'Order', type: 'reference', to: [{type: 'order'}], readOnly: true}),
+    defineField({
+      name: 'customerRef',
+      title: 'Customer',
+      type: 'reference',
+      to: [{type: 'customer'}],
+      readOnly: true,
+    }),
+    defineField({
+      name: 'quoteRef',
+      title: 'Quote',
+      type: 'reference',
+      to: [{type: 'quote'}],
+      readOnly: true,
+    }),
+    defineField({
+      name: 'orderRef',
+      title: 'Order',
+      type: 'reference',
+      to: [{type: 'order'}],
+      readOnly: true,
+    }),
     defineField({
       name: 'metadata',
       title: 'Metadata',
@@ -29,7 +52,12 @@ export default defineType({
       readOnly: true,
     }),
     defineField({name: 'afterCompletion', title: 'After Completion', type: 'text', readOnly: true}),
-    defineField({name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true}),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Stripe Last Synced',
+      type: 'datetime',
+      readOnly: true,
+    }),
   ],
   preview: {
     select: {

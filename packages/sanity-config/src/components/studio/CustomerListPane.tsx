@@ -1,5 +1,20 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {Badge, Box, Button, Card, Checkbox, Flex, TextInput, Menu, MenuButton, MenuDivider, MenuItem, Spinner, Stack, Text} from '@sanity/ui'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Checkbox,
+  Flex,
+  TextInput,
+  Menu,
+  MenuButton,
+  MenuDivider,
+  MenuItem,
+  Spinner,
+  Stack,
+  Text,
+} from '@sanity/ui'
 import {
   AddIcon,
   CheckmarkIcon,
@@ -155,16 +170,22 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
   useEffect(() => {
     if (!activeCustomerId && filteredCustomers.length > 0) {
       setActiveCustomerId(filteredCustomers[0]._id)
-    } else if (activeCustomerId && !filteredCustomers.some((customer) => customer._id === activeCustomerId)) {
+    } else if (
+      activeCustomerId &&
+      !filteredCustomers.some((customer) => customer._id === activeCustomerId)
+    ) {
       setActiveCustomerId(filteredCustomers[0]?._id || null)
     }
   }, [filteredCustomers, activeCustomerId])
 
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)))
+    setSelectedIds((prev) =>
+      prev.filter((id) => filteredCustomers.some((customer) => customer._id === id)),
+    )
   }, [filteredCustomers])
 
-  const allSelected = filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
+  const allSelected =
+    filteredCustomers.length > 0 && selectedIds.length === filteredCustomers.length
 
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -175,7 +196,9 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
   }
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]))
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id],
+    )
   }
 
   const filterOptions: Array<{value: typeof filter; label: string; description?: string}> = [
@@ -243,7 +266,8 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
                   </Badge>
                 </Flex>
                 <Text muted size={1}>
-                  {stats.total.toLocaleString()} total · {stats.highValue.toLocaleString()} high-value customers
+                  {stats.total.toLocaleString()} total · {stats.highValue.toLocaleString()}{' '}
+                  high-value customers
                 </Text>
               </Stack>
               <Flex gap={2} style={{flexWrap: 'wrap'}}>
@@ -285,7 +309,13 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
               </Box>
               <MenuButton
                 id="customer-filter"
-                button={<Button icon={FilterIcon} text={`Filter: ${selectedFilter?.label ?? 'All'}`} mode="ghost" />}
+                button={
+                  <Button
+                    icon={FilterIcon}
+                    text={`Filter: ${selectedFilter?.label ?? 'All'}`}
+                    mode="ghost"
+                  />
+                }
                 popover={{portal: true}}
                 menu={
                   <Menu>
@@ -298,7 +328,11 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
                       />
                     ))}
                     <MenuDivider />
-                    <MenuItem text="Clear filters" tone="critical" onClick={() => handleFilterChange('all')} />
+                    <MenuItem
+                      text="Clear filters"
+                      tone="critical"
+                      onClick={() => handleFilterChange('all')}
+                    />
                   </Menu>
                 }
               />
@@ -310,7 +344,11 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
                   <Menu>
                     <MenuItem text="View all in desk" onClick={() => handleMenuAction('list')} />
                     <MenuDivider />
-                    <MenuItem text="Select none" onClick={() => setSelectedIds([])} disabled={selectedIds.length === 0} />
+                    <MenuItem
+                      text="Select none"
+                      onClick={() => setSelectedIds([])}
+                      disabled={selectedIds.length === 0}
+                    />
                   </Menu>
                 }
               />

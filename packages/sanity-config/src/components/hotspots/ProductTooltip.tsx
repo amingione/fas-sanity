@@ -27,7 +27,7 @@ export default function ProductPreview(props: HotspotTooltipProps<HotspotFields>
       schemaType: productSchemaType as SchemaType,
       layout: 'default' as PreviewLayoutKey,
     }),
-    [productSchemaType, value?.productWithVariant?.product]
+    [productSchemaType, value?.productWithVariant?.product],
   )
 
   const enhancedPreview = useMemo<ReactNode>(() => {
@@ -38,7 +38,7 @@ export default function ProductPreview(props: HotspotTooltipProps<HotspotFields>
 
   return (
     <StyledBox padding={2}>
-      {hasProduct ? enhancedPreview ?? 'Preview unavailable' : 'No product selected'}
+      {hasProduct ? (enhancedPreview ?? 'Preview unavailable') : 'No product selected'}
     </StyledBox>
   )
 }

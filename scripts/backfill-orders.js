@@ -8,15 +8,15 @@
 
 const path = require('path')
 const fs = require('fs')
-const { randomUUID } = require('crypto')
+const {randomUUID} = require('crypto')
 const dotenv = require('dotenv')
-const { createClient } = require('@sanity/client')
+const {createClient} = require('@sanity/client')
 
 // Load env from common files if present (without overriding existing)
 const envFiles = ['.env.local', '.env.development', '.env']
 for (const f of envFiles) {
   const p = path.resolve(process.cwd(), f)
-  if (fs.existsSync(p)) dotenv.config({ path: p, override: false })
+  if (fs.existsSync(p)) dotenv.config({path: p, override: false})
 }
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID
@@ -24,15 +24,17 @@ const dataset = process.env.SANITY_STUDIO_DATASET
 const token = process.env.SANITY_API_TOKEN
 
 if (!projectId || !dataset || !token) {
-  console.error('Missing SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, or SANITY_API_TOKEN in env')
+  console.error(
+    'Missing SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, or SANITY_API_TOKEN in env',
+  )
   process.exit(1)
 }
 
-const client = createClient({ projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false })
+const client = createClient({projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false})
 
 function normalizeCartItem(it) {
   if (!it || typeof it !== 'object') return null
-  const cloned = { ...it }
+  const cloned = {...it}
 
   if (cloned._type === 'cartLine') {
     const qty = Number(cloned.quantity || cloned.qty || 1)
@@ -55,9 +57,7 @@ function normalizeCartItem(it) {
 
 function fixCart(arr) {
   if (!Array.isArray(arr)) return null
-  return arr
-    .map(normalizeCartItem)
-    .filter(Boolean)
+  return arr.map(normalizeCartItem).filter(Boolean)
 }
 
 async function run() {
@@ -77,7 +77,7 @@ async function run() {
         customerRef,
         customer
       }[0...$limit]`,
-      { limit: pageSize, cursor }
+      {limit: pageSize, cursor},
     )
 
     if (!result || result.length === 0) break
@@ -88,7 +88,7 @@ async function run() {
 
       // Migrate customer -> customerRef
       if (!doc.customerRef && doc.customer && doc.customer._ref) {
-        setOps.customerRef = { _type: 'reference', _ref: doc.customer._ref }
+        setOps.customerRef = {_type: 'reference', _ref: doc.customer._ref}
         unsetOps.push('customer')
       } else if (doc.customer) {
         // Even if we already have customerRef, remove legacy field
@@ -107,10 +107,11 @@ async function run() {
         changed++
         if (!dry) {
           try {
-            await client.patch(doc._id)
+            await client
+              .patch(doc._id)
               .set(setOps)
               .unset(unsetOps)
-              .commit({ autoGenerateArrayKeys: true })
+              .commit({autoGenerateArrayKeys: true})
           } catch (e) {
             console.warn(`Patch failed for ${doc._id}`, e && e.message ? e.message : e)
           }
@@ -129,7 +130,12 @@ async function run() {
     remainingCustomer = await client.fetch('count(*[_type == "order" && defined(customer)])')
   } catch {}
 
-  console.log(JSON.stringify({ total, changed, migratedCustomer, cartFixed, remainingCustomer }, null, 2))
+  console.log(
+    JSON.stringify({total, changed, migratedCustomer, cartFixed, remainingCustomer}, null, 2),
+  )
 }
 
-run().catch((e) => { console.error(e); process.exit(1) })
+run().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

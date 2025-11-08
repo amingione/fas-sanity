@@ -23,26 +23,28 @@
 const fs = require('fs')
 const path = require('path')
 const dotenv = require('dotenv')
-const { createClient } = require('@sanity/client')
+const {createClient} = require('@sanity/client')
 
 // Load env files if present (no override of existing process.env)
 for (const f of ['.env.local', '.env.development', '.env']) {
   const p = path.resolve(process.cwd(), f)
-  if (fs.existsSync(p)) dotenv.config({ path: p, override: false })
+  if (fs.existsSync(p)) dotenv.config({path: p, override: false})
 }
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
 const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
 const token = process.env.SANITY_API_TOKEN
 if (!projectId || !dataset || !token) {
-  console.error('Missing SANITY env (SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, SANITY_API_TOKEN).')
+  console.error(
+    'Missing SANITY env (SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, SANITY_API_TOKEN).',
+  )
   process.exit(1)
 }
 
-const client = createClient({ projectId, dataset, apiVersion: '2024-10-01', token, useCdn: false })
+const client = createClient({projectId, dataset, apiVersion: '2024-10-01', token, useCdn: false})
 
 function parseArgs(argv) {
-  const args = { yes: false, delete: false, showRefs: false }
+  const args = {yes: false, delete: false, showRefs: false}
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--yes' || a === '-y') args.yes = true
@@ -80,7 +82,7 @@ Flags:
 async function listBySku(sku) {
   const docs = await client.fetch(
     '*[_type == "product" && sku == $sku]{_id, title, sku, _updatedAt} | order(_updatedAt desc)',
-    { sku }
+    {sku},
   )
   console.log(JSON.stringify(docs, null, 2))
 }
@@ -89,29 +91,31 @@ async function listByTitle(title) {
   const q = `${title}*`
   const docs = await client.fetch(
     '*[_type == "product" && title match $q]{_id, title, sku, _updatedAt}[0...200] | order(title asc)',
-    { q }
+    {q},
   )
   console.log(JSON.stringify(docs, null, 2))
 }
 
 async function showRefs(id) {
-  const refs = await client.fetch(
-    '*[_references($id)]{_id, _type, _updatedAt}[0...500]',
-    { id }
-  )
+  const refs = await client.fetch('*[_references($id)]{_id, _type, _updatedAt}[0...500]', {id})
   console.log(`Found ${refs.length} referencing docs for ${id}`)
   console.log(JSON.stringify(refs, null, 2))
 }
 
 async function deleteIds(ids, yes) {
-  if (!ids.length) { console.log('No IDs provided.'); return }
+  if (!ids.length) {
+    console.log('No IDs provided.')
+    return
+  }
   // Fetch titles for context
-  const docs = await client.fetch('*[_id in $ids]{_id, _type, title, sku}', { ids })
+  const docs = await client.fetch('*[_id in $ids]{_id, _type, title, sku}', {ids})
   const map = Object.fromEntries(docs.map((d) => [d._id, d]))
   console.log('About to delete these documents (and drafts if exist):')
   for (const id of ids) {
     const d = map[id]
-    console.log(` - ${id} ${d ? `(${d._type} | ${d.title || ''} ${d.sku ? `| ${d.sku}` : ''})` : ''}`)
+    console.log(
+      ` - ${id} ${d ? `(${d._type} | ${d.title || ''} ${d.sku ? `| ${d.sku}` : ''})` : ''}`,
+    )
   }
   if (!yes) {
     console.log('\nDry run. Add --yes to perform deletion.')
@@ -122,7 +126,7 @@ async function deleteIds(ids, yes) {
     tx.delete(id)
     tx.delete(`drafts.${id}`)
   }
-  await tx.commit({ visibility: 'async' })
+  await tx.commit({visibility: 'async'})
   console.log('Delete requested. It may take a moment to reflect in queries.')
 }
 
@@ -135,11 +139,19 @@ async function main() {
   if (args.id || args.ids) {
     const ids = []
     if (args.id) ids.push(args.id)
-    if (args.ids) ids.push(...String(args.ids).split(',').map((s) => s.trim()).filter(Boolean))
+    if (args.ids)
+      ids.push(
+        ...String(args.ids)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      )
     return deleteIds(ids, args.yes || args.delete)
   }
   return usage()
 }
 
-main().catch((e) => { console.error(e); process.exit(1) })
-
+main().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

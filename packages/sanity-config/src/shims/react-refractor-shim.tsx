@@ -23,7 +23,10 @@ function Refractor(props: Props) {
 }
 
 const registered = new Set<string>()
-;(Refractor as any).registerLanguage = (lang: {displayName?: string; alias?: string|string[]}) => {
+;(Refractor as any).registerLanguage = (lang: {
+  displayName?: string
+  alias?: string | string[]
+}) => {
   // Accept language modules but only record their displayName/alias to satisfy hasLanguage checks
   const names: string[] = []
   if (lang && typeof lang === 'object') {
@@ -41,4 +44,3 @@ export default Refractor as unknown as {
   registerLanguage: (lang: any) => void
   hasLanguage: (name: string) => boolean
 }
-

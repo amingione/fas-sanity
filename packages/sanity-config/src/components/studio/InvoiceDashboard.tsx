@@ -64,8 +64,7 @@ const shortDate = new Intl.DateTimeFormat('en-US', {
   year: '2-digit',
 })
 
-const GRID_TEMPLATE_COLUMNS =
-  '40px 160px 140px 160px minmax(220px, 1fr) 140px 160px 140px'
+const GRID_TEMPLATE_COLUMNS = '40px 160px 140px 160px minmax(220px, 1fr) 140px 160px 140px'
 const GRID_COLUMN_GAP = 12
 const INVOICE_STICKY_LEFT = 40 + GRID_COLUMN_GAP
 const HEADER_BACKGROUND_COLOR = '#ffffff'
@@ -325,7 +324,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
       }
       setSelectedIds(new Set(filteredInvoices.map((invoice) => invoice.id)))
     },
-    [filteredInvoices]
+    [filteredInvoices],
   )
 
   useEffect(() => {
@@ -357,7 +356,9 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
       return
     }
     if (
-      !window.confirm(`Mark ${selectedIds.size} invoice${selectedIds.size === 1 ? '' : 's'} as paid?`)
+      !window.confirm(
+        `Mark ${selectedIds.size} invoice${selectedIds.size === 1 ? '' : 's'} as paid?`,
+      )
     ) {
       return
     }
@@ -451,8 +452,10 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
     if (invoice.isOverdue) return 'text-rose-600 bg-rose-50 border border-rose-100'
     if (invoice.status === 'paid') return 'text-emerald-600 bg-emerald-50 border border-emerald-100'
     if (invoice.status === 'refunded') return 'text-sky-600 bg-sky-50 border border-sky-100'
-    if (invoice.status === 'partially_refunded') return 'text-amber-600 bg-amber-50 border border-amber-100'
-    if (invoice.status === 'cancelled') return 'text-[var(--studio-muted)] bg-[var(--studio-surface-soft)] border border-[var(--studio-border)]'
+    if (invoice.status === 'partially_refunded')
+      return 'text-amber-600 bg-amber-50 border border-amber-100'
+    if (invoice.status === 'cancelled')
+      return 'text-[var(--studio-muted)] bg-[var(--studio-surface-soft)] border border-[var(--studio-border)]'
     return 'text-amber-600 bg-amber-50 border border-amber-100'
   }
 
@@ -464,7 +467,9 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
       >
         <div
           className={`sticky top-0 z-20 flex flex-col gap-4 px-4 transition-all duration-200 backdrop-blur sm:px-6 ${
-            compactHeader ? 'py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between' : 'py-5 sm:flex-row sm:items-start sm:justify-between'
+            compactHeader
+              ? 'py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between'
+              : 'py-5 sm:flex-row sm:items-start sm:justify-between'
           }`}
           style={{background: 'var(--studio-surface-strong)'}}
         >
@@ -498,7 +503,9 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                   aria-haspopup="menu"
                   aria-expanded={batchMenuOpen}
                   className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-[var(--studio-border-strong)] px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 ${
-                    hasSelections ? 'text-[var(--studio-muted)] hover:bg-[var(--studio-surface-soft)]' : 'text-[rgba(148,163,184,0.7)] hover:bg-[var(--studio-surface-strong)]'
+                    hasSelections
+                      ? 'text-[var(--studio-muted)] hover:bg-[var(--studio-surface-soft)]'
+                      : 'text-[rgba(148,163,184,0.7)] hover:bg-[var(--studio-surface-strong)]'
                   } ${batchMenuOpen ? 'bg-[var(--studio-surface-soft)]' : ''} disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {batchLoading ? 'Working…' : 'Batch actions'}
@@ -518,7 +525,11 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                       className="flex w-full items-center justify-between px-3 py-2 text-sm text-[var(--studio-text)] transition hover:bg-[var(--studio-surface-soft)] disabled:cursor-not-allowed disabled:text-[rgba(148,163,184,0.7)]"
                     >
                       <span>Mark selected paid</span>
-                      {hasSelections ? <span className="text-xs text-[rgba(148,163,184,0.7)]">{selectedIds.size}</span> : null}
+                      {hasSelections ? (
+                        <span className="text-xs text-[rgba(148,163,184,0.7)]">
+                          {selectedIds.size}
+                        </span>
+                      ) : null}
                     </button>
                   </div>
                 ) : null}
@@ -624,7 +635,10 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-auto" style={{background: 'var(--studio-surface-overlay)'}}>
+        <div
+          className="flex-1 min-h-0 overflow-auto"
+          style={{background: 'var(--studio-surface-overlay)'}}
+        >
           <div className="px-6 py-4">
             <div className="rounded-xl border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] shadow-sm">
               <div style={{overflowX: 'auto'}}>
@@ -643,7 +657,13 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                       background: HEADER_BACKGROUND_COLOR,
                     }}
                   >
-                    <span style={{...STICKY_CHECKBOX_BASE, background: HEADER_BACKGROUND_COLOR, zIndex: 4}}>
+                    <span
+                      style={{
+                        ...STICKY_CHECKBOX_BASE,
+                        background: HEADER_BACKGROUND_COLOR,
+                        zIndex: 4,
+                      }}
+                    >
                       <input
                         ref={selectAllRef}
                         type="checkbox"
@@ -673,28 +693,42 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                   {error ? (
                     <div
                       className="text-sm text-rose-600"
-                      style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
+                      style={{
+                        padding: '20px 24px',
+                        width: 'max-content',
+                        background: ROW_BACKGROUND_COLOR,
+                      }}
                     >
                       {error}
                     </div>
                   ) : loading ? (
                     <div
                       className="text-sm text-[var(--studio-muted)]"
-                      style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
+                      style={{
+                        padding: '20px 24px',
+                        width: 'max-content',
+                        background: ROW_BACKGROUND_COLOR,
+                      }}
                     >
                       Loading invoices…
                     </div>
                   ) : filteredInvoices.length === 0 ? (
                     <div
                       className="text-sm text-[var(--studio-muted)]"
-                      style={{padding: '20px 24px', width: 'max-content', background: ROW_BACKGROUND_COLOR}}
+                      style={{
+                        padding: '20px 24px',
+                        width: 'max-content',
+                        background: ROW_BACKGROUND_COLOR,
+                      }}
                     >
                       No invoices match the current filters.
                     </div>
                   ) : (
                     filteredInvoices.map((invoice) => {
                       const isSelected = selectedIds.has(invoice.id)
-                      const rowBackground = isSelected ? ROW_SELECTED_BACKGROUND : ROW_BACKGROUND_COLOR
+                      const rowBackground = isSelected
+                        ? ROW_SELECTED_BACKGROUND
+                        : ROW_BACKGROUND_COLOR
 
                       return (
                         <div
@@ -740,13 +774,20 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                             {invoice.invoiceNumber}
                           </span>
                           <span className="text-[var(--studio-muted)]">
-                            {invoice.invoiceDateIso ? shortDate.format(new Date(invoice.invoiceDateIso)) : '—'}
+                            {invoice.invoiceDateIso
+                              ? shortDate.format(new Date(invoice.invoiceDateIso))
+                              : '—'}
                           </span>
                           <span className="text-[var(--studio-muted)]">
-                            {invoice.dueDateIso ? shortDate.format(new Date(invoice.dueDateIso)) : '—'}
+                            {invoice.dueDateIso
+                              ? shortDate.format(new Date(invoice.dueDateIso))
+                              : '—'}
                           </span>
                           <span className="text-[var(--studio-text)]">{invoice.customerName}</span>
-                          <span style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}} className="font-medium text-[var(--studio-text)]">
+                          <span
+                            style={{textAlign: 'right', fontVariantNumeric: 'tabular-nums'}}
+                            className="font-medium text-[var(--studio-text)]"
+                          >
                             {currency.format(invoice.amount || 0)}
                           </span>
                           <span>
@@ -795,11 +836,15 @@ const SummaryCard: React.FC<{
   return (
     <div className="flex h-full min-h-[115px] flex-col justify-between rounded-md border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2.5 shadow-sm">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--studio-muted)]">{subtitle}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+          {subtitle}
+        </p>
         <h3 className="mt-1 text-sm font-semibold text-[var(--studio-text)]">{title}</h3>
       </div>
       <div>
-        <p className="text-base font-semibold text-[var(--studio-text)]">{currency.format(amount || 0)}</p>
+        <p className="text-base font-semibold text-[var(--studio-text)]">
+          {currency.format(amount || 0)}
+        </p>
         {footer ? footer : null}
       </div>
     </div>

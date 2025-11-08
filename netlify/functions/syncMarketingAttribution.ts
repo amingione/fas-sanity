@@ -110,7 +110,11 @@ function loadSecrets(): MarketingSecrets {
       adAccountId: process.env.FACEBOOK_AD_ACCOUNT_ID || process.env.META_AD_ACCOUNT_ID,
     },
     email: {
-      provider: process.env.SENDGRID_API_KEY ? 'sendgrid' : process.env.KLAVIYO_PRIVATE_KEY ? 'klaviyo' : undefined,
+      provider: process.env.SENDGRID_API_KEY
+        ? 'sendgrid'
+        : process.env.KLAVIYO_PRIVATE_KEY
+          ? 'klaviyo'
+          : undefined,
       sendgrid: {
         apiKey: process.env.SENDGRID_API_KEY,
         category: process.env.SENDGRID_CATEGORY,
@@ -125,7 +129,8 @@ function loadSecrets(): MarketingSecrets {
       token: process.env.AFFILIATE_API_TOKEN,
     },
     organic: {
-      endpoint: process.env.DIRECT_ANALYTICS_ENDPOINT || process.env.NETLIFY_ANALYTICS_SYNC_ENDPOINT,
+      endpoint:
+        process.env.DIRECT_ANALYTICS_ENDPOINT || process.env.NETLIFY_ANALYTICS_SYNC_ENDPOINT,
       token: process.env.DIRECT_ANALYTICS_TOKEN,
     },
     sanity: {
@@ -139,9 +144,14 @@ function loadSecrets(): MarketingSecrets {
 const marketingSecrets = loadSecrets()
 
 const SANITY_PROJECT_ID =
-  marketingSecrets?.sanity?.projectId || process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
+  marketingSecrets?.sanity?.projectId ||
+  process.env.SANITY_STUDIO_PROJECT_ID ||
+  process.env.SANITY_PROJECT_ID
 const SANITY_DATASET =
-  marketingSecrets?.sanity?.dataset || process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+  marketingSecrets?.sanity?.dataset ||
+  process.env.SANITY_STUDIO_DATASET ||
+  process.env.SANITY_DATASET ||
+  'production'
 const SANITY_TOKEN =
   marketingSecrets?.sanity?.token || process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN
 
@@ -276,7 +286,9 @@ export const handler: Handler = async (event) => {
   }
 }
 
-function resolveDateRange(params: Record<string, string | undefined> | null | undefined): DateRange {
+function resolveDateRange(
+  params: Record<string, string | undefined> | null | undefined,
+): DateRange {
   const today = new Date()
   const endParam = params?.end || params?.to
   const startParam = params?.start || params?.from
@@ -371,7 +383,9 @@ async function fetchGoogleAdsMetrics(
         spend: typeof costMicros === 'number' ? costMicros / 1_000_000 : undefined,
       },
       conversionType: 'purchase',
-      conversionValue: coerceNumber(row?.metrics?.conversionsValue ?? row?.metrics?.conversions_value),
+      conversionValue: coerceNumber(
+        row?.metrics?.conversionsValue ?? row?.metrics?.conversions_value,
+      ),
       dateRange: range,
     }
   })
@@ -421,10 +435,12 @@ async function fetchMetaAdsMetrics(
 
   return rows.map((row) => {
     const purchases =
-      row?.actions?.find((action: any) => action?.action_type === 'offsite_conversion.purchase')?.value ||
-      row?.actions?.find((action: any) => action?.action_type === 'purchase')?.value
+      row?.actions?.find((action: any) => action?.action_type === 'offsite_conversion.purchase')
+        ?.value || row?.actions?.find((action: any) => action?.action_type === 'purchase')?.value
     const purchaseValue =
-      row?.action_values?.find((action: any) => action?.action_type === 'offsite_conversion.purchase')?.value ||
+      row?.action_values?.find(
+        (action: any) => action?.action_type === 'offsite_conversion.purchase',
+      )?.value ||
       row?.action_values?.find((action: any) => action?.action_type === 'purchase')?.value
 
     return {
@@ -546,8 +562,12 @@ async function fetchKlaviyoMetrics(
     medium: 'email',
     dateRange: {start: range.start, end: range.end},
     metrics: {
-      opens: coerceNumber(row?.attributes?.statistic?.total_open ?? row?.attributes?.statistics?.opens),
-      clickThroughs: coerceNumber(row?.attributes?.statistic?.total_click ?? row?.attributes?.statistics?.clicks),
+      opens: coerceNumber(
+        row?.attributes?.statistic?.total_open ?? row?.attributes?.statistics?.opens,
+      ),
+      clickThroughs: coerceNumber(
+        row?.attributes?.statistic?.total_click ?? row?.attributes?.statistics?.clicks,
+      ),
     },
   }))
 }

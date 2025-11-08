@@ -48,23 +48,19 @@ type SanityProduct = {
 }
 
 const SFTP_HOST =
-  process.env.GOOGLE_MERCHANT_SFTP_HOST ||
-  process.env.GMC_SFTP_HOST ||
-  'partnerupload.google.com'
+  process.env.GOOGLE_MERCHANT_SFTP_HOST || process.env.GMC_SFTP_HOST || 'partnerupload.google.com'
 const SFTP_PORT = Number(
-  process.env.GOOGLE_MERCHANT_SFTP_PORT || process.env.GMC_SFTP_PORT || 19321
+  process.env.GOOGLE_MERCHANT_SFTP_PORT || process.env.GMC_SFTP_PORT || 19321,
 )
-const SFTP_USERNAME =
-  process.env.GOOGLE_MERCHANT_SFTP_USERNAME || process.env.GMC_SFTP_USERNAME
-const SFTP_PASSWORD =
-  process.env.GOOGLE_MERCHANT_SFTP_PASSWORD || process.env.GMC_SFTP_PASSWORD
+const SFTP_USERNAME = process.env.GOOGLE_MERCHANT_SFTP_USERNAME || process.env.GMC_SFTP_USERNAME
+const SFTP_PASSWORD = process.env.GOOGLE_MERCHANT_SFTP_PASSWORD || process.env.GMC_SFTP_PASSWORD
 const SFTP_REMOTE_DIR = (
-  process.env.GOOGLE_MERCHANT_SFTP_REMOTE_DIR || process.env.GMC_SFTP_REMOTE_DIR || '/'
+  process.env.GOOGLE_MERCHANT_SFTP_REMOTE_DIR ||
+  process.env.GMC_SFTP_REMOTE_DIR ||
+  '/'
 ).replace(/\/?$/, '/')
 const SFTP_FILENAME =
-  process.env.GOOGLE_MERCHANT_SFTP_FILENAME ||
-  process.env.GMC_SFTP_FEED_FILENAME ||
-  'products.txt'
+  process.env.GOOGLE_MERCHANT_SFTP_FILENAME || process.env.GMC_SFTP_FEED_FILENAME || 'products.txt'
 const FEED_CURRENCY =
   process.env.GOOGLE_MERCHANT_FEED_CURRENCY || process.env.GMC_FEED_CURRENCY || 'USD'
 const SITE_BASE_URL = (
@@ -92,9 +88,7 @@ function assertEnv() {
 }
 
 const SANITY_PROJECT_ID =
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
 const SANITY_DATASET =
   process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 

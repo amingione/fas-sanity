@@ -41,7 +41,7 @@ const BankAccountsTool = React.forwardRef<HTMLDivElement, Record<string, never>>
           routingLast4,
           status,
           defaultForChecks
-        }`
+        }`,
       )
       setAccounts(result)
     } catch (err: any) {
@@ -180,7 +180,8 @@ const BankAccountsTool = React.forwardRef<HTMLDivElement, Record<string, never>>
                 No accounts connected yet
               </Text>
               <Text size={1} muted style={{textAlign: 'center'}}>
-                Click “Connect bank account” to link your checking account with Stripe and start printing checks.
+                Click “Connect bank account” to link your checking account with Stripe and start
+                printing checks.
               </Text>
             </Flex>
           </Card>
@@ -194,10 +195,12 @@ const BankAccountsTool = React.forwardRef<HTMLDivElement, Record<string, never>>
                       {account.title || 'Connected Account'}
                     </Text>
                     <Text size={1} muted>
-                      {account.institutionName || 'Financial institution'} ••••{account.accountLast4 || '----'}
+                      {account.institutionName || 'Financial institution'} ••••
+                      {account.accountLast4 || '----'}
                     </Text>
                     <Text size={1}>
-                      Holder: {account.holderName || 'Unknown'} | Routing ••••{account.routingLast4 || '----'}
+                      Holder: {account.holderName || 'Unknown'} | Routing ••••
+                      {account.routingLast4 || '----'}
                     </Text>
                   </Stack>
                   <Flex direction="column" align="flex-end" gap={2}>
@@ -220,9 +223,10 @@ const BankAccountsTool = React.forwardRef<HTMLDivElement, Record<string, never>>
               How it works
             </Text>
             <Text size={1} muted>
-              When you connect a bank account, Stripe securely stores the routing and account numbers. We only display
-              the last four digits in the Studio and retrieve the full numbers on-demand when generating a printable
-              check. You can disconnect the account at any time from your Stripe dashboard.
+              When you connect a bank account, Stripe securely stores the routing and account
+              numbers. We only display the last four digits in the Studio and retrieve the full
+              numbers on-demand when generating a printable check. You can disconnect the account at
+              any time from your Stripe dashboard.
             </Text>
           </Stack>
         </Card>

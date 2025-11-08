@@ -17,7 +17,8 @@ export const productCustomizationType = defineType({
       type: 'text',
       rows: 2,
       title: 'Helper text',
-      description: 'Explain how the customization will be used (e.g. engraving text, initials, etc.).',
+      description:
+        'Explain how the customization will be used (e.g. engraving text, initials, etc.).',
     }),
     defineField({
       name: 'inputType',
@@ -46,7 +47,10 @@ export const productCustomizationType = defineType({
       type: 'number',
       title: 'Maximum length',
       description: 'Optional limit for text-based inputs.',
-      validation: (Rule) => Rule.min(1).max(500).warning('Values above 500 characters may not be supported by checkout providers.'),
+      validation: (Rule) =>
+        Rule.min(1)
+          .max(500)
+          .warning('Values above 500 characters may not be supported by checkout providers.'),
       hidden: ({parent}) => parent?.inputType === 'number',
     }),
   ],
@@ -56,8 +60,18 @@ export const productCustomizationType = defineType({
       required: 'required',
       inputType: 'inputType',
     },
-    prepare({title, required, inputType}: {title?: string; required?: boolean; inputType?: string}) {
-      const subtitleParts = [inputType === 'textarea' ? 'Paragraph' : inputType === 'number' ? 'Number' : 'Text']
+    prepare({
+      title,
+      required,
+      inputType,
+    }: {
+      title?: string
+      required?: boolean
+      inputType?: string
+    }) {
+      const subtitleParts = [
+        inputType === 'textarea' ? 'Paragraph' : inputType === 'number' ? 'Number' : 'Text',
+      ]
       if (required) subtitleParts.push('Required')
       return {
         title: title || 'Customization',
