@@ -21,7 +21,9 @@ if (!functionName) {
 }
 
 async function main() {
-  const fnModule = await import(path.resolve(process.cwd(), 'netlify/functions', `${functionName}.ts`)).catch(
+  const fnModule = await import(
+    path.resolve(process.cwd(), 'netlify/functions', `${functionName}.ts`)
+  ).catch(
     async () => import(path.resolve(process.cwd(), 'netlify/functions', `${functionName}.js`)),
   )
 

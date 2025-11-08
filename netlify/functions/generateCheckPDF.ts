@@ -6,12 +6,9 @@ import fs from 'fs'
 import path from 'path'
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
 
-const dataset =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
 const sanityToken = process.env.SANITY_API_TOKEN
 
@@ -65,7 +62,18 @@ const SMALL_NUMBERS = [
   'EIGHTEEN',
   'NINETEEN',
 ] as const
-const TENS = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'] as const
+const TENS = [
+  '',
+  '',
+  'TWENTY',
+  'THIRTY',
+  'FORTY',
+  'FIFTY',
+  'SIXTY',
+  'SEVENTY',
+  'EIGHTY',
+  'NINETY',
+] as const
 const SCALE = ['', 'THOUSAND', 'MILLION', 'BILLION'] as const
 
 function chunkToWords(num: number): string {
@@ -146,7 +154,7 @@ async function generateCheckPdf(checkId: string) {
       paymentDate,
       lineItems[]{category, description, amount}
     }`,
-    {id: checkId}
+    {id: checkId},
   )
 
   if (!check) {
@@ -165,7 +173,7 @@ async function generateCheckPdf(checkId: string) {
     check.bankAccount.stripeAccountId,
     {
       expand: ['account_numbers'],
-    } as any
+    } as any,
   )) as any
 
   const bankDetails = stripeAccount.account_numbers?.us_bank_account
@@ -216,7 +224,10 @@ async function generateCheckPdf(checkId: string) {
   doc.font('Helvetica')
   doc.text(amountFormatted, margin + usableWidth - doc.widthOfString(amountFormatted), payeeY)
 
-  doc.moveTo(margin, payeeY + 18).lineTo(margin + usableWidth, payeeY + 18).stroke()
+  doc
+    .moveTo(margin, payeeY + 18)
+    .lineTo(margin + usableWidth, payeeY + 18)
+    .stroke()
 
   // Amount in words line
   doc.text(`${amountWritten}***`, margin, payeeY + 28, {width: usableWidth})
@@ -240,11 +251,17 @@ async function generateCheckPdf(checkId: string) {
   doc.font('Helvetica')
 
   // MICR line
-  doc.font('MICR').fontSize(12).text(micrLine, margin, margin + checkHeight - 30)
+  doc
+    .font('MICR')
+    .fontSize(12)
+    .text(micrLine, margin, margin + checkHeight - 30)
   doc.font('Helvetica')
 
   // Divider for stubs
-  doc.moveTo(margin, margin + checkHeight).lineTo(margin + usableWidth, margin + checkHeight).stroke()
+  doc
+    .moveTo(margin, margin + checkHeight)
+    .lineTo(margin + usableWidth, margin + checkHeight)
+    .stroke()
 
   const stubHeight = (doc.page.height - margin - (margin + checkHeight)) / 2
 
@@ -266,7 +283,10 @@ async function generateCheckPdf(checkId: string) {
     doc.text(`Bank: ${institution}`, margin, stubTop + 84)
 
     const tableY = stubTop + 108
-    doc.moveTo(margin, tableY).lineTo(margin + usableWidth, tableY).stroke()
+    doc
+      .moveTo(margin, tableY)
+      .lineTo(margin + usableWidth, tableY)
+      .stroke()
     doc.font('Helvetica-Bold').text('#', margin, tableY + 6)
     doc.text('Category', margin + 20, tableY + 6)
     doc.text('Description', margin + 140, tableY + 6)
@@ -275,12 +295,15 @@ async function generateCheckPdf(checkId: string) {
 
     let currentY = tableY + 24
     lineItems.forEach((item, idx) => {
-      const amountText =
-        typeof item.amount === 'number' ? `$${Number(item.amount).toFixed(2)}` : ''
+      const amountText = typeof item.amount === 'number' ? `$${Number(item.amount).toFixed(2)}` : ''
       doc.text(String(idx + 1), margin, currentY)
       doc.text(item.category || '', margin + 20, currentY, {width: 110})
       doc.text(item.description || '', margin + 140, currentY, {width: usableWidth - 240})
-      doc.text(amountText, margin + usableWidth - doc.widthOfString(amountText || '') - 20, currentY)
+      doc.text(
+        amountText,
+        margin + usableWidth - doc.widthOfString(amountText || '') - 20,
+        currentY,
+      )
       currentY += 18
     })
 
@@ -321,7 +344,7 @@ async function generateBillCheck(billId: string) {
         address
       }
     }`,
-    {id: billId}
+    {id: billId},
   )
 
   if (!bill) {

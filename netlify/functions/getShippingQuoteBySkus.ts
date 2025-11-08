@@ -1,10 +1,12 @@
-import type { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
-import { getEasyPostFromAddress } from '../lib/ship-from'
-import { getEasyPostClient } from '../lib/easypostClient'
+import type {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
+import {getEasyPostFromAddress} from '../lib/ship-from'
+import {getEasyPostClient} from '../lib/easypostClient'
 
 // CORS helper (uses CORS_ALLOW like other functions)
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   let o = DEFAULT_ORIGINS[0]
   if (origin) {
@@ -28,23 +30,30 @@ const sanity = createClient({
   useCdn: false,
 })
 
-
-function parseDims(s?: string): { length: number; width: number; height: number; unit: 'inch' } | null {
+function parseDims(
+  s?: string,
+): {length: number; width: number; height: number; unit: 'inch'} | null {
   if (!s) return null
   const m = String(s).match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
   if (!m) return null
-  const [ , L, W, H ] = m
-  return { length: Number(L), width: Number(W), height: Number(H), unit: 'inch' as const }
+  const [, L, W, H] = m
+  return {length: Number(L), width: Number(W), height: Number(H), unit: 'inch' as const}
 }
 
-const isInstallOnlyClass = (value?: string) => typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
+const isInstallOnlyClass = (value?: string) =>
+  typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
 
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method Not Allowed' }) }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
+  if (event.httpMethod !== 'POST')
+    return {
+      statusCode: 405,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
+    }
 
   type CartItem = {
     sku?: string
@@ -54,7 +63,7 @@ export const handler: Handler = async (event) => {
     _id?: string
     title?: string
     name?: string
-    product?: { _id?: string; sku?: string; title?: string }
+    product?: {_id?: string; sku?: string; title?: string}
   }
   type Dest = {
     name?: string
@@ -78,17 +87,34 @@ export const handler: Handler = async (event) => {
   try {
     body = JSON.parse(event.body || '{}')
   } catch {
-    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON' }) }
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Invalid JSON'}),
+    }
   }
 
   const cart: CartItem[] = Array.isArray(body?.cart) ? body.cart : []
   const dest: Dest = body?.destination || body?.to || {}
 
   if (!Array.isArray(cart) || cart.length === 0) {
-    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing cart (skus + qty)' }) }
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Missing cart (skus + qty)'}),
+    }
   }
-  if (!dest || !(dest.addressLine1 || dest.address_line1) || !(dest.postalCode || dest.postal_code) || !(dest.country || dest.country_code)) {
-    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing destination address fields' }) }
+  if (
+    !dest ||
+    !(dest.addressLine1 || dest.address_line1) ||
+    !(dest.postalCode || dest.postal_code) ||
+    !(dest.country || dest.country_code)
+  ) {
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Missing destination address fields'}),
+    }
   }
 
   const toAddress = {
@@ -153,7 +179,7 @@ export const handler: Handler = async (event) => {
         ids,
         draftIds: ids.map((id) => `drafts.${id}`),
         titles,
-      }
+      },
     )
 
     const productBySku = new Map<string, any>()
@@ -178,11 +204,17 @@ export const handler: Handler = async (event) => {
     }
 
     let combinedWeight = 0
-    let maxDims = { ...defaultDims }
+    let maxDims = {...defaultDims}
     let freightRequired = false
     let shippableCount = 0
     const installOnlyItems: string[] = []
-    const soloPackages: Array<{ weight: number; dims: typeof defaultDims; sku?: string; title?: string; qty?: number }> = []
+    const soloPackages: Array<{
+      weight: number
+      dims: typeof defaultDims
+      sku?: string
+      title?: string
+      qty?: number
+    }> = []
     const missingProducts: string[] = []
 
     function resolveProduct(item: CartItem) {
@@ -243,7 +275,13 @@ export const handler: Handler = async (event) => {
       if (weight > 0) {
         if (shipsAlone) {
           for (let i = 0; i < qty; i++) {
-            soloPackages.push({ weight, dims: dims || defaultDims, sku: prod?.sku || identifier, title: prod?.title, qty: 1 })
+            soloPackages.push({
+              weight,
+              dims: dims || defaultDims,
+              sku: prod?.sku || identifier,
+              title: prod?.title,
+              qty: 1,
+            })
           }
         } else {
           combinedWeight += weight * qty
@@ -259,8 +297,13 @@ export const handler: Handler = async (event) => {
     if (shippableCount === 0) {
       return {
         statusCode: 200,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ installOnly: true, message: 'All items are install-only; schedule installation instead of shipping.', installOnlySkus: installOnlyItems, missingProducts }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          installOnly: true,
+          message: 'All items are install-only; schedule installation instead of shipping.',
+          installOnlySkus: installOnlyItems,
+          missingProducts,
+        }),
       }
     }
 
@@ -268,15 +311,32 @@ export const handler: Handler = async (event) => {
       combinedWeight = Number(process.env.DEFAULT_PACKAGE_WEIGHT_LBS || 5)
     }
 
-    const packages: Array<{ weight: { value: number; unit: 'pound' }; dimensions: typeof defaultDims; sku?: string; title?: string }> = []
-    if (combinedWeight > 0) packages.push({ weight: { value: combinedWeight, unit: 'pound' }, dimensions: maxDims })
-    for (const p of soloPackages) packages.push({ weight: { value: p.weight, unit: 'pound' }, dimensions: p.dims, sku: p.sku, title: p.title })
+    const packages: Array<{
+      weight: {value: number; unit: 'pound'}
+      dimensions: typeof defaultDims
+      sku?: string
+      title?: string
+    }> = []
+    if (combinedWeight > 0)
+      packages.push({weight: {value: combinedWeight, unit: 'pound'}, dimensions: maxDims})
+    for (const p of soloPackages)
+      packages.push({
+        weight: {value: p.weight, unit: 'pound'},
+        dimensions: p.dims,
+        sku: p.sku,
+        title: p.title,
+      })
 
     if (freightRequired) {
       return {
         statusCode: 200,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ freight: true, message: 'Freight required due to weight/dimensions or product class.', packages, installOnlySkus: installOnlyItems }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          freight: true,
+          message: 'Freight required due to weight/dimensions or product class.',
+          packages,
+          installOnlySkus: installOnlyItems,
+        }),
       }
     }
 
@@ -284,8 +344,14 @@ export const handler: Handler = async (event) => {
     if (!primaryPackage) {
       return {
         statusCode: 200,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ success: true, rates: [], packages, installOnlySkus: installOnlyItems, missingProducts }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          success: true,
+          rates: [],
+          packages,
+          installOnlySkus: installOnlyItems,
+          missingProducts,
+        }),
       }
     }
 
@@ -353,12 +419,26 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true, freight: false, bestRate, rates, packages, installOnlySkus: installOnlyItems, carrierId, serviceCode, missingProducts }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        success: true,
+        freight: false,
+        bestRate,
+        rates,
+        packages,
+        installOnlySkus: installOnlyItems,
+        carrierId,
+        serviceCode,
+        missingProducts,
+      }),
     }
   } catch (err: any) {
     console.error('getShippingQuoteBySkus error:', err)
-    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: err?.message || 'Server error' }) }
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: err?.message || 'Server error'}),
+    }
   }
 }
 

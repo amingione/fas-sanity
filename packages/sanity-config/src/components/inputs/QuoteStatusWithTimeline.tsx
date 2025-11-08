@@ -1,6 +1,6 @@
 import React from 'react'
-import { useFormValue, set, PatchEvent } from 'sanity'
-import { Stack, Card, Text, Select } from '@sanity/ui'
+import {useFormValue, set, PatchEvent} from 'sanity'
+import {Stack, Card, Text, Select} from '@sanity/ui'
 
 const statusOptions = ['Draft', 'Sent', 'Approved', 'Invoiced', 'Cancelled']
 
@@ -20,10 +20,7 @@ export default function QuoteStatusWithTimeline(props: any) {
 
     const updatedTimeline = [...(currentTimeline as any[]), newEntry]
 
-    props.onChange(PatchEvent.from([
-      set(newStatus),
-      set(updatedTimeline, ['timeline'])
-    ]))
+    props.onChange(PatchEvent.from([set(newStatus), set(updatedTimeline, ['timeline'])]))
   }
 
   return (
@@ -31,7 +28,7 @@ export default function QuoteStatusWithTimeline(props: any) {
       <Card padding={3} shadow={1} radius={2}>
         <Text size={1}>Quote Status</Text>
         <Select value={currentStatus} onChange={handleChange}>
-          {statusOptions.map(option => (
+          {statusOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>

@@ -7,7 +7,9 @@ import {
   syncCustomerDiscountRecord,
 } from '../lib/customerDiscounts'
 
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   let value = DEFAULT_ORIGINS[0]
   if (origin) {
@@ -162,7 +164,9 @@ export const handler: Handler = async (event) => {
       let discount: Stripe.Discount | null = null
       try {
         // Latest Stripe API supports explicit create endpoint but older versions rely on customer update
-        const response = (await stripe.customers.update(stripeCustomerId, {coupon: coupon.id})) as Stripe.Customer
+        const response = (await stripe.customers.update(stripeCustomerId, {
+          coupon: coupon.id,
+        })) as Stripe.Customer
         discount = (response.discount || null) as Stripe.Discount | null
       } catch (err) {
         console.warn('createCustomerDiscount: failed to update customer with coupon', err)

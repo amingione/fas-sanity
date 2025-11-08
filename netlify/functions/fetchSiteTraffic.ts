@@ -30,9 +30,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
       process.env.NETLIFY_AUTH_TOKEN ||
       process.env.NETLIFY_ACCESS_TOKEN
     const siteId =
-      process.env.NETLIFY_ANALYTICS_SITE_ID ||
-      process.env.NETLIFY_SITE_ID ||
-      process.env.SITE_ID
+      process.env.NETLIFY_ANALYTICS_SITE_ID || process.env.NETLIFY_SITE_ID || process.env.SITE_ID
 
     if (!token || !siteId) {
       return {
@@ -80,7 +78,10 @@ export const handler: Handler = async (event: HandlerEvent) => {
     return {
       statusCode: 500,
       headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store'},
-      body: JSON.stringify({error: 'Unexpected error', detail: err instanceof Error ? err.message : String(err)}),
+      body: JSON.stringify({
+        error: 'Unexpected error',
+        detail: err instanceof Error ? err.message : String(err),
+      }),
     }
   }
 }
@@ -91,9 +92,10 @@ function coerceRange(params: Record<string, string | null | undefined>) {
   const startParam = params.start ?? params.start_at ?? params.from ?? ''
   const endParam = params.end ?? params.end_at ?? params.to ?? ''
 
-  const end = endParam ? safeParseDate(endParam) ?? now : now
-  const start =
-    startParam ? safeParseDate(startParam) ?? subtractDays(end, defaultDays) : subtractDays(end, defaultDays)
+  const end = endParam ? (safeParseDate(endParam) ?? now) : now
+  const start = startParam
+    ? (safeParseDate(startParam) ?? subtractDays(end, defaultDays))
+    : subtractDays(end, defaultDays)
 
   return {start, end}
 }

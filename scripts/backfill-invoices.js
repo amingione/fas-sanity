@@ -7,11 +7,11 @@
 const path = require('path')
 const fs = require('fs')
 const dotenv = require('dotenv')
-const { createClient } = require('@sanity/client')
+const {createClient} = require('@sanity/client')
 
 for (const f of ['.env.local', '.env.development', '.env']) {
   const p = path.resolve(process.cwd(), f)
-  if (fs.existsSync(p)) dotenv.config({ path: p, override: false })
+  if (fs.existsSync(p)) dotenv.config({path: p, override: false})
 }
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID
@@ -22,7 +22,7 @@ if (!projectId || !dataset || !token) {
   process.exit(1)
 }
 
-const client = createClient({ projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false })
+const client = createClient({projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false})
 
 const ORDER_NUMBER_PREFIX = 'FAS'
 
@@ -38,7 +38,10 @@ function sanitizeOrderNumber(value) {
 
 function candidateFromSessionId(id) {
   if (!id) return undefined
-  const core = id.toString().trim().replace(/^cs_(?:test|live)_/i, '')
+  const core = id
+    .toString()
+    .trim()
+    .replace(/^cs_(?:test|live)_/i, '')
   const digits = core.replace(/\D/g, '')
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
   return undefined
@@ -70,11 +73,21 @@ function buildAddress(source, type, opts = {}) {
   const postal_code = pickString(source.postal_code, source.postalCode, source.zip)
   const country_code = pickString(source.country_code, source.country)
 
-  if (!name && !email && !phone && !address_line1 && !address_line2 && !city_locality && !state_province && !postal_code && !country_code) {
+  if (
+    !name &&
+    !email &&
+    !phone &&
+    !address_line1 &&
+    !address_line2 &&
+    !city_locality &&
+    !state_province &&
+    !postal_code &&
+    !country_code
+  ) {
     return undefined
   }
 
-  const base = { _type: type }
+  const base = {_type: type}
   if (name) base.name = name
   if (email) base.email = email
   if (phone) base.phone = phone
@@ -116,7 +129,7 @@ async function generateUniqueInvoiceNumber(existingCandidates = []) {
     if (!sanitized) continue
     const exists = await client.fetch(
       'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
-      { num: sanitized }
+      {num: sanitized},
     )
     if (!Number(exists)) return sanitized
   }
@@ -127,7 +140,7 @@ async function generateUniqueInvoiceNumber(existingCandidates = []) {
       .padStart(6, '0')}`
     const exists = await client.fetch(
       'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
-      { num: randomCandidate }
+      {num: randomCandidate},
     )
     if (!Number(exists)) return randomCandidate
   }
@@ -174,7 +187,7 @@ async function run() {
         dueDate,
         _createdAt
       }[0...$limit]`,
-      { cursor, limit }
+      {cursor, limit},
     )
     if (!docs?.length) break
 
@@ -200,7 +213,7 @@ async function run() {
               stripeSessionId,
               totalAmount
             }`,
-            { id: orderRefId }
+            {id: orderRefId},
           )
         } catch {
           orderDoc = null
@@ -208,50 +221,69 @@ async function run() {
       }
 
       // Migrate refs
-      if (!d.customerRef && d.customer?. _ref) { setOps.customerRef = { _type: 'reference', _ref: d.customer._ref }; unsetOps.push('customer') }
-      else if (d.customer) unsetOps.push('customer')
-      if (!d.orderRef && d.order?. _ref) { setOps.orderRef = { _type: 'reference', _ref: d.order._ref }; unsetOps.push('order') }
-      else if (d.order) unsetOps.push('order')
+      if (!d.customerRef && d.customer?._ref) {
+        setOps.customerRef = {_type: 'reference', _ref: d.customer._ref}
+        unsetOps.push('customer')
+      } else if (d.customer) unsetOps.push('customer')
+      if (!d.orderRef && d.order?._ref) {
+        setOps.orderRef = {_type: 'reference', _ref: d.order._ref}
+        unsetOps.push('order')
+      } else if (d.order) unsetOps.push('order')
 
       // Normalize line items: add _key if missing and convert legacy _type: 'lineItem' to 'invoiceLineItem'
       if (Array.isArray(d.lineItems)) {
         const hasMissingKeys = d.lineItems.some((it) => it && typeof it === 'object' && !it._key)
-        const hasLegacy = d.lineItems.some((it) => it && typeof it === 'object' && it._type === 'lineItem')
+        const hasLegacy = d.lineItems.some(
+          (it) => it && typeof it === 'object' && it._type === 'lineItem',
+        )
         if (hasLegacy) {
           // Try to link products via order cart when available
           const orderCart = Array.isArray(orderDoc?.cart) ? orderDoc.cart : []
 
-          const mapped = await Promise.all(d.lineItems.map(async (li) => {
-            if (!li || typeof li !== 'object') return li
-            if (li._type !== 'lineItem') return li
-            const qty = Number(li.quantity || 1)
-            const lineTotal = Number(li.amount_total || li.line_total || 0)
-            const unitPrice = qty > 0 && Number.isFinite(lineTotal) ? (lineTotal / qty) : undefined
-            const desc = (li.description || li.name || '').toString()
-            // Find in order cart by name
-            let sku = ''
-            let productId = ''
-            const match = orderCart.find((c) => (c?.name || '').toString() === desc)
-            if (match) {
-              sku = (match.sku || '').toString()
-            }
-            if (sku) {
-              try { productId = await client.fetch(`*[_type == "product" && sku == $sku][0]._id`, { sku }) || '' } catch {}
-            }
-            if (!productId && desc) {
-              try { productId = await client.fetch(`*[_type == "product" && title == $t][0]._id`, { t: desc }) || '' } catch {}
-            }
-            return {
-              _type: 'invoiceLineItem',
-              _key: li._key,
-              description: desc || undefined,
-              quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
-              unitPrice: typeof unitPrice === 'number' && Number.isFinite(unitPrice) ? unitPrice : undefined,
-              lineTotal: Number.isFinite(lineTotal) && lineTotal > 0 ? lineTotal : undefined,
-              sku: sku || undefined,
-              product: productId ? { _type: 'reference', _ref: productId } : undefined,
-            }
-          }))
+          const mapped = await Promise.all(
+            d.lineItems.map(async (li) => {
+              if (!li || typeof li !== 'object') return li
+              if (li._type !== 'lineItem') return li
+              const qty = Number(li.quantity || 1)
+              const lineTotal = Number(li.amount_total || li.line_total || 0)
+              const unitPrice = qty > 0 && Number.isFinite(lineTotal) ? lineTotal / qty : undefined
+              const desc = (li.description || li.name || '').toString()
+              // Find in order cart by name
+              let sku = ''
+              let productId = ''
+              const match = orderCart.find((c) => (c?.name || '').toString() === desc)
+              if (match) {
+                sku = (match.sku || '').toString()
+              }
+              if (sku) {
+                try {
+                  productId =
+                    (await client.fetch(`*[_type == "product" && sku == $sku][0]._id`, {sku})) || ''
+                } catch {}
+              }
+              if (!productId && desc) {
+                try {
+                  productId =
+                    (await client.fetch(`*[_type == "product" && title == $t][0]._id`, {
+                      t: desc,
+                    })) || ''
+                } catch {}
+              }
+              return {
+                _type: 'invoiceLineItem',
+                _key: li._key,
+                description: desc || undefined,
+                quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+                unitPrice:
+                  typeof unitPrice === 'number' && Number.isFinite(unitPrice)
+                    ? unitPrice
+                    : undefined,
+                lineTotal: Number.isFinite(lineTotal) && lineTotal > 0 ? lineTotal : undefined,
+                sku: sku || undefined,
+                product: productId ? {_type: 'reference', _ref: productId} : undefined,
+              }
+            }),
+          )
           setOps.lineItems = mapped
           legacyConverted++
         } else if (hasMissingKeys) {
@@ -276,7 +308,12 @@ async function run() {
       const desiredOrderNumberFromOrder = sanitizeOrderNumber(orderDoc?.orderNumber)
       if (desiredOrderNumberFromOrder && desiredOrderNumberFromOrder !== d.orderNumber) {
         setOps.orderNumber = desiredOrderNumberFromOrder
-      } else if (!desiredOrderNumberFromOrder && setOps.invoiceNumber && d.orderNumber !== setOps.invoiceNumber && orderRefId) {
+      } else if (
+        !desiredOrderNumberFromOrder &&
+        setOps.invoiceNumber &&
+        d.orderNumber !== setOps.invoiceNumber &&
+        orderRefId
+      ) {
         setOps.orderNumber = setOps.invoiceNumber
       }
 
@@ -284,12 +321,12 @@ async function run() {
       const fallbackName = pickString(
         d?.billTo?.name,
         orderDoc?.customerName,
-        orderDoc?.shippingAddress?.name
+        orderDoc?.shippingAddress?.name,
       )
       const shippingSource = orderDoc?.shippingAddress
 
       if (!d.billTo && shippingSource) {
-        const billFromOrder = buildAddress(shippingSource, 'billTo', { fallbackEmail, fallbackName })
+        const billFromOrder = buildAddress(shippingSource, 'billTo', {fallbackEmail, fallbackName})
         if (billFromOrder) {
           setOps.billTo = billFromOrder
           billToFilled++
@@ -297,20 +334,21 @@ async function run() {
       }
 
       if (!d.shipTo && shippingSource) {
-        const shipFromOrder = buildAddress(shippingSource, 'shipTo', { fallbackEmail, fallbackName })
+        const shipFromOrder = buildAddress(shippingSource, 'shipTo', {fallbackEmail, fallbackName})
         if (shipFromOrder) {
           setOps.shipTo = shipFromOrder
           shipToFilled++
         } else if (setOps.billTo) {
-          setOps.shipTo = { ...setOps.billTo, _type: 'shipTo' }
+          setOps.shipTo = {...setOps.billTo, _type: 'shipTo'}
           shipToFilled++
         }
       }
 
-      const currentTaxRate = typeof d.taxRate === 'number' && !Number.isNaN(d.taxRate) ? d.taxRate : undefined
+      const currentTaxRate =
+        typeof d.taxRate === 'number' && !Number.isNaN(d.taxRate) ? d.taxRate : undefined
       const computedTaxRate = computeTaxRateFromAmounts(
         d.amountSubtotal ?? orderDoc?.amountSubtotal,
-        d.amountTax ?? orderDoc?.amountTax
+        d.amountTax ?? orderDoc?.amountTax,
       )
       if (typeof computedTaxRate === 'number') {
         if (currentTaxRate === undefined || Math.abs(currentTaxRate - computedTaxRate) > 0.01) {
@@ -331,15 +369,23 @@ async function run() {
       }
 
       const orderNumberForTitle =
-        sanitizeOrderNumber(setOps.orderNumber || d.orderNumber || orderDoc?.orderNumber || setOps.invoiceNumber || d.invoiceNumber) || ''
+        sanitizeOrderNumber(
+          setOps.orderNumber ||
+            d.orderNumber ||
+            orderDoc?.orderNumber ||
+            setOps.invoiceNumber ||
+            d.invoiceNumber,
+        ) || ''
       const nameForTitle = pickString(
         d?.billTo?.name,
         (setOps.billTo || {}).name,
         orderDoc?.customerName,
         orderDoc?.shippingAddress?.name,
-        fallbackEmail
+        fallbackEmail,
       )
-      const desiredTitle = orderNumberForTitle ? `${nameForTitle || 'Invoice'} • ${orderNumberForTitle}` : nameForTitle || d.title
+      const desiredTitle = orderNumberForTitle
+        ? `${nameForTitle || 'Invoice'} • ${orderNumberForTitle}`
+        : nameForTitle || d.title
       if (desiredTitle && desiredTitle !== d.title) {
         setOps.title = desiredTitle
         titleUpdated++
@@ -349,7 +395,11 @@ async function run() {
         changed++
         if (!dry) {
           try {
-            await client.patch(d._id).set(setOps).unset(unsetOps).commit({ autoGenerateArrayKeys: true })
+            await client
+              .patch(d._id)
+              .set(setOps)
+              .unset(unsetOps)
+              .commit({autoGenerateArrayKeys: true})
           } catch (e) {
             console.warn('Patch failed for', d._id, e?.message || e)
           }
@@ -380,9 +430,12 @@ async function run() {
         datesUpdated,
       },
       null,
-      2
-    )
+      2,
+    ),
   )
 }
 
-run().catch((e) => { console.error(e); process.exit(1) })
+run().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

@@ -19,9 +19,7 @@ const resolvedHostname =
   'localhost'
 
 const resolvedPort =
-  parsePort(process.env.SANITY_STUDIO_PORT) ||
-  parsePort(process.env.PORT) ||
-  3333
+  parsePort(process.env.SANITY_STUDIO_PORT) || parsePort(process.env.PORT) || 3333
 
 const defaultAppId = 'ps4wgpv9q82jyqj4k9x6uxol'
 const resolvedAppId = process.env.SANITY_STUDIO_APP_ID?.trim() || defaultAppId

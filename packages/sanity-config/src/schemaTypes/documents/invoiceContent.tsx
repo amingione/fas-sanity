@@ -51,7 +51,8 @@ function useMaybeFormValue<T = unknown>(path: FormValuePath): T | undefined {
 
 function getFnBase(): string {
   // Prefer env (works in Node/CLI). In Studio, you can also store an override in localStorage under 'NLFY_BASE'.
-  const envBase = typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  const envBase =
+    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
   if (envBase) return envBase
   try {
     if (typeof window !== 'undefined') {
@@ -70,7 +71,10 @@ const DEFAULT_INVOICE_PREFIX = (() => {
     typeof process !== 'undefined'
       ? process.env?.SANITY_STUDIO_INVOICE_PREFIX || process.env?.INVOICE_PREFIX
       : undefined
-  const cleaned = (raw || 'INV').toString().replace(/[^a-z0-9]/gi, '').toUpperCase()
+  const cleaned = (raw || 'INV')
+    .toString()
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase()
   return cleaned || 'INV'
 })()
 
@@ -136,7 +140,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
 function InvoiceNumberInput(props: any) {
-  const { value, onChange, readOnly: readOnlyProp, elementProps = {} } = props
+  const {value, onChange, readOnly: readOnlyProp, elementProps = {}} = props
   const client = useClient({apiVersion: '2024-10-01'})
   const documentId = useMaybeFormValue<string>(['_id']) ?? ''
   const orderNumber = useMaybeFormValue<string>(['orderNumber']) ?? ''
@@ -436,7 +440,10 @@ function ShipToInput(props: any) {
   )
 }
 
-const INVOICE_STATUS_META: Record<string, {label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}> = {
+const INVOICE_STATUS_META: Record<
+  string,
+  {label: string; tone: 'default' | 'positive' | 'critical' | 'caution'}
+> = {
   pending: {label: 'Pending', tone: 'caution'},
   paid: {label: 'Paid', tone: 'positive'},
   refunded: {label: 'Refunded', tone: 'caution'},
@@ -523,9 +530,13 @@ function useInvoiceActions(): InvoiceActionSet {
       const weightValue =
         typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1'
       const dimensionValue =
-        typeof window !== 'undefined' ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim() : '10x8x4'
+        typeof window !== 'undefined'
+          ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim()
+          : '10x8x4'
 
-      const dimensionMatch = dimensionValue.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
+      const dimensionMatch = dimensionValue.match(
+        /(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/,
+      )
       if (!dimensionMatch) throw new Error('Invalid dimensions')
       const length = Number(dimensionMatch[1])
       const width = Number(dimensionMatch[2])
@@ -608,14 +619,19 @@ function InvoiceHeaderBar() {
 
   return (
     <Card padding={4} radius={4} shadow={1} tone="default">
-      <Flex align={["flex-start", "center"]} justify="space-between" wrap="wrap" gap={3}>
+      <Flex align={['flex-start', 'center']} justify="space-between" wrap="wrap" gap={3}>
         <Stack space={2} style={{minWidth: 0}}>
           <Heading size={3}>{customerName}</Heading>
           <Text muted size={1} style={{wordBreak: 'break-word'}}>
             Invoice {invoiceNumber}
           </Text>
           <Flex gap={2} wrap="wrap">
-            <Badge tone={statusMeta.tone} mode="outline" fontSize={0} style={{textTransform: 'uppercase'}}>
+            <Badge
+              tone={statusMeta.tone}
+              mode="outline"
+              fontSize={0}
+              style={{textTransform: 'uppercase'}}
+            >
               {statusMeta.label}
             </Badge>
             <Badge tone="default" mode="outline" fontSize={0}>
@@ -625,7 +641,9 @@ function InvoiceHeaderBar() {
         </Stack>
         <MenuButton
           id="invoice-actions-menu"
-          button={<Button text="Quick actions" icon={EllipsisVerticalIcon} mode="ghost" tone="primary" />}
+          button={
+            <Button text="Quick actions" icon={EllipsisVerticalIcon} mode="ghost" tone="primary" />
+          }
           menu={
             <Menu>
               <MenuItem
@@ -656,7 +674,7 @@ function TotalsPanel() {
   const amountShippingRaw = useMaybeFormValue<any>(['amountShipping'])
   const selectedService = useMaybeFormValue<any>(['selectedService']) ?? {}
   const selectedServiceAmount = Number(
-    selectedService?.amount ?? (selectedService?.rateAmount || selectedService?.price || 0)
+    selectedService?.amount ?? (selectedService?.rateAmount || selectedService?.price || 0),
   )
 
   const subtotal = useMemo(() => {
@@ -679,9 +697,7 @@ function TotalsPanel() {
   const taxAmount = taxableBase * (taxRate / 100)
   const shippingAmount = useMemo(() => {
     const direct =
-      typeof amountShippingRaw === 'number'
-        ? amountShippingRaw
-        : Number(amountShippingRaw)
+      typeof amountShippingRaw === 'number' ? amountShippingRaw : Number(amountShippingRaw)
     if (Number.isFinite(direct) && direct !== 0) return direct
     const fallback = Number(selectedServiceAmount)
     return Number.isFinite(fallback) ? fallback : 0
@@ -756,7 +772,7 @@ export default defineType({
   title: 'Invoice',
   type: 'document',
   fields: [
-    defineField({ name: 'title', title: 'Title', type: 'string' }),
+    defineField({name: 'title', title: 'Title', type: 'string'}),
 
     defineField({
       name: 'invoiceHeader',
@@ -771,8 +787,8 @@ export default defineType({
       title: 'Invoice Number',
       type: 'string',
       description: `Auto-fills. If linked to a website order, this matches the order number; otherwise a ${DEFAULT_INVOICE_PREFIX}-###### number is generated while Pending. Must be unique.`,
-      components: { input: InvoiceNumberInput },
-      readOnly: ({ document }: any): boolean =>
+      components: {input: InvoiceNumberInput},
+      readOnly: ({document}: any): boolean =>
         !!document?.orderNumber || (document?.status ? document.status !== 'pending' : false),
       validation: (Rule) =>
         Rule.required()
@@ -790,7 +806,7 @@ export default defineType({
               const client = getSanityClient()
               const id = (context as any)?.document?._id
               const query = `count(*[ _type == "invoice" && invoiceNumber == $num && _id != $id ])`
-              const count = await client.fetch(query, { num: value, id })
+              const count = await client.fetch(query, {num: value, id})
               if (count > 0) return 'Invoice number must be unique'
               return true
             } catch {
@@ -812,22 +828,56 @@ export default defineType({
       name: 'customerRef',
       title: 'Linked Customer',
       type: 'reference',
-      to: [{ type: 'customer' }],
+      to: [{type: 'customer'}],
       readOnly: true,
       description: 'Set automatically when you pick or create a customer via Bill To.',
     }),
 
-    defineField({ name: 'quote', title: 'Related Quote', type: 'reference', to: [{ type: 'buildQuote' }] }),
+    defineField({
+      name: 'quote',
+      title: 'Related Quote',
+      type: 'reference',
+      to: [{type: 'buildQuote'}],
+    }),
 
     // Link to Order (if created from website checkout)
-    defineField({ name: 'orderRef', title: 'Related Order', type: 'reference', to: [{ type: 'order' }] }),
+    defineField({
+      name: 'orderRef',
+      title: 'Related Order',
+      type: 'reference',
+      to: [{type: 'order'}],
+    }),
     // Legacy compatibility (hidden): previously used `order` and `customer` field names
-    defineField({ name: 'order', title: 'Order (legacy)', type: 'reference', to: [{ type: 'order' }], hidden: true, options: { disableNew: true } }),
-    defineField({ name: 'customer', title: 'Customer (legacy)', type: 'reference', to: [{ type: 'customer' }], hidden: true, options: { disableNew: true } }),
+    defineField({
+      name: 'order',
+      title: 'Order (legacy)',
+      type: 'reference',
+      to: [{type: 'order'}],
+      hidden: true,
+      options: {disableNew: true},
+    }),
+    defineField({
+      name: 'customer',
+      title: 'Customer (legacy)',
+      type: 'reference',
+      to: [{type: 'customer'}],
+      hidden: true,
+      options: {disableNew: true},
+    }),
 
-    defineField({ name: 'billTo', title: 'Bill To', type: 'billTo', components: { input: BillToInput } }),
+    defineField({
+      name: 'billTo',
+      title: 'Bill To',
+      type: 'billTo',
+      components: {input: BillToInput},
+    }),
 
-    defineField({ name: 'shipTo', title: 'Ship To', type: 'shipTo', components: { input: ShipToInput } }),
+    defineField({
+      name: 'shipTo',
+      title: 'Ship To',
+      type: 'shipTo',
+      components: {input: ShipToInput},
+    }),
     defineField({
       name: 'weight',
       title: 'Package Weight',
@@ -852,31 +902,31 @@ export default defineType({
       type: 'string',
       description: 'Carrier or service provider (e.g., UPS, USPS Priority).',
     }),
-    defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string' }),
-    defineField({ name: 'trackingUrl', title: 'Tracking URL', type: 'url' }),
-    defineField({ name: 'shippingLabelUrl', title: 'Shipping Label URL', type: 'url' }),
+    defineField({name: 'trackingNumber', title: 'Tracking Number', type: 'string'}),
+    defineField({name: 'trackingUrl', title: 'Tracking URL', type: 'url'}),
+    defineField({name: 'shippingLabelUrl', title: 'Shipping Label URL', type: 'url'}),
     defineField({
       name: 'selectedService',
       title: 'Selected Shipping Rate',
       type: 'object',
       readOnly: true,
-      options: { columns: 2 },
+      options: {columns: 2},
       fields: [
-        defineField({ name: 'carrierId', title: 'Carrier ID', type: 'string' }),
-        defineField({ name: 'carrier', title: 'Carrier', type: 'string' }),
-        defineField({ name: 'service', title: 'Service Name', type: 'string' }),
-        defineField({ name: 'serviceCode', title: 'Service Code', type: 'string' }),
-        defineField({ name: 'amount', title: 'Rate Amount', type: 'number' }),
-        defineField({ name: 'currency', title: 'Currency', type: 'string' }),
-        defineField({ name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number' }),
-        defineField({ name: 'estimatedDeliveryDate', title: 'Est. Delivery Date', type: 'datetime' }),
+        defineField({name: 'carrierId', title: 'Carrier ID', type: 'string'}),
+        defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
+        defineField({name: 'service', title: 'Service Name', type: 'string'}),
+        defineField({name: 'serviceCode', title: 'Service Code', type: 'string'}),
+        defineField({name: 'amount', title: 'Rate Amount', type: 'number'}),
+        defineField({name: 'currency', title: 'Currency', type: 'string'}),
+        defineField({name: 'deliveryDays', title: 'Est. Delivery (days)', type: 'number'}),
+        defineField({name: 'estimatedDeliveryDate', title: 'Est. Delivery Date', type: 'datetime'}),
       ],
     }),
     defineField({
       name: 'shippingLog',
       title: 'Shipping History',
       type: 'array',
-      of: [{ type: 'shippingLogEntry' }],
+      of: [{type: 'shippingLogEntry'}],
       description: 'System-recorded shipping events (labels, updates, notifications).',
     }),
 
@@ -905,34 +955,66 @@ export default defineType({
     }),
 
     // Line Items with product link or custom rows
-    defineField({ name: 'lineItems', title: 'Line Items', type: 'array', of: [ { type: 'invoiceLineItem' } ] }),
+    defineField({
+      name: 'lineItems',
+      title: 'Line Items',
+      type: 'array',
+      of: [{type: 'invoiceLineItem'}],
+    }),
 
     // Discount controls
-    defineField({ name: 'discountType', title: 'Discount Type', type: 'string', options: { list: [ {title:'Amount ($)', value:'amount'}, {title:'Percent (%)', value:'percent'} ], layout:'radio' }, initialValue: 'amount' }),
-    defineField({ name: 'discountValue', title: 'Discount Value', type: 'number', description: 'If percent, enter e.g. 10 for 10%.' }),
+    defineField({
+      name: 'discountType',
+      title: 'Discount Type',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Amount ($)', value: 'amount'},
+          {title: 'Percent (%)', value: 'percent'},
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'amount',
+    }),
+    defineField({
+      name: 'discountValue',
+      title: 'Discount Value',
+      type: 'number',
+      description: 'If percent, enter e.g. 10 for 10%.',
+    }),
 
     // Tax rate
-    defineField({ name: 'taxRate', title: 'Tax Rate %', type: 'number', description: 'Percent (e.g., 7.0 for 7%)' }),
+    defineField({
+      name: 'taxRate',
+      title: 'Tax Rate %',
+      type: 'number',
+      description: 'Percent (e.g., 7.0 for 7%)',
+    }),
 
     // Calculated totals (read-only; shown via TotalsPanel)
-    defineField({ name: 'subtotal', title: 'Subtotal (auto)', type: 'number', readOnly: true }),
+    defineField({name: 'subtotal', title: 'Subtotal (auto)', type: 'number', readOnly: true}),
     // Optional stored total for compatibility with older docs
-    defineField({ name: 'total', title: 'Total (stored)', type: 'number' }),
+    defineField({name: 'total', title: 'Total (stored)', type: 'number'}),
 
     // Notes
-    defineField({ name: 'customerNotes', title: 'Notes (Visible to Customer)', type: 'text' }),
-    defineField({ name: 'internalNotes', title: 'Internal Notes (Hidden)', type: 'text' }),
+    defineField({name: 'customerNotes', title: 'Notes (Visible to Customer)', type: 'text'}),
+    defineField({name: 'internalNotes', title: 'Internal Notes (Hidden)', type: 'text'}),
 
     // Status & dates
     defineField({
       name: 'status',
       title: 'Payment Status',
       type: 'string',
-      options: { list: ['pending', 'paid', 'refunded', 'cancelled', 'expired'], layout: 'dropdown' },
+      options: {list: ['pending', 'paid', 'refunded', 'cancelled', 'expired'], layout: 'dropdown'},
       initialValue: 'pending',
     }),
-    defineField({ name: 'invoiceDate', title: 'Invoice Date', type: 'date', initialValue: () => new Date().toISOString().slice(0,10) }),
-    defineField({ name: 'dueDate', title: 'Due Date', type: 'date' }),
+    defineField({
+      name: 'invoiceDate',
+      title: 'Invoice Date',
+      type: 'date',
+      initialValue: () => new Date().toISOString().slice(0, 10),
+    }),
+    defineField({name: 'dueDate', title: 'Due Date', type: 'date'}),
     defineField({
       name: 'paymentTerms',
       title: 'Payment Terms',
@@ -958,40 +1040,80 @@ export default defineType({
       description: 'Amount already collected that should be applied toward the total.',
     }),
 
-    defineField({ name: 'paymentLinkUrl', title: 'Payment Link URL', type: 'url' }),
+    defineField({name: 'paymentLinkUrl', title: 'Payment Link URL', type: 'url'}),
 
     // Stripe/payment metadata for compatibility with imported or legacy invoices
-    defineField({ name: 'currency', title: 'Currency', type: 'string' }),
-    defineField({ name: 'amountSubtotal', title: 'Amount Subtotal', type: 'number' }),
-    defineField({ name: 'amountTax', title: 'Amount Tax', type: 'number' }),
-    defineField({ name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string' }),
-    defineField({ name: 'paymentIntentId', title: 'Payment Intent ID', type: 'string' }),
-    defineField({ name: 'receiptUrl', title: 'Receipt URL', type: 'url' }),
-    defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),
-    defineField({ name: 'stripeInvoiceId', title: 'Stripe Invoice ID', type: 'string', readOnly: true }),
-    defineField({ name: 'stripeInvoiceStatus', title: 'Stripe Invoice Status', type: 'string', readOnly: true }),
-    defineField({ name: 'paymentFailureCode', title: 'Payment Failure Code', type: 'string', readOnly: true }),
-    defineField({ name: 'paymentFailureMessage', title: 'Payment Failure Message', type: 'text', readOnly: true }),
-    defineField({ name: 'stripeHostedInvoiceUrl', title: 'Stripe Hosted Invoice URL', type: 'url', readOnly: true }),
-    defineField({ name: 'stripeInvoicePdf', title: 'Stripe Invoice PDF', type: 'url', readOnly: true }),
-    defineField({ name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true }),
-    defineField({ name: 'stripeSummary', title: 'Stripe Snapshot', type: 'stripeOrderSummary' }),
+    defineField({name: 'currency', title: 'Currency', type: 'string'}),
+    defineField({name: 'amountSubtotal', title: 'Amount Subtotal', type: 'number'}),
+    defineField({name: 'amountTax', title: 'Amount Tax', type: 'number'}),
+    defineField({name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string'}),
+    defineField({name: 'receiptUrl', title: 'Receipt URL', type: 'url'}),
+    defineField({name: 'customerEmail', title: 'Customer Email', type: 'string'}),
     defineField({
-      name: 'userId',
-      title: 'User ID (Portal)',
+      name: 'stripeInvoiceId',
+      title: 'Stripe Invoice ID',
       type: 'string',
-      description: 'Legacy external id for the billed customer. FAS Auth uses the document _id going forward.',
+      readOnly: true,
     }),
-    defineField({ name: 'dateIssued', title: 'Date Issued (legacy)', type: 'datetime' }),
+    defineField({
+      name: 'stripeInvoiceStatus',
+      title: 'Stripe Invoice Status',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'paymentFailureCode',
+      title: 'Payment Failure Code',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'paymentFailureMessage',
+      title: 'Payment Failure Message',
+      type: 'text',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeHostedInvoiceUrl',
+      title: 'Stripe Hosted Invoice URL',
+      type: 'url',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeInvoicePdf',
+      title: 'Stripe Invoice PDF',
+      type: 'url',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Stripe Last Synced',
+      type: 'datetime',
+      readOnly: true,
+    }),
+    defineField({name: 'stripeSummary', title: 'Stripe Snapshot', type: 'stripeOrderSummary'}),
+    defineField({name: 'dateIssued', title: 'Date Issued (legacy)', type: 'datetime'}),
 
     // Visual totals panel (virtual field)
-    defineField({ name: 'totalsPanel', title: 'Totals', type: 'string', components: { input: TotalsPanel }, readOnly: true }),
+    defineField({
+      name: 'totalsPanel',
+      title: 'Totals',
+      type: 'string',
+      components: {input: TotalsPanel},
+      readOnly: true,
+    }),
 
     // Action buttons (virtual field)
-    defineField({ name: 'actions', title: 'Actions', type: 'string', components: { input: InvoiceActions }, readOnly: true }),
+    defineField({
+      name: 'actions',
+      title: 'Actions',
+      type: 'string',
+      components: {input: InvoiceActions},
+      readOnly: true,
+    }),
   ],
 
-  initialValue: async () => ({ status: 'pending' }),
+  initialValue: async () => ({status: 'pending'}),
 
   preview: {
     select: {
@@ -1003,13 +1125,13 @@ export default defineType({
       status: 'status',
     },
     prepare(sel) {
-      const { title, invoiceNumber, orderNumber, billToName, total, status } = sel as any
+      const {title, invoiceNumber, orderNumber, billToName, total, status} = sel as any
       const name = billToName || title || 'Invoice'
       const reference = orderNumber || invoiceNumber || ''
       const header = reference ? `${name} • ${reference}` : name
       const amount = typeof total === 'number' ? ` – $${fmt(total)}` : ''
       const st = status ? ` • ${status.toUpperCase()}` : ''
-      return { title: `${header}${amount}${st}` }
+      return {title: `${header}${amount}${st}`}
     },
   },
 })

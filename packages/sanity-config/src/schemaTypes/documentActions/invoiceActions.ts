@@ -1,8 +1,10 @@
-import type { DocumentActionComponent } from 'sanity'
-import { formatApiError } from '../../utils/formatApiError'
+import type {DocumentActionComponent} from 'sanity'
+import {formatApiError} from '../../utils/formatApiError'
 
 function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     try {
@@ -16,7 +18,7 @@ function getFnBase(): string {
 }
 
 export const createShippingLabel: DocumentActionComponent = (props) => {
-  const { id, published, onComplete } = props
+  const {id, published, onComplete} = props
 
   if (!published || published._type !== 'invoice') return null
   return {
@@ -24,28 +26,39 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
     onHandle: async () => {
       try {
         const base = getFnBase().replace(/\/$/, '')
-        const weightStr = (typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1')
-        const dimsStr = (typeof window !== 'undefined' ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim() : '10x8x4')
+        const weightStr =
+          typeof window !== 'undefined' ? (window.prompt('Weight (lb):', '1') || '').trim() : '1'
+        const dimsStr =
+          typeof window !== 'undefined'
+            ? (window.prompt('Dimensions LxWxH (in):', '10x8x4') || '').trim()
+            : '10x8x4'
         const m = dimsStr.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
         if (!m) throw new Error('Invalid dimensions')
-        const L = Number(m[1]), W = Number(m[2]), H = Number(m[3])
+        const L = Number(m[1]),
+          W = Number(m[2]),
+          H = Number(m[3])
         const wt = Number(weightStr)
         if (!Number.isFinite(wt) || wt <= 0) throw new Error('Invalid weight')
 
         const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             invoiceId: id,
-            package_details: { weight: { value: wt, unit: 'pound' }, dimensions: { unit: 'inch', length: L, width: W, height: H } }
-          })
+            package_details: {
+              weight: {value: wt, unit: 'pound'},
+              dimensions: {unit: 'inch', length: L, width: W, height: H},
+            },
+          }),
         })
         const result = await res.json().catch(() => ({}))
         if (!res.ok || result?.error) {
           throw new Error(formatApiError(result?.error ?? result ?? `HTTP ${res.status}`))
         }
         if (result?.labelUrl) {
-          try { window.open(result.labelUrl, '_blank') } catch {}
+          try {
+            window.open(result.labelUrl, '_blank')
+          } catch {}
           alert(`EasyPost label created. Tracking: ${result?.trackingNumber || 'n/a'}`)
         } else {
           alert('Label created, but URL missing. Check order shipping log.')
@@ -55,6 +68,6 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
       }
 
       onComplete()
-    }
+    },
   }
 }

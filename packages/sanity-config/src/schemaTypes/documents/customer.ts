@@ -1,14 +1,13 @@
-
-import { defineType, defineField } from 'sanity'
+import {defineType, defineField} from 'sanity'
 import CustomerDiscountsInput from '../../components/inputs/CustomerDiscountsInput'
 
 const CUSTOMER_GROUPS = [
-  { name: 'profile', title: 'Profile', default: true },
-  { name: 'addresses', title: 'Addresses' },
-  { name: 'activity', title: 'Activity' },
-  { name: 'marketing', title: 'Marketing' },
-  { name: 'stripe', title: 'Stripe' },
-  { name: 'discounts', title: 'Discounts' },
+  {name: 'profile', title: 'Profile', default: true},
+  {name: 'addresses', title: 'Addresses'},
+  {name: 'activity', title: 'Activity'},
+  {name: 'marketing', title: 'Marketing'},
+  {name: 'stripe', title: 'Stripe'},
+  {name: 'discounts', title: 'Discounts'},
 ]
 
 export default defineType({
@@ -20,12 +19,12 @@ export default defineType({
     {
       name: 'shippingInfo',
       title: 'Shipping Address',
-      options: { collapsible: true, collapsed: true },
+      options: {collapsible: true, collapsed: true},
     },
     {
       name: 'billingInfo',
       title: 'Billing Address',
-      options: { collapsible: true, collapsed: true },
+      options: {collapsible: true, collapsed: true},
     },
   ],
   fields: [
@@ -45,16 +44,16 @@ export default defineType({
       readOnly: true,
       description:
         'Existing records may still use this legacy field. Use the action button or copy the value into First/Last Name below.',
-      hidden: ({ document }) => !document?.name,
+      hidden: ({document}) => !document?.name,
       group: 'profile',
     }),
-    defineField({ name: 'firstName', title: 'First Name', type: 'string', group: 'profile' }),
-    defineField({ name: 'lastName', title: 'Last Name', type: 'string', group: 'profile' }),
+    defineField({name: 'firstName', title: 'First Name', type: 'string', group: 'profile'}),
+    defineField({name: 'lastName', title: 'Last Name', type: 'string', group: 'profile'}),
     defineField({
       name: 'email',
       title: 'Email',
       type: 'string',
-      validation: Rule => Rule.required().email(),
+      validation: (Rule) => Rule.required().email(),
       group: 'profile',
     }),
     defineField({
@@ -75,14 +74,14 @@ export default defineType({
       name: 'roles',
       title: 'Roles',
       type: 'array',
-      of: [{ type: 'string' }],
+      of: [{type: 'string'}],
       initialValue: ['customer'],
       options: {
         list: [
-          { title: 'Customer', value: 'customer' },
-          { title: 'Guest (no account)', value: 'guest' },
-          { title: 'Vendor', value: 'vendor' },
-          { title: 'Admin', value: 'admin' },
+          {title: 'Customer', value: 'customer'},
+          {title: 'Guest (no account)', value: 'guest'},
+          {title: 'Vendor', value: 'vendor'},
+          {title: 'Admin', value: 'admin'},
         ],
       },
       validation: (Rule) => Rule.required().min(1).warning('Users should have at least one role'),
@@ -97,7 +96,7 @@ export default defineType({
       hidden: true,
       group: 'profile',
     }),
-    defineField({ name: 'phone', title: 'Phone Number', type: 'string', group: 'profile' }),
+    defineField({name: 'phone', title: 'Phone Number', type: 'string', group: 'profile'}),
     defineField({
       name: 'shippingAddress',
       title: 'Shipping Address',
@@ -124,42 +123,60 @@ export default defineType({
       name: 'orders',
       title: 'Orders',
       type: 'array',
-      of: [{ type: 'customerOrderSummary' }],
+      of: [{type: 'customerOrderSummary'}],
       group: 'activity',
     }),
     defineField({
       name: 'quotes',
       title: 'Saved Quotes',
       type: 'array',
-      of: [{ type: 'customerQuoteSummary' }],
+      of: [{type: 'customerQuoteSummary'}],
       group: 'activity',
     }),
     defineField({
       name: 'addresses',
       title: 'Addresses',
       type: 'array',
-      of: [{ type: 'customerAddress' }],
+      of: [{type: 'customerAddress'}],
       group: 'addresses',
     }),
     defineField({
       name: 'wishlistItems',
       title: 'Wishlist Items',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      of: [{type: 'reference', to: [{type: 'product'}]}],
       group: 'activity',
     }),
     defineField({
       name: 'stripeMetadata',
       title: 'Latest Stripe Metadata',
       type: 'array',
-      of: [{ type: 'stripeMetadataEntry' }],
+      of: [{type: 'stripeMetadataEntry'}],
       readOnly: true,
       group: 'stripe',
     }),
     // Marketing preferences
-    defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
-    defineField({ name: 'marketingOptIn', title: 'Marketing Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
-    defineField({ name: 'textOptIn', title: 'Text/SMS Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
+    defineField({
+      name: 'emailOptIn',
+      title: 'Email Opt‑In',
+      type: 'boolean',
+      initialValue: false,
+      group: 'marketing',
+    }),
+    defineField({
+      name: 'marketingOptIn',
+      title: 'Marketing Opt‑In',
+      type: 'boolean',
+      initialValue: false,
+      group: 'marketing',
+    }),
+    defineField({
+      name: 'textOptIn',
+      title: 'Text/SMS Opt‑In',
+      type: 'boolean',
+      initialValue: false,
+      group: 'marketing',
+    }),
     defineField({
       name: 'emailMarketing',
       title: 'Email Marketing',
@@ -194,9 +211,9 @@ export default defineType({
           type: 'string',
           options: {
             list: [
-              { title: 'Checkout', value: 'checkout' },
-              { title: 'Newsletter Signup', value: 'newsletter' },
-              { title: 'Manual', value: 'manual' },
+              {title: 'Checkout', value: 'checkout'},
+              {title: 'Newsletter Signup', value: 'newsletter'},
+              {title: 'Manual', value: 'manual'},
             ],
           },
         }),
@@ -234,20 +251,38 @@ export default defineType({
         }),
       ],
     }),
-    defineField({ name: 'orderCount', title: 'Order Count', type: 'number', readOnly: true, group: 'activity' }),
-    defineField({ name: 'quoteCount', title: 'Quote Count', type: 'number', readOnly: true, group: 'activity' }),
-    defineField({ name: 'lifetimeSpend', title: 'Lifetime Spend ($)', type: 'number', readOnly: true, group: 'activity' }),
+    defineField({
+      name: 'orderCount',
+      title: 'Order Count',
+      type: 'number',
+      readOnly: true,
+      group: 'activity',
+    }),
+    defineField({
+      name: 'quoteCount',
+      title: 'Quote Count',
+      type: 'number',
+      readOnly: true,
+      group: 'activity',
+    }),
+    defineField({
+      name: 'lifetimeSpend',
+      title: 'Lifetime Spend ($)',
+      type: 'number',
+      readOnly: true,
+      group: 'activity',
+    }),
     defineField({
       name: 'discounts',
       title: 'Stripe Discounts',
       type: 'array',
-      of: [{ type: 'customerDiscount' }],
+      of: [{type: 'customerDiscount'}],
       readOnly: true,
       group: 'discounts',
-      components: { input: CustomerDiscountsInput as any },
+      components: {input: CustomerDiscountsInput as any},
       description: 'Synced customer-level coupons and promotions from Stripe.',
     }),
-    defineField({ name: 'updatedAt', title: 'Updated At', type: 'datetime', group: 'profile' }),
+    defineField({name: 'updatedAt', title: 'Updated At', type: 'datetime', group: 'profile'}),
   ],
 
   preview: {
@@ -262,20 +297,35 @@ export default defineType({
       emailOptIn: 'emailOptIn',
       marketingOptIn: 'marketingOptIn',
     },
-    prepare({ firstName, lastName, email, orderCount, lifetimeSpend, city, state, emailOptIn, marketingOptIn }) {
+    prepare({
+      firstName,
+      lastName,
+      email,
+      orderCount,
+      lifetimeSpend,
+      city,
+      state,
+      emailOptIn,
+      marketingOptIn,
+    }) {
       const name = [firstName, lastName].filter(Boolean).join(' ').trim()
       const location = [city, state].filter(Boolean).join(', ')
       const orders = typeof orderCount === 'number' ? orderCount : 0
-      const spend = typeof lifetimeSpend === 'number'
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(lifetimeSpend)
-        : '$0'
+      const spend =
+        typeof lifetimeSpend === 'number'
+          ? new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+              maximumFractionDigits: 0,
+            }).format(lifetimeSpend)
+          : '$0'
       const subscribed = emailOptIn || marketingOptIn ? '✓' : ''
 
       const parts = [
         orders > 0 ? `${orders} orders` : 'No orders',
         spend,
         location,
-        subscribed ? 'Subscribed' : ''
+        subscribed ? 'Subscribed' : '',
       ].filter(Boolean)
 
       return {
@@ -285,5 +335,4 @@ export default defineType({
       }
     },
   },
-
 })

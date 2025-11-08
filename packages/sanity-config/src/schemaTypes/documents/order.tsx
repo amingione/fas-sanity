@@ -370,13 +370,25 @@ export default defineType({
             {name: 'name', type: 'string', title: 'Product Name'},
             {name: 'sku', type: 'string', title: 'SKU'},
             {name: 'productSlug', type: 'string', title: 'Product Slug'},
+            {name: 'productUrl', type: 'string', title: 'Product URL'},
             {name: 'quantity', type: 'number', title: 'Quantity'},
             {name: 'price', type: 'number', title: 'Unit Price'},
             {name: 'total', type: 'number', title: 'Total'},
             {name: 'lineTotal', type: 'number', title: 'Line Total'},
             {name: 'optionSummary', type: 'string', title: 'Options'},
+            {name: 'upgrades', type: 'string', title: 'Upgrades'},
             {name: 'image', type: 'url', title: 'Image'},
             {name: 'productName', type: 'string', title: 'Product Name (Stripe)'},
+            {
+              name: 'metadata',
+              type: 'object',
+              title: 'Stripe Metadata',
+              options: {collapsed: true, collapsible: true},
+              fields: [
+                {name: 'option_summary', type: 'string', title: 'Raw Option Summary'},
+                {name: 'upgrades', type: 'string', title: 'Raw Upgrades'},
+              ],
+            },
           ],
           preview: {
             select: {
@@ -593,10 +605,28 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         disabled: !doc,
         onHandle: () => {
           if (doc?.packingSlipUrl) {
-            window.open(doc.packingSlipUrl, '_blank')
+            const packingUrl =
+              typeof doc.packingSlipUrl === 'string'
+                ? doc.packingSlipUrl
+                : (doc.packingSlipUrl as any)?.url || undefined
+
+            if (packingUrl) {
+              try {
+                window.open(packingUrl, '_blank')
+              } catch {
+                // fallback for environments where window.open may throw
+                window.location.href = packingUrl
+              }
+            } else {
+              // fallback to API route when packingSlipUrl isn't a string URL
+              const orderId = id.replace('drafts.', '')
+              const url = `/api/orders/${orderId}/packing-slip`
+              window.open(url, '_blank')
+            }
           } else {
             const orderId = id.replace('drafts.', '')
-            window.open(`/api/orders/${orderId}/packing-slip`, '_blank')
+            const url = `/api/orders/${orderId}/packing-slip`
+            window.open(url, '_blank')
           }
           props.onComplete()
         },
@@ -605,28 +635,27 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
     // Add Tracking
     (props) => {
-      const {id, draft, published, patch} = props
+      const {id, draft, published} = props
       const doc = draft || published
 
       return {
         label: 'Add Tracking',
         icon: PackageIcon,
         tone: 'primary',
-        disabled: !doc || doc.status === 'cancelled' || doc.status === 'shipped',
-        onHandle: () => {
+        disabled: !doc || doc?.status === 'cancelled' || doc?.status === 'shipped',
+        onHandle: async () => {
           const trackingNumber = prompt('Enter tracking number:')
-          if (trackingNumber) {
-            patch.execute([
-              {
-                patch: {
-                  id: id.replace('drafts.', ''),
-                  set: {
-                    manualTrackingNumber: trackingNumber,
-                    trackingNumber: trackingNumber,
-                  },
-                },
-              },
-            ])
+          if (trackingNumber && doc) {
+            // Use Sanity client to patch the document
+            const client = context.getClient({apiVersion: '2024-10-01'})
+
+            await client
+              .patch(id.replace('drafts.', ''))
+              .set({
+                manualTrackingNumber: trackingNumber,
+                trackingNumber: trackingNumber,
+              })
+              .commit()
           }
           props.onComplete()
         },
@@ -642,8 +671,10 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         label: 'Create Label',
         icon: PackageIcon,
         tone: 'primary',
-        disabled: !doc || !doc.shippingAddress || doc.status === 'cancelled',
+        disabled: !doc || !doc?.shippingAddress || doc?.status === 'cancelled',
         onHandle: async () => {
+          if (!doc) return
+
           try {
             const response = await fetch('/api/shipping/create-label', {
               method: 'POST',
@@ -670,29 +701,31 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
     // Mark as Fulfilled
     (props) => {
-      const {id, draft, published, patch} = props
+      const {id, draft, published} = props
       const doc = draft || published
 
       return {
         label: 'Mark Fulfilled',
         icon: PackageIcon,
         tone: 'positive',
-        disabled: !doc || doc.status === 'fulfilled' || doc.status === 'shipped',
+        disabled: !doc || doc?.status === 'fulfilled' || doc?.status === 'shipped',
         onHandle: async () => {
+          if (!doc) return
+
           if (confirm('Mark this order as fulfilled?')) {
             try {
-              patch.execute([
-                {
-                  patch: {
-                    id: id.replace('drafts.', ''),
-                    set: {
-                      status: 'fulfilled',
-                      fulfilledAt: new Date().toISOString(),
-                    },
-                  },
-                },
-              ])
+              // Use Sanity client to patch the document
+              const client = context.getClient({apiVersion: '2024-10-01'})
 
+              await client
+                .patch(id.replace('drafts.', ''))
+                .set({
+                  status: 'fulfilled',
+                  fulfilledAt: new Date().toISOString(),
+                })
+                .commit()
+
+              // Optionally call your API to send fulfillment email
               await fetch('/api/orders/fulfill', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},

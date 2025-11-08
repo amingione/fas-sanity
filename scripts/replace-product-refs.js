@@ -17,25 +17,27 @@
 const fs = require('fs')
 const path = require('path')
 const dotenv = require('dotenv')
-const { createClient } = require('@sanity/client')
+const {createClient} = require('@sanity/client')
 
 for (const f of ['.env.local', '.env.development', '.env']) {
   const p = path.resolve(process.cwd(), f)
-  if (fs.existsSync(p)) dotenv.config({ path: p, override: false })
+  if (fs.existsSync(p)) dotenv.config({path: p, override: false})
 }
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
 const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
 const token = process.env.SANITY_API_TOKEN
 if (!projectId || !dataset || !token) {
-  console.error('Missing SANITY env (SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, SANITY_API_TOKEN).')
+  console.error(
+    'Missing SANITY env (SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, SANITY_API_TOKEN).',
+  )
   process.exit(1)
 }
 
-const client = createClient({ projectId, dataset, apiVersion: '2024-10-01', token, useCdn: false })
+const client = createClient({projectId, dataset, apiVersion: '2024-10-01', token, useCdn: false})
 
 function parseArgs(argv) {
-  const args = { yes: false }
+  const args = {yes: false}
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--from') args.from = argv[++i]
@@ -62,7 +64,7 @@ function deepReplaceRefs(node, fromSet, toId) {
   if (node && typeof node === 'object') {
     // Replace direct reference objects
     if (node._type === 'reference' && fromSet.has(node._ref)) {
-      return { ...node, _ref: toId }
+      return {...node, _ref: toId}
     }
     // Recurse
     const out = Array.isArray(node) ? [] : {}
@@ -75,21 +77,23 @@ function deepReplaceRefs(node, fromSet, toId) {
 async function main() {
   const args = parseArgs(process.argv)
   if (args.help || !args.from || !args.to) return usage()
-  const fromIds = String(args.from).split(',').map((s) => s.trim()).filter(Boolean)
+  const fromIds = String(args.from)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   const toId = String(args.to).trim()
   const fromSet = new Set(fromIds)
 
   // Collect referencing docs for any fromId
-  const refs = await client.fetch(
-    '*[count((references($ids[]))) > 0]{_id, _type}[0...1000]',
-    { ids: fromIds }
-  )
+  const refs = await client.fetch('*[count((references($ids[]))) > 0]{_id, _type}[0...1000]', {
+    ids: fromIds,
+  })
   console.log(`Found ${refs.length} docs referencing any of: ${fromIds.join(', ')}`)
   if (refs.length === 0) return
 
   let changed = 0
   for (const r of refs) {
-    const doc = await client.fetch('*[_id == $id][0]', { id: r._id })
+    const doc = await client.fetch('*[_id == $id][0]', {id: r._id})
     if (!doc) continue
     const next = deepReplaceRefs(doc, fromSet, toId)
     const modified = JSON.stringify(doc) !== JSON.stringify(next)
@@ -105,5 +109,7 @@ async function main() {
   console.log(`${args.yes ? 'Updated' : 'Would update'} ${changed} document(s).`)
 }
 
-main().catch((e) => { console.error(e); process.exit(1) })
-
+main().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})

@@ -19,7 +19,13 @@ export function AppLayout({
   tone = DEFAULT_CARD_TONE,
 }: AppLayoutProps) {
   return (
-    <Card padding={6} radius={4} shadow={1} tone={tone} className="bg-white/90 dark:bg-slate-950/80">
+    <Card
+      padding={6}
+      radius={4}
+      shadow={1}
+      tone={tone}
+      className="bg-white/90 dark:bg-slate-950/80"
+    >
       <Stack space={6}>
         <Stack space={3}>
           <Heading as="h1" size={3} weight="bold">

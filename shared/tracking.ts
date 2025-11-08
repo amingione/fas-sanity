@@ -44,7 +44,9 @@ export function normalizeTrackingNumber(value?: string | null): string {
 }
 
 export function canonicalizeTrackingNumber(value?: string | null): string {
-  return normalizeTrackingNumber(value).replace(/[\s-]+/g, '').toUpperCase()
+  return normalizeTrackingNumber(value)
+    .replace(/[\s-]+/g, '')
+    .toUpperCase()
 }
 
 export function validateTrackingNumber(value?: string | null): TrackingValidationResult {
@@ -87,10 +89,7 @@ export function validateTrackingNumber(value?: string | null): TrackingValidatio
   }
 }
 
-export function isDuplicateTrackingNumber(
-  candidate: string,
-  existing: Iterable<string>,
-): boolean {
+export function isDuplicateTrackingNumber(candidate: string, existing: Iterable<string>): boolean {
   const canonicalCandidate = canonicalizeTrackingNumber(candidate)
   if (!canonicalCandidate) return false
   for (const entry of existing) {
@@ -122,4 +121,3 @@ export function buildTrackingUrl(
   const metadata = CARRIER_METADATA[carrier]
   return metadata ? metadata.trackingUrl(canonical) : null
 }
-

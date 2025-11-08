@@ -1,9 +1,11 @@
-import { Handler } from '@netlify/functions'
+import {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
-import { createClient } from '@sanity/client'
+import {createClient} from '@sanity/client'
 
 // --- CORS (Studio at 8888/3333)
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   const o = origin && DEFAULT_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGINS[0]
   return {
@@ -15,7 +17,9 @@ function makeCORS(origin?: string) {
 }
 
 // Use account default API version to avoid TS literal mismatches
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY as string) : (null as any)
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY as string)
+  : (null as any)
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -29,7 +33,7 @@ const CAN_PATCH = Boolean(process.env.SANITY_API_TOKEN)
 
 function computeTotals(doc: any) {
   const items = Array.isArray(doc?.lineItems) ? doc.lineItems : []
-  const discountType = (doc?.discountType === 'percent') ? 'percent' : 'amount'
+  const discountType = doc?.discountType === 'percent' ? 'percent' : 'amount'
   const discountValue = Number(doc?.discountValue || 0)
   const taxRate = Number(doc?.taxRate || 0)
 
@@ -46,7 +50,7 @@ function computeTotals(doc: any) {
   const taxAmount = taxableBase * (taxRate / 100)
   const total = Math.max(0, taxableBase + taxAmount)
 
-  return { subtotal, discountAmt, taxAmount, total }
+  return {subtotal, discountAmt, taxAmount, total}
 }
 
 function normalizeId(id?: string): string {
@@ -139,7 +143,8 @@ function buildShippingCart(lineItems: any[]): ShippingCartItem[] {
     const productObj = item?.product || {}
     const productId = normalizeId(productObj?._id || productObj?._ref)
     const sku = (item?.sku || productObj?.sku || '').toString().trim()
-    const title = (productObj?.title || item?.description || item?.name || '').toString().trim() || undefined
+    const title =
+      (productObj?.title || item?.description || item?.name || '').toString().trim() || undefined
 
     if (!sku && !productId) continue
 
@@ -166,9 +171,19 @@ export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Method Not Allowed' }) }
-  if (!stripe) return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Stripe not configured' }) }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
+  if (event.httpMethod !== 'POST')
+    return {
+      statusCode: 405,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Method Not Allowed'}),
+    }
+  if (!stripe)
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Stripe not configured'}),
+    }
 
   console.log('createCheckout env', {
     hasStripeKey: Boolean(process.env.STRIPE_SECRET_KEY),
@@ -180,10 +195,19 @@ export const handler: Handler = async (event) => {
     const payload = JSON.parse(event.body || '{}')
     invoiceId = String(payload.invoiceId || '').trim()
   } catch {
-    return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invalid JSON' }) }
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Invalid JSON'}),
+    }
   }
 
-  if (!invoiceId) return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Missing invoiceId' }) }
+  if (!invoiceId)
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({message: 'Missing invoiceId'}),
+    }
 
   try {
     // Fetch invoice doc
@@ -226,14 +250,18 @@ export const handler: Handler = async (event) => {
           country_code
         }
       }`,
-      { id: invoiceId }
+      {id: invoiceId},
     )
 
     if (!invoice) {
-      return { statusCode: 404, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice not found' }) }
+      return {
+        statusCode: 404,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Invoice not found'}),
+      }
     }
 
-    const { subtotal, discountAmt, taxAmount, total } = computeTotals(invoice)
+    const {subtotal, discountAmt, taxAmount, total} = computeTotals(invoice)
     const taxableBase = Math.max(0, subtotal - discountAmt)
     const autoTaxEnv = String(process.env.STRIPE_AUTOMATIC_TAX || 'true').toLowerCase()
     const enableAutomaticTax = autoTaxEnv !== 'false'
@@ -242,7 +270,9 @@ export const handler: Handler = async (event) => {
     const amountForStripe = taxableBase > 0 ? taxableBase : total
 
     const shippingCart = buildShippingCart(invoice?.lineItems || [])
-    const destination = buildDestinationAddress((invoice?.shipTo as InvoiceAddress) || (invoice?.billTo as InvoiceAddress))
+    const destination = buildDestinationAddress(
+      (invoice?.shipTo as InvoiceAddress) || (invoice?.billTo as InvoiceAddress),
+    )
     let shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined
 
     if (shippingCart.length && destination) {
@@ -250,18 +280,28 @@ export const handler: Handler = async (event) => {
         const netlifyBase = resolveNetlifyBase()
         const quoteRes = await fetch(`${netlifyBase}/.netlify/functions/getShippingQuoteBySkus`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cart: shippingCart, destination }),
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({cart: shippingCart, destination}),
         })
         const quoteData = await quoteRes.json().catch(() => ({}))
 
         if (quoteData?.installOnly) {
-          console.log('createCheckout: shipping quote indicates install-only items; skipping shipping options.')
+          console.log(
+            'createCheckout: shipping quote indicates install-only items; skipping shipping options.',
+          )
         } else if (quoteData?.freight) {
-          console.log('createCheckout: shipping quote requires freight. Consider manual handling.', {
-            invoiceId,
-          })
-        } else if (quoteRes.ok && !quoteData?.error && Array.isArray(quoteData?.rates) && quoteData.rates.length > 0) {
+          console.log(
+            'createCheckout: shipping quote requires freight. Consider manual handling.',
+            {
+              invoiceId,
+            },
+          )
+        } else if (
+          quoteRes.ok &&
+          !quoteData?.error &&
+          Array.isArray(quoteData?.rates) &&
+          quoteData.rates.length > 0
+        ) {
           const filteredRates = quoteData.rates
             .filter((rate: any) => Number.isFinite(Number(rate?.amount)))
             .filter((rate: any) => {
@@ -274,15 +314,24 @@ export const handler: Handler = async (event) => {
 
           shippingOptions = filteredRates.slice(0, 6).map((rate: any) => {
             const amountCents = Math.max(0, Math.round(Number(rate.amount) * 100))
-            const displayNameParts = [rate?.carrier, rate?.service].map((part: any) => (part || '').toString().trim()).filter(Boolean)
+            const displayNameParts = [rate?.carrier, rate?.service]
+              .map((part: any) => (part || '').toString().trim())
+              .filter(Boolean)
             const displayName = displayNameParts.join(' – ') || 'Shipping'
             const deliveryDays = Number(rate?.deliveryDays)
-            const estimate = Number.isFinite(deliveryDays) && deliveryDays > 0
-              ? {
-                  minimum: { unit: 'business_day' as const, value: Math.max(1, Math.floor(deliveryDays)) },
-                  maximum: { unit: 'business_day' as const, value: Math.max(1, Math.ceil(deliveryDays)) },
-                }
-              : undefined
+            const estimate =
+              Number.isFinite(deliveryDays) && deliveryDays > 0
+                ? {
+                    minimum: {
+                      unit: 'business_day' as const,
+                      value: Math.max(1, Math.floor(deliveryDays)),
+                    },
+                    maximum: {
+                      unit: 'business_day' as const,
+                      value: Math.max(1, Math.ceil(deliveryDays)),
+                    },
+                  }
+                : undefined
 
             const metadata: Stripe.MetadataParam = {}
             const pushMeta = (key: string, value: unknown) => {
@@ -314,10 +363,10 @@ export const handler: Handler = async (event) => {
               shipping_rate_data: {
                 display_name: displayName,
                 type: 'fixed_amount',
-                fixed_amount: { amount: amountCents, currency: 'usd' },
+                fixed_amount: {amount: amountCents, currency: 'usd'},
                 tax_behavior: 'exclusive',
-                ...(estimate ? { delivery_estimate: estimate } : {}),
-                ...(Object.keys(metadata).length ? { metadata } : {}),
+                ...(estimate ? {delivery_estimate: estimate} : {}),
+                ...(Object.keys(metadata).length ? {metadata} : {}),
               },
             }
           })
@@ -333,12 +382,20 @@ export const handler: Handler = async (event) => {
     }
 
     if (!amountForStripe || amountForStripe <= 0) {
-      return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Invoice total must be greater than 0' }) }
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Invoice total must be greater than 0'}),
+      }
     }
 
     // If a link already exists, reuse it
     if (invoice.paymentLinkUrl) {
-      return { statusCode: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ url: invoice.paymentLinkUrl, reused: true }) }
+      return {
+        statusCode: 200,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({url: invoice.paymentLinkUrl, reused: true}),
+      }
     }
 
     const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3333'
@@ -347,11 +404,11 @@ export const handler: Handler = async (event) => {
       console.error('createCheckout: missing STRIPE_SECRET_KEY')
       return {
         statusCode: 500,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Server is missing STRIPE_SECRET_KEY' }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Server is missing STRIPE_SECRET_KEY'}),
       }
     }
-    
+
     const billTo = invoice?.billTo || {}
     const customerEmail = (billTo?.email || '').trim() || undefined
     const customerName = (billTo?.name || '').trim() || undefined
@@ -374,15 +431,23 @@ export const handler: Handler = async (event) => {
     const hasAddress = Object.values(addressFields).some(Boolean)
     if (hasAddress) metadata.bill_to_address = JSON.stringify(addressFields)
 
-    const allowedShippingCountries = (process.env.STRIPE_TAX_ALLOWED_COUNTRIES || process.env.STRIPE_SHIPPING_COUNTRIES || process.env.STRIPE_ALLOWED_COUNTRIES || 'US')
+    const allowedShippingCountries = (
+      process.env.STRIPE_TAX_ALLOWED_COUNTRIES ||
+      process.env.STRIPE_SHIPPING_COUNTRIES ||
+      process.env.STRIPE_ALLOWED_COUNTRIES ||
+      'US'
+    )
       .split(',')
-      .map(c => c.trim().toUpperCase())
+      .map((c) => c.trim().toUpperCase())
       .filter(Boolean)
 
     // Diagnostics + amount in cents
     const unitAmount = Math.round(Number(amountForStripe) * 100)
     const currency = 'usd'
-    const allowAffirm = currency === 'usd' && unitAmount >= 5000 && String(process.env.STRIPE_ENABLE_AFFIRM || 'true').toLowerCase() !== 'false'
+    const allowAffirm =
+      currency === 'usd' &&
+      unitAmount >= 5000 &&
+      String(process.env.STRIPE_ENABLE_AFFIRM || 'true').toLowerCase() !== 'false'
     console.log('createCheckout diagnostics', {
       invoiceId,
       total,
@@ -400,8 +465,8 @@ export const handler: Handler = async (event) => {
     if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
       return {
         statusCode: 400,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Invoice total must be a positive number' }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Invoice total must be a positive number'}),
       }
     }
 
@@ -409,8 +474,10 @@ export const handler: Handler = async (event) => {
     if (unitAmount < 50) {
       return {
         statusCode: 400,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Amount must be at least $0.50 to create a Stripe Checkout session' }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          message: 'Amount must be at least $0.50 to create a Stripe Checkout session',
+        }),
       }
     }
 
@@ -427,7 +494,9 @@ export const handler: Handler = async (event) => {
           {
             price_data: {
               currency,
-              product_data: { name: `Invoice ${invoice.invoiceNumber || ''}`.trim() || 'Invoice Payment' },
+              product_data: {
+                name: `Invoice ${invoice.invoiceNumber || ''}`.trim() || 'Invoice Payment',
+              },
               unit_amount: unitAmount,
             },
             quantity: 1,
@@ -439,7 +508,7 @@ export const handler: Handler = async (event) => {
           metadata: {
             sanity_invoice_id: invoiceId,
             sanity_invoice_number: String(invoice.invoiceNumber || ''),
-            ...(invoice?.invoiceNumber ? { order_number: String(invoice.invoiceNumber) } : {}),
+            ...(invoice?.invoiceNumber ? {order_number: String(invoice.invoiceNumber)} : {}),
           },
         },
         success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,
@@ -447,16 +516,17 @@ export const handler: Handler = async (event) => {
       }
 
       if (allowAffirm) {
-        sessionParams.phone_number_collection = { enabled: true }
+        sessionParams.phone_number_collection = {enabled: true}
       }
 
       if (automaticTaxEnabled) {
-        sessionParams.automatic_tax = { enabled: true }
+        sessionParams.automatic_tax = {enabled: true}
       }
 
       if (allowedShippingCountries.length > 0) {
         sessionParams.shipping_address_collection = {
-          allowed_countries: allowedShippingCountries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+          allowed_countries:
+            allowedShippingCountries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
         }
       }
 
@@ -466,7 +536,9 @@ export const handler: Handler = async (event) => {
 
       if (hasManualTaxRate) {
         try {
-          const jurisdiction = (billTo?.state_province || billTo?.country_code || 'US').toString().trim()
+          const jurisdiction = (billTo?.state_province || billTo?.country_code || 'US')
+            .toString()
+            .trim()
           const taxRatePct = Number(invoice?.taxRate)
           const existingRates = await stripe.taxRates.list({
             limit: 100,
@@ -478,7 +550,8 @@ export const handler: Handler = async (event) => {
             taxRateId = existingRates.data.find((rate: Stripe.TaxRate) => {
               if (!jurisdiction) return true
               const metaMatch = rate.metadata?.sanity_jurisdiction === jurisdiction
-              const descMatch = (rate.jurisdiction || '').toLowerCase() === jurisdiction.toLowerCase()
+              const descMatch =
+                (rate.jurisdiction || '').toLowerCase() === jurisdiction.toLowerCase()
               return metaMatch || descMatch
             })?.id
           }
@@ -489,7 +562,7 @@ export const handler: Handler = async (event) => {
               percentage: taxRatePct,
               jurisdiction: jurisdiction || undefined,
               country: (billTo?.country_code || 'US').toUpperCase(),
-              state: (billTo?.state_province || undefined) || undefined,
+              state: billTo?.state_province || undefined || undefined,
               metadata: {
                 sanity_invoice_id: invoiceId,
                 sanity_jurisdiction: jurisdiction || 'US',
@@ -514,10 +587,14 @@ export const handler: Handler = async (event) => {
 
       session = await stripe.checkout.sessions.create(sessionParams)
     } catch (e: any) {
-      console.error('Stripe create session failed', { message: e?.message, type: e?.type, code: e?.code })
+      console.error('Stripe create session failed', {
+        message: e?.message,
+        type: e?.type,
+        code: e?.code,
+      })
       return {
         statusCode: 500,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
+        headers: {...CORS, 'Content-Type': 'application/json'},
         body: JSON.stringify({
           message: 'Stripe session creation failed',
           error: e?.message,
@@ -532,8 +609,8 @@ export const handler: Handler = async (event) => {
     if (!url) {
       return {
         statusCode: 500,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Failed to create checkout session: no URL from Stripe' }),
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message: 'Failed to create checkout session: no URL from Stripe'}),
       }
     }
 
@@ -543,14 +620,16 @@ export const handler: Handler = async (event) => {
         const ids = idVariants(invoiceId)
         for (const id of ids) {
           try {
-            await sanity.patch(id).set({ paymentLinkUrl: url }).commit({ autoGenerateArrayKeys: true })
+            await sanity.patch(id).set({paymentLinkUrl: url}).commit({autoGenerateArrayKeys: true})
             break // saved on one variant; stop trying others
           } catch {
             // try the other variant (draft/published)
           }
         }
       } catch {
-        console.warn('createCheckout: patch paymentLinkUrl failed (permissions or token issue). Continuing.')
+        console.warn(
+          'createCheckout: patch paymentLinkUrl failed (permissions or token issue). Continuing.',
+        )
       }
     } else {
       console.warn('createCheckout: SANITY_API_TOKEN not set — skipping persist of paymentLinkUrl.')
@@ -558,11 +637,18 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({url}),
     }
   } catch (err: any) {
     console.error('createCheckout error', err)
-    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Failed to create checkout session', error: String(err?.message || err) }) }
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: 'Failed to create checkout session',
+        error: String(err?.message || err),
+      }),
+    }
   }
 }

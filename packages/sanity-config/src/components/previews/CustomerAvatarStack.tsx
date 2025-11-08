@@ -68,20 +68,23 @@ export function CustomerAvatarStack({customerId}: CustomerAvatarStackProps) {
           new Set(
             orderItems
               .map((item) => item.productRef)
-              .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0)
-          )
+              .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+          ),
         )
 
         const neededSlugs = Array.from(
           new Set(
             orderItems
               .map((item) => item.productSlug)
-              .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0)
-          )
+              .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0),
+          ),
         )
 
         let productLookups: ProductPreview[] = []
-        if ((neededRefs.length > 0 || neededSlugs.length > 0) && (!directImages || directImages.length < 3)) {
+        if (
+          (neededRefs.length > 0 || neededSlugs.length > 0) &&
+          (!directImages || directImages.length < 3)
+        ) {
           productLookups = await client.fetch(PRODUCT_IMAGES_QUERY, {
             ids: neededRefs,
             slugs: neededSlugs,

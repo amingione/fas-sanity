@@ -44,7 +44,9 @@ export function SummaryCard({
           {description}
         </Text>
         {children ? <div className="grid gap-2 text-sm text-slate-600">{children}</div> : null}
-        {footer ? <div className="pt-2 text-xs uppercase tracking-wide text-slate-500">{footer}</div> : null}
+        {footer ? (
+          <div className="pt-2 text-xs uppercase tracking-wide text-slate-500">{footer}</div>
+        ) : null}
       </Stack>
     </Card>
   )

@@ -4,7 +4,9 @@ import {useFormValue} from 'sanity'
 import {readStudioEnv} from '../../utils/studioEnv'
 
 function getFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase.replace(/\/$/, '')
   if (typeof window !== 'undefined') {
     try {
@@ -36,9 +38,11 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
     [doc?._id],
   )
 
-  const labelUrl = normalizeUrl(useFormValue(['shippingLabelUrl'])) || normalizeUrl(doc?.shippingLabelUrl)
+  const labelUrl =
+    normalizeUrl(useFormValue(['shippingLabelUrl'])) || normalizeUrl(doc?.shippingLabelUrl)
   const trackingUrl = normalizeUrl(useFormValue(['trackingUrl'])) || normalizeUrl(doc?.trackingUrl)
-  const trackingNumber = normalizeUrl(useFormValue(['trackingNumber'])) || normalizeUrl(doc?.trackingNumber)
+  const trackingNumber =
+    normalizeUrl(useFormValue(['trackingNumber'])) || normalizeUrl(doc?.trackingNumber)
 
   const [localLabelUrl, setLocalLabelUrl] = useState<string | undefined>(labelUrl)
   const [localTrackingUrl, setLocalTrackingUrl] = useState<string | undefined>(trackingUrl)

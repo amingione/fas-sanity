@@ -1,5 +1,7 @@
 export function getNetlifyFnBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase
   if (typeof window !== 'undefined') {
     try {

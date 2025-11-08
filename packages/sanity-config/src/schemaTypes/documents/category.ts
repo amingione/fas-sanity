@@ -1,5 +1,4 @@
-
-import { defineType, defineField } from 'sanity';
+import {defineType, defineField} from 'sanity'
 
 export default defineType({
   name: 'category',
@@ -10,20 +9,20 @@ export default defineType({
       name: 'title',
       title: 'Title',
       type: 'string',
-      validation: Rule => Rule.required(),
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'slug',
       title: 'Slug',
       type: 'slug',
-      options: { source: 'title', maxLength: 96 },
-      validation: Rule => Rule.required(),
+      options: {source: 'title', maxLength: 96},
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'image',
       title: 'Image',
       type: 'image',
-      options: { hotspot: true },
+      options: {hotspot: true},
       description: 'Displayed for this category on the storefront.',
     }),
     // Optional curated list of products for this category.
@@ -33,9 +32,9 @@ export default defineType({
       name: 'products',
       title: 'Products (curated)',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'product' }] }],
+      of: [{type: 'reference', to: [{type: 'product'}]}],
       description:
         'Optional curated list of products for this category. Products also reference categories themselves.',
     }),
   ],
-});
+})

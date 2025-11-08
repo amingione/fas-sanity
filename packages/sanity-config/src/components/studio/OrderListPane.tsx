@@ -31,7 +31,6 @@ import {useRouter} from 'sanity/router'
 import {formatCurrency, formatDate} from './documentTables/PaginatedDocumentTable'
 import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './documentTables/DocumentBadge'
 import {formatOrderNumber} from '../../utils/orderNumber'
-import {deriveOrderDisplay, type OrderV2Snapshot} from '../../utils/orderV2'
 import {
   EXPIRED_SESSION_PANEL_TITLE,
   GROQ_FILTER_EXCLUDE_EXPIRED,
@@ -65,19 +64,18 @@ const FILTERS: FilterDefinition[] = [
   {
     id: 'awaiting',
     title: 'Awaiting fulfillment',
-    filter: '(coalesce(orderV2.status, status) == "paid" && !defined(fulfilledAt))',
+    filter: '(status == "paid" && !defined(fulfilledAt))',
   },
-  {id: 'paid', title: 'Paid', filter: 'coalesce(orderV2.status, status) == "paid"'},
+  {id: 'paid', title: 'Paid', filter: 'status == "paid"'},
   {
     id: 'fulfilled',
     title: 'Fulfilled / Shipped',
-    filter: 'coalesce(orderV2.status, status) in ["fulfilled","shipped"]',
+    filter: 'status in ["fulfilled","shipped"]',
   },
   {
     id: 'issues',
     title: 'Payment issues',
-    filter:
-      'coalesce(orderV2.payment.status, paymentStatus) in ["cancelled","failed","refunded","partially_refunded"]',
+    filter: 'paymentStatus in ["cancelled","failed","refunded","partially_refunded"]',
   },
   {
     id: 'expired',
@@ -92,25 +90,25 @@ const SORT_OPTIONS: SortDefinition[] = [
   {
     id: 'createdDesc',
     title: 'Newest first',
-    field: 'coalesce(orderV2.createdAt, createdAt, _createdAt)',
+    field: 'coalesce(createdAt, _createdAt)',
     direction: 'desc',
   },
   {
     id: 'createdAsc',
     title: 'Oldest first',
-    field: 'coalesce(orderV2.createdAt, createdAt, _createdAt)',
+    field: 'coalesce(createdAt, _createdAt)',
     direction: 'asc',
   },
   {
     id: 'totalDesc',
     title: 'Order total (high → low)',
-    field: 'coalesce(orderV2.orderSummary.total, totalAmount, amountSubtotal, 0)',
+    field: 'coalesce(totalAmount, amountSubtotal, 0)',
     direction: 'desc',
   },
   {
     id: 'totalAsc',
     title: 'Order total (low → high)',
-    field: 'coalesce(orderV2.orderSummary.total, totalAmount, amountSubtotal, 0)',
+    field: 'coalesce(totalAmount, amountSubtotal, 0)',
     direction: 'asc',
   },
 ]
@@ -127,7 +125,6 @@ type OrderProjection = {
   createdAt?: string | null
   primaryImage?: string | null
   stripeSessionId?: string | null
-  orderV2?: OrderV2Snapshot | null
 }
 
 const ORDER_PROJECTION = `{
@@ -141,7 +138,6 @@ const ORDER_PROJECTION = `{
   currency,
   "createdAt": coalesce(createdAt, _createdAt),
   stripeSessionId,
-  orderV2,
   "primaryImage": coalesce(
     cart[0].product.image.asset->url,
     cart[0].product.images[0].asset->url,
@@ -202,18 +198,18 @@ function OrderTableRow({document}: {document: DocumentHandle}) {
     )
   }
 
-  const display = deriveOrderDisplay({...data, _id: document.documentId})
   const imageSrc = data.primaryImage || ORDER_IMAGE_PLACEHOLDER
-  const orderIdentifier = display.identifiers.find((id) => formatOrderNumber(id))
-  const fallbackIdentifier = display.identifiers.find((id) => id && id.trim())
+  const identifiers = [data.orderNumber, data.stripeSessionId].filter(
+    (candidate): candidate is string => Boolean(candidate && candidate.trim()),
+  )
+  const orderIdentifier = identifiers.find((id) => formatOrderNumber(id))
+  const fallbackIdentifier = identifiers.find((id) => id && id.trim())
   const displayOrderNumber =
     formatOrderNumber(orderIdentifier ?? fallbackIdentifier) || fallbackIdentifier || '—'
-  const paymentBadge = statusBadge(display.paymentStatus)
+  const paymentBadge = statusBadge(data.paymentStatus)
   const fulfillmentBadge =
-    display.status && display.status !== display.paymentStatus
-      ? statusBadge(display.status)
-      : null
-  const customerLabel = display.customerName || display.customerEmail || '—'
+    data.status && data.status !== data.paymentStatus ? statusBadge(data.status) : null
+  const customerLabel = data.customerName || data.customerEmail || '—'
 
   return (
     <tr
@@ -261,9 +257,9 @@ function OrderTableRow({document}: {document: DocumentHandle}) {
       </td>
       <td style={{padding: '12px'}}>
         <Text size={1}>{customerLabel}</Text>
-        {display.customerEmail && display.customerEmail !== customerLabel ? (
+        {data.customerEmail && data.customerEmail !== customerLabel ? (
           <Text size={0} muted>
-            {display.customerEmail}
+            {data.customerEmail}
           </Text>
         ) : null}
       </td>
@@ -275,18 +271,18 @@ function OrderTableRow({document}: {document: DocumentHandle}) {
       </td>
       <td style={{padding: '12px', textAlign: 'right'}}>
         <Text size={1} weight="medium">
-          {formatCurrency(display.totalAmount ?? null, display.currency ?? 'USD')}
+          {formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}
         </Text>
       </td>
       <td style={{padding: '12px', textAlign: 'right'}}>
         <Text size={1}>
-          {display.amountRefunded && display.amountRefunded > 0
-            ? formatCurrency(display.amountRefunded, display.currency ?? 'USD')
+          {data.amountRefunded && data.amountRefunded > 0
+            ? formatCurrency(data.amountRefunded, data.currency ?? 'USD')
             : '—'}
         </Text>
       </td>
       <td style={{padding: '12px'}}>
-        <Text size={1}>{formatDate(display.createdAt)}</Text>
+        <Text size={1}>{formatDate(data.createdAt)}</Text>
       </td>
     </tr>
   )

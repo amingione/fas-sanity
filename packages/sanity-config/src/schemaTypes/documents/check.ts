@@ -86,7 +86,9 @@ export const checkType = defineType({
     prepare({title, amount, number, date, status}) {
       const formattedAmount = typeof amount === 'number' ? `$${amount.toFixed(2)}` : ''
       const checkNo = number ? `#${number}` : ''
-      const subtitleParts = [formattedAmount, checkNo, date, status && status.toUpperCase()].filter(Boolean)
+      const subtitleParts = [formattedAmount, checkNo, date, status && status.toUpperCase()].filter(
+        Boolean,
+      )
       return {
         title: title || 'Check',
         subtitle: subtitleParts.join(' • '),

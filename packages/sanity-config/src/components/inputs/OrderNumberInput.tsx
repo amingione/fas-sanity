@@ -1,5 +1,5 @@
 import React from 'react'
-import {Stack, Text} from '@sanity/ui'
+import {Card, Stack, Text} from '@sanity/ui'
 import type {StringInputProps} from 'sanity'
 import {formatOrderNumber} from '../../utils/orderNumber'
 
@@ -14,13 +14,21 @@ export default function OrderNumberInput(props: StringInputProps) {
   const raw = normalizeRaw(props.value)
   const showRawHint = Boolean(formatted && raw && formatted !== raw)
 
-  if (!props.renderDefault) {
-    return null
-  }
-
+  // Render a consistent, read-only display so the formatted number is
+  // always shown even when Sanity's default readOnly renderer ignores
+  // value overrides.
   return (
     <Stack space={showRawHint ? 2 : 0}>
-      {props.renderDefault(formatted ? {...props, value: formatted} : props)}
+      <Card
+        padding={3}
+        radius={2}
+        tone="transparent"
+        style={{border: '1px solid var(--card-border-color)'}}
+      >
+        <Text size={2} weight="medium">
+          {formatted || raw || '—'}
+        </Text>
+      </Card>
       {showRawHint && (
         <Text size={1} style={{opacity: 0.6}}>
           Raw value from Stripe: {raw}

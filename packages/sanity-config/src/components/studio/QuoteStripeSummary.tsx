@@ -63,7 +63,9 @@ const QuoteStripeSummary: React.FC = () => {
           </div>
         </div>
         {stripeQuoteStatus ? (
-          <span className={`quote-stripe-status quote-stripe-status--${stripeQuoteStatus.toLowerCase()}`}>
+          <span
+            className={`quote-stripe-status quote-stripe-status--${stripeQuoteStatus.toLowerCase()}`}
+          >
             {stripeQuoteStatus}
           </span>
         ) : null}
@@ -107,7 +109,12 @@ const QuoteStripeSummary: React.FC = () => {
               />
             ) : null}
             {stripeQuotePdf ? (
-              <Button mode="bleed" tone="default" text="View Stripe quote PDF" onClick={handleOpenQuotePdf} />
+              <Button
+                mode="bleed"
+                tone="default"
+                text="View Stripe quote PDF"
+                onClick={handleOpenQuotePdf}
+              />
             ) : null}
           </Stack>
         </div>

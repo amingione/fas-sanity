@@ -1,11 +1,12 @@
-import { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
+import {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
 import imageUrlBuilder from '@sanity/image-url'
-import { renderInvoicePdf } from '../lib/invoicePdf'
-import { fetchPrintSettings } from '../lib/printSettings'
+import {renderInvoicePdf} from '../lib/invoicePdf'
+import {fetchPrintSettings} from '../lib/printSettings'
 
-
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   const o = origin && DEFAULT_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGINS[0]
   return {
@@ -22,7 +23,9 @@ type InvoicePayload = {
   invoice?: any
 }
 
-const hasSanityConfig = Boolean(process.env.SANITY_STUDIO_PROJECT_ID && process.env.SANITY_STUDIO_DATASET)
+const hasSanityConfig = Boolean(
+  process.env.SANITY_STUDIO_PROJECT_ID && process.env.SANITY_STUDIO_DATASET,
+)
 const sanity = hasSanityConfig
   ? createClient({
       projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -128,7 +131,7 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
 
   if (!sanity) return null
   try {
-    return await sanity.fetch(query, { id: cleanId })
+    return await sanity.fetch(query, {id: cleanId})
   } catch (err) {
     console.error('generateInvoicePDF: failed to load invoice', cleanId, err)
     return null
@@ -143,9 +146,13 @@ function parseIdentifier(input: string | undefined | null) {
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
   if (event.httpMethod !== 'POST' && event.httpMethod !== 'GET') {
-    return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method Not Allowed' }) }
+    return {
+      statusCode: 405,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
+    }
   }
 
   let payload: InvoicePayload = {}
@@ -157,24 +164,38 @@ export const handler: Handler = async (event) => {
     try {
       payload = JSON.parse(event.body || '{}')
     } catch {
-      return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON' }) }
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Invalid JSON'}),
+      }
     }
     invoiceId = parseIdentifier(payload?.invoiceId)
   }
 
   let invoiceData = payload?.invoice || {}
-  const invoiceNumberFromPayload = parseIdentifier(payload?.invoiceNumber || invoiceData?.invoiceNumber)
+  const invoiceNumberFromPayload = parseIdentifier(
+    payload?.invoiceNumber || invoiceData?.invoiceNumber,
+  )
   const invoiceDate = invoiceData?.invoiceDate
   const dueDate = invoiceData?.dueDate
 
   if (!invoiceData || Object.keys(invoiceData).length === 0) {
     const lookupId = invoiceId || (typeof invoiceData?._id === 'string' ? invoiceData._id : '')
     if (!lookupId) {
-      return { statusCode: 400, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing invoice data or invoiceId' }) }
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Missing invoice data or invoiceId'}),
+      }
     }
     const fetched = await fetchInvoiceFromSanity(lookupId)
     if (!fetched) {
-      return { statusCode: 404, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invoice not found' }) }
+      return {
+        statusCode: 404,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Invoice not found'}),
+      }
     }
     invoiceData = fetched
   }
@@ -193,7 +214,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { base64 } = await renderInvoicePdf(invoiceData, {
+    const {base64} = await renderInvoicePdf(invoiceData, {
       invoiceNumber: String(invoiceNumber || ''),
       invoiceDate: invoiceDate,
       dueDate: dueDate,
@@ -201,8 +222,10 @@ export const handler: Handler = async (event) => {
       logoUrl,
     })
 
-    const identifier = String(invoiceNumber || invoiceId || invoiceData?._id || billTo?.name || shipTo?.name || 'invoice')
-      const fileId = identifier.replace(/[^\w-]+/g, '-')
+    const identifier = String(
+      invoiceNumber || invoiceId || invoiceData?._id || billTo?.name || shipTo?.name || 'invoice',
+    )
+    const fileId = identifier.replace(/[^\w-]+/g, '-')
     const filename = fileId ? `invoice-${fileId}.pdf` : 'invoice.pdf'
 
     return {
@@ -217,6 +240,10 @@ export const handler: Handler = async (event) => {
     }
   } catch (err: any) {
     console.error('generateInvoicePDF failed', err)
-    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'PDF generation failed', message: String(err?.message || err) }) }
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'PDF generation failed', message: String(err?.message || err)}),
+    }
   }
 }

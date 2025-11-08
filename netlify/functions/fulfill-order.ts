@@ -14,11 +14,7 @@ const configuredOrigins = [
   .filter(Boolean)
 
 const DEFAULT_ORIGINS = Array.from(
-  new Set([
-    ...configuredOrigins,
-    'http://localhost:3333',
-    'http://localhost:8888',
-  ]),
+  new Set([...configuredOrigins, 'http://localhost:3333', 'http://localhost:8888']),
 )
 
 function pickOrigin(origin?: string): string {
@@ -28,7 +24,11 @@ function pickOrigin(origin?: string): string {
   return DEFAULT_ORIGINS[0] || origin
 }
 
-function jsonResponse(statusCode: number, headers: Record<string, string>, body: Record<string, unknown>) {
+function jsonResponse(
+  statusCode: number,
+  headers: Record<string, string>,
+  body: Record<string, unknown>,
+) {
   return {
     statusCode,
     headers: {...headers, 'Content-Type': 'application/json'},
@@ -47,6 +47,7 @@ const sanity = createClient({
 type FulfillRequest = {
   orderId?: string
   useExistingTracking?: boolean
+  markOnly?: boolean
   weight?: {value?: number; unit?: string}
   dimensions?: {length?: number; width?: number; height?: number; unit?: string}
 }
@@ -98,7 +99,24 @@ export const handler: Handler = async (event) => {
   let labelResult: any = null
 
   try {
-    if (payload.useExistingTracking && order.trackingNumber) {
+    if (payload.markOnly === true) {
+      // Mark order as fulfilled without creating a label
+      const fulfillmentTimestamp = new Date().toISOString()
+      await sanity
+        .patch(orderId)
+        .set({
+          status: 'fulfilled',
+          fulfilledAt: fulfillmentTimestamp,
+        })
+        .commit({autoGenerateArrayKeys: true})
+
+      return jsonResponse(200, corsHeaders, {
+        success: true,
+        provider: 'manual',
+        fulfilledAt: fulfillmentTimestamp,
+        message: 'Order marked as fulfilled',
+      })
+    } else if (payload.useExistingTracking && order.trackingNumber) {
       labelResult = {
         provider: 'existing',
         trackingNumber: order.trackingNumber,

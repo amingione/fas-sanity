@@ -8,8 +8,16 @@ import QuotesDashboard from './QuotesDashboard'
 type CustomerTab = 'overview' | 'quotes'
 
 const tabs: Array<{id: CustomerTab; label: string; description: string}> = [
-  {id: 'overview', label: 'Overview', description: 'Recent activity, top customers, and quick actions.'},
-  {id: 'quotes', label: 'Quotes', description: 'Manage estimates, send proposals, and convert wins into invoices.'},
+  {
+    id: 'overview',
+    label: 'Overview',
+    description: 'Recent activity, top customers, and quick actions.',
+  },
+  {
+    id: 'quotes',
+    label: 'Quotes',
+    description: 'Manage estimates, send proposals, and convert wins into invoices.',
+  },
 ]
 
 const CustomersHub = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
@@ -84,7 +92,14 @@ const CustomersHub = React.forwardRef<HTMLDivElement, Record<string, never>>((_p
         <Card padding={[3, 4]} radius={3} shadow={1} tone="transparent" className="mt-6 w-full">
           <Flex direction={['column', 'row']} gap={3} wrap="wrap">
             {quickMenus.map((menu) => (
-              <Card key={menu.id} padding={3} radius={2} shadow={1} tone="transparent" style={{minWidth: 220}}>
+              <Card
+                key={menu.id}
+                padding={3}
+                radius={2}
+                shadow={1}
+                tone="transparent"
+                style={{minWidth: 220}}
+              >
                 <Stack space={3}>
                   <Stack space={2}>
                     <Text size={2} weight="semibold">
@@ -109,7 +124,10 @@ const CustomersHub = React.forwardRef<HTMLDivElement, Record<string, never>>((_p
                           />
                         ))}
                         <MenuDivider />
-                        <MenuItem text="Open customer hub" onClick={() => setActiveTab('overview')} />
+                        <MenuItem
+                          text="Open customer hub"
+                          onClick={() => setActiveTab('overview')}
+                        />
                       </Menu>
                     }
                   />

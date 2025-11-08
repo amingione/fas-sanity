@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { useClient } from 'sanity'
-import { Card, Heading, Stack, Text } from '@sanity/ui'
+import React, {useEffect, useState} from 'react'
+import {useClient} from 'sanity'
+import {Card, Heading, Stack, Text} from '@sanity/ui'
 
 export default function VendorSpend() {
-  const client = useClient({ apiVersion: '2024-04-10' })
+  const client = useClient({apiVersion: '2024-04-10'})
   const [totals, setTotals] = useState<Record<string, number>>({})
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')

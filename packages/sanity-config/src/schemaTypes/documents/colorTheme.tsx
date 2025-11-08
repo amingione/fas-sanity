@@ -21,7 +21,7 @@ export const colorThemeType = defineType({
       description: 'Hex color like #000000',
       validation: (Rule) =>
         Rule.required()
-          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/,{name:'hex color'})
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, {name: 'hex color'})
           .error('Enter a valid hex color, e.g. #000000'),
     }),
     defineField({
@@ -31,7 +31,7 @@ export const colorThemeType = defineType({
       description: 'Hex color like #FFFFFF',
       validation: (Rule) =>
         Rule.required()
-          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/,{name:'hex color'})
+          .regex(/^#(?:[0-9a-fA-F]{3}){1,2}$/, {name: 'hex color'})
           .error('Enter a valid hex color, e.g. #FFFFFF'),
     }),
   ],

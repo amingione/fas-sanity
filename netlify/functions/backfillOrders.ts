@@ -1,11 +1,11 @@
-import type { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
-import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
-import { randomUUID } from 'crypto'
+import type {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
+import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
+import {randomUUID} from 'crypto'
 import Stripe from 'stripe'
-import { mapStripeLineItem } from '../lib/stripeCartItem'
-import { enrichCartItemsFromSanity } from '../lib/cartEnrichment'
-import { normalizeMetadataEntries } from '@fas/sanity-config/utils/cartItemDetails'
+import {mapStripeLineItem} from '../lib/stripeCartItem'
+import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
+import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
 
 function normalizeOrigin(value?: string | null): string {
   if (!value) return ''
@@ -57,7 +57,7 @@ const stripe = stripeSecret ? new Stripe(stripeSecret) : null
 function toOrderCartItem(it: any) {
   if (!it || typeof it !== 'object') return null
 
-  const cloned = { ...it }
+  const cloned = {...it}
 
   if (cloned._type === 'cartLine') {
     const qty = Number(cloned.quantity || cloned.qty || 1)
@@ -79,7 +79,7 @@ function toOrderCartItem(it: any) {
   if (cloned.metadata && typeof cloned.metadata === 'object' && !Array.isArray(cloned.metadata)) {
     const normalized = normalizeMetadataEntries(cloned.metadata as Record<string, unknown>)
     if (normalized.length) {
-      cloned.metadata = normalized.map(({ key, value }) => ({
+      cloned.metadata = normalized.map(({key, value}) => ({
         _type: 'orderCartItemMeta',
         key,
         value,
@@ -114,13 +114,14 @@ function cloneCart(arr: any[]): any[] {
 
 function normalizeCartItems(existing: any[], next: any[]): any[] {
   return next.map((item, index) => {
-    const candidate = item && typeof item === 'object' ? { ...item } : { _type: 'orderCartItem' }
+    const candidate = item && typeof item === 'object' ? {...item} : {_type: 'orderCartItem'}
     const existingKey = existing?.[index]?._key
-    const key = typeof candidate._key === 'string' && candidate._key
-      ? candidate._key
-      : typeof existingKey === 'string' && existingKey
-        ? existingKey
-        : randomUUID()
+    const key =
+      typeof candidate._key === 'string' && candidate._key
+        ? candidate._key
+        : typeof existingKey === 'string' && existingKey
+          ? existingKey
+          : randomUUID()
     return {
       _type: 'orderCartItem',
       ...candidate,
@@ -144,7 +145,9 @@ function cartNeedsEnrichment(cart: any[]): boolean {
   if (!Array.isArray(cart) || cart.length === 0) return false
   return cart.some((item) => {
     if (!item || typeof item !== 'object') return true
-    const hasProductPointer = Boolean(item.sku || item.productSlug || item.stripeProductId || item.stripePriceId)
+    const hasProductPointer = Boolean(
+      item.sku || item.productSlug || item.stripeProductId || item.stripePriceId,
+    )
     const hasMetadata = Array.isArray(item.metadata) && item.metadata.length > 0
     return !hasProductPointer || !hasMetadata
   })
@@ -200,7 +203,7 @@ async function generateUniqueOrderNumber(existingCandidates: string[] = []): Pro
     if (!sanitized) continue
     const exists = await sanity.fetch<number>(
       'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
-      { num: sanitized }
+      {num: sanitized},
     )
     if (!Number(exists)) return sanitized
   }
@@ -211,7 +214,7 @@ async function generateUniqueOrderNumber(existingCandidates: string[] = []): Pro
       .padStart(6, '0')}`
     const exists = await sanity.fetch<number>(
       'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
-      { num: randomCandidate }
+      {num: randomCandidate},
     )
     if (!Number(exists)) return randomCandidate
   }
@@ -223,13 +226,27 @@ export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
-  if (event.httpMethod !== 'POST' && event.httpMethod !== 'GET') return { statusCode: 405, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method Not Allowed' }) }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
+  if (event.httpMethod !== 'POST' && event.httpMethod !== 'GET')
+    return {
+      statusCode: 405,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
+    }
 
   // Optional simple shared secret to avoid accidental clicks across environments
   const expected = (process.env.BACKFILL_SECRET || '').trim()
-  const presented = ((event.headers?.authorization || '').replace(/^Bearer\s+/i, '') || (event.queryStringParameters?.token || '')).trim()
-  if (expected && presented !== expected) return { statusCode: 401, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Unauthorized' }) }
+  const presented = (
+    (event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
+    event.queryStringParameters?.token ||
+    ''
+  ).trim()
+  if (expected && presented !== expected)
+    return {
+      statusCode: 401,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Unauthorized'}),
+    }
 
   let dryRun = (event.queryStringParameters?.dryRun || '').toLowerCase() === 'true'
   if (event.httpMethod === 'POST') {
@@ -245,7 +262,10 @@ export const handler: Handler = async (event) => {
     const num = Number(value)
     return Number.isFinite(num) ? num : NaN
   })()
-  const maxRecords = Math.max(1, Math.min(Number.isNaN(parsedLimit) ? 50 : Math.floor(parsedLimit), 500))
+  const maxRecords = Math.max(
+    1,
+    Math.min(Number.isNaN(parsedLimit) ? 50 : Math.floor(parsedLimit), 500),
+  )
   const pageSize = Math.min(100, maxRecords)
   let cursor = (() => {
     const value = event.queryStringParameters?.cursor
@@ -266,7 +286,7 @@ export const handler: Handler = async (event) => {
       const envBudget = Number(process.env.BACKFILL_RUNTIME_LIMIT_MS)
       if (Number.isFinite(envBudget) && envBudget > 0) return envBudget
       return dryRun ? 9000 : 7500
-    })()
+    })(),
   )
   let timedOut = false
 
@@ -285,7 +305,7 @@ export const handler: Handler = async (event) => {
           customerName,
           shippingAddress
         }[0...$limit]`,
-        { limit: pageSize, cursor }
+        {limit: pageSize, cursor},
       )
 
       if (!result || result.length === 0) break
@@ -297,7 +317,7 @@ export const handler: Handler = async (event) => {
 
         // Migrate customer -> customerRef (remove legacy `customer`)
         if (!doc.customerRef && doc.customer && doc.customer._ref) {
-          setOps.customerRef = { _type: 'reference', _ref: doc.customer._ref }
+          setOps.customerRef = {_type: 'reference', _ref: doc.customer._ref}
           unsetOps.push('customer')
         } else if (doc.customer) {
           unsetOps.push('customer')
@@ -318,7 +338,11 @@ export const handler: Handler = async (event) => {
           if (needs) setOps.cart = fixedCart
         }
 
-        const workingCart = Array.isArray(setOps.cart) ? setOps.cart : Array.isArray(doc.cart) ? doc.cart : []
+        const workingCart = Array.isArray(setOps.cart)
+          ? setOps.cart
+          : Array.isArray(doc.cart)
+            ? doc.cart
+            : []
         if (cartNeedsEnrichment(workingCart)) {
           let enrichedCart: any[] | null = null
 
@@ -343,7 +367,9 @@ export const handler: Handler = async (event) => {
         }
 
         if (!doc.customerName) {
-          const shippingName = doc?.shippingAddress?.name ? String(doc.shippingAddress.name).trim() : ''
+          const shippingName = doc?.shippingAddress?.name
+            ? String(doc.shippingAddress.name).trim()
+            : ''
           if (shippingName) setOps.customerName = shippingName
         }
 
@@ -353,7 +379,13 @@ export const handler: Handler = async (event) => {
           setOps.orderNumber = await generateUniqueOrderNumber(candidates)
         }
 
-        const slugSource = (setOps.orderNumber || doc.orderNumber || doc.stripeSessionId || doc._id || '').toString()
+        const slugSource = (
+          setOps.orderNumber ||
+          doc.orderNumber ||
+          doc.stripeSessionId ||
+          doc._id ||
+          ''
+        ).toString()
         const desiredSlug = createOrderSlug(slugSource, doc._id)
         const currentSlug = (() => {
           if (!doc?.slug) return ''
@@ -362,14 +394,18 @@ export const handler: Handler = async (event) => {
           return ''
         })()
         if (desiredSlug && currentSlug !== desiredSlug) {
-          setOps.slug = { _type: 'slug', current: desiredSlug }
+          setOps.slug = {_type: 'slug', current: desiredSlug}
         }
 
         if (Object.keys(setOps).length || unsetOps.length) {
           changed++
           if (!dryRun) {
             try {
-              await sanity.patch(doc._id).set(setOps).unset(unsetOps).commit({ autoGenerateArrayKeys: true })
+              await sanity
+                .patch(doc._id)
+                .set(setOps)
+                .unset(unsetOps)
+                .commit({autoGenerateArrayKeys: true})
             } catch (err) {
               console.warn('backfillOrders: failed to patch order', doc._id, err)
             }
@@ -383,7 +419,8 @@ export const handler: Handler = async (event) => {
             (doc.customerRef && doc.customerRef._ref) ||
             (doc.customer && doc.customer._ref) ||
             null
-          const customerEmail = (doc.customerEmail || doc.shippingAddress?.email || '').toString().trim() || undefined
+          const customerEmail =
+            (doc.customerEmail || doc.shippingAddress?.email || '').toString().trim() || undefined
           try {
             await updateCustomerProfileForOrder({
               sanity,
@@ -408,7 +445,11 @@ export const handler: Handler = async (event) => {
       if (result.length < pageSize) break
     }
   } catch (e: any) {
-    return { statusCode: 500, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e?.message || 'Backfill failed' }) }
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: e?.message || 'Backfill failed'}),
+    }
   }
 
   let remainingCustomer = 0
@@ -418,7 +459,7 @@ export const handler: Handler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: {...CORS, 'Content-Type': 'application/json'},
     body: JSON.stringify({
       ok: true,
       dryRun,

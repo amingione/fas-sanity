@@ -9,7 +9,19 @@ export type NormalizedMetadataEntry = {
   value: string
 }
 
-const OPTION_KEYWORDS = ['option', 'vehicle', 'fitment', 'model', 'variant', 'trim', 'package', 'selection', 'config', 'size', 'color']
+const OPTION_KEYWORDS = [
+  'option',
+  'vehicle',
+  'fitment',
+  'model',
+  'variant',
+  'trim',
+  'package',
+  'selection',
+  'config',
+  'size',
+  'color',
+]
 const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addon', 'addOn', 'accessory']
 const CUSTOMIZATION_KEYWORDS = [
   'custom',
@@ -85,7 +97,10 @@ const humanize = (text: string): string =>
 const canonicalizeLabel = (label: string): string =>
   label
     .toLowerCase()
-    .replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+    .replace(
+      /\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g,
+      '',
+    )
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
 
@@ -183,7 +198,9 @@ const parseListValue = (value: string): string[] => {
     .filter(Boolean)
 }
 
-const normalizeMetadataEntries = (metadata: MetadataEntryInput | NormalizedMetadataEntry[]): NormalizedMetadataEntry[] => {
+const normalizeMetadataEntries = (
+  metadata: MetadataEntryInput | NormalizedMetadataEntry[],
+): NormalizedMetadataEntry[] => {
   if (Array.isArray(metadata)) {
     return metadata
       .map((entry) => {
@@ -213,7 +230,7 @@ const normalizeMetadataEntries = (metadata: MetadataEntryInput | NormalizedMetad
 }
 
 const extractOptionDetails = (
-  entries: NormalizedMetadataEntry[]
+  entries: NormalizedMetadataEntry[],
 ): {summary?: string; details: string[]; consumedKeys: Set<string>} => {
   const pairs = new Map<string, {name?: string; value?: string; keys: string[]}>()
   const consumed = new Set<string>()
@@ -298,7 +315,7 @@ const extractOptionDetails = (
 }
 
 const extractUpgrades = (
-  entries: NormalizedMetadataEntry[]
+  entries: NormalizedMetadataEntry[],
 ): {upgrades: string[]; consumedKeys: Set<string>} => {
   const upgrades: string[] = []
   const consumed = new Set<string>()
@@ -318,7 +335,7 @@ const extractUpgrades = (
 }
 
 const extractCustomizations = (
-  entries: NormalizedMetadataEntry[]
+  entries: NormalizedMetadataEntry[],
 ): {customizations: string[]; consumedKeys: Set<string>} => {
   const customizations: string[] = []
   const consumed = new Set<string>()
@@ -391,10 +408,11 @@ export const coerceStringArray = (input: unknown): string[] => {
   return []
 }
 
-export const uniqueStrings = (values: string[]): string[] => Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+export const uniqueStrings = (values: string[]): string[] =>
+  Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
 
 export const deriveOptionsFromMetadata = (
-  metadata: MetadataEntryInput | NormalizedMetadataEntry[]
+  metadata: MetadataEntryInput | NormalizedMetadataEntry[],
 ): {
   optionSummary?: string
   optionDetails: string[]
@@ -433,7 +451,7 @@ export const deriveOptionsFromMetadata = (
 
 export const remainingMetadataEntries = (
   metadata: MetadataEntryInput | NormalizedMetadataEntry[],
-  usedKeys: string[]
+  usedKeys: string[],
 ): NormalizedMetadataEntry[] => {
   if (!usedKeys.length) return normalizeMetadataEntries(metadata)
   const exclude = new Set(usedKeys.map((key) => key.toLowerCase()))

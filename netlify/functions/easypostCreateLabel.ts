@@ -1,6 +1,6 @@
-import type { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
-import { getEasyPostFromAddress } from '../lib/ship-from'
+import type {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
+import {getEasyPostFromAddress} from '../lib/ship-from'
 import {
   getEasyPostClient,
   resolveDimensions,
@@ -37,8 +37,8 @@ type OrderDoc = {
     postalCode?: string
     country?: string
   }
-  weight?: { value?: number; unit?: string }
-  dimensions?: { length?: number; width?: number; height?: number }
+  weight?: {value?: number; unit?: string}
+  dimensions?: {length?: number; width?: number; height?: number}
   customerEmail?: string
   customerName?: string
   orderNumber?: string
@@ -90,7 +90,7 @@ export type CreateEasyPostLabelOptions = {
   shipFrom?: EasyPostAddress
   weightOverride?: WeightInput
   dimensionsOverride?: DimensionsInput
-  packageDetails?: { weight?: WeightInput; dimensions?: DimensionsInput }
+  packageDetails?: {weight?: WeightInput; dimensions?: DimensionsInput}
   reference?: string
 }
 
@@ -117,12 +117,23 @@ async function fetchOrder(orderId: string): Promise<OrderDoc | null> {
       customerName,
       orderNumber
     }`,
-    { id: orderId },
+    {id: orderId},
   )
 }
 
-export async function createEasyPostLabel(options: CreateEasyPostLabelOptions): Promise<EasyPostLabelResult> {
-  const { orderId, invoiceId, shipTo, shipFrom, weightOverride, dimensionsOverride, packageDetails, reference } = options
+export async function createEasyPostLabel(
+  options: CreateEasyPostLabelOptions,
+): Promise<EasyPostLabelResult> {
+  const {
+    orderId,
+    invoiceId,
+    shipTo,
+    shipFrom,
+    weightOverride,
+    dimensionsOverride,
+    packageDetails,
+    reference,
+  } = options
   if (!orderId && !shipTo) {
     throw new Error('Missing orderId or shipTo address')
   }
@@ -144,7 +155,7 @@ export async function createEasyPostLabel(options: CreateEasyPostLabelOptions): 
   const weightInput = packageDetails?.weight ?? weightOverride ?? order?.weight
   const dimensionsInput = packageDetails?.dimensions ?? dimensionsOverride ?? order?.dimensions
 
-  const { ounces, pounds } = resolveWeight(weightInput, order?.weight)
+  const {ounces, pounds} = resolveWeight(weightInput, order?.weight)
   const dimensions = resolveDimensions(dimensionsInput, order?.dimensions)
 
   const client = getEasyPostClient()
@@ -193,24 +204,23 @@ export async function createEasyPostLabel(options: CreateEasyPostLabelOptions): 
 
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
 
-  const labelUrl =
-    postageLabel?.label_url ||
-    postageLabel?.label_pdf_url ||
-    undefined
+  const labelUrl = postageLabel?.label_url || postageLabel?.label_pdf_url || undefined
   const trackingCode = updatedShipment.tracking_code || tracker?.tracking_code || undefined
   const trackingUrl = tracker?.public_url || undefined
 
-  const latestDetail = Array.isArray(tracker?.tracking_details) && tracker.tracking_details.length
-    ? tracker.tracking_details[tracker.tracking_details.length - 1]
-    : null
-  const lastEventAt = latestDetail?.datetime || tracker?.updated_at || tracker?.created_at || new Date().toISOString()
+  const latestDetail =
+    Array.isArray(tracker?.tracking_details) && tracker.tracking_details.length
+      ? tracker.tracking_details[tracker.tracking_details.length - 1]
+      : null
+  const lastEventAt =
+    latestDetail?.datetime || tracker?.updated_at || tracker?.created_at || new Date().toISOString()
 
   const rateAmount = Number.parseFloat(selectedRate?.rate || '')
   const amount = Number.isFinite(rateAmount) ? Number(rateAmount.toFixed(2)) : undefined
 
   const shippingStatus: Record<string, any> = {
-      carrier: selectedRate?.carrier || tracker?.carrier || undefined,
-      service: selectedRate?.service || undefined,
+    carrier: selectedRate?.carrier || tracker?.carrier || undefined,
+    service: selectedRate?.service || undefined,
     labelUrl,
     trackingCode,
     trackingUrl,
@@ -235,15 +245,13 @@ export async function createEasyPostLabel(options: CreateEasyPostLabelOptions): 
     const selectedService = Object.fromEntries(
       Object.entries({
         carrierId: selectedRate?.carrier_account_id || undefined,
-      carrier: shippingStatus.carrier,
-      service: selectedRate?.service || undefined,
-      serviceCode: selectedRate?.service || undefined,
+        carrier: shippingStatus.carrier,
+        service: selectedRate?.service || undefined,
+        serviceCode: selectedRate?.service || undefined,
         amount,
         currency: selectedRate?.currency || undefined,
         deliveryDays:
-          typeof selectedRate?.delivery_days === 'number'
-            ? selectedRate.delivery_days
-            : undefined,
+          typeof selectedRate?.delivery_days === 'number' ? selectedRate.delivery_days : undefined,
         estimatedDeliveryDate: tracker?.est_delivery_date
           ? new Date(tracker.est_delivery_date).toISOString()
           : undefined,
@@ -266,9 +274,9 @@ export async function createEasyPostLabel(options: CreateEasyPostLabelOptions): 
     await sanity
       .patch(orderId)
       .set(patchSet)
-      .setIfMissing({ shippingLog: [] })
+      .setIfMissing({shippingLog: []})
       .append('shippingLog', [logEntry])
-      .commit({ autoGenerateArrayKeys: true })
+      .commit({autoGenerateArrayKeys: true})
   } else if (invoiceId) {
     try {
       await sanity
@@ -301,14 +309,14 @@ export async function createEasyPostLabel(options: CreateEasyPostLabelOptions): 
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: CORS_HEADERS, body: '' }
+    return {statusCode: 200, headers: CORS_HEADERS, body: ''}
   }
 
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
+      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
     }
   }
 
@@ -318,41 +326,45 @@ export const handler: Handler = async (event) => {
   } catch {
     return {
       statusCode: 400,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Invalid JSON payload' }),
+      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Invalid JSON payload'}),
     }
   }
 
   const orderId = (payload.orderId || payload.order_id || '').toString().trim()
   const invoiceId = (payload.invoiceId || payload.invoice_id || '').toString().trim()
-  const shipTo = payload.ship_to ? {
-    name: payload.ship_to?.name,
-    street1: payload.ship_to?.street1 || payload.ship_to?.address_line1,
-    street2: payload.ship_to?.street2 || payload.ship_to?.address_line2,
-    city: payload.ship_to?.city || payload.ship_to?.city_locality,
-    state: payload.ship_to?.state || payload.ship_to?.state_province,
-    zip: payload.ship_to?.zip || payload.ship_to?.postal_code,
-    country: payload.ship_to?.country || payload.ship_to?.country_code,
-    phone: payload.ship_to?.phone,
-    email: payload.ship_to?.email,
-  } : undefined
-  const shipFrom = payload.ship_from ? {
-    name: payload.ship_from?.name,
-    street1: payload.ship_from?.street1 || payload.ship_from?.address_line1,
-    street2: payload.ship_from?.street2 || payload.ship_from?.address_line2,
-    city: payload.ship_from?.city || payload.ship_from?.city_locality,
-    state: payload.ship_from?.state || payload.ship_from?.state_province,
-    zip: payload.ship_from?.zip || payload.ship_from?.postal_code,
-    country: payload.ship_from?.country || payload.ship_from?.country_code,
-    phone: payload.ship_from?.phone,
-    email: payload.ship_from?.email,
-  } : undefined
+  const shipTo = payload.ship_to
+    ? {
+        name: payload.ship_to?.name,
+        street1: payload.ship_to?.street1 || payload.ship_to?.address_line1,
+        street2: payload.ship_to?.street2 || payload.ship_to?.address_line2,
+        city: payload.ship_to?.city || payload.ship_to?.city_locality,
+        state: payload.ship_to?.state || payload.ship_to?.state_province,
+        zip: payload.ship_to?.zip || payload.ship_to?.postal_code,
+        country: payload.ship_to?.country || payload.ship_to?.country_code,
+        phone: payload.ship_to?.phone,
+        email: payload.ship_to?.email,
+      }
+    : undefined
+  const shipFrom = payload.ship_from
+    ? {
+        name: payload.ship_from?.name,
+        street1: payload.ship_from?.street1 || payload.ship_from?.address_line1,
+        street2: payload.ship_from?.street2 || payload.ship_from?.address_line2,
+        city: payload.ship_from?.city || payload.ship_from?.city_locality,
+        state: payload.ship_from?.state || payload.ship_from?.state_province,
+        zip: payload.ship_from?.zip || payload.ship_from?.postal_code,
+        country: payload.ship_from?.country || payload.ship_from?.country_code,
+        phone: payload.ship_from?.phone,
+        email: payload.ship_from?.email,
+      }
+    : undefined
 
   if (!orderId && !invoiceId && !shipTo) {
     return {
       statusCode: 400,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing orderId or shipping details' }),
+      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Missing orderId or shipping details'}),
     }
   }
 
@@ -360,8 +372,14 @@ export const handler: Handler = async (event) => {
     const result = await createEasyPostLabel({
       orderId,
       invoiceId,
-      shipTo: shipTo?.street1 && shipTo.city && shipTo.state && shipTo.zip && shipTo.country ? shipTo : undefined,
-      shipFrom: shipFrom?.street1 && shipFrom.city && shipFrom.state && shipFrom.zip && shipFrom.country ? shipFrom : undefined,
+      shipTo:
+        shipTo?.street1 && shipTo.city && shipTo.state && shipTo.zip && shipTo.country
+          ? shipTo
+          : undefined,
+      shipFrom:
+        shipFrom?.street1 && shipFrom.city && shipFrom.state && shipFrom.zip && shipFrom.country
+          ? shipFrom
+          : undefined,
       weightOverride: payload.weight,
       dimensionsOverride: payload.dimensions,
       packageDetails: payload.package_details,
@@ -370,15 +388,15 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
       body: JSON.stringify(result),
     }
   } catch (err: any) {
     console.error('easypostCreateLabel error', err)
     return {
       statusCode: 500,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err?.message || 'EasyPost label generation failed' }),
+      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: err?.message || 'EasyPost label generation failed'}),
     }
   }
 }

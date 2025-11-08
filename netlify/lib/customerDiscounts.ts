@@ -75,7 +75,8 @@ function mapDiscountToEntry(params: {
     startsAt: toIso(discount.start),
     endsAt: toIso(discount.end),
     createdAt: toIso(coupon?.created),
-    maxRedemptions: typeof coupon?.max_redemptions === 'number' ? coupon.max_redemptions : undefined,
+    maxRedemptions:
+      typeof coupon?.max_redemptions === 'number' ? coupon.max_redemptions : undefined,
     timesRedeemed: typeof coupon?.times_redeemed === 'number' ? coupon.times_redeemed : undefined,
     valid: typeof coupon?.valid === 'boolean' ? coupon.valid : undefined,
     livemode: typeof coupon?.livemode === 'boolean' ? coupon.livemode : undefined,
@@ -181,7 +182,10 @@ export async function removeCustomerDiscountRecord(params: {
   const {sanity, stripeDiscountId} = params
   if (!stripeDiscountId) return
 
-  let targetDoc: {_id: string; discounts?: Array<{_key?: string; stripeDiscountId?: string}>} | null = null
+  let targetDoc: {
+    _id: string
+    discounts?: Array<{_key?: string; stripeDiscountId?: string}>
+  } | null = null
 
   if (params.stripeCustomerId) {
     targetDoc = await fetchCustomerDoc(sanity, params.stripeCustomerId)

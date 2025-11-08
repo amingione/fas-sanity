@@ -1,6 +1,6 @@
 import React from 'react'
-import { Badge, Card, Text } from '@sanity/ui'
-import type { StringInputProps } from 'sanity'
+import {Badge, Card, Text} from '@sanity/ui'
+import type {StringInputProps} from 'sanity'
 
 interface Props {
   value: string
@@ -15,7 +15,7 @@ const fulfillmentColors: Record<string, 'positive' | 'caution' | 'critical' | 'd
   cancelled: 'critical',
   canceled: 'critical',
   paid: 'caution',
-  pending: 'default'
+  pending: 'default',
 }
 
 // Component that works for both input + readonly

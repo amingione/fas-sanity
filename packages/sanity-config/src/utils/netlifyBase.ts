@@ -9,39 +9,48 @@ function normalizeNetlifyBase(value?: string | null): string | null {
 }
 
 function getNetlifyFunctionBaseCandidates(): string[] {
-  const candidates: string[] = []
-
-  const envBase = normalizeNetlifyBase(
-    (typeof process !== 'undefined'
-      ? ((process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE ||
-          (process as any)?.env?.SANITY_NETLIFY_BASE ||
-          (process as any)?.env?.SANITY_API_NETLIFY_BASE)
-      : null) as string | null,
-  )
-  if (envBase) candidates.push(envBase)
-
   const localNetlifyBases = [
     normalizeNetlifyBase('http://localhost:8888'),
     normalizeNetlifyBase('http://127.0.0.1:8888'),
   ].filter((candidate): candidate is string => Boolean(candidate))
-  candidates.push(...localNetlifyBases)
 
+  const envBase = normalizeNetlifyBase(
+    (typeof process !== 'undefined'
+      ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE ||
+        (process as any)?.env?.SANITY_NETLIFY_BASE ||
+        (process as any)?.env?.SANITY_API_NETLIFY_BASE
+      : null) as string | null,
+  )
+
+  const storedBases: string[] = []
+  let currentOrigin: string | null = null
   if (typeof window !== 'undefined') {
     try {
       const stored = normalizeNetlifyBase(window.localStorage?.getItem('NLFY_BASE'))
-      if (stored) candidates.push(stored)
+      if (stored) storedBases.push(stored)
     } catch {
       // ignore storage access errors
     }
-
-    const origin = normalizeNetlifyBase(window.location?.origin)
-    if (origin) candidates.push(origin)
+    currentOrigin = normalizeNetlifyBase(window.location?.origin)
   }
 
   const fallback = normalizeNetlifyBase(DEFAULT_NETLIFY_BASE)
-  if (fallback) candidates.push(fallback)
 
-  return Array.from(new Set(candidates))
+  const isLocalStudio =
+    typeof window !== 'undefined' &&
+    /localhost:\d+|127\.0\.0\.1:\d+/.test(window.location.host || '')
+
+  // Prefer local Netlify dev when running Studio locally, then any stored success, then env/prod.
+  const ordered = [
+    ...(isLocalStudio ? localNetlifyBases : []),
+    ...storedBases,
+    ...(envBase ? [envBase] : []),
+    ...(currentOrigin ? [currentOrigin] : []),
+    ...(!isLocalStudio ? localNetlifyBases : []),
+    ...(fallback ? [fallback] : []),
+  ]
+
+  return Array.from(new Set(ordered))
 }
 
 export {DEFAULT_NETLIFY_BASE, getNetlifyFunctionBaseCandidates, normalizeNetlifyBase}

@@ -32,15 +32,15 @@ export const customProductOptionSizeType = defineField({
         Rule.min(1)
           .error('Add at least one size choice')
           .custom((options: SizeOption[] | undefined) => {
-          // Each size must have a unique title
-          if (options) {
-            const uniqueTitles = new Set(options.map((option) => option.title))
-            if (options.length > uniqueTitles.size) {
-              return 'Each product option must have a unique title'
+            // Each size must have a unique title
+            if (options) {
+              const uniqueTitles = new Set(options.map((option) => option.title))
+              if (options.length > uniqueTitles.size) {
+                return 'Each product option must have a unique title'
+              }
             }
-          }
-          return true
-        }),
+            return true
+          }),
     }),
   ],
   preview: {

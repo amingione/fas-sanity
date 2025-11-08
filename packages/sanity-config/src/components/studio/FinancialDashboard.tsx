@@ -1,17 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Flex,
-  Heading,
-  Spinner,
-  Stack,
-  Text,
-} from '@sanity/ui'
+import {Badge, Box, Button, Card, Flex, Heading, Spinner, Stack, Text} from '@sanity/ui'
 import {ArrowLeftIcon, ArrowRightIcon} from '@sanity/icons'
 import {format, formatDistanceToNow} from 'date-fns'
 import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
@@ -237,165 +227,172 @@ type PayoutSummary = {
   recent: Array<{id: string; arrival: number; amount: number; status: string; method: string}>
 }
 
-const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
-  const client = useClient({apiVersion: '2024-10-01'})
-  const router = useRouter()
+const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
+  (_props, ref) => {
+    const client = useClient({apiVersion: '2024-10-01'})
+    const router = useRouter()
 
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [raw, setRaw] = useState<FetchResult | null>(null)
-  const [traffic, setTraffic] = useState<TrafficSummary | null>(null)
-  const [payouts, setPayouts] = useState<PayoutSummary | null>(null)
-  const [range, setRange] = useState<RangePreset>(30)
-  const [activeIntegration, setActiveIntegration] = useState<IntegrationKey | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [raw, setRaw] = useState<FetchResult | null>(null)
+    const [traffic, setTraffic] = useState<TrafficSummary | null>(null)
+    const [payouts, setPayouts] = useState<PayoutSummary | null>(null)
+    const [range, setRange] = useState<RangePreset>(30)
+    const [activeIntegration, setActiveIntegration] = useState<IntegrationKey | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+    useEffect(() => {
+      let cancelled = false
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const start = new Date(Date.now() - LOOKBACK_DAYS * DAY).toISOString()
-        const [sanityResult, trafficResult, payoutResult] = await Promise.all([
-          client.fetch<FetchResult>(DASHBOARD_QUERY, {start}),
-          fetch(`/.netlify/functions/fetchSiteTraffic?start=${encodeURIComponent(start)}`)
-            .then((res) => (res.ok ? res.json() : null))
-            .catch((err) => {
-              console.warn('traffic fetch failed', err)
-              return null
-            }),
-          fetch('/.netlify/functions/fetchStripePayouts')
-            .then((res) => (res.ok ? res.json() : null))
-            .catch((err) => {
-              console.warn('payout fetch failed', err)
-              return null
-            }),
-        ])
+      async function load() {
+        setLoading(true)
+        setError(null)
+        try {
+          const start = new Date(Date.now() - LOOKBACK_DAYS * DAY).toISOString()
+          const [sanityResult, trafficResult, payoutResult] = await Promise.all([
+            client.fetch<FetchResult>(DASHBOARD_QUERY, {start}),
+            fetch(`/.netlify/functions/fetchSiteTraffic?start=${encodeURIComponent(start)}`)
+              .then((res) => (res.ok ? res.json() : null))
+              .catch((err) => {
+                console.warn('traffic fetch failed', err)
+                return null
+              }),
+            fetch('/.netlify/functions/fetchStripePayouts')
+              .then((res) => (res.ok ? res.json() : null))
+              .catch((err) => {
+                console.warn('payout fetch failed', err)
+                return null
+              }),
+          ])
 
-        if (cancelled) return
-        setRaw(sanityResult)
-        setTraffic(trafficResult ? summarizeTraffic(trafficResult as TrafficResponse) : null)
-        setPayouts(payoutResult ? summarizePayout(payoutResult as PayoutResponse) : null)
-      } catch (err: any) {
-        console.error('Financial dashboard load failed', err)
-        if (!cancelled) setError(err?.message || 'Unable to load financial dashboard data.')
-      } finally {
-        if (!cancelled) setLoading(false)
+          if (cancelled) return
+          setRaw(sanityResult)
+          setTraffic(trafficResult ? summarizeTraffic(trafficResult as TrafficResponse) : null)
+          setPayouts(payoutResult ? summarizePayout(payoutResult as PayoutResponse) : null)
+        } catch (err: any) {
+          console.error('Financial dashboard load failed', err)
+          if (!cancelled) setError(err?.message || 'Unable to load financial dashboard data.')
+        } finally {
+          if (!cancelled) setLoading(false)
+        }
       }
-    }
 
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [client])
+      load()
+      return () => {
+        cancelled = true
+      }
+    }, [client])
 
-  const normalized = useMemo(() => (raw ? normalize(raw) : null), [raw])
-  const summary = useMemo(() => (normalized ? summarize(normalized, range) : null), [normalized, range])
+    const normalized = useMemo(() => (raw ? normalize(raw) : null), [raw])
+    const summary = useMemo(
+      () => (normalized ? summarize(normalized, range) : null),
+      [normalized, range],
+    )
 
-  const handleRangeChange = (value: RangePreset) => setRange(value)
-  const handleCreateInvoice = () => router.navigateIntent('create', {type: 'invoice'})
-  const handleCreateOrder = () => router.navigateIntent('create', {type: 'order'})
+    const handleRangeChange = (value: RangePreset) => setRange(value)
+    const handleCreateInvoice = () => router.navigateIntent('create', {type: 'invoice'})
+    const handleCreateOrder = () => router.navigateIntent('create', {type: 'order'})
 
-  return (
-    <Box
-      ref={ref}
-      padding={[3, 4, 5]}
-      style={{
-        background: 'var(--studio-surface-overlay)',
-        minHeight: '100%',
-        borderRadius: '28px',
-        border: '1px solid var(--studio-border)',
-        boxShadow: 'var(--studio-shadow)',
-        backdropFilter: 'blur(18px)',
-      }}
-    >
-      <Stack space={4}>
-        <Flex
-          align="center"
-          justify="space-between"
-          gap={3}
-          style={{flexWrap: 'wrap'}}
-        >
-          <Stack space={1}>
-            <Heading size={3}>Financial dashboard</Heading>
-            {summary ? (
-              <Text size={1} muted>
-                Updated {formatDistanceToNow(new Date(summary.generatedAt), {addSuffix: true})}
-              </Text>
-            ) : null}
-          </Stack>
-          <Flex gap={2} style={{flexWrap: 'wrap'}}>
-            {RANGE_PRESETS.map((preset) => (
-              <Button
-                key={preset.value}
-                text={preset.label}
-                tone={range === preset.value ? 'primary' : 'default'}
-                mode={range === preset.value ? 'default' : 'ghost'}
-                onClick={() => handleRangeChange(preset.value)}
-              />
-            ))}
-            <Button text="Create invoice" tone="primary" onClick={handleCreateInvoice} />
-            <Button text="Record order" onClick={handleCreateOrder} />
-          </Flex>
-        </Flex>
-
-        {loading ? (
-          <Card padding={6} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
-            <Flex align="center" justify="center" direction="column" gap={3}>
-              <Spinner muted />
-              <Text muted>Preparing your financial insights…</Text>
-            </Flex>
-          </Card>
-        ) : error ? (
-          <Card padding={5} radius={4} shadow={1} tone="critical">
-            <Stack space={3}>
-              <Heading size={2}>Unable to load dashboard</Heading>
-              <Text muted size={1}>{error}</Text>
+    return (
+      <Box
+        ref={ref}
+        padding={[3, 4, 5]}
+        style={{
+          background: 'var(--studio-surface-overlay)',
+          minHeight: '100%',
+          borderRadius: '28px',
+          border: '1px solid var(--studio-border)',
+          boxShadow: 'var(--studio-shadow)',
+          backdropFilter: 'blur(18px)',
+        }}
+      >
+        <Stack space={4}>
+          <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
+            <Stack space={1}>
+              <Heading size={3}>Financial dashboard</Heading>
+              {summary ? (
+                <Text size={1} muted>
+                  Updated {formatDistanceToNow(new Date(summary.generatedAt), {addSuffix: true})}
+                </Text>
+              ) : null}
             </Stack>
-          </Card>
-        ) : summary && normalized ? (
-          activeIntegration ? (
-            <IntegrationDetailView
-              integration={activeIntegration}
-              summary={summary}
-              normalized={normalized}
-              payouts={payouts}
-              traffic={traffic}
-              onBack={() => setActiveIntegration(null)}
-              range={range}
-            />
-          ) : (
-            <Box
-              style={{
-                display: 'grid',
-                gap: '16px',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              }}
-            >
-              <ProfitLossCard summary={summary} range={range} />
-              <ExpensesCard summary={summary} />
-              <CashFlowCard summary={summary} />
-              <InvoicesCard summary={summary} range={range} />
-              <SalesCard summary={summary} />
-              <Stack space={3} style={{minWidth: '300px'}}>
-                <IntegrationsCard
-                  summary={summary}
-                  traffic={traffic}
-                  payouts={payouts}
-                  dataLoaded={!!raw}
-                  onSelectIntegration={setActiveIntegration}
+            <Flex gap={2} style={{flexWrap: 'wrap'}}>
+              {RANGE_PRESETS.map((preset) => (
+                <Button
+                  key={preset.value}
+                  text={preset.label}
+                  tone={range === preset.value ? 'primary' : 'default'}
+                  mode={range === preset.value ? 'default' : 'ghost'}
+                  onClick={() => handleRangeChange(preset.value)}
                 />
-                <AccountsReceivableCard summary={summary} />
+              ))}
+              <Button text="Create invoice" tone="primary" onClick={handleCreateInvoice} />
+              <Button text="Record order" onClick={handleCreateOrder} />
+            </Flex>
+          </Flex>
+
+          {loading ? (
+            <Card
+              padding={6}
+              radius={4}
+              shadow={1}
+              style={{background: 'var(--studio-surface-strong)'}}
+            >
+              <Flex align="center" justify="center" direction="column" gap={3}>
+                <Spinner muted />
+                <Text muted>Preparing your financial insights…</Text>
+              </Flex>
+            </Card>
+          ) : error ? (
+            <Card padding={5} radius={4} shadow={1} tone="critical">
+              <Stack space={3}>
+                <Heading size={2}>Unable to load dashboard</Heading>
+                <Text muted size={1}>
+                  {error}
+                </Text>
               </Stack>
-            </Box>
-          )
-        ) : null}
-      </Stack>
-    </Box>
-  )
-})
+            </Card>
+          ) : summary && normalized ? (
+            activeIntegration ? (
+              <IntegrationDetailView
+                integration={activeIntegration}
+                summary={summary}
+                normalized={normalized}
+                payouts={payouts}
+                traffic={traffic}
+                onBack={() => setActiveIntegration(null)}
+                range={range}
+              />
+            ) : (
+              <Box
+                style={{
+                  display: 'grid',
+                  gap: '16px',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                }}
+              >
+                <ProfitLossCard summary={summary} range={range} />
+                <ExpensesCard summary={summary} />
+                <CashFlowCard summary={summary} />
+                <InvoicesCard summary={summary} range={range} />
+                <SalesCard summary={summary} />
+                <Stack space={3} style={{minWidth: '300px'}}>
+                  <IntegrationsCard
+                    summary={summary}
+                    traffic={traffic}
+                    payouts={payouts}
+                    dataLoaded={!!raw}
+                    onSelectIntegration={setActiveIntegration}
+                  />
+                  <AccountsReceivableCard summary={summary} />
+                </Stack>
+              </Box>
+            )
+          ) : null}
+        </Stack>
+      </Box>
+    )
+  },
+)
 
 FinancialDashboard.displayName = 'FinancialDashboard'
 
@@ -411,7 +408,12 @@ function ProfitLossCard({summary, range}: {summary: Summary; range: RangePreset}
   const expenseShare = income + expenses > 0 ? (expenses / (income + expenses)) * 100 : 0
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
@@ -424,7 +426,9 @@ function ProfitLossCard({summary, range}: {summary: Summary; range: RangePreset}
         </Flex>
 
         <Stack space={2}>
-          <Text size={1} muted>Net profit</Text>
+          <Text size={1} muted>
+            Net profit
+          </Text>
           <Heading size={4}>{currency(net)}</Heading>
         </Stack>
 
@@ -445,12 +449,7 @@ function ProfitLossCard({summary, range}: {summary: Summary; range: RangePreset}
           />
         </Stack>
 
-        <Flex
-          justify="space-between"
-          align="center"
-          gap={2}
-          style={{flexWrap: 'wrap'}}
-        >
+        <Flex justify="space-between" align="center" gap={2} style={{flexWrap: 'wrap'}}>
           <Text size={1} muted>
             {previousTransactions} transactions this period
           </Text>
@@ -467,12 +466,19 @@ function ExpensesCard({summary}: {summary: Summary}) {
   const categories = buildCategorySegments(summary.expenseCategories)
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
             <Heading size={2}>Expenses</Heading>
-            <Text size={1} muted>Spending for this period</Text>
+            <Text size={1} muted>
+              Spending for this period
+            </Text>
           </Stack>
           <TrendBadge value={change} />
         </Flex>
@@ -481,11 +487,17 @@ function ExpensesCard({summary}: {summary: Summary}) {
           <DonutChart
             size={140}
             thickness={28}
-            segments={categories.map((entry) => ({label: entry.category, value: entry.total, color: entry.color}))}
+            segments={categories.map((entry) => ({
+              label: entry.category,
+              value: entry.total,
+              color: entry.color,
+            }))}
             total={total}
           >
             <Flex direction="column" align="center" gap={1}>
-              <Text size={1} muted>Total spend</Text>
+              <Text size={1} muted>
+                Total spend
+              </Text>
               <Text weight="semibold">{currency(total)}</Text>
             </Flex>
           </DonutChart>
@@ -513,12 +525,19 @@ function CashFlowCard({summary}: {summary: Summary}) {
   const moneyOut = summary.cashflowSeries.reduce((acc, point) => acc + point.expense, 0)
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
             <Heading size={2}>Cash flow trend</Heading>
-            <Text size={1} muted>Net movement over the last {CASHFLOW_MONTHS} months</Text>
+            <Text size={1} muted>
+              Net movement over the last {CASHFLOW_MONTHS} months
+            </Text>
           </Stack>
           <Badge tone={net >= 0 ? 'positive' : 'critical'}>{currency(net)}</Badge>
         </Flex>
@@ -542,16 +561,27 @@ function CashFlowCard({summary}: {summary: Summary}) {
 
 function InvoicesCard({summary, range}: {summary: Summary; range: RangePreset}) {
   const overduePct = summary.outstanding > 0 ? (summary.overdue / summary.outstanding) * 100 : 0
-  const dueSoonPct = summary.outstanding > 0 ? (summary.dueSoonTotal / summary.outstanding) * 100 : 0
-  const paidPct = summary.paidLast30 + summary.unpaidLast30 > 0 ? (summary.paidLast30 / (summary.paidLast30 + summary.unpaidLast30)) * 100 : 0
+  const dueSoonPct =
+    summary.outstanding > 0 ? (summary.dueSoonTotal / summary.outstanding) * 100 : 0
+  const paidPct =
+    summary.paidLast30 + summary.unpaidLast30 > 0
+      ? (summary.paidLast30 / (summary.paidLast30 + summary.unpaidLast30)) * 100
+      : 0
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Stack space={1}>
             <Heading size={2}>Invoices</Heading>
-            <Text size={1} muted>Outstanding last {range} days</Text>
+            <Text size={1} muted>
+              Outstanding last {range} days
+            </Text>
           </Stack>
           <Badge tone={summary.overdueCount > 0 ? 'critical' : 'positive'}>
             {summary.overdueCount > 0 ? `${summary.overdueCount} overdue` : 'Up to date'}
@@ -560,32 +590,50 @@ function InvoicesCard({summary, range}: {summary: Summary; range: RangePreset}) 
 
         <Stack space={2}>
           <Flex justify="space-between" align="center">
-            <Text size={1} muted>Total outstanding</Text>
+            <Text size={1} muted>
+              Total outstanding
+            </Text>
             <Text weight="semibold">{currency(summary.outstanding)}</Text>
           </Flex>
           <FullWidthBar>
             <Segment width={overduePct} color="#ef4444" label="Overdue" />
             <Segment width={dueSoonPct} color="#f97316" label="Due soon" />
-            <Segment width={Math.max(0, 100 - overduePct - dueSoonPct)} color="#0ea5e9" label="Current" />
+            <Segment
+              width={Math.max(0, 100 - overduePct - dueSoonPct)}
+              color="#0ea5e9"
+              label="Current"
+            />
           </FullWidthBar>
           <Flex justify="space-between">
-            <Text size={1} muted>Overdue {currency(summary.overdue)}</Text>
-            <Text size={1} muted>Not yet due {currency(summary.notDueTotal)}</Text>
+            <Text size={1} muted>
+              Overdue {currency(summary.overdue)}
+            </Text>
+            <Text size={1} muted>
+              Not yet due {currency(summary.notDueTotal)}
+            </Text>
           </Flex>
         </Stack>
 
         <Stack space={2}>
           <Flex justify="space-between" align="center">
-            <Text size={1} muted>Last 30 days</Text>
-            <Text size={1} muted>{summary.invoiceCountLast30} invoices</Text>
+            <Text size={1} muted>
+              Last 30 days
+            </Text>
+            <Text size={1} muted>
+              {summary.invoiceCountLast30} invoices
+            </Text>
           </Flex>
           <FullWidthBar>
             <Segment width={paidPct} color="#22c55e" label="Paid" />
             <Segment width={Math.max(0, 100 - paidPct)} color="#facc15" label="Open" />
           </FullWidthBar>
           <Flex justify="space-between">
-            <Text size={1} muted>Paid {currency(summary.paidLast30)}</Text>
-            <Text size={1} muted>Open {currency(summary.unpaidLast30)}</Text>
+            <Text size={1} muted>
+              Paid {currency(summary.paidLast30)}
+            </Text>
+            <Text size={1} muted>
+              Open {currency(summary.unpaidLast30)}
+            </Text>
           </Flex>
         </Stack>
       </Stack>
@@ -598,16 +646,25 @@ function SalesCard({summary}: {summary: Summary}) {
   const average = summary.salesSeries.length > 0 ? totalSales / summary.salesSeries.length : 0
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
         <Stack space={1}>
           <Heading size={2}>Sales</Heading>
-          <Text size={1} muted>Last {summary.salesSeries.length} days</Text>
+          <Text size={1} muted>
+            Last {summary.salesSeries.length} days
+          </Text>
         </Stack>
 
         <Stack space={2}>
           <Heading size={3}>{currency(totalSales)}</Heading>
-          <Text size={1} muted>Average {currency(average)} per day</Text>
+          <Text size={1} muted>
+            Average {currency(average)} per day
+          </Text>
         </Stack>
 
         <LineChart
@@ -665,12 +722,19 @@ function IntegrationsCard({
       name: 'Site analytics',
       status: traffic ? 'Connected' : 'With issues',
       tone: traffic ? 'positive' : 'critical',
-      detail: traffic ? `${number(traffic.visitors)} visitors this period` : 'Connect analytics source',
+      detail: traffic
+        ? `${number(traffic.visitors)} visitors this period`
+        : 'Connect analytics source',
     },
   ]
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={3}>
         <Heading size={2}>My integrations</Heading>
         <Stack space={2}>
@@ -696,15 +760,12 @@ function IntegrationsCard({
                 }
               }}
             >
-              <Flex
-                align="center"
-                justify="space-between"
-                gap={3}
-                style={{flexWrap: 'wrap'}}
-              >
+              <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
                 <Stack space={1}>
                   <Text weight="semibold">{integration.name}</Text>
-                  <Text size={1} muted>{integration.detail}</Text>
+                  <Text size={1} muted>
+                    {integration.detail}
+                  </Text>
                 </Stack>
                 <Flex align="center" gap={2}>
                   <Badge tone={integration.tone}>{integration.status}</Badge>
@@ -738,7 +799,8 @@ function IntegrationDetailView({
   onBack: () => void
   range: RangePreset
 }) {
-  const rangeLabel = RANGE_PRESETS.find((preset) => preset.value === range)?.label || `${range} days`
+  const rangeLabel =
+    RANGE_PRESETS.find((preset) => preset.value === range)?.label || `${range} days`
 
   if (integration === 'orders') {
     return (
@@ -775,7 +837,9 @@ function OrdersIntegrationSection({
     .sort((a, b) => b.timestamp - a.timestamp)
 
   const statusBreakdown = aggregateCounts(ordersInRange.map((order) => order.status))
-  const paymentBreakdown = aggregateCounts(ordersInRange.map((order) => order.paymentStatus || 'unknown'))
+  const paymentBreakdown = aggregateCounts(
+    ordersInRange.map((order) => order.paymentStatus || 'unknown'),
+  )
 
   const recentOrders = ordersInRange.slice(0, 8)
 
@@ -792,8 +856,16 @@ function OrdersIntegrationSection({
             value={number(ordersInRange.length)}
             helper={`${rangeLabel} window`}
           />
-          <DetailStatCard label="Gross sales" value={currency(summary.grossSales)} helper="Before refunds" />
-          <DetailStatCard label="Net sales" value={currency(summary.netSales)} helper="After refunds" />
+          <DetailStatCard
+            label="Gross sales"
+            value={currency(summary.grossSales)}
+            helper="Before refunds"
+          />
+          <DetailStatCard
+            label="Net sales"
+            value={currency(summary.netSales)}
+            helper="After refunds"
+          />
           <DetailStatCard
             label="Average order value"
             value={currency(summary.averageOrder)}
@@ -811,7 +883,9 @@ function OrdersIntegrationSection({
             <Heading size={2}>Recent orders</Heading>
             <Stack space={2}>
               {recentOrders.length === 0 ? (
-                <Text size={1} muted>No orders captured in this range yet.</Text>
+                <Text size={1} muted>
+                  No orders captured in this range yet.
+                </Text>
               ) : (
                 recentOrders.map((order) => (
                   <Flex
@@ -824,11 +898,13 @@ function OrdersIntegrationSection({
                     <Stack space={1}>
                       <Text weight="semibold">Order {shortId(order.id)}</Text>
                       <Text size={1} muted>
-                        {currency(order.total)} · {format(new Date(order.timestamp), 'MMM d, yyyy p')} ·{' '}
+                        {currency(order.total)} ·{' '}
+                        {format(new Date(order.timestamp), 'MMM d, yyyy p')} ·{' '}
                         {formatDistanceToNow(new Date(order.timestamp), {addSuffix: true})}
                       </Text>
                       <Text size={1} muted>
-                        Status: {toTitleCase(order.status)} · Payment: {toTitleCase(order.paymentStatus || 'unknown')}
+                        Status: {toTitleCase(order.status)} · Payment:{' '}
+                        {toTitleCase(order.paymentStatus || 'unknown')}
                       </Text>
                     </Stack>
                     <Button
@@ -848,7 +924,13 @@ function OrdersIntegrationSection({
   )
 }
 
-function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | null; onBack: () => void}) {
+function PayoutsIntegrationSection({
+  payouts,
+  onBack,
+}: {
+  payouts: PayoutSummary | null
+  onBack: () => void
+}) {
   if (!payouts) {
     return (
       <IntegrationShell
@@ -859,9 +941,10 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
         <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={2}>
             <Text weight="semibold">No payout data available</Text>
-              <Text size={1} muted>
-                We couldn&rsquo;t load payout activity. Confirm your Stripe credentials or try again later.
-              </Text>
+            <Text size={1} muted>
+              We couldn&rsquo;t load payout activity. Confirm your Stripe credentials or try again
+              later.
+            </Text>
           </Stack>
         </Card>
       </IntegrationShell>
@@ -881,8 +964,16 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
     >
       <Stack space={5}>
         <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <DetailStatCard label="Available balance" value={currency(payouts.available)} helper="Ready to pay out" />
-          <DetailStatCard label="Pending balance" value={currency(payouts.pending)} helper="Awaiting settlement" />
+          <DetailStatCard
+            label="Available balance"
+            value={currency(payouts.available)}
+            helper="Ready to pay out"
+          />
+          <DetailStatCard
+            label="Pending balance"
+            value={currency(payouts.pending)}
+            helper="Awaiting settlement"
+          />
           <DetailStatCard
             label="Next payout"
             value={payouts.nextArrival ? format(new Date(payouts.nextArrival), 'MMM d, yyyy') : '—'}
@@ -895,7 +986,9 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
             <Heading size={2}>Recent payouts</Heading>
             <Stack space={2}>
               {recent.length === 0 ? (
-                <Text size={1} muted>No payouts recorded yet.</Text>
+                <Text size={1} muted>
+                  No payouts recorded yet.
+                </Text>
               ) : (
                 recent.map((payout) => (
                   <Flex
@@ -908,10 +1001,19 @@ function PayoutsIntegrationSection({payouts, onBack}: {payouts: PayoutSummary | 
                     <Stack space={1}>
                       <Text weight="semibold">{currency(payout.amount)}</Text>
                       <Text size={1} muted>
-                        {format(new Date(payout.arrival), 'MMM d, yyyy')} · {toTitleCase(payout.status)} · {payout.method}
+                        {format(new Date(payout.arrival), 'MMM d, yyyy')} ·{' '}
+                        {toTitleCase(payout.status)} · {payout.method}
                       </Text>
                     </Stack>
-                    <Badge tone={payout.status === 'paid' ? 'positive' : payout.status === 'pending' ? 'default' : 'critical'}>
+                    <Badge
+                      tone={
+                        payout.status === 'paid'
+                          ? 'positive'
+                          : payout.status === 'pending'
+                            ? 'default'
+                            : 'critical'
+                      }
+                    >
                       {toTitleCase(payout.status)}
                     </Badge>
                   </Flex>
@@ -944,9 +1046,10 @@ function AnalyticsIntegrationSection({
         <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
           <Stack space={2}>
             <Text weight="semibold">No analytics data available</Text>
-              <Text size={1} muted>
-                We couldn&rsquo;t load visitor data. Ensure your analytics integration is configured and try again.
-              </Text>
+            <Text size={1} muted>
+              We couldn&rsquo;t load visitor data. Ensure your analytics integration is configured
+              and try again.
+            </Text>
           </Stack>
         </Card>
       </IntegrationShell>
@@ -965,13 +1068,30 @@ function AnalyticsIntegrationSection({
     >
       <Stack space={5}>
         <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <DetailStatCard label="Visitors" value={number(traffic.visitors)} helper={`${rangeLabel} window`} />
-          <DetailStatCard label="Sessions" value={number(traffic.sessions)} helper="Unique sessions" />
-          <DetailStatCard label="Pageviews" value={number(traffic.pageviews)} helper="Total views" />
+          <DetailStatCard
+            label="Visitors"
+            value={number(traffic.visitors)}
+            helper={`${rangeLabel} window`}
+          />
+          <DetailStatCard
+            label="Sessions"
+            value={number(traffic.sessions)}
+            helper="Unique sessions"
+          />
+          <DetailStatCard
+            label="Pageviews"
+            value={number(traffic.pageviews)}
+            helper="Total views"
+          />
         </Flex>
 
         {hasTrend ? (
-          <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
+          <Card
+            padding={4}
+            radius={3}
+            shadow={0}
+            style={{background: 'var(--studio-surface-soft)'}}
+          >
             <Stack space={3}>
               <Heading size={2}>Session trend</Heading>
               <LineChart
@@ -990,7 +1110,9 @@ function AnalyticsIntegrationSection({
             <Heading size={2}>Recent daily metrics</Heading>
             <Stack space={2}>
               {traffic.recentDaily.length === 0 ? (
-                <Text size={1} muted>No recent analytics samples available.</Text>
+                <Text size={1} muted>
+                  No recent analytics samples available.
+                </Text>
               ) : (
                 traffic.recentDaily.map((day) => (
                   <Flex
@@ -1029,17 +1151,19 @@ function IntegrationShell({
   children: React.ReactNode
 }) {
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
-        <Flex
-          align="center"
-          justify="space-between"
-          gap={3}
-          style={{flexWrap: 'wrap'}}
-        >
+        <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
           <Stack space={1}>
             <Heading size={3}>{title}</Heading>
-            <Text size={1} muted>{description}</Text>
+            <Text size={1} muted>
+              {description}
+            </Text>
           </Stack>
           <Button icon={ArrowLeftIcon} text="Back to dashboard" mode="ghost" onClick={onBack} />
         </Flex>
@@ -1049,19 +1173,18 @@ function IntegrationShell({
   )
 }
 
-function DetailStatCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string
-  value: string
-  helper?: string
-}) {
+function DetailStatCard({label, value, helper}: {label: string; value: string; helper?: string}) {
   return (
-    <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)', flex: '1 1 220px'}}>
+    <Card
+      padding={4}
+      radius={3}
+      shadow={0}
+      style={{background: 'var(--studio-surface-soft)', flex: '1 1 220px'}}
+    >
       <Stack space={1}>
-        <Text size={1} muted>{label}</Text>
+        <Text size={1} muted>
+          {label}
+        </Text>
         <Text weight="semibold">{value}</Text>
         {helper ? (
           <Text size={1} muted>
@@ -1073,20 +1196,21 @@ function DetailStatCard({
   )
 }
 
-function StatusList({
-  title,
-  items,
-}: {
-  title: string
-  items: Array<{label: string; count: number}>
-}) {
+function StatusList({title, items}: {title: string; items: Array<{label: string; count: number}>}) {
   return (
-    <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)', flex: '1 1 240px'}}>
+    <Card
+      padding={4}
+      radius={3}
+      shadow={0}
+      style={{background: 'var(--studio-surface-soft)', flex: '1 1 240px'}}
+    >
       <Stack space={2}>
         <Heading size={2}>{title}</Heading>
         <Stack space={1}>
           {items.length === 0 ? (
-            <Text size={1} muted>No data recorded.</Text>
+            <Text size={1} muted>
+              No data recorded.
+            </Text>
           ) : (
             items.map((item) => (
               <Flex key={item.label} align="center" justify="space-between">
@@ -1130,21 +1254,34 @@ function AccountsReceivableCard({summary}: {summary: Summary}) {
   const segments = [
     {label: 'Overdue', value: summary.overdue, color: '#ef4444'},
     {label: 'Due soon', value: summary.dueSoonTotal, color: '#f97316'},
-    {label: 'Current', value: Math.max(0, summary.notDueTotal - summary.dueSoonTotal), color: '#22c55e'},
+    {
+      label: 'Current',
+      value: Math.max(0, summary.notDueTotal - summary.dueSoonTotal),
+      color: '#22c55e',
+    },
   ]
 
   return (
-    <Card padding={[4, 5]} radius={4} shadow={1} style={{background: 'var(--studio-surface-strong)'}}>
+    <Card
+      padding={[4, 5]}
+      radius={4}
+      shadow={1}
+      style={{background: 'var(--studio-surface-strong)'}}
+    >
       <Stack space={4}>
         <Flex justify="space-between" align="center">
           <Heading size={2}>Accounts receivable</Heading>
-          <Text size={1} muted>As of today</Text>
+          <Text size={1} muted>
+            As of today
+          </Text>
         </Flex>
 
         <Flex align="center" gap={4} style={{flexWrap: 'wrap'}}>
           <DonutChart size={140} thickness={28} segments={segments} total={total}>
             <Flex direction="column" align="center" gap={1}>
-              <Text size={1} muted>Total AR</Text>
+              <Text size={1} muted>
+                Total AR
+              </Text>
               <Text weight="semibold">{currency(total)}</Text>
             </Flex>
           </DonutChart>
@@ -1185,21 +1322,42 @@ function ProgressStat({
   return (
     <Stack space={1}>
       <Flex justify="space-between" align="center">
-        <Text size={1} muted>{label}</Text>
+        <Text size={1} muted>
+          {label}
+        </Text>
         <TrendBadge value={change} />
       </Flex>
       <Flex justify="space-between" align="center">
         <Text weight="semibold">{value}</Text>
-        <Text size={1} muted>{percent.toFixed(1)}%</Text>
+        <Text size={1} muted>
+          {percent.toFixed(1)}%
+        </Text>
       </Flex>
       <Box style={{height: 8, background, borderRadius: 9999}}>
-        <Box style={{width: `${Math.min(100, percent)}%`, height: '100%', background: color, borderRadius: 9999}} />
+        <Box
+          style={{
+            width: `${Math.min(100, percent)}%`,
+            height: '100%',
+            background: color,
+            borderRadius: 9999,
+          }}
+        />
       </Box>
     </Stack>
   )
 }
 
-function LegendRow({label, value, percent, color}: {label: string; value: string; percent: number; color: string}) {
+function LegendRow({
+  label,
+  value,
+  percent,
+  color,
+}: {
+  label: string
+  value: string
+  percent: number
+  color: string
+}) {
   return (
     <Flex align="center" justify="space-between" gap={3}>
       <Flex align="center" gap={2}>
@@ -1208,7 +1366,9 @@ function LegendRow({label, value, percent, color}: {label: string; value: string
       </Flex>
       <Stack style={{textAlign: 'right'}} space={1}>
         <Text weight="semibold">{value}</Text>
-        <Text size={1} muted>{percent.toFixed(1)}%</Text>
+        <Text size={1} muted>
+          {percent.toFixed(1)}%
+        </Text>
       </Stack>
     </Flex>
   )
@@ -1224,7 +1384,11 @@ function TrendBadge({value}: {value: number | null}) {
   }
   const positive = value > 0
   const negative = value < 0
-  const tone: 'default' | 'positive' | 'critical' = positive ? 'positive' : negative ? 'critical' : 'default'
+  const tone: 'default' | 'positive' | 'critical' = positive
+    ? 'positive'
+    : negative
+      ? 'critical'
+      : 'default'
   const symbol = positive ? '▲' : negative ? '▼' : '•'
   const magnitude = Math.abs(value).toFixed(1)
   return (
@@ -1323,11 +1487,7 @@ function LineChart({
   return (
     <Box style={{width: '100%'}}>
       <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-        <polyline
-          fill={background}
-          stroke="none"
-          points={area}
-        />
+        <polyline fill={background} stroke="none" points={area} />
         <polyline
           fill="none"
           stroke={stroke}
@@ -1351,12 +1511,27 @@ function LineChart({
   )
 }
 
-function SnapshotMetric({label, value, tone}: {label: string; value: number; tone: 'positive' | 'critical'}) {
+function SnapshotMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: number
+  tone: 'positive' | 'critical'
+}) {
   const color = tone === 'positive' ? '#22c55e' : '#ef4444'
   return (
-    <Card padding={3} radius={3} shadow={0} style={{background: 'rgba(15, 23, 42, 0.04)', flex: '1 1 120px'}}>
+    <Card
+      padding={3}
+      radius={3}
+      shadow={0}
+      style={{background: 'rgba(15, 23, 42, 0.04)', flex: '1 1 120px'}}
+    >
       <Stack space={1}>
-        <Text size={1} muted>{label}</Text>
+        <Text size={1} muted>
+          {label}
+        </Text>
         <Text weight="semibold" style={{color}}>
           {currency(value)}
         </Text>
@@ -1367,14 +1542,21 @@ function SnapshotMetric({label, value, tone}: {label: string; value: number; ton
 
 function FullWidthBar({children}: {children: React.ReactNode}) {
   return (
-    <Box style={{height: 10, borderRadius: 9999, overflow: 'hidden', display: 'flex', width: '100%'}}>
+    <Box
+      style={{height: 10, borderRadius: 9999, overflow: 'hidden', display: 'flex', width: '100%'}}
+    >
       {children}
     </Box>
   )
 }
 
 function Segment({width, color, label}: {width: number; color: string; label: string}) {
-  return <Box style={{width: `${Math.max(0, Math.min(width, 100))}%`, background: color}} aria-label={label} />
+  return (
+    <Box
+      style={{width: `${Math.max(0, Math.min(width, 100))}%`, background: color}}
+      aria-label={label}
+    />
+  )
 }
 
 function normalize(raw: FetchResult): NormalizedData {
@@ -1429,38 +1611,42 @@ function summarize(data: NormalizedData, rangeDays: RangePreset): Summary {
   const rangeStart = now - rangeDays * DAY
   const previousStart = rangeStart - rangeDays * DAY
 
-  const currentOrders = data.orders.filter((order) => order.timestamp >= rangeStart && order.timestamp <= now)
-  const previousOrders = data.orders.filter((order) => order.timestamp >= previousStart && order.timestamp < rangeStart)
+  const currentOrders = data.orders.filter(
+    (order) => order.timestamp >= rangeStart && order.timestamp <= now,
+  )
+  const previousOrders = data.orders.filter(
+    (order) => order.timestamp >= previousStart && order.timestamp < rangeStart,
+  )
 
-  const grossSales = currentOrders.reduce((sum, order) => (isCancelled(order.status) ? sum : sum + order.total), 0)
-  const previousGrossSales = previousOrders.reduce((sum, order) => (isCancelled(order.status) ? sum : sum + order.total), 0)
-
-  const refunds = currentOrders.reduce(
-    (sum, order) => {
-      if (isCancelled(order.status)) {
-        // Cancelled orders - count full amount as refunded
-        return sum + order.total
-      } else if (order.paymentStatus.includes('refund')) {
-        // Refunded or partially refunded - use actual refunded amount
-        return sum + order.refundedAmount
-      }
-      return sum
-    },
+  const grossSales = currentOrders.reduce(
+    (sum, order) => (isCancelled(order.status) ? sum : sum + order.total),
     0,
   )
-  const previousRefunds = previousOrders.reduce(
-    (sum, order) => {
-      if (isCancelled(order.status)) {
-        // Cancelled orders - count full amount as refunded
-        return sum + order.total
-      } else if (order.paymentStatus.includes('refund')) {
-        // Refunded or partially refunded - use actual refunded amount
-        return sum + order.refundedAmount
-      }
-      return sum
-    },
+  const previousGrossSales = previousOrders.reduce(
+    (sum, order) => (isCancelled(order.status) ? sum : sum + order.total),
     0,
   )
+
+  const refunds = currentOrders.reduce((sum, order) => {
+    if (isCancelled(order.status)) {
+      // Cancelled orders - count full amount as refunded
+      return sum + order.total
+    } else if (order.paymentStatus.includes('refund')) {
+      // Refunded or partially refunded - use actual refunded amount
+      return sum + order.refundedAmount
+    }
+    return sum
+  }, 0)
+  const previousRefunds = previousOrders.reduce((sum, order) => {
+    if (isCancelled(order.status)) {
+      // Cancelled orders - count full amount as refunded
+      return sum + order.total
+    } else if (order.paymentStatus.includes('refund')) {
+      // Refunded or partially refunded - use actual refunded amount
+      return sum + order.refundedAmount
+    }
+    return sum
+  }, 0)
 
   const netSales = grossSales - refunds
   const previousNetSales = previousGrossSales - previousRefunds
@@ -1468,8 +1654,12 @@ function summarize(data: NormalizedData, rangeDays: RangePreset): Summary {
   const orderCount = currentOrders.length
   const averageOrder = orderCount > 0 ? grossSales / orderCount : 0
 
-  const currentExpenses = data.expenses.filter((expense) => expense.timestamp >= rangeStart && expense.timestamp <= now)
-  const previousExpenses = data.expenses.filter((expense) => expense.timestamp >= previousStart && expense.timestamp < rangeStart)
+  const currentExpenses = data.expenses.filter(
+    (expense) => expense.timestamp >= rangeStart && expense.timestamp <= now,
+  )
+  const previousExpenses = data.expenses.filter(
+    (expense) => expense.timestamp >= previousStart && expense.timestamp < rangeStart,
+  )
   const expenseTotal = currentExpenses.reduce((sum, expense) => sum + expense.amount, 0)
   const previousExpenseTotal = previousExpenses.reduce((sum, expense) => sum + expense.amount, 0)
 
@@ -1478,10 +1668,14 @@ function summarize(data: NormalizedData, rangeDays: RangePreset): Summary {
 
   const expenseCategories = aggregateCategories(currentExpenses)
 
-  const currentInvoices = data.invoices.filter((invoice) => invoice.timestamp >= rangeStart && invoice.timestamp <= now)
+  const currentInvoices = data.invoices.filter(
+    (invoice) => invoice.timestamp >= rangeStart && invoice.timestamp <= now,
+  )
   const outstandingInvoices = currentInvoices.filter((invoice) => !isClosedInvoice(invoice.status))
   const outstanding = outstandingInvoices.reduce((sum, invoice) => sum + invoice.total, 0)
-  const overdueInvoices = outstandingInvoices.filter((invoice) => invoice.dueTimestamp !== null && invoice.dueTimestamp < now)
+  const overdueInvoices = outstandingInvoices.filter(
+    (invoice) => invoice.dueTimestamp !== null && invoice.dueTimestamp < now,
+  )
   const overdue = overdueInvoices.reduce((sum, invoice) => sum + invoice.total, 0)
   const dueSoonInvoices = outstandingInvoices.filter((invoice) => {
     if (!invoice.dueTimestamp) return false
@@ -1491,7 +1685,9 @@ function summarize(data: NormalizedData, rangeDays: RangePreset): Summary {
   const notDueTotal = Math.max(0, outstanding - overdue)
 
   const thirtyStart = now - 30 * DAY
-  const last30Invoices = data.invoices.filter((invoice) => invoice.timestamp >= thirtyStart && invoice.timestamp <= now)
+  const last30Invoices = data.invoices.filter(
+    (invoice) => invoice.timestamp >= thirtyStart && invoice.timestamp <= now,
+  )
   const paidLast30 = last30Invoices
     .filter((invoice) => isPaidInvoice(invoice.status))
     .reduce((sum, invoice) => sum + invoice.total, 0)
@@ -1542,7 +1738,10 @@ function buildSalesSeries(orders: NormalizedOrder[], days: number, now: number):
     const dayStart = now - i * DAY
     const dayEnd = dayStart + DAY
     const total = orders
-      .filter((order) => order.timestamp >= dayStart && order.timestamp < dayEnd && !isCancelled(order.status))
+      .filter(
+        (order) =>
+          order.timestamp >= dayStart && order.timestamp < dayEnd && !isCancelled(order.status),
+      )
       .reduce((sum, order) => sum + order.total, 0)
     points.push({date: dayStart, total})
   }
@@ -1569,7 +1768,10 @@ function buildCashflowSeries(
     const endMs = end.getTime()
 
     const income = orders
-      .filter((order) => order.timestamp >= startMs && order.timestamp < endMs && !isCancelled(order.status))
+      .filter(
+        (order) =>
+          order.timestamp >= startMs && order.timestamp < endMs && !isCancelled(order.status),
+      )
       .reduce((sum, order) => sum + order.total, 0)
 
     const expense = expenses
@@ -1670,7 +1872,9 @@ function isClosedInvoice(status: string): boolean {
 
 function isPaidInvoice(status: string): boolean {
   const normalized = status.toLowerCase()
-  return normalized.includes('paid') || normalized.includes('deposit') || normalized.includes('complete')
+  return (
+    normalized.includes('paid') || normalized.includes('deposit') || normalized.includes('complete')
+  )
 }
 
 function computeOrderTotal(order: RawOrder): number {

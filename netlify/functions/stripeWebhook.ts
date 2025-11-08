@@ -20,7 +20,6 @@ import {
   coerceStringArray,
   uniqueStrings,
 } from '@fas/sanity-config/utils/cartItemDetails'
-import {buildOrderV2Record} from '../lib/orderV2'
 import {
   hydrateDiscountResources,
   removeCustomerDiscountRecord,
@@ -533,23 +532,6 @@ const appendOrderEvent = async (
 ): Promise<void> => {
   if (!orderId) return
   await appendEventsToDocument(orderId, 'orderEvents', [buildOrderEventRecord(event)])
-  const logEntry = pruneUndefined({
-    eventType: event.eventType,
-    timestamp: event.occurredAt ? toIsoTimestamp(event.occurredAt) : new Date().toISOString(),
-    details: event.message || safeJsonStringify(event.metadata, 2000) || undefined,
-  })
-  if (!logEntry) return
-  try {
-    await sanity
-      .patch(orderId)
-      .setIfMissing({orderV2: {}})
-      .setIfMissing({'orderV2.admin': {}})
-      .setIfMissing({'orderV2.admin.stripeEventLog': []})
-      .append('orderV2.admin.stripeEventLog', [logEntry])
-      .commit({autoGenerateArrayKeys: true})
-  } catch (err) {
-    console.warn('stripeWebhook: failed to append orderV2 event log', err)
-  }
 }
 
 const appendExpiredCartEvent = async (
@@ -911,7 +893,15 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
     consumeRecordValue(working, ['productName', 'product_name', 'stripe_product_name']),
   )
   const sku = parseCartMetadataString(
-    consumeRecordValue(working, ['sku', 'SKU', 'product_sku', 'productSku', 'item_sku', 'variant_sku', 'inventory_sku']),
+    consumeRecordValue(working, [
+      'sku',
+      'SKU',
+      'product_sku',
+      'productSku',
+      'item_sku',
+      'variant_sku',
+      'inventory_sku',
+    ]),
   )
   const id = parseCartMetadataString(
     consumeRecordValue(working, [
@@ -926,9 +916,9 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   )
 
   const rawUrl =
-    parseCartMetadataString((record.url as string | undefined)) ||
-    parseCartMetadataString((record.product_url as string | undefined)) ||
-    parseCartMetadataString((record.productUrl as string | undefined)) ||
+    parseCartMetadataString(record.url as string | undefined) ||
+    parseCartMetadataString(record.product_url as string | undefined) ||
+    parseCartMetadataString(record.productUrl as string | undefined) ||
     undefined
   if (!productSlug && rawUrl) {
     productSlug = extractSlugFromUrl(rawUrl)
@@ -1034,10 +1024,7 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   const summarySegments = optionSummary ? coerceStringArray(optionSummary) : []
   const optionDetails = uniqueStrings([...optionDetailsCandidates, ...summarySegments])
 
-  const upgrades = uniqueStrings([
-    ...coerceStringArray(upgradesValue),
-    ...derivedOptions.upgrades,
-  ])
+  const upgrades = uniqueStrings([...coerceStringArray(upgradesValue), ...derivedOptions.upgrades])
   const customizations = uniqueStrings([
     ...coerceStringArray(customizationsValue),
     ...derivedOptions.customizations,
@@ -1050,9 +1037,7 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
     undefined
   const resolvedImage = parseCartMetadataString(metadataImage) || undefined
   const resolvedProductUrl =
-    parseCartMetadataString(metadataProductUrl) ||
-    parseCartMetadataString(rawUrl) ||
-    undefined
+    parseCartMetadataString(metadataProductUrl) || parseCartMetadataString(rawUrl) || undefined
 
   const typedMetadata: CartMetadataEntry[] = []
   const seenMetaKeys = new Set<string>()
@@ -1075,10 +1060,7 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
     }
   }
 
-  const remainingEntries = remainingMetadataEntries(
-    normalizedMetadata,
-    derivedOptions.consumedKeys,
-  )
+  const remainingEntries = remainingMetadataEntries(normalizedMetadata, derivedOptions.consumedKeys)
   for (const {key, value} of remainingEntries) {
     const trimmedKey = key.trim()
     const trimmedValue = value.trim()
@@ -1121,9 +1103,7 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   if (customizations.length) item.customizations = customizations
   if (categories.length) item.categories = categories
   const resolvedQuantityValue =
-    typeof item.quantity === 'number' && Number.isFinite(item.quantity)
-      ? item.quantity
-      : undefined
+    typeof item.quantity === 'number' && Number.isFinite(item.quantity) ? item.quantity : undefined
   const resolvedPriceValue =
     typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : undefined
   const derivedLineTotal =
@@ -1482,9 +1462,7 @@ const extractMetadataOrderNumber = (
   metadata: Record<string, unknown> | null | undefined,
 ): string | undefined => {
   if (!metadata) return undefined
-  return firstString(
-    ORDER_METADATA_NUMBER_KEYS.map((key) => metadata[key]),
-  )
+  return firstString(ORDER_METADATA_NUMBER_KEYS.map((key) => metadata[key]))
 }
 
 function slugifyValue(value: string): string {
@@ -3755,7 +3733,10 @@ async function handleCheckoutExpired(
   const timestamp = new Date().toISOString()
   const failureCode = 'checkout.session.expired'
   const metadata = (session.metadata || {}) as Record<string, string>
-  const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(session.id, metadata)
+  const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
+    session.id,
+    metadata,
+  )
   const shippingMetrics = computeShippingMetrics(cart, cartProducts)
   const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
   const expiresAt =
@@ -3849,9 +3830,7 @@ async function handleCheckoutExpired(
       const metadataOrderNumber = extractMetadataOrderNumber(metadata) || ''
       const metadataInvoiceNumber =
         firstString(
-          INVOICE_METADATA_NUMBER_KEYS.map(
-            (key) => metadata[key as keyof typeof metadata],
-          ),
+          INVOICE_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
         ) || ''
       const orderNumber = await resolveOrderNumber({
         metadataOrderNumber,
@@ -3884,15 +3863,15 @@ async function handleCheckoutExpired(
         stripeCheckoutMode: session.mode || undefined,
         stripePaymentIntentStatus: session.payment_status || undefined,
         stripeLastSyncedAt: timestamp,
-    stripeSummary: summary,
-    paymentFailureCode: failureCode,
-    paymentFailureMessage: failureMessage,
-    cart: cart.length ? cart : undefined,
-    shippingAddress,
-    weight: shippingMetrics.weight,
-    dimensions: shippingMetrics.dimensions,
-    webhookNotified: true,
-  })
+        stripeSummary: summary,
+        paymentFailureCode: failureCode,
+        paymentFailureMessage: failureMessage,
+        cart: cart.length ? cart : undefined,
+        shippingAddress,
+        weight: shippingMetrics.weight,
+        dimensions: shippingMetrics.dimensions,
+        webhookNotified: true,
+      })
 
       const selectedService = pruneUndefined({
         carrierId: shippingDetails.carrierId,
@@ -3943,44 +3922,6 @@ async function handleCheckoutExpired(
           console.warn('stripeWebhook: failed to link customer for expired checkout', err)
         }
       }
-
-      baseDoc.orderV2 = buildOrderV2Record({
-        orderId: normalizedOrderNumber || session.id,
-        createdAt,
-        status: baseDoc.status,
-        customerId: baseDoc.customerRef?._ref,
-        customerRef: baseDoc.customerRef,
-        customerName,
-        customerEmail: email || undefined,
-        customerPhone: shippingAddress?.phone || undefined,
-        shippingAddress,
-        cart,
-        subtotal: amountSubtotal,
-        discount: Number.isFinite(Number((session as any)?.total_details?.amount_discount))
-          ? Number((session as any)?.total_details?.amount_discount) / 100
-          : undefined,
-        shippingFee: amountShipping,
-        tax: amountTax,
-        total: amountTotal,
-        paymentStatus: baseDoc.paymentStatus,
-        stripePaymentIntentId: undefined,
-        stripeChargeId: undefined,
-        receiptUrl: undefined,
-        paymentMethod: undefined,
-        cardBrand: undefined,
-        shippingCarrier: baseDoc.shippingCarrier,
-        shippingServiceName: baseDoc.shippingServiceName,
-        shippingTrackingNumber: baseDoc.trackingNumber,
-        shippingStatus: baseDoc.status,
-        shippingEstimatedDelivery: baseDoc.shippingEstimatedDeliveryDate,
-        notes: undefined,
-        webhookNotified: baseDoc.webhookNotified,
-        lastSync: baseDoc.stripeLastSyncedAt,
-        failureReason: failureMessage || failureCode || undefined,
-        refunds: undefined,
-        disputes: undefined,
-        stripeEventLog: [],
-      })
 
       const created = await sanity.create(baseDoc as any, {autoGenerateArrayKeys: true})
       orderId = created?._id || null
@@ -5044,9 +4985,7 @@ export const handler: Handler = async (event) => {
         const metadataOrderNumberRaw = extractMetadataOrderNumber(metadata) || ''
         const metadataInvoiceNumber =
           firstString(
-            INVOICE_METADATA_NUMBER_KEYS.map(
-              (key) => metadata[key as keyof typeof metadata],
-            ),
+            INVOICE_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
           ) || ''
         // Use the shared helper so metadata fallbacks and live Stripe rate
         // lookups stay in sync across reprocessing + webhook flows.
@@ -5122,7 +5061,7 @@ export const handler: Handler = async (event) => {
         // 3) Upsert an Order doc for visibility/fulfillment
         try {
           const existingOrder = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl, orderV2}`,
+            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
             {sid: stripeSessionId},
           )
           const existingId = existingOrder?._id || null
@@ -5226,42 +5165,6 @@ export const handler: Handler = async (event) => {
               if (customerId) baseDoc.customerRef = {_type: 'reference', _ref: customerId}
             } catch {}
           }
-
-          baseDoc.orderV2 = buildOrderV2Record({
-            orderId: normalizedOrderNumber,
-            createdAt: baseDoc.createdAt,
-            status: baseDoc.status,
-            customerId: baseDoc.customerRef?._ref,
-            customerRef: baseDoc.customerRef,
-            customerName,
-            customerEmail: email || undefined,
-            customerPhone: shippingAddress?.phone || undefined,
-            shippingAddress,
-            cart,
-            subtotal: amountSubtotal,
-            discount: amountDiscount,
-            shippingFee: shippingAmountForDoc,
-            tax: amountTax,
-            total: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            paymentStatus,
-            stripePaymentIntentId: paymentIntent?.id || undefined,
-            stripeChargeId: chargeId,
-            receiptUrl,
-            paymentMethod: paymentMethodType,
-            cardBrand,
-            shippingCarrier: baseDoc.shippingCarrier,
-            shippingServiceName: baseDoc.shippingServiceName,
-            shippingTrackingNumber: baseDoc.trackingNumber,
-            shippingStatus: baseDoc.status,
-            shippingEstimatedDelivery: baseDoc.shippingEstimatedDeliveryDate,
-            notes: undefined,
-            webhookNotified: existingId ? baseDoc.webhookNotified : true,
-            lastSync: baseDoc.stripeLastSyncedAt,
-            failureReason: undefined,
-            refunds: undefined,
-            disputes: undefined,
-            stripeEventLog: existingOrder?.orderV2?.admin?.stripeEventLog || [],
-          })
 
           let orderId = existingId
           if (existingId) {
@@ -5431,9 +5334,7 @@ export const handler: Handler = async (event) => {
           const metadataOrderNumberRaw = extractMetadataOrderNumber(meta) || ''
           const metadataInvoiceNumber =
             firstString(
-              INVOICE_METADATA_NUMBER_KEYS.map(
-                (key) => meta[key as keyof typeof meta],
-              ),
+              INVOICE_METADATA_NUMBER_KEYS.map((key) => meta[key as keyof typeof meta]),
             ) || ''
           const shippingDetails = await resolveStripeShippingDetails({
             metadata: meta,
@@ -5488,13 +5389,16 @@ export const handler: Handler = async (event) => {
             try {
               cartProducts = await fetchProductsForCart(cart, sanity)
             } catch (err) {
-              console.warn('stripeWebhook: failed to fetch product summaries for payment intent', err)
+              console.warn(
+                'stripeWebhook: failed to fetch product summaries for payment intent',
+                err,
+              )
             }
           }
           const shippingMetrics = computeShippingMetrics(cart, cartProducts)
 
           const existingOrder = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl, orderV2}`,
+            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
             {sid: pi.id},
           )
           const existingId = existingOrder?._id || null
@@ -5594,42 +5498,6 @@ export const handler: Handler = async (event) => {
             : undefined
           const intentSlug = createOrderSlug(normalizedOrderNumber, pi.id)
           if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
-
-          baseDoc.orderV2 = buildOrderV2Record({
-            orderId: normalizedOrderNumber,
-            createdAt: baseDoc.createdAt,
-            status: baseDoc.status,
-            customerId: baseDoc.customerRef?._ref,
-            customerRef: baseDoc.customerRef,
-            customerName,
-            customerEmail: email || undefined,
-            customerPhone: (pi as any)?.shipping?.phone || undefined,
-            shippingAddress: baseDoc.shippingAddress,
-            cart: cart.length ? cart : undefined,
-            subtotal: undefined,
-            discount: undefined,
-            shippingFee: shippingAmountForDoc,
-            tax: undefined,
-            total: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            paymentStatus,
-            stripePaymentIntentId: pi.id,
-            stripeChargeId: chargeId,
-            receiptUrl,
-            paymentMethod: paymentMethodType,
-            cardBrand,
-            shippingCarrier: baseDoc.shippingCarrier,
-            shippingServiceName: baseDoc.shippingServiceName,
-            shippingTrackingNumber: baseDoc.trackingNumber,
-            shippingStatus: baseDoc.status,
-            shippingEstimatedDelivery: baseDoc.shippingEstimatedDeliveryDate,
-            notes: undefined,
-            webhookNotified: existingId ? baseDoc.webhookNotified : true,
-            lastSync: baseDoc.stripeLastSyncedAt,
-            failureReason: undefined,
-            refunds: undefined,
-            disputes: undefined,
-            stripeEventLog: existingOrder?.orderV2?.admin?.stripeEventLog || [],
-          })
 
           let orderId = existingId
           if (existingId) {

@@ -8,10 +8,7 @@ import {
   resolveCustomerName,
   titleCase,
 } from '../lib/orderFormatting'
-import {
-  canonicalizeTrackingNumber,
-  validateTrackingNumber,
-} from '../../shared/tracking'
+import {canonicalizeTrackingNumber, validateTrackingNumber} from '../../shared/tracking'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -25,11 +22,7 @@ const configuredOrigins = [
   .filter(Boolean)
 
 const DEFAULT_ORIGINS = Array.from(
-  new Set([
-    ...configuredOrigins,
-    'http://localhost:3333',
-    'http://localhost:8888',
-  ]),
+  new Set([...configuredOrigins, 'http://localhost:3333', 'http://localhost:8888']),
 )
 
 function pickOrigin(origin?: string): string {
@@ -39,7 +32,11 @@ function pickOrigin(origin?: string): string {
   return DEFAULT_ORIGINS[0] || origin
 }
 
-function jsonResponse(statusCode: number, headers: Record<string, string>, body: Record<string, unknown>) {
+function jsonResponse(
+  statusCode: number,
+  headers: Record<string, string>,
+  body: Record<string, unknown>,
+) {
   return {
     statusCode,
     headers: {...headers, 'Content-Type': 'application/json'},
@@ -172,13 +169,6 @@ export const handler: Handler = async (event) => {
       manualTrackingNumber: simulatedTracking,
       trackingUrl: trackingUrl,
       fulfilledAt: simulateExistingTracking ? new Date().toISOString() : null,
-      orderV2: {
-        status: simulateExistingTracking ? 'fulfilled' : 'processing',
-        shipping: {
-          status: simulateExistingTracking ? 'fulfilled' : 'pending',
-          trackingNumber: simulatedTracking,
-        },
-      },
       shippingAddress: {
         name: 'Simulated Customer',
         email: 'customer@example.com',
@@ -210,7 +200,6 @@ export const handler: Handler = async (event) => {
         trackingNumber,
         manualTrackingNumber,
         fulfilledAt,
-        orderV2,
         shippingAddress,
         shippingLog[]{status, trackingNumber}
       }`,
@@ -248,19 +237,13 @@ export const handler: Handler = async (event) => {
     setPayload.trackingUrl = trackingUrl
   }
 
-  if (order?.orderV2) {
-    setPayload['orderV2.status'] = 'fulfilled'
-    setPayload['orderV2.shipping.status'] = 'fulfilled'
-    setPayload['orderV2.shipping.trackingNumber'] = trackingNumber
-    if (trackingUrl) {
-      setPayload['orderV2.shipping.trackingUrl'] = trackingUrl
-    }
-  }
-
   const logEntry = {
     _type: 'shippingLogEntry',
     status: 'fulfilled_manual',
-    message: existingTracking === trackingNumber ? 'Manual tracking email resent' : 'Manual tracking number saved',
+    message:
+      existingTracking === trackingNumber
+        ? 'Manual tracking email resent'
+        : 'Manual tracking number saved',
     trackingNumber,
     ...(trackingUrl ? {trackingUrl} : {}),
     createdAt: nowIso,
@@ -294,7 +277,9 @@ export const handler: Handler = async (event) => {
       orderNumber: order.orderNumber,
       stripeSessionId: order.stripeSessionId,
       fallbackId: baseId,
-    }) || order.orderNumber || baseId
+    }) ||
+    order.orderNumber ||
+    baseId
 
   const statusLabel = titleCase('fulfilled')
 
@@ -360,7 +345,9 @@ export const handler: Handler = async (event) => {
   const manualTrackingMatchesExisting =
     canonicalizeTrackingNumber(order.manualTrackingNumber) === trackingNumber
   const shouldSendEmail =
-    forceResend || (!alreadyLogged && !manualTrackingMatchesExisting) || existingTracking !== trackingNumber
+    forceResend ||
+    (!alreadyLogged && !manualTrackingMatchesExisting) ||
+    existingTracking !== trackingNumber
 
   if (!shouldSendEmail) {
     emailSkipped = true

@@ -59,7 +59,13 @@ export interface DerivedProductFeedFields {
 const COLOR_NAMES = ['color', 'colour', 'color name', 'finish color']
 const SIZE_NAMES = ['size', 'sizes', 'fitment size', 'product size']
 const MATERIAL_NAMES = ['material', 'materials', 'construction', 'finish']
-const LENGTH_NAMES = ['product length', 'length', 'overall length', 'length (in)', 'length (inches)']
+const LENGTH_NAMES = [
+  'product length',
+  'length',
+  'overall length',
+  'length (in)',
+  'length (inches)',
+]
 const WIDTH_NAMES = ['product width', 'width', 'overall width', 'width (in)', 'width (inches)']
 const DIMENSION_UNITS: Record<string, string> = {
   in: 'in',
@@ -102,7 +108,11 @@ function toText(value: unknown): string | undefined {
             const children = (item as PortableTextBlock).children
             const text = Array.isArray(children)
               ? children
-                  .map((child) => (typeof child === 'object' && child && 'text' in child ? (child as any).text : ''))
+                  .map((child) =>
+                    typeof child === 'object' && child && 'text' in child
+                      ? (child as any).text
+                      : '',
+                  )
                   .join('')
               : ''
             return condenseWhitespace(text)
@@ -146,9 +156,7 @@ function truncate(value: string, max: number): string {
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return uniqueStrings(
-      value
-        .map((item) => toText(item))
-        .filter((item): item is string => typeof item === 'string')
+      value.map((item) => toText(item)).filter((item): item is string => typeof item === 'string'),
     )
   }
   const text = toText(value)
@@ -156,7 +164,10 @@ function toStringArray(value: unknown): string[] {
 }
 
 function parseDetailString(input: string): ProductDetailEntry | null {
-  const parts = input.split(':').map((part) => toText(part)).filter((part): part is string => Boolean(part))
+  const parts = input
+    .split(':')
+    .map((part) => toText(part))
+    .filter((part): part is string => Boolean(part))
   if (parts.length >= 3) {
     return {
       sectionName: parts[0],
@@ -233,7 +244,10 @@ function uniqueDetails(details: ProductDetailEntry[]): ProductDetailEntry[] {
   return result
 }
 
-function findAttributeValue(attrs: ProductAttribute[] | null | undefined, names: string[]): string | undefined {
+function findAttributeValue(
+  attrs: ProductAttribute[] | null | undefined,
+  names: string[],
+): string | undefined {
   if (!Array.isArray(attrs)) return undefined
   const lookup = names.map((name) => name.toLowerCase())
   for (const attr of attrs) {
@@ -247,7 +261,10 @@ function findAttributeValue(attrs: ProductAttribute[] | null | undefined, names:
   return undefined
 }
 
-function findSpecValue(specs: ProductSpecification[] | null | undefined, names: string[]): string | undefined {
+function findSpecValue(
+  specs: ProductSpecification[] | null | undefined,
+  names: string[],
+): string | undefined {
   if (!Array.isArray(specs)) return undefined
   const lookup = names.map((name) => name.toLowerCase())
   for (const spec of specs) {
@@ -334,9 +351,15 @@ function parseBoxDimensions(value: unknown): ParsedBoxDimensions {
 
   const firstUnit = parsed.find((segment) => segment?.unit)?.unit
 
-  const length = parsed[0] ? formatDimensionValue(parsed[0]!.value, parsed[0]!.unit || firstUnit) : undefined
-  const width = parsed[1] ? formatDimensionValue(parsed[1]!.value, parsed[1]!.unit || firstUnit) : undefined
-  const height = parsed[2] ? formatDimensionValue(parsed[2]!.value, parsed[2]!.unit || firstUnit) : undefined
+  const length = parsed[0]
+    ? formatDimensionValue(parsed[0]!.value, parsed[0]!.unit || firstUnit)
+    : undefined
+  const width = parsed[1]
+    ? formatDimensionValue(parsed[1]!.value, parsed[1]!.unit || firstUnit)
+    : undefined
+  const height = parsed[2]
+    ? formatDimensionValue(parsed[2]!.value, parsed[2]!.unit || firstUnit)
+    : undefined
 
   return {length, width, height}
 }

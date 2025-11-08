@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {useState} from 'react'
 import {
   Badge,
   Box,
@@ -70,11 +70,14 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   const {renderDefault} = props
   const document = (props.document?.displayed || {}) as ProductDocument
 
+  const [view, setView] = useState<'edit' | 'preview'>('edit')
+
   const title = document.title || 'Untitled product'
-  const price = document.price ?? undefined
+  const price = document.price
   const salePrice = document.salePrice ?? undefined
-  const sku = document.sku ?? undefined
+  const sku = document.sku
   const statusValue = (document.status || 'draft').toLowerCase()
+  // Considered "synced" if either local or Shopify sync flag is true; update logic if stricter sync state is needed.
   const synced = Boolean(document.synced) || Boolean(document.shopifySynced)
   const categoryRefs = Array.isArray(document.category) ? document.category : []
   const inventoryAvailable = document.inventory?.available ?? undefined
@@ -119,7 +122,9 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
                   id="product-editor-actions"
                   popover={{portal: true}}
                   placement="left"
-                  button={<Button icon={EllipsisVerticalIcon} mode="ghost" aria-label="More actions" />}
+                  button={
+                    <Button icon={EllipsisVerticalIcon} mode="ghost" aria-label="More actions" />
+                  }
                   menu={
                     <Menu>
                       <MenuItem text="View on storefront" icon={LaunchIcon} />
@@ -141,7 +146,7 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
                   <Text size={2} weight="semibold">
                     {formatCurrency(price)}
                   </Text>
-                  {salePrice && (
+                  {typeof salePrice === 'number' && (
                     <Text size={1} muted>
                       Sale price: {formatCurrency(salePrice)}
                     </Text>
@@ -177,15 +182,8 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
         </Card>
 
         <Grid columns={[1, 1, 3]} gap={[4, 5]} style={{alignItems: 'stretch'}}>
-          <Card
-            radius={3}
-            shadow={1}
-            tone="transparent"
-            style={{gridColumn: 'span 2'}}
-          >
-            <Box padding={[4, 4, 5]}>
-              {renderDefault(props)}
-            </Box>
+          <Card radius={3} shadow={1} tone="transparent" style={{gridColumn: 'span 2'}}>
+            <Box padding={[4, 4, 5]}>{renderDefault(props)}</Box>
           </Card>
 
           <Stack space={4} style={{gridColumn: 'span 1'}}>
@@ -195,7 +193,8 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
                   Publishing checklist
                 </Text>
                 <Text muted size={1}>
-                  Review these steps before you publish to ensure the product is ready for the storefront.
+                  Review these steps before you publish to ensure the product is ready for the
+                  storefront.
                 </Text>
                 <Stack space={2}>
                   <Flex gap={3} align="center">

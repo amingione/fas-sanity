@@ -1,17 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
-import {
-  Box,
-  Button,
-  Card,
-  Flex,
-  Grid,
-  Stack,
-  Text,
-  TextArea,
-  TextInput,
-  useToast,
-} from '@sanity/ui'
+import {Box, Button, Card, Flex, Grid, Stack, Text, TextArea, TextInput, useToast} from '@sanity/ui'
 
 type BankAccountOption = {
   _id: string
@@ -67,7 +56,7 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
           institutionName,
           accountLast4,
           defaultForChecks
-        }`
+        }`,
       )
       setBankAccounts(result)
       const defaultAccount = result.find((item) => item.defaultForChecks) || result[0]
@@ -179,7 +168,7 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
         setSaving(false)
       }
     },
-    [client, form, lineItems, checkId, toast, validateForm]
+    [client, form, lineItems, checkId, toast, validateForm],
   )
 
   const handleSaveDraft = async () => {
@@ -232,7 +221,8 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
   }
 
   const totalFromForm = Number(form.amount) || 0
-  const showLineItemsWarning = totalFromForm && Math.abs(totalFromForm - totalAmountFromItems) > 0.01
+  const showLineItemsWarning =
+    totalFromForm && Math.abs(totalFromForm - totalAmountFromItems) > 0.01
 
   return (
     <Box ref={ref} padding={4}>
@@ -242,7 +232,8 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
             Write &amp; Print Check
           </Text>
           <Text size={1} muted>
-            Enter the details below to create a printable check that fits your QuickBooks-compatible stock.
+            Enter the details below to create a printable check that fits your QuickBooks-compatible
+            stock.
           </Text>
         </Stack>
 
@@ -314,14 +305,19 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
               <Text size={1} weight="semibold">
                 Memo
               </Text>
-              <TextInput name="memo" value={form.memo} onChange={handleInputChange} placeholder="Memo" />
+              <TextInput
+                name="memo"
+                value={form.memo}
+                onChange={handleInputChange}
+                placeholder="Memo"
+              />
             </Stack>
 
-              <Stack space={2}>
-                <Text size={1} weight="semibold">
-                  Bank account
-                </Text>
-                {loadingAccounts ? (
+            <Stack space={2}>
+              <Text size={1} weight="semibold">
+                Bank account
+              </Text>
+              {loadingAccounts ? (
                 <Flex align="center" gap={2}>
                   <Text size={1}>Loading accounts…</Text>
                 </Flex>
@@ -329,13 +325,13 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
                 <Text size={1} muted>
                   No bank accounts connected yet. Connect one from the Bank Accounts tool.
                 </Text>
-                  ) : (
-                    <select
-                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                      name="bankAccountId"
-                      value={form.bankAccountId}
-                      onChange={handleBankAccountChange}
-                    >
+              ) : (
+                <select
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  name="bankAccountId"
+                  value={form.bankAccountId}
+                  onChange={handleBankAccountChange}
+                >
                   {bankAccounts.map((account) => (
                     <option key={account._id} value={account._id}>
                       {account.title || account.institutionName || 'Connected Account'} ••••
@@ -362,20 +358,26 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
                 <TextInput
                   name={`lineItems.${index}.category`}
                   value={item.category}
-                  onChange={(event) => handleLineItemChange(index, 'category', event.currentTarget.value)}
+                  onChange={(event) =>
+                    handleLineItemChange(index, 'category', event.currentTarget.value)
+                  }
                   placeholder="Category"
                 />
                 <TextInput
                   name={`lineItems.${index}.description`}
                   value={item.description}
-                  onChange={(event) => handleLineItemChange(index, 'description', event.currentTarget.value)}
+                  onChange={(event) =>
+                    handleLineItemChange(index, 'description', event.currentTarget.value)
+                  }
                   placeholder="Description"
                 />
                 <Flex gap={2}>
                   <TextInput
                     name={`lineItems.${index}.amount`}
                     value={item.amount}
-                    onChange={(event) => handleLineItemChange(index, 'amount', event.currentTarget.value)}
+                    onChange={(event) =>
+                      handleLineItemChange(index, 'amount', event.currentTarget.value)
+                    }
                     placeholder="Amount"
                     type="number"
                     min="0"
@@ -383,7 +385,12 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
                     style={{flex: 1}}
                   />
                   {lineItems.length > 1 ? (
-                    <Button tone="critical" text="Remove" mode="ghost" onClick={() => removeLineItem(index)} />
+                    <Button
+                      tone="critical"
+                      text="Remove"
+                      mode="ghost"
+                      onClick={() => removeLineItem(index)}
+                    />
                   ) : null}
                 </Flex>
               </Grid>
@@ -424,9 +431,9 @@ const CheckComposer = React.forwardRef<HTMLDivElement, Record<string, never>>((_
               Printing tips
             </Text>
             <Text size={1} muted>
-              Use 8.5&quot; × 11&quot; check-on-top stock. Print at 100% scaling (no “fit to page”). The generated PDF uses a
-              MICR font for the routing/account numbers—confirm your printer supports magnetic ink or toner before
-              issuing real checks.
+              Use 8.5&quot; × 11&quot; check-on-top stock. Print at 100% scaling (no “fit to page”).
+              The generated PDF uses a MICR font for the routing/account numbers—confirm your
+              printer supports magnetic ink or toner before issuing real checks.
             </Text>
           </Stack>
         </Card>

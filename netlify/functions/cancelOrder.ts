@@ -1,10 +1,12 @@
-import type { Handler } from '@netlify/functions'
+import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
-import { createClient } from '@sanity/client'
-import { randomUUID } from 'crypto'
-import { updateCustomerProfileForOrder } from '../lib/customerSnapshot'
+import {createClient} from '@sanity/client'
+import {randomUUID} from 'crypto'
+import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888'
+).split(',')
 
 const normalizeOrigin = (origin?: string) => {
   if (!origin) return DEFAULT_ORIGINS[0]
@@ -55,8 +57,8 @@ type OrderDoc = {
   paymentStatus?: string
   status?: string
   totalAmount?: number
-  invoiceRef?: { _id: string } | null
-  customerRef?: { _ref?: string } | null
+  invoiceRef?: {_id: string} | null
+  customerRef?: {_ref?: string} | null
   customerEmail?: string
 }
 
@@ -65,22 +67,22 @@ export const handler: Handler = async (event) => {
   const cors = makeCors(origin)
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: cors, body: '' }
+    return {statusCode: 204, headers: cors, body: ''}
   }
 
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Method not allowed' }),
+      headers: {...cors, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method not allowed'}),
     }
   }
 
   if (!stripe || !sanity) {
     return {
       statusCode: 500,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Stripe or Sanity not configured' }),
+      headers: {...cors, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Stripe or Sanity not configured'}),
     }
   }
 
@@ -92,8 +94,8 @@ export const handler: Handler = async (event) => {
     if (!orderId) {
       return {
         statusCode: 400,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing orderId' }),
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Missing orderId'}),
       }
     }
 
@@ -110,22 +112,25 @@ export const handler: Handler = async (event) => {
         customerRef,
         customerEmail
       }`,
-      { ids: idVariants(orderId) }
+      {ids: idVariants(orderId)},
     )
 
     if (!order?._id) {
       return {
         statusCode: 404,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Order not found' }),
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Order not found'}),
       }
     }
 
-    if (order.status === 'cancelled' && (order.paymentStatus === 'refunded' || order.paymentStatus === 'canceled')) {
+    if (
+      order.status === 'cancelled' &&
+      (order.paymentStatus === 'refunded' || order.paymentStatus === 'canceled')
+    ) {
       return {
         statusCode: 200,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ok: true, stripeAction: 'noop', message: 'Order already cancelled' }),
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({ok: true, stripeAction: 'noop', message: 'Order already cancelled'}),
       }
     }
 
@@ -134,7 +139,9 @@ export const handler: Handler = async (event) => {
     let paymentIntent: Stripe.PaymentIntent | null = null
     if (order.paymentIntentId) {
       try {
-        paymentIntent = await stripe.paymentIntents.retrieve(order.paymentIntentId, { expand: ['latest_charge', 'charges.data'] })
+        paymentIntent = await stripe.paymentIntents.retrieve(order.paymentIntentId, {
+          expand: ['latest_charge', 'charges.data'],
+        })
       } catch (err) {
         console.warn('cancelOrder: failed to retrieve payment intent', err)
       }
@@ -169,7 +176,7 @@ export const handler: Handler = async (event) => {
     )
 
     let stripeAction: 'refunded' | 'canceled' | null = null
-    const refundMetadata = reason ? { sanity_cancellation_note: reason } : undefined
+    const refundMetadata = reason ? {sanity_cancellation_note: reason} : undefined
 
     const intentStatus = paymentIntent?.status || order.paymentStatus || ''
 
@@ -203,8 +210,8 @@ export const handler: Handler = async (event) => {
     } else {
       return {
         statusCode: 422,
-        headers: { ...cors, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Order is not linked to a Stripe charge or payment intent' }),
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Order is not linked to a Stripe charge or payment intent'}),
       }
     }
 
@@ -230,9 +237,9 @@ export const handler: Handler = async (event) => {
       await sanity
         .patch(order._id)
         .set(orderPatch)
-        .setIfMissing({ shippingLog: [] })
+        .setIfMissing({shippingLog: []})
         .append('shippingLog', [logEntry])
-        .commit({ autoGenerateArrayKeys: true })
+        .commit({autoGenerateArrayKeys: true})
     } catch (err) {
       console.warn('cancelOrder: failed to update order document', err)
     }
@@ -241,10 +248,14 @@ export const handler: Handler = async (event) => {
       const invoicePatch: Record<string, any> = {
         stripeLastSyncedAt: now,
         status: stripeAction === 'refunded' ? 'refunded' : 'cancelled',
-        stripeInvoiceStatus: stripeAction === 'refunded' ? 'refunded_via_sanity' : 'cancelled_via_sanity',
+        stripeInvoiceStatus:
+          stripeAction === 'refunded' ? 'refunded_via_sanity' : 'cancelled_via_sanity',
       }
       try {
-        await sanity.patch(order.invoiceRef._id).set(invoicePatch).commit({ autoGenerateArrayKeys: true })
+        await sanity
+          .patch(order.invoiceRef._id)
+          .set(invoicePatch)
+          .commit({autoGenerateArrayKeys: true})
       } catch (err) {
         console.warn('cancelOrder: failed to update invoice document', err)
       }
@@ -263,7 +274,7 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: {...cors, 'Content-Type': 'application/json'},
       body: JSON.stringify({
         ok: true,
         orderId: order._id,
@@ -274,7 +285,7 @@ export const handler: Handler = async (event) => {
     console.error('cancelOrder error', err)
     return {
       statusCode: 500,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: {...cors, 'Content-Type': 'application/json'},
       body: JSON.stringify({
         error: 'Failed to cancel order',
         detail: err?.message || String(err),

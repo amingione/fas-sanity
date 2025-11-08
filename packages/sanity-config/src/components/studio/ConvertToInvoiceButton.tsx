@@ -1,6 +1,6 @@
 import React from 'react'
-import { Button, Card, Text, useToast } from '@sanity/ui'
-import { useFormValue, useClient } from 'sanity'
+import {Button, Card, Text, useToast} from '@sanity/ui'
+import {useFormValue, useClient} from 'sanity'
 
 interface QuoteDoc {
   _id: string
@@ -12,7 +12,7 @@ interface QuoteDoc {
 
 export default function ConvertToInvoiceButton() {
   const toast = useToast()
-  const sanityClient = useClient({ apiVersion: '2024-04-10' })
+  const sanityClient = useClient({apiVersion: '2024-04-10'})
   const quote = useFormValue([]) as QuoteDoc
 
   const handleConvert = async () => {
@@ -21,31 +21,43 @@ export default function ConvertToInvoiceButton() {
         status: 'warning',
         title: 'Missing fields',
         description: 'Quote must include customer, line items, and total.',
-        closable: true
+        closable: true,
       })
       return
     }
 
     try {
-      const newInvoice = await sanityClient.create({
-        _type: 'invoice',
-        quote: { _type: 'reference', _ref: quote._id },
-        customerRef: quote.customer ? { _type: 'reference', _ref: (quote.customer as any)?._ref || (quote.customer as any)?._id || quote.customer } : undefined,
-        lineItems: Array.isArray(quote.lineItems) ? quote.lineItems : [],
-        total: typeof quote.total === 'number' ? quote.total : undefined,
-        invoiceDate: new Date().toISOString().slice(0,10),
-        status: 'pending',
-      }, { autoGenerateArrayKeys: true })
+      const newInvoice = await sanityClient.create(
+        {
+          _type: 'invoice',
+          quote: {_type: 'reference', _ref: quote._id},
+          customerRef: quote.customer
+            ? {
+                _type: 'reference',
+                _ref:
+                  (quote.customer as any)?._ref || (quote.customer as any)?._id || quote.customer,
+              }
+            : undefined,
+          lineItems: Array.isArray(quote.lineItems) ? quote.lineItems : [],
+          total: typeof quote.total === 'number' ? quote.total : undefined,
+          invoiceDate: new Date().toISOString().slice(0, 10),
+          status: 'pending',
+        },
+        {autoGenerateArrayKeys: true},
+      )
 
-      await sanityClient.patch(quote._id).set({
-        conversionStatus: 'Converted'
-      }).commit({ autoGenerateArrayKeys: true })
+      await sanityClient
+        .patch(quote._id)
+        .set({
+          conversionStatus: 'Converted',
+        })
+        .commit({autoGenerateArrayKeys: true})
 
       toast.push({
         status: 'success',
         title: 'Invoice created!',
         description: `Invoice ID: ${newInvoice._id}`,
-        closable: true
+        closable: true,
       })
     } catch (err: any) {
       console.error(err)
@@ -53,7 +65,7 @@ export default function ConvertToInvoiceButton() {
         status: 'error',
         title: 'Failed to convert quote',
         description: err.message,
-        closable: true
+        closable: true,
       })
     }
   }
@@ -61,7 +73,7 @@ export default function ConvertToInvoiceButton() {
   return (
     <Card padding={4} shadow={1} radius={2}>
       <Text size={1}>Ready to convert this quote into an invoice?</Text>
-      <div style={{ marginTop: '12px' }}>
+      <div style={{marginTop: '12px'}}>
         <Button
           text="Convert to Invoice"
           tone="positive"

@@ -38,12 +38,12 @@ export function getBasicFromAddress(): BasicAddress {
     name: SHIP_FROM_NAME,
     phone: SHIP_FROM_PHONE,
     addressLine1: SHIP_FROM_ADDRESS1,
-    ...(SHIP_FROM_ADDRESS2 ? { addressLine2: SHIP_FROM_ADDRESS2 } : {}),
+    ...(SHIP_FROM_ADDRESS2 ? {addressLine2: SHIP_FROM_ADDRESS2} : {}),
     city: SHIP_FROM_CITY,
     state: SHIP_FROM_STATE,
     postalCode: SHIP_FROM_POSTAL,
     country: SHIP_FROM_COUNTRY,
-    ...(SHIP_FROM_EMAIL ? { email: SHIP_FROM_EMAIL } : {}),
+    ...(SHIP_FROM_EMAIL ? {email: SHIP_FROM_EMAIL} : {}),
   }
 }
 
@@ -52,12 +52,12 @@ export function getEasyPostFromAddress(): EasyPostAddress {
     company: SHIP_FROM_NAME,
     name: SHIP_FROM_NAME,
     street1: SHIP_FROM_ADDRESS1,
-    ...(SHIP_FROM_ADDRESS2 ? { street2: SHIP_FROM_ADDRESS2 } : {}),
+    ...(SHIP_FROM_ADDRESS2 ? {street2: SHIP_FROM_ADDRESS2} : {}),
     city: SHIP_FROM_CITY,
     state: SHIP_FROM_STATE,
     zip: SHIP_FROM_POSTAL,
     country: SHIP_FROM_COUNTRY,
     phone: SHIP_FROM_PHONE,
-    ...(SHIP_FROM_EMAIL ? { email: SHIP_FROM_EMAIL } : {}),
+    ...(SHIP_FROM_EMAIL ? {email: SHIP_FROM_EMAIL} : {}),
   }
 }

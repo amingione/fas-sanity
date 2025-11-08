@@ -18,13 +18,6 @@
       "@fas/sanity-config/*": ["./src/*"]
     }
   },
-  "include": [
-    "sanity.config.ts",
-    "sanity.cli.ts",
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "src/schemaTypes/objects/buildQuote.ts"
-  ]
+  "include": ["sanity.config.ts", "sanity.cli.ts", "src"],
+  "exclude": ["node_modules", "src/schemaTypes/objects/buildQuote.ts"]
 }

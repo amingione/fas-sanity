@@ -7,7 +7,12 @@ export const checkLineItemType = defineType({
   fields: [
     defineField({name: 'category', title: 'Category', type: 'string'}),
     defineField({name: 'description', title: 'Description', type: 'string'}),
-    defineField({name: 'amount', title: 'Amount', type: 'number', validation: (Rule) => Rule.min(0)}),
+    defineField({
+      name: 'amount',
+      title: 'Amount',
+      type: 'number',
+      validation: (Rule) => Rule.min(0),
+    }),
   ],
   preview: {
     select: {

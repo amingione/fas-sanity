@@ -64,7 +64,12 @@ const DANGER_STATUSES = new Set([
 ])
 
 const normalizeStatus = (value?: string | null) =>
-  value ? value.trim().toLowerCase().replace(/[\s_-]+/g, ' ') : ''
+  value
+    ? value
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_-]+/g, ' ')
+    : ''
 
 export const formatBadgeLabel = (value?: string | null): string | null => {
   if (!value) return null

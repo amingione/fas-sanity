@@ -1,15 +1,7 @@
 import {createClient} from '@sanity/client'
 import React, {useEffect, useMemo, useRef, useState} from 'react'
 import {TextInput} from '@sanity/ui'
-import {
-  PatchEvent,
-  defineField,
-  defineType,
-  set,
-  unset,
-  useClient,
-  useFormValue
-} from 'sanity'
+import {PatchEvent, defineField, defineType, set, unset, useClient, useFormValue} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 
 import ConvertToInvoiceButton from '../../components/studio/ConvertToInvoiceButton'
@@ -23,7 +15,7 @@ const getSanityClient = () =>
     projectId: 'r4og35qd',
     dataset: 'production',
     apiVersion: '2024-04-10',
-    useCdn: false
+    useCdn: false,
   })
 
 function fmt(value?: number) {
@@ -32,7 +24,8 @@ function fmt(value?: number) {
 }
 
 function getFnBase(): string {
-  const envBase = typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  const envBase =
+    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
   if (envBase) return envBase
   try {
     if (typeof window !== 'undefined') {
@@ -142,7 +135,7 @@ function QuoteBillToInput(props: any) {
             _id, name, email, phone,
             address_line1, address_line2, city_locality, state_province, postal_code, country_code
           }`,
-          {m: `${term}*`}
+          {m: `${term}*`},
         )
         setResults(Array.isArray(matches) ? matches : [])
       } catch {
@@ -165,20 +158,25 @@ function QuoteBillToInput(props: any) {
       city_locality: (customer?.city_locality || '').trim(),
       state_province: (customer?.state_province || '').trim(),
       postal_code: (customer?.postal_code || '').trim(),
-      country_code: (customer?.country_code || '').trim()
+      country_code: (customer?.country_code || '').trim(),
     }
 
     onChange(set(patch))
 
     if (customer?._id && documentId) {
-      const emptyShip = !currentShip?.name && !currentShip?.address_line1 && !currentShip?.postal_code
+      const emptyShip =
+        !currentShip?.name && !currentShip?.address_line1 && !currentShip?.postal_code
       const operations: Record<string, any> = {
-        customer: {_type: 'reference', _ref: customer._id}
+        customer: {_type: 'reference', _ref: customer._id},
       }
       if (emptyShip) {
         operations.shipTo = patch
       }
-      client.patch(documentId).set(operations).commit({autoGenerateArrayKeys: true}).catch(() => undefined)
+      client
+        .patch(documentId)
+        .set(operations)
+        .commit({autoGenerateArrayKeys: true})
+        .catch(() => undefined)
     }
   }
 
@@ -193,7 +191,7 @@ function QuoteBillToInput(props: any) {
       city_locality: value?.city_locality || '',
       state_province: value?.state_province || '',
       postal_code: value?.postal_code || '',
-      country_code: value?.country_code || ''
+      country_code: value?.country_code || '',
     }
     const created = await client.create(payload)
     applyCustomer(created)
@@ -208,7 +206,11 @@ function QuoteBillToInput(props: any) {
       <div className="quote-section-card__header">
         <span className="quote-section-card__title">Bill To</span>
         <div className="quote-section-card__actions">
-          <button type="button" className="quote-pill-button" onClick={() => setOpen((prev) => !prev)}>
+          <button
+            type="button"
+            className="quote-pill-button"
+            onClick={() => setOpen((prev) => !prev)}
+          >
             {open ? 'Hide' : 'Show'}
           </button>
         </div>
@@ -232,7 +234,11 @@ function QuoteBillToInput(props: any) {
                 }
               }}
             />
-            <button type="button" className="quote-customer-search__button" onClick={createFromBillTo}>
+            <button
+              type="button"
+              className="quote-customer-search__button"
+              onClick={createFromBillTo}
+            >
               Create Customer from Bill To
             </button>
           </div>
@@ -246,15 +252,24 @@ function QuoteBillToInput(props: any) {
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => applyCustomer(customer)}
                 >
-                  <span className="quote-customer-search__result-title">{customer.name || '(No name)'}</span>
+                  <span className="quote-customer-search__result-title">
+                    {customer.name || '(No name)'}
+                  </span>
                   <span className="quote-customer-search__result-meta">
-                    {[customer.email || '—', customer.phone ? `• ${customer.phone}` : ''].filter(Boolean).join(' ')}
+                    {[customer.email || '—', customer.phone ? `• ${customer.phone}` : '']
+                      .filter(Boolean)
+                      .join(' ')}
                   </span>
                   <span className="quote-customer-search__result-meta">
                     {[customer.address_line1, customer.address_line2].filter(Boolean).join(', ')}
                   </span>
                   <span className="quote-customer-search__result-meta">
-                    {[customer.city_locality, customer.state_province, customer.postal_code, customer.country_code]
+                    {[
+                      customer.city_locality,
+                      customer.state_province,
+                      customer.postal_code,
+                      customer.country_code,
+                    ]
                       .filter(Boolean)
                       .join(', ')}
                   </span>
@@ -262,9 +277,13 @@ function QuoteBillToInput(props: any) {
               ))}
             </div>
           ) : query && !loading ? (
-            <p className="quote-customer-search__empty">No matches — fill the form below and click “Create Customer”.</p>
+            <p className="quote-customer-search__empty">
+              No matches — fill the form below and click “Create Customer”.
+            </p>
           ) : null}
-          <div className="quote-section-card__fields">{renderDefault ? renderDefault(props) : null}</div>
+          <div className="quote-section-card__fields">
+            {renderDefault ? renderDefault(props) : null}
+          </div>
         </div>
       )}
     </div>
@@ -289,16 +308,23 @@ function QuoteShipToInput(props: any) {
           <button type="button" className="quote-pill-button" onClick={copyFromBillTo}>
             Use Bill To
           </button>
-          <button type="button" className="quote-pill-button" onClick={() => setOpen((prev) => !prev)}>
+          <button
+            type="button"
+            className="quote-pill-button"
+            onClick={() => setOpen((prev) => !prev)}
+          >
             {open ? 'Hide' : 'Show'}
           </button>
         </div>
       </div>
-      {open && <div className="quote-section-card__body">{renderDefault ? renderDefault(props) : null}</div>}
+      {open && (
+        <div className="quote-section-card__body">
+          {renderDefault ? renderDefault(props) : null}
+        </div>
+      )}
     </div>
   )
 }
-
 
 function QuoteTotalsPanel(props: any) {
   const {onChange} = props
@@ -334,7 +360,7 @@ function QuoteTotalsPanel(props: any) {
     const rounded = {
       subtotal: Number(fmt(subtotal)),
       taxAmount: Number(fmt(taxAmount)),
-      total: Number(fmt(total))
+      total: Number(fmt(total)),
     }
     const prev = lastSynced.current
     if (
@@ -351,7 +377,7 @@ function QuoteTotalsPanel(props: any) {
           set(rounded.subtotal, ['subtotal']),
           set(rounded.taxAmount, ['taxAmount']),
           set(rounded.total, ['total']),
-        ])
+        ]),
       )
     }
   }, [onChange, subtotal, taxAmount, total])
@@ -366,9 +392,13 @@ function QuoteTotalsPanel(props: any) {
         <span className="quote-totals-card__label">Tax</span>
         <span className="quote-totals-card__value">${fmt(taxAmount)}</span>
         <span className="quote-totals-card__label quote-totals-card__label--total">Total</span>
-        <span className="quote-totals-card__value quote-totals-card__value--total">${fmt(total)}</span>
+        <span className="quote-totals-card__value quote-totals-card__value--total">
+          ${fmt(total)}
+        </span>
       </div>
-      <p className="quote-totals-card__note">Values auto-calculated from line items, discount, and tax rate.</p>
+      <p className="quote-totals-card__note">
+        Values auto-calculated from line items, discount, and tax rate.
+      </p>
     </div>
   )
 }
@@ -384,7 +414,7 @@ function QuoteActions() {
     const response = await fetch(url, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     })
     const data = await response.json().catch(() => null)
     if (!response.ok) {
@@ -434,7 +464,7 @@ function QuoteActions() {
             await postJson(`${base}/.netlify/functions/sendQuoteEmail`, {
               quoteId: (quoteId || '').replace(/^drafts\./, ''),
               quoteNumber,
-              quote: documentValue
+              quote: documentValue,
             })
             alert('Quote email queued')
           } catch (error: any) {
@@ -456,7 +486,7 @@ function QuoteActions() {
             const response = await fetch(`${base}/.netlify/functions/generateQuotePDF`, {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({quoteId: (quoteId || '').replace(/^drafts\./, '')})
+              body: JSON.stringify({quoteId: (quoteId || '').replace(/^drafts\./, '')}),
             })
             if (!response.ok) {
               throw new Error(await response.text())
@@ -503,39 +533,39 @@ export default defineType({
             } catch {
               return true
             }
-          })
+          }),
     }),
     defineField({
       name: 'title',
       title: 'Title',
       type: 'string',
       initialValue: 'Untitled Quote',
-      description: 'Internal label. Customers see the quote number.'
+      description: 'Internal label. Customers see the quote number.',
     }),
     defineField({
       name: 'quoteDate',
       title: 'Quote Date',
       type: 'date',
       initialValue: () => new Date().toISOString().slice(0, 10),
-      components: {input: QuoteDateInput}
+      components: {input: QuoteDateInput},
     }),
     defineField({
       name: 'expirationDate',
       title: 'Expiration Date',
       type: 'date',
-      components: {input: QuoteDateInput}
+      components: {input: QuoteDateInput},
     }),
     defineField({
       name: 'acceptedDate',
       title: 'Accepted Date',
       type: 'date',
-      components: {input: QuoteDateInput}
+      components: {input: QuoteDateInput},
     }),
     defineField({
       name: 'acceptedBy',
       title: 'Accepted By',
       type: 'string',
-      components: {input: QuoteTextMetaInput}
+      components: {input: QuoteTextMetaInput},
     }),
     defineField({
       name: 'customer',
@@ -543,25 +573,25 @@ export default defineType({
       type: 'reference',
       to: [{type: 'customer'}],
       readOnly: true,
-      description: 'Set automatically when you select a customer via Bill To.'
+      description: 'Set automatically when you select a customer via Bill To.',
     }),
     defineField({
       name: 'billTo',
       title: 'Bill To',
       type: 'billTo',
-      components: {input: QuoteBillToInput}
+      components: {input: QuoteBillToInput},
     }),
     defineField({
       name: 'shipTo',
       title: 'Ship To',
       type: 'shipTo',
-      components: {input: QuoteShipToInput}
+      components: {input: QuoteShipToInput},
     }),
     defineField({
       name: 'lineItems',
       title: 'Line Items',
       type: 'array',
-      of: [{type: 'quoteLineItem'}]
+      of: [{type: 'quoteLineItem'}],
     }),
     defineField({
       name: 'discountType',
@@ -571,23 +601,23 @@ export default defineType({
         list: [
           {title: 'None', value: 'none'},
           {title: 'Amount ($)', value: 'amount'},
-          {title: 'Percent (%)', value: 'percent'}
+          {title: 'Percent (%)', value: 'percent'},
         ],
-        layout: 'radio'
+        layout: 'radio',
       },
-      initialValue: 'none'
+      initialValue: 'none',
     }),
     defineField({
       name: 'discountValue',
       title: 'Discount Value',
       type: 'number',
-      description: 'If percent, enter 10 for 10%.'
+      description: 'If percent, enter 10 for 10%.',
     }),
     defineField({
       name: 'taxRate',
       title: 'Tax Rate %',
       type: 'number',
-      description: 'Percent value (e.g., 7.0 for 7%)'
+      description: 'Percent value (e.g., 7.0 for 7%)',
     }),
     defineField({name: 'subtotal', title: 'Subtotal (auto)', type: 'number', readOnly: true}),
     defineField({name: 'taxAmount', title: 'Tax (auto)', type: 'number', readOnly: true}),
@@ -597,35 +627,35 @@ export default defineType({
       title: 'Totals',
       type: 'string',
       components: {input: QuoteTotalsPanel},
-      readOnly: true
+      readOnly: true,
     }),
     defineField({
       name: 'customerMessage',
       title: 'Note to Customer',
-      type: 'text'
+      type: 'text',
     }),
     defineField({
       name: 'paymentInstructions',
       title: 'Payment Instructions',
-      type: 'text'
+      type: 'text',
     }),
     defineField({
       name: 'internalMemo',
       title: 'Internal Memo (Hidden)',
-      type: 'text'
+      type: 'text',
     }),
     defineField({
       name: 'attachments',
       title: 'Attachments',
       type: 'array',
-      of: [{type: 'file'}]
+      of: [{type: 'file'}],
     }),
     defineField({
       name: 'quoteActions',
       title: 'Quote Actions',
       type: 'string',
       components: {input: QuoteActions},
-      readOnly: true
+      readOnly: true,
     }),
     defineField({
       name: 'stripeSummary',
@@ -638,7 +668,7 @@ export default defineType({
       name: 'status',
       title: 'Quote Status',
       type: 'string',
-      components: {input: QuoteStatusWithTimeline}
+      components: {input: QuoteStatusWithTimeline},
     }),
     defineField({
       name: 'conversionStatus',
@@ -650,40 +680,65 @@ export default defineType({
       name: 'timeline',
       title: 'Quote Timeline',
       type: 'array',
-      of: [{type: 'quoteTimelineEvent'}]
+      of: [{type: 'quoteTimelineEvent'}],
     }),
     defineField({
       name: 'createdAt',
       title: 'Created At',
       type: 'datetime',
       initialValue: () => new Date().toISOString(),
-      readOnly: true
+      readOnly: true,
     }),
     defineField({
       name: 'quotePdfUrl',
       title: 'Generated Quote PDF',
       type: 'url',
-      readOnly: true
+      readOnly: true,
     }),
     defineField({
       name: 'lastEmailedAt',
       title: 'Last Emailed At',
       type: 'datetime',
-      readOnly: true
+      readOnly: true,
     }),
     defineField({
       name: 'convertToInvoice',
       type: 'string',
       title: 'Convert to Invoice',
       components: {input: ConvertToInvoiceButton},
-      description: 'Create an invoice from this quote.'
+      description: 'Create an invoice from this quote.',
     }),
     defineField({name: 'stripeQuoteId', title: 'Stripe Quote ID', type: 'string', readOnly: true}),
-    defineField({name: 'stripeQuoteNumber', title: 'Stripe Quote Number', type: 'string', readOnly: true}),
-    defineField({name: 'stripeQuoteStatus', title: 'Stripe Quote Status', type: 'string', readOnly: true}),
-    defineField({name: 'stripeCustomerId', title: 'Stripe Customer ID', type: 'string', readOnly: true}),
-    defineField({name: 'stripePaymentLinkId', title: 'Stripe Payment Link ID', type: 'string', readOnly: true}),
-    defineField({name: 'stripePaymentLinkUrl', title: 'Stripe Payment Link URL', type: 'url', readOnly: true}),
+    defineField({
+      name: 'stripeQuoteNumber',
+      title: 'Stripe Quote Number',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeQuoteStatus',
+      title: 'Stripe Quote Status',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeCustomerId',
+      title: 'Stripe Customer ID',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripePaymentLinkId',
+      title: 'Stripe Payment Link ID',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripePaymentLinkUrl',
+      title: 'Stripe Payment Link URL',
+      type: 'url',
+      readOnly: true,
+    }),
     defineField({
       name: 'paymentLinkRef',
       title: 'Payment Link',
@@ -691,7 +746,12 @@ export default defineType({
       to: [{type: 'paymentLink'}],
       readOnly: true,
     }),
-    defineField({name: 'stripeLastSyncedAt', title: 'Stripe Last Synced', type: 'datetime', readOnly: true}),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Stripe Last Synced',
+      type: 'datetime',
+      readOnly: true,
+    }),
     defineField({name: 'stripeQuotePdf', title: 'Stripe Quote PDF', type: 'url', readOnly: true}),
   ],
   preview: {
@@ -700,7 +760,7 @@ export default defineType({
       quoteNumber: 'quoteNumber',
       customerName: 'billTo.name',
       total: 'total',
-      status: 'status'
+      status: 'status',
     },
     prepare(sel) {
       const {title, quoteNumber, customerName, total, status} = sel as any
@@ -709,6 +769,6 @@ export default defineType({
       const amount = typeof total === 'number' ? ` • $${fmt(total)}` : ''
       const st = status ? ` • ${String(status).toUpperCase()}` : ''
       return {title: `${headline}${reference}${amount}${st}`}
-    }
-  }
+    },
+  },
 })

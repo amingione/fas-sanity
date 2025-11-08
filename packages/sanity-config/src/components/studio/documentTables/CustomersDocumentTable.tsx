@@ -56,7 +56,7 @@ export default function CustomersDocumentTable({
   title = 'Customers',
   filter,
   emptyState = 'No customers',
-  pageSize = 8,
+  pageSize = 10,
   orderings,
 }: CustomersDocumentTableProps = {}) {
   type CustomerRow = CustomerRowData & {_id: string; _type: string}
@@ -112,9 +112,7 @@ export default function CustomersDocumentTable({
           key: 'marketing',
           header: 'Marketing Opt-In',
           render: (data: CustomerRow) => (
-            <Text size={1}>
-              {formatBoolean(Boolean(data.emailOptIn || data.marketingOptIn))}
-            </Text>
+            <Text size={1}>{formatBoolean(Boolean(data.emailOptIn || data.marketingOptIn))}</Text>
           ),
         },
         {

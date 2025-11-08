@@ -1,5 +1,5 @@
 import React from 'react'
-import { css, styled } from 'styled-components'
+import {css, styled} from 'styled-components'
 
 interface Props {
   background?: string
@@ -7,9 +7,11 @@ interface Props {
 }
 
 // Use transient prop ($background) to avoid forwarding unknown props to the DOM
-interface StyledSpanProps { $background?: string }
+interface StyledSpanProps {
+  $background?: string
+}
 
-const StyledSpan = styled.span<StyledSpanProps>(({ $background }) => {
+const StyledSpan = styled.span<StyledSpanProps>(({$background}) => {
   const bg = $background || 'white'
 
   return css`

@@ -62,7 +62,7 @@ async function main() {
   console.log(
     `Summary: updated=${result.updated}, skipped=${result.skipped}, total=${result.total}${
       result.dryRun ? ' (dry run)' : ''
-    }`
+    }`,
   )
 }
 

@@ -56,7 +56,9 @@ const ComingSoonPane = React.forwardRef<HTMLDivElement, ComingSoonPaneProps>((pr
                 <Button
                   text={intentAction.label}
                   tone={intentAction.tone}
-                  onClick={() => router.navigateIntent(intentAction.intent, intentAction.params as any)}
+                  onClick={() =>
+                    router.navigateIntent(intentAction.intent, intentAction.params as any)
+                  }
                 />
               ) : null}
               {secondaryAction ? (

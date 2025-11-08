@@ -13,7 +13,7 @@ export const quoteLineItemType = defineType({
       title: 'Kind',
       type: 'string',
       options: {list: ['product', 'custom'], layout: 'radio'},
-      initialValue: 'product'
+      initialValue: 'product',
     }),
     defineField({name: 'product', title: 'Product', type: 'reference', to: [{type: 'product'}]}),
     defineField({name: 'customName', title: 'Item Name', type: 'string'}),
@@ -21,7 +21,7 @@ export const quoteLineItemType = defineType({
     defineField({name: 'sku', title: 'SKU', type: 'string'}),
     defineField({name: 'unitPrice', title: 'Unit Price (USD)', type: 'number'}),
     defineField({name: 'quantity', title: 'Quantity', type: 'number', initialValue: 1}),
-    defineField({name: 'lineTotal', title: 'Line Total (override)', type: 'number'})
+    defineField({name: 'lineTotal', title: 'Line Total (override)', type: 'number'}),
   ],
   validation: (Rule) =>
     Rule.custom((value: any) => {
@@ -31,14 +31,20 @@ export const quoteLineItemType = defineType({
       return true
     }),
   preview: {
-    select: {name: 'customName', product: 'product.title', qty: 'quantity', price: 'unitPrice', kind: 'kind'},
+    select: {
+      name: 'customName',
+      product: 'product.title',
+      qty: 'quantity',
+      price: 'unitPrice',
+      kind: 'kind',
+    },
     prepare({name, product, qty, price, kind}) {
       const label = kind === 'product' ? product || name || 'Product' : name || 'Custom item'
       const quantity = Number(qty || 1)
       const amount = Number(price || 0)
       return {
-        title: `${label} — ${quantity} × $${amount.toFixed(2)}`
+        title: `${label} — ${quantity} × $${amount.toFixed(2)}`,
       }
-    }
-  }
+    },
+  },
 })

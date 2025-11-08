@@ -52,7 +52,9 @@ export const handler: Handler = async (event) => {
     const pendingBalance = sumByCurrency(balance.pending, defaultCurrency)
     const availableBalance = sumByCurrency(balance.available, defaultCurrency)
 
-    const upcoming = payouts.data.find((payout) => payout.status === 'in_transit' || payout.status === 'pending')
+    const upcoming = payouts.data.find(
+      (payout) => payout.status === 'in_transit' || payout.status === 'pending',
+    )
     const recentPayouts = payouts.data.map((payout) => ({
       id: payout.id,
       arrivalDate: toIsoDate(payout.arrival_date),
@@ -87,12 +89,18 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 500,
       headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store'},
-      body: JSON.stringify({error: 'Unexpected error', detail: err instanceof Error ? err.message : String(err)}),
+      body: JSON.stringify({
+        error: 'Unexpected error',
+        detail: err instanceof Error ? err.message : String(err),
+      }),
     }
   }
 }
 
-function sumByCurrency(entries: Array<{amount: number; currency: string}>, currency: string): number {
+function sumByCurrency(
+  entries: Array<{amount: number; currency: string}>,
+  currency: string,
+): number {
   return entries
     .filter((entry) => entry.currency === currency)
     .reduce((sum, entry) => sum + (entry.amount || 0), 0)

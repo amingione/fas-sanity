@@ -2,14 +2,17 @@ import React, {useCallback, useEffect, useState} from 'react'
 import {Box, Button, Dialog, Flex, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 
-type Props = { tag: string }
+type Props = {tag: string}
 
 function normalizeTag(s: string): string {
-  return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase()
+  return String(s || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
 }
 
-export default function FilterDeleteTag({ tag }: Props) {
-  const client = useClient({ apiVersion: '2024-10-01' })
+export default function FilterDeleteTag({tag}: Props) {
+  const client = useClient({apiVersion: '2024-10-01'})
   const [count, setCount] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string>('')
@@ -22,7 +25,7 @@ export default function FilterDeleteTag({ tag }: Props) {
     try {
       const c = await client.fetch<number>(
         'count(*[_type=="product" && defined(filters) && $tag in filters])' as any,
-        { tag: normTag } as any
+        {tag: normTag} as any,
       )
       setCount(Number(c) || 0)
     } catch (e: any) {
@@ -43,21 +46,21 @@ export default function FilterDeleteTag({ tag }: Props) {
     try {
       const ids = await client.fetch<string[]>(
         '*[_type=="product" && defined(filters) && $tag in filters][]._id' as any,
-        { tag: normTag } as any
+        {tag: normTag} as any,
       )
       if (ids.length === 0) {
         setMsg('No products currently have this filter.')
         setCount(0)
         return
       }
-      const docs: any[] = await client.fetch('*[_id in $ids]{_id, filters}', { ids })
+      const docs: any[] = await client.fetch('*[_id in $ids]{_id, filters}', {ids})
       const tx = client.transaction()
       for (const d of docs) {
         const arr = Array.isArray(d.filters) ? d.filters : []
         const next = arr.filter((t: any) => normalizeTag(String(t)) !== normTag)
-        tx.patch(d._id, { set: { filters: next } })
+        tx.patch(d._id, {set: {filters: next}})
       }
-      await tx.commit({ autoGenerateArrayKeys: true })
+      await tx.commit({autoGenerateArrayKeys: true})
       setMsg(`Removed "${normTag}" from ${docs.length} product(s).`)
       setCount(0)
     } catch (e: any) {
@@ -86,9 +89,7 @@ export default function FilterDeleteTag({ tag }: Props) {
         <Text as="h3" size={2} weight="semibold">
           Delete filter: “{normTag}”
         </Text>
-        <Text muted>
-          {count === null ? 'Counting…' : `Products with this filter: ${count}`}
-        </Text>
+        <Text muted>{count === null ? 'Counting…' : `Products with this filter: ${count}`}</Text>
         {msg ? (
           <Text size={1} muted>
             {msg}
@@ -104,7 +105,8 @@ export default function FilterDeleteTag({ tag }: Props) {
           />
         </Flex>
         <Text size={1} muted>
-          This removes the tag from all products. Since the filter list is auto-generated from products, the tag disappears once no products have it.
+          This removes the tag from all products. Since the filter list is auto-generated from
+          products, the tag disappears once no products have it.
         </Text>
       </Stack>
 
@@ -117,7 +119,13 @@ export default function FilterDeleteTag({ tag }: Props) {
           footer={
             <Flex gap={2} justify="flex-end">
               <Button text="Cancel" mode="ghost" onClick={closeConfirm} />
-              <Button text="Delete" tone="critical" onClick={confirmDelete} loading={busy} disabled={busy} />
+              <Button
+                text="Delete"
+                tone="critical"
+                onClick={confirmDelete}
+                loading={busy}
+                disabled={busy}
+              />
             </Flex>
           }
         >

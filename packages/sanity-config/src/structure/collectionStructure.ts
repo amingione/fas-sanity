@@ -5,5 +5,5 @@ export default defineStructure<ListItemBuilder>((S) =>
   S.listItem()
     .title('Collections')
     .schemaType('collection')
-    .child(S.documentTypeList('collection').apiVersion('2024-10-01'))
+    .child(S.documentTypeList('collection').apiVersion('2024-10-01')),
 )

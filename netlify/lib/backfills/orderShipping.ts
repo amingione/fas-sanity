@@ -42,7 +42,7 @@ function createSanityClient(): SanityClient {
 
   if (!projectId || !dataset || !token) {
     throw new Error(
-      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).'
+      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).',
     )
   }
 
@@ -72,7 +72,7 @@ function normalizeSanityId(value?: string | null): string | undefined {
 
 async function fetchOrders(
   sanity: SanityClient,
-  options: OrderShippingBackfillOptions
+  options: OrderShippingBackfillOptions,
 ): Promise<OrderDoc[]> {
   const limit = options.limit && options.limit > 0 ? Math.floor(options.limit) : 50
   const conditions = [
@@ -105,7 +105,7 @@ async function fetchOrders(
 }
 
 export async function runOrderShippingBackfill(
-  rawOptions: OrderShippingBackfillOptions = {}
+  rawOptions: OrderShippingBackfillOptions = {},
 ): Promise<OrderShippingBackfillResult> {
   const options: OrderShippingBackfillOptions = {
     dryRun: Boolean(rawOptions.dryRun),
@@ -132,9 +132,8 @@ export async function runOrderShippingBackfill(
   let failures = 0
 
   const maxConcurrencyEnv = Number(process.env.BACKFILL_ORDER_SHIPPING_CONCURRENCY)
-  const maxConcurrency = Number.isFinite(maxConcurrencyEnv) && maxConcurrencyEnv > 0
-    ? Math.floor(maxConcurrencyEnv)
-    : 4
+  const maxConcurrency =
+    Number.isFinite(maxConcurrencyEnv) && maxConcurrencyEnv > 0 ? Math.floor(maxConcurrencyEnv) : 4
   const concurrency = Math.min(maxConcurrency, orders.length)
 
   const processOrder = async (order: OrderDoc) => {
@@ -175,7 +174,7 @@ export async function runOrderShippingBackfill(
 
       const ok = response.statusCode >= 200 && response.statusCode < 300
       options.logger?.(
-        `${ok ? '✅' : '⚠️'} ${label} • session=${sessionId} • status=${response.statusCode}`
+        `${ok ? '✅' : '⚠️'} ${label} • session=${sessionId} • status=${response.statusCode}`,
       )
       if (!ok) {
         failures += 1

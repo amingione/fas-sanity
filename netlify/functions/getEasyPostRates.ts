@@ -1,4 +1,4 @@
-import type { Handler } from '@netlify/functions'
+import type {Handler} from '@netlify/functions'
 import {
   getEasyPostClient,
   resolveDimensions,
@@ -6,7 +6,7 @@ import {
   type DimensionsInput,
   type WeightInput,
 } from '../lib/easypostClient'
-import { getEasyPostFromAddress } from '../lib/ship-from'
+import {getEasyPostFromAddress} from '../lib/ship-from'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333')
   .split(',')
@@ -15,11 +15,12 @@ const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http:/
 
 function makeCORS(origin?: string) {
   const fallback = DEFAULT_ORIGINS[0] || '*'
-  if (!origin) return {
-    'Access-Control-Allow-Origin': fallback,
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'POST,OPTIONS',
-  }
+  if (!origin)
+    return {
+      'Access-Control-Allow-Origin': fallback,
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    }
   if (/^http:\/\/localhost:\d+$/i.test(origin) || DEFAULT_ORIGINS.includes(origin)) {
     return {
       'Access-Control-Allow-Origin': origin,
@@ -77,13 +78,13 @@ export const handler: Handler = async (event) => {
   const CORS = makeCORS(origin)
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: CORS, body: '' }
+    return {statusCode: 200, headers: CORS, body: ''}
   }
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
     }
   }
 
@@ -93,8 +94,8 @@ export const handler: Handler = async (event) => {
   } catch {
     return {
       statusCode: 400,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Invalid JSON payload' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Invalid JSON payload'}),
     }
   }
 
@@ -119,16 +120,16 @@ export const handler: Handler = async (event) => {
   if (!shipTo) {
     return {
       statusCode: 400,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing or incomplete ship_to address' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Missing or incomplete ship_to address'}),
     }
   }
 
   if (!shipFrom) {
     return {
       statusCode: 500,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Missing ship_from configuration' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Missing ship_from configuration'}),
     }
   }
 
@@ -155,9 +156,7 @@ export const handler: Handler = async (event) => {
       carrier: rate?.carrier_display_name || rate?.carrier || '',
       service: rate?.service || '',
       serviceCode: rate?.service_code || '',
-      amount: Number.isFinite(Number.parseFloat(rate?.rate))
-        ? Number.parseFloat(rate.rate)
-        : 0,
+      amount: Number.isFinite(Number.parseFloat(rate?.rate)) ? Number.parseFloat(rate.rate) : 0,
       currency: rate?.currency || 'USD',
       deliveryDays: typeof rate?.delivery_days === 'number' ? rate.delivery_days : null,
       estimatedDeliveryDate: rate?.delivery_date
@@ -167,15 +166,15 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rates: formatted }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({rates: formatted}),
     }
   } catch (err: any) {
     console.error('getEasyPostRates error', err)
     return {
       statusCode: 500,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err?.message || 'Failed to fetch EasyPost rates' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: err?.message || 'Failed to fetch EasyPost rates'}),
     }
   }
 }

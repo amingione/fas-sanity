@@ -11,12 +11,9 @@ const stripe =
   })
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
 
-const dataset =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
 
 const sanityToken = process.env.SANITY_API_TOKEN
 
@@ -89,7 +86,7 @@ export const handler: Handler = async (event) => {
       usBank?.routing_number?.slice(-4) || account.routing_numbers?.[0]?.slice(-4) || ''
 
     const existingDefault = await client.fetch<boolean>(
-      `defined(*[_type == "bankAccount" && defaultForChecks == true][0]._id)`
+      `defined(*[_type == "bankAccount" && defaultForChecks == true][0]._id)`,
     )
 
     const docId = `bankAccount-${account.id}`

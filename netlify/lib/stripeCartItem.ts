@@ -71,15 +71,17 @@ function normalizeRecord(record?: Record<string, unknown> | null): Record<string
   return result
 }
 
-function collectMetadata(sources: Array<{ source: MetadataSource; data?: Record<string, unknown> | null }>): MetadataCollection {
+function collectMetadata(
+  sources: Array<{source: MetadataSource; data?: Record<string, unknown> | null}>,
+): MetadataCollection {
   const combined: Record<string, string> = {}
   const entries: CartMetadataEntry[] = []
   const seenKeys = new Set<string>()
 
-  for (const { source, data } of sources) {
+  for (const {source, data} of sources) {
     const normalized = normalizeRecord(data)
     for (const [key, value] of Object.entries(normalized)) {
-      const entry: CartMetadataEntry = { _type: 'orderCartItemMeta', key, value, source }
+      const entry: CartMetadataEntry = {_type: 'orderCartItemMeta', key, value, source}
       entries.push(entry)
       if (!seenKeys.has(key)) {
         combined[key] = value
@@ -88,7 +90,7 @@ function collectMetadata(sources: Array<{ source: MetadataSource; data?: Record<
     }
   }
 
-  return { map: combined, entries }
+  return {map: combined, entries}
 }
 
 function sanitizeListInput(value: unknown): unknown {
@@ -111,7 +113,12 @@ function normalizeDetails(...values: Array<unknown>): string[] {
   if (segments.length === 0) return []
   return uniqueStrings(
     segments
-      .map((segment) => segment.replace(/[\u2022•]/g, '•').replace(/\s+/g, ' ').trim())
+      .map((segment) =>
+        segment
+          .replace(/[\u2022•]/g, '•')
+          .replace(/\s+/g, ' ')
+          .trim(),
+      )
       .filter(Boolean),
   )
 }
@@ -279,7 +286,10 @@ const CUSTOMIZATION_METADATA_KEYS = [
   'orderItemNote',
 ]
 
-function extractCategories(product: Stripe.Product | null, metadataMap: Record<string, string>): string[] | undefined {
+function extractCategories(
+  product: Stripe.Product | null,
+  metadataMap: Record<string, string>,
+): string[] | undefined {
   const categories: string[] = []
   const metaCandidate = metadataMap.categories || metadataMap.category
   const productMetaCandidate = product?.metadata?.categories || product?.metadata?.category
@@ -302,7 +312,11 @@ function extractCategories(product: Stripe.Product | null, metadataMap: Record<s
         // ignore parse errors
       }
     }
-    trimmed.split(',').map((part) => part.trim()).filter(Boolean).forEach((part) => categories.push(part))
+    trimmed
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => categories.push(part))
   }
 
   addFromValue(metaCandidate)
@@ -315,17 +329,18 @@ export function mapStripeLineItem(
   lineItem: Stripe.LineItem,
   options?: MapLineItemOptions,
 ): MappedCartItem {
-  const priceObj = lineItem.price && typeof lineItem.price === 'object' ? (lineItem.price as Stripe.Price) : null
+  const priceObj =
+    lineItem.price && typeof lineItem.price === 'object' ? (lineItem.price as Stripe.Price) : null
   const productObj =
     priceObj && priceObj.product && typeof priceObj.product === 'object'
       ? (priceObj.product as Stripe.Product)
       : null
 
   const metadata = collectMetadata([
-    { source: 'lineItem', data: (lineItem as any)?.metadata },
-    { source: 'price', data: (priceObj as any)?.metadata },
-    { source: 'product', data: (productObj as any)?.metadata },
-    { source: 'session', data: options?.sessionMetadata },
+    {source: 'lineItem', data: (lineItem as any)?.metadata},
+    {source: 'price', data: (priceObj as any)?.metadata},
+    {source: 'product', data: (productObj as any)?.metadata},
+    {source: 'session', data: options?.sessionMetadata},
   ])
 
   const getMetadataValue = createMetadataMatcher(metadata.map)
@@ -342,9 +357,11 @@ export function mapStripeLineItem(
     ]) || undefined
 
   const productSlug =
-    pickFirst(metadata.map, ['sanity_slug', 'product_slug', 'productSlug', 'slug', 'handle']) || undefined
+    pickFirst(metadata.map, ['sanity_slug', 'product_slug', 'productSlug', 'slug', 'handle']) ||
+    undefined
 
-  const stripeProductId = productObj?.id || pickFirst(metadata.map, ['stripe_product_id', 'stripeProductId'])
+  const stripeProductId =
+    productObj?.id || pickFirst(metadata.map, ['stripe_product_id', 'stripeProductId'])
   const stripePriceId =
     (typeof lineItem.price === 'string' ? lineItem.price : priceObj?.id) ||
     pickFirst(metadata.map, ['stripe_price_id', 'stripePriceId', 'price_id'])
@@ -395,7 +412,9 @@ export function mapStripeLineItem(
     'selected_options_display',
     'selected_options',
   ])
-  const normalizedSummary = (derivedOptions.optionSummary || fallbackSummary || '').toString().trim()
+  const normalizedSummary = (derivedOptions.optionSummary || fallbackSummary || '')
+    .toString()
+    .trim()
   const summary = normalizedSummary ? normalizedSummary : undefined
   const summarySegments = summary ? normalizeDetails(summary) : []
   const optionDetailCandidates = normalizeDetails(
@@ -484,4 +503,4 @@ export function mapStripeLineItem(
   }
 }
 
-export { deriveCartOptions as deriveOptionsFromMetadata }
+export {deriveCartOptions as deriveOptionsFromMetadata}

@@ -1,10 +1,10 @@
-import type { DocumentActionComponent } from 'sanity'
-import { getNetlifyFnBase } from './netlifyFnBase'
+import type {DocumentActionComponent} from 'sanity'
+import {getNetlifyFnBase} from './netlifyFnBase'
 
 const normalizeId = (id: string) => id.replace(/^drafts\./, '')
 
 export const cancelStripeOrderAction: DocumentActionComponent = (props) => {
-  const { published, onComplete, id } = props
+  const {published, onComplete, id} = props
   if (!published) return null
 
   const doc = published as Record<string, any>
@@ -20,7 +20,10 @@ export const cancelStripeOrderAction: DocumentActionComponent = (props) => {
     tone: 'critical',
     onHandle: async () => {
       try {
-        const confirmed = typeof window === 'undefined' ? false : window.confirm('Cancel and refund this order in Stripe?')
+        const confirmed =
+          typeof window === 'undefined'
+            ? false
+            : window.confirm('Cancel and refund this order in Stripe?')
         if (!confirmed) return onComplete()
 
         const reason =
@@ -31,7 +34,7 @@ export const cancelStripeOrderAction: DocumentActionComponent = (props) => {
         const base = getNetlifyFnBase().replace(/\/$/, '')
         const res = await fetch(`${base}/.netlify/functions/cancelOrder`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             orderId: normalizeId(id),
             reason: reason.trim() || undefined,
@@ -56,4 +59,3 @@ export const cancelStripeOrderAction: DocumentActionComponent = (props) => {
     },
   }
 }
-

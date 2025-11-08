@@ -1,8 +1,25 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
-import {Box, Button, Card, Flex, Inline, Spinner, Stack, Text, TextInput, Tooltip, useToast} from '@sanity/ui'
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Inline,
+  Spinner,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+  useToast,
+} from '@sanity/ui'
 import {useClient} from 'sanity'
 import {googleProductCategories} from '../../schemaTypes/constants/googleProductCategories'
-import type {DerivedProductFeedFields, ProductAttribute, ProductOptionSet, ProductSpecification} from '../../utils/productFeed'
+import type {
+  DerivedProductFeedFields,
+  ProductAttribute,
+  ProductOptionSet,
+  ProductSpecification,
+} from '../../utils/productFeed'
 import {deriveProductFeedFields, detailsToStrings} from '../../utils/productFeed'
 
 declare global {
@@ -139,16 +156,17 @@ type SpreadsheetColumn = {
 const TRUE_VALUES = new Set(['true', '1', 'yes', 'y'])
 const FALSE_VALUES = new Set(['false', '0', 'no', 'n'])
 
-const AVAILABILITY_VALUES: Record<string, 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder'> = {
-  in_stock: 'in_stock',
-  'in stock': 'in_stock',
-  out_of_stock: 'out_of_stock',
-  'out of stock': 'out_of_stock',
-  preorder: 'preorder',
-  'pre-order': 'preorder',
-  backorder: 'backorder',
-  'back order': 'backorder',
-}
+const AVAILABILITY_VALUES: Record<string, 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder'> =
+  {
+    in_stock: 'in_stock',
+    'in stock': 'in_stock',
+    out_of_stock: 'out_of_stock',
+    'out of stock': 'out_of_stock',
+    preorder: 'preorder',
+    'pre-order': 'preorder',
+    backorder: 'backorder',
+    'back order': 'backorder',
+  }
 
 const CONDITION_VALUES: Record<string, 'new' | 'refurbished' | 'used'> = {
   new: 'new',
@@ -190,16 +208,24 @@ function parseBooleanCell(raw: string) {
 
 function parseAvailabilityCell(raw: string) {
   const trimmed = raw.trim()
-  if (!trimmed) return {ok: true as const, value: undefined as 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder' | undefined}
+  if (!trimmed)
+    return {
+      ok: true as const,
+      value: undefined as 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder' | undefined,
+    }
   const normalized = trimmed.toLowerCase()
   const mapped = AVAILABILITY_VALUES[normalized]
   if (mapped) return {ok: true as const, value: mapped}
-  return {ok: false as const, message: `Availability must be one of In stock, Out of stock, Preorder, Backorder.`}
+  return {
+    ok: false as const,
+    message: `Availability must be one of In stock, Out of stock, Preorder, Backorder.`,
+  }
 }
 
 function parseConditionCell(raw: string) {
   const trimmed = raw.trim()
-  if (!trimmed) return {ok: true as const, value: undefined as 'new' | 'refurbished' | 'used' | undefined}
+  if (!trimmed)
+    return {ok: true as const, value: undefined as 'new' | 'refurbished' | 'used' | undefined}
   const normalized = trimmed.toLowerCase()
   const mapped = CONDITION_VALUES[normalized]
   if (mapped) return {ok: true as const, value: mapped}
@@ -216,7 +242,10 @@ function parseTaxBehaviorCell(raw: string) {
   return {ok: false as const, message: `Tax behavior must be Taxable or Exempt.`}
 }
 
-function makeUpdate<K extends keyof EditableProduct>(key: K, value: EditableProduct[K]): ApplyResult {
+function makeUpdate<K extends keyof EditableProduct>(
+  key: K,
+  value: EditableProduct[K],
+): ApplyResult {
   return {type: 'update', key, value}
 }
 
@@ -301,7 +330,10 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
     setValue: (raw) => {
       const result = parseNumberCell(raw)
       if (!result.ok) return {type: 'error', message: result.message}
-      return makeUpdate('manualInventoryCount', result.value as EditableProduct['manualInventoryCount'])
+      return makeUpdate(
+        'manualInventoryCount',
+        result.value as EditableProduct['manualInventoryCount'],
+      )
     },
   },
   {
@@ -371,7 +403,10 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
     getValue: (product) => product.googleProductCategory || '',
     setValue: (raw) => {
       const next = raw.trim()
-      return makeUpdate('googleProductCategory', (next || undefined) as EditableProduct['googleProductCategory'])
+      return makeUpdate(
+        'googleProductCategory',
+        (next || undefined) as EditableProduct['googleProductCategory'],
+      )
     },
   },
   {
@@ -396,30 +431,36 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
   },
 ]
 
-const SANITY_ID_COLUMN_INDEX = SPREADSHEET_COLUMNS.findIndex((column) => column.headerKey === 'sanity id')
+const SANITY_ID_COLUMN_INDEX = SPREADSHEET_COLUMNS.findIndex(
+  (column) => column.headerKey === 'sanity id',
+)
 
 type ParsedRow = {
   line: number
   values: Record<string, string>
 }
 
-  function filterProductsByTerm(products: EditableProduct[], term: string): EditableProduct[] {
+function filterProductsByTerm(products: EditableProduct[], term: string): EditableProduct[] {
   if (!term) return products
   const lower = term.toLowerCase()
   return products.filter((product) =>
     [product.title, product.sku, product._id]
       .filter(Boolean)
-      .some((value) => value!.toString().toLowerCase().includes(lower))
+      .some((value) => value!.toString().toLowerCase().includes(lower)),
   )
 }
 
 function buildSpreadsheetMatrix(products: EditableProduct[]): string[][] {
   const header = SPREADSHEET_COLUMNS.map((column) => column.header)
-  const rows = products.map((product) => SPREADSHEET_COLUMNS.map((column) => column.getValue(product)))
+  const rows = products.map((product) =>
+    SPREADSHEET_COLUMNS.map((column) => column.getValue(product)),
+  )
   return [header, ...rows]
 }
 
-function matrixToParsedRows(matrix: string[][]): {ok: true; rows: ParsedRow[]} | {ok: false; error: string} {
+function matrixToParsedRows(
+  matrix: string[][],
+): {ok: true; rows: ParsedRow[]} | {ok: false; error: string} {
   if (!Array.isArray(matrix) || matrix.length === 0) {
     return {ok: false, error: 'Spreadsheet is empty.'}
   }
@@ -465,7 +506,12 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
   const [sheetError, setSheetError] = useState<string | null>(null)
   const [sheetApplying, setSheetApplying] = useState(false)
   const [activeCell, setActiveCell] = useState<{row: number; col: number} | null>(null)
-  const [selection, setSelection] = useState<{startRow: number; startCol: number; endRow: number; endCol: number} | null>(null)
+  const [selection, setSelection] = useState<{
+    startRow: number
+    startCol: number
+    endRow: number
+    endCol: number
+  } | null>(null)
   const [isDraggingSelection, setIsDraggingSelection] = useState(false)
 
   const headerCellStyle = {
@@ -570,9 +616,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
           docs = []
         }
         if (hasSelection) {
-          const orderMap = new Map<string, number>(
-            productIds!.map((id, index) => [id, index]),
-          )
+          const orderMap = new Map<string, number>(productIds!.map((id, index) => [id, index]))
           docs.sort((a, b) => {
             const aIndex = orderMap.get(a._id) ?? Number.MAX_SAFE_INTEGER
             const bIndex = orderMap.get(b._id) ?? Number.MAX_SAFE_INTEGER
@@ -590,7 +634,11 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
         setProducts(enriched)
       } catch (err) {
         console.error('ProductBulkEditor fetch failed', err)
-        toast.push({status: 'error', title: 'Failed to load products', description: String((err as any)?.message || err)})
+        toast.push({
+          status: 'error',
+          title: 'Failed to load products',
+          description: String((err as any)?.message || err),
+        })
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -602,7 +650,10 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     }
   }, [client, productIds, toast])
 
-  const filteredProducts = useMemo(() => filterProductsByTerm(products, searchTerm), [products, searchTerm])
+  const filteredProducts = useMemo(
+    () => filterProductsByTerm(products, searchTerm),
+    [products, searchTerm],
+  )
 
   const handleSwitchToCsv = () => {
     setSheetError(null)
@@ -703,7 +754,11 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       setSheetApplying(false)
       toast.push({status: 'info', title: 'No changes detected in CSV data'})
       if (missing.length > 0) {
-        toast.push({status: 'warning', title: 'Rows skipped', description: `No product found for ${missing.join(', ')}`})
+        toast.push({
+          status: 'warning',
+          title: 'Rows skipped',
+          description: `No product found for ${missing.join(', ')}`,
+        })
       }
       return
     }
@@ -736,7 +791,11 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     updateSheetCell(row, col, value)
   }
 
-  const handleCellPaste = (event: React.ClipboardEvent<HTMLInputElement>, row: number, col: number) => {
+  const handleCellPaste = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+    row: number,
+    col: number,
+  ) => {
     if (row === 0) return
     setSheetError(null)
     const text = event.clipboardData?.getData('text')
@@ -764,7 +823,11 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     })
   }
 
-  const beginSelection = (row: number, col: number, event: React.PointerEvent<HTMLTableCellElement>) => {
+  const beginSelection = (
+    row: number,
+    col: number,
+    event: React.PointerEvent<HTMLTableCellElement>,
+  ) => {
     if (row === 0) return
     if ((event.target as HTMLElement).tagName === 'INPUT') return
     if (!SPREADSHEET_COLUMNS[col]?.setValue) return
@@ -860,8 +923,8 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
               [field]: value,
               dirty: true,
             }
-          : prod
-      )
+          : prod,
+      ),
     )
   }
 
@@ -882,7 +945,9 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
           : undefined,
         taxBehavior: product.taxBehavior || undefined,
         taxCode: product.taxCode || undefined,
-        shippingWeight: Number.isFinite(product.shippingWeight) ? Number(product.shippingWeight) : undefined,
+        shippingWeight: Number.isFinite(product.shippingWeight)
+          ? Number(product.shippingWeight)
+          : undefined,
         boxDimensions: product.boxDimensions || undefined,
         brand: product.brand || undefined,
         mpn: product.mpn || undefined,
@@ -893,7 +958,11 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       }
 
       await client.patch(product._id).set(payload).commit({autoGenerateArrayKeys: true})
-      toast.push({status: 'success', title: 'Product saved', description: product.title || product.sku || product._id})
+      toast.push({
+        status: 'success',
+        title: 'Product saved',
+        description: product.title || product.sku || product._id,
+      })
       setProducts((prev) =>
         prev.map((prod) =>
           prod._id === product._id
@@ -903,12 +972,16 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                 isSaving: false,
                 dirty: false,
               }
-            : prod
-        )
+            : prod,
+        ),
       )
     } catch (err) {
       console.error('Product save failed', err)
-      toast.push({status: 'error', title: 'Failed to save product', description: String((err as any)?.message || err)})
+      toast.push({
+        status: 'error',
+        title: 'Failed to save product',
+        description: String((err as any)?.message || err),
+      })
       updateProductField(product._id, 'isSaving', false)
     }
   }
@@ -920,9 +993,9 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       return
     }
     setSavingAll(true)
-      for (const product of dirtyProducts) {
-        await handleSave(product)
-      }
+    for (const product of dirtyProducts) {
+      await handleSave(product)
+    }
     setSavingAll(false)
   }
 
@@ -932,10 +1005,17 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     filteredProducts.forEach((product) => {
       const id = product.sku || product._id
       const title = product.title || ''
-      const description = portableTextToPlain(product.shortDescription) || portableTextToPlain(product.description) || title
+      const description =
+        portableTextToPlain(product.shortDescription) ||
+        portableTextToPlain(product.description) ||
+        title
       const link = buildProductLink(product)
-      const image = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : ''
-      const additionalImages = Array.isArray(product.images) && product.images.length > 1 ? product.images.slice(1).join(',') : ''
+      const image =
+        Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : ''
+      const additionalImages =
+        Array.isArray(product.images) && product.images.length > 1
+          ? product.images.slice(1).join(',')
+          : ''
       const availabilityValue = product.availability || 'in_stock'
       const availabilityMap: Record<string, string> = {
         in_stock: 'in stock',
@@ -958,7 +1038,8 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       const shippingLabel = product.shippingLabel || (product.installOnly ? 'install_only' : '')
       const derived = product.derivedFeed
       const highlightsString = derived?.highlights?.join('; ') || ''
-      const detailsString = derived && derived.details.length > 0 ? detailsToStrings(derived.details).join('; ') : ''
+      const detailsString =
+        derived && derived.details.length > 0 ? detailsToStrings(derived.details).join('; ') : ''
       const color = derived?.color || ''
       const size = derived && derived.sizes.length > 0 ? derived.sizes.join(', ') : ''
       const material = derived?.material || ''
@@ -998,12 +1079,15 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
         row
           .map((value) => {
             const str = value ?? ''
-            if (typeof str === 'string' && (str.includes(',') || str.includes('"') || str.includes('\n'))) {
+            if (
+              typeof str === 'string' &&
+              (str.includes(',') || str.includes('"') || str.includes('\n'))
+            ) {
               return `"${str.replace(/"/g, '""')}"`
             }
             return str
           })
-          .join(',')
+          .join(','),
       )
       .join('\n')
 
@@ -1042,7 +1126,12 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
               onClick={handleSaveAll}
               disabled={savingAll || filteredProducts.every((prod) => !prod.dirty)}
             />
-            <Button text="Download CSV" tone="default" onClick={createCsv} disabled={filteredProducts.length === 0} />
+            <Button
+              text="Download CSV"
+              tone="default"
+              onClick={createCsv}
+              disabled={filteredProducts.length === 0}
+            />
             <Button
               text={viewMode === 'csv' ? 'Table view' : 'CSV view'}
               tone={viewMode === 'csv' ? 'primary' : 'default'}
@@ -1061,37 +1150,53 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
           <Card shadow={1} radius={2} padding={4} style={{background: '#111827'}}>
             <Stack space={3}>
               <Text size={1} style={{color: '#e5e7eb'}}>
-                Spreadsheet view mirrors the feed columns. Edit directly, drag to fill, or paste from Excel. Title stays pinned on the left, and the Sanity ID column remains read-only.
+                Spreadsheet view mirrors the feed columns. Edit directly, drag to fill, or paste
+                from Excel. Title stays pinned on the left, and the Sanity ID column remains
+                read-only.
               </Text>
               {sheetError && (
                 <Card padding={3} radius={2} tone="critical">
-                  <Text size={1} style={{whiteSpace: 'pre-wrap'}}>{sheetError}</Text>
+                  <Text size={1} style={{whiteSpace: 'pre-wrap'}}>
+                    {sheetError}
+                  </Text>
                 </Card>
               )}
-              <div style={{overflowX: 'auto', borderRadius: 6, border: '1px solid rgba(148, 163, 184, 0.35)'}}>
-                <table style={{width: '100%', borderCollapse: 'collapse', minWidth: 960}}
+              <div
+                style={{
+                  overflowX: 'auto',
+                  borderRadius: 6,
+                  border: '1px solid rgba(148, 163, 184, 0.35)',
+                }}
+              >
+                <table
+                  style={{width: '100%', borderCollapse: 'collapse', minWidth: 960}}
                   onPointerLeave={() => clearSelectionDrag()}
                 >
                   <thead>
                     <tr>
-                      {(sheetRows[0] || SPREADSHEET_COLUMNS.map((column) => column.header)).map((header, columnIndex) => {
-                        const columnDef = SPREADSHEET_COLUMNS[columnIndex]
-                        const isStickyColumn = columnDef?.headerKey === 'title'
-                        const stickyStyle = isStickyColumn
-                          ? {
-                              left: 0,
-                              zIndex: 4,
-                              boxShadow: '4px 0 6px -4px rgba(15, 23, 42, 0.8)',
-                              background: '#1f2937',
-                              color: '#f9fafb',
-                            }
-                          : {}
-                        return (
-                          <th key={`header-${columnIndex}`} style={{...headerCellStyle, ...stickyStyle}}>
-                            {header || SPREADSHEET_COLUMNS[columnIndex]?.header || ''}
-                          </th>
-                        )
-                      })}
+                      {(sheetRows[0] || SPREADSHEET_COLUMNS.map((column) => column.header)).map(
+                        (header, columnIndex) => {
+                          const columnDef = SPREADSHEET_COLUMNS[columnIndex]
+                          const isStickyColumn = columnDef?.headerKey === 'title'
+                          const stickyStyle = isStickyColumn
+                            ? {
+                                left: 0,
+                                zIndex: 4,
+                                boxShadow: '4px 0 6px -4px rgba(15, 23, 42, 0.8)',
+                                background: '#1f2937',
+                                color: '#f9fafb',
+                              }
+                            : {}
+                          return (
+                            <th
+                              key={`header-${columnIndex}`}
+                              style={{...headerCellStyle, ...stickyStyle}}
+                            >
+                              {header || SPREADSHEET_COLUMNS[columnIndex]?.header || ''}
+                            </th>
+                          )
+                        },
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1108,7 +1213,8 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                             const columnDef = SPREADSHEET_COLUMNS[sheetColIndex]
                             const editable = Boolean(columnDef?.setValue)
                             const selected = isCellSelected(sheetRowIndex, sheetColIndex)
-                            const active = activeCell?.row === sheetRowIndex && activeCell?.col === sheetColIndex
+                            const active =
+                              activeCell?.row === sheetRowIndex && activeCell?.col === sheetColIndex
                             const isStickyColumn = columnDef?.headerKey === 'title'
                             const cellStyle: React.CSSProperties = {
                               ...bodyCellBaseStyle,
@@ -1125,7 +1231,11 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                               cellStyle.zIndex = active ? 4 : selected ? 3 : 2
                               cellStyle.boxShadow = '4px 0 6px -4px rgba(15, 23, 42, 0.9)'
                               cellStyle.minWidth = 220
-                              cellStyle.background = active ? '#1d4ed8' : selected ? '#1e3a8a' : '#1f2937'
+                              cellStyle.background = active
+                                ? '#1d4ed8'
+                                : selected
+                                  ? '#1e3a8a'
+                                  : '#1f2937'
                               cellStyle.color = '#f9fafb'
                             }
 
@@ -1133,14 +1243,24 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                               <td
                                 key={`${rowKey}-${sheetColIndex}`}
                                 style={cellStyle}
-                                onPointerDown={(event) => beginSelection(sheetRowIndex, sheetColIndex, event)}
+                                onPointerDown={(event) =>
+                                  beginSelection(sheetRowIndex, sheetColIndex, event)
+                                }
                                 onPointerEnter={() => extendSelection(sheetRowIndex, sheetColIndex)}
                               >
                                 {editable ? (
                                   <input
                                     value={value}
-                                    onChange={(event) => handleCellChange(sheetRowIndex, sheetColIndex, event.currentTarget.value)}
-                                    onPaste={(event) => handleCellPaste(event, sheetRowIndex, sheetColIndex)}
+                                    onChange={(event) =>
+                                      handleCellChange(
+                                        sheetRowIndex,
+                                        sheetColIndex,
+                                        event.currentTarget.value,
+                                      )
+                                    }
+                                    onPaste={(event) =>
+                                      handleCellPaste(event, sheetRowIndex, sheetColIndex)
+                                    }
                                     onFocus={() => handleCellFocus(sheetRowIndex, sheetColIndex)}
                                     style={inputStyle}
                                   />
@@ -1174,11 +1294,23 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                   onClick={handleApplyCsv}
                   disabled={sheetApplying || sheetRows.length <= 1}
                 />
-                <Button text="Refresh view" tone="default" onClick={handleRefreshCsv} disabled={sheetApplying} />
-                <Button text="Table view" tone="default" mode="ghost" onClick={handleSwitchToTable} disabled={sheetApplying} />
+                <Button
+                  text="Refresh view"
+                  tone="default"
+                  onClick={handleRefreshCsv}
+                  disabled={sheetApplying}
+                />
+                <Button
+                  text="Table view"
+                  tone="default"
+                  mode="ghost"
+                  onClick={handleSwitchToTable}
+                  disabled={sheetApplying}
+                />
               </Inline>
               <Text size={0} style={{color: '#9ca3af'}}>
-                Tip: Paste data directly from Numbers, Excel, or Google Sheets. Drag the mouse across cells to fill down with the starting value.
+                Tip: Paste data directly from Numbers, Excel, or Google Sheets. Drag the mouse
+                across cells to fill down with the starting value.
               </Text>
             </Stack>
           </Card>
@@ -1214,7 +1346,17 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                     'Shipping Label',
                     'Actions',
                   ].map((header) => (
-                    <th key={header} style={{textAlign: 'left', padding: '12px 16px', color: '#d1d5db', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5}}>
+                    <th
+                      key={header}
+                      style={{
+                        textAlign: 'left',
+                        padding: '12px 16px',
+                        color: '#d1d5db',
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       {header}
                     </th>
                   ))}
@@ -1224,253 +1366,356 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                 {filteredProducts.map((product) => {
                   const derived = product.derivedFeed
                   const highlightLines = derived?.highlights ?? []
-                  const detailLines = derived && derived.details.length > 0 ? detailsToStrings(derived.details) : []
+                  const detailLines =
+                    derived && derived.details.length > 0 ? detailsToStrings(derived.details) : []
                   const colorDisplay = derived?.color || ''
-                  const sizeDisplay = derived && derived.sizes.length > 0 ? derived.sizes.join(', ') : ''
+                  const sizeDisplay =
+                    derived && derived.sizes.length > 0 ? derived.sizes.join(', ') : ''
                   const materialDisplay = derived?.material || ''
                   const lengthDisplay = derived?.productLength || ''
                   const widthDisplay = derived?.productWidth || ''
 
                   return (
-                    <tr key={product._key} style={{borderTop: '1px solid rgba(148, 163, 184, 0.1)'}}>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={2}>
-                        <Text size={1} style={{color: '#e5e7eb'}}>{product.sku || '—'}</Text>
-                        <Text size={1} muted>{product._id}</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.title || ''}
-                        onChange={(event) => updateProductField(product._id, 'title', event.currentTarget.value)}
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.price?.toString() ?? ''}
-                        onChange={(event) =>
-                          updateProductField(
-                            product._id,
-                            'price',
-                            sanitizeNumber(event.currentTarget.value, product.price)
-                          )
-                        }
-                        inputMode="decimal"
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.salePrice?.toString() ?? ''}
-                        onChange={(event) =>
-                          updateProductField(
-                            product._id,
-                            'salePrice',
-                            sanitizeNumber(event.currentTarget.value, product.salePrice)
-                          )
-                        }
-                        inputMode="decimal"
-                      />
-                    </td>
-                    <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(product.onSale)}
-                        onChange={(event) => updateProductField(product._id, 'onSale', event.currentTarget.checked)}
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <select
-                        value={product.availability || 'in_stock'}
-                        onChange={(event) => updateProductField(product._id, 'availability', event.currentTarget.value as any)}
-                      >
-                        <option value="in_stock">In stock</option>
-                        <option value="out_of_stock">Out of stock</option>
-                        <option value="preorder">Preorder</option>
-                        <option value="backorder">Backorder</option>
-                      </select>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <select
-                        value={product.condition || 'new'}
-                        onChange={(event) => updateProductField(product._id, 'condition', event.currentTarget.value as any)}
-                      >
-                        <option value="new">New</option>
-                        <option value="refurbished">Refurbished</option>
-                        <option value="used">Used</option>
-                      </select>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={
-                          product.manualInventoryCount !== undefined && product.manualInventoryCount !== null
-                            ? product.manualInventoryCount.toString()
-                            : ''
-                        }
-                        onChange={(event) =>
-                          updateProductField(
-                            product._id,
-                            'manualInventoryCount',
-                            sanitizeNumber(event.currentTarget.value, product.manualInventoryCount)
-                          )
-                        }
-                        inputMode="numeric"
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.brand || ''}
-                        onChange={(event) => updateProductField(product._id, 'brand', event.currentTarget.value)}
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.mpn || ''}
-                        onChange={(event) => updateProductField(product._id, 'mpn', event.currentTarget.value)}
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <select
-                        value={product.taxBehavior || 'taxable'}
-                        onChange={(event) => updateProductField(product._id, 'taxBehavior', event.currentTarget.value as any)}
-                      >
-                        <option value="taxable">Taxable</option>
-                        <option value="exempt">Tax Exempt</option>
-                      </select>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.taxCode || ''}
-                        onChange={(event) => updateProductField(product._id, 'taxCode', event.currentTarget.value)}
-                        disabled={product.taxBehavior === 'exempt'}
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.shippingWeight?.toString() ?? ''}
-                        onChange={(event) =>
-                          updateProductField(
-                            product._id,
-                            'shippingWeight',
-                            sanitizeNumber(event.currentTarget.value, product.shippingWeight)
-                          )
-                        }
-                        inputMode="decimal"
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.boxDimensions || ''}
-                        onChange={(event) => updateProductField(product._id, 'boxDimensions', event.currentTarget.value)}
-                        placeholder="LxWxH"
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <select
-                        value={product.googleProductCategory || ''}
-                        onChange={(event) => updateProductField(product._id, 'googleProductCategory', event.currentTarget.value)}
-                      >
-                        <option value="">Select category</option>
-                        {googleProductCategories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={2}>
-                        <textarea
-                          value={highlightLines.join('\n')}
-                          readOnly
-                          rows={3}
-                          style={{width: '100%', resize: 'vertical', background: 'rgba(15, 23, 42, 0.6)', color: '#e5e7eb', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: 4, padding: 8}}
+                    <tr
+                      key={product._key}
+                      style={{borderTop: '1px solid rgba(148, 163, 184, 0.1)'}}
+                    >
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={2}>
+                          <Text size={1} style={{color: '#e5e7eb'}}>
+                            {product.sku || '—'}
+                          </Text>
+                          <Text size={1} muted>
+                            {product._id}
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.title || ''}
+                          onChange={(event) =>
+                            updateProductField(product._id, 'title', event.currentTarget.value)
+                          }
                         />
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from specifications & attributes</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={2}>
-                        <textarea
-                          value={detailLines.join('\n')}
-                          readOnly
-                          rows={3}
-                          style={{width: '100%', resize: 'vertical', background: 'rgba(15, 23, 42, 0.6)', color: '#e5e7eb', border: '1px solid rgba(148, 163, 184, 0.3)', borderRadius: 4, padding: 8}}
-                          placeholder="section: attribute: value"
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.price?.toString() ?? ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'price',
+                              sanitizeNumber(event.currentTarget.value, product.price),
+                            )
+                          }
+                          inputMode="decimal"
                         />
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from specifications & attributes</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={1}>
-                        <Text size={1} style={{color: '#e5e7eb'}}>{colorDisplay || '—'}</Text>
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from options & attributes</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={1}>
-                        <Text size={1} style={{color: '#e5e7eb'}}>{sizeDisplay || '—'}</Text>
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from options & attributes</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={1}>
-                        <Text size={1} style={{color: '#e5e7eb'}}>{materialDisplay || '—'}</Text>
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from specifications & attributes</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={1}>
-                        <Text size={1} style={{color: '#e5e7eb'}}>{lengthDisplay || '—'}</Text>
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from specifications</Text>
-                      </Stack>
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={1}>
-                        <Text size={1} style={{color: '#e5e7eb'}}>{widthDisplay || '—'}</Text>
-                        <Text size={0} style={{color: '#9ca3af'}}>Auto from specifications</Text>
-                      </Stack>
-                    </td>
-                    <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(product.installOnly)}
-                        onChange={(event) => updateProductField(product._id, 'installOnly', event.currentTarget.checked)}
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <TextInput
-                        value={product.shippingLabel || ''}
-                        onChange={(event) => updateProductField(product._id, 'shippingLabel', event.currentTarget.value)}
-                        placeholder="install_only"
-                      />
-                    </td>
-                    <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                      <Stack space={2}>
-                        <Button
-                          text={product.isSaving ? 'Saving…' : 'Save'}
-                          tone="positive"
-                          mode="ghost"
-                          onClick={() => handleSave(product)}
-                          disabled={product.isSaving || !product.dirty}
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.salePrice?.toString() ?? ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'salePrice',
+                              sanitizeNumber(event.currentTarget.value, product.salePrice),
+                            )
+                          }
+                          inputMode="decimal"
                         />
-                        <Tooltip
-                          content={<Text size={1}>View on site</Text>}
-                          placement="top"
+                      </td>
+                      <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(product.onSale)}
+                          onChange={(event) =>
+                            updateProductField(product._id, 'onSale', event.currentTarget.checked)
+                          }
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <select
+                          value={product.availability || 'in_stock'}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'availability',
+                              event.currentTarget.value as any,
+                            )
+                          }
                         >
-                          <Button
-                            text="Preview"
-                            tone="default"
-                            mode="ghost"
-                            as="a"
-                            href={buildProductLink(product)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <option value="in_stock">In stock</option>
+                          <option value="out_of_stock">Out of stock</option>
+                          <option value="preorder">Preorder</option>
+                          <option value="backorder">Backorder</option>
+                        </select>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <select
+                          value={product.condition || 'new'}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'condition',
+                              event.currentTarget.value as any,
+                            )
+                          }
+                        >
+                          <option value="new">New</option>
+                          <option value="refurbished">Refurbished</option>
+                          <option value="used">Used</option>
+                        </select>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={
+                            product.manualInventoryCount !== undefined &&
+                            product.manualInventoryCount !== null
+                              ? product.manualInventoryCount.toString()
+                              : ''
+                          }
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'manualInventoryCount',
+                              sanitizeNumber(
+                                event.currentTarget.value,
+                                product.manualInventoryCount,
+                              ),
+                            )
+                          }
+                          inputMode="numeric"
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.brand || ''}
+                          onChange={(event) =>
+                            updateProductField(product._id, 'brand', event.currentTarget.value)
+                          }
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.mpn || ''}
+                          onChange={(event) =>
+                            updateProductField(product._id, 'mpn', event.currentTarget.value)
+                          }
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <select
+                          value={product.taxBehavior || 'taxable'}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'taxBehavior',
+                              event.currentTarget.value as any,
+                            )
+                          }
+                        >
+                          <option value="taxable">Taxable</option>
+                          <option value="exempt">Tax Exempt</option>
+                        </select>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.taxCode || ''}
+                          onChange={(event) =>
+                            updateProductField(product._id, 'taxCode', event.currentTarget.value)
+                          }
+                          disabled={product.taxBehavior === 'exempt'}
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.shippingWeight?.toString() ?? ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'shippingWeight',
+                              sanitizeNumber(event.currentTarget.value, product.shippingWeight),
+                            )
+                          }
+                          inputMode="decimal"
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.boxDimensions || ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'boxDimensions',
+                              event.currentTarget.value,
+                            )
+                          }
+                          placeholder="LxWxH"
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <select
+                          value={product.googleProductCategory || ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'googleProductCategory',
+                              event.currentTarget.value,
+                            )
+                          }
+                        >
+                          <option value="">Select category</option>
+                          {googleProductCategories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={2}>
+                          <textarea
+                            value={highlightLines.join('\n')}
+                            readOnly
+                            rows={3}
+                            style={{
+                              width: '100%',
+                              resize: 'vertical',
+                              background: 'rgba(15, 23, 42, 0.6)',
+                              color: '#e5e7eb',
+                              border: '1px solid rgba(148, 163, 184, 0.3)',
+                              borderRadius: 4,
+                              padding: 8,
+                            }}
                           />
-                        </Tooltip>
-                      </Stack>
-                    </td>
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from specifications & attributes
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={2}>
+                          <textarea
+                            value={detailLines.join('\n')}
+                            readOnly
+                            rows={3}
+                            style={{
+                              width: '100%',
+                              resize: 'vertical',
+                              background: 'rgba(15, 23, 42, 0.6)',
+                              color: '#e5e7eb',
+                              border: '1px solid rgba(148, 163, 184, 0.3)',
+                              borderRadius: 4,
+                              padding: 8,
+                            }}
+                            placeholder="section: attribute: value"
+                          />
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from specifications & attributes
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={1}>
+                          <Text size={1} style={{color: '#e5e7eb'}}>
+                            {colorDisplay || '—'}
+                          </Text>
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from options & attributes
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={1}>
+                          <Text size={1} style={{color: '#e5e7eb'}}>
+                            {sizeDisplay || '—'}
+                          </Text>
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from options & attributes
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={1}>
+                          <Text size={1} style={{color: '#e5e7eb'}}>
+                            {materialDisplay || '—'}
+                          </Text>
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from specifications & attributes
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={1}>
+                          <Text size={1} style={{color: '#e5e7eb'}}>
+                            {lengthDisplay || '—'}
+                          </Text>
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from specifications
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={1}>
+                          <Text size={1} style={{color: '#e5e7eb'}}>
+                            {widthDisplay || '—'}
+                          </Text>
+                          <Text size={0} style={{color: '#9ca3af'}}>
+                            Auto from specifications
+                          </Text>
+                        </Stack>
+                      </td>
+                      <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(product.installOnly)}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'installOnly',
+                              event.currentTarget.checked,
+                            )
+                          }
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <TextInput
+                          value={product.shippingLabel || ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'shippingLabel',
+                              event.currentTarget.value,
+                            )
+                          }
+                          placeholder="install_only"
+                        />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <Stack space={2}>
+                          <Button
+                            text={product.isSaving ? 'Saving…' : 'Save'}
+                            tone="positive"
+                            mode="ghost"
+                            onClick={() => handleSave(product)}
+                            disabled={product.isSaving || !product.dirty}
+                          />
+                          <Tooltip content={<Text size={1}>View on site</Text>} placement="top">
+                            <Button
+                              text="Preview"
+                              tone="default"
+                              mode="ghost"
+                              as="a"
+                              href={buildProductLink(product)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            />
+                          </Tooltip>
+                        </Stack>
+                      </td>
                     </tr>
-                )})}
+                  )
+                })}
               </tbody>
             </table>
           </Card>

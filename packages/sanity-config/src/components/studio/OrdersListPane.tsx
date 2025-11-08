@@ -99,7 +99,8 @@ const toTitleCase = (value?: string | null) => {
     .join(' ')
 }
 
-const includesAny = (value: string, patterns: string[]) => patterns.some((pattern) => value.includes(pattern))
+const includesAny = (value: string, patterns: string[]) =>
+  patterns.some((pattern) => value.includes(pattern))
 
 const FILTER_MATCHERS: Record<Exclude<OrderFilter, 'all'>, (value: string) => boolean> = {
   paid: (value) =>
@@ -147,8 +148,10 @@ const FILTER_MATCHERS: Record<Exclude<OrderFilter, 'all'>, (value: string) => bo
       'partially fulfilled',
       'partially shipped',
     ]) && !includesAny(value, ['not shipped', 'unshipped']),
-  cancelled: (value) => includesAny(value, ['cancel', 'void', 'return', 'returned', 'failed', 'declined', 'rejected']),
-  refunded: (value) => includesAny(value, ['refund', 'refunded', 'refunding', 'charge refunded', 'payment refunded']),
+  cancelled: (value) =>
+    includesAny(value, ['cancel', 'void', 'return', 'returned', 'failed', 'declined', 'rejected']),
+  refunded: (value) =>
+    includesAny(value, ['refund', 'refunded', 'refunding', 'charge refunded', 'payment refunded']),
   expired: () => true,
 }
 
@@ -241,7 +244,9 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
   }
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]))
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id],
+    )
   }
 
   const filterLabel = ORDER_FILTER_LABELS[filter]
@@ -286,7 +291,10 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                     <MenuItem text="Shipped" onClick={() => setFilter('shipped')} />
                     <MenuItem text="Cancelled" onClick={() => setFilter('cancelled')} />
                     <MenuItem text="Refunded" onClick={() => setFilter('refunded')} />
-                    <MenuItem text={EXPIRED_SESSION_PANEL_TITLE} onClick={() => setFilter('expired')} />
+                    <MenuItem
+                      text={EXPIRED_SESSION_PANEL_TITLE}
+                      onClick={() => setFilter('expired')}
+                    />
                   </Menu>
                 }
               />
@@ -312,7 +320,11 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                 paddingX={[3, 3, 4]}
                 style={{borderBottom: '1px solid var(--card-border-color)'}}
               >
-                <Checkbox aria-label="Select all orders" checked={allSelected} onChange={toggleSelectAll} />
+                <Checkbox
+                  aria-label="Select all orders"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                />
                 <Text size={1} weight="semibold" style={{flex: 1}}>
                   Order #
                 </Text>
@@ -364,12 +376,13 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                           }
                         : null,
                     ].filter(
-                      (badge):
-                        badge is {
-                          key: string
-                          label: string
-                          tone: ReturnType<typeof resolveBadgeTone>
-                        } => Boolean(badge && badge.label),
+                      (
+                        badge,
+                      ): badge is {
+                        key: string
+                        label: string
+                        tone: ReturnType<typeof resolveBadgeTone>
+                      } => Boolean(badge && badge.label),
                     )
 
                     const tagBadges = Array.isArray(order.tags)
@@ -417,14 +430,22 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                               {statusBadges.length > 0 && (
                                 <Flex gap={2} style={{flexWrap: 'wrap'}}>
                                   {statusBadges.map((badge) => (
-                                    <DocumentBadge key={badge.key} label={badge.label} tone={badge.tone} />
+                                    <DocumentBadge
+                                      key={badge.key}
+                                      label={badge.label}
+                                      tone={badge.tone}
+                                    />
                                   ))}
                                 </Flex>
                               )}
                               {tagBadges.length > 0 && (
                                 <Flex gap={1} style={{flexWrap: 'wrap'}}>
                                   {tagBadges.map((tag) => (
-                                    <DocumentBadge key={tag} label={toTitleCase(tag)} tone="primary" />
+                                    <DocumentBadge
+                                      key={tag}
+                                      label={toTitleCase(tag)}
+                                      tone="primary"
+                                    />
                                   ))}
                                 </Flex>
                               )}

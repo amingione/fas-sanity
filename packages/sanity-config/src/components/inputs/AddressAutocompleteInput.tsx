@@ -83,7 +83,7 @@ function stringOrUndefined(value: unknown): string | undefined {
 
 function normalizeAddress(
   raw: Record<string, any> | null | undefined,
-  meta: {label?: string; source?: string; defaultName?: string; email?: string; phone?: string}
+  meta: {label?: string; source?: string; defaultName?: string; email?: string; phone?: string},
 ): NormalizedAddress | null {
   if (!raw) return null
 
@@ -139,12 +139,7 @@ function normalizeAddress(
   const postalCountry = [postalCode, country].filter(Boolean).join(' ')
   const labelParts = [name, line1, cityState, postalCountry].filter(Boolean)
   const label =
-    labelParts.join(' • ') ||
-    line1 ||
-    cityState ||
-    postalCountry ||
-    meta.label ||
-    'Address'
+    labelParts.join(' • ') || line1 || cityState || postalCountry || meta.label || 'Address'
 
   const searchTerms = [label, line2, meta.label, meta.source]
     .filter(Boolean)
@@ -204,14 +199,14 @@ function buildOptions(data: AddressQueryResult | null | undefined): AddressOptio
       normalizeAddress(customer.shippingAddress, {
         ...baseMeta,
         label: `Customer shipping — ${baseName}`,
-      })
+      }),
     )
 
     pushOption(
       normalizeAddress(customer.billingAddress, {
         ...baseMeta,
         label: `Customer billing — ${baseName}`,
-      })
+      }),
     )
 
     if (Array.isArray(customer.addresses)) {
@@ -220,7 +215,7 @@ function buildOptions(data: AddressQueryResult | null | undefined): AddressOptio
           normalizeAddress(entry || {}, {
             ...baseMeta,
             label: `Saved address — ${baseName}`,
-          })
+          }),
         )
       })
     }
@@ -233,14 +228,18 @@ function buildOptions(data: AddressQueryResult | null | undefined): AddressOptio
         label: order.orderNumber ? `Order ${order.orderNumber}` : 'Order shipping address',
         defaultName: order.customerName || order.customerEmail,
         email: order.customerEmail,
-      })
+      }),
     )
   })
 
   return options.sort((a, b) => a.label.localeCompare(b.label))
 }
 
-type MappingFn = (address: NormalizedAddress, prev: AddressValue, schemaTypeName: string) => Record<string, any>
+type MappingFn = (
+  address: NormalizedAddress,
+  prev: AddressValue,
+  schemaTypeName: string,
+) => Record<string, any>
 
 const mappingByType: Record<string, MappingFn> = {
   shippingAddress: (address, prev, typeName) => {
@@ -261,7 +260,10 @@ const mappingByType: Record<string, MappingFn> = {
     const next = {...(prev || {})}
     if (typeName) next._type = prev?._type || typeName
     next.name = address.name ?? ''
-    next.street = [address.line1, address.line2].filter(Boolean).join(address.line1 && address.line2 ? ', ' : '') || ''
+    next.street =
+      [address.line1, address.line2]
+        .filter(Boolean)
+        .join(address.line1 && address.line2 ? ', ' : '') || ''
     next.city = address.city ?? ''
     next.state = address.state ?? ''
     next.postalCode = address.postalCode ?? ''
@@ -271,7 +273,10 @@ const mappingByType: Record<string, MappingFn> = {
   customerAddress: (address, prev, typeName) => {
     const next = {...(prev || {})}
     if (typeName) next._type = prev?._type || typeName
-    next.street = [address.line1, address.line2].filter(Boolean).join(address.line1 && address.line2 ? ', ' : '') || ''
+    next.street =
+      [address.line1, address.line2]
+        .filter(Boolean)
+        .join(address.line1 && address.line2 ? ', ' : '') || ''
     next.city = address.city ?? ''
     next.state = address.state ?? ''
     next.zip = address.postalCode ?? ''
@@ -356,10 +361,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
       label: 'Stripe checkout',
       source: 'stripe',
       defaultName:
-        stripeSummary?.customer?.name ||
-        summaryAddress?.name ||
-        summaryAddress?.email ||
-        undefined,
+        stripeSummary?.customer?.name || summaryAddress?.name || summaryAddress?.email || undefined,
       email: stripeSummary?.customer?.email || summaryAddress?.email,
       phone: stripeSummary?.customer?.phone || summaryAddress?.phone,
     })
@@ -380,7 +382,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
       onChange(set(nextValue))
       setQuery('')
     },
-    [mapping, onChange, optionLookup, schemaType.name, value]
+    [mapping, onChange, optionLookup, schemaType.name, value],
   )
 
   if (!mapping) {

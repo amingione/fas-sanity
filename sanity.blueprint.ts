@@ -13,7 +13,9 @@ export type BlueprintDefinition = {
   resources: BlueprintResource[]
 }
 
-export const defineDocumentFunction = (resource: Omit<BlueprintResource, 'type'>): BlueprintResource => ({
+export const defineDocumentFunction = (
+  resource: Omit<BlueprintResource, 'type'>,
+): BlueprintResource => ({
   ...resource,
   type: 'document-function',
 })

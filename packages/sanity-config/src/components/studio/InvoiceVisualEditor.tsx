@@ -207,7 +207,7 @@ const defaultEditorState: EditorState = {
 const sanitizeNumber = (value: unknown, fallback?: number): number => {
   if (value === '' || value === null || value === undefined) return fallback ?? 0
   const num = Number(value)
-  return Number.isFinite(num) ? num : fallback ?? 0
+  return Number.isFinite(num) ? num : (fallback ?? 0)
 }
 
 const trimString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
@@ -273,9 +273,7 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
         _key: item?._key || generateKey(),
         _type: 'invoiceLineItem',
         kind:
-          item?.kind === 'product' || (!item?.kind && item?.product?._ref)
-            ? 'product'
-            : 'custom',
+          item?.kind === 'product' || (!item?.kind && item?.product?._ref) ? 'product' : 'custom',
         product: item?.product ?? null,
         description: trimString(item?.description),
         sku: trimString(item?.sku),
@@ -339,7 +337,7 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
     doc?.amountShipping,
     doc?.orderRef?.amountShipping,
     doc?.order?.amountShipping,
-    selectedService?.amount
+    selectedService?.amount,
   )
 
   const shippingCarrier =
@@ -429,7 +427,11 @@ const toDraftId = (id?: string): string => {
 const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
   const displayed = document?.displayed || document?.draft || document?.published
   const baseId =
-    document?.draft?._id || document?.displayed?._id || document?.published?._id || displayed?._id || ''
+    document?.draft?._id ||
+    document?.displayed?._id ||
+    document?.published?._id ||
+    displayed?._id ||
+    ''
   const draftId = toDraftId(baseId || displayed?._id)
 
   const [state, setState] = useState<EditorState>(defaultEditorState)
@@ -439,22 +441,22 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const toast = useToast()
 
-    useEffect(() => {
-      if (!displayed) {
-        setState(defaultEditorState)
-        setLastSnapshot(JSON.stringify(defaultEditorState))
-        setIsDirty(false)
-        return
-      }
-      const nextState = extractStateFromDoc(displayed)
-      const serialized = JSON.stringify(nextState)
-      if (!isDirty) {
-        setState(nextState)
-        setLastSnapshot(serialized)
-      } else if (!lastSnapshot) {
-        setLastSnapshot(serialized)
-      }
-    }, [displayed, isDirty, lastSnapshot])
+  useEffect(() => {
+    if (!displayed) {
+      setState(defaultEditorState)
+      setLastSnapshot(JSON.stringify(defaultEditorState))
+      setIsDirty(false)
+      return
+    }
+    const nextState = extractStateFromDoc(displayed)
+    const serialized = JSON.stringify(nextState)
+    if (!isDirty) {
+      setState(nextState)
+      setLastSnapshot(serialized)
+    } else if (!lastSnapshot) {
+      setLastSnapshot(serialized)
+    }
+  }, [displayed, isDirty, lastSnapshot])
 
   const totals = useMemo(() => computeTotals(state), [state])
 
@@ -528,7 +530,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
   const updateLineItem = <K extends keyof EditorLineItem>(
     index: number,
     key: K,
-    value: EditorLineItem[K]
+    value: EditorLineItem[K],
   ) => {
     setState((prev) => {
       const next = [...prev.lineItems]
@@ -629,7 +631,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
     try {
       const sanitizedAddress = (address: InvoiceAddress): InvoiceAddress => {
         const trimmed = Object.fromEntries(
-          Object.entries(address || {}).map(([key, value]) => [key, trimString(value)])
+          Object.entries(address || {}).map(([key, value]) => [key, trimString(value)]),
         ) as InvoiceAddress
         const cleaned: InvoiceAddress = {}
         for (const [key, value] of Object.entries(trimmed)) {
@@ -644,7 +646,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         _key: item._key || generateKey(),
         _type: 'invoiceLineItem',
         kind: item.kind === 'product' ? 'product' : 'custom',
-        product: item.kind === 'product' ? item.product ?? null : null,
+        product: item.kind === 'product' ? (item.product ?? null) : null,
         description: trimString(item.description),
         sku: trimString(item.sku),
         quantity: sanitizeNumber(item.quantity, 0),
@@ -755,9 +757,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
     onProductPick,
     client,
   }) => {
-    const [query, setQuery] = useState(
-      item.kind === 'product' ? item.description || '' : ''
-    )
+    const [query, setQuery] = useState(item.kind === 'product' ? item.description || '' : '')
     const [results, setResults] = useState<ProductSearchResult[]>([])
     const [loadingOptions, setLoadingOptions] = useState(false)
     const [dropdownVisible, setDropdownVisible] = useState(false)
@@ -798,25 +798,22 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
               shortDescription,
               taxBehavior
             }`,
-            {term: `${term}*`}
+            {term: `${term}*`},
           )
           if (cancelled) return
           const mapped: ProductSearchResult[] = (Array.isArray(fetched) ? fetched : []).map(
             (prod: any) => {
               const resolvedPrice =
-                prod?.onSale && typeof prod?.salePrice === 'number'
-                  ? prod.salePrice
-                  : prod?.price
+                prod?.onSale && typeof prod?.salePrice === 'number' ? prod.salePrice : prod?.price
               return {
                 _id: prod?._id,
                 title: prod?.title || 'Untitled product',
                 sku: prod?.sku || '',
                 price: sanitizeNumber(resolvedPrice, 0),
-                shortPlain:
-                  portableTextToPlain(prod?.shortDescription) || prod?.title || 'Product',
+                shortPlain: portableTextToPlain(prod?.shortDescription) || prod?.title || 'Product',
                 taxBehavior: prod?.taxBehavior || 'taxable',
               }
-            }
+            },
           )
           setResults(mapped)
           setDropdownVisible(true)
@@ -895,7 +892,9 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => handleProductSelect(product)}
                 >
-                  <span className="text-sm font-semibold text-[var(--studio-text)]">{product.title}</span>
+                  <span className="text-sm font-semibold text-[var(--studio-text)]">
+                    {product.title}
+                  </span>
                   <span className="text-xs text-[var(--studio-muted)]">
                     {product.sku ? `SKU: ${product.sku}` : 'No SKU'} · ${fmt(product.price)}
                   </span>
@@ -1029,13 +1028,17 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
         <div className="overflow-hidden rounded-xl bg-[var(--studio-surface-strong)] shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-6 py-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">Invoice</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                Invoice
+              </p>
               <h1 className="text-2xl font-bold text-[var(--studio-text)]">
                 {displayed.invoiceNumber || 'Untitled Invoice'}
               </h1>
               <p className="text-sm text-[var(--studio-muted)]">
                 Status:{' '}
-                <span className="font-medium text-[var(--studio-text)]">{displayed.status || 'Pending'}</span>
+                <span className="font-medium text-[var(--studio-text)]">
+                  {displayed.status || 'Pending'}
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -1109,7 +1112,9 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
               <dl className="space-y-2 text-sm text-[var(--studio-muted)]">
                 <div className="flex justify-between">
                   <dt>Subtotal</dt>
-                  <dd className="font-medium text-[var(--studio-text)]">${totals.subtotal.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">
+                    ${totals.subtotal.toFixed(2)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>
@@ -1118,19 +1123,27 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                       ? ` (${sanitizeNumber(state.discountValue, 0).toFixed(2)}%)`
                       : ''}
                   </dt>
-                  <dd className="font-medium text-[var(--studio-text)]">-${totals.discount.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">
+                    -${totals.discount.toFixed(2)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Taxable Subtotal</dt>
-                  <dd className="font-medium text-[var(--studio-text)]">${totals.taxableBase.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">
+                    ${totals.taxableBase.toFixed(2)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Shipping</dt>
-                  <dd className="font-medium text-[var(--studio-text)]">${totals.shipping.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">
+                    ${totals.shipping.toFixed(2)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt>Tax ({sanitizeNumber(state.taxRate, 0).toFixed(2)}%)</dt>
-                  <dd className="font-medium text-[var(--studio-text)]">${totals.tax.toFixed(2)}</dd>
+                  <dd className="font-medium text-[var(--studio-text)]">
+                    ${totals.tax.toFixed(2)}
+                  </dd>
                 </div>
                 <div className="flex justify-between border-t border-[var(--studio-border)] pt-2 text-base font-semibold text-[var(--studio-text)]">
                   <dt>Total</dt>
@@ -1287,7 +1300,9 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-[var(--studio-text)]">Shipping Charge & Tracking</h2>
+            <h2 className="text-lg font-semibold text-[var(--studio-text)]">
+              Shipping Charge & Tracking
+            </h2>
             <div className="mt-4 grid gap-4">
               <label className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
                 Shipping Amount (USD)
@@ -1337,9 +1352,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                 <input
                   type="url"
                   value={state.shippingLabelUrl}
-                  onChange={(event) =>
-                    updateState('shippingLabelUrl', event.currentTarget.value)
-                  }
+                  onChange={(event) => updateState('shippingLabelUrl', event.currentTarget.value)}
                   className="rounded-lg border border-[var(--studio-border-strong)] px-3 py-2 text-sm text-[var(--studio-text)] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="https://label.example.com/…"
                 />
@@ -1383,7 +1396,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                   ['height', 'Height (in)'],
                 ] as Array<[keyof PackageDimensions, string]>
               ).map(([field, label]) => (
-                <label key={field} className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]">
+                <label
+                  key={field}
+                  className="flex flex-col gap-2 text-sm font-medium text-[var(--studio-text)]"
+                >
                   {label}
                   <input
                     type="number"
@@ -1502,14 +1518,18 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-[var(--studio-muted)]">No shipping events recorded yet.</p>
+            <p className="mt-4 text-sm text-[var(--studio-muted)]">
+              No shipping events recorded yet.
+            </p>
           )}
         </section>
 
         <section className="rounded-xl bg-[var(--studio-surface-strong)] p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-[var(--studio-text)]">Products & Services</h2>
+              <h2 className="text-lg font-semibold text-[var(--studio-text)]">
+                Products & Services
+              </h2>
               <p className="text-sm text-[var(--studio-muted)]">
                 Add each line exactly as it should appear on the printed invoice.
               </p>
@@ -1551,7 +1571,10 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
               <tbody className="bg-[var(--studio-surface-strong)]">
                 {state.lineItems.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center text-sm text-[var(--studio-muted)]">
+                    <td
+                      colSpan={9}
+                      className="px-6 py-10 text-center text-sm text-[var(--studio-muted)]"
+                    >
                       No line items yet. Click “Add product or service” to get started.
                     </td>
                   </tr>

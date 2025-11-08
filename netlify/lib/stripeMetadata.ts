@@ -26,7 +26,7 @@ export function mapStripeMetadata(metadata: StripeMetadata): StripeMetadataEntry
     }
     const trimmedValue = value.trim()
     if (!trimmedValue) return acc
-    acc.push({ _type: 'stripeMetadataEntry', key: normalizedKey, value: trimmedValue })
+    acc.push({_type: 'stripeMetadataEntry', key: normalizedKey, value: trimmedValue})
     return acc
   }, [])
   return entries.length ? entries : undefined

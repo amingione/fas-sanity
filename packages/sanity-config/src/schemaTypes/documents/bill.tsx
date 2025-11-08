@@ -1,7 +1,6 @@
-import { defineType, defineField } from 'sanity'
+import {defineType, defineField} from 'sanity'
 import CheckActions from '../../components/bill.ts/CheckActions'
-import { StringInputProps } from 'sanity'
-
+import {StringInputProps} from 'sanity'
 
 const AdaptedCheckActionsWrapper = (props: StringInputProps) => {
   const doc = (props as any)?.document
@@ -17,38 +16,38 @@ export default defineType({
       name: 'vendor',
       title: 'Vendor',
       type: 'reference',
-      to: [{ type: 'vendor' }]
+      to: [{type: 'vendor'}],
     }),
     defineField({
       name: 'description',
       title: 'Description',
-      type: 'string'
+      type: 'string',
     }),
     defineField({
       name: 'amount',
       title: 'Amount',
-      type: 'number'
+      type: 'number',
     }),
     defineField({
       name: 'dueDate',
       title: 'Due Date',
-      type: 'date'
+      type: 'date',
     }),
     defineField({
       name: 'paid',
       title: 'Paid',
       type: 'boolean',
-      initialValue: false
+      initialValue: false,
     }),
     defineField({
       name: 'paidDate',
       title: 'Paid Date',
-      type: 'datetime'
+      type: 'datetime',
     }),
     defineField({
       name: 'checkNumber',
       title: 'Check Number',
-      type: 'string'
+      type: 'string',
     }),
     defineField({
       name: 'printCheck',
@@ -56,8 +55,8 @@ export default defineType({
       type: 'string',
       readOnly: true,
       components: {
-        input: AdaptedCheckActionsWrapper
-      }
-    })
-  ]
+        input: AdaptedCheckActionsWrapper,
+      },
+    }),
+  ],
 })

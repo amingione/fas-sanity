@@ -1,4 +1,4 @@
-import { defineType, defineField } from 'sanity'
+import {defineType, defineField} from 'sanity'
 
 export default defineType({
   name: 'expense',
@@ -8,28 +8,28 @@ export default defineType({
     defineField({
       name: 'date',
       title: 'Date',
-      type: 'date'
+      type: 'date',
     }),
     defineField({
       name: 'amount',
       title: 'Amount',
-      type: 'number'
+      type: 'number',
     }),
     defineField({
       name: 'category',
       title: 'Category',
-      type: 'string'
+      type: 'string',
     }),
     defineField({
       name: 'vendor',
       title: 'Vendor',
       type: 'reference',
-      to: [{ type: 'vendor' }]
+      to: [{type: 'vendor'}],
     }),
     defineField({
       name: 'notes',
       title: 'Notes',
-      type: 'text'
-    })
-  ]
+      type: 'text',
+    }),
+  ],
 })

@@ -69,7 +69,7 @@ async function main() {
   console.log(
     `Summary: applied=${result.applied}, evaluated=${result.totalRefundsEvaluated}, orders=${result.ordersConsidered}${
       result.dryRun ? ' (dry run)' : ''
-    }`
+    }`,
   )
 }
 

@@ -44,7 +44,12 @@ export function ProductAddToCartButton({
   className,
   ...buttonProps
 }: ProductAddToCartButtonProps) {
-  const {disabled, loading: validating, message, error} = useProductOptionValidation({
+  const {
+    disabled,
+    loading: validating,
+    message,
+    error,
+  } = useProductOptionValidation({
     productId,
     productSlug,
     client,
@@ -56,19 +61,12 @@ export function ProductAddToCartButton({
     perspective,
   })
 
-  const reason = validating
-    ? validatingMessage
-    : error
-      ? blockedMessage
-      : message || helperText
+  const reason = validating ? validatingMessage : error ? blockedMessage : message || helperText
 
   const isDisabled = disabled || loading
 
   return (
-    <div
-      className={containerClassName}
-      data-add-to-cart-state={isDisabled ? 'blocked' : 'ready'}
-    >
+    <div className={containerClassName} data-add-to-cart-state={isDisabled ? 'blocked' : 'ready'}>
       <button
         type="button"
         {...buttonProps}

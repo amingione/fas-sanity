@@ -1,16 +1,5 @@
 import React, {useCallback, useMemo, useState} from 'react'
-import {
-  Badge,
-  Box,
-  Card,
-  Flex,
-  Grid,
-  Heading,
-  Stack,
-  Text,
-  Tooltip,
-  Button,
-} from '@sanity/ui'
+import {Badge, Box, Card, Flex, Grid, Heading, Stack, Text, Tooltip, Button} from '@sanity/ui'
 import {DownloadIcon, EnvelopeIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
@@ -263,9 +252,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
     const customerEmail = order?.customerEmail
     if (!customerEmail) return
     const orderRef =
-      formatOrderNumber(order?.orderNumber) ||
-      orderId.replace(/^drafts\./, '') ||
-      orderId
+      formatOrderNumber(order?.orderNumber) || orderId.replace(/^drafts\./, '') || orderId
     const subject = encodeURIComponent(`Order ${orderRef}`)
     const body = encodeURIComponent(
       [
@@ -308,9 +295,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
       <Card padding={4} radius={4} shadow={1}>
         <Flex align={['flex-start', 'center']} justify="space-between" wrap="wrap" gap={3}>
           <Stack space={2}>
-            <Heading size={3}>
-              Order {orderRefLabel}
-            </Heading>
+            <Heading size={3}>Order {orderRefLabel}</Heading>
             <Flex gap={2} wrap="wrap">
               <Badge tone={statusMeta.tone} mode="outline" fontSize={0}>
                 {statusMeta.label}
@@ -456,7 +441,9 @@ export default function OrderShippingView(props: DocumentViewProps) {
         <Stack space={3}>
           <Heading size={2}>Shipping history</Heading>
           {shippingLog.length === 0 ? (
-            <Text muted size={1}>No shipping events yet.</Text>
+            <Text muted size={1}>
+              No shipping events yet.
+            </Text>
           ) : (
             <Stack space={3}>
               {shippingLog.map((entry) => {
@@ -478,7 +465,9 @@ export default function OrderShippingView(props: DocumentViewProps) {
                           </Text>
                         )}
                       </Stack>
-                      <Text muted size={1}>{formatDate(entry.createdAt) || '—'}</Text>
+                      <Text muted size={1}>
+                        {formatDate(entry.createdAt) || '—'}
+                      </Text>
                     </Flex>
                     {entry.trackingUrl && (
                       <Box marginTop={3}>

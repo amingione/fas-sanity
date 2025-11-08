@@ -66,7 +66,9 @@
   font-weight: 600;
   padding: 6px 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .invoice-pill-button:hover {
@@ -88,7 +90,9 @@
   border-radius: 6px;
   font-size: 0.95rem;
   color: #1a1c1f;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .invoice-customer-search__input:focus {
@@ -204,7 +208,9 @@
   border-radius: 6px;
   font-size: 0.95rem;
   color: #1a1c1f;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   width: 100%;
 }
 
@@ -336,7 +342,10 @@
   padding: 10px 18px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .invoice-actions__button:hover {

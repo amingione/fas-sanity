@@ -1,9 +1,11 @@
-import type { DocumentActionComponent } from 'sanity'
-import { formatApiError } from '../../utils/formatApiError'
-import { readStudioEnv } from '../../utils/studioEnv'
+import type {DocumentActionComponent} from 'sanity'
+import {formatApiError} from '../../utils/formatApiError'
+import {readStudioEnv} from '../../utils/studioEnv'
 
 function getNetlifyBase(): string {
-  const envBase = (typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined) as string | undefined
+  const envBase = (
+    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
+  ) as string | undefined
   if (envBase) return envBase.replace(/\/$/, '')
   if (typeof window !== 'undefined') {
     try {
@@ -26,7 +28,7 @@ export const createEasyPostLabelAction: DocumentActionComponent = (props) => {
   ).toLowerCase()
   if (provider !== 'easypost') return null
 
-  const { id, published, onComplete } = props
+  const {id, published, onComplete} = props
   if (!published || published._type !== 'order') return null
 
   return {
@@ -44,8 +46,8 @@ export const createEasyPostLabelAction: DocumentActionComponent = (props) => {
       try {
         const response = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId }),
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({orderId}),
         })
 
         let result: any = null

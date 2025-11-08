@@ -57,11 +57,11 @@ const sanityClient: SanityClient | null = canInitSanity
 
 if (!canInitSanity) {
   console.warn(
-    'Sanity project ID or dataset is missing. Products without metadata.sanity_slug will be skipped.'
+    'Sanity project ID or dataset is missing. Products without metadata.sanity_slug will be skipped.',
   )
 } else if (!SANITY_TOKEN) {
   console.warn(
-    'No Sanity token found; attempting unauthenticated reads. Ensure the dataset is public if slugs still fail to resolve.'
+    'No Sanity token found; attempting unauthenticated reads. Ensure the dataset is public if slugs still fail to resolve.',
   )
 }
 
@@ -148,11 +148,10 @@ async function primeSanitySlugCache(products: Stripe.Product[]): Promise<void> {
       title?: string | null
       shippingWeight?: number | null
       boxDimensions?: string | null
-    }> =
-      await sanityClient.fetch(
-        `*[_type == "product" && _id in $ids]{_id,"slug": slug.current,title,shippingWeight,boxDimensions}`,
-        {ids: uniqueIds}
-      )
+    }> = await sanityClient.fetch(
+      `*[_type == "product" && _id in $ids]{_id,"slug": slug.current,title,shippingWeight,boxDimensions}`,
+      {ids: uniqueIds},
+    )
 
     const resolvedBases = new Set<string>()
 
@@ -177,7 +176,7 @@ async function primeSanitySlugCache(products: Stripe.Product[]): Promise<void> {
 
       if (!info.slug && !loggedMissingSanityIds.has(baseId)) {
         console.log(
-          `Sanity product ${baseId} is missing a slug; associated Stripe items will be skipped until it is populated.`
+          `Sanity product ${baseId} is missing a slug; associated Stripe items will be skipped until it is populated.`,
         )
         loggedMissingSanityIds.add(baseId)
       }
@@ -189,7 +188,7 @@ async function primeSanitySlugCache(products: Stripe.Product[]): Promise<void> {
       sanitySlugCache.set(`drafts.${baseId}`, null)
       if (!loggedMissingSanityIds.has(baseId)) {
         console.log(
-          `Sanity product ${baseId} was not found; associated Stripe items will be skipped until the metadata is populated.`
+          `Sanity product ${baseId} was not found; associated Stripe items will be skipped until the metadata is populated.`,
         )
         loggedMissingSanityIds.add(baseId)
       }
@@ -301,11 +300,10 @@ async function updateProductUrls() {
         })
 
         console.log(
-          `Updated product ${logName}: sanity_slug=${resolvedSlug}, product_url=${desiredUrl}, shipping_weight=${shippingWeight ?? 'n/a'}, shipping_box_dimensions=${boxDimensions ?? 'n/a'} (slug source: ${slugSource}).`
+          `Updated product ${logName}: sanity_slug=${resolvedSlug}, product_url=${desiredUrl}, shipping_weight=${shippingWeight ?? 'n/a'}, shipping_box_dimensions=${boxDimensions ?? 'n/a'} (slug source: ${slugSource}).`,
         )
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : JSON.stringify(error)
+        const message = error instanceof Error ? error.message : JSON.stringify(error)
         console.error(`Failed to update product ${logName}: ${message}`)
       }
     }

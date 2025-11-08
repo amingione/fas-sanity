@@ -1,9 +1,11 @@
-import type { Handler } from '@netlify/functions'
-import { createClient } from '@sanity/client'
+import type {Handler} from '@netlify/functions'
+import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
-import { mapStripeMetadata } from '../lib/stripeMetadata'
+import {mapStripeMetadata} from '../lib/stripeMetadata'
 
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+).split(',')
 function makeCORS(origin?: string) {
   const normalized = origin && DEFAULT_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGINS[0]
   return {
@@ -109,7 +111,9 @@ function portableTextToPlain(blocks: PortableValue): string {
     .map((block) => {
       if (!block || typeof block !== 'object') return ''
       if (block._type !== 'block' || !Array.isArray(block.children)) return ''
-      return block.children.map((child: any) => (typeof child?.text === 'string' ? child.text : '')).join('')
+      return block.children
+        .map((child: any) => (typeof child?.text === 'string' ? child.text : ''))
+        .join('')
     })
     .filter((text) => typeof text === 'string' && text.trim())
     .join('\n\n')
@@ -150,7 +154,7 @@ function selectPrice(product: SanityProduct): PriceInfo | null {
   const source: PriceInfo['source'] = saleAmount !== null ? 'salePrice' : 'price'
   const nickname = saleAmount !== null ? 'Sale price' : 'Standard price'
 
-  return { amount, amountMajor, currency, source, nickname }
+  return {amount, amountMajor, currency, source, nickname}
 }
 
 function filterMetadata(meta: Record<string, unknown>): Record<string, string> {
@@ -186,7 +190,8 @@ function isStripeMissingError(err: any): boolean {
 }
 
 function unixToIso(timestamp?: number | null): string | undefined {
-  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0) return undefined
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || timestamp <= 0)
+    return undefined
   return new Date(timestamp * 1000).toISOString()
 }
 
@@ -218,7 +223,7 @@ async function patchSanityProduct(docId: string, setOps: Record<string, any>): P
   if (!variants.length) return
   for (const id of variants) {
     try {
-      await sanity.patch(id).set(setOps).commit({ autoGenerateArrayKeys: true })
+      await sanity.patch(id).set(setOps).commit({autoGenerateArrayKeys: true})
     } catch (err: any) {
       const code = err?.response?.body?.error?.code
       const description =
@@ -230,7 +235,7 @@ async function patchSanityProduct(docId: string, setOps: Record<string, any>): P
         code === 'mutationError.notFound' ||
         (typeof description === 'string' && /was not found/i.test(description))
       if (notFound) continue
-      console.warn('syncStripeCatalog: failed to patch product', { id, error: description || err })
+      console.warn('syncStripeCatalog: failed to patch product', {id, error: description || err})
     }
   }
 }
@@ -246,23 +251,26 @@ async function ensureStripePrice(
   product: SanityProduct,
   stripeProductId: string,
   priceInfo: PriceInfo,
-  metadata: Record<string, string>
+  metadata: Record<string, string>,
 ): Promise<EnsurePriceResult> {
   if (!stripe) {
     throw new Error('Stripe not configured')
   }
 
-  const prices = await stripe.prices.list({ product: stripeProductId, limit: 100 })
+  const prices = await stripe.prices.list({product: stripeProductId, limit: 100})
 
   let existing = prices.data.find(
-    (p) => p.type === 'one_time' && p.currency === priceInfo.currency && p.unit_amount === priceInfo.amount
+    (p) =>
+      p.type === 'one_time' &&
+      p.currency === priceInfo.currency &&
+      p.unit_amount === priceInfo.amount,
   )
 
   let created = false
   let reactivated = false
 
   if (existing && !existing.active) {
-    await stripe.prices.update(existing.id, { active: true })
+    await stripe.prices.update(existing.id, {active: true})
     existing = await stripe.prices.retrieve(existing.id)
     reactivated = true
   }
@@ -288,11 +296,11 @@ async function ensureStripePrice(
     if (price.type !== 'one_time') continue
     if (!price.active) continue
     if (price.unit_amount === existing.unit_amount && price.currency === existing.currency) continue
-    await stripe.prices.update(price.id, { active: false })
+    await stripe.prices.update(price.id, {active: false})
     deactivated.push(price.id)
   }
 
-  return { price: existing, created, reactivated, deactivated }
+  return {price: existing, created, reactivated, deactivated}
 }
 
 async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
@@ -300,18 +308,18 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   const title = (product.title || '').trim()
 
   if (!normalizedId) {
-    return { docId: product._id, title, status: 'skipped', reason: 'Missing product id' }
+    return {docId: product._id, title, status: 'skipped', reason: 'Missing product id'}
   }
   if (!title) {
-    return { docId: normalizedId, title, status: 'skipped', reason: 'Missing product title' }
+    return {docId: normalizedId, title, status: 'skipped', reason: 'Missing product title'}
   }
   if (!stripe) {
-    return { docId: normalizedId, title, status: 'error', reason: 'Stripe not configured' }
+    return {docId: normalizedId, title, status: 'error', reason: 'Stripe not configured'}
   }
 
   const priceInfo = selectPrice(product)
   if (!priceInfo) {
-    return { docId: normalizedId, title, status: 'skipped', reason: 'Missing product price' }
+    return {docId: normalizedId, title, status: 'skipped', reason: 'Missing product price'}
   }
 
   const metadata = buildMetadata(product, normalizedId)
@@ -331,8 +339,10 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
         active,
         description: description || undefined,
         metadata,
-        ...(imageArray ? { images: imageArray } : {}),
-        ...(product.taxCode && product.taxCode.startsWith('txcd_') ? { tax_code: product.taxCode } : {}),
+        ...(imageArray ? {images: imageArray} : {}),
+        ...(product.taxCode && product.taxCode.startsWith('txcd_')
+          ? {tax_code: product.taxCode}
+          : {}),
       })
       productUpdated = true
     } catch (err) {
@@ -350,8 +360,10 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
       active,
       description: description || undefined,
       metadata,
-      ...(imageArray ? { images: imageArray } : {}),
-      ...(product.taxCode && product.taxCode.startsWith('txcd_') ? { tax_code: product.taxCode } : {}),
+      ...(imageArray ? {images: imageArray} : {}),
+      ...(product.taxCode && product.taxCode.startsWith('txcd_')
+        ? {tax_code: product.taxCode}
+        : {}),
     })
     stripeProduct = created
     stripeProductId = created.id
@@ -359,7 +371,7 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   }
 
   if (!stripeProduct) {
-    stripeProduct = await stripe.products.retrieve(stripeProductId, { expand: ['default_price'] })
+    stripeProduct = await stripe.products.retrieve(stripeProductId, {expand: ['default_price']})
   }
 
   const priceResult = await ensureStripePrice(product, stripeProductId, priceInfo, metadata)
@@ -368,19 +380,21 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   const currentDefault = stripeProduct.default_price
   const currentDefaultId = typeof currentDefault === 'string' ? currentDefault : currentDefault?.id
   if (currentDefaultId !== defaultPriceId) {
-    await stripe.products.update(stripeProductId, { default_price: defaultPriceId })
+    await stripe.products.update(stripeProductId, {default_price: defaultPriceId})
   }
 
   const priceSnapshot = buildPriceSnapshot(priceResult.price)
   const productMetadata = stripeProduct
     ? mapStripeMetadata(stripeProduct.metadata as Record<string, unknown> | null)
     : undefined
-  const existingSnapshots = Array.isArray(product.stripePrices) ? product.stripePrices.filter(Boolean) : []
+  const existingSnapshots = Array.isArray(product.stripePrices)
+    ? product.stripePrices.filter(Boolean)
+    : []
   const filteredSnapshots = existingSnapshots
     .filter((entry) => entry?.priceId && entry.priceId !== priceSnapshot.priceId)
     .map((entry) => {
       if (entry?.priceId && priceResult.deactivated.includes(entry.priceId)) {
-        return { ...entry, active: false }
+        return {...entry, active: false}
       }
       return entry
     })
@@ -443,20 +457,20 @@ export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' }
+  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, headers: CORS, body: ''}
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
     }
   }
 
   if (!stripe) {
     return {
       statusCode: 500,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Stripe not configured (missing STRIPE_SECRET_KEY)' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Stripe not configured (missing STRIPE_SECRET_KEY)'}),
     }
   }
 
@@ -469,8 +483,8 @@ export const handler: Handler = async (event) => {
   if (expectedSecret && providedSecret !== expectedSecret) {
     return {
       statusCode: 401,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Unauthorized' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Unauthorized'}),
     }
   }
 
@@ -480,8 +494,8 @@ export const handler: Handler = async (event) => {
   } catch {
     return {
       statusCode: 400,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Invalid JSON body' }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Invalid JSON body'}),
     }
   }
 
@@ -489,7 +503,11 @@ export const handler: Handler = async (event) => {
   const limit = Math.max(1, Math.min(Number.isFinite(limitRaw) ? Number(limitRaw) : 25, MAX_LIMIT))
   const mode: 'missing' | 'all' = body.mode === 'all' ? 'all' : 'missing'
 
-  const requestedIds = Array.isArray(body.productIds) ? body.productIds : body.productId ? [body.productId] : []
+  const requestedIds = Array.isArray(body.productIds)
+    ? body.productIds
+    : body.productId
+      ? [body.productId]
+      : []
   const idSet = new Set<string>()
   requestedIds.forEach((id) => {
     const normalized = normalizeId(id)
@@ -521,7 +539,7 @@ export const handler: Handler = async (event) => {
           stripePrices,
           "primaryImage": images[0].asset->url
         }`,
-        { ids: Array.from(idSet) }
+        {ids: Array.from(idSet)},
       )
     } else if (mode === 'all') {
       products = await sanity.fetch(
@@ -543,7 +561,7 @@ export const handler: Handler = async (event) => {
           stripePrices,
           "primaryImage": images[0].asset->url
         }[0...$limit]`,
-        { limit }
+        {limit},
       )
     } else {
       products = await sanity.fetch(
@@ -565,49 +583,53 @@ export const handler: Handler = async (event) => {
           stripePrices,
           "primaryImage": images[0].asset->url
         }[0...$limit]`,
-        { limit }
+        {limit},
       )
     }
   } catch (err: any) {
     console.error('syncStripeCatalog: product fetch failed', err)
     return {
       statusCode: 500,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Failed to fetch products from Sanity', detail: err?.message }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Failed to fetch products from Sanity', detail: err?.message}),
     }
   }
 
   if (!Array.isArray(products) || products.length === 0) {
     return {
       statusCode: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, processed: 0, results: [], mode, limit }),
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({ok: true, processed: 0, results: [], mode, limit}),
     }
   }
 
   const docs = dedupeProducts(products)
   const results: SyncOutcome[] = []
-  const errors: Array<{ docId: string; title: string; error: string }> = []
+  const errors: Array<{docId: string; title: string; error: string}> = []
 
   for (const product of docs) {
     try {
       const outcome = await syncProduct(product)
       results.push(outcome)
       if (outcome.status === 'error') {
-        errors.push({ docId: outcome.docId, title: outcome.title, error: outcome.reason || 'Unknown error' })
+        errors.push({
+          docId: outcome.docId,
+          title: outcome.title,
+          error: outcome.reason || 'Unknown error',
+        })
       }
     } catch (err: any) {
       const docId = normalizeId(product._id)
       const title = product.title || ''
       const message = err?.message || String(err)
-      console.error('syncStripeCatalog: failed to sync product', { docId, message })
-      errors.push({ docId, title, error: message })
+      console.error('syncStripeCatalog: failed to sync product', {docId, message})
+      errors.push({docId, title, error: message})
     }
   }
 
   return {
     statusCode: 200,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: {...CORS, 'Content-Type': 'application/json'},
     body: JSON.stringify({
       ok: errors.length === 0,
       processed: docs.length,

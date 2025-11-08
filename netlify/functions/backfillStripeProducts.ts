@@ -46,10 +46,11 @@ export const handler: Handler = async (event, context) => {
   }
 
   const expected = (process.env.BACKFILL_SECRET || '').trim()
-  const presented =
-    ((event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
-      event.queryStringParameters?.token ||
-      '').trim()
+  const presented = (
+    (event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
+    event.queryStringParameters?.token ||
+    ''
+  ).trim()
   if (expected && presented !== expected) {
     return {
       statusCode: 401,
@@ -140,7 +141,11 @@ export const handler: Handler = async (event, context) => {
     }
   }
 
-  const headers = {...CORS, ...(response.headers || {}), 'Access-Control-Allow-Origin': CORS['Access-Control-Allow-Origin']}
+  const headers = {
+    ...CORS,
+    ...(response.headers || {}),
+    'Access-Control-Allow-Origin': CORS['Access-Control-Allow-Origin'],
+  }
 
   return {
     ...response,

@@ -169,7 +169,10 @@ export default defineType({
         }
       }
 
-      const label = title || [humanize(category), subtitle].filter(Boolean).join(' • ') || 'Stripe Webhook Event'
+      const label =
+        title ||
+        [humanize(category), subtitle].filter(Boolean).join(' • ') ||
+        'Stripe Webhook Event'
       const subtitleLabel = [subtitle, suffix.join(' • ')].filter(Boolean).join(' — ')
 
       return {

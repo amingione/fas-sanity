@@ -1,4 +1,4 @@
-import { PatchEvent, defineType, set } from 'sanity'
+import {PatchEvent, defineType, set} from 'sanity'
 import React from 'react'
 import EasyPostServiceInput from '../../components/EasyPostServiceInput'
 
@@ -13,10 +13,10 @@ interface EasyPostFieldProps {
 }
 
 function CustomEasyPostServiceField(props: EasyPostFieldProps) {
-  const [rates, setRates] = React.useState<{ title: string; value: string; amount: number }[]>([])
+  const [rates, setRates] = React.useState<{title: string; value: string; amount: number}[]>([])
   const [showOptions, setShowOptions] = React.useState(false)
 
-  const { customerAddress, packageDetails, shippingType } = props.document || {}
+  const {customerAddress, packageDetails, shippingType} = props.document || {}
 
   const isComplete =
     shippingType &&
@@ -47,9 +47,9 @@ function CustomEasyPostServiceField(props: EasyPostFieldProps) {
     }
 
     try {
-        const res = await fetch('/.netlify/functions/getEasyPostRates', {
+      const res = await fetch('/.netlify/functions/getEasyPostRates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
       })
 
@@ -86,19 +86,19 @@ function CustomEasyPostServiceField(props: EasyPostFieldProps) {
             cursor: 'pointer',
           },
         },
-        'Review Rate Options'
+        'Review Rate Options',
       ),
       showOptions &&
         React.createElement(
           'ul',
           {
             key: 'rate-options',
-            style: { padding: '0.5em', background: '#f9f9f9', borderRadius: '4px' },
+            style: {padding: '0.5em', background: '#f9f9f9', borderRadius: '4px'},
           },
           rates.map((rate) =>
             React.createElement(
               'li',
-              { key: rate.value, style: { marginBottom: '0.3em' } },
+              {key: rate.value, style: {marginBottom: '0.3em'}},
               React.createElement(
                 'button',
                 {
@@ -120,16 +120,16 @@ function CustomEasyPostServiceField(props: EasyPostFieldProps) {
                     cursor: 'pointer',
                   },
                 },
-                `${rate.title} – $${rate.amount}`
-              )
-            )
-          )
+                `${rate.title} – $${rate.amount}`,
+              ),
+            ),
+          ),
         ),
       React.createElement(EasyPostServiceInput, {
         ...props,
-        fetchRates: () => Promise.resolve(rates.map(({ title, value }) => ({ title, value }))),
+        fetchRates: () => Promise.resolve(rates.map(({title, value}) => ({title, value}))),
       }),
-    ].filter(Boolean)
+    ].filter(Boolean),
   )
 }
 
@@ -144,15 +144,15 @@ const shippingOption = defineType({
       type: 'string',
       options: {
         list: [
-          { title: 'UPS Next Day Air', value: 'ups_next_day_air' },
-          { title: 'UPS 2nd Day Air', value: 'ups_2nd_day_air' },
-          { title: 'UPS Ground', value: 'ups_ground' },
-          { title: 'FedEx Express Saver', value: 'fedex_express_saver' },
+          {title: 'UPS Next Day Air', value: 'ups_next_day_air'},
+          {title: 'UPS 2nd Day Air', value: 'ups_2nd_day_air'},
+          {title: 'UPS Ground', value: 'ups_ground'},
+          {title: 'FedEx Express Saver', value: 'fedex_express_saver'},
         ],
       },
     },
-    { name: 'customerAddress', title: 'Customer Address', type: 'shippingOptionCustomerAddress' },
-    { name: 'packageDetails', title: 'Package Details', type: 'packageDetails' },
+    {name: 'customerAddress', title: 'Customer Address', type: 'shippingOptionCustomerAddress'},
+    {name: 'packageDetails', title: 'Package Details', type: 'packageDetails'},
     {
       name: 'easyPostService',
       title: 'EasyPost Service',

@@ -3,12 +3,12 @@ import React from 'react'
 interface CheckActionsProps {
   doc: {
     displayed?: {
-      _id?: string;
-    };
-  };
+      _id?: string
+    }
+  }
 }
 
-export default function CheckActions({ doc }: CheckActionsProps) {
+export default function CheckActions({doc}: CheckActionsProps) {
   const id = doc?.displayed?._id?.replace('drafts.', '')
   const [loading, setLoading] = React.useState(false)
 
@@ -17,8 +17,8 @@ export default function CheckActions({ doc }: CheckActionsProps) {
     try {
       const res = await fetch('/.netlify/functions/generateCheckPDF', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ billId: id }),
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({billId: id}),
       })
 
       if (!res.ok) {
@@ -40,7 +40,7 @@ export default function CheckActions({ doc }: CheckActionsProps) {
   }
 
   return (
-    <div style={{ marginTop: '2rem' }}>
+    <div style={{marginTop: '2rem'}}>
       <button
         onClick={handlePrint}
         disabled={loading}
@@ -53,7 +53,7 @@ export default function CheckActions({ doc }: CheckActionsProps) {
           borderRadius: '4px',
           cursor: loading ? 'not-allowed' : 'pointer',
           opacity: loading ? 0.6 : 1,
-          border: 'none'
+          border: 'none',
         }}
       >
         {loading ? 'Generating…' : '🧾 Print Check'}

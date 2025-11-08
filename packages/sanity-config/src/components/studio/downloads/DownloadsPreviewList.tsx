@@ -1,15 +1,5 @@
 import React, {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {
-  Button,
-  Card,
-  Flex,
-  Heading,
-  Inline,
-  Spinner,
-  Stack,
-  Text,
-  Tooltip,
-} from '@sanity/ui'
+import {Button, Card, Flex, Heading, Inline, Spinner, Stack, Text, Tooltip} from '@sanity/ui'
 import {DownloadIcon, DocumentIcon} from '@sanity/icons'
 import {useRouter} from 'sanity/router'
 import {useClient} from 'sanity'
@@ -67,7 +57,8 @@ const EmptyState = () => (
     <Stack space={3}>
       <Text weight="medium">No downloads found</Text>
       <Text size={1} muted>
-        Use the &ldquo;New download&rdquo; button to upload a PDF or ZIP file that the team can share.
+        Use the &ldquo;New download&rdquo; button to upload a PDF or ZIP file that the team can
+        share.
       </Text>
     </Stack>
   </Card>
@@ -86,8 +77,7 @@ function DownloadPreview({download}: {download: DownloadRow}) {
     return parts
   }, [download.fileSize, download.fileType, download.publishedAt])
 
-  const handleOpen = () =>
-    router.navigateIntent('edit', {id: download._id, type: download._type})
+  const handleOpen = () => router.navigateIntent('edit', {id: download._id, type: download._type})
 
   const handleDownload = (event: React.MouseEvent) => {
     event.stopPropagation()
@@ -241,7 +231,11 @@ export default function DownloadsPreviewList() {
           </Suspense>
         ))}
         {hasMore ? (
-          <Button text={loading ? 'Loading…' : 'Load more'} onClick={handleLoadMore} disabled={loading} />
+          <Button
+            text={loading ? 'Loading…' : 'Load more'}
+            onClick={handleLoadMore}
+            disabled={loading}
+          />
         ) : null}
       </Stack>
     </Stack>

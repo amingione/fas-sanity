@@ -9,12 +9,7 @@ import {
   type StripeBackfillKind,
 } from '../netlify/lib/backfills/orderStripe'
 
-const ENV_FILES = [
-  '.env.development.local',
-  '.env.local',
-  '.env.development',
-  '.env',
-]
+const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
 
 for (const filename of ENV_FILES) {
   const filePath = path.resolve(process.cwd(), filename)
