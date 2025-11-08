@@ -342,4 +342,9 @@ export default defineConfig({
       ),
     },
   },
+  // Add this to reduce console warnings
+  __internal: {
+    // @ts-ignore
+    skipEnvCheck: true,
+  },
 })

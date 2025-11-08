@@ -1,6 +1,8 @@
 import {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
+import imageUrlBuilder from '@sanity/image-url'
+import {fetchPrintSettings, PrintSettings} from '../lib/printSettings'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
@@ -10,7 +12,9 @@ import {
 } from '@fas/sanity-config/utils/cartItemDetails'
 import type {NormalizedMetadataEntry} from '@fas/sanity-config/utils/cartItemDetails'
 
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888').split(',')
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888'
+).split(',')
 
 function pickOrigin(origin?: string): string {
   if (!origin) return DEFAULT_ORIGINS[0]
@@ -33,9 +37,15 @@ const sanity = createClient({
   useCdn: false,
 })
 
+// Image URL builder for Sanity images
+const builder = imageUrlBuilder(sanity)
+
+// Fallback constants (used if print settings not configured)
 const LOGO_URL = process.env.PACKING_SLIP_LOGO_URL || 'https://fassite.netlify.app/logo.png'
-const SHOP_NAME = process.env.PACKING_SLIP_SHOP_NAME || process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports'
-const SHOP_EMAIL = process.env.PACKING_SLIP_SHOP_EMAIL || process.env.SHIP_FROM_EMAIL || 'orders@fasmotorsports.com'
+const SHOP_NAME =
+  process.env.PACKING_SLIP_SHOP_NAME || process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports'
+const SHOP_EMAIL =
+  process.env.PACKING_SLIP_SHOP_EMAIL || process.env.SHIP_FROM_EMAIL || 'orders@fasmotorsports.com'
 const SHOP_DOMAIN = (process.env.PACKING_SLIP_SHOP_DOMAIN || 'www.fasmotorsports.com')
   .replace(/^https?:\/\//, '')
   .replace(/\/$/, '')
@@ -133,13 +143,15 @@ interface PackingData {
 
 function cleanIdentifier(value?: string | null): string {
   if (!value) return ''
-  return String(value).replace(/^drafts\./, '').trim()
+  return String(value)
+    .replace(/^drafts\./, '')
+    .trim()
 }
 
 function normalizeAddress(raw: any | null | undefined): NormalizedAddress | null {
   if (!raw || typeof raw !== 'object') return null
-    return {
-      name: raw.name || raw.fullName || raw.firstName || undefined,
+  return {
+    name: raw.name || raw.fullName || raw.firstName || undefined,
     company: raw.company || undefined,
     line1: raw.addressLine1 || raw.address_line1 || undefined,
     line2: raw.addressLine2 || raw.address_line2 || undefined,
@@ -159,7 +171,10 @@ function addressLines(address: NormalizedAddress | null): string[] {
   if (address.company) lines.push(address.company)
   if (address.line1) lines.push(address.line1)
   if (address.line2) lines.push(address.line2)
-  const cityBits = [address.city, [address.state, address.postalCode].filter(Boolean).join(' ')].filter(Boolean)
+  const cityBits = [
+    address.city,
+    [address.state, address.postalCode].filter(Boolean).join(' '),
+  ].filter(Boolean)
   if (cityBits.length) lines.push(cityBits.join(', '))
   if (address.country) lines.push(address.country)
   if (address.email) lines.push(address.email)
@@ -194,7 +209,10 @@ const canonicalDetailKey = (input: string): string | null => {
   if (rest.length === 0) return trimmed.toLowerCase()
   const value = rest.join(':').trim().toLowerCase()
   let label = rawLabel.toLowerCase()
-  label = label.replace(/\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g, '')
+  label = label.replace(
+    /\b(option|selected|selection|value|display|name|field|attribute|choice|custom)\b/g,
+    '',
+  )
   label = label.replace(/[^a-z0-9]+/g, ' ').trim()
   if (label && label === value) return null
   if (!label) return value ? `value:${value}` : trimmed.toLowerCase()
@@ -229,14 +247,13 @@ const buildDetailList = (opts: {
   }
 
   if (opts.optionDetails?.length) {
-    uniqueStrings(opts.optionDetails)
-      .forEach((detail) => {
-        detail
-          .split(',')
-          .map((part) => part.trim())
-          .filter(Boolean)
-          .forEach(addDetail)
-      })
+    uniqueStrings(opts.optionDetails).forEach((detail) => {
+      detail
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .forEach(addDetail)
+    })
   }
 
   if (opts.upgrades?.length) {
@@ -275,21 +292,26 @@ const prepareItemPresentation = (source: {
 }): {title: string; details: string[]} => {
   const metadataEntries = normalizeMetadataEntries(source.metadata as any)
   const derived = deriveCartOptions(metadataEntries)
-  const rawName = (source?.name || source?.description || source?.productName || source?.title || source?.sku || 'Item').toString()
+  const rawName = (
+    source?.name ||
+    source?.description ||
+    source?.productName ||
+    source?.title ||
+    source?.sku ||
+    'Item'
+  ).toString()
   const nameSegments = rawName
     .split('•')
     .map((segment) => segment.trim())
     .filter(Boolean)
   const title = nameSegments[0] || rawName
-  const summary = (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
+  const summary =
+    (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
   const optionDetails = uniqueStrings([
     ...coerceStringArray(source.optionDetails),
     ...derived.optionDetails,
   ])
-  const upgrades = uniqueStrings([
-    ...coerceStringArray(source.upgrades),
-    ...derived.upgrades,
-  ])
+  const upgrades = uniqueStrings([...coerceStringArray(source.upgrades), ...derived.upgrades])
   const customizations = uniqueStrings([
     ...coerceStringArray(source.customizations),
     ...derived.customizations,
@@ -317,50 +339,85 @@ const prepareItemPresentation = (source: {
       appendDetail(normalized)
     }
   }
-  const rawSkuCandidates = [
-    source?.sku,
-    source?.productSku,
-  ].map((candidate) => (typeof candidate === 'string' ? candidate.trim() : undefined))
+  const rawSkuCandidates = [source?.sku, source?.productSku].map((candidate) =>
+    typeof candidate === 'string' ? candidate.trim() : undefined,
+  )
   const resolvedSku = rawSkuCandidates.find((candidate) => candidate && !/^price_/i.test(candidate))
   if (resolvedSku) appendDetail(`SKU: ${resolvedSku}`)
   const formattedPrice = formatCurrency(source.price, source.currency)
   if (formattedPrice) appendDetail(`Price: ${formattedPrice}`)
-  return { title, details }
+  return {title, details}
 }
 
-async function buildPdf(data: PackingData): Promise<Uint8Array> {
+async function buildPdf(data: PackingData, settings: PrintSettings | null): Promise<Uint8Array> {
+  // Apply settings or use defaults
+  const pageSize = settings?.layout?.pageSize || 'letter'
+  const pageDimensions = pageSize === 'a4' ? [595.28, 841.89] : [612, 792] // A4 or Letter
+  const marginInches = {
+    top: settings?.layout?.margins?.top || 0.67,
+    right: settings?.layout?.margins?.right || 0.67,
+    bottom: settings?.layout?.margins?.bottom || 0.67,
+    left: settings?.layout?.margins?.left || 0.67,
+  }
+  const margin = marginInches.left * 72 // Convert inches to points
+
   const pdfDoc = await PDFDocument.create()
-  let page = pdfDoc.addPage([612, 792]) // 8.5" x 11"
-  let { width, height } = page.getSize()
-  const margin = 48
-  const bodyFontSize = 11
-  const smallFontSize = 10
+  let page = pdfDoc.addPage(pageDimensions as [number, number])
+  let {width, height} = page.getSize()
+
+  const baseFontSize = settings?.typography?.fontSize || 11
+  const bodyFontSize = baseFontSize
+  const smallFontSize = baseFontSize - 1
   const lineGap = 16
 
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-  let y = height - margin
+  // Parse colors from settings
+  const primaryColorHex = settings?.primaryColor?.hex || '#000000'
+  const textColorHex = settings?.textColor?.hex || '#000000'
+  const parseHex = (hex: string) => {
+    const clean = hex.replace('#', '')
+    const r = parseInt(clean.substring(0, 2), 16) / 255
+    const g = parseInt(clean.substring(2, 4), 16) / 255
+    const b = parseInt(clean.substring(4, 6), 16) / 255
+    return rgb(r, g, b)
+  }
+  const primaryRgb = parseHex(primaryColorHex)
+  const textRgb = parseHex(textColorHex)
 
-  // Optional logo
-  if (LOGO_URL) {
-    try {
-      const res = await fetch(LOGO_URL)
-      if ((res as any)?.ok) {
-        const buffer = await (res as any).arrayBuffer()
-        try {
-          const img = await pdfDoc.embedPng(buffer)
-          const scaled = img.scale(0.4)
-          page.drawImage(img, {
-            x: margin,
-            y: y - scaled.height,
-            width: scaled.width,
-            height: scaled.height,
-          })
-          y -= scaled.height + 12
-        } catch {
+  let y = height - marginInches.top * 72
+
+  // Company info from settings
+  const companyName = settings?.companyName || SHOP_NAME
+  const companyEmail = settings?.companyEmail || SHOP_EMAIL
+  const companyWebsite =
+    settings?.companyWebsite?.replace(/^https?:\/\//, '').replace(/\/$/, '') || SHOP_DOMAIN
+  const companyAddress = settings?.companyAddress || SHOP_ADDRESS
+  const headerText = settings?.packingSlipSettings?.headerText || 'PACKING SLIP'
+  const showLogo = settings?.packingSlipSettings?.showLogo !== false
+  const includeNotes = settings?.packingSlipSettings?.includeNotes !== false
+
+  // Logo handling
+  if (showLogo) {
+    let logoUrl = LOGO_URL
+
+    // Use Sanity logo if available
+    if (settings?.logo) {
+      try {
+        logoUrl = builder.image(settings.logo).width(400).url()
+      } catch (err) {
+        console.warn('Failed to build logo URL from settings:', err)
+      }
+    }
+
+    if (logoUrl) {
+      try {
+        const res = await fetch(logoUrl)
+        if ((res as any)?.ok) {
+          const buffer = await (res as any).arrayBuffer()
           try {
-            const img = await pdfDoc.embedJpg(buffer)
+            const img = await pdfDoc.embedPng(buffer)
             const scaled = img.scale(0.4)
             page.drawImage(img, {
               x: margin,
@@ -370,20 +427,38 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
             })
             y -= scaled.height + 12
           } catch {
-            // ignore image failures
+            try {
+              const img = await pdfDoc.embedJpg(buffer)
+              const scaled = img.scale(0.4)
+              page.drawImage(img, {
+                x: margin,
+                y: y - scaled.height,
+                width: scaled.width,
+                height: scaled.height,
+              })
+              y -= scaled.height + 12
+            } catch {
+              // ignore image failures
+            }
           }
         }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
   }
 
   // Header
   const headerTop = y
-  page.drawText(SHOP_NAME.toUpperCase(), { x: margin, y: headerTop, font: helveticaBold, size: 20 })
+  page.drawText(companyName.toUpperCase(), {
+    x: margin,
+    y: headerTop,
+    font: helveticaBold,
+    size: 20,
+    color: primaryRgb,
+  })
 
-  const orderNumberLabel = data.orderNumber ? `Order #${data.orderNumber}` : ''
+  const orderNumberLabel = data.orderNumber ? `${headerText} #${data.orderNumber}` : headerText
   const orderLabelY = headerTop - 22
   if (orderNumberLabel) {
     page.drawText(orderNumberLabel, {
@@ -391,6 +466,7 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
       y: orderLabelY,
       font: helveticaBold,
       size: 13,
+      color: textRgb,
     })
   }
 
@@ -404,6 +480,7 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
       y: headerTop - idx * 14,
       font: fontToUse,
       size,
+      color: textRgb,
     })
   })
 
@@ -417,12 +494,18 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
 
   function drawAddress(title: string, lines: string[], x: number): number {
     let localY = y
-    page.drawText(title.toUpperCase(), { x, y: localY, font: helveticaBold, size: bodyFontSize })
+    page.drawText(title.toUpperCase(), {
+      x,
+      y: localY,
+      font: helveticaBold,
+      size: bodyFontSize,
+      color: primaryRgb,
+    })
     localY -= lineGap
     for (const rawLine of lines) {
       const wrapped = wrapText(rawLine, columnWidth, helvetica, smallFontSize)
       for (const w of wrapped) {
-        page.drawText(w, { x, y: localY, font: helvetica, size: smallFontSize })
+        page.drawText(w, {x, y: localY, font: helvetica, size: smallFontSize, color: textRgb})
         localY -= lineGap
       }
     }
@@ -435,11 +518,17 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
   y = Math.min(shipBottom, billBottom) - 10
 
   // Separator
-  page.drawRectangle({ x: margin, y, width: width - margin * 2, height: 1, color: rgb(0, 0, 0) })
+  page.drawRectangle({x: margin, y, width: width - margin * 2, height: 1, color: primaryRgb})
   y -= 18
 
   // Items header
-  page.drawText('Items'.toUpperCase(), { x: margin, y, font: helveticaBold, size: bodyFontSize })
+  page.drawText('Items'.toUpperCase(), {
+    x: margin,
+    y,
+    font: helveticaBold,
+    size: bodyFontSize,
+    color: primaryRgb,
+  })
   const qtyColumnWidth = 120
   const getQtyX = () => width - margin - qtyColumnWidth + 30
   page.drawText('Quantity'.toUpperCase(), {
@@ -447,6 +536,7 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
     y,
     font: helveticaBold,
     size: bodyFontSize,
+    color: primaryRgb,
   })
   y -= lineGap
 
@@ -454,15 +544,22 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
 
   function ensureSpace(required: number) {
     if (y - required < margin) {
-      page = pdfDoc.addPage([612, 792])
-      ;({ width, height } = page.getSize())
-      y = height - margin
-      page.drawText('Items'.toUpperCase(), { x: margin, y, font: helveticaBold, size: bodyFontSize })
+      page = pdfDoc.addPage(pageDimensions as [number, number])
+      ;({width, height} = page.getSize())
+      y = height - marginInches.top * 72
+      page.drawText('Items'.toUpperCase(), {
+        x: margin,
+        y,
+        font: helveticaBold,
+        size: bodyFontSize,
+        color: primaryRgb,
+      })
       page.drawText('Quantity'.toUpperCase(), {
         x: getQtyX(),
         y,
         font: helveticaBold,
         size: bodyFontSize,
+        color: primaryRgb,
       })
       y -= lineGap
     }
@@ -471,18 +568,32 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
   for (const item of data.items) {
     const descWidth = getDescWidth()
     const primaryLines = wrapText(item.title, descWidth, helveticaBold, bodyFontSize)
-    const detailLines = item.details ? wrapText(item.details, descWidth, helvetica, smallFontSize) : []
+    const detailLines = item.details
+      ? wrapText(item.details, descWidth, helvetica, smallFontSize)
+      : []
     const totalLines = primaryLines.length + detailLines.length
     const rowHeight = totalLines * lineGap + 4
     ensureSpace(rowHeight)
 
     let rowY = y
     primaryLines.forEach((line, idx) => {
-      page.drawText(line, { x: margin, y: rowY, font: helveticaBold, size: bodyFontSize })
+      page.drawText(line, {
+        x: margin,
+        y: rowY,
+        font: helveticaBold,
+        size: bodyFontSize,
+        color: textRgb,
+      })
       rowY -= lineGap
     })
     detailLines.forEach((line) => {
-      page.drawText(line, { x: margin, y: rowY, font: helvetica, size: smallFontSize })
+      page.drawText(line, {
+        x: margin,
+        y: rowY,
+        font: helvetica,
+        size: smallFontSize,
+        color: textRgb,
+      })
       rowY -= lineGap
     })
 
@@ -492,42 +603,61 @@ async function buildPdf(data: PackingData): Promise<Uint8Array> {
       y: y,
       font: helvetica,
       size: bodyFontSize,
+      color: textRgb,
     })
 
     y -= rowHeight
   }
 
-  if (data.notes) {
+  if (includeNotes && data.notes) {
     y -= 4
-    page.drawRectangle({ x: margin, y, width: width - margin * 2, height: 1, color: rgb(0.6, 0.6, 0.6) })
+    page.drawRectangle({
+      x: margin,
+      y,
+      width: width - margin * 2,
+      height: 1,
+      color: rgb(0.6, 0.6, 0.6),
+    })
     y -= lineGap
-    page.drawText('Notes'.toUpperCase(), { x: margin, y, font: helveticaBold, size: bodyFontSize })
+    page.drawText('Notes'.toUpperCase(), {
+      x: margin,
+      y,
+      font: helveticaBold,
+      size: bodyFontSize,
+      color: primaryRgb,
+    })
     y -= lineGap
     const wrappedNotes = wrapText(data.notes, width - margin * 2, helvetica, smallFontSize)
     wrappedNotes.forEach((line) => {
-      page.drawText(line, { x: margin, y, font: helvetica, size: smallFontSize })
+      page.drawText(line, {x: margin, y, font: helvetica, size: smallFontSize, color: textRgb})
       y -= lineGap
     })
   }
 
   y -= lineGap
-  page.drawRectangle({ x: margin, y, width: width - margin * 2, height: 1, color: rgb(0, 0, 0) })
+  page.drawRectangle({x: margin, y, width: width - margin * 2, height: 1, color: primaryRgb})
   y -= lineGap
 
   const footerLines = [
     'Thank you for shopping with us!',
-    SHOP_NAME,
-    SHOP_ADDRESS,
-    SHOP_EMAIL,
-    SHOP_DOMAIN,
+    companyName,
+    companyAddress,
+    companyEmail,
+    companyWebsite,
   ].filter(Boolean)
 
   footerLines.forEach((line) => {
-    page.drawText(line, { x: margin, y, font: helvetica, size: smallFontSize, color: rgb(0.1, 0.1, 0.1) })
+    page.drawText(line, {
+      x: margin,
+      y,
+      font: helvetica,
+      size: smallFontSize,
+      color: rgb(0.4, 0.4, 0.4),
+    })
     y -= lineGap
   })
 
-  return pdfDoc.save({ useObjectStreams: false })
+  return pdfDoc.save({useObjectStreams: false})
 }
 
 async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<PackingData | null> {
@@ -583,7 +713,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           },
         }
       }`,
-      { id: cleanInvoiceId }
+      {id: cleanInvoiceId},
     )
     if (invoice?.orderRef && typeof invoice.orderRef === 'object') {
       order = invoice.orderRef
@@ -618,7 +748,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         notes,
         invoiceRef
       }`,
-      { id: cleanOrderId }
+      {id: cleanOrderId},
     )
   }
 
@@ -649,7 +779,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           metadata[]{key, value}
         }
       }`,
-      { id: order.invoiceRef._ref }
+      {id: order.invoiceRef._ref},
     )
   }
 
@@ -673,21 +803,23 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   }
 
   const productIds = collectProductIds(order?.cart, invoice?.lineItems)
-  let productLookup: Record<string, { sku?: string | null }> = {}
+  let productLookup: Record<string, {sku?: string | null}> = {}
   if (productIds.length > 0) {
-    const products: Array<{ _id: string; sku?: string | null }> = await sanity.fetch(
+    const products: Array<{_id: string; sku?: string | null}> = await sanity.fetch(
       `*[_type == "product" && _id in $ids]{ _id, sku }`,
-      { ids: productIds },
+      {ids: productIds},
     )
-    productLookup = products.reduce<Record<string, { sku?: string | null }>>((acc, product) => {
+    productLookup = products.reduce<Record<string, {sku?: string | null}>>((acc, product) => {
       const key = cleanIdentifier(product._id)
-      if (key) acc[key] = { sku: product.sku || undefined }
+      if (key) acc[key] = {sku: product.sku || undefined}
       return acc
     }, {})
   }
 
   const shippingAddress = normalizeAddress(invoice?.shipTo || order?.shippingAddress)
-  const billingAddress = normalizeAddress(invoice?.billTo || order?.billingAddress || shippingAddress)
+  const billingAddress = normalizeAddress(
+    invoice?.billTo || order?.billingAddress || shippingAddress,
+  )
 
   const invoiceNumber = cleanIdentifier(invoice?.invoiceNumber || invoice?.orderNumber)
   const primaryOrderNumber = cleanIdentifier(order?.orderNumber)
@@ -700,13 +832,15 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
     cleanIdentifier(cleanOrderId) ||
     orderInvoiceRefId ||
     cleanIdentifier(cleanInvoiceId)
-  const orderNumber =
-    invoiceNumber ||
-    primaryOrderNumber ||
-    fallbackId ||
-    ''
+  const orderNumber = invoiceNumber || primaryOrderNumber || fallbackId || ''
   const dateSource = invoice?.invoiceDate || order?.createdAt || invoice?._createdAt
-  const orderDate = dateSource ? new Date(dateSource).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
+  const orderDate = dateSource
+    ? new Date(dateSource).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : ''
   const customerName =
     shippingAddress?.name ||
     billingAddress?.name ||
@@ -793,7 +927,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   }
 
   if (items.length === 0) {
-    items.push({ title: 'No items found', quantity: 0 })
+    items.push({title: 'No items found', quantity: 0})
   }
 
   const notes = invoice?.customerNotes || invoice?.internalNotes || order?.notes || undefined
@@ -814,31 +948,52 @@ export const handler: Handler = async (event) => {
   const headers = CORS_HEADERS(origin)
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' }
+    return {statusCode: 200, headers, body: ''}
   }
 
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method Not Allowed' }) }
+    return {
+      statusCode: 405,
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Method Not Allowed'}),
+    }
   }
 
-  let payload: { invoiceId?: string; orderId?: string } = {}
+  let payload: {invoiceId?: string; orderId?: string} = {}
   try {
     payload = JSON.parse(event.body || '{}')
   } catch {
-    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON body' }) }
+    return {
+      statusCode: 400,
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Invalid JSON body'}),
+    }
   }
 
   if (!payload.invoiceId && !payload.orderId) {
-    return { statusCode: 400, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Provide invoiceId or orderId' }) }
+    return {
+      statusCode: 400,
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Provide invoiceId or orderId'}),
+    }
   }
 
   try {
-    const packingData = await fetchPackingData(payload.invoiceId, payload.orderId)
+    // Fetch print settings and packing data in parallel
+    const [printSettings, packingData] = await Promise.all([
+      fetchPrintSettings(sanity),
+      fetchPackingData(payload.invoiceId, payload.orderId),
+    ])
+
     if (!packingData) {
-      return { statusCode: 404, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Packing slip data not found' }) }
+      return {
+        statusCode: 404,
+        headers: {...headers, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Packing slip data not found'}),
+      }
     }
 
-    const pdfBytes = await buildPdf(packingData)
+    const pdfBytes = await buildPdf(packingData, printSettings)
     const base64 = Buffer.from(pdfBytes).toString('base64')
 
     return {
@@ -855,8 +1010,11 @@ export const handler: Handler = async (event) => {
     console.error('generatePackingSlips error', err)
     return {
       statusCode: 500,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Packing slip generation failed', message: err?.message || String(err) }),
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        error: 'Packing slip generation failed',
+        message: err?.message || String(err),
+      }),
     }
   }
 }

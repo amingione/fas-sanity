@@ -1,17 +1,25 @@
 import React from 'react'
-import { Button } from '@sanity/ui'
-import type { StringInputProps } from 'sanity'
+import {Button} from '@sanity/ui'
+import type {StringInputProps} from 'sanity'
 
 interface ExtendedStringInputProps extends StringInputProps {
   document?: {
     _id?: string
+    orderRef?: {
+      _ref?: string
+    }
   }
 }
 
 export default function PrintPackingSlipButton(props: ExtendedStringInputProps) {
   const [loading, setLoading] = React.useState(false)
 
-  const invoiceId = props?.document?._id?.replace('drafts.', '') || 'unknown'
+  // Get the order ID from the invoice's orderRef
+  const orderId = props?.document?.orderRef?._ref?.replace('drafts.', '')
+
+  if (!orderId) {
+    return <Button text="No Order Linked" tone="critical" disabled />
+  }
 
   const handleClick = async () => {
     setLoading(true)
@@ -20,9 +28,9 @@ export default function PrintPackingSlipButton(props: ExtendedStringInputProps) 
       const response = await fetch('/.netlify/functions/generatePackingSlips', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ invoiceId })
+        body: JSON.stringify({orderId}), // Changed from invoiceId to orderId
       })
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
@@ -32,7 +40,7 @@ export default function PrintPackingSlipButton(props: ExtendedStringInputProps) 
 
       const a = document.createElement('a')
       a.href = url
-      a.download = `packing-slip-${invoiceId}.pdf`
+      a.download = `packing-slip-${orderId}.pdf`
       a.click()
 
       window.URL.revokeObjectURL(url)
@@ -45,7 +53,7 @@ export default function PrintPackingSlipButton(props: ExtendedStringInputProps) 
 
   return (
     <Button
-      text={loading ? 'Generating…' : '🧾 Print Packing Slip'}
+      text={loading ? 'Generating…' : 'Print Packing Slip'}
       onClick={handleClick}
       tone="primary"
       disabled={loading}

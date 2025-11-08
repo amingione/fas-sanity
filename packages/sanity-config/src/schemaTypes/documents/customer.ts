@@ -160,6 +160,80 @@ export default defineType({
     defineField({ name: 'emailOptIn', title: 'Email Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
     defineField({ name: 'marketingOptIn', title: 'Marketing Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
     defineField({ name: 'textOptIn', title: 'Text/SMS Opt‑In', type: 'boolean', initialValue: false, group: 'marketing' }),
+    defineField({
+      name: 'emailMarketing',
+      title: 'Email Marketing',
+      type: 'object',
+      group: 'marketing',
+      options: {
+        collapsible: true,
+        collapsed: false,
+      },
+      fields: [
+        defineField({
+          name: 'subscribed',
+          title: 'Subscribed to Marketing Emails',
+          type: 'boolean',
+          initialValue: false,
+        }),
+        defineField({
+          name: 'subscribedAt',
+          title: 'Subscribed At',
+          type: 'datetime',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'unsubscribedAt',
+          title: 'Unsubscribed At',
+          type: 'datetime',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'source',
+          title: 'Subscription Source',
+          type: 'string',
+          options: {
+            list: [
+              { title: 'Checkout', value: 'checkout' },
+              { title: 'Newsletter Signup', value: 'newsletter' },
+              { title: 'Manual', value: 'manual' },
+            ],
+          },
+        }),
+        defineField({
+          name: 'preferences',
+          title: 'Email Preferences',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'productUpdates',
+              type: 'boolean',
+              title: 'Product Updates & New Releases',
+              initialValue: true,
+            }),
+            defineField({
+              name: 'promotions',
+              type: 'boolean',
+              title: 'Promotions & Sales',
+              initialValue: true,
+            }),
+            defineField({
+              name: 'newsletter',
+              type: 'boolean',
+              title: 'Monthly Newsletter',
+              initialValue: true,
+            }),
+            defineField({
+              name: 'orderUpdates',
+              type: 'boolean',
+              title: 'Order & Shipping Updates',
+              initialValue: true,
+              readOnly: true,
+            }),
+          ],
+        }),
+      ],
+    }),
     defineField({ name: 'orderCount', title: 'Order Count', type: 'number', readOnly: true, group: 'activity' }),
     defineField({ name: 'quoteCount', title: 'Quote Count', type: 'number', readOnly: true, group: 'activity' }),
     defineField({ name: 'lifetimeSpend', title: 'Lifetime Spend ($)', type: 'number', readOnly: true, group: 'activity' }),

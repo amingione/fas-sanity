@@ -3,8 +3,8 @@ import type {StructureResolver} from 'sanity/structure'
 import {
   BasketIcon,
   BillIcon,
-  ChartUpwardIcon,
   DocumentIcon,
+  EnvelopeIcon,
   HomeIcon,
   LinkIcon,
   PackageIcon,
@@ -24,6 +24,7 @@ import {
   ProductsDocumentTable,
   CustomersDocumentTable,
 } from '../components/studio/documentTables'
+import {CogIcon} from '@sanity/icons'
 
 const API_VERSION = '2024-10-01'
 
@@ -255,11 +256,35 @@ const createMarketingSection = (S: any) =>
   S.listItem()
     .id('marketing')
     .title('Marketing')
-    .icon(ChartUpwardIcon)
+    .icon(EnvelopeIcon)
     .child(
       S.list()
         .title('Marketing')
         .items([
+          S.listItem()
+            .id('email-marketing')
+            .title('Email Marketing')
+            .child(
+              S.list()
+                .title('Email Marketing')
+                .items([
+                  S.listItem()
+                    .title('Email Campaigns')
+                    .icon(EnvelopeIcon)
+                    .child(S.documentTypeList('emailCampaign').title('Email Campaigns')),
+                  S.divider(),
+                  S.listItem()
+                    .title('Email Subscribers')
+                    .child(
+                      S.documentList()
+                        .title('Email Subscribers')
+                        .filter('_type == "customer" && emailMarketing.subscribed == true')
+                        .apiVersion(API_VERSION)
+                        .defaultOrdering([{field: 'emailMarketing.subscribedAt', direction: 'desc'}]),
+                    ),
+                ]),
+            ),
+          S.divider(),
           S.documentTypeListItem('campaign').title('Campaigns'),
           S.documentTypeListItem('attribution').title('Attribution'),
           createSalesChannelsList(S),
@@ -317,6 +342,17 @@ export const deskStructure: StructureResolver = (S) =>
       createAdministrationSection(S),
       S.divider(),
       S.listItem()
+        .id('print-settings')
+        .title('Print Settings')
+        .icon(CogIcon)
+        .child(
+          S.document()
+            .schemaType('printSettings')
+            .documentId('printSettings')
+            .title('Print & PDF Settings'),
+        ),
+      S.divider(),
+      S.listItem()
         .id('downloads')
         .title('Downloads')
         .icon(DocumentIcon)
@@ -327,5 +363,4 @@ export const deskStructure: StructureResolver = (S) =>
             .component(DownloadsPreviewList as any),
         ),
     ])
-
 export default deskStructure

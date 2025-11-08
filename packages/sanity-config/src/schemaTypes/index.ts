@@ -85,6 +85,7 @@ import {stripePriceSnapshotType} from './objects/stripePriceSnapshotType'
 import {stripeOrderSummaryType} from './objects/stripeOrderSummaryType'
 import {stripeMetadataEntryType} from './objects/stripeMetadataEntry'
 import {stripePaymentMethodType} from './objects/stripePaymentMethodType'
+import {colorValueType} from './objects/colorValueType'
 import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
 import downloadResource from './documents/downloadResource'
@@ -97,6 +98,7 @@ const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProd
 const objects = [
   accordionGroupType,
   accordionType,
+  colorValueType,
   calloutType,
   callToActionType,
   collectionGroupType,
@@ -225,6 +227,7 @@ import expense from './documents/expense'
 import booking from './documents/booking'
 import calendarTask from './documents/calendarTask'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
+import emailCampaign from './documents/emailCampaign'
 
 const documents = [
   collectionType,
@@ -256,6 +259,7 @@ const documents = [
   booking,
   calendarTask,
   stripeWebhookEvent,
+  emailCampaign,
   campaign,
   attribution,
   marketingChannel,
@@ -265,6 +269,7 @@ const documents = [
 import {homeType} from './singletons/homeType'
 import {settingsType as siteSettingsType} from './singletons/siteSettingsType'
 import {dashboardViewType} from './singletons/dashboardViewType'
+import printSettings from './documents/printSettings'
 
 const singletons = [homeType, siteSettingsType, dashboardViewType]
 
@@ -275,4 +280,5 @@ export const schemaTypes = [
   ...blocks,
   ...documents,
   buildQuote,
+  printSettings,
 ]

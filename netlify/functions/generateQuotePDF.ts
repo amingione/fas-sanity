@@ -1,8 +1,10 @@
 import type { Handler } from '@netlify/functions'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import fs from 'fs'
+import imageUrlBuilder from '@sanity/image-url'
 import path from 'path'
 import { createClient } from '@sanity/client'
+import { fetchPrintSettings, hexToRgb, lightenRgb } from '../lib/printSettings'
 
 // ---------- Config ----------
 const CORS = {
@@ -24,6 +26,7 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN || undefined, // optional; read works without in public datasets
   useCdn: false,
 })
+const quoteLogoBuilder = imageUrlBuilder(sanity)
 
 const BUSINESS = {
   name: 'F.A.S. Motorsports LLC',
@@ -32,6 +35,16 @@ const BUSINESS = {
   phone: '(812) 200-9012',
   email: 'sales@fasmotorsports.com',
   logoPath: path.resolve(process.cwd(), 'public/media/New Red FAS Logo.png'),
+  website: 'www.fasmotorsports.com',
+}
+
+type QuoteFontKey = 'Helvetica' | 'Arial' | 'Times' | 'Courier'
+
+const QUOTE_FONT_FAMILIES: Record<QuoteFontKey, { regular: StandardFonts; bold: StandardFonts }> = {
+  Helvetica: { regular: StandardFonts.Helvetica, bold: StandardFonts.HelveticaBold },
+  Arial: { regular: StandardFonts.Helvetica, bold: StandardFonts.HelveticaBold },
+  Times: { regular: StandardFonts.TimesRoman, bold: StandardFonts.TimesRomanBold },
+  Courier: { regular: StandardFonts.Courier, bold: StandardFonts.CourierBold },
 }
 
 // ---------- Helpers ----------
@@ -77,7 +90,18 @@ async function fetchQuote(id: string) {
   return sanity.fetch(q, { id })
 }
 
-async function tryLoadLogoBytes(): Promise<Uint8Array | null> {
+async function tryLoadLogoBytes(logoUrl?: string): Promise<Uint8Array | null> {
+  if (logoUrl) {
+    try {
+      const response = await fetch(logoUrl)
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer()
+        return new Uint8Array(arrayBuffer)
+      }
+    } catch {
+      // ignore remote failures
+    }
+  }
   try {
     const candidates = [
       BUSINESS.logoPath,
@@ -129,23 +153,69 @@ export const handler: Handler = async (event) => {
       return { statusCode: 404, headers: CORS, body: JSON.stringify({ message: 'Quote not found' }) }
     }
 
+    const printSettings = await fetchPrintSettings(sanity)
+    let logoUrl: string | undefined
+    if (printSettings?.logo) {
+      try {
+        logoUrl = quoteLogoBuilder.image(printSettings.logo).width(400).url()
+      } catch (err) {
+        console.warn('generateQuotePDF: failed to build logo URL', err)
+      }
+    }
+
     const { subtotal, discount, taxAmount, total } = computeTotals(quote)
+    const typography = printSettings?.typography
+    const fontFamily = (typography?.fontFamily ?? 'Helvetica') as keyof typeof QUOTE_FONT_FAMILIES
+    const fontSelection = QUOTE_FONT_FAMILIES[fontFamily] ?? QUOTE_FONT_FAMILIES.Helvetica
+    const headerText = printSettings?.quoteSettings?.headerText?.trim() || 'QUOTE'
+    const showLogo = printSettings?.quoteSettings?.showLogo !== false
+    const footerTemplate =
+      printSettings?.quoteSettings?.footerText?.trim() ||
+      'Thank you for the opportunity to earn your business.'
+    const footerLines = footerTemplate
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+    const addressLines = (printSettings?.companyAddress ?? BUSINESS.address1)
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+    const companyAddress1 = addressLines[0] || BUSINESS.address1
+    const companyAddress2 = addressLines.slice(1).join(', ') || BUSINESS.address2
+    const companyName = printSettings?.companyName?.trim() || BUSINESS.name
+    const companyPhone = printSettings?.companyPhone?.trim() || BUSINESS.phone
+    const companyEmail = printSettings?.companyEmail?.trim() || BUSINESS.email
+    const companyWebsite = printSettings?.companyWebsite?.trim() || BUSINESS.website
+    const accentColor = hexToRgb(printSettings?.primaryColor?.hex, { r: 0.86, g: 0.23, b: 0.18 })
+    const baseTextColor = hexToRgb(printSettings?.textColor?.hex, { r: 0, g: 0, b: 0 })
+    const secondaryColor = printSettings?.secondaryColor?.hex
+      ? hexToRgb(printSettings.secondaryColor.hex, lightenRgb(baseTextColor, 0.4))
+      : lightenRgb(baseTextColor, 0.35)
+    const headerLineColor = lightenRgb(baseTextColor, 0.45)
+    const lightBgColor = lightenRgb(secondaryColor, 0.4)
+    const mutedColor = lightenRgb(baseTextColor, 0.5)
+    const primaryRgb = rgb(accentColor.r, accentColor.g, accentColor.b)
+    const textRgb = rgb(baseTextColor.r, baseTextColor.g, baseTextColor.b)
+    const headerBorderRgb = rgb(headerLineColor.r, headerLineColor.g, headerLineColor.b)
+    const lightBackgroundRgb = rgb(lightBgColor.r, lightBgColor.g, lightBgColor.b)
+    const mutedRgb = rgb(mutedColor.r, mutedColor.g, mutedColor.b)
 
     const pdf = await PDFDocument.create()
     let page = pdf.addPage([612, 792]) // US Letter (72 dpi)
     const { width, height } = page.getSize()
 
-    const black = rgb(0, 0, 0)
-    const gray = rgb(0.4, 0.4, 0.4)
-    const light = rgb(0.9, 0.9, 0.9)
-
-    const font = await pdf.embedFont(StandardFonts.Helvetica)
-    const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold)
+    const font = await pdf.embedFont(fontSelection.regular)
+    const fontBold = await pdf.embedFont(fontSelection.bold)
+    const textColorRgb = textRgb
+    const mutedTextRgb = mutedRgb
+    const boxBackgroundColor = lightBackgroundRgb
+    const borderLineColor = headerBorderRgb
+    const accentRgbColor = primaryRgb
 
     let y = height - 40
 
     // Header: Logo + Business block
-    const logoBytes = await tryLoadLogoBytes()
+    const logoBytes = showLogo ? await tryLoadLogoBytes(logoUrl) : null
     if (logoBytes) {
       try {
         const img = await pdf.embedPng(logoBytes)
@@ -159,17 +229,83 @@ export const handler: Handler = async (event) => {
     }
 
     // Business info
-    page.drawText(BUSINESS.name, { x: 220, y: y - 10, size: 14, font: fontBold, color: black })
-    page.drawText(BUSINESS.address1, { x: 220, y: y - 28, size: 10, font, color: gray })
-    page.drawText(BUSINESS.address2, { x: 220, y: y - 42, size: 10, font, color: gray })
-    page.drawText(BUSINESS.phone, { x: 220, y: y - 56, size: 10, font, color: gray })
-    page.drawText(BUSINESS.email, { x: 220, y: y - 70, size: 10, font, color: gray })
+    let infoY = y - 10
+    const infoX = 220
+    page.drawText(companyName, {
+      x: infoX,
+      y: infoY,
+      size: 14,
+      font: fontBold,
+      color: accentRgbColor,
+    })
+    infoY -= 18
+    page.drawText(companyAddress1, {
+      x: infoX,
+      y: infoY,
+      size: 10,
+      font,
+      color: mutedTextRgb,
+    })
+    infoY -= 14
+    if (companyAddress2) {
+      page.drawText(companyAddress2, {
+        x: infoX,
+        y: infoY,
+        size: 10,
+        font,
+        color: mutedTextRgb,
+      })
+      infoY -= 14
+    }
+    page.drawText(companyPhone, {
+      x: infoX,
+      y: infoY,
+      size: 10,
+      font,
+      color: mutedTextRgb,
+    })
+    infoY -= 14
+    page.drawText(companyEmail, {
+      x: infoX,
+      y: infoY,
+      size: 10,
+      font,
+      color: mutedTextRgb,
+    })
+    infoY -= 14
+    if (companyWebsite) {
+      page.drawText(companyWebsite, {
+        x: infoX,
+        y: infoY,
+        size: 10,
+        font,
+        color: mutedTextRgb,
+      })
+    }
 
     // Title + meta
-    page.drawText('QUOTE', { x: width - 140, y: y - 10, size: 22, font: fontBold, color: black })
+    page.drawText(headerText, {
+      x: width - 140,
+      y: y - 10,
+      size: 22,
+      font: fontBold,
+      color: accentRgbColor,
+    })
     const qNum = safeStr(quote.quoteNumber || quote._id)
-    page.drawText(`Quote # ${qNum}`, { x: width - 220, y: y - 36, size: 10, font, color: gray })
-    page.drawText(`Date: ${new Date().toLocaleDateString()}` , { x: width - 220, y: y - 50, size: 10, font, color: gray })
+    page.drawText(`Quote # ${qNum}`, {
+      x: width - 220,
+      y: y - 36,
+      size: 10,
+      font,
+      color: mutedTextRgb,
+    })
+    page.drawText(`Date: ${new Date().toLocaleDateString()}`, {
+      x: width - 220,
+      y: y - 50,
+      size: 10,
+      font,
+      color: mutedTextRgb,
+    })
 
     y -= 100
 
@@ -178,8 +314,23 @@ export const handler: Handler = async (event) => {
     const shipLines = drawAddress('Ship To', quote.shipTo || {})
 
     function drawBox(x: number, topY: number, w: number, h: number) {
-      page.drawRectangle({ x, y: topY - h, width: w, height: h, color: light, opacity: 0.4 })
-      page.drawRectangle({ x, y: topY - h, width: w, height: h, borderColor: gray, borderWidth: 1, color: undefined })
+      page.drawRectangle({
+        x,
+        y: topY - h,
+        width: w,
+        height: h,
+        color: boxBackgroundColor,
+        opacity: 0.6,
+      })
+      page.drawRectangle({
+        x,
+        y: topY - h,
+        width: w,
+        height: h,
+        borderColor: borderLineColor,
+        borderWidth: 1,
+        color: undefined,
+      })
     }
 
     const boxW = (width - 80 - 20) / 2
@@ -188,17 +339,52 @@ export const handler: Handler = async (event) => {
     drawBox(60 + boxW, y, boxW, boxH)
 
     let by = y - 18
-    billLines.forEach((line, i) => page.drawText(line, { x: 48, y: by - i * 14, size: 10, font, color: black }))
-    shipLines.forEach((line, i) => page.drawText(line, { x: 68 + boxW, y: by - i * 14, size: 10, font, color: black }))
+    billLines.forEach((line, i) =>
+      page.drawText(line, { x: 48, y: by - i * 14, size: 10, font, color: textColorRgb }),
+    )
+    shipLines.forEach((line, i) =>
+      page.drawText(line, { x: 68 + boxW, y: by - i * 14, size: 10, font, color: textColorRgb }),
+    )
 
     y -= boxH + 24
 
     // Items header
-    page.drawRectangle({ x: 40, y: y - 20, width: width - 80, height: 20, color: light, opacity: 0.6 })
-    page.drawText('Description', { x: 48, y: y - 15, size: 10, font: fontBold, color: black })
-    page.drawText('Qty', { x: width - 220, y: y - 15, size: 10, font: fontBold, color: black })
-    page.drawText('Unit', { x: width - 170, y: y - 15, size: 10, font: fontBold, color: black })
-    page.drawText('Amount', { x: width - 110, y: y - 15, size: 10, font: fontBold, color: black })
+    page.drawRectangle({
+      x: 40,
+      y: y - 20,
+      width: width - 80,
+      height: 20,
+      color: boxBackgroundColor,
+      opacity: 0.6,
+    })
+    page.drawText('Description', {
+      x: 48,
+      y: y - 15,
+      size: 10,
+      font: fontBold,
+      color: textColorRgb,
+    })
+    page.drawText('Qty', {
+      x: width - 220,
+      y: y - 15,
+      size: 10,
+      font: fontBold,
+      color: textColorRgb,
+    })
+    page.drawText('Unit', {
+      x: width - 170,
+      y: y - 15,
+      size: 10,
+      font: fontBold,
+      color: textColorRgb,
+    })
+    page.drawText('Amount', {
+      x: width - 110,
+      y: y - 15,
+      size: 10,
+      font: fontBold,
+      color: textColorRgb,
+    })
 
     y -= 26
 
@@ -212,10 +398,36 @@ export const handler: Handler = async (event) => {
 
       // Description (wrap rudimentary)
       const lines = [title, desc].filter(Boolean).join(' — ')
-      page.drawText(lines, { x: 48, y: y - 12, size: 10, font, color: black, maxWidth: width - 80 - 240, lineHeight: 12 })
-      page.drawText(String(qty), { x: width - 220, y: y - 12, size: 10, font, color: black })
-      page.drawText(money(unit), { x: width - 170, y: y - 12, size: 10, font, color: black })
-      page.drawText(money(amount), { x: width - 110, y: y - 12, size: 10, font, color: black })
+      page.drawText(lines, {
+        x: 48,
+        y: y - 12,
+        size: 10,
+        font,
+        color: textColorRgb,
+        maxWidth: width - 80 - 240,
+        lineHeight: 12,
+      })
+      page.drawText(String(qty), {
+        x: width - 220,
+        y: y - 12,
+        size: 10,
+        font,
+        color: textColorRgb,
+      })
+      page.drawText(money(unit), {
+        x: width - 170,
+        y: y - 12,
+        size: 10,
+        font,
+        color: textColorRgb,
+      })
+      page.drawText(money(amount), {
+        x: width - 110,
+        y: y - 12,
+        size: 10,
+        font,
+        color: textColorRgb,
+      })
 
       y -= 18
       if (y < 120) {
@@ -233,8 +445,10 @@ export const handler: Handler = async (event) => {
     let ty = Math.max(y - 6, 140)
 
     function row(label: string, value: string, bold = false) {
-      page.drawText(label, { x: totalsX, y: ty, size: 10, font: bold ? fontBold : font, color: black })
-      page.drawText(value, { x: width - 110, y: ty, size: 10, font: bold ? fontBold : font, color: black })
+      const fontToUse = bold ? fontBold : font
+      const colorToUse = bold ? accentRgbColor : textColorRgb
+      page.drawText(label, { x: totalsX, y: ty, size: 10, font: fontToUse, color: colorToUse })
+      page.drawText(value, { x: width - 110, y: ty, size: 10, font: fontToUse, color: colorToUse })
       ty -= 14
     }
 
@@ -244,12 +458,10 @@ export const handler: Handler = async (event) => {
     row('Total', money(total), true)
 
     // Footer note
-    page.drawText('Thank you for the opportunity to earn your business.', {
-      x: 40,
-      y: 40,
-      size: 10,
-      font,
-      color: rgb(0.4, 0.4, 0.4),
+    let footerY = 40
+    footerLines.forEach((line) => {
+      page.drawText(line, { x: 40, y: footerY, size: 10, font, color: mutedRgb })
+      footerY -= 14
     })
 
     const bytes = await pdf.save()

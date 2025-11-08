@@ -1,6 +1,8 @@
 import { Handler } from '@netlify/functions'
 import { createClient } from '@sanity/client'
+import imageUrlBuilder from '@sanity/image-url'
 import { renderInvoicePdf } from '../lib/invoicePdf'
+import { fetchPrintSettings } from '../lib/printSettings'
 
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
@@ -30,6 +32,7 @@ const sanity = hasSanityConfig
       useCdn: false,
     })
   : null
+const imageBuilder = sanity ? imageUrlBuilder(sanity) : null
 
 async function fetchInvoiceFromSanity(invoiceId: string) {
   const cleanId = invoiceId?.trim()
@@ -179,12 +182,23 @@ export const handler: Handler = async (event) => {
   const billTo = invoiceData?.billTo || {}
   const shipTo = invoiceData?.shipTo || invoiceData?.billTo || {}
   const invoiceNumber = invoiceNumberFromPayload || invoiceData?.invoiceNumber || ''
+  const printSettings = sanity ? await fetchPrintSettings(sanity) : null
+  let logoUrl: string | undefined
+  if (printSettings?.logo && imageBuilder) {
+    try {
+      logoUrl = imageBuilder.image(printSettings.logo).width(400).url()
+    } catch (err) {
+      console.warn('generateInvoicePDF: failed to build logo URL', err)
+    }
+  }
 
   try {
     const { base64 } = await renderInvoicePdf(invoiceData, {
       invoiceNumber: String(invoiceNumber || ''),
       invoiceDate: invoiceDate,
       dueDate: dueDate,
+      printSettings,
+      logoUrl,
     })
 
     const identifier = String(invoiceNumber || invoiceId || invoiceData?._id || billTo?.name || shipTo?.name || 'invoice')
