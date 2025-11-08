@@ -21,7 +21,7 @@
     "@sanity/presentation": "^1.9.1",
     "@sanity/preview-url-secret": "^2.1.15",
     "@sanity/ui": "latest",
-    "@sanity/vision": "latest",
+    "@sanity/vision": "4.11.0",
     "@sanity/visual-editing": "^4.0.0",
     "codemirror": "^6.0.0",
     "@stripe/stripe-js": "^3.2.0",
