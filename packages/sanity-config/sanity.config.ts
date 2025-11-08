@@ -17,8 +17,7 @@ const deskTool: DeskToolFactory =
 import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {media} from 'sanity-plugin-media'
-import {presentationTool} from '@sanity/presentation'
-import {definePreviewUrl} from '@sanity/preview-url-secret/define-preview-url'
+// Removed presentation/preview tool
 import {schemaMarkup} from '@operationnation/sanity-plugin-schema-markup'
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
@@ -28,6 +27,8 @@ import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 import {fasBrandTheme} from './src/theme/fasBrandTheme'
+// Import order actions
+
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
 const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : ''
@@ -107,100 +108,11 @@ const disableVisualEditingOverride = getEnvFlag(
   'SANITY_STUDIO_DISABLE_VISUAL_EDITING',
   'VITE_SANITY_STUDIO_DISABLE_VISUAL_EDITING',
 )
-const presentationPreviewOrigin =
-  getEnv('SANITY_STUDIO_PREVIEW_ORIGIN') ||
-  getEnv('PUBLIC_SITE_URL') ||
-  getEnv('SANITY_STUDIO_NETLIFY_BASE') ||
-  undefined
-
-const previewOrigin = normalizeBaseUrl(presentationPreviewOrigin, 'http://localhost:3333')!
-
-const fasCmsPreviewOrigin = normalizeBaseUrl(
-  getEnv('SANITY_STUDIO_FAS_CMS_PREVIEW_ORIGIN') ||
-    getEnv('SANITY_STUDIO_LEGACY_PREVIEW_ORIGIN') ||
-    getEnv('FAS_CMS_PREVIEW_ORIGIN'),
-)
-
-const previewUrlResolver = definePreviewUrl({
-  origin: previewOrigin,
-  preview: '/',
-})
-
-type PreviewTarget = {
-  key: string
-  label: string
-  origin: string
-}
-
-const previewTargets: PreviewTarget[] = [
-  {key: 'primary', label: 'Storefront', origin: previewOrigin},
-  ...(fasCmsPreviewOrigin
-    ? ([{key: 'fas-cms', label: 'FAS CMS', origin: fasCmsPreviewOrigin}] as PreviewTarget[])
-    : []),
-]
-
-type PreviewableDocument = {
-  _type?: string | null
-  _id?: string | null
-  slug?: {current?: string | null} | null
-}
-
-const resolvePreviewPath = (document: PreviewableDocument | null | undefined): string => {
-  if (!document) return '/'
-
-  const slug = document.slug?.current?.trim()
-  const fallbackSlug = document._id?.replace(/^drafts\./, '')
-
-  switch (document._type) {
-    case 'product':
-      return `/shop/${slug || fallbackSlug || ''}`
-    case 'category':
-      return `/shop/categories/${slug || fallbackSlug || ''}`
-    case 'page':
-      return `/${slug || fallbackSlug || ''}`
-    case 'home':
-      return '/'
-    default:
-      return '/'
-  }
-}
-
-type LocationResolverValue = {
-  slug?: string | null
-  _id?: string | null
-}
-
-const buildDocumentLocation = (title: string, type: string) => ({
-  select: {
-    slug: 'slug.current',
-    _id: '_id',
-  },
-  resolve: (value: LocationResolverValue | null) => {
-    if (!value?._id) return undefined
-    const path = resolvePreviewPath({
-      _type: type,
-      _id: value._id,
-      slug: value.slug ? {current: value.slug} : null,
-    })
-
-    const locations = previewTargets.map((target) => ({
-      title: `${title} (${target.label})`,
-      href: new URL(path || '/', target.origin).toString(),
-    }))
-
-    if (!locations.length) return undefined
-
-    return {
-      locations,
-    }
-  },
-})
+// Preview tool removed; all related URL/target resolvers deleted
 
 const visionEnabled = disableVisionOverride === true ? false : true
 const visualEditingEnabled =
-  disableVisualEditingOverride === true
-    ? false
-    : enableVisualEditingOverride === true // default disabled unless explicitly enabled
+  disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true // default disabled unless explicitly enabled
 
 export default defineConfig({
   name: 'default',
@@ -228,19 +140,7 @@ export default defineConfig({
     media(),
     codeInput(),
     schemaMarkup(),
-    presentationTool({
-      previewUrl: previewUrlResolver,
-      name: 'preview',
-      title: 'Preview',
-      resolve: {
-        locations: {
-          product: buildDocumentLocation('Shop product', 'product'),
-          category: buildDocumentLocation('Browse category', 'category'),
-          page: buildDocumentLocation('View page', 'page'),
-          home: buildDocumentLocation('Home', 'home'),
-        },
-      },
-    }),
+    // preview/presentation tool removed
     ...(visionEnabled ? [visionTool()] : []),
   ],
 
@@ -252,7 +152,7 @@ export default defineConfig({
   },
 
   document: {
-    actions: resolveDocumentActions,
+    actions: (prev, context) => resolveDocumentActions(prev, context),
     badges: resolveDocumentBadges,
   },
 
