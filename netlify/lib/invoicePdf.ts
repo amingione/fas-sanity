@@ -3,6 +3,7 @@ import type { PDFFont, PDFImage, PDFPage } from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
 import { deriveOptionsFromMetadata } from './stripeCartItem'
+import { PrintSettings, darkenRgb, hexToRgb, lightenRgb } from './printSettings'
 
 export type InvoiceAddress = {
   name?: string | null
@@ -114,10 +115,17 @@ type BrandTheme = {
   phone: string
   email: string
   logoPath: string
+  website?: string
   accent: ReturnType<typeof rgb>
   slate: ReturnType<typeof rgb>
   slateDark: ReturnType<typeof rgb>
   slateMuted: ReturnType<typeof rgb>
+  borderColor?: ReturnType<typeof rgb>
+  headerLineColor?: ReturnType<typeof rgb>
+  tableHeaderBg?: ReturnType<typeof rgb>
+  tableAltBg?: ReturnType<typeof rgb>
+  totalsHighlight?: ReturnType<typeof rgb>
+  logoUrl?: string
 }
 
 const brandTheme: BrandTheme = {
@@ -127,10 +135,16 @@ const brandTheme: BrandTheme = {
   phone: '(812) 200-9012',
   email: 'sales@fasmotorsports.com',
   logoPath: path.resolve(process.cwd(), 'public/media/New Red FAS Logo.png'),
+  website: 'www.fasmotorsports.com',
   accent: rgb(0.86, 0.23, 0.18),
   slate: rgb(100 / 255, 116 / 255, 139 / 255),
   slateDark: rgb(51 / 255, 65 / 255, 85 / 255),
   slateMuted: rgb(148 / 255, 163 / 255, 184 / 255),
+  borderColor: rgb(226 / 255, 232 / 255, 240 / 255),
+  headerLineColor: rgb(203 / 255, 213 / 255, 225 / 255),
+  tableHeaderBg: rgb(241 / 255, 245 / 255, 249 / 255),
+  tableAltBg: rgb(249 / 255, 250 / 255, 251 / 255),
+  totalsHighlight: rgb(236 / 255, 254 / 255, 255 / 255),
 }
 
 type Fonts = {
@@ -140,10 +154,19 @@ type Fonts = {
   boldItalic: PDFFont
 }
 
+type FontSelection = {
+  regular: StandardFonts
+  bold: StandardFonts
+  italic: StandardFonts
+  boldItalic: StandardFonts
+}
+
 type InvoiceRenderOptions = {
   invoiceNumber?: string
   invoiceDate?: string
   dueDate?: string
+  printSettings?: PrintSettings | null
+  logoUrl?: string
 }
 
 export type InvoicePdfResult = {
@@ -446,38 +469,134 @@ function extractShippingAmount(invoice: InvoiceLike | null | undefined): number 
   return 0
 }
 
+const FONT_FAMILY_MAP: Record<'Helvetica' | 'Arial' | 'Times' | 'Courier', FontSelection> = {
+  Helvetica: {
+    regular: StandardFonts.Helvetica,
+    bold: StandardFonts.HelveticaBold,
+    italic: StandardFonts.HelveticaOblique,
+    boldItalic: StandardFonts.HelveticaBoldOblique,
+  },
+  Arial: {
+    regular: StandardFonts.Helvetica,
+    bold: StandardFonts.HelveticaBold,
+    italic: StandardFonts.HelveticaOblique,
+    boldItalic: StandardFonts.HelveticaBoldOblique,
+  },
+  Times: {
+    regular: StandardFonts.TimesRoman,
+    bold: StandardFonts.TimesRomanBold,
+    italic: StandardFonts.TimesRomanItalic,
+    boldItalic: StandardFonts.TimesRomanBoldItalic,
+  },
+  Courier: {
+    regular: StandardFonts.Courier,
+    bold: StandardFonts.CourierBold,
+    italic: StandardFonts.CourierOblique,
+    boldItalic: StandardFonts.CourierBoldOblique,
+  },
+}
+
+const DEFAULT_FONT_FAMILY: keyof typeof FONT_FAMILY_MAP = 'Helvetica'
+
 export async function renderInvoicePdf(
   invoice: InvoiceLike | null | undefined,
-  options: InvoiceRenderOptions = {}
+  options: InvoiceRenderOptions = {},
 ): Promise<InvoicePdfResult> {
+  const settings = options.printSettings ?? null
   const pdf = await PDFDocument.create()
-  const page = pdf.addPage([612, 792])
+  const pageSize =
+    settings?.layout?.pageSize === 'a4' ? [595.28, 841.89] : [612, 792]
+  const page = pdf.addPage(pageSize as [number, number])
+
+  const familyKey = (settings?.typography?.fontFamily ?? DEFAULT_FONT_FAMILY) as keyof typeof FONT_FAMILY_MAP
+  const selection = FONT_FAMILY_MAP[familyKey] ?? FONT_FAMILY_MAP[DEFAULT_FONT_FAMILY]
   const fonts: Fonts = {
-    regular: await pdf.embedFont(StandardFonts.Helvetica),
-    bold: await pdf.embedFont(StandardFonts.HelveticaBold),
-    italic: await pdf.embedFont(StandardFonts.HelveticaOblique),
-    boldItalic: await pdf.embedFont(StandardFonts.HelveticaBoldOblique),
+    regular: await pdf.embedFont(selection.regular),
+    bold: await pdf.embedFont(selection.bold),
+    italic: await pdf.embedFont(selection.italic),
+    boldItalic: await pdf.embedFont(selection.boldItalic),
   }
-  const logo = await loadLogo(pdf, brandTheme.logoPath)
+
+  const showLogo = settings?.invoiceSettings?.showLogo !== false
+  const logo = showLogo ? await loadLogo(pdf, brandTheme.logoPath, options.logoUrl) : null
   const normalizedInvoice = prepareInvoice(invoice)
   const totals = computeInvoiceTotals(normalizedInvoice)
 
-  const invoiceNumber = normalizeString(
-    options.invoiceNumber ?? normalizedInvoice?.invoiceNumber ?? options.invoiceNumber ?? ''
-  ) || '—'
+  const invoiceNumber =
+    normalizeString(
+      options.invoiceNumber ?? normalizedInvoice?.invoiceNumber ?? options.invoiceNumber ?? '',
+    ) || '—'
   const invoiceDate = normalizeDate(options.invoiceDate ?? normalizedInvoice?.invoiceDate)
   const dueDate = normalizeDate(options.dueDate ?? normalizedInvoice?.dueDate)
+
+  const companyAddressLines = (settings?.companyAddress ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const street = companyAddressLines[0] || brandTheme.street
+  const city = companyAddressLines.slice(1).join(', ') || brandTheme.city
+
+  const accentRgb = hexToRgb(settings?.primaryColor?.hex, {r: 0.86, g: 0.23, b: 0.18})
+  const textRgb = hexToRgb(settings?.textColor?.hex, {r: 100 / 255, g: 116 / 255, b: 139 / 255})
+  const headingRgb = darkenRgb(accentRgb, 0.15)
+  const secondaryRgb = settings?.secondaryColor?.hex
+    ? hexToRgb(settings.secondaryColor.hex, lightenRgb(textRgb, 0.4))
+    : lightenRgb(textRgb, 0.4)
+  const borderRgb = lightenRgb(textRgb, 0.55)
+  const headerLineRgb = lightenRgb(textRgb, 0.45)
+  const tableHeaderRgb = lightenRgb(secondaryRgb, 0.55)
+  const tableAltRgb = lightenRgb(secondaryRgb, 0.75)
+  const totalsHighlightRgb = lightenRgb(accentRgb, 0.6)
+
+  const brand: BrandTheme = {
+    ...brandTheme,
+    name: settings?.companyName?.trim() || brandTheme.name,
+    street,
+    city,
+    phone: settings?.companyPhone?.trim() || brandTheme.phone,
+    email: settings?.companyEmail?.trim() || brandTheme.email,
+    website: settings?.companyWebsite?.trim() || brandTheme.website,
+    accent: rgb(accentRgb.r, accentRgb.g, accentRgb.b),
+    slate: rgb(textRgb.r, textRgb.g, textRgb.b),
+    slateDark: rgb(headingRgb.r, headingRgb.g, headingRgb.b),
+    slateMuted: rgb(secondaryRgb.r, secondaryRgb.g, secondaryRgb.b),
+    borderColor: rgb(borderRgb.r, borderRgb.g, borderRgb.b),
+    headerLineColor: rgb(headerLineRgb.r, headerLineRgb.g, headerLineRgb.b),
+    tableHeaderBg: rgb(tableHeaderRgb.r, tableHeaderRgb.g, tableHeaderRgb.b),
+    tableAltBg: rgb(tableAltRgb.r, tableAltRgb.g, tableAltRgb.b),
+    totalsHighlight: rgb(totalsHighlightRgb.r, totalsHighlightRgb.g, totalsHighlightRgb.b),
+    logoUrl: options.logoUrl,
+  }
+
+  const showPaymentTerms = settings?.invoiceSettings?.showPaymentTerms !== false
+  const invoiceNotes = collectNotes(normalizedInvoice, showPaymentTerms)
+  if (invoiceNotes.length === 0) {
+    invoiceNotes.push('Payment is due upon receipt.')
+    invoiceNotes.push('Thank you for your business!')
+  }
+  const footerText = settings?.invoiceSettings?.footerText ?? ''
+  if (footerText) {
+    const footerLines = footerText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+    invoiceNotes.push(...footerLines)
+  }
+
+  const headerText = settings?.invoiceSettings?.headerText?.trim() || 'INVOICE'
 
   drawInvoice({
     page,
     fonts,
     logo,
-    brand: brandTheme,
+    brand,
     invoice: normalizedInvoice,
     invoiceNumber,
     invoiceDate,
     dueDate,
     totals,
+    notes: invoiceNotes,
+    headerText,
   })
 
   const bytes = await pdf.save({ useObjectStreams: false })
@@ -494,6 +613,8 @@ type DrawContext = {
   invoiceDate: string
   dueDate: string
   totals: InvoiceTotals
+  notes: string[]
+  headerText: string
 }
 
 function drawInvoice({
@@ -506,6 +627,8 @@ function drawInvoice({
   invoiceDate,
   dueDate,
   totals,
+  notes,
+  headerText,
 }: DrawContext) {
   const width = page.getWidth()
   const height = page.getHeight()
@@ -517,11 +640,15 @@ function drawInvoice({
   const headingColor = brand.slateDark
   const textColor = brand.slate
   const mutedText = brand.slateMuted
-  const borderColor = rgb(226 / 255, 232 / 255, 240 / 255)
-  const headerLineColor = rgb(203 / 255, 213 / 255, 225 / 255)
-  const tableHeaderBg = rgb(241 / 255, 245 / 255, 249 / 255)
-  const tableAltBg = rgb(249 / 255, 250 / 255, 251 / 255)
-  const totalsHighlight = rgb(236 / 255, 254 / 255, 255 / 255)
+  const borderColor = brand.borderColor ?? rgb(226 / 255, 232 / 255, 240 / 255)
+  const headerLineColor =
+    brand.headerLineColor ?? rgb(203 / 255, 213 / 255, 225 / 255)
+  const tableHeaderBg =
+    brand.tableHeaderBg ?? rgb(241 / 255, 245 / 255, 249 / 255)
+  const tableAltBg =
+    brand.tableAltBg ?? rgb(249 / 255, 250 / 255, 251 / 255)
+  const totalsHighlight =
+    brand.totalsHighlight ?? rgb(236 / 255, 254 / 255, 255 / 255)
 
   // Header block
   const headerTop = y
@@ -549,7 +676,7 @@ function drawInvoice({
   infoY -= 12
   page.drawText(`Email: ${brand.email}`, { x: infoX, y: infoY, size: 10, font: fonts.regular, color: textColor })
 
-  const invoiceTitle = 'INVOICE'
+  const invoiceTitle = headerText || 'INVOICE'
   const invoiceTitleSize = 32
   const invoiceTitleWidth = fonts.bold.widthOfTextAtSize(invoiceTitle, invoiceTitleSize)
   page.drawText(invoiceTitle, {
@@ -643,11 +770,6 @@ function drawInvoice({
   })
 
   let footerY = footerLineY - 20
-  const notes = collectNotes(invoice)
-  if (notes.length === 0) {
-    notes.push('Payment is due upon receipt.')
-    notes.push('Thank you for your business!')
-  }
   for (const note of notes) {
     if (footerY < margin + 24) break
     page.drawText(note, {
@@ -1299,7 +1421,7 @@ function resolveLineTotal(item: InvoiceLineItem): string {
   return money(total)
 }
 
-function collectNotes(invoice: InvoiceLike): string[] {
+function collectNotes(invoice: InvoiceLike | null | undefined, includePaymentTerms = true): string[] {
   const custom = typeof invoice.customerNotes === 'string' ? invoice.customerNotes : ''
   if (custom.trim()) {
     return custom
@@ -1308,7 +1430,7 @@ function collectNotes(invoice: InvoiceLike): string[] {
       .filter(Boolean)
   }
   const terms = typeof invoice.terms === 'string' ? invoice.terms : ''
-  if (terms.trim()) {
+  if (includePaymentTerms && terms.trim()) {
     return terms
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -1317,16 +1439,42 @@ function collectNotes(invoice: InvoiceLike): string[] {
   return []
 }
 
-async function loadLogo(pdf: PDFDocument, logoPath: string): Promise<PDFImage | null> {
+async function loadLogo(pdf: PDFDocument, logoPath: string, logoUrl?: string): Promise<PDFImage | null> {
+  const embedData = async (data: Uint8Array | ArrayBuffer) => {
+    try {
+      return await pdf.embedPng(data)
+    } catch {
+      try {
+        return await pdf.embedJpg(data)
+      } catch {
+        return null
+      }
+    }
+  }
+
+  if (logoUrl) {
+    try {
+      const response = await fetch(logoUrl)
+      if (response.ok) {
+        const buffer = await response.arrayBuffer()
+        const embedded = await embedData(buffer)
+        if (embedded) return embedded
+      }
+    } catch (err) {
+      console.warn('renderInvoicePdf: failed to fetch logo', err)
+    }
+  }
+
   try {
     if (logoPath && fs.existsSync(logoPath)) {
       const bytes = fs.readFileSync(logoPath)
-      if (logoPath.toLowerCase().endsWith('.png')) return await pdf.embedPng(bytes)
-      return await pdf.embedJpg(bytes)
+      const embedded = await embedData(bytes)
+      if (embedded) return embedded
     }
   } catch (err) {
     console.warn('renderInvoicePdf: failed to load logo', err)
   }
+
   return null
 }
 

@@ -1,8 +1,10 @@
 import { Handler } from '@netlify/functions'
 import { Resend } from 'resend'
 import { createClient } from '@sanity/client'
+import imageUrlBuilder from '@sanity/image-url'
 import Stripe from 'stripe'
 import { renderInvoicePdf, computeInvoiceTotals } from '../lib/invoicePdf'
+import { fetchPrintSettings } from '../lib/printSettings'
 
 // --- CORS (more permissive localhost-aware)
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333').split(',')
@@ -34,6 +36,7 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
+const logoBuilder = imageUrlBuilder(sanity)
 
 const CAN_PATCH = Boolean(process.env.SANITY_API_TOKEN)
 
@@ -242,11 +245,23 @@ const handler: Handler = async (event) => {
       }
     }
 
+    const printSettings = await fetchPrintSettings(sanity)
+    let logoUrl: string | undefined
+    if (printSettings?.logo) {
+      try {
+        logoUrl = logoBuilder.image(printSettings.logo).width(400).url()
+      } catch (err) {
+        console.warn('resendInvoiceEmail: failed to build logo URL', err)
+      }
+    }
+
     // Build PDF and attach
     const pdfResult = await renderInvoicePdf(invoice, {
       invoiceNumber: String(invoice.invoiceNumber || ''),
       invoiceDate: invoice?.invoiceDate,
       dueDate: invoice?.dueDate,
+      printSettings,
+      logoUrl,
     })
 
     const customerName = invoice?.billTo?.name || 'Customer'
