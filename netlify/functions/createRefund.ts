@@ -120,7 +120,20 @@ export const handler: Handler = async (event) => {
     const rawOrderId = typeof body?.orderId === 'string' ? body.orderId : ''
     const rawInvoiceId = typeof body?.invoiceId === 'string' ? body.invoiceId : ''
     const reason = typeof body?.reason === 'string' ? body.reason.trim() : ''
-    const amountInput = parseAmount(body?.amount)
+    const rawAmountCents =
+      typeof body?.amountCents === 'number'
+        ? body.amountCents
+        : typeof body?.amountCents === 'string' && body.amountCents.trim()
+          ? Number(body.amountCents)
+          : undefined
+    const normalizedAmountCents =
+      typeof rawAmountCents === 'number' && Number.isFinite(rawAmountCents)
+        ? Math.round(rawAmountCents)
+        : undefined
+    const amountInput =
+      typeof normalizedAmountCents === 'number'
+        ? normalizedAmountCents / 100
+        : parseAmount(body?.amount)
     const orderId = rawOrderId ? normalizeSanityId(rawOrderId) : ''
     const invoiceId = rawInvoiceId ? normalizeSanityId(rawInvoiceId) : ''
 
