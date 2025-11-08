@@ -1,8 +1,10 @@
 // src/schemaTypes/documents/order.tsx
 import {defineType} from 'sanity'
-import {PackageIcon, DocumentPdfIcon} from '@sanity/icons'
+import {PackageIcon, DocumentPdfIcon, ResetIcon} from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
 import React from 'react'
+import {decodeBase64ToArrayBuffer} from '../../utils/base64'
+import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
 
 // ============================================================================
 // CUSTOM FULFILLMENT OVERVIEW COMPONENT
@@ -13,18 +15,10 @@ const FulfillmentOverview = (props: any) => {
 
   if (!value) return null
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '$0.00'
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
-
   const formatDate = (date?: string) => {
     if (!date) return 'N/A'
     return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
+      month: 'long',
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
@@ -32,239 +26,99 @@ const FulfillmentOverview = (props: any) => {
     })
   }
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'paid':
-        return '#10b981'
-      case 'fulfilled':
-        return '#3b82f6'
-      case 'shipped':
-        return '#8b5cf6'
-      case 'cancelled':
-        return '#ef4444'
-      default:
-        return '#6b7280'
-    }
-  }
+  const customerName = value.customerName || value.shippingAddress?.name || 'Unknown Customer'
 
   return (
-    <div style={{padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px'}}>
-      {/* Header */}
-      <div
-        style={{
-          marginBottom: '24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <div>
-          <h2 style={{margin: 0, fontSize: '24px', fontWeight: 'bold'}}>
-            Order {value.orderNumber}
-          </h2>
-          <p style={{margin: '4px 0 0', color: '#6b7280', fontSize: '14px'}}>
-            {formatDate(value.createdAt)}
-          </p>
-        </div>
+    <div style={{padding: '24px', backgroundColor: '#ffffff'}}>
+      {/* Customer Name */}
+      <div style={{marginBottom: '24px'}}>
         <div
           style={{
-            padding: '6px 16px',
-            backgroundColor: getStatusColor(value.status),
-            color: 'white',
-            borderRadius: '20px',
+            fontSize: '13px',
+            color: '#6b7280',
             fontWeight: '600',
             textTransform: 'uppercase',
-            fontSize: '12px',
+            letterSpacing: '0.5px',
+            marginBottom: '8px',
           }}
         >
-          {value.status || 'Unknown'}
+          Customer
         </div>
+        <div style={{fontSize: '24px', fontWeight: '700', color: '#111827'}}>{customerName}</div>
+        {value.customerEmail && (
+          <div style={{fontSize: '14px', color: '#6b7280', marginTop: '4px'}}>
+            {value.customerEmail}
+          </div>
+        )}
       </div>
 
-      {/* Customer Info */}
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '16px',
-          borderRadius: '6px',
-          marginBottom: '16px',
-          border: '1px solid #e5e7eb',
-        }}
-      >
-        <h3 style={{margin: '0 0 12px', fontSize: '16px', fontWeight: '600'}}>Customer</h3>
-        <div
-          style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px'}}
-        >
-          <div>
-            <strong>Name:</strong> {value.customerName || 'N/A'}
-          </div>
-          <div>
-            <strong>Email:</strong> {value.customerEmail || 'N/A'}
-          </div>
-        </div>
-      </div>
-
-      {/* Shipping Address */}
-      {value.shippingAddress && (
+      {/* Ordered Items */}
+      <div style={{marginBottom: '24px'}}>
         <div
           style={{
-            backgroundColor: 'white',
-            padding: '16px',
-            borderRadius: '6px',
-            marginBottom: '16px',
-            border: '1px solid #e5e7eb',
+            fontSize: '13px',
+            color: '#6b7280',
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '12px',
           }}
         >
-          <h3 style={{margin: '0 0 12px', fontSize: '16px', fontWeight: '600'}}>Ship To</h3>
-          <div style={{fontSize: '14px', lineHeight: '1.6'}}>
-            <div>
-              <strong>{value.shippingAddress.name}</strong>
+          Ordered Items
+        </div>
+        {value.cart?.map((item: any, index: number) => (
+          <div
+            key={index}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              padding: '12px 0',
+              borderBottom: index < value.cart.length - 1 ? '1px solid #f3f4f6' : 'none',
+            }}
+          >
+            <div style={{flex: 1}}>
+              <div style={{fontSize: '15px', fontWeight: '600', color: '#111827'}}>
+                {item.name || item.productName || 'Product'}
+              </div>
+              {item.sku && (
+                <div style={{fontSize: '13px', color: '#6b7280', marginTop: '2px'}}>
+                  SKU: {item.sku}
+                </div>
+              )}
+              {item.optionSummary && (
+                <div style={{fontSize: '13px', color: '#6b7280', marginTop: '2px'}}>
+                  {item.optionSummary}
+                </div>
+              )}
             </div>
-            <div>{value.shippingAddress.addressLine1}</div>
-            {value.shippingAddress.addressLine2 && <div>{value.shippingAddress.addressLine2}</div>}
-            <div>
-              {value.shippingAddress.city}, {value.shippingAddress.state}{' '}
-              {value.shippingAddress.postalCode}
+            <div style={{textAlign: 'right', marginLeft: '16px'}}>
+              <div style={{fontSize: '15px', fontWeight: '600', color: '#111827'}}>
+                Qty: {item.quantity || 1}
+              </div>
             </div>
-            {value.shippingAddress.phone && <div>Phone: {value.shippingAddress.phone}</div>}
           </div>
-        </div>
-      )}
-
-      {/* Order Items */}
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '16px',
-          borderRadius: '6px',
-          marginBottom: '16px',
-          border: '1px solid #e5e7eb',
-        }}
-      >
-        <h3 style={{margin: '0 0 12px', fontSize: '16px', fontWeight: '600'}}>Items to Ship</h3>
-        <table style={{width: '100%', fontSize: '14px', borderCollapse: 'collapse'}}>
-          <thead>
-            <tr style={{borderBottom: '2px solid #e5e7eb', textAlign: 'left'}}>
-              <th style={{padding: '8px 0', fontWeight: '600'}}>Product</th>
-              <th style={{padding: '8px 0', fontWeight: '600', textAlign: 'center'}}>SKU</th>
-              <th style={{padding: '8px 0', fontWeight: '600', textAlign: 'center'}}>Qty</th>
-              <th style={{padding: '8px 0', fontWeight: '600', textAlign: 'right'}}>Price</th>
-              <th style={{padding: '8px 0', fontWeight: '600', textAlign: 'right'}}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {value.cart?.map((item: any, index: number) => (
-              <tr key={index} style={{borderBottom: '1px solid #f3f4f6'}}>
-                <td style={{padding: '12px 0'}}>
-                  <div style={{fontWeight: '500'}}>{item.name || item.productName}</div>
-                  {item.optionSummary && (
-                    <div style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>
-                      {item.optionSummary}
-                    </div>
-                  )}
-                </td>
-                <td style={{padding: '12px 0', textAlign: 'center', color: '#6b7280'}}>
-                  {item.sku || 'N/A'}
-                </td>
-                <td style={{padding: '12px 0', textAlign: 'center', fontWeight: '500'}}>
-                  {item.quantity}
-                </td>
-                <td style={{padding: '12px 0', textAlign: 'right'}}>
-                  {formatCurrency(item.price)}
-                </td>
-                <td style={{padding: '12px 0', textAlign: 'right', fontWeight: '500'}}>
-                  {formatCurrency(item.total || item.lineTotal)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        ))}
       </div>
 
-      {/* Order Totals */}
-      <div
-        style={{
-          backgroundColor: 'white',
-          padding: '16px',
-          borderRadius: '6px',
-          marginBottom: '16px',
-          border: '1px solid #e5e7eb',
-        }}
-      >
+      {/* Order Date */}
+      <div>
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
+            fontSize: '13px',
+            color: '#6b7280',
+            fontWeight: '600',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
             marginBottom: '8px',
-            fontSize: '14px',
           }}
         >
-          <span>Subtotal:</span>
-          <span>{formatCurrency(value.amountSubtotal)}</span>
+          Order Date
         </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '8px',
-            fontSize: '14px',
-          }}
-        >
-          <span>Shipping:</span>
-          <span>{formatCurrency(value.amountShipping)}</span>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '8px',
-            fontSize: '14px',
-          }}
-        >
-          <span>Tax:</span>
-          <span>{formatCurrency(value.amountTax)}</span>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            paddingTop: '12px',
-            borderTop: '2px solid #e5e7eb',
-            fontSize: '18px',
-            fontWeight: 'bold',
-          }}
-        >
-          <span>Total:</span>
-          <span>{formatCurrency(value.totalAmount)}</span>
+        <div style={{fontSize: '16px', fontWeight: '600', color: '#111827'}}>
+          {formatDate(value.createdAt)}
         </div>
       </div>
-
-      {/* Tracking Info */}
-      {(value.trackingNumber || value.manualTrackingNumber) && (
-        <div
-          style={{
-            backgroundColor: '#dbeafe',
-            padding: '16px',
-            borderRadius: '6px',
-            border: '1px solid #93c5fd',
-          }}
-        >
-          <h3 style={{margin: '0 0 8px', fontSize: '16px', fontWeight: '600'}}>Tracking</h3>
-          <div style={{fontSize: '14px'}}>
-            <strong>Tracking Number:</strong> {value.trackingNumber || value.manualTrackingNumber}
-          </div>
-          {value.trackingUrl && (
-            <a
-              href={value.trackingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{color: '#2563eb', textDecoration: 'underline', fontSize: '14px'}}
-            >
-              Track Package →
-            </a>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -273,15 +127,15 @@ const FulfillmentOverview = (props: any) => {
 // ORDER SCHEMA
 // ============================================================================
 
-export default defineType({
+const orderSchema = defineType({
   name: 'order',
   title: 'Order',
   type: 'document',
   icon: PackageIcon,
   groups: [
-    {name: 'overview', title: 'Overview', default: true},
+    {name: 'overview', title: 'Overview'},
     {name: 'customer', title: 'Customer'},
-    {name: 'items', title: 'Items'},
+    {name: 'items', title: 'Items', default: true},
     {name: 'shipping', title: 'Shipping'},
     {name: 'payment', title: 'Payment'},
     {name: 'advanced', title: 'Advanced'},
@@ -304,7 +158,7 @@ export default defineType({
       type: 'string',
       title: 'Order Number',
       group: 'overview',
-      readOnly: true,
+      readOnly: false,
     },
     {
       name: 'status',
@@ -321,7 +175,7 @@ export default defineType({
         ],
         layout: 'dropdown',
       },
-      readOnly: true,
+      readOnly: false,
     },
     {
       name: 'createdAt',
@@ -337,7 +191,7 @@ export default defineType({
       type: 'string',
       title: 'Customer Name',
       group: 'customer',
-      readOnly: true,
+      readOnly: false,
     },
     {
       name: 'customerEmail',
@@ -369,26 +223,10 @@ export default defineType({
           fields: [
             {name: 'name', type: 'string', title: 'Product Name'},
             {name: 'sku', type: 'string', title: 'SKU'},
-            {name: 'productSlug', type: 'string', title: 'Product Slug'},
-            {name: 'productUrl', type: 'string', title: 'Product URL'},
             {name: 'quantity', type: 'number', title: 'Quantity'},
             {name: 'price', type: 'number', title: 'Unit Price'},
-            {name: 'total', type: 'number', title: 'Total'},
-            {name: 'lineTotal', type: 'number', title: 'Line Total'},
             {name: 'optionSummary', type: 'string', title: 'Options'},
-            {name: 'upgrades', type: 'string', title: 'Upgrades'},
             {name: 'image', type: 'url', title: 'Image'},
-            {name: 'productName', type: 'string', title: 'Product Name (Stripe)'},
-            {
-              name: 'metadata',
-              type: 'object',
-              title: 'Stripe Metadata',
-              options: {collapsed: true, collapsible: true},
-              fields: [
-                {name: 'option_summary', type: 'string', title: 'Raw Option Summary'},
-                {name: 'upgrades', type: 'string', title: 'Raw Upgrades'},
-              ],
-            },
           ],
           preview: {
             select: {
@@ -561,36 +399,179 @@ export default defineType({
     select: {
       orderNumber: 'orderNumber',
       customerName: 'customerName',
+      shippingName: 'shippingAddress.name',
       status: 'status',
       total: 'totalAmount',
     },
-    prepare({orderNumber, customerName, status, total}) {
+    prepare({orderNumber, customerName, shippingName, status, total}) {
       const formattedTotal = total
         ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)
         : '$0.00'
+      const displayName = customerName || shippingName || 'No customer'
 
       return {
         title: orderNumber || 'Untitled Order',
-        subtitle: `${customerName || 'No customer'} • ${status || 'unknown'} • ${formattedTotal}`,
+        subtitle: `${displayName} • ${status || 'unknown'} • ${formattedTotal}`,
       }
     },
   },
 })
 
+export default orderSchema
+
+const SANITY_API_VERSION = '2024-10-01'
+
+type NetlifyRequestInit = RequestInit & {json?: unknown}
+
+const normalizeDocumentId = (value?: string | null): string => {
+  if (!value) return ''
+  return String(value)
+    .trim()
+    .replace(/^drafts\./, '')
+}
+
+const resolvePatchTargets = (rawId?: string | null): string[] => {
+  if (!rawId) return []
+  const clean = String(rawId).trim()
+  if (!clean) return []
+  const published = clean.replace(/^drafts\./, '')
+  const ids = new Set<string>([clean])
+  if (published && published !== clean) {
+    ids.add(published)
+  }
+  return Array.from(ids)
+}
+
+const openExternalUrl = (url?: string | null) => {
+  if (!url || typeof window === 'undefined') return
+  try {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch {
+    window.location.href = url
+  }
+}
+
+const confirmAction = (message: string) => {
+  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true
+  return window.confirm(message)
+}
+
+const filenameSafe = (value?: string | null, fallback = 'order') => {
+  const base = (value ?? fallback ?? 'order').toString().trim()
+  const normalized = base
+    .replace(/[^a-z0-9_-]+/gi, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  return normalized || fallback || 'order'
+}
+
+const asOptionalString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed || undefined
+}
+
+const readResponseMessage = async (response: Response) => {
+  try {
+    const data = await response.clone().json()
+    if (data && typeof data === 'object') {
+      if (typeof (data as any).error === 'string') return (data as any).error
+      if (typeof (data as any).message === 'string') return (data as any).message
+    }
+  } catch {
+    // fall through to text parsing
+  }
+
+  try {
+    const text = await response.text()
+    if (text) return text
+  } catch {
+    // ignore
+  }
+
+  return `Request failed (HTTP ${response.status})`
+}
+
+const responseToPdfBlob = async (response: Response): Promise<Blob> => {
+  const contentType = (response.headers.get('content-type') || '').toLowerCase()
+  if (contentType.includes('application/pdf')) {
+    const buffer = await response.arrayBuffer()
+    return new Blob([buffer], {type: 'application/pdf'})
+  }
+  const base64 = (await response.text()).replace(/^"|"$/g, '')
+  const buffer = decodeBase64ToArrayBuffer(base64)
+  return new Blob([buffer], {type: 'application/pdf'})
+}
+
+const parseCurrencyAmount = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return 0
+}
+
+const callNetlifyFunction = async (
+  fnName: string,
+  init: NetlifyRequestInit = {},
+): Promise<Response> => {
+  const {json, ...rest} = init
+  const body =
+    rest.body !== undefined ? rest.body : json !== undefined ? JSON.stringify(json) : undefined
+
+  const baseHeaders = new Headers(rest.headers || undefined)
+  if (body && !baseHeaders.has('Content-Type') && typeof body === 'string') {
+    baseHeaders.set('Content-Type', 'application/json')
+  }
+
+  const bases = getNetlifyFunctionBaseCandidates()
+  let lastError: unknown = null
+
+  for (const base of bases) {
+    const url = `${base}/.netlify/functions/${fnName}`
+    try {
+      const response = await fetch(url, {
+        ...rest,
+        method: rest.method ?? 'POST',
+        headers: new Headers(baseHeaders),
+        body,
+      })
+
+      if (response.status === 404) {
+        lastError = new Error(`${fnName} not available at ${base}`)
+        continue
+      }
+
+      if (response.ok && typeof window !== 'undefined') {
+        try {
+          window.localStorage?.setItem('NLFY_BASE', base)
+        } catch {
+          // ignore storage failures
+        }
+      }
+
+      return response
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError ?? new Error('Unable to reach Netlify functions')
+}
+
 // ============================================================================
-// DOCUMENT ACTIONS - Export for use in sanity.config.ts
+// DOCUMENT ACTIONS
 // ============================================================================
 
 export const orderActions: DocumentActionsResolver = (prev, context) => {
   const {schemaType} = context
 
-  // Only add these actions to order documents
   if (schemaType !== 'order') {
     return prev
   }
 
   return [
-    // Keep default actions first
     ...prev,
 
     // Print Packing Slip
@@ -603,32 +584,83 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         icon: DocumentPdfIcon,
         tone: 'primary',
         disabled: !doc,
-        onHandle: () => {
-          if (doc?.packingSlipUrl) {
-            const packingUrl =
-              typeof doc.packingSlipUrl === 'string'
-                ? doc.packingSlipUrl
-                : (doc.packingSlipUrl as any)?.url || undefined
+        onHandle: async () => {
+          if (!doc) return
 
-            if (packingUrl) {
-              try {
-                window.open(packingUrl, '_blank')
-              } catch {
-                // fallback for environments where window.open may throw
-                window.location.href = packingUrl
-              }
-            } else {
-              // fallback to API route when packingSlipUrl isn't a string URL
-              const orderId = id.replace('drafts.', '')
-              const url = `/api/orders/${orderId}/packing-slip`
-              window.open(url, '_blank')
-            }
-          } else {
-            const orderId = id.replace('drafts.', '')
-            const url = `/api/orders/${orderId}/packing-slip`
-            window.open(url, '_blank')
+          const savedUrl = typeof doc.packingSlipUrl === 'string' ? doc.packingSlipUrl.trim() : ''
+          if (savedUrl) {
+            openExternalUrl(savedUrl)
+            props.onComplete()
+            return
           }
-          props.onComplete()
+
+          const orderId = normalizeDocumentId(doc._id || id)
+          const invoiceId = normalizeDocumentId(
+            (doc?.invoiceRef as {_ref?: string} | undefined)?._ref,
+          )
+          const orderNumberValue = asOptionalString(doc?.orderNumber)
+          if (!orderId && !invoiceId) {
+            alert('Publish the order or link an invoice before generating a packing slip.')
+            props.onComplete()
+            return
+          }
+
+          const payload: Record<string, string> = {}
+          if (orderId) payload.orderId = orderId
+          if (invoiceId) payload.invoiceId = invoiceId
+          const patchTargets = resolvePatchTargets(id)
+
+          try {
+            const response = await callNetlifyFunction('generatePackingSlips', {
+              json: payload,
+            })
+
+            if (!response.ok) {
+              const message = await readResponseMessage(response)
+              throw new Error(message)
+            }
+
+            const pdfBlob = await responseToPdfBlob(response)
+            const client = context.getClient({apiVersion: SANITY_API_VERSION})
+            let targetUrl: string | null = null
+
+            try {
+              const asset = await client.assets.upload('file', pdfBlob, {
+                filename: `packing-slip-${filenameSafe(orderNumberValue || orderId || undefined)}.pdf`,
+                contentType: 'application/pdf',
+              })
+              if ((asset as any)?.url) {
+                targetUrl = (asset as any).url
+                for (const targetId of patchTargets) {
+                  try {
+                    await client
+                      .patch(targetId)
+                      .set({packingSlipUrl: targetUrl})
+                      .commit({autoGenerateArrayKeys: true})
+                  } catch (patchErr: any) {
+                    if (patchErr?.statusCode !== 404) {
+                      throw patchErr
+                    }
+                  }
+                }
+              }
+            } catch (uploadErr) {
+              console.warn('Packing slip upload failed', uploadErr)
+            }
+
+            if (!targetUrl) {
+              const objectUrl = URL.createObjectURL(pdfBlob)
+              targetUrl = objectUrl
+              setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+            }
+
+            openExternalUrl(targetUrl)
+          } catch (error: any) {
+            console.error('Error generating packing slip:', error)
+            alert(error?.message || 'Unable to generate packing slip')
+          } finally {
+            props.onComplete()
+          }
         },
       }
     },
@@ -642,22 +674,40 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         label: 'Add Tracking',
         icon: PackageIcon,
         tone: 'primary',
-        disabled: !doc || doc?.status === 'cancelled' || doc?.status === 'shipped',
+        disabled: !doc || doc?.status === 'cancelled',
         onHandle: async () => {
-          const trackingNumber = prompt('Enter tracking number:')
-          if (trackingNumber && doc) {
-            // Use Sanity client to patch the document
-            const client = context.getClient({apiVersion: '2024-10-01'})
+          if (!doc) return
 
-            await client
-              .patch(id.replace('drafts.', ''))
-              .set({
-                manualTrackingNumber: trackingNumber,
-                trackingNumber: trackingNumber,
-              })
-              .commit()
+          const trackingNumber = prompt('Enter tracking number:')
+          const normalized = trackingNumber?.trim()
+          if (!normalized) return
+
+          const client = context.getClient({apiVersion: SANITY_API_VERSION})
+          const patchTargets = resolvePatchTargets(id)
+
+          try {
+            for (const targetId of patchTargets) {
+              try {
+                await client
+                  .patch(targetId)
+                  .set({
+                    manualTrackingNumber: normalized,
+                    trackingNumber: normalized,
+                  })
+                  .commit({autoGenerateArrayKeys: true})
+              } catch (patchErr: any) {
+                if (patchErr?.statusCode !== 404) {
+                  throw patchErr
+                }
+              }
+            }
+            alert('Tracking number saved.')
+          } catch (error) {
+            console.error('Error adding tracking:', error)
+            alert('Failed to add tracking number')
+          } finally {
+            props.onComplete()
           }
-          props.onComplete()
         },
       }
     },
@@ -675,25 +725,70 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         onHandle: async () => {
           if (!doc) return
 
+          const orderId = normalizeDocumentId(doc._id || id)
+          if (!orderId) {
+            alert('Publish the order before creating a label.')
+            props.onComplete()
+            return
+          }
+
           try {
-            const response = await fetch('/api/shipping/create-label', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                orderId: id.replace('drafts.', ''),
-                orderNumber: doc.orderNumber,
-              }),
+            const response = await callNetlifyFunction('easypostCreateLabel', {
+              json: {orderId},
             })
 
-            if (response.ok) {
-              alert('Shipping label created successfully!')
-              props.onComplete()
-            } else {
-              alert('Failed to create shipping label')
+            let payload: any = null
+            try {
+              payload = await response.clone().json()
+            } catch {
+              payload = null
             }
+
+            if (!response.ok || (payload && payload.error)) {
+              const message =
+                (payload && (payload.error || payload.message)) ||
+                (await readResponseMessage(response))
+              throw new Error(message)
+            }
+
+            const labelUrl =
+              typeof payload?.labelUrl === 'string' ? payload.labelUrl.trim() : undefined
+            const trackingUrl =
+              typeof payload?.trackingUrl === 'string' ? payload.trackingUrl.trim() : undefined
+            const trackingNumber =
+              typeof payload?.trackingNumber === 'string'
+                ? payload.trackingNumber.trim()
+                : undefined
+
+            const updates: Record<string, any> = {}
+            if (labelUrl) updates.shippingLabelUrl = labelUrl
+            if (trackingUrl) updates.trackingUrl = trackingUrl
+            if (trackingNumber) updates.trackingNumber = trackingNumber
+
+            if (Object.keys(updates).length > 0) {
+              const client = context.getClient({apiVersion: SANITY_API_VERSION})
+              const patchTargets = resolvePatchTargets(id)
+              for (const targetId of patchTargets) {
+                try {
+                  await client.patch(targetId).set(updates).commit({autoGenerateArrayKeys: true})
+                } catch (patchErr: any) {
+                  if (patchErr?.statusCode !== 404) {
+                    throw patchErr
+                  }
+                }
+              }
+            }
+
+            if (labelUrl || trackingUrl) {
+              openExternalUrl(labelUrl || trackingUrl)
+            }
+
+            alert('Shipping label created via EasyPost.')
           } catch (error) {
-            console.error('Error creating label:', error)
-            alert('Error creating shipping label')
+            console.error('Error creating shipping label:', error)
+            alert((error as Error)?.message || 'Failed to create shipping label')
+          } finally {
+            props.onComplete()
           }
         },
       }
@@ -708,38 +803,152 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         label: 'Mark Fulfilled',
         icon: PackageIcon,
         tone: 'positive',
-        disabled: !doc || doc?.status === 'fulfilled' || doc?.status === 'shipped',
+        disabled:
+          !doc ||
+          doc?.status === 'fulfilled' ||
+          doc?.status === 'shipped' ||
+          doc?.status === 'cancelled',
         onHandle: async () => {
           if (!doc) return
 
-          if (confirm('Mark this order as fulfilled?')) {
+          if (!confirmAction('Mark this order as fulfilled?')) {
+            return
+          }
+
+          const orderId = normalizeDocumentId(doc._id || id)
+          if (!orderId) {
+            alert('Publish the order before marking it fulfilled.')
+            props.onComplete()
+            return
+          }
+
+          try {
+            const response = await callNetlifyFunction('fulfill-order', {
+              json: {orderId, markOnly: true},
+            })
+
+            let payload: any = null
             try {
-              // Use Sanity client to patch the document
-              const client = context.getClient({apiVersion: '2024-10-01'})
-
-              await client
-                .patch(id.replace('drafts.', ''))
-                .set({
-                  status: 'fulfilled',
-                  fulfilledAt: new Date().toISOString(),
-                })
-                .commit()
-
-              // Optionally call your API to send fulfillment email
-              await fetch('/api/orders/fulfill', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                  orderId: id.replace('drafts.', ''),
-                  orderNumber: doc.orderNumber,
-                }),
-              })
-
-              props.onComplete()
-            } catch (error) {
-              console.error('Error marking as fulfilled:', error)
-              alert('Error updating order')
+              payload = await response.clone().json()
+            } catch {
+              payload = null
             }
+
+            if (!response.ok || (payload && payload.success === false)) {
+              const message =
+                (payload && (payload.message || payload.error)) ||
+                (await readResponseMessage(response))
+              throw new Error(message)
+            }
+
+            const updates = {
+              status: 'fulfilled',
+              fulfilledAt: payload?.fulfilledAt || new Date().toISOString(),
+            }
+
+            const client = context.getClient({apiVersion: SANITY_API_VERSION})
+            const patchTargets = resolvePatchTargets(id)
+            for (const targetId of patchTargets) {
+              try {
+                await client.patch(targetId).set(updates).commit({autoGenerateArrayKeys: true})
+              } catch (patchErr: any) {
+                if (patchErr?.statusCode !== 404) {
+                  throw patchErr
+                }
+              }
+            }
+
+            alert('Order marked as fulfilled.')
+          } catch (error) {
+            console.error('Error marking as fulfilled:', error)
+            alert((error as Error)?.message || 'Error updating order')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Refund in Stripe
+    (props) => {
+      const {id, draft, published} = props
+      const doc = draft || published
+
+      return {
+        label: 'Refund in Stripe',
+        icon: ResetIcon,
+        tone: 'critical',
+        disabled:
+          !doc ||
+          !doc?.paymentIntentId ||
+          doc?.status === 'refunded' ||
+          doc?.status === 'cancelled',
+        onHandle: async () => {
+          if (!doc || !doc.paymentIntentId) return
+
+          const orderTotal = parseCurrencyAmount(doc.totalAmount)
+          const amountInput = prompt(
+            `Enter refund amount (max: $${orderTotal.toFixed(2)}):`,
+            orderTotal > 0 ? orderTotal.toFixed(2) : '',
+          )
+          if (!amountInput) return
+
+          const refundAmount = parseFloat(amountInput)
+          if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+            alert('Invalid refund amount')
+            return
+          }
+
+          if (orderTotal > 0 && refundAmount - orderTotal > 0.001) {
+            alert(`Refund amount cannot exceed order total of $${orderTotal.toFixed(2)}`)
+            return
+          }
+
+          const reasonInput = prompt('Refund reason (optional):')
+          const reason = reasonInput ? reasonInput.trim() : undefined
+
+          if (!confirmAction(`Refund $${refundAmount.toFixed(2)} to customer?`)) {
+            return
+          }
+
+          const orderId = normalizeDocumentId(doc._id || id)
+          if (!orderId) {
+            alert('Publish the order before processing refunds.')
+            return
+          }
+
+          const amountCents = Math.round(refundAmount * 100)
+
+          try {
+            const response = await callNetlifyFunction('createRefund', {
+              json: {
+                orderId,
+                amount: refundAmount,
+                amountCents,
+                reason,
+              },
+            })
+
+            let payload: any = null
+            try {
+              payload = await response.clone().json()
+            } catch {
+              payload = null
+            }
+
+            if (!response.ok || (payload && payload.error)) {
+              const message =
+                (payload && (payload.error || payload.message)) ||
+                (await readResponseMessage(response))
+              throw new Error(message)
+            }
+
+            alert('Refund processed successfully!')
+          } catch (error) {
+            console.error('Error processing refund:', error)
+            alert((error as Error)?.message || 'Error processing refund')
+          } finally {
+            props.onComplete()
           }
         },
       }
