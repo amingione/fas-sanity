@@ -2,16 +2,13 @@
 import type {DocumentActionsResolver} from 'sanity'
 import {createShippingLabel} from './schemaTypes/documentActions/invoiceActions'
 import {reprocessStripeSessionAction} from './schemaTypes/documentActions/reprocessStripeAction'
-import {cancelStripeOrderAction} from './schemaTypes/documentActions/cancelStripeOrderAction'
 import {backfillInvoicesAction} from './schemaTypes/documentActions/backfillInvoicesAction'
-import {backfillOrdersAction} from './schemaTypes/documentActions/backfillOrdersAction'
 import {backfillCustomersAction} from './schemaTypes/documentActions/backfillCustomersAction'
 import {forceDeleteUnlinkAction} from './schemaTypes/documentActions/forceDeleteUnlinkAction'
-import {createEasyPostLabelAction} from './schemaTypes/documentActions/createEasyPostLabelAction'
 import {
   refundStripeInvoiceAction,
-  refundStripeOrderAction,
 } from './schemaTypes/documentActions/refundStripeAction'
+import {orderActions} from './schemaTypes/documents/order'
 
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
@@ -22,11 +19,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(refundStripeInvoiceAction)
   }
   if (context.schemaType === 'order') {
-    list.push(reprocessStripeSessionAction)
-    list.push(backfillOrdersAction)
-    list.push(cancelStripeOrderAction)
-    list.push(refundStripeOrderAction)
-    list.push(createEasyPostLabelAction)
+    return orderActions(list, context)
   }
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)
