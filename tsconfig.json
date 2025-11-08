@@ -28,7 +28,6 @@
     "src",
     "scripts",
     "shared",
-    "packages/content-calendar",
     "packages/sanity-config",
     "env.d.ts",
     "*.ts",

@@ -28,52 +28,10 @@ import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 import {fasBrandTheme} from './src/theme/fasBrandTheme'
-import {
-  contentCalendar,
-  type CalendarCollectionConfig,
-  type ContentCalendarConfig,
-} from 'content-calendar'
-import rawContentCalendarConfig from '../../config/content-calendar.json'
-
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
 const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : ''
 const packageRoot = joinSegments(projectRoot, 'packages', 'sanity-config')
-
-const coerceCalendarConfig = (input: unknown): ContentCalendarConfig => {
-  const base: ContentCalendarConfig = {collections: []}
-  if (!input || typeof input !== 'object') return base
-
-  const collections = (input as {collections?: unknown}).collections
-  if (!Array.isArray(collections)) return base
-
-  const sanitized = collections
-    .filter((candidate): candidate is Record<string, unknown> => !!candidate && typeof candidate === 'object')
-    .map((candidate) => {
-      const title = typeof candidate.title === 'string' && candidate.title.trim().length > 0
-        ? candidate.title.trim()
-        : 'Untitled'
-      const type = typeof candidate.type === 'string' ? candidate.type.trim() : ''
-      const dateField = typeof candidate.dateField === 'string' ? candidate.dateField.trim() : ''
-      if (!type || !dateField) return null
-
-      const coerceField = (value: unknown) => (typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined)
-
-      return {
-        title,
-        type,
-        dateField,
-        titleField: coerceField(candidate.titleField),
-        subtitleField: coerceField(candidate.subtitleField),
-        statusField: coerceField(candidate.statusField),
-      } satisfies CalendarCollectionConfig | null
-    })
-    .filter((value): value is CalendarCollectionConfig => value !== null)
-
-  return {collections: sanitized}
-}
-
-const calendarPluginConfig = coerceCalendarConfig(rawContentCalendarConfig)
 
 const aliasFromNodeModules = (specifier: string) =>
   hasProcess ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/')) : specifier
@@ -267,7 +225,6 @@ export default defineConfig({
       structure: deskStructure,
     }),
     deskStructureBuilderTool(),
-    contentCalendar({config: calendarPluginConfig}),
     media(),
     codeInput(),
     schemaMarkup(),
