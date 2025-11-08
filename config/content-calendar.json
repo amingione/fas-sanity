@@ -1,0 +1,28 @@
+{
+  "collections": [
+    {
+      "title": "Orders",
+      "type": "order",
+      "dateField": "createdAt",
+      "titleField": "orderNumber",
+      "subtitleField": "customerName",
+      "statusField": "status"
+    },
+    {
+      "title": "Invoices",
+      "type": "invoice",
+      "dateField": "invoiceDate",
+      "titleField": "invoiceNumber",
+      "subtitleField": "billTo.name",
+      "statusField": "status"
+    },
+    {
+      "title": "Freight Quotes",
+      "type": "freightQuote",
+      "dateField": "createdAt",
+      "titleField": "contactName",
+      "subtitleField": "contactEmail",
+      "statusField": "status"
+    }
+  ]
+}
