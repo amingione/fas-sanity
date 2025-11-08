@@ -1,8 +1,7 @@
-import React from 'react'
-import {Inline, Text} from '@sanity/ui'
+import React, {useCallback, useEffect, useMemo, useState} from 'react'
+import {Box, Button, Checkbox, Dialog, Flex, Inline, Menu, MenuButton, MenuItem, Stack, Text, TextInput} from '@sanity/ui'
 import {PaginatedDocumentTable, formatCurrency, formatDate} from './PaginatedDocumentTable'
 import {formatOrderNumber} from '../../../utils/orderNumber'
-import {deriveOrderDisplay, type OrderV2Snapshot} from '../../../utils/orderV2'
 import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
 import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
 
@@ -20,7 +19,6 @@ type OrderRowData = {
   amountRefunded?: number | null
   currency?: string | null
   createdAt?: string | null
-  orderV2?: OrderV2Snapshot | null
 }
 
 const ORDER_PROJECTION = `{
@@ -36,8 +34,7 @@ const ORDER_PROJECTION = `{
   totalAmount,
   amountRefunded,
   currency,
-  "createdAt": coalesce(createdAt, _createdAt),
-  orderV2
+  "createdAt": coalesce(createdAt, _createdAt)
 }`
 
 export const NEW_ORDERS_FILTER =
@@ -57,14 +54,19 @@ type OrdersDocumentTableProps = {
 }
 
 function resolveOrderNumber(data: OrderRowData & {_id: string}) {
-  const display = deriveOrderDisplay(data)
-  const candidate = display.identifiers.find((id) => formatOrderNumber(id))
+  const identifiers = [
+    data.orderNumber,
+    data.invoiceOrderNumber,
+    data.invoiceNumber,
+    data.stripeSessionId,
+  ].filter((candidate): candidate is string => Boolean(candidate && candidate.trim()))
+  const candidate = identifiers.find((id) => formatOrderNumber(id))
   if (candidate) {
     const formatted = formatOrderNumber(candidate)
     if (formatted) return formatted
   }
 
-  const fallback = display.identifiers.find((id) => id && id.trim())
+  const fallback = identifiers.find((id) => id && id.trim())
   if (fallback) return fallback
 
   const sessionFormatted = formatOrderNumber(data.stripeSessionId)
@@ -76,8 +78,7 @@ function resolveOrderNumber(data: OrderRowData & {_id: string}) {
 }
 
 function getCustomerLabel(data: OrderRowData) {
-  const display = deriveOrderDisplay(data)
-  const candidates = [display.customerName, display.shippingName, display.customerEmail]
+  const candidates = [data.customerName, data.shippingName, data.customerEmail]
   for (const value of candidates) {
     if (value && value.trim()) return value
   }
@@ -94,6 +95,47 @@ export default function OrdersDocumentTable({
 }: OrdersDocumentTableProps = {}) {
   type OrderRow = OrderRowData & {_id: string; _type: string}
 
+  // Selection + page tracking
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [currentItems, setCurrentItems] = useState<OrderRow[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [trackingDialog, setTrackingDialog] = useState<{open: boolean; targetIds: string[]}>(
+    {open: false, targetIds: []},
+  )
+  const [trackingNumber, setTrackingNumber] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('')
+
+  const handlePageItemsChange = useCallback((rows: OrderRow[]) => {
+    setCurrentItems(rows)
+  }, [])
+
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleAllOnPage = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      const allSelected = currentItems.length > 0 && currentItems.every((i) => next.has(i._id))
+      if (allSelected) currentItems.forEach((i) => next.delete(i._id))
+      else currentItems.forEach((i) => next.add(i._id))
+      return next
+    })
+  }, [currentItems])
+
+  const selectionMeta = useMemo(() => {
+    const selectedOnPage = currentItems.filter((i) => selectedIds.has(i._id))
+    const allSelected = currentItems.length > 0 && selectedOnPage.length === currentItems.length
+    const someSelected = selectedOnPage.length > 0 && !allSelected
+    return {allSelected, someSelected}
+  }, [currentItems, selectedIds])
+
+  // Filter + search
   const filterClauses: string[] = []
   if (excludeCheckoutSessionExpired) {
     filterClauses.push(`(${GROQ_FILTER_EXCLUDE_EXPIRED})`)
@@ -101,9 +143,124 @@ export default function OrdersDocumentTable({
   if (filter && filter.trim().length > 0) {
     filterClauses.push(`(${filter.trim()})`)
   }
+  const trimmedSearch = searchTerm.trim().replace(/^#/, '')
+  if (trimmedSearch.length > 0) {
+    const like = `*${trimmedSearch}*`
+    filterClauses.push(
+      `(
+        orderNumber match ${JSON.stringify(like)} ||
+        invoiceNumber match ${JSON.stringify(like)} ||
+        invoiceRef->orderNumber match ${JSON.stringify(like)} ||
+        stripeSessionId match ${JSON.stringify(like)} ||
+        customerName match ${JSON.stringify(like)} ||
+        customerEmail match ${JSON.stringify(like)} ||
+        shippingAddress.name match ${JSON.stringify(like)}
+      )`,
+    )
+  }
   const combinedFilter = filterClauses.join(' && ')
 
+  useEffect(() => {
+    // Clear selection when search or filters change
+    setSelectedIds(new Set())
+  }, [searchTerm, filter, excludeCheckoutSessionExpired])
+
+  const selectedIdList = useMemo(() => Array.from(selectedIds), [selectedIds])
+  const selectedCount = selectedIdList.length
+
+  // Actions
+  const fulfillOrders = useCallback(async (ids: string[]) => {
+    for (const id of ids) {
+      try {
+        await fetch('/.netlify/functions/fulfill-order', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({orderId: id}),
+        })
+      } catch (err) {
+        console.error('Fulfill failed for', id, err)
+      }
+    }
+  }, [])
+
+  const printPackingSlips = useCallback(async (ids: string[]) => {
+    for (const id of ids) {
+      try {
+        const res = await fetch('/.netlify/functions/generatePackingSlips', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({orderId: id}),
+        })
+        if (!res.ok) continue
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `packing-slip-${id}.pdf`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        console.error('Packing slip failed for', id, err)
+      }
+    }
+  }, [])
+
+  const headerActions = (
+    <Flex align="center" gap={3} wrap="wrap">
+      <TextInput
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.currentTarget.value)}
+        placeholder="Search by order #, customer, email…"
+        style={{width: '280px'}}
+      />
+      {selectedCount > 0 ? (
+        <>
+          <MenuButton
+            id="orders-bulk-fulfill-menu"
+            button={<Button text={`Fulfill (${selectedCount})`} tone="positive" />}
+            menu={
+              <Menu>
+                <MenuItem
+                  text="Add tracking…"
+                  onClick={() => setTrackingDialog({open: true, targetIds: selectedIdList})}
+                />
+                <MenuItem text="Create label" onClick={() => fulfillOrders(selectedIdList)} />
+                <MenuItem
+                  text="Mark as fulfilled"
+                  onClick={async () => {
+                    for (const id of selectedIdList) {
+                      await fetch('/.netlify/functions/fulfill-order', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({orderId: id, markOnly: true}),
+                      })
+                    }
+                  }}
+                />
+              </Menu>
+            }
+          />
+          <Button
+            text={`Print slips (${selectedCount})`}
+            tone="primary"
+            onClick={(e) => {
+              e.preventDefault()
+              printPackingSlips(selectedIdList)
+            }}
+          />
+          <Button
+            text="Clear selection"
+            tone="critical"
+            mode="bleed"
+            onClick={() => setSelectedIds(new Set())}
+          />
+        </>
+      ) : null}
+    </Flex>
+  )
+
   return (
+    <>
     <PaginatedDocumentTable<OrderRowData>
       title={title}
       documentType="order"
@@ -113,7 +270,37 @@ export default function OrdersDocumentTable({
       filter={combinedFilter || undefined}
       emptyState={emptyState}
       excludeExpired={excludeCheckoutSessionExpired}
+      headerActions={headerActions}
+      onPageItemsChange={handlePageItemsChange}
       columns={[
+        {
+          key: 'select',
+          header: (
+            <Checkbox
+              aria-label="Select all orders on this page"
+              checked={selectionMeta.allSelected}
+              indeterminate={selectionMeta.someSelected}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                e.stopPropagation()
+                toggleAllOnPage()
+              }}
+            />
+          ),
+          width: 48,
+          align: 'center',
+          render: (data: OrderRow) => (
+            <Checkbox
+              aria-label={`Select ${resolveOrderNumber(data)}`}
+              checked={selectedIds.has(data._id)}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                e.stopPropagation()
+                toggleSelection(data._id)
+              }}
+            />
+          ),
+        },
         {
           key: 'order',
           header: 'Order',
@@ -132,23 +319,22 @@ export default function OrdersDocumentTable({
           key: 'status',
           header: 'Status',
           render: (data: OrderRow) => {
-            const display = deriveOrderDisplay(data)
             const badges: React.ReactNode[] = []
-            const paymentLabel = formatBadgeLabel(display.paymentStatus)
+            const paymentLabel = formatBadgeLabel(data.paymentStatus)
             if (paymentLabel) {
               badges.push(
                 <DocumentBadge
                   key="payment-status"
                   label={paymentLabel}
-                  tone={resolveBadgeTone(display.paymentStatus)}
+                  tone={resolveBadgeTone(data.paymentStatus)}
                   title={`Payment status: ${paymentLabel}`}
                 />,
               )
             }
 
             const fulfillmentLabel =
-              display.status && display.status !== display.paymentStatus
-                ? formatBadgeLabel(display.status)
+              data.status && data.status !== data.paymentStatus
+                ? formatBadgeLabel(data.status)
                 : null
 
             if (fulfillmentLabel) {
@@ -156,7 +342,7 @@ export default function OrdersDocumentTable({
                 <DocumentBadge
                   key="fulfillment-status"
                   label={fulfillmentLabel}
-                  tone={resolveBadgeTone(display.status)}
+                  tone={resolveBadgeTone(data.status)}
                   title={`Order status: ${fulfillmentLabel}`}
                 />,
               )
@@ -177,25 +363,19 @@ export default function OrdersDocumentTable({
           key: 'amount',
           header: 'Total',
           align: 'right',
-          render: (data: OrderRow) => {
-            const display = deriveOrderDisplay(data)
-            return (
-              <Text size={1}>
-                {formatCurrency(display.totalAmount ?? null, display.currency ?? 'USD')}
-              </Text>
-            )
-          },
+          render: (data: OrderRow) => (
+            <Text size={1}>{formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}</Text>
+          ),
         },
         {
           key: 'refunded',
           header: 'Refunded',
           align: 'right',
           render: (data: OrderRow) => {
-            const display = deriveOrderDisplay(data)
-            const value = display.amountRefunded
+            const value = data.amountRefunded
             return (
               <Text size={1}>
-                {value && value > 0 ? formatCurrency(value, display.currency ?? 'USD') : '—'}
+                {value && value > 0 ? formatCurrency(value, data.currency ?? 'USD') : '—'}
               </Text>
             )
           },
@@ -203,12 +383,117 @@ export default function OrdersDocumentTable({
         {
           key: 'created',
           header: 'Created',
-          render: (data: OrderRow) => {
-            const display = deriveOrderDisplay(data)
-            return <Text size={1}>{formatDate(display.createdAt)}</Text>
-          },
+          render: (data: OrderRow) => <Text size={1}>{formatDate(data.createdAt)}</Text>,
+        },
+        {
+          key: 'actions',
+          header: 'Actions',
+          width: 280,
+          render: (data: OrderRow) => (
+            <Flex gap={2}>
+              <MenuButton
+                id={`order-actions-${data._id}`}
+                button={<Button text="Fulfill" tone="positive" />}
+                menu={
+                  <Menu>
+                    <MenuItem
+                      text="Add tracking…"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setTrackingDialog({open: true, targetIds: [data._id]})
+                      }}
+                    />
+                    <MenuItem
+                      text="Create label"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        fulfillOrders([data._id])
+                      }}
+                    />
+                    <MenuItem
+                      text="Mark as fulfilled"
+                      onClick={async (e) => {
+                        e.preventDefault()
+                        await fetch('/.netlify/functions/fulfill-order', {
+                          method: 'POST',
+                          headers: {'Content-Type': 'application/json'},
+                          body: JSON.stringify({orderId: data._id, markOnly: true}),
+                        })
+                      }}
+                    />
+                  </Menu>
+                }
+              />
+              <Button
+                text="Print"
+                tone="primary"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  printPackingSlips([data._id])
+                }}
+              />
+            </Flex>
+          ),
         },
       ]}
     />
+
+    {trackingDialog.open ? (
+      <Dialog
+        id="orders-add-tracking"
+        header={`Add tracking (${trackingDialog.targetIds.length})`}
+        onClose={() => setTrackingDialog({open: false, targetIds: []})}
+        width={1}
+      >
+        <Box padding={4}>
+          <Stack space={3}>
+            <Text size={1}>Tracking number</Text>
+            <TextInput
+              value={trackingNumber}
+              onChange={(e) => setTrackingNumber(e.currentTarget.value)}
+              placeholder="1Z… / JJD… / etc."
+            />
+            <Text size={1}>Tracking URL (optional)</Text>
+            <TextInput
+              value={trackingUrl}
+              onChange={(e) => setTrackingUrl(e.currentTarget.value)}
+              placeholder="https://carrier.example/track/…"
+            />
+            <Flex gap={2} marginTop={3}>
+              <Button
+                text="Save + notify"
+                tone="positive"
+                disabled={!trackingNumber.trim()}
+                onClick={async () => {
+                  const number = trackingNumber.trim()
+                  const url = trackingUrl.trim() || undefined
+                  for (const id of trackingDialog.targetIds) {
+                    try {
+                      await fetch('/.netlify/functions/manual-fulfill-order', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({orderId: id, trackingNumber: number, trackingUrl: url}),
+                      })
+                    } catch (err) {
+                      console.error('Manual fulfill failed for', id, err)
+                    }
+                  }
+                  setTrackingDialog({open: false, targetIds: []})
+                  setTrackingNumber('')
+                  setTrackingUrl('')
+                }}
+              />
+              <Button
+                text="Cancel"
+                mode="bleed"
+                onClick={() => setTrackingDialog({open: false, targetIds: []})}
+              />
+            </Flex>
+          </Stack>
+        </Box>
+      </Dialog>
+    ) : null}
+    </>
   )
 }
