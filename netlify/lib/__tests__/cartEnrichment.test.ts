@@ -9,7 +9,7 @@ describe('enrichCartItemsFromSanity', () => {
     id: 'product-123',
     name: 'Test Product',
     optionDetails: [],
-    metadata: [],
+    metadataEntries: [],
   }
 
   it('attaches product reference and validation issues when selections are missing', async () => {

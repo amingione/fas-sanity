@@ -40,7 +40,8 @@ type OrderCartItem = {
   quantity?: number | null
   price?: number | null
   lineTotal?: number | null
-  metadata?: OrderCartItemMeta[] | null
+  metadata?: {option_summary?: string | null; upgrades?: string[] | string | null} | null
+  metadataEntries?: OrderCartItemMeta[] | null
 }
 
 type OrderDocumentLite = {
@@ -268,7 +269,8 @@ const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
       quantity,
       price,
       lineTotal,
-      metadata[]{
+      metadata{option_summary, upgrades},
+      metadataEntries[]{
         key,
         value,
         source
@@ -452,8 +454,13 @@ const isStoreCreditItem = (item?: OrderCartItem | null) => {
   if (!item) return false
   const name = item.name?.toLowerCase() || ''
   if (matchStoreCreditText(name)) return true
-  if (!Array.isArray(item.metadata)) return false
-  for (const entry of item.metadata) {
+  const metadataEntries = Array.isArray(item.metadataEntries)
+    ? item.metadataEntries
+    : Array.isArray(item.metadata)
+      ? item.metadata
+      : []
+  if (!metadataEntries.length) return false
+  for (const entry of metadataEntries) {
     if (!entry) continue
     if (matchStoreCreditText(entry.value)) return true
     if (matchStoreCreditText(entry.key)) return true
