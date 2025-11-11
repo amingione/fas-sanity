@@ -667,6 +667,28 @@ const product = defineType({
       group: 'advanced',
     }),
 
+    defineField({
+      name: 'merchantData',
+      title: 'Merchant Data',
+      type: 'object',
+      fields: [
+        defineField({
+          name: 'linkedMerchant',
+          title: 'Merchant Feed',
+          type: 'reference',
+          to: [{type: 'merchantFeed'}],
+        }),
+        defineField({
+          name: 'linkedCampaign',
+          title: 'Campaign Data',
+          type: 'reference',
+          to: [{type: 'shoppingCampaign'}],
+        }),
+      ],
+      options: {collapsible: true},
+      group: 'advanced',
+    }),
+
     // Deprecated fields (hidden unless they have values)
     defineField({
       name: 'variationOptions',
