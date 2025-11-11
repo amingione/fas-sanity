@@ -171,6 +171,9 @@ function toOrderCartItem(it: any) {
     }
   }
 
+  // Handle legacy metadata field migration: arrays are moved to metadataEntries,
+  // objects without option_summary/upgrades keys are normalized and moved to metadataEntries,
+  // and objects with those keys are kept as structured metadata (handled by normalizeCartItemMetadataField below)
   if (Array.isArray(cloned.metadata)) {
     cloned.metadataEntries = cloned.metadata
     delete cloned.metadata
@@ -451,12 +454,10 @@ export const handler: Handler = async (event) => {
             })
           if (needs) {
             setOps.cart = fixedCart
-            if (!metadataBackfilledForOrder) {
-              const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
-              const updatedHasMetadata = fixedCart.some((item) => hasMetadataSummary(item))
-              if (updatedHasMetadata && !originalHasMetadata) {
-                metadataBackfilledForOrder = true
-              }
+            const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
+            const updatedHasMetadata = fixedCart.some((item) => hasMetadataSummary(item))
+            if (updatedHasMetadata && !originalHasMetadata) {
+              metadataBackfilledForOrder = true
             }
           }
         }
