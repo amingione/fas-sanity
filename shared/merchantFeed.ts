@@ -45,7 +45,7 @@ function condenseWhitespace(value: string): string {
 
 export function sanitizeText(value: unknown): string {
   if (value === null || value === undefined) return ''
-  return condenseWhitespace(String(value).replace(/\r?\n/g, ' ').replace(/\t/g, ' '))
+  return condenseWhitespace(String(value).replace(/[\r\n\t]/g, ' '))
 }
 
 function normalizeAvailability(value: unknown): string {
