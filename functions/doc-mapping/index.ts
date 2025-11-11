@@ -356,9 +356,9 @@ const cleanValue = (value: unknown): unknown => {
 }
 
 const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown> | undefined => {
-  const metadata = Array.isArray(item.metadata)
+  const metadataEntries = Array.isArray(item.metadataEntries)
     ? limitArray(
-        item.metadata
+        item.metadataEntries
           .map((entry) => {
             if (!entry || typeof entry !== 'object') return undefined
             const meta = entry as Record<string, unknown>
@@ -371,7 +371,36 @@ const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown
           .filter(isPresent),
         20,
       )
-    : undefined
+    : Array.isArray(item.metadata)
+      ? limitArray(
+          (item.metadata as Array<unknown>).map((entry) => {
+            if (!entry || typeof entry !== 'object') return undefined
+            const meta = entry as Record<string, unknown>
+            return cleanValue({
+              key: toCleanString(meta.key),
+              value: toCleanString(meta.value),
+              source: toCleanString(meta.source),
+            }) as Record<string, unknown> | undefined
+          }),
+          20,
+        )
+      : undefined
+
+  const metadataOptionSummary = toCleanString(
+    (item.metadata as Record<string, unknown> | undefined)?.option_summary ?? item.optionSummary,
+  )
+  const metadataUpgrades = toCleanStringArray(
+    (item.metadata as Record<string, unknown> | undefined)?.upgrades ?? item.upgrades,
+    20,
+  )
+
+  const metadataSummary =
+    metadataOptionSummary || (metadataUpgrades && metadataUpgrades.length)
+      ? (cleanValue({
+          option_summary: metadataOptionSummary,
+          upgrades: metadataUpgrades,
+        }) as Record<string, unknown> | undefined)
+      : undefined
 
   const result = cleanValue({
     id: toCleanString(item.id),
@@ -389,7 +418,8 @@ const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown
     price: toCleanNumber(item.price),
     quantity: toCleanNumber(item.quantity),
     categories: toCleanStringArray(item.categories, 20),
-    metadata,
+    metadata: metadataSummary,
+    metadataEntries,
   })
 
   return (

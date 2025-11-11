@@ -119,7 +119,9 @@ export const handler: Handler = async (event) => {
         shippingWeight,
         boxDimensions,
         installOnly,
+        coreRequired,
         shippingLabel,
+        promotionTagline,
         productHighlights,
         productDetails,
         specifications[]{

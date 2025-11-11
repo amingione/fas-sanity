@@ -40,6 +40,8 @@ const PRODUCT_LIST_QUERY = `*[_type == "product"]{
   salePrice,
   availability,
   installOnly,
+  coreRequired,
+  promotionTagline,
   status,
   manualInventoryCount,
   "categories": coalesce(category[]->title, []),
@@ -116,6 +118,8 @@ type RawProduct = {
   salePrice?: number | string | null
   availability?: string | null
   installOnly?: boolean | null
+  coreRequired?: boolean | null
+  promotionTagline?: string | null
   status?: string | null
   manualInventoryCount?: number | string | null
   categories?: string[] | null

@@ -172,7 +172,9 @@ export const handler: Handler = async (event) => {
         shippingWeight,
         boxDimensions,
         shipsAlone,
-        shippingClass
+        shippingClass,
+        coreRequired,
+        promotionTagline
       }`,
       {
         skus,
