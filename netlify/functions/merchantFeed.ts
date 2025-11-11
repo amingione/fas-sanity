@@ -35,8 +35,7 @@ function isAuthorized(event: Parameters<Handler>[0]): boolean {
   if (!MERCHANT_FEED_SECRET) return true
   const headerSecret =
     event.headers['x-merchant-feed-secret'] || event.headers['X-MERCHANT-FEED-SECRET']
-  const querySecret = event.queryStringParameters?.secret
-  return headerSecret === MERCHANT_FEED_SECRET || querySecret === MERCHANT_FEED_SECRET
+  return headerSecret === MERCHANT_FEED_SECRET
 }
 
 type MerchantFeedQueryResult = MerchantFeedDocument & {_id: string}
