@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React from 'react'
 import {
   Badge,
   Box,
@@ -69,8 +69,6 @@ const statusLabelMap: Record<string, string> = {
 const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   const {renderDefault} = props
   const document = (props.document?.displayed || {}) as ProductDocument
-
-  const [view, setView] = useState<'edit' | 'preview'>('edit')
 
   const title = document.title || 'Untitled product'
   const price = document.price

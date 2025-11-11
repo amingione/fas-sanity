@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {Button, Flex} from '@sanity/ui'
 import {useClient, useFormValue} from 'sanity'
@@ -32,6 +33,7 @@ export default function OrderShippingActions() {
   const [isGenerating, setIsGenerating] = useState(false)
   const packingSlipUrl = typeof doc?.packingSlipUrl === 'string' ? doc.packingSlipUrl : ''
   const orderId = ((doc?._id || '') as string).replace(/^drafts\./, '')
+  const orderNumber = typeof doc?.orderNumber === 'string' ? doc.orderNumber : ''
   const invoiceId = ((doc?.invoiceRef?._ref || '') as string).replace(/^drafts\./, '')
   const stripeSessionId = typeof doc?.stripeSessionId === 'string' ? doc.stripeSessionId : ''
   const autoAttemptedRef = useRef(false)
@@ -132,7 +134,10 @@ export default function OrderShippingActions() {
         }
 
         const blob = new Blob([arrayBuffer], {type: 'application/pdf'})
-        const filename = `packing-slip-${orderId || stripeSessionId || doc?._id || 'order'}.pdf`
+        const filenameBase =
+          (orderNumber || orderId || stripeSessionId || doc?._id || 'order').replace(/[^a-z0-9_-]/gi, '') ||
+          'order'
+        const filename = `packing-slip-${filenameBase}.pdf`
 
         const asset = await client.assets.upload('file', blob, {
           filename,
@@ -176,6 +181,7 @@ export default function OrderShippingActions() {
       fetchPackingSlip,
       invoiceId,
       isGenerating,
+      orderNumber,
       orderId,
       patchTargets,
       stripeSessionId,

@@ -340,8 +340,13 @@ function combineLineItems(
       ...((invoiceItem as any)?.metadata as Array<{key?: string | null; value?: unknown}>),
     )
   }
-  if (Array.isArray(cartItem?.metadata)) {
-    collectedMetadata.push(...(cartItem?.metadata as Array<{key?: string | null; value?: unknown}>))
+  const cartItemMetadataEntries = Array.isArray((cartItem as any)?.metadataEntries)
+    ? ((cartItem as any)?.metadataEntries as Array<{key?: string | null; value?: unknown}>)
+    : Array.isArray(cartItem?.metadata)
+      ? (cartItem?.metadata as Array<{key?: string | null; value?: unknown}>)
+      : []
+  if (cartItemMetadataEntries.length) {
+    collectedMetadata.push(...cartItemMetadataEntries)
   }
   const derived = deriveOptionsFromMetadata(collectedMetadata.length ? collectedMetadata : null)
 
@@ -1279,10 +1284,14 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
     validationIssuesList.map((issue) => `⚠️ ${issue}`),
   )
 
-  const extrasList = collectMetadataExtras(
-    Array.isArray((item as any)?.metadata)
+  const rawMetadataEntries = Array.isArray((item as any)?.metadataEntries)
+    ? ((item as any)?.metadataEntries as Array<{key?: string | null; value?: unknown}>)
+    : Array.isArray((item as any)?.metadata)
       ? ((item as any)?.metadata as Array<{key?: string | null; value?: unknown}>)
-      : undefined,
+      : undefined
+
+  const extrasList = collectMetadataExtras(
+    rawMetadataEntries,
     [...upgradesList, ...optionDetails],
   )
 

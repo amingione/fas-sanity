@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {
   useCallback,
   useEffect,
@@ -49,7 +50,6 @@ const EVENT_QUERY = `*[_type == "stripeWebhook"] | order(coalesce(occurredAt, _c
   requestId,
   livemode,
   orderNumber,
-  orderId,
   invoiceId,
   orderRef->{_id, orderNumber},
   invoiceRef->{_id, invoiceNumber},
@@ -77,7 +77,6 @@ type RawWebhook = {
   requestId?: string
   livemode?: boolean
   orderNumber?: string
-  orderId?: string
   invoiceId?: string
   orderRef?: {_id: string; orderNumber?: string | null}
   invoiceRef?: {_id: string; invoiceNumber?: string | null}
@@ -108,7 +107,7 @@ type WebhookRecord = {
   metadata: string | null
   rawPayload: string | null
   orderNumber: string | null
-  orderId: string | null
+  orderDocumentId: string | null
   invoiceId: string | null
 }
 
@@ -145,7 +144,7 @@ function normalizeWebhook(raw: RawWebhook): WebhookRecord {
   const eventType = raw.eventType?.trim() || 'unknown.event'
   const occurredAt = raw.occurredAt || null
   const processedAt = raw.processedAt || null
-  const orderRefId = raw.orderRef?._id || raw.orderId || null
+  const orderRefId = raw.orderRef?._id || null
   const invoiceRefId = raw.invoiceRef?._id || raw.invoiceId || null
   const normalizedOrderNumber =
     formatOrderNumber(raw.orderNumber) ||
@@ -177,7 +176,7 @@ function normalizeWebhook(raw: RawWebhook): WebhookRecord {
     metadata: raw.metadata || null,
     rawPayload: raw.rawPayload || null,
     orderNumber: normalizedOrderNumber,
-    orderId: orderRefId,
+    orderDocumentId: orderRefId,
     invoiceId: invoiceRefId,
   }
 }
@@ -430,13 +429,13 @@ const WebhooksDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                       </Stack>
                     </Flex>
                     <Flex align="center" gap={2}>
-                      {event.orderId ? (
+                      {event.orderDocumentId ? (
                         <Tooltip content={<Text size={1}>Open related order</Text>}>
                           <Button
                             icon={LaunchIcon}
                             mode="ghost"
                             text={event.orderNumber ? `Order ${event.orderNumber}` : 'Order'}
-                            onClick={() => handleOpenOrder(event.orderId)}
+                            onClick={() => handleOpenOrder(event.orderDocumentId)}
                           />
                         </Tooltip>
                       ) : null}

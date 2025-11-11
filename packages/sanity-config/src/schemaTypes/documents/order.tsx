@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 // src/schemaTypes/documents/order.tsx
 import {defineType} from 'sanity'
 import {PackageIcon, DocumentPdfIcon, ResetIcon} from '@sanity/icons'
@@ -226,7 +227,32 @@ const orderSchema = defineType({
             {name: 'quantity', type: 'number', title: 'Quantity'},
             {name: 'price', type: 'number', title: 'Unit Price'},
             {name: 'optionSummary', type: 'string', title: 'Options'},
+            {
+              name: 'metadata',
+              title: 'Metadata',
+              type: 'object',
+              fields: [
+                {
+                  name: 'option_summary',
+                  title: 'Option Summary',
+                  type: 'string',
+                },
+                {
+                  name: 'upgrades',
+                  title: 'Upgrades / Add-Ons',
+                  type: 'array',
+                  of: [{type: 'string'}],
+                  options: {layout: 'tags'},
+                },
+              ],
+            },
             {name: 'image', type: 'url', title: 'Image'},
+            {
+              name: 'metadataEntries',
+              title: 'Raw Metadata',
+              type: 'array',
+              of: [{type: 'orderCartItemMeta'}],
+            },
           ],
           preview: {
             select: {
@@ -262,6 +288,13 @@ const orderSchema = defineType({
       name: 'amountTax',
       type: 'number',
       title: 'Tax',
+      group: 'items',
+      readOnly: true,
+    },
+    {
+      name: 'amountDiscount',
+      type: 'number',
+      title: 'Discounts',
       group: 'items',
       readOnly: true,
     },

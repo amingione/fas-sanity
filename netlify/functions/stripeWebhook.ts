@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'
@@ -1120,7 +1121,23 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
         : undefined
   if (derivedLineTotal !== undefined) item.lineTotal = derivedLineTotal
   if (derivedTotal !== undefined) item.total = derivedTotal
-  if (typedMetadata.length) item.metadata = typedMetadata
+  if (typedMetadata.length) {
+    item.metadataEntries = typedMetadata
+  }
+
+  const metadataSummary = typeof item.optionSummary === 'string' ? item.optionSummary.trim() : ''
+  const metadataUpgrades = Array.isArray(item.upgrades)
+    ? item.upgrades
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry): entry is string => Boolean(entry))
+    : []
+
+  if (metadataSummary || metadataUpgrades.length) {
+    item.metadata = {
+      option_summary: metadataSummary || undefined,
+      upgrades: metadataUpgrades.length ? metadataUpgrades : undefined,
+    }
+  }
 
   return item
 }
@@ -5011,10 +5028,6 @@ export const handler: Handler = async (event) => {
           .toString()
           .trim()
 
-        const paymentMethodType = Array.isArray(paymentIntent?.payment_method_types)
-          ? paymentIntent?.payment_method_types?.[0]
-          : undefined
-
         // 2) Gather enriched data: line items + shipping
         const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
           stripeSessionId,
@@ -5088,6 +5101,7 @@ export const handler: Handler = async (event) => {
             currency,
             amountSubtotal,
             amountTax,
+            amountDiscount,
             paymentIntentId: paymentIntent?.id || undefined,
             chargeId,
             cardBrand,
@@ -5493,9 +5507,6 @@ export const handler: Handler = async (event) => {
           if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
             baseDoc.shippingMetadata = shippingDetails.metadata
           }
-          const paymentMethodType = Array.isArray(pi.payment_method_types)
-            ? pi.payment_method_types[0]
-            : undefined
           const intentSlug = createOrderSlug(normalizedOrderNumber, pi.id)
           if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
 

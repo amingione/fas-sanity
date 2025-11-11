@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
@@ -608,10 +609,6 @@ async function upsertOrder({
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined
   const receiptUrl = charge?.receipt_url || undefined
-  const paymentMethodType = Array.isArray(paymentIntent?.payment_method_types)
-    ? paymentIntent.payment_method_types[0]
-    : undefined
-
   const userIdMeta =
     (
       metadata['auth0_user_id'] ||
@@ -642,6 +639,7 @@ async function upsertOrder({
     currency,
     amountSubtotal,
     amountTax,
+    amountDiscount,
     paymentIntentId: paymentIntent?.id || undefined,
     chargeId,
     cardBrand,

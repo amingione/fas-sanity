@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import {createClient, type SanityClient} from '@sanity/client'
 import type {Handler, HandlerEvent} from '@netlify/functions'
 

@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {OkHandIcon, RobotIcon} from '@sanity/icons'
 import {

@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import Stripe from 'stripe'
 import {createClient, type SanityClient} from '@sanity/client'
 
