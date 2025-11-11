@@ -63,8 +63,7 @@ function normalizeCartItemMetadataField(item: Record<string, any>): MetadataNorm
   const upgradesChanged =
     JSON.stringify(rawUpgradesArray) !== JSON.stringify(normalizedMetadata.upgrades ?? [])
   const extraKeysChanged =
-    Object.keys(metadataObject).filter((key) => key === 'option_summary' || key === 'upgrades').length !==
-    Object.keys(metadataObject).length
+    Object.keys(metadataObject).some((key) => key !== 'option_summary' && key !== 'upgrades')
 
   if (summaryChanged || upgradesChanged || extraKeysChanged) {
     item.metadata = normalizedMetadata
