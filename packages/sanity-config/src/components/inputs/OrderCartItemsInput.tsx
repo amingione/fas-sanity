@@ -190,7 +190,7 @@ const normalizeCartItemMetadata = (
     return {typed, normalized, changed}
   }
 
-  if (typeof metadataEntries === 'object') {
+  if (typeof metadataEntries === 'object' && !Array.isArray(metadataEntries)) {
     const typed = buildMetadataEntries(metadataEntries)
     const normalized: NormalizedMetadataEntry[] = typed.map(({key, value}) => ({key, value}))
     return {typed, normalized, changed: typed.length > 0}
