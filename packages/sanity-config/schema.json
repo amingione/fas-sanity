@@ -1795,7 +1795,6 @@
       "chargeId": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
       "customerId": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
       "orderNumber": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
-      "orderId": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
       "orderRef": {
         "type": "objectAttribute",
         "value": {
@@ -4195,7 +4194,7 @@
           "type": "objectAttribute",
           "value": {"type": "string", "value": "vendorOrderSummary"}
         },
-        "orderId": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
+        "orderNumber": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
         "status": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
         "amount": {"type": "objectAttribute", "value": {"type": "number"}, "optional": true},
         "orderDate": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true}

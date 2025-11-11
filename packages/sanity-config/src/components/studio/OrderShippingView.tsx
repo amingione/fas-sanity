@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {useCallback, useMemo, useState} from 'react'
 import {Badge, Box, Card, Flex, Grid, Heading, Stack, Text, Tooltip, Button} from '@sanity/ui'
 import {DownloadIcon, EnvelopeIcon} from '@sanity/icons'

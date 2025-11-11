@@ -110,6 +110,13 @@ const product = defineType({
       initialValue: false,
       group: 'essentials',
     }),
+    defineField({
+      name: 'promotionTagline',
+      title: 'Promotion Tagline',
+      type: 'string',
+      description: 'Marketing tagline or highlight for product cards.',
+      group: 'content',
+    }),
 
     // ============================================
     // PRICING - Price and sale configuration
@@ -562,6 +569,15 @@ const product = defineType({
       title: 'Install Only (No Shipping)',
       type: 'boolean',
       description: 'In-store installation only',
+      initialValue: false,
+      fieldset: 'shipping',
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'coreRequired',
+      title: 'Core Required',
+      type: 'boolean',
+      description: 'Indicates if the product requires a customer core return or exchange.',
       initialValue: false,
       fieldset: 'shipping',
       group: 'shipping',

@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import {defineField, defineType} from 'sanity'
 import {PlugIcon} from '@sanity/icons'
 
@@ -132,13 +133,6 @@ export default defineType({
     defineField({
       name: 'orderNumber',
       title: 'Order Number',
-      type: 'string',
-      readOnly: true,
-      group: 'relations',
-    }),
-    defineField({
-      name: 'orderId',
-      title: 'Order Document ID',
       type: 'string',
       readOnly: true,
       group: 'relations',
