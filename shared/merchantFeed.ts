@@ -135,5 +135,5 @@ export function merchantFeedRowsToCsv(rows: MerchantFeedRow[]): string {
   const lines = rows.map((row) =>
     MERCHANT_FEED_COLUMNS.map((column) => escapeCsvValue(row[column] || '')).join(','),
   )
-  return [header, ...lines].join('\n')
+  return [header, ...lines].join('\r\n')
 }
