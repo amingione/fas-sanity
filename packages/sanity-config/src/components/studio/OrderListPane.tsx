@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {Suspense, useMemo, useRef, useState} from 'react'
 import {
   Box,

@@ -164,7 +164,8 @@ const handler: Handler = async (event) => {
         optionDetails,
         upgrades,
         customizations,
-        metadata[]{key, value}
+        metadata{option_summary, upgrades},
+        metadataEntries[]{key, value}
       },
       orderRef->{
         _id,
@@ -189,7 +190,8 @@ const handler: Handler = async (event) => {
           optionDetails,
           upgrades,
           customizations,
-          metadata[]{key, value}
+          metadata{option_summary, upgrades},
+          metadataEntries[]{key, value}
         }
       },
       order->{
@@ -215,7 +217,8 @@ const handler: Handler = async (event) => {
           optionDetails,
           upgrades,
           customizations,
-          metadata[]{key, value}
+          metadata{option_summary, upgrades},
+          metadataEntries[]{key, value}
         }
       },
         discountType,

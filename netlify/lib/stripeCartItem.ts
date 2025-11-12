@@ -40,7 +40,11 @@ export type MappedCartItem = {
   total?: number
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
-  metadata?: CartMetadataEntry[]
+  metadata?: {
+    option_summary?: string
+    upgrades?: string[]
+  }
+  metadataEntries?: CartMetadataEntry[]
 }
 
 type MetadataCollection = {
@@ -479,6 +483,17 @@ export function mapStripeLineItem(
     (typeof price === 'number' && quantityValue ? price * quantityValue : undefined)
   const derivedTotal = metadataTotal ?? amountTotal ?? amountSubtotal ?? derivedLineTotal
 
+  const metadataEntries = metadata.entries.length ? metadata.entries : undefined
+  const metadataUpgrades = upgrades?.map((entry) => entry.trim()).filter(Boolean)
+  const metadataObject =
+    summary || (metadataUpgrades && metadataUpgrades.length)
+      ? {
+          option_summary: summary || undefined,
+          upgrades:
+            metadataUpgrades && metadataUpgrades.length ? metadataUpgrades : undefined,
+        }
+      : undefined
+
   return {
     id: productId,
     productSlug,
@@ -499,7 +514,8 @@ export function mapStripeLineItem(
     categories,
     lineTotal: derivedLineTotal,
     total: derivedTotal,
-    metadata: metadata.entries.length ? metadata.entries : undefined,
+    metadata: metadataObject,
+    metadataEntries,
   }
 }
 

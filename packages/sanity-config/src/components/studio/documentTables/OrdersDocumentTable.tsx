@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {
   Box,
@@ -90,6 +91,10 @@ function resolveOrderNumber(data: OrderRowData & {_id: string}) {
   const trimmedId = data._id.replace(/^drafts\./, '')
   const randomFallback = trimmedId.slice(-6).toUpperCase()
   return randomFallback ? `#${randomFallback}` : '—'
+}
+
+function sanitizeFilenameSegment(value: string): string {
+  return value.replace(/[^a-z0-9_-]/gi, '') || 'order'
 }
 
 function getCustomerLabel(data: OrderRowData) {
@@ -259,6 +264,7 @@ export default function OrdersDocumentTable({
 
   const printPackingSlips = useCallback(
     async (ids: string[]) => {
+      const labelLookup = new Map(currentItems.map((row) => [row._id, resolveOrderNumber(row)]))
       for (const id of ids) {
         try {
           const res = await fetchPackingSlip({orderId: id})
@@ -272,7 +278,9 @@ export default function OrdersDocumentTable({
           }
 
           const blob = new Blob([arrayBuffer], {type: 'application/pdf'})
-          const filename = `packing-slip-${id}.pdf`
+          const labelCandidate = labelLookup.get(id) || id.replace(/^drafts\./, '') || id
+          const filenameSegment = sanitizeFilenameSegment(labelCandidate)
+          const filename = `packing-slip-${filenameSegment}.pdf`
 
           try {
             const asset = await client.assets.upload('file', blob, {
@@ -307,7 +315,7 @@ export default function OrdersDocumentTable({
         }
       }
     },
-    [client, fetchPackingSlip, resolvePatchTargets],
+    [client, currentItems, fetchPackingSlip, resolvePatchTargets],
   )
 
   const headerActions = (

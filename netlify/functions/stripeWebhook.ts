@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'
@@ -1120,7 +1121,23 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
         : undefined
   if (derivedLineTotal !== undefined) item.lineTotal = derivedLineTotal
   if (derivedTotal !== undefined) item.total = derivedTotal
-  if (typedMetadata.length) item.metadata = typedMetadata
+  if (typedMetadata.length) {
+    item.metadataEntries = typedMetadata
+  }
+
+  const metadataSummary = typeof item.optionSummary === 'string' ? item.optionSummary.trim() : ''
+  const metadataUpgrades = Array.isArray(item.upgrades)
+    ? item.upgrades
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry): entry is string => Boolean(entry))
+    : []
+
+  if (metadataSummary || metadataUpgrades.length) {
+    item.metadata = {
+      option_summary: metadataSummary || undefined,
+      upgrades: metadataUpgrades.length ? metadataUpgrades : undefined,
+    }
+  }
 
   return item
 }
@@ -4954,6 +4971,9 @@ export const handler: Handler = async (event) => {
         const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
           ? Number((session as any)?.total_details?.amount_tax) / 100
           : undefined
+        const amountDiscount = Number.isFinite(Number((session as any)?.total_details?.amount_discount))
+          ? Number((session as any)?.total_details?.amount_discount) / 100
+          : undefined
         let amountShipping = (() => {
           const a = Number((session as any)?.shipping_cost?.amount_total)
           if (Number.isFinite(a)) return a / 100
@@ -5005,8 +5025,6 @@ export const handler: Handler = async (event) => {
         const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '')
           .toString()
           .trim()
-
-
         // 2) Gather enriched data: line items + shipping
         const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
           stripeSessionId,
@@ -5080,6 +5098,7 @@ export const handler: Handler = async (event) => {
             currency,
             amountSubtotal,
             amountTax,
+            amountDiscount,
             paymentIntentId: paymentIntent?.id || undefined,
             chargeId,
             cardBrand,

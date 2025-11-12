@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
@@ -139,15 +140,21 @@ const stripe = stripeKey
   : null
 
 const sanityToken = process.env.SANITY_API_TOKEN
-const sanity = sanityToken
-  ? createClient({
-      projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-      dataset: process.env.SANITY_STUDIO_DATASET!,
-      apiVersion: '2024-04-10',
-      token: sanityToken,
-      useCdn: false,
-    })
-  : null
+const sanityProjectId =
+  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || undefined
+const sanityDataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || undefined
+
+if (!sanityToken || !sanityProjectId || !sanityDataset) {
+  throw new Error('Sanity credentials are not configured for reprocessStripeSession.')
+}
+
+const sanity = createClient({
+  projectId: sanityProjectId,
+  dataset: sanityDataset,
+  apiVersion: '2024-04-10',
+  token: sanityToken,
+  useCdn: false,
+})
 
 type ExistingOrderDoc = {
   _id: string
@@ -530,6 +537,7 @@ async function upsertOrder({
   )
   const amountSubtotal = coerceNumber((session as any)?.amount_subtotal, true)
   const amountTax = coerceNumber((session as any)?.total_details?.amount_tax, true)
+  const amountDiscount = coerceNumber((session as any)?.total_details?.amount_discount, true)
   const amountShipping = (() => {
     const shippingTotal = coerceNumber((session as any)?.shipping_cost?.amount_total, true)
     if (shippingTotal !== undefined) return shippingTotal
@@ -607,7 +615,6 @@ async function upsertOrder({
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined
   const receiptUrl = charge?.receipt_url || undefined
-
   const userIdMeta =
     (
       metadata['auth0_user_id'] ||
@@ -619,7 +626,7 @@ async function upsertOrder({
       .toString()
       .trim() || undefined
 
-  const baseDoc: Record<string, any> = {
+  const baseDoc: Record<string, any> & {_type: 'order'} = {
     _type: 'order',
     stripeSource: 'checkout.session',
     stripeSessionId,
@@ -638,6 +645,7 @@ async function upsertOrder({
     currency,
     amountSubtotal,
     amountTax,
+    amountDiscount,
     paymentIntentId: paymentIntent?.id || undefined,
     chargeId,
     cardBrand,
