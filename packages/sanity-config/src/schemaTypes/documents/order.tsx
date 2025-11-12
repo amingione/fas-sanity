@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 // src/schemaTypes/documents/order.tsx
 import {defineType} from 'sanity'
 import {PackageIcon, DocumentPdfIcon, ResetIcon} from '@sanity/icons'
@@ -287,6 +288,13 @@ const orderSchema = defineType({
       name: 'amountTax',
       type: 'number',
       title: 'Tax',
+      group: 'items',
+      readOnly: true,
+    },
+    {
+      name: 'amountDiscount',
+      type: 'number',
+      title: 'Discounts',
       group: 'items',
       readOnly: true,
     },

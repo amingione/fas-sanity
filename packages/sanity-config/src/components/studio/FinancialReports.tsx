@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {useEffect, useState} from 'react'
 import {useClient} from 'sanity'
 import {Button, Heading, Text, Select, Flex, Box} from '@sanity/ui'

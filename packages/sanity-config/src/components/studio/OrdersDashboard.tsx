@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import {useCallback, useEffect, useMemo, useRef, useState, type CSSProperties} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'

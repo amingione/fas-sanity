@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'

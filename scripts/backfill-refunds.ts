@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 
 import path from 'node:path'
 import fs from 'node:fs'

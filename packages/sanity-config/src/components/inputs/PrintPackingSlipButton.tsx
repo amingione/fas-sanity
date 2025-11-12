@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React from 'react'
 import {Button} from '@sanity/ui'
 import type {StringInputProps} from 'sanity'
@@ -16,6 +17,9 @@ export default function PrintPackingSlipButton(props: ExtendedStringInputProps) 
 
   // Get the order ID from the invoice's orderRef
   const orderId = props?.document?.orderRef?._ref?.replace('drafts.', '')
+  const orderNumber =
+    typeof props?.document?.orderNumber === 'string' ? props.document.orderNumber : ''
+  const downloadLabel = (orderNumber || orderId || 'order').replace(/[^a-z0-9_-]/gi, '') || 'order'
 
   if (!orderId) {
     return <Button text="No Order Linked" tone="critical" disabled />
@@ -40,7 +44,7 @@ export default function PrintPackingSlipButton(props: ExtendedStringInputProps) 
 
       const a = document.createElement('a')
       a.href = url
-      a.download = `packing-slip-${orderId}.pdf`
+      a.download = `packing-slip-${downloadLabel}.pdf`
       a.click()
 
       window.URL.revokeObjectURL(url)

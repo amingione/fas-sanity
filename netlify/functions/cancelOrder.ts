@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
