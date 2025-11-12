@@ -25,9 +25,6 @@ import {
   CustomersDocumentTable,
 } from '../components/studio/documentTables'
 import {CogIcon} from '@sanity/icons'
-import VendorAdminDashboard from '../components/studio/VendorAdminDashboard'
-import VendorSpend from '../components/studio/VendorSpend'
-import vendor from '../schemaTypes/documents/vendor'
 
 const API_VERSION = '2024-10-01'
 

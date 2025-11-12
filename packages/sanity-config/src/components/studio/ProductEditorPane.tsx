@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, {useMemo} from 'react'
 import {
   Badge,
   Box,
@@ -22,6 +22,8 @@ import {
   PublishIcon,
   TagIcon,
 } from '@sanity/icons'
+import imageUrlBuilder from '@sanity/image-url'
+import {useClient} from 'sanity'
 type ProductDocument = {
   title?: string | null
   price?: number | null
@@ -34,6 +36,13 @@ type ProductDocument = {
   inventory?: {
     available?: number | null
   } | null
+  images?: Array<{
+    _key?: string
+    alt?: string | null
+    asset?: {
+      _ref?: string | null
+    } | null
+  }> | null
 }
 
 type ProductEditorPaneProps = {
@@ -42,6 +51,9 @@ type ProductEditorPaneProps = {
     displayed?: ProductDocument | null
   }
 } & Record<string, unknown>
+
+const PRODUCT_PLACEHOLDER_IMAGE =
+  'https://cdn.sanity.io/images/r4og35qd/production/c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000.png'
 
 const formatCurrency = (value?: number | null) => {
   if (typeof value !== 'number') return '—'
@@ -69,8 +81,8 @@ const statusLabelMap: Record<string, string> = {
 const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   const {renderDefault} = props
   const document = (props.document?.displayed || {}) as ProductDocument
-
-  const [view, setView] = useState<'edit' | 'preview'>('edit')
+  const client = useClient({apiVersion: '2024-10-01'})
+  const imageBuilder = useMemo(() => imageUrlBuilder(client), [client])
 
   const title = document.title || 'Untitled product'
   const price = document.price
@@ -81,6 +93,20 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   const synced = Boolean(document.synced) || Boolean(document.shopifySynced)
   const categoryRefs = Array.isArray(document.category) ? document.category : []
   const inventoryAvailable = document.inventory?.available ?? undefined
+  const images = Array.isArray(document.images) ? document.images : []
+  const primaryImage = images.find((image) => image?.asset?._ref)
+  const primaryImageRef = primaryImage?.asset?._ref
+  const heroImageUrl = useMemo(() => {
+    if (!primaryImageRef) return null
+    try {
+      return imageBuilder.image(primaryImage as any).width(640).height(400).fit('crop').url()
+    } catch {
+      return null
+    }
+  }, [imageBuilder, primaryImage, primaryImageRef])
+  const imagePreviewUrl = heroImageUrl || PRODUCT_PLACEHOLDER_IMAGE
+  const hasUploadedImage = Boolean(heroImageUrl)
+  const heroAlt = primaryImage?.alt || title
 
   const statusTone = statusToneMap[statusValue] || 'default'
   const statusLabel = statusLabelMap[statusValue] || 'Draft'
@@ -95,89 +121,132 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
       <Stack space={4}>
         <Card padding={[4, 4, 5]} radius={3} shadow={1} tone="transparent">
           <Stack space={4}>
-            <Flex align={['flex-start', 'center']} justify="space-between" wrap="wrap" gap={4}>
-              <Stack space={2}>
-                <Text size={4} weight="semibold">
-                  {title}
-                </Text>
-                <Inline space={2} wrap="wrap">
-                  <Badge tone={statusTone} padding={2} radius={2} fontSize={1}>
-                    {statusLabel}
-                  </Badge>
-                  <Badge tone={synced ? 'positive' : 'default'} padding={2} radius={2} fontSize={1}>
-                    {synced ? 'Synced to Shopify' : 'Not synced'}
-                  </Badge>
-                  <Badge tone="default" padding={2} radius={2} fontSize={1}>
-                    {categoryRefs.length} categories
-                  </Badge>
-                </Inline>
-              </Stack>
-
-              <Inline space={2} wrap="wrap">
-                <Button icon={ImageIcon} mode="ghost" text="Add media" fontSize={1} />
-                <Button icon={TagIcon} mode="ghost" text="Duplicate" fontSize={1} />
-                <Button icon={AddIcon} mode="ghost" text="Create variant" fontSize={1} />
-                <Button icon={PublishIcon} tone="primary" text="Publish changes" fontSize={1} />
-                <MenuButton
-                  id="product-editor-actions"
-                  popover={{portal: true}}
-                  placement="left"
-                  button={
-                    <Button icon={EllipsisVerticalIcon} mode="ghost" aria-label="More actions" />
-                  }
-                  menu={
-                    <Menu>
-                      <MenuItem text="View on storefront" icon={LaunchIcon} />
-                      <MenuItem text="Preview" icon={LaunchIcon} />
-                      <MenuDivider />
-                      <MenuItem text="Archive product" tone="critical" />
-                    </Menu>
-                  }
-                />
-              </Inline>
-            </Flex>
-
-            <Grid columns={[1, 2, 4]} gap={[3, 4]}>
-              <Card padding={3} radius={2} shadow={1} tone="transparent">
-                <Stack space={1}>
+            <Flex
+              direction={['column', 'row']}
+              gap={[4, 5]}
+              align="stretch"
+              wrap="wrap"
+            >
+              <Card
+                padding={3}
+                radius={2}
+                shadow={1}
+                tone="transparent"
+                style={{flex: '0 0 320px', width: '100%', maxWidth: 360}}
+              >
+                <Stack space={2}>
                   <Text size={1} muted>
-                    Price
+                    Primary image
                   </Text>
-                  <Text size={2} weight="semibold">
-                    {formatCurrency(price)}
-                  </Text>
-                  {typeof salePrice === 'number' && (
+                  <Box
+                    style={{
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: '1px solid var(--card-border-color)',
+                      backgroundColor: 'var(--card-muted-fg-color)',
+                    }}
+                  >
+                    <Box
+                      as="img"
+                      src={imagePreviewUrl}
+                      alt={heroAlt}
+                      style={{display: 'block', width: '100%', height: 'auto'}}
+                    />
+                  </Box>
+                  {!hasUploadedImage && (
                     <Text size={1} muted>
-                      Sale price: {formatCurrency(salePrice)}
+                      Add a product photo to improve how this appears on the storefront.
                     </Text>
                   )}
                 </Stack>
               </Card>
-              <Card padding={3} radius={2} shadow={1} tone="transparent">
-                <Stack space={1}>
-                  <Text size={1} muted>
-                    SKU
-                  </Text>
-                  <Text size={2}>{sku || '—'}</Text>
-                </Stack>
-              </Card>
-              <Card padding={3} radius={2} shadow={1} tone="transparent">
-                <Stack space={1}>
-                  <Text size={1} muted>
-                    Inventory
-                  </Text>
-                  <Text size={2}>{inventorySummary}</Text>
-                </Stack>
-              </Card>
-              <Card padding={3} radius={2} shadow={1} tone="transparent">
-                <Stack space={1}>
-                  <Text size={1} muted>
-                    Shopify status
-                  </Text>
-                  <Text size={2}>{synced ? 'Up to date' : 'Sync to publish'}</Text>
-                </Stack>
-              </Card>
-            </Grid>
+
+              <Stack space={4} style={{flex: 1, minWidth: 0}}>
+                <Flex align={['flex-start', 'center']} justify="space-between" wrap="wrap" gap={4}>
+                  <Stack space={2}>
+                    <Text size={4} weight="semibold">
+                      {title}
+                    </Text>
+                    <Inline space={2} wrap="wrap">
+                      <Badge tone={statusTone} padding={2} radius={2} fontSize={1}>
+                        {statusLabel}
+                      </Badge>
+                      <Badge tone={synced ? 'positive' : 'default'} padding={2} radius={2} fontSize={1}>
+                        {synced ? 'Synced to Shopify' : 'Not synced'}
+                      </Badge>
+                      <Badge tone="default" padding={2} radius={2} fontSize={1}>
+                        {categoryRefs.length} categories
+                      </Badge>
+                    </Inline>
+                  </Stack>
+
+                  <Inline space={2} wrap="wrap">
+                    <Button icon={ImageIcon} mode="ghost" text="Add media" fontSize={1} />
+                    <Button icon={TagIcon} mode="ghost" text="Duplicate" fontSize={1} />
+                    <Button icon={AddIcon} mode="ghost" text="Create variant" fontSize={1} />
+                    <Button icon={PublishIcon} tone="primary" text="Publish changes" fontSize={1} />
+                    <MenuButton
+                      id="product-editor-actions"
+                      popover={{portal: true}}
+                      placement="left"
+                      button={
+                        <Button icon={EllipsisVerticalIcon} mode="ghost" aria-label="More actions" />
+                      }
+                      menu={
+                        <Menu>
+                          <MenuItem text="View on storefront" icon={LaunchIcon} />
+                          <MenuItem text="Preview" icon={LaunchIcon} />
+                          <MenuDivider />
+                          <MenuItem text="Archive product" tone="critical" />
+                        </Menu>
+                      }
+                    />
+                  </Inline>
+                </Flex>
+
+                <Grid columns={[1, 2, 2]} gap={[3, 4]}>
+                  <Card padding={3} radius={2} shadow={1} tone="transparent">
+                    <Stack space={1}>
+                      <Text size={1} muted>
+                        Price
+                      </Text>
+                      <Text size={2} weight="semibold">
+                        {formatCurrency(price)}
+                      </Text>
+                      {typeof salePrice === 'number' && (
+                        <Text size={1} muted>
+                          Sale price: {formatCurrency(salePrice)}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Card>
+                  <Card padding={3} radius={2} shadow={1} tone="transparent">
+                    <Stack space={1}>
+                      <Text size={1} muted>
+                        SKU
+                      </Text>
+                      <Text size={2}>{sku || '—'}</Text>
+                    </Stack>
+                  </Card>
+                  <Card padding={3} radius={2} shadow={1} tone="transparent">
+                    <Stack space={1}>
+                      <Text size={1} muted>
+                        Inventory
+                      </Text>
+                      <Text size={2}>{inventorySummary}</Text>
+                    </Stack>
+                  </Card>
+                  <Card padding={3} radius={2} shadow={1} tone="transparent">
+                    <Stack space={1}>
+                      <Text size={1} muted>
+                        Shopify status
+                      </Text>
+                      <Text size={2}>{synced ? 'Up to date' : 'Sync to publish'}</Text>
+                    </Stack>
+                  </Card>
+                </Grid>
+              </Stack>
+            </Flex>
           </Stack>
         </Card>
 

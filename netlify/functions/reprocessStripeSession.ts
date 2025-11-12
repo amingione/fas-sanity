@@ -530,7 +530,6 @@ async function upsertOrder({
   )
   const amountSubtotal = coerceNumber((session as any)?.amount_subtotal, true)
   const amountTax = coerceNumber((session as any)?.total_details?.amount_tax, true)
-  const amountDiscount = coerceNumber((session as any)?.total_details?.amount_discount, true)
   const amountShipping = (() => {
     const shippingTotal = coerceNumber((session as any)?.shipping_cost?.amount_total, true)
     if (shippingTotal !== undefined) return shippingTotal
@@ -608,9 +607,6 @@ async function upsertOrder({
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined
   const receiptUrl = charge?.receipt_url || undefined
-  const paymentMethodType = Array.isArray(paymentIntent?.payment_method_types)
-    ? paymentIntent.payment_method_types[0]
-    : undefined
 
   const userIdMeta =
     (

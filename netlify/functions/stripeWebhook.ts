@@ -4954,11 +4954,6 @@ export const handler: Handler = async (event) => {
         const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
           ? Number((session as any)?.total_details?.amount_tax) / 100
           : undefined
-        const amountDiscount = Number.isFinite(
-          Number((session as any)?.total_details?.amount_discount),
-        )
-          ? Number((session as any)?.total_details?.amount_discount) / 100
-          : undefined
         let amountShipping = (() => {
           const a = Number((session as any)?.shipping_cost?.amount_total)
           if (Number.isFinite(a)) return a / 100
@@ -5011,9 +5006,6 @@ export const handler: Handler = async (event) => {
           .toString()
           .trim()
 
-        const paymentMethodType = Array.isArray(paymentIntent?.payment_method_types)
-          ? paymentIntent?.payment_method_types?.[0]
-          : undefined
 
         // 2) Gather enriched data: line items + shipping
         const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
@@ -5493,9 +5485,6 @@ export const handler: Handler = async (event) => {
           if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
             baseDoc.shippingMetadata = shippingDetails.metadata
           }
-          const paymentMethodType = Array.isArray(pi.payment_method_types)
-            ? pi.payment_method_types[0]
-            : undefined
           const intentSlug = createOrderSlug(normalizedOrderNumber, pi.id)
           if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
 

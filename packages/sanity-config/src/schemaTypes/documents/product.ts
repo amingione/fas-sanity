@@ -1,5 +1,7 @@
 import {defineType, defineField} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
+import AutoSKUInput from '../../components/AutoSKUInput'
+import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 
@@ -24,6 +26,7 @@ const product = defineType({
   groups: [
     {name: 'essentials', title: '✓ Essentials', default: true},
     {name: 'content', title: 'Content & Description'},
+    {name: 'key features', title: 'Key Features'},
     {name: 'pricing', title: 'Pricing & Sale'},
     {name: 'media', title: 'Images & Media'},
     {name: 'options', title: 'Options & Add-ons'},
@@ -71,6 +74,29 @@ const product = defineType({
       group: 'essentials',
     }),
     defineField({
+      name: 'images',
+      title: 'Product Images',
+      type: 'array',
+      of: [
+        {
+          type: 'image',
+          fields: [
+            {
+              name: 'alt',
+              title: 'Alt Text',
+              type: 'string',
+              description: 'Describe the image for accessibility & SEO',
+            },
+          ],
+          options: {hotspot: true},
+        },
+      ],
+      description: 'Main product gallery images',
+      group: 'essentials',
+      validation: (Rule) =>
+        Rule.min(1).warning('Add at least one photo so the product looks good on the storefront.'),
+    }),
+    defineField({
       name: 'status',
       title: 'Status',
       type: 'string',
@@ -96,11 +122,35 @@ const product = defineType({
       group: 'essentials',
     }),
     defineField({
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      of: [{type: 'string'}],
+      description: 'Freeform keywords to help internal search, merchandising, or quick filters.',
+      group: 'essentials',
+    }),
+    defineField({
       name: 'sku',
       title: 'SKU',
       type: 'string',
-      description: 'Stock Keeping Unit - unique product identifier',
+      description: 'Auto-generated and Stripe-synced SKU using the FAS format.',
+      readOnly: true,
       group: 'essentials',
+      components: {input: AutoSKUInput},
+      initialValue: async ({document, getClient}) => {
+        try {
+          const client = getClient?.({apiVersion: '2024-10-01'})
+          if (!client) return ''
+          const sku = await generateFasSKU(document?.title, (document as any)?.platform, client)
+          if (document?.stripeProductId) {
+            await syncSKUToStripe(sku, document.stripeProductId)
+          }
+          return sku
+        } catch (error) {
+          console.warn('Failed to set initial SKU:', error)
+          return ''
+        }
+      },
     }),
     defineField({
       name: 'featured',
@@ -270,6 +320,14 @@ const product = defineType({
       group: 'content',
     }),
     defineField({
+      name: 'keyFeatures',
+      title: 'Key Features',
+      type: 'array',
+      of: [{type: 'collapsibleFeature'}],
+      description: 'Highlight main selling points with icons',
+      group: 'key features',
+    }),
+    defineField({
       name: 'importantNotes',
       title: 'Important Notes / Warnings',
       type: 'array',
@@ -302,30 +360,6 @@ const product = defineType({
       group: 'content',
     }),
 
-    // ============================================
-    // MEDIA - Images and supplemental media
-    // ============================================
-    defineField({
-      name: 'images',
-      title: 'Product Images',
-      type: 'array',
-      of: [
-        {
-          type: 'image',
-          fields: [
-            {
-              name: 'alt',
-              title: 'Alt Text',
-              type: 'string',
-              description: 'Describe the image for accessibility & SEO',
-            },
-          ],
-          options: {hotspot: true},
-        },
-      ],
-      description: 'Main product gallery images',
-      group: 'media',
-    }),
     defineField({
       name: 'mediaAssets',
       title: 'Additional Media',
