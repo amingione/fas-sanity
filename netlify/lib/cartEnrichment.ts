@@ -114,6 +114,7 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
     )
     if (filtered.length) {
       item.metadataEntries = filtered
+      delete item.metadata
       return filtered
     }
   }

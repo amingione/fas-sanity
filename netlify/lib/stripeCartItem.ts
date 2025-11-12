@@ -488,7 +488,7 @@ export function mapStripeLineItem(
   const metadataObject =
     summary || (metadataUpgrades && metadataUpgrades.length)
       ? {
-          option_summary: summary,
+          option_summary: summary || undefined,
           upgrades:
             metadataUpgrades && metadataUpgrades.length ? metadataUpgrades : undefined,
         }

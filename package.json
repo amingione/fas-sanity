@@ -32,7 +32,6 @@
     "backfill:checkout-async-failure": "pnpm backfill:checkout-async -- --status failure",
     "backfill:products:core": "tsx scripts/backfillProductCoreFields.ts",
     "backfill:orders:cart-metadata": "tsx scripts/backfillOrderCartMetadata.ts",
-    "cleanup:orders:remove-order-id": "tsx scripts/remove-order-id-field.ts",
     "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
   },
   "keywords": [

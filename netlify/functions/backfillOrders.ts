@@ -64,7 +64,7 @@ function normalizeCartItemMetadataField(item: Record<string, any>): MetadataNorm
   const upgradesChanged =
     JSON.stringify(rawUpgradesArray) !== JSON.stringify(normalizedMetadata.upgrades ?? [])
   const extraKeysChanged =
-    Object.keys(metadataObject).filter((key) => key !== 'option_summary' && key !== 'upgrades').length > 0
+    Object.keys(metadataObject).some((key) => key !== 'option_summary' && key !== 'upgrades')
 
   if (summaryChanged || upgradesChanged || extraKeysChanged) {
     item.metadata = normalizedMetadata
@@ -172,6 +172,9 @@ function toOrderCartItem(it: any) {
     }
   }
 
+  // Handle legacy metadata field migration: arrays are moved to metadataEntries,
+  // objects without option_summary/upgrades keys are normalized and moved to metadataEntries,
+  // and objects with those keys are kept as structured metadata (handled by normalizeCartItemMetadataField below)
   if (Array.isArray(cloned.metadata)) {
     cloned.metadataEntries = cloned.metadata
     delete cloned.metadata
