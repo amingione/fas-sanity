@@ -151,7 +151,6 @@ const ORDER_PREVIEW_QUERY = `*[_type == "order" && _id == $id][0]{
     optionSummary,
     optionDetails,
     upgrades,
-    customizations,
     validationIssues,
     productRef->{_id, title, slug},
     metadata{option_summary, upgrades},
@@ -1261,7 +1260,6 @@ type OrderPreviewDoc = {
     optionSummary?: string | null
     optionDetails?: string[] | string | null
     upgrades?: string[] | string | null
-    customizations?: string[] | string | null
     metadata?: {option_summary?: string | null; upgrades?: string[] | string | null} | null
     metadataEntries?: Array<{key?: string; value?: string}>
     validationIssues?: string[] | string | null
@@ -1401,21 +1399,6 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
           ...derived.optionDetails,
         ])
         optionDetails.forEach((detail) => {
-          detail
-            .split(',')
-            .map((part) => part.trim())
-            .filter(Boolean)
-            .forEach((part) => addDetail(part))
-        })
-
-        const upgrades = uniqueStrings([...coerceStringArray(item.upgrades), ...derived.upgrades])
-        if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
-
-        const customizations = uniqueStrings([
-          ...coerceStringArray(item.customizations),
-          ...derived.customizations,
-        ])
-        customizations.forEach((detail) => {
           detail
             .split(',')
             .map((part) => part.trim())

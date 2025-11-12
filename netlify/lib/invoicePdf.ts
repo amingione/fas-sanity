@@ -35,7 +35,6 @@ export type InvoiceLineItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
-  customizations?: Array<string | null> | string | null
   validationIssues?: Array<string | null> | string | null
   metadata?: Array<Record<string, unknown>> | null
   _key?: string | null
@@ -53,7 +52,6 @@ export type OrderCartItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
-  customizations?: Array<string | null> | string | null
   validationIssues?: Array<string | null> | string | null
   metadata?: Array<{key?: string | null; value?: unknown}> | null
 }
@@ -371,12 +369,6 @@ function combineLineItems(
     derived.upgrades,
   )
 
-  const customizations = mergeUniqueStrings(
-    toStringArray((invoiceItem as any)?.customizations),
-    toStringArray(cartItem?.customizations),
-    derived.customizations,
-  )
-
   const validationIssues = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.validationIssues),
     toStringArray(cartItem?.validationIssues),
@@ -385,7 +377,6 @@ function combineLineItems(
   if (optionSummary) merged.optionSummary = optionSummary
   if (optionDetails.length) merged.optionDetails = optionDetails
   if (upgrades.length) merged.upgrades = upgrades
-  if (customizations.length) merged.customizations = customizations
   if (validationIssues.length) merged.validationIssues = validationIssues
 
   if (!merged.sku) merged.sku = coalesceString(invoiceItem?.sku, cartItem?.sku)
@@ -1280,7 +1271,6 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
   const optionDetails = mergeUniqueStrings(
     toStringArray((item as any)?.optionDetails),
     optionSummary ? [optionSummary] : [],
-    toStringArray((item as any)?.customizations),
     validationIssuesList.map((issue) => `⚠️ ${issue}`),
   )
 
@@ -1290,10 +1280,7 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
       ? ((item as any)?.metadata as Array<{key?: string | null; value?: unknown}>)
       : undefined
 
-  const extrasList = collectMetadataExtras(
-    rawMetadataEntries,
-    [...upgradesList, ...optionDetails],
-  )
+  const extrasList = collectMetadataExtras(rawMetadataEntries, [...upgradesList, ...optionDetails])
 
   const description = resolveDescription(item)
   const quantity = formatQuantity(item.quantity) || '—'
@@ -1465,14 +1452,14 @@ function collectNotes(
   invoice: InvoiceLike | null | undefined,
   includePaymentTerms = true,
 ): string[] {
-  const custom = typeof invoice.customerNotes === 'string' ? invoice.customerNotes : ''
+  const custom = typeof invoice?.customerNotes === 'string' ? (invoice!.customerNotes as string) : ''
   if (custom.trim()) {
     return custom
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean)
   }
-  const terms = typeof invoice.terms === 'string' ? invoice.terms : ''
+  const terms = typeof invoice?.terms === 'string' ? (invoice!.terms as string) : ''
   if (includePaymentTerms && terms.trim()) {
     return terms
       .split(/\r?\n/)

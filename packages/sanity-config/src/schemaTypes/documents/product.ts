@@ -29,7 +29,7 @@ const product = defineType({
     {name: 'key features', title: 'Key Features'},
     {name: 'pricing', title: 'Pricing & Sale'},
     {name: 'media', title: 'Images & Media'},
-    {name: 'options', title: 'Options & Add-ons'},
+    {name: 'options', title: 'Options & Upgrades'},
     {name: 'compatibility', title: 'Vehicle Compatibility'},
     {name: 'shipping', title: 'Shipping & Logistics'},
     {name: 'seo', title: 'SEO & Metadata'},
@@ -367,6 +367,35 @@ const product = defineType({
       group: 'content',
     }),
 
+    // Product FAQ
+    defineField({
+      name: 'faq',
+      title: 'Product FAQ',
+      description: 'Common questions and answers for this product.',
+      type: 'array',
+      options: {collapsible: true, collapsed: true} as any,
+      of: [
+        {
+          type: 'object',
+          name: 'faqEntry',
+          fields: [
+            {name: 'question', type: 'string', title: 'Question'},
+            {name: 'answer', type: 'text', title: 'Answer', rows: 3},
+          ],
+          preview: {
+            select: {title: 'question', subtitle: 'answer'},
+            prepare({title, subtitle}) {
+              return {
+                title: title || 'Untitled question',
+                subtitle: subtitle || 'No answer provided',
+              }
+            },
+          },
+        },
+      ],
+      group: 'content',
+    }),
+
     defineField({
       name: 'mediaAssets',
       title: 'Additional Media',
@@ -413,6 +442,10 @@ const product = defineType({
           if (!Array.isArray(options) || options.length === 0) {
             return 'Variable products need at least one option set'
           }
+          const anyOptional = options.some((opt: any) => opt && opt.required === false)
+          if (anyOptional) {
+            return 'All defined product options must be required for customers to choose before adding to cart.'
+          }
           return true
         }),
       group: 'options',
@@ -431,15 +464,6 @@ const product = defineType({
       of: [{type: 'addOn'}],
       description:
         'Upsell extras the customer may choose in addition to required product options (e.g., ceramic bearings, install kits).',
-      group: 'options',
-    }),
-    defineField({
-      name: 'customizations',
-      title: 'Customizations & Personalization',
-      type: 'array',
-      of: [{type: 'productCustomization'}],
-      description:
-        'Collect engraving text, initials, or other personalization details. Mark fields as required to block checkout until completed.',
       group: 'options',
     }),
 

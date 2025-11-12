@@ -163,7 +163,6 @@ const handler: Handler = async (event) => {
         optionSummary,
         optionDetails,
         upgrades,
-        customizations,
         metadata{option_summary, upgrades},
         metadataEntries[]{key, value}
       },
@@ -189,7 +188,6 @@ const handler: Handler = async (event) => {
           optionSummary,
           optionDetails,
           upgrades,
-          customizations,
           metadata{option_summary, upgrades},
           metadataEntries[]{key, value}
         }
@@ -216,7 +214,6 @@ const handler: Handler = async (event) => {
           optionSummary,
           optionDetails,
           upgrades,
-          customizations,
           metadata{option_summary, upgrades},
           metadataEntries[]{key, value}
         }

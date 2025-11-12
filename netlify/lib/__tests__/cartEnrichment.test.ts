@@ -58,7 +58,6 @@ describe('enrichCartItemsFromSanity', () => {
           ...(JSON.parse(JSON.stringify(baseCartItem)) as CartItem),
           optionSummary: 'Size: Large',
           optionDetails: ['Size: Large'],
-          customizations: ['Engraving: FAST'],
         },
       ],
       client,

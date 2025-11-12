@@ -5,6 +5,8 @@ import {PackageIcon, DocumentPdfIcon, ResetIcon} from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
 import React from 'react'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
+import {formatOrderNumber} from '../../utils/orderNumber'
+import OrderNumberInput from '../../components/inputs/OrderNumberInput'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
 
 // ============================================================================
@@ -159,7 +161,9 @@ const orderSchema = defineType({
       type: 'string',
       title: 'Order Number',
       group: 'overview',
-      readOnly: false,
+      // Enforce the formatted, canonical order number display
+      readOnly: true,
+      components: {input: OrderNumberInput},
     },
     {
       name: 'status',
@@ -218,57 +222,8 @@ const orderSchema = defineType({
       group: 'items',
       readOnly: true,
       of: [
-        {
-          type: 'object',
-          // Name changed to avoid clashing with the global `orderCartItem` object type
-          name: 'orderCartEntry',
-          fields: [
-            {name: 'name', type: 'string', title: 'Product Name'},
-            {name: 'sku', type: 'string', title: 'SKU'},
-            {name: 'quantity', type: 'number', title: 'Quantity'},
-            {name: 'price', type: 'number', title: 'Unit Price'},
-            {name: 'optionSummary', type: 'string', title: 'Options'},
-            {
-              name: 'metadata',
-              title: 'Metadata',
-              type: 'object',
-              fields: [
-                {
-                  name: 'option_summary',
-                  title: 'Option Summary',
-                  type: 'string',
-                },
-                {
-                  name: 'upgrades',
-                  title: 'Upgrades / Add-Ons',
-                  type: 'array',
-                  of: [{type: 'string'}],
-                  options: {layout: 'tags'},
-                },
-              ],
-            },
-            {name: 'image', type: 'url', title: 'Image'},
-            {
-              name: 'metadataEntries',
-              title: 'Raw Metadata',
-              type: 'array',
-              of: [{type: 'orderCartItemMeta'}],
-            },
-          ],
-          preview: {
-            select: {
-              title: 'name',
-              subtitle: 'sku',
-              quantity: 'quantity',
-            },
-            prepare({title, subtitle, quantity}) {
-              return {
-                title: title || 'Unnamed Product',
-                subtitle: `${subtitle || 'No SKU'} • Qty: ${quantity || 0}`,
-              }
-            },
-          },
-        },
+        // Standardize on the global cart item schema
+        {type: 'orderCartItem'},
       ],
     },
     {
@@ -477,13 +432,14 @@ const orderSchema = defineType({
       total: 'totalAmount',
     },
     prepare({orderNumber, customerName, shippingName, status, total}) {
+      const displayOrderNumber = formatOrderNumber(orderNumber) || orderNumber
       const formattedTotal = total
         ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)
         : '$0.00'
       const displayName = customerName || shippingName || 'No customer'
 
       return {
-        title: orderNumber || 'Untitled Order',
+        title: displayOrderNumber || 'Untitled Order',
         subtitle: `${displayName} • ${status || 'unknown'} • ${formattedTotal}`,
       }
     },

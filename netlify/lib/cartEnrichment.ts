@@ -1,6 +1,6 @@
 import type {SanityClient} from '@sanity/client'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
-import {validateCartSelections} from '../../shared/cartValidation'
+import {validateCartSelections, type ProductOptionRequirement} from '../../shared/cartValidation'
 import type {CartMetadataEntry} from './stripeCartItem'
 
 export type CartItem = {
@@ -23,7 +23,6 @@ export type CartItem = {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
-  customizations?: string[]
   categories?: string[]
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
@@ -47,8 +46,7 @@ export type CartProductSummary = {
   productType?: string | null
   coreRequired?: boolean | null
   promotionTagline?: string | null
-  optionRequirements?: Array<{name?: string | null; required?: boolean | null}>
-  customizationRequirements?: Array<{name?: string | null; required?: boolean | null}>
+  optionRequirements?: ProductOptionRequirement[]
 }
 
 type ShipmentWeight = {
@@ -371,10 +369,6 @@ export async function fetchProductsForCart(
           "name": coalesce(title, name),
           "required": select(defined(required) => required, true)
         }, []),
-        "customizationRequirements": coalesce(customizations[]{
-          "name": coalesce(title, name),
-          "required": select(defined(required) => required, false)
-        }, [])
       }`,
       lookup,
     )
@@ -384,7 +378,16 @@ export async function fetchProductsForCart(
     for (const product of result) {
       if (!product || typeof product !== 'object') continue
       if (typeof product._id !== 'string' || !product._id) continue
-      deduped.set(product._id, product)
+      // Sanitize option requirements to strict typing
+      const opts = Array.isArray((product as any).optionRequirements)
+        ? ((product as any).optionRequirements as any[])
+            .map((o) => ({
+              name: typeof o?.name === 'string' ? o.name.trim() : '',
+              required: o?.required === false ? false : true,
+            }))
+            .filter((o) => Boolean(o.name))
+        : []
+      deduped.set(product._id, {...product, optionRequirements: opts})
     }
     return Array.from(deduped.values())
   } catch (err) {
@@ -445,12 +448,10 @@ export async function enrichCartItemsFromSanity(
       {
         productTitle: product.title,
         options: product.optionRequirements,
-        customizations: product.customizationRequirements,
       },
       {
         optionSummary: item.optionSummary,
         optionDetails: item.optionDetails,
-        customizations: item.customizations,
       },
     )
 
