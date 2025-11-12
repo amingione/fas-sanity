@@ -226,7 +226,32 @@ const orderSchema = defineType({
             {name: 'quantity', type: 'number', title: 'Quantity'},
             {name: 'price', type: 'number', title: 'Unit Price'},
             {name: 'optionSummary', type: 'string', title: 'Options'},
+            {
+              name: 'metadata',
+              title: 'Metadata',
+              type: 'object',
+              fields: [
+                {
+                  name: 'option_summary',
+                  title: 'Option Summary',
+                  type: 'string',
+                },
+                {
+                  name: 'upgrades',
+                  title: 'Upgrades / Add-Ons',
+                  type: 'array',
+                  of: [{type: 'string'}],
+                  options: {layout: 'tags'},
+                },
+              ],
+            },
             {name: 'image', type: 'url', title: 'Image'},
+            {
+              name: 'metadataEntries',
+              title: 'Raw Metadata',
+              type: 'array',
+              of: [{type: 'orderCartItemMeta'}],
+            },
           ],
           preview: {
             select: {

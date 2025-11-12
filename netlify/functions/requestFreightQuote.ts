@@ -136,7 +136,7 @@ export const handler: Handler = async (event) => {
   const skus = items.map((i) => (i?.sku || '').trim()).filter(Boolean)
   const titles = items.map((i) => (i?.name || '').trim()).filter(Boolean)
   const products: any[] = await sanity.fetch(
-    `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass}`,
+    `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass, coreRequired, promotionTagline}`,
     {skus, titles},
   )
 

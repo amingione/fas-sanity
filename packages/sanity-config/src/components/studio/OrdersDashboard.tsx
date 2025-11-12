@@ -153,7 +153,8 @@ const ORDER_PREVIEW_QUERY = `*[_type == "order" && _id == $id][0]{
     customizations,
     validationIssues,
     productRef->{_id, title, slug},
-    metadata[]{key,value}
+    metadata{option_summary, upgrades},
+    metadataEntries[]{key,value}
   },
   shippingLog[]{
     _key,
@@ -1260,7 +1261,8 @@ type OrderPreviewDoc = {
     optionDetails?: string[] | string | null
     upgrades?: string[] | string | null
     customizations?: string[] | string | null
-    metadata?: Array<{key?: string; value?: string}>
+    metadata?: {option_summary?: string | null; upgrades?: string[] | string | null} | null
+    metadataEntries?: Array<{key?: string; value?: string}>
     validationIssues?: string[] | string | null
     productRef?: {
       _id?: string
@@ -1346,7 +1348,13 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
             : typeof item.price === 'number'
               ? item.price * quantity
               : null
-        const metadataEntries = normalizeMetadataEntries(item.metadata || [])
+        const metadataEntries = normalizeMetadataEntries(
+          Array.isArray(item.metadataEntries)
+            ? item.metadataEntries
+            : Array.isArray(item.metadata)
+              ? item.metadata
+              : [],
+        )
         const rawName = (item.name || item.sku || 'Item').toString()
         const displayName = rawName.split('•')[0]?.trim() || rawName
         const derived = deriveOptionsFromMetadata(metadataEntries)

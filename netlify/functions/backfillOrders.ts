@@ -7,6 +7,83 @@ import {mapStripeLineItem} from '../lib/stripeCartItem'
 import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
 
+type MetadataNormalizationResult = {
+  changed: boolean
+  hasMetadata: boolean
+}
+
+function normalizeMetadataUpgrades(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const normalized = value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter((entry): entry is string => Boolean(entry))
+  return normalized.length ? Array.from(new Set(normalized)) : []
+}
+
+function normalizeCartItemMetadataField(item: Record<string, any>): MetadataNormalizationResult {
+  const result: MetadataNormalizationResult = {changed: false, hasMetadata: false}
+  if (!item || typeof item !== 'object' || !('metadata' in item)) return result
+
+  const rawMetadata = item.metadata
+
+  if (!rawMetadata) {
+    if (rawMetadata !== undefined) {
+      delete item.metadata
+      result.changed = true
+    }
+    return result
+  }
+
+  if (Array.isArray(rawMetadata) || typeof rawMetadata !== 'object') {
+    delete item.metadata
+    result.changed = true
+    return result
+  }
+
+  const metadataObject = rawMetadata as Record<string, unknown>
+  const rawSummary =
+    typeof metadataObject.option_summary === 'string' ? metadataObject.option_summary : undefined
+  const trimmedSummary = rawSummary?.trim() || ''
+  const normalizedUpgrades = normalizeMetadataUpgrades(metadataObject.upgrades)
+
+  if (!trimmedSummary && normalizedUpgrades.length === 0) {
+    delete item.metadata
+    result.changed = true
+    return result
+  }
+
+  const normalizedMetadata: Record<string, unknown> = {}
+  if (trimmedSummary) normalizedMetadata.option_summary = trimmedSummary
+  if (normalizedUpgrades.length) normalizedMetadata.upgrades = normalizedUpgrades
+
+  const rawUpgradesArray = Array.isArray(metadataObject.upgrades)
+    ? (metadataObject.upgrades as unknown[])
+    : []
+  const summaryChanged = rawSummary !== normalizedMetadata.option_summary
+  const upgradesChanged =
+    JSON.stringify(rawUpgradesArray) !== JSON.stringify(normalizedMetadata.upgrades ?? [])
+  const extraKeysChanged =
+    Object.keys(metadataObject).some((key) => key !== 'option_summary' && key !== 'upgrades')
+
+  if (summaryChanged || upgradesChanged || extraKeysChanged) {
+    item.metadata = normalizedMetadata
+    result.changed = true
+  }
+
+  result.hasMetadata = true
+  return result
+}
+
+function hasMetadataSummary(item: any): boolean {
+  if (!item || typeof item !== 'object') return false
+  const metadata = item.metadata
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false
+  const summary = typeof metadata.option_summary === 'string' ? metadata.option_summary.trim() : ''
+  if (summary) return true
+  if (!Array.isArray(metadata.upgrades)) return false
+  return metadata.upgrades.some((entry: unknown) => typeof entry === 'string' && entry.trim())
+}
+
 function normalizeOrigin(value?: string | null): string {
   if (!value) return ''
   return value.trim().replace(/\/+$/, '')
@@ -76,19 +153,50 @@ function toOrderCartItem(it: any) {
   if (cloned._type !== 'orderCartItem') return null
   if (typeof cloned._key !== 'string' || !cloned._key) cloned._key = randomUUID()
 
-  if (cloned.metadata && typeof cloned.metadata === 'object' && !Array.isArray(cloned.metadata)) {
-    const normalized = normalizeMetadataEntries(cloned.metadata as Record<string, unknown>)
+  if (
+    cloned.metadataEntries &&
+    typeof cloned.metadataEntries === 'object' &&
+    !Array.isArray(cloned.metadataEntries)
+  ) {
+    const normalized = normalizeMetadataEntries(cloned.metadataEntries as Record<string, unknown>)
     if (normalized.length) {
-      cloned.metadata = normalized.map(({key, value}) => ({
+      cloned.metadataEntries = normalized.map(({key, value}) => ({
         _type: 'orderCartItemMeta',
         key,
         value,
         source: 'legacy',
       }))
     } else {
-      delete cloned.metadata
+      delete cloned.metadataEntries
     }
   }
+
+  // Handle legacy metadata field migration: arrays are moved to metadataEntries,
+  // objects without option_summary/upgrades keys are normalized and moved to metadataEntries,
+  // and objects with those keys are kept as structured metadata (handled by normalizeCartItemMetadataField below)
+  if (Array.isArray(cloned.metadata)) {
+    cloned.metadataEntries = cloned.metadata
+    delete cloned.metadata
+  } else if (
+    cloned.metadata &&
+    typeof cloned.metadata === 'object' &&
+    !Array.isArray(cloned.metadata) &&
+    !('option_summary' in cloned.metadata) &&
+    !('upgrades' in cloned.metadata)
+  ) {
+    const normalized = normalizeMetadataEntries(cloned.metadata as Record<string, unknown>)
+    if (normalized.length) {
+      cloned.metadataEntries = normalized.map(({key, value}) => ({
+        _type: 'orderCartItemMeta',
+        key,
+        value,
+        source: 'legacy',
+      }))
+    }
+    delete cloned.metadata
+  }
+
+  normalizeCartItemMetadataField(cloned)
 
   return cloned
 }
@@ -112,8 +220,9 @@ function cloneCart(arr: any[]): any[] {
   })
 }
 
-function normalizeCartItems(existing: any[], next: any[]): any[] {
-  return next.map((item, index) => {
+function normalizeCartItems(existing: any[], next: any[]): {items: any[]; metadataUpdated: boolean} {
+  let metadataUpdated = false
+  const items = next.map((item, index) => {
     const candidate = item && typeof item === 'object' ? {...item} : {_type: 'orderCartItem'}
     const existingKey = existing?.[index]?._key
     const key =
@@ -122,12 +231,17 @@ function normalizeCartItems(existing: any[], next: any[]): any[] {
         : typeof existingKey === 'string' && existingKey
           ? existingKey
           : randomUUID()
+    const metadataResult = normalizeCartItemMetadataField(candidate)
+    if (metadataResult.changed && metadataResult.hasMetadata) {
+      metadataUpdated = true
+    }
     return {
       _type: 'orderCartItem',
       ...candidate,
       _key: key,
     }
   })
+  return {items, metadataUpdated}
 }
 
 function hasCartChanged(original: any[], next: any[]): boolean {
@@ -148,7 +262,8 @@ function cartNeedsEnrichment(cart: any[]): boolean {
     const hasProductPointer = Boolean(
       item.sku || item.productSlug || item.stripeProductId || item.stripePriceId,
     )
-    const hasMetadata = Array.isArray(item.metadata) && item.metadata.length > 0
+    const hasMetadata =
+      (Array.isArray(item.metadata) && item.metadata.length > 0) || hasMetadataSummary(item)
     return !hasProductPointer || !hasMetadata
   })
 }
@@ -314,6 +429,8 @@ export const handler: Handler = async (event) => {
         processed++
         const setOps: Record<string, any> = {}
         const unsetOps: string[] = []
+        const originalCart = Array.isArray(doc.cart) ? doc.cart : []
+        let metadataBackfilledForOrder = false
 
         // Migrate customer -> customerRef (remove legacy `customer`)
         if (!doc.customerRef && doc.customer && doc.customer._ref) {
@@ -335,7 +452,14 @@ export const handler: Handler = async (event) => {
               if (i._type !== 'orderCartItem') return true
               return typeof i._key !== 'string' || i._key.length === 0
             })
-          if (needs) setOps.cart = fixedCart
+          if (needs) {
+            setOps.cart = fixedCart
+            const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
+            const updatedHasMetadata = fixedCart.some((item) => hasMetadataSummary(item))
+            if (updatedHasMetadata && !originalHasMetadata) {
+              metadataBackfilledForOrder = true
+            }
+          }
         }
 
         const workingCart = Array.isArray(setOps.cart)
@@ -349,7 +473,10 @@ export const handler: Handler = async (event) => {
           if (doc.stripeSessionId) {
             const stripeCart = await loadCartFromStripe(doc.stripeSessionId)
             if (Array.isArray(stripeCart) && stripeCart.length > 0) {
-              enrichedCart = normalizeCartItems(workingCart, stripeCart)
+              const normalized = normalizeCartItems(workingCart, stripeCart)
+              enrichedCart = normalized.items
+              metadataBackfilledForOrder =
+                metadataBackfilledForOrder || normalized.metadataUpdated
             }
           }
 
@@ -357,12 +484,22 @@ export const handler: Handler = async (event) => {
             const cloned = cloneCart(workingCart)
             const fallback = await enrichCartItemsFromSanity(cloned as any, sanity)
             if (hasCartChanged(workingCart, fallback)) {
-              enrichedCart = normalizeCartItems(workingCart, fallback)
+              const normalized = normalizeCartItems(workingCart, fallback)
+              enrichedCart = normalized.items
+              metadataBackfilledForOrder =
+                metadataBackfilledForOrder || normalized.metadataUpdated
             }
           }
 
           if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
             setOps.cart = enrichedCart
+            if (!metadataBackfilledForOrder) {
+              const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
+              const updatedHasMetadata = enrichedCart.some((item) => hasMetadataSummary(item))
+              if (updatedHasMetadata && !originalHasMetadata) {
+                metadataBackfilledForOrder = true
+              }
+            }
           }
         }
 
@@ -406,6 +543,9 @@ export const handler: Handler = async (event) => {
                 .set(setOps)
                 .unset(unsetOps)
                 .commit({autoGenerateArrayKeys: true})
+              if (metadataBackfilledForOrder) {
+                console.log('Backfilled order:', doc._id, setOps.orderNumber || doc.orderNumber || '')
+              }
             } catch (err) {
               console.warn('backfillOrders: failed to patch order', doc._id, err)
             }

@@ -68,7 +68,8 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
       optionDetails,
       upgrades,
       customizations,
-      metadata[]{key, value}
+      metadata{option_summary, upgrades},
+      metadataEntries[]{key, value}
     },
     orderRef->{
       _id,
@@ -93,7 +94,8 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
         optionDetails,
         upgrades,
         customizations,
-        metadata[]{key, value}
+        metadata{option_summary, upgrades},
+        metadataEntries[]{key, value}
       }
     },
     order->{
@@ -119,7 +121,8 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
         optionDetails,
         upgrades,
         customizations,
-        metadata[]{key, value}
+        metadata{option_summary, upgrades},
+        metadataEntries[]{key, value}
       }
     },
     discountType,

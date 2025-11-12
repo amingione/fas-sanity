@@ -27,7 +27,11 @@ export type CartItem = {
   categories?: string[]
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
-  metadata?: CartMetadataEntry[] | Record<string, unknown> | null
+  metadata?: {
+    option_summary?: string
+    upgrades?: string[]
+  } | null
+  metadataEntries?: CartMetadataEntry[] | Record<string, unknown> | null
 }
 
 export type CartProductSummary = {
@@ -41,6 +45,8 @@ export type CartProductSummary = {
   shipsAlone?: boolean | null
   shippingClass?: string | null
   productType?: string | null
+  coreRequired?: boolean | null
+  promotionTagline?: string | null
   optionRequirements?: Array<{name?: string | null; required?: boolean | null}>
   customizationRequirements?: Array<{name?: string | null; required?: boolean | null}>
 }
@@ -80,6 +86,22 @@ function slugifyValue(value?: string | null): string | undefined {
 }
 
 function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
+  if (Array.isArray(item.metadataEntries)) {
+    const filtered = item.metadataEntries.filter((entry): entry is CartMetadataEntry =>
+      Boolean(
+        entry &&
+          typeof entry === 'object' &&
+          entry._type === CART_METADATA_TYPE &&
+          entry.key &&
+          entry.value,
+      ),
+    )
+    if (filtered.length !== item.metadataEntries.length) {
+      item.metadataEntries = filtered
+    }
+    return filtered
+  }
+
   if (Array.isArray(item.metadata)) {
     const filtered = item.metadata.filter((entry): entry is CartMetadataEntry =>
       Boolean(
@@ -90,13 +112,34 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
           entry.value,
       ),
     )
-    if (filtered.length !== item.metadata.length) {
-      item.metadata = filtered
+    if (filtered.length) {
+      item.metadataEntries = filtered
+      delete item.metadata
+      return filtered
     }
-    return filtered
   }
 
-  if (item.metadata && typeof item.metadata === 'object') {
+  if (item.metadataEntries && typeof item.metadataEntries === 'object') {
+    const normalized = normalizeMetadataEntries(item.metadataEntries as Record<string, unknown>)
+    if (normalized.length) {
+      const upgraded = normalized.map<CartMetadataEntry>(({key, value}) => ({
+        _type: CART_METADATA_TYPE,
+        key,
+        value,
+        source: 'legacy',
+      }))
+      item.metadataEntries = upgraded
+      return upgraded
+    }
+  }
+
+  if (
+    item.metadata &&
+    typeof item.metadata === 'object' &&
+    !Array.isArray(item.metadata) &&
+    !('option_summary' in item.metadata) &&
+    !('upgrades' in item.metadata)
+  ) {
     const normalized = normalizeMetadataEntries(item.metadata as Record<string, unknown>)
     if (normalized.length) {
       const upgraded = normalized.map<CartMetadataEntry>(({key, value}) => ({
@@ -105,12 +148,31 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
         value,
         source: 'legacy',
       }))
-      item.metadata = upgraded
+      item.metadataEntries = upgraded
       return upgraded
     }
   }
 
   return []
+}
+
+function syncMetadataSummary(item: CartItem) {
+  const summary = typeof item.optionSummary === 'string' ? item.optionSummary.trim() : ''
+  const normalizedSummary = summary ? summary : undefined
+  const normalizedUpgrades = Array.isArray(item.upgrades)
+    ? item.upgrades
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry): entry is string => Boolean(entry))
+    : []
+
+  if (normalizedSummary || normalizedUpgrades.length) {
+    item.metadata = {
+      option_summary: normalizedSummary,
+      upgrades: normalizedUpgrades.length ? normalizedUpgrades : undefined,
+    }
+  } else if (item.metadata) {
+    delete item.metadata
+  }
 }
 
 function appendMetadata(
@@ -132,7 +194,7 @@ function appendMetadata(
     value: normalizedValue,
     source,
   })
-  item.metadata = metadata
+  item.metadataEntries = metadata
 }
 
 function looksLikeSanityId(value?: string | null): boolean {
@@ -303,6 +365,8 @@ export async function fetchProductsForCart(
         shipsAlone,
         shippingClass,
         productType,
+        coreRequired,
+        promotionTagline,
         "optionRequirements": coalesce(options[]{
           "name": coalesce(title, name),
           "required": select(defined(required) => required, true)
@@ -401,6 +465,8 @@ export async function enrichCartItemsFromSanity(
     } else if (item.validationIssues?.length) {
       delete item.validationIssues
     }
+
+    syncMetadataSummary(item)
 
     return item
   })
