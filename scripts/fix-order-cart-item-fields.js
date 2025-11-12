@@ -84,9 +84,21 @@ function normalizeItem(it, lookups) {
   // Link productRef when possible
   if (!item.productRef || !item.productRef._ref) {
     const slugOrId = item.productSlug || item.id
-    const foundId = (slugOrId && lookups.idBySlug.get(slugOrId)) || null
+    let foundId = (slugOrId && lookups.idBySlug.get(slugOrId)) || null
+    if (!foundId && item.sku) {
+      foundId = lookups.idBySku.get(item.sku) || null
+    }
+    if (!foundId) {
+      const titleKey = (item.name || item.productName || '').trim().toLowerCase()
+      if (titleKey) foundId = lookups.idByTitle.get(titleKey) || null
+    }
     if (foundId) {
       item.productRef = {_type: 'reference', _ref: foundId}
+      // also backfill slug if missing
+      if (!item.productSlug) {
+        const slug = lookups.slugById.get(foundId)
+        if (slug) item.productSlug = slug
+      }
     }
   }
 
@@ -203,24 +215,55 @@ async function run() {
       const productSkuLookupById = new Map()
       const productSkuLookupBySlugOrId = new Map()
       const productIdBySlug = new Map()
-      if (productIds.size || slugsOrIds.size) {
+      const productIdBySku = new Map()
+      const productIdByTitle = new Map() // lowercased title
+      const productSlugById = new Map()
+      // Collect extra keys for linking
+      const skus = new Set()
+      const titles = new Set()
+      for (const it of doc.cart || []) {
+        if (!it || typeof it !== 'object') continue
+        if (it.sku) skus.add(String(it.sku).trim())
+        const title = (it.name || it.productName || '').trim()
+        if (title) titles.add(title)
+      }
+
+      if (productIds.size || slugsOrIds.size || skus.size || titles.size) {
         const lookup = await client.fetch(
           `{
-            "byId": *[_type == "product" && _id in $ids]{_id, sku, slug},
-            "bySlug": *[_type == "product" && slug.current in $slugs]{_id, "key": slug.current, sku}
+            "byId": *[_type == "product" && _id in $ids]{_id, sku, slug, title},
+            "bySlug": *[_type == "product" && slug.current in $slugs]{_id, "key": slug.current, sku, title},
+            "bySkuOrTitle": *[_type == "product" && (sku in $skus || title in $titles)]{_id, sku, title, slug}
           }`,
-          {ids: Array.from(productIds), slugs: Array.from(slugsOrIds)},
+          {
+            ids: Array.from(productIds),
+            slugs: Array.from(slugsOrIds),
+            skus: Array.from(skus),
+            titles: Array.from(titles),
+          },
         )
         for (const p of lookup.byId || []) {
           if (p && p._id) {
             if (p.sku) productSkuLookupById.set(p._id, p.sku)
             if (p.slug?.current) productIdBySlug.set(p.slug.current, p._id)
+            if (p.slug?.current) productSlugById.set(p._id, p.slug.current)
+            if (p.sku) productIdBySku.set(p.sku, p._id)
+            if (p.title) productIdByTitle.set(String(p.title).trim().toLowerCase(), p._id)
           }
         }
         for (const p of lookup.bySlug || []) {
           if (p && p.key) {
             if (p.sku) productSkuLookupBySlugOrId.set(p.key, p.sku)
             if (p._id) productIdBySlug.set(p.key, p._id)
+            if (p._id && p.key) productSlugById.set(p._id, p.key)
+            if (p._id && p.title) productIdByTitle.set(String(p.title).trim().toLowerCase(), p._id)
+          }
+        }
+        for (const p of lookup.bySkuOrTitle || []) {
+          if (p && p._id) {
+            if (p.sku) productIdBySku.set(p.sku, p._id)
+            if (p.title) productIdByTitle.set(String(p.title).trim().toLowerCase(), p._id)
+            if (p.slug?.current) productSlugById.set(p._id, p.slug.current)
           }
         }
       }
@@ -231,6 +274,9 @@ async function run() {
           skuById: productSkuLookupById,
           skuBySlugOrId: productSkuLookupBySlugOrId,
           idBySlug: productIdBySlug,
+          idBySku: productIdBySku,
+          idByTitle: productIdByTitle,
+          slugById: productSlugById,
         })
         const after = JSON.stringify(afterObj)
         if (before !== after) {
