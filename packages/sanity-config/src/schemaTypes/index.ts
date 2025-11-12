@@ -2,6 +2,8 @@ import product from './documents/product'
 import category from './documents/category'
 import order from './documents/order'
 import bill from './documents/bill'
+import merchantFeed from './documents/merchantFeed'
+import shoppingCampaign from './documents/shoppingCampaign'
 import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
 import {accordionType} from './objects/module/accordionType'
@@ -256,6 +258,8 @@ const documents = [
   expense,
   stripeWebhookEvent,
   emailCampaign,
+  merchantFeed,
+  shoppingCampaign,
   campaign,
   attribution,
   marketingChannel,
