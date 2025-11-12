@@ -126,7 +126,11 @@ type OrderCartItem = {
   customizations?: string[]
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
-  metadata?: ReturnType<typeof buildMetadataEntries>
+  metadata?: {
+    option_summary?: string
+    upgrades?: string[]
+  }
+  metadataEntries?: ReturnType<typeof buildMetadataEntries>
 }
 
 const arraysEqual = (a?: string[], b?: string[]) => {
@@ -140,21 +144,21 @@ const arraysEqual = (a?: string[], b?: string[]) => {
 }
 
 const normalizeCartItemMetadata = (
-  metadata: unknown,
+  metadataEntries: unknown,
 ): {
   typed: ReturnType<typeof buildMetadataEntries>
   normalized: NormalizedMetadataEntry[]
   changed: boolean
 } => {
-  if (!metadata) {
+  if (!metadataEntries) {
     return {typed: [], normalized: [], changed: false}
   }
 
-  if (Array.isArray(metadata)) {
+  if (Array.isArray(metadataEntries)) {
     let changed = false
     const typed: ReturnType<typeof buildMetadataEntries> = []
 
-    metadata.forEach((entry) => {
+    metadataEntries.forEach((entry) => {
       if (!entry || typeof entry !== 'object') {
         changed = true
         return
@@ -180,14 +184,14 @@ const normalizeCartItemMetadata = (
       typed.push(nextEntry)
     })
 
-    if (typed.length !== metadata.length) changed = true
+    if (typed.length !== metadataEntries.length) changed = true
 
     const normalized: NormalizedMetadataEntry[] = typed.map(({key, value}) => ({key, value}))
     return {typed, normalized, changed}
   }
 
-  if (metadata && typeof metadata === 'object') {
-    const typed = buildMetadataEntries(metadata)
+  if (typeof metadataEntries === 'object' && !Array.isArray(metadataEntries)) {
+    const typed = buildMetadataEntries(metadataEntries)
     const normalized: NormalizedMetadataEntry[] = typed.map(({key, value}) => ({key, value}))
     return {typed, normalized, changed: typed.length > 0}
   }
@@ -216,16 +220,18 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
       changed = true
     }
 
-    const metadataResult = normalizeCartItemMetadata(record.metadata)
+    const metadataResult = normalizeCartItemMetadata(record.metadataEntries)
     if (metadataResult.changed) {
-      normalizedItem.metadata = metadataResult.typed.length ? metadataResult.typed : undefined
+      normalizedItem.metadataEntries = metadataResult.typed.length
+        ? metadataResult.typed
+        : undefined
       changed = true
-    } else if (Array.isArray(record.metadata)) {
-      normalizedItem.metadata = record.metadata as OrderCartItem['metadata']
+    } else if (Array.isArray(record.metadataEntries)) {
+      normalizedItem.metadataEntries = record.metadataEntries as OrderCartItem['metadataEntries']
     } else if (metadataResult.typed.length) {
-      normalizedItem.metadata = metadataResult.typed
+      normalizedItem.metadataEntries = metadataResult.typed
     } else {
-      delete (normalizedItem as any).metadata
+      delete (normalizedItem as any).metadataEntries
     }
 
     const derivedOptions = deriveOptionsFromMetadata(metadataResult.normalized)
@@ -316,6 +322,39 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
       }
     } else if ((record as any).validationIssues) {
       delete (normalizedItem as any).validationIssues
+      changed = true
+    }
+
+    const metadataSummaryValue = normalizedItem.optionSummary?.trim()
+    const metadataUpgradesValue = normalizedItem.upgrades
+      ?.map((entry) => entry.trim())
+      .filter(Boolean)
+    const nextMetadata =
+      metadataSummaryValue || (metadataUpgradesValue && metadataUpgradesValue.length)
+        ? {
+            option_summary: metadataSummaryValue || undefined,
+            upgrades:
+              metadataUpgradesValue && metadataUpgradesValue.length
+                ? metadataUpgradesValue
+                : undefined,
+          }
+        : undefined
+
+    if (nextMetadata) {
+      const existingMetadata = normalizedItem.metadata
+      const upgradesChanged = !arraysEqual(
+        existingMetadata?.upgrades,
+        nextMetadata.upgrades,
+      )
+      if (existingMetadata?.option_summary !== nextMetadata.option_summary || upgradesChanged) {
+        normalizedItem.metadata = nextMetadata
+        changed = true
+      } else if (!existingMetadata) {
+        normalizedItem.metadata = nextMetadata
+        changed = true
+      }
+    } else if (normalizedItem.metadata) {
+      delete normalizedItem.metadata
       changed = true
     }
 
@@ -436,7 +475,21 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   if (productRefValue) {
     cartItem.productRef = {_type: 'reference', _ref: productRefValue}
   }
-  if (metadata.length) cartItem.metadata = metadata
+  if (metadata.length) cartItem.metadataEntries = metadata
+
+  const metadataSummary = cartItem.optionSummary?.trim()
+  const metadataUpgrades = cartItem.upgrades?.map((entry) => entry.trim()).filter(Boolean)
+  if (metadataSummary || (metadataUpgrades && metadataUpgrades.length)) {
+    cartItem.metadata = {
+      ...(cartItem.metadata || {}),
+      option_summary: metadataSummary || undefined,
+      upgrades: metadataUpgrades && metadataUpgrades.length ? metadataUpgrades : undefined,
+    }
+  }
+
+  if (cartItem.metadata && !cartItem.metadata.option_summary && !cartItem.metadata.upgrades) {
+    delete cartItem.metadata
+  }
 
   return cartItem
 }

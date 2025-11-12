@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
@@ -288,9 +289,12 @@ const prepareItemPresentation = (source: {
   optionDetails?: unknown
   upgrades?: unknown
   customizations?: unknown
+  metadataEntries?: unknown
   metadata?: unknown
 }): {title: string; details: string[]} => {
-  const metadataEntries = normalizeMetadataEntries(source.metadata as any)
+  const metadataEntries = normalizeMetadataEntries(
+    (source.metadataEntries ?? source.metadata) as any,
+  )
   const derived = deriveCartOptions(metadataEntries)
   const rawName = (
     source?.name ||
@@ -790,7 +794,9 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
     for (const collection of collections) {
       if (!Array.isArray(collection)) continue
       for (const item of collection) {
-        const entries = normalizeMetadataEntries(item?.metadata as any)
+        const entries = normalizeMetadataEntries(
+          (item?.metadataEntries ?? item?.metadata) as any,
+        )
         const metaMap = metadataEntriesToMap(entries)
         const candidate =
           getMetaValue(metaMap, 'sanity_product_id', 'product_id', 'productid') ||
@@ -852,7 +858,9 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   if (Array.isArray(order?.cart) && order.cart.length > 0) {
     for (const ci of order.cart) {
       if (!ci) continue
-      const metadataEntries = normalizeMetadataEntries(ci.metadata as any)
+      const metadataEntries = normalizeMetadataEntries(
+        (ci.metadataEntries ?? ci.metadata) as any,
+      )
       const metaMap = metadataEntriesToMap(metadataEntries)
       const productId = getMetaValue(metaMap, 'sanity_product_id', 'product_id')
       const lookupSku = productId ? productLookup[cleanIdentifier(productId)]?.sku : undefined
@@ -877,7 +885,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         optionDetails: ci.optionDetails,
         upgrades: ci.upgrades,
         customizations: ci.customizations,
-        metadata: ci.metadata,
+        metadataEntries: ci.metadataEntries,
       })
       const quantity = Number(ci.quantity || 1)
       items.push({
@@ -889,7 +897,9 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   } else if (Array.isArray(invoice?.lineItems) && invoice.lineItems.length > 0) {
     for (const li of invoice.lineItems) {
       const quantity = Number(li?.quantity || 1)
-      const metadataEntries = normalizeMetadataEntries((li as any)?.metadata)
+      const metadataEntries = normalizeMetadataEntries(
+        ((li as any)?.metadataEntries ?? (li as any)?.metadata) as any,
+      )
       const metaMap = metadataEntriesToMap(metadataEntries)
       const productId =
         getMetaValue(metaMap, 'sanity_product_id', 'product_id') ||
@@ -916,7 +926,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         optionDetails: (li as any)?.optionDetails,
         upgrades: (li as any)?.upgrades,
         customizations: (li as any)?.customizations,
-        metadata: (li as any)?.metadata,
+        metadataEntries: (li as any)?.metadataEntries,
       })
       items.push({
         title: presentation.title,

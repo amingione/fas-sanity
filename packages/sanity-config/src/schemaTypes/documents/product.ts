@@ -160,6 +160,13 @@ const product = defineType({
       initialValue: false,
       group: 'essentials',
     }),
+    defineField({
+      name: 'promotionTagline',
+      title: 'Promotion Tagline',
+      type: 'string',
+      description: 'Marketing tagline or highlight for product cards.',
+      group: 'content',
+    }),
 
     // ============================================
     // PRICING - Price and sale configuration
@@ -601,6 +608,15 @@ const product = defineType({
       group: 'shipping',
     }),
     defineField({
+      name: 'coreRequired',
+      title: 'Core Required',
+      type: 'boolean',
+      description: 'Indicates if the product requires a customer core return or exchange.',
+      initialValue: false,
+      fieldset: 'shipping',
+      group: 'shipping',
+    }),
+    defineField({
       name: 'shippingClass',
       title: 'Shipping Class',
       type: 'string',
@@ -698,6 +714,28 @@ const product = defineType({
       type: 'array',
       of: [{type: 'pricingTier'}],
       fieldset: 'merchant',
+      group: 'advanced',
+    }),
+
+    defineField({
+      name: 'merchantData',
+      title: 'Merchant Data',
+      type: 'object',
+      fields: [
+        defineField({
+          name: 'linkedMerchant',
+          title: 'Merchant Feed',
+          type: 'reference',
+          to: [{type: 'merchantFeed'}],
+        }),
+        defineField({
+          name: 'linkedCampaign',
+          title: 'Campaign Data',
+          type: 'reference',
+          to: [{type: 'shoppingCampaign'}],
+        }),
+      ],
+      options: {collapsible: true},
       group: 'advanced',
     }),
 
