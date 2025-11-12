@@ -452,12 +452,10 @@ export const handler: Handler = async (event) => {
             })
           if (needs) {
             setOps.cart = fixedCart
-            if (!metadataBackfilledForOrder) {
-              const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
-              const updatedHasMetadata = fixedCart.some((item) => hasMetadataSummary(item))
-              if (updatedHasMetadata && !originalHasMetadata) {
-                metadataBackfilledForOrder = true
-              }
+            const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
+            const updatedHasMetadata = fixedCart.some((item) => hasMetadataSummary(item))
+            if (updatedHasMetadata && !originalHasMetadata) {
+              metadataBackfilledForOrder = true
             }
           }
         }
