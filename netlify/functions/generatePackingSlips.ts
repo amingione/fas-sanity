@@ -224,7 +224,6 @@ const buildDetailList = (opts: {
   summary?: string | null
   optionDetails?: string[]
   upgrades?: string[]
-  customizations?: string[]
   validationIssues?: string[]
 }): string[] => {
   const details: string[] = []
@@ -262,10 +261,6 @@ const buildDetailList = (opts: {
     if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
   }
 
-  if (opts.customizations?.length) {
-    uniqueStrings(opts.customizations).forEach(addDetail)
-  }
-
   if (opts.validationIssues?.length) {
     uniqueStrings(opts.validationIssues)
       .map((issue) => issue.trim())
@@ -288,7 +283,6 @@ const prepareItemPresentation = (source: {
   optionSummary?: unknown
   optionDetails?: unknown
   upgrades?: unknown
-  customizations?: unknown
   metadataEntries?: unknown
   metadata?: unknown
 }): {title: string; details: string[]} => {
@@ -316,15 +310,10 @@ const prepareItemPresentation = (source: {
     ...derived.optionDetails,
   ])
   const upgrades = uniqueStrings([...coerceStringArray(source.upgrades), ...derived.upgrades])
-  const customizations = uniqueStrings([
-    ...coerceStringArray(source.customizations),
-    ...derived.customizations,
-  ])
   const details = buildDetailList({
     summary,
     optionDetails,
     upgrades,
-    customizations,
     validationIssues: coerceStringArray((source as any).validationIssues),
   })
   const detailSet = new Set(details.map((detail) => detail.toLowerCase()))
@@ -710,7 +699,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
             optionSummary,
             optionDetails,
             upgrades,
-            customizations,
             validationIssues,
             productRef->{ _id, title, slug },
             metadata[]{key, value}
@@ -744,7 +732,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           optionSummary,
           optionDetails,
           upgrades,
-          customizations,
           validationIssues,
           productRef->{ _id, title, slug },
           metadata[]{key, value}
@@ -779,7 +766,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
           optionSummary,
           optionDetails,
           upgrades,
-          customizations,
           metadata[]{key, value}
         }
       }`,
@@ -794,9 +780,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
     for (const collection of collections) {
       if (!Array.isArray(collection)) continue
       for (const item of collection) {
-        const entries = normalizeMetadataEntries(
-          (item?.metadataEntries ?? item?.metadata) as any,
-        )
+        const entries = normalizeMetadataEntries((item?.metadataEntries ?? item?.metadata) as any)
         const metaMap = metadataEntriesToMap(entries)
         const candidate =
           getMetaValue(metaMap, 'sanity_product_id', 'product_id', 'productid') ||
@@ -858,9 +842,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   if (Array.isArray(order?.cart) && order.cart.length > 0) {
     for (const ci of order.cart) {
       if (!ci) continue
-      const metadataEntries = normalizeMetadataEntries(
-        (ci.metadataEntries ?? ci.metadata) as any,
-      )
+      const metadataEntries = normalizeMetadataEntries((ci.metadataEntries ?? ci.metadata) as any)
       const metaMap = metadataEntriesToMap(metadataEntries)
       const productId = getMetaValue(metaMap, 'sanity_product_id', 'product_id')
       const lookupSku = productId ? productLookup[cleanIdentifier(productId)]?.sku : undefined
@@ -884,7 +866,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         optionSummary: ci.optionSummary,
         optionDetails: ci.optionDetails,
         upgrades: ci.upgrades,
-        customizations: ci.customizations,
         metadataEntries: ci.metadataEntries,
       })
       const quantity = Number(ci.quantity || 1)
@@ -925,7 +906,6 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
         optionSummary: (li as any)?.optionSummary,
         optionDetails: (li as any)?.optionDetails,
         upgrades: (li as any)?.upgrades,
-        customizations: (li as any)?.customizations,
         metadataEntries: (li as any)?.metadataEntries,
       })
       items.push({

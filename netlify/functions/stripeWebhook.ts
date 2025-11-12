@@ -690,36 +690,6 @@ const UPGRADE_FIELD_KEYS = [
   'addOns',
 ]
 
-const CUSTOMIZATION_FIELD_KEYS = [
-  'customizations',
-  'customization',
-  'customization_details',
-  'custom_details',
-  'custom_detail',
-  'customization_detail',
-  'custom_text',
-  'customText',
-  'custom_message',
-  'customMessage',
-  'personalization',
-  'personalisation',
-  'personalized_message',
-  'personalizedMessage',
-  'personalised_message',
-  'personalisedMessage',
-  'engraving',
-  'engraving_text',
-  'engravingText',
-  'gift_message',
-  'giftMessage',
-  'item_note',
-  'itemNote',
-  'product_note',
-  'productNote',
-  'order_item_note',
-  'orderItemNote',
-]
-
 const DESCRIPTION_METADATA_KEYS = [
   'description',
   'line_description',
@@ -953,7 +923,6 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   )
   const optionDetailsValue = consumeRecordValue(working, OPTION_DETAIL_FIELD_KEYS)
   const upgradesValue = consumeRecordValue(working, UPGRADE_FIELD_KEYS)
-  const customizationsValue = consumeRecordValue(working, CUSTOMIZATION_FIELD_KEYS)
   const categoriesValue = consumeRecordValue(working, CATEGORY_FIELD_KEYS)
 
   const nameCandidate =
@@ -1026,10 +995,6 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   const optionDetails = uniqueStrings([...optionDetailsCandidates, ...summarySegments])
 
   const upgrades = uniqueStrings([...coerceStringArray(upgradesValue), ...derivedOptions.upgrades])
-  const customizations = uniqueStrings([
-    ...coerceStringArray(customizationsValue),
-    ...derivedOptions.customizations,
-  ])
   const categories = uniqueStrings(coerceStringArray(categoriesValue))
 
   const resolvedDescription =
@@ -1101,7 +1066,6 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   if (optionSummary) item.optionSummary = optionSummary
   if (optionDetails.length) item.optionDetails = optionDetails
   if (upgrades.length) item.upgrades = upgrades
-  if (customizations.length) item.customizations = customizations
   if (categories.length) item.categories = categories
   const resolvedQuantityValue =
     typeof item.quantity === 'number' && Number.isFinite(item.quantity) ? item.quantity : undefined
@@ -4971,7 +4935,9 @@ export const handler: Handler = async (event) => {
         const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
           ? Number((session as any)?.total_details?.amount_tax) / 100
           : undefined
-        const amountDiscount = Number.isFinite(Number((session as any)?.total_details?.amount_discount))
+        const amountDiscount = Number.isFinite(
+          Number((session as any)?.total_details?.amount_discount),
+        )
           ? Number((session as any)?.total_details?.amount_discount) / 100
           : undefined
         let amountShipping = (() => {

@@ -389,7 +389,7 @@ const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown
 
   const metadataOptionSummary = toCleanString(
     (item.metadata as Record<string, unknown> | undefined)?.option_summary ??
-    (typeof item.metadata === 'object' && item.metadata ? undefined : item.optionSummary),
+      (typeof item.metadata === 'object' && item.metadata ? undefined : item.optionSummary),
   )
   const metadataUpgrades = toCleanStringArray(
     (item.metadata as Record<string, unknown> | undefined)?.upgrades ?? item.upgrades,
@@ -416,7 +416,6 @@ const sanitizeCartItem = (item: Record<string, unknown>): Record<string, unknown
     optionSummary: toCleanString(item.optionSummary),
     optionDetails: toCleanStringArray(item.optionDetails, 20),
     upgrades: toCleanStringArray(item.upgrades, 20),
-    customizations: toCleanStringArray(item.customizations, 20),
     price: toCleanNumber(item.price),
     quantity: toCleanNumber(item.quantity),
     categories: toCleanStringArray(item.categories, 20),

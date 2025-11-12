@@ -6,49 +6,54 @@ export const orderCartItemType = defineType({
   title: 'Cart Item',
   type: 'object',
   fields: [
+    // Primary display
+    defineField({name: 'name', type: 'string', title: 'Display Name'}),
+    defineField({
+      name: 'productRef',
+      type: 'reference',
+      title: 'Sanity Product',
+      to: [{type: 'product'}],
+      readOnly: false,
+    }),
+    defineField({name: 'sku', type: 'string', title: 'SKU'}),
+    // Secondary identifiers (read-only)
     defineField({name: 'id', type: 'string', title: 'Product ID / Slug', readOnly: true}),
     defineField({name: 'productSlug', type: 'string', title: 'Product Slug', readOnly: true}),
-    defineField({
-      name: 'stripeProductId',
-      type: 'string',
-      title: 'Stripe Product ID',
-      readOnly: true,
-    }),
-    defineField({name: 'stripePriceId', type: 'string', title: 'Stripe Price ID', readOnly: true}),
-    defineField({name: 'sku', type: 'string', title: 'SKU'}),
-    defineField({name: 'name', type: 'string', title: 'Display Name'}),
+    defineField({name: 'stripeProductId', type: 'string', title: 'Stripe Product ID', readOnly: true, hidden: true}),
+    defineField({name: 'stripePriceId', type: 'string', title: 'Stripe Price ID', readOnly: true, hidden: true}),
     defineField({
       name: 'productName',
       type: 'string',
       title: 'Stripe Product Name',
       readOnly: true,
+      hidden: true,
     }),
     defineField({
       name: 'description',
       type: 'string',
       title: 'Stripe Line Description',
       readOnly: true,
+      hidden: true,
     }),
     defineField({name: 'image', type: 'url', title: 'Product Image URL', readOnly: true}),
     defineField({name: 'productUrl', type: 'string', title: 'Product URL', readOnly: true}),
+    
     defineField({
-      name: 'productRef',
-      type: 'reference',
-      title: 'Sanity Product',
-      to: [{type: 'product'}],
+      name: 'optionSummary',
+      type: 'string',
+      title: 'Selected Options',
       readOnly: true,
+      hidden: true,
     }),
-    defineField({name: 'optionSummary', type: 'string', title: 'Selected Options', readOnly: true}),
+    // Keep metadata for internal compatibility, but hide from Studio
     defineField({
       name: 'metadata',
       title: 'Metadata',
       type: 'object',
+      readOnly: true,
+      hidden: true,
       fields: [
-        {
-          name: 'option_summary',
-          title: 'Option Summary',
-          type: 'string',
-        },
+        {name: 'option_summary', title: 'Option Summary', type: 'string'},
         {
           name: 'upgrades',
           title: 'Upgrades / Add-Ons',
@@ -61,7 +66,7 @@ export const orderCartItemType = defineType({
     defineField({
       name: 'optionDetails',
       type: 'array',
-      title: 'Option Details',
+      title: 'Options',
       readOnly: true,
       of: [{type: 'string'}],
       options: {layout: 'tags'},
@@ -70,14 +75,6 @@ export const orderCartItemType = defineType({
       name: 'upgrades',
       type: 'array',
       title: 'Upgrades',
-      readOnly: true,
-      of: [{type: 'string'}],
-      options: {layout: 'tags'},
-    }),
-    defineField({
-      name: 'customizations',
-      type: 'array',
-      title: 'Customizations',
       readOnly: true,
       of: [{type: 'string'}],
       options: {layout: 'tags'},
@@ -91,17 +88,21 @@ export const orderCartItemType = defineType({
       title: 'Item Total (incl. adjustments)',
       readOnly: true,
     }),
+    // Not needed for packing; hide from UI
     defineField({
       name: 'categories',
       title: 'Category Tags',
       type: 'array',
       of: [{type: 'string'}],
+      readOnly: true,
+      hidden: true,
     }),
     defineField({
       name: 'validationIssues',
       title: 'Validation Issues',
       type: 'array',
       readOnly: true,
+      hidden: true,
       of: [{type: 'string'}],
       options: {layout: 'tags'},
     }),
@@ -113,6 +114,8 @@ export const orderCartItemType = defineType({
       components: {
         input: OrderCartItemMetadataInput,
       },
+      readOnly: true,
+      hidden: true,
     }),
   ],
 })

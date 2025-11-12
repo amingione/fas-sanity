@@ -123,7 +123,6 @@ type OrderCartItem = {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
-  customizations?: string[]
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
   metadata?: {
@@ -249,10 +248,27 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
     }
 
     const existingDetails = coerceStringArray(record.optionDetails)
-    const finalDetails = uniqueStrings([...existingDetails, ...derivedOptions.optionDetails])
-    if (finalDetails.length) {
-      if (!arraysEqual(finalDetails, existingDetails) || !Array.isArray(record.optionDetails)) {
-        normalizedItem.optionDetails = finalDetails
+    let combinedDetails = uniqueStrings([...existingDetails, ...derivedOptions.optionDetails])
+
+    // Reclassify any detail entries that are actually upgrades
+    const upgradeLabelPattern = /^(upgrade|add-?on|accessory)\s*:\s*/i
+    const upgradesFromDetails: string[] = []
+    const filteredDetails: string[] = []
+    for (const entry of combinedDetails) {
+      const trimmed = entry.trim()
+      const match = trimmed.match(upgradeLabelPattern)
+      if (match) {
+        const value = trimmed.replace(upgradeLabelPattern, '').trim()
+        if (value) upgradesFromDetails.push(value)
+      } else {
+        filteredDetails.push(trimmed)
+      }
+    }
+    combinedDetails = filteredDetails
+
+    if (combinedDetails.length) {
+      if (!arraysEqual(combinedDetails, existingDetails) || !Array.isArray(record.optionDetails)) {
+        normalizedItem.optionDetails = combinedDetails
         changed = true
       } else {
         normalizedItem.optionDetails = record.optionDetails as string[]
@@ -269,7 +285,11 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
     }
 
     const existingUpgrades = coerceStringArray(record.upgrades)
-    const finalUpgrades = uniqueStrings([...existingUpgrades, ...derivedOptions.upgrades])
+    const finalUpgrades = uniqueStrings([
+      ...existingUpgrades,
+      ...derivedOptions.upgrades,
+      ...upgradesFromDetails,
+    ])
     if (finalUpgrades.length) {
       if (!arraysEqual(finalUpgrades, existingUpgrades) || !Array.isArray(record.upgrades)) {
         normalizedItem.upgrades = finalUpgrades
@@ -288,31 +308,6 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
       }
     }
 
-    const existingCustomizations = coerceStringArray(record.customizations)
-    const finalCustomizations = uniqueStrings([
-      ...existingCustomizations,
-      ...derivedOptions.customizations,
-    ])
-    if (finalCustomizations.length) {
-      if (
-        !arraysEqual(finalCustomizations, existingCustomizations) ||
-        !Array.isArray(record.customizations)
-      ) {
-        normalizedItem.customizations = finalCustomizations
-        changed = true
-      } else {
-        normalizedItem.customizations = record.customizations as string[]
-      }
-    } else if (record.customizations) {
-      const sanitized = coerceStringArray(record.customizations)
-      if (sanitized.length) {
-        normalizedItem.customizations = sanitized
-        changed = true
-      } else {
-        delete (normalizedItem as any).customizations
-        changed = true
-      }
-    }
 
     const validationIssues = coerceStringArray((record as any).validationIssues)
     if (validationIssues.length) {
@@ -412,29 +407,8 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
     consume(source, ['optionDetails', 'option_details', 'selected_options']),
   )
   const upgrades = toStringArray(consume(source, ['upgrades', 'upgrade_list']))
-  const customizations = toStringArray(
-    consume(source, [
-      'customizations',
-      'customization',
-      'customization_details',
-      'custom_details',
-      'custom_detail',
-      'custom_message',
-      'custom_text',
-      'personalization',
-      'personalisation',
-      'personalized_message',
-      'personalised_message',
-      'engraving',
-      'engraving_text',
-      'gift_message',
-      'item_note',
-      'product_note',
-      'order_item_note',
-    ]),
-  )
   const validationIssues = toStringArray(
-    consume(source, ['validationIssues', 'validation_issues', 'validationErrors']),
+    consume(source, ['validationIssues', 'validation_issues', 'validation_issues_list']),
   )
   const productRefValue = toStringValue(
     consume(source, ['productRef', 'product_ref', 'sanity_product_ref']),
@@ -470,7 +444,6 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   if (optionSummary) cartItem.optionSummary = optionSummary
   if (optionDetails?.length) cartItem.optionDetails = optionDetails
   if (upgrades?.length) cartItem.upgrades = upgrades
-  if (customizations?.length) cartItem.customizations = customizations
   if (validationIssues?.length) cartItem.validationIssues = validationIssues
   if (productRefValue) {
     cartItem.productRef = {_type: 'reference', _ref: productRefValue}
