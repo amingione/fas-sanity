@@ -10,6 +10,7 @@ import {callToActionType} from './objects/module/callToActionType'
 import {collectionGroupType} from './objects/collection/collectionGroupType'
 import {collectionLinksType} from './objects/collection/collectionLinksType'
 import {collectionReferenceType} from './objects/module/collectionReferenceType'
+import {collapsibleFeatureType} from './objects/collapsibleFeatureType'
 import {collectionRuleType} from './objects/shopify/collectionRuleType'
 import {customProductOptionColorObjectType} from './objects/customProductOption/customProductOptionColorObjectType'
 import {customProductOptionColorType} from './objects/customProductOption/customProductOptionColorType'
@@ -104,6 +105,7 @@ const objects = [
   collectionGroupType,
   collectionLinksType,
   collectionReferenceType,
+  collapsibleFeatureType,
   collectionRuleType,
   customProductOptionColorObjectType,
   customProductOptionColorType,
