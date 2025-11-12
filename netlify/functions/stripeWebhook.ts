@@ -1120,7 +1120,23 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
         : undefined
   if (derivedLineTotal !== undefined) item.lineTotal = derivedLineTotal
   if (derivedTotal !== undefined) item.total = derivedTotal
-  if (typedMetadata.length) item.metadata = typedMetadata
+  if (typedMetadata.length) {
+    item.metadataEntries = typedMetadata
+  }
+
+  const metadataSummary = typeof item.optionSummary === 'string' ? item.optionSummary.trim() : ''
+  const metadataUpgrades = Array.isArray(item.upgrades)
+    ? item.upgrades
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry): entry is string => Boolean(entry))
+    : []
+
+  if (metadataSummary || metadataUpgrades.length) {
+    item.metadata = {
+      option_summary: metadataSummary || undefined,
+      upgrades: metadataUpgrades.length ? metadataUpgrades : undefined,
+    }
+  }
 
   return item
 }

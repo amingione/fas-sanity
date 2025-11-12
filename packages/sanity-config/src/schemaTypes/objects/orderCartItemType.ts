@@ -40,6 +40,25 @@ export const orderCartItemType = defineType({
     }),
     defineField({name: 'optionSummary', type: 'string', title: 'Selected Options', readOnly: true}),
     defineField({
+      name: 'metadata',
+      title: 'Metadata',
+      type: 'object',
+      fields: [
+        {
+          name: 'option_summary',
+          title: 'Option Summary',
+          type: 'string',
+        },
+        {
+          name: 'upgrades',
+          title: 'Upgrades / Add-Ons',
+          type: 'array',
+          of: [{type: 'string'}],
+          options: {layout: 'tags'},
+        },
+      ],
+    }),
+    defineField({
       name: 'optionDetails',
       type: 'array',
       title: 'Option Details',
@@ -87,7 +106,7 @@ export const orderCartItemType = defineType({
       options: {layout: 'tags'},
     }),
     defineField({
-      name: 'metadata',
+      name: 'metadataEntries',
       title: 'Raw Metadata',
       type: 'array',
       of: [{type: 'orderCartItemMeta'}],
