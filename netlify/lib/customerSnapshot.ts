@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {SanityClient} from '@sanity/client'
 import {mapStripeMetadata} from './stripeMetadata'
 import {filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED} from './orderFilters'

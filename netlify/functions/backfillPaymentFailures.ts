@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import {runPaymentFailuresBackfill} from '../lib/backfills/paymentFailures'
 

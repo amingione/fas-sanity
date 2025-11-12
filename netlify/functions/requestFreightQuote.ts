@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
@@ -94,7 +95,7 @@ export const handler: Handler = async (event) => {
   if (orderId) {
     order = await sanity.fetch(
       `*[_type == "order" && _id == $id][0]{
-      _id, customerEmail, customerRef, invoiceRef, shippingAddress, cart
+      _id, orderNumber, customerEmail, customerRef, invoiceRef, shippingAddress, cart
     }`,
       {id: orderId},
     )
@@ -238,10 +239,15 @@ export const handler: Handler = async (event) => {
   for (const p of soloPackages)
     packages.push({weight: {value: p.weight, unit: 'pound'}, dimensions: p.dims})
 
+  const orderNumberLabel = typeof order?.orderNumber === 'string' ? order.orderNumber : ''
   const doc: any = {
     _type: 'freightQuote',
     status: 'open',
-    title: orderId ? `Freight Quote for Order ${orderId.slice(-6)}` : 'Freight Quote',
+    title: orderNumberLabel
+      ? `Freight Quote for Order ${orderNumberLabel}`
+      : orderId
+        ? `Freight Quote for Order ${orderId.slice(-6)}`
+        : 'Freight Quote',
     orderRef: orderId ? {_type: 'reference', _ref: orderId} : undefined,
     invoiceRef: invoiceRef || undefined,
     customerRef: customerRef || undefined,

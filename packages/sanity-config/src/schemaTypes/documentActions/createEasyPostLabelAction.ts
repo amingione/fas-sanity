@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {DocumentActionComponent} from 'sanity'
 import {formatApiError} from '../../utils/formatApiError'
 import {readStudioEnv} from '../../utils/studioEnv'

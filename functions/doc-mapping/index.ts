@@ -1,3 +1,4 @@
+// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {SanityClient, SanityDocument} from '@sanity/client'
 
 /**

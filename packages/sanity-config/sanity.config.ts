@@ -90,12 +90,6 @@ const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) === true
 const brandTheme: StudioTheme = fasBrandTheme || (fasTheme as StudioTheme)
 const resolvedTheme: StudioTheme = useCoreTheme ? (defaultTheme as StudioTheme) : brandTheme
 
-const normalizeBaseUrl = (value?: string | null, fallback?: string): string | undefined => {
-  const candidate = value?.trim() || fallback?.trim()
-  if (!candidate) return undefined
-  return candidate.replace(/\/$/, '')
-}
-
 const disableVisionOverride = getEnvFlag(
   'SANITY_STUDIO_DISABLE_VISION',
   'VITE_SANITY_STUDIO_DISABLE_VISION',
