@@ -1,6 +1,10 @@
 import type {SanityClient} from '@sanity/client'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
-import {validateCartSelections, type ProductOptionRequirement} from '../../shared/cartValidation'
+import {
+  validateCartSelections,
+  type ProductCustomizationRequirement,
+  type ProductOptionRequirement,
+} from '../../shared/cartValidation'
 import type {CartMetadataEntry} from './stripeCartItem'
 
 export type CartItem = {
@@ -23,6 +27,7 @@ export type CartItem = {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  customizations?: string[]
   categories?: string[]
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
@@ -47,6 +52,7 @@ export type CartProductSummary = {
   coreRequired?: boolean | null
   promotionTagline?: string | null
   optionRequirements?: ProductOptionRequirement[]
+  customizationRequirements?: ProductCustomizationRequirement[]
 }
 
 type ShipmentWeight = {
@@ -369,6 +375,10 @@ export async function fetchProductsForCart(
           "name": coalesce(title, name),
           "required": select(defined(required) => required, true)
         }, []),
+        "customizationRequirements": coalesce(customizations[]{
+          "name": coalesce(title, name),
+          "required": select(defined(required) => required, false)
+        }, []),
       }`,
       lookup,
     )
@@ -387,7 +397,19 @@ export async function fetchProductsForCart(
             }))
             .filter((o) => Boolean(o.name))
         : []
-      deduped.set(product._id, {...product, optionRequirements: opts})
+      const customs = Array.isArray((product as any).customizationRequirements)
+        ? ((product as any).customizationRequirements as any[])
+            .map((c) => ({
+              name: typeof c?.name === 'string' ? c.name.trim() : '',
+              required: c?.required === true,
+            }))
+            .filter((c) => Boolean(c.name))
+        : []
+      deduped.set(product._id, {
+        ...product,
+        optionRequirements: opts,
+        customizationRequirements: customs,
+      })
     }
     return Array.from(deduped.values())
   } catch (err) {
@@ -444,14 +466,27 @@ export async function enrichCartItemsFromSanity(
       item.categories = categories
     }
 
+    const optionSummary = typeof item.optionSummary === 'string' ? item.optionSummary : undefined
+    const optionDetails = Array.isArray(item.optionDetails) ? item.optionDetails : undefined
+    const customSelections =
+      Array.isArray(item.customizations) && item.customizations.length
+        ? item.customizations
+        : undefined
+
+    const shouldCheckCustomizations =
+      Boolean(product.customizationRequirements?.length) &&
+      (Boolean(customSelections?.length) || (!optionSummary && !(optionDetails && optionDetails.length)))
+
     const issues = validateCartSelections(
       {
         productTitle: product.title,
         options: product.optionRequirements,
+        customizations: shouldCheckCustomizations ? product.customizationRequirements : undefined,
       },
       {
-        optionSummary: item.optionSummary,
-        optionDetails: item.optionDetails,
+        optionSummary,
+        optionDetails,
+        customizations: customSelections,
       },
     )
 
