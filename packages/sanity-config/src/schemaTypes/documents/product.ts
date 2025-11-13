@@ -815,6 +815,36 @@ const product = defineType({
       readOnly: true,
       group: 'advanced',
     }),
+
+    defineField({
+      name: 'focusKeyword',
+      title: 'Focus Keyword',
+      type: 'string',
+      description: 'Primary keyword to target for on-page SEO.',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'altText',
+      title: 'Alt Text',
+      type: 'array',
+      of: [{type: 'string'}],
+      description: 'Global list of alternative text variations to reuse across media assets.',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'seoSlug',
+      title: 'SEO Slug',
+      type: 'slug',
+      options: {
+        source: 'title',
+        slugify: (input: string) =>
+          input
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, ''),
+      },
+      group: 'seo',
+    }),
   ],
 
   preview: {
