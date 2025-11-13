@@ -487,6 +487,11 @@ export const handler: Handler = async (event) => {
 
     let session
     try {
+      const invoiceMetadata: Stripe.MetadataParam = {
+        ...metadata,
+        checkout_invoice_created: 'true',
+      }
+
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
         payment_method_types: paymentMethodTypes,
@@ -504,6 +509,12 @@ export const handler: Handler = async (event) => {
         ],
         customer_email: customerEmail,
         metadata,
+        invoice_creation: {
+          enabled: true,
+          invoice_data: {
+            metadata: invoiceMetadata,
+          },
+        },
         payment_intent_data: {
           metadata: {
             sanity_invoice_id: invoiceId,

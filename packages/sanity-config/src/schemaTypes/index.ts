@@ -94,6 +94,7 @@ import downloadResource from './documents/downloadResource'
 import campaign from './marketing/campaigns/campaign'
 import attribution from './marketing/attribution'
 import marketingChannel from './marketing/marketingChannel'
+import altText from './documents/altText'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -264,6 +265,7 @@ const documents = [
   attribution,
   marketingChannel,
   downloadResource,
+  altText,
 ]
 
 import {homeType} from './singletons/homeType'
