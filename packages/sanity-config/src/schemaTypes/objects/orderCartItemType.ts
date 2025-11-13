@@ -81,11 +81,17 @@ export const orderCartItemType = defineType({
     }),
     defineField({name: 'price', type: 'number', title: 'Unit Price'}),
     defineField({name: 'quantity', type: 'number', title: 'Quantity'}),
-    defineField({name: 'lineTotal', type: 'number', title: 'Line Total', readOnly: true}),
+    defineField({name: 'lineTotal', type: 'number', title: 'Line Total', readOnly: true, hidden: true}),
     defineField({
       name: 'total',
       type: 'number',
       title: 'Item Total (incl. adjustments)',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'upgradesTotal',
+      type: 'number',
+      title: 'Upgrades Total',
       readOnly: true,
     }),
     // Not needed for packing; hide from UI

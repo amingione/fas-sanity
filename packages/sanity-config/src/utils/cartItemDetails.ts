@@ -298,13 +298,28 @@ const extractOptionDetails = (
     }
   }
 
+  const GENERIC_LABELS = new Set([
+    'variation',
+    'variant',
+    'option',
+    'selected',
+    'selection',
+    'attribute',
+    'config',
+    'configured',
+    'value',
+    'name',
+  ])
+
   const orderedDetails = detailOrder
     .map((uniqueKey) => {
       const detail = detailMap.get(uniqueKey)
       if (!detail) return ''
       const {label, value} = detail
       if (!value) return ''
-      return label ? `${label}: ${value}` : value
+      const lower = (label || '').trim().toLowerCase()
+      if (!lower || GENERIC_LABELS.has(lower)) return value
+      return `${label}: ${value}`
     })
     .map((detail) => detail.trim())
     .filter(Boolean)
