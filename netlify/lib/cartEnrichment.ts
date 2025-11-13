@@ -473,9 +473,7 @@ export async function enrichCartItemsFromSanity(
         ? item.customizations
         : undefined
 
-    const shouldCheckCustomizations =
-      Boolean(product.customizationRequirements?.length) &&
-      (Boolean(customSelections?.length) || (!optionSummary && !(optionDetails && optionDetails.length)))
+    const shouldCheckCustomizations = Boolean(product.customizationRequirements?.length)
 
     const issues = validateCartSelections(
       {
