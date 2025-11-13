@@ -799,40 +799,35 @@ const product = defineType({
       group: 'advanced',
     }),
 
-    {
-      name: 'metaTitle',
-      title: 'Meta Title',
-      type: 'string'
-    },
-    {
-      name: 'metaDescription',
-      title: 'Meta Description',
-      type: 'text'
-    },
-    {
+    defineField({
       name: 'focusKeyword',
       title: 'Focus Keyword',
-      type: 'string'
-    },
-    {
+      type: 'string',
+      description: 'Primary keyword to target for on-page SEO.',
+      group: 'seo',
+    }),
+    defineField({
       name: 'altText',
       title: 'Alt Text',
       type: 'array',
-      of: [{type: 'string'}]
-    },
-    {
+      of: [{type: 'string'}],
+      description: 'Global list of alternative text variations to reuse across media assets.',
+      group: 'seo',
+    }),
+    defineField({
       name: 'seoSlug',
       title: 'SEO Slug',
       type: 'slug',
       options: {
-        source: 'name',
-        slugify: input =>
+        source: 'title',
+        slugify: (input: string) =>
           input
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '')
-      }
-    }
+            .replace(/^-+|-+$/g, ''),
+      },
+      group: 'seo',
+    }),
   ],
 
   preview: {
