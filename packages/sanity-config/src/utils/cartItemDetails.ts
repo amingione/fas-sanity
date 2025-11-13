@@ -23,22 +23,6 @@ const OPTION_KEYWORDS = [
   'color',
 ]
 const UPGRADE_KEYWORDS = ['upgrade', 'addon', 'add_on', 'add-on', 'addon', 'addOn', 'accessory']
-const CUSTOMIZATION_KEYWORDS = [
-  'custom',
-  'customization',
-  'personalization',
-  'personalise',
-  'personalize',
-  'engraving',
-  'engrave',
-  'monogram',
-  'message',
-  'inscription',
-  'note',
-  'text',
-  'initial',
-  'initials',
-]
 const IGNORE_OPTION_KEYS = [
   'shipping_option',
   'shipping_options',
