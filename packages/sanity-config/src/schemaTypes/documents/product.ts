@@ -798,6 +798,41 @@ const product = defineType({
       readOnly: true,
       group: 'advanced',
     }),
+
+    {
+      name: 'metaTitle',
+      title: 'Meta Title',
+      type: 'string'
+    },
+    {
+      name: 'metaDescription',
+      title: 'Meta Description',
+      type: 'text'
+    },
+    {
+      name: 'focusKeyword',
+      title: 'Focus Keyword',
+      type: 'string'
+    },
+    {
+      name: 'altText',
+      title: 'Alt Text',
+      type: 'array',
+      of: [{type: 'string'}]
+    },
+    {
+      name: 'seoSlug',
+      title: 'SEO Slug',
+      type: 'slug',
+      options: {
+        source: 'name',
+        slugify: input =>
+          input
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+      }
+    }
   ],
 
   preview: {
