@@ -238,7 +238,7 @@ const AltTextInput = (props: StringInputProps) => {
 
               <Box>
                 <Text size={1} weight="semibold">
-                  Preview &amp; edit
+                  Preview & edit
                 </Text>
                 <TextArea
                   value={draftAltText}
