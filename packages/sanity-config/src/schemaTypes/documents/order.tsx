@@ -261,45 +261,7 @@ const orderSchema = defineType({
       group: 'items',
       readOnly: true,
     },
-    {
-      name: 'faq',
-      type: 'array',
-      title: 'Order FAQ',
-      description: 'Document common questions and answers surfaced for this order.',
-      group: 'items',
-      options: {collapsible: true, collapsed: true},
-      of: [
-        {
-          type: 'object',
-          name: 'faqEntry',
-          fields: [
-            {
-              name: 'question',
-              type: 'string',
-              title: 'Question',
-            },
-            {
-              name: 'answer',
-              type: 'text',
-              title: 'Answer',
-              rows: 3,
-            },
-          ],
-          preview: {
-            select: {
-              title: 'question',
-              subtitle: 'answer',
-            },
-            prepare({title, subtitle}) {
-              return {
-                title: title || 'Untitled question',
-                subtitle: subtitle || 'No answer provided',
-              }
-            },
-          },
-        },
-      ],
-    },
+    // Removed: Order-level FAQ does not belong here
 
     // ========== SHIPPING GROUP ==========
     {

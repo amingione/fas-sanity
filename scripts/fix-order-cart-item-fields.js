@@ -165,19 +165,38 @@ function normalizeItem(it, lookups) {
       return e ? parseAmount(e.value) : null
     }
 
+    const basePriceMeta = byKey('base_price') ?? byKey('baseprice') ?? byKey('base price')
+    const optionUpchargeMeta = byKey('option_upcharge') ?? byKey('option upcharge')
+    const upgradeTotalMeta = byKey('upgrade_total') ?? byKey('upgrades_total')
     const mLine = byKey('line_total') ?? byKey('linetotal') ?? byKey('amount_total')
     const mTotal = byKey('item_total') ?? byKey('total')
 
-    const priceNum = parseAmount(item.price)
+    let priceNum = parseAmount(item.price)
+    if (basePriceMeta !== null) priceNum = basePriceMeta
+    if (priceNum !== null) item.price = priceNum
+
+    // upgradesTotal from metadata or derived from totals
+    const qty = Math.max(1, Number(item.quantity || 1))
+    const upgradesMeta = (optionUpchargeMeta || 0) + (upgradeTotalMeta || 0)
+    if (upgradesMeta > 0) {
+      item.upgradesTotal = upgradesMeta
+    }
+
     const computedLine =
-      mLine ?? (Number.isFinite(priceNum) ? Math.max(0, priceNum) * Math.max(1, Number(item.quantity || 1)) : null)
+      mLine ?? (priceNum !== null ? Math.max(0, priceNum) * qty : null)
 
     if (computedLine !== null && (item.lineTotal === undefined || item.lineTotal === null)) {
       item.lineTotal = computedLine
     }
 
     const resolvedLine = Number.isFinite(Number(item.lineTotal)) ? Number(item.lineTotal) : computedLine
-    const resolvedTotal = mTotal ?? resolvedLine
+    let resolvedTotal = mTotal ?? resolvedLine
+    if (resolvedTotal !== null && priceNum !== null && qty) {
+      const diff = resolvedTotal - priceNum * qty
+      if (diff > 0 && (item.upgradesTotal === undefined || item.upgradesTotal === null)) {
+        item.upgradesTotal = diff
+      }
+    }
     if (resolvedTotal !== null && (item.total === undefined || item.total === null)) {
       item.total = resolvedTotal
     }
