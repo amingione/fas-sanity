@@ -13,7 +13,12 @@ function getNetlifyBase(): string {
       const stored = window.localStorage?.getItem('NLFY_BASE')
       if (stored) return stored.replace(/\/$/, '')
       const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin.replace(/\/$/, '')
+      if (origin && /^https?:\/\//i.test(origin)) {
+        if (/\.sanity\.studio$/i.test(new URL(origin).hostname)) {
+          return 'https://fassanity.fasmotorsports.com'
+        }
+        return origin.replace(/\/$/, '')
+      }
     } catch {
       // ignore storage errors
     }
@@ -51,11 +56,14 @@ export const createEasyPostLabelAction: DocumentActionComponent = (props) => {
           body: JSON.stringify({orderId}),
         })
 
+        const rawBody = await response.text()
         let result: any = null
         try {
-          result = await response.json()
+          result = rawBody ? JSON.parse(rawBody) : null
         } catch {
-          result = null
+          throw new Error(
+            `Unexpected response from ${base}. Verify SANITY_STUDIO_NETLIFY_BASE is configured.`,
+          )
         }
 
         if (!response.ok || (result && result.error)) {

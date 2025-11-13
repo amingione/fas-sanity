@@ -14,7 +14,13 @@ function getFnBase(): string {
       const stored = window.localStorage?.getItem('NLFY_BASE')
       if (stored) return stored.replace(/\/$/, '')
       const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin.replace(/\/$/, '')
+      if (origin && /^https?:\/\//i.test(origin)) {
+        // The Studio is hosted on sanity.studio, but Netlify functions live elsewhere.
+        if (/\.sanity\.studio$/i.test(new URL(origin).hostname)) {
+          return 'https://fassanity.fasmotorsports.com'
+        }
+        return origin.replace(/\/$/, '')
+      }
     } catch {
       // ignore storage errors
     }
@@ -53,6 +59,11 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
     () => (readStudioEnv('SHIPPING_PROVIDER') || 'easypost').toLowerCase(),
     [],
   )
+  const isEasyPost = provider === 'easypost'
+  const providerPortalUrl =
+    provider === 'parcelcraft'
+      ? 'https://dashboard.stripe.com/apps/parcelcraft-shipping'
+      : 'https://dashboard.stripe.com/apps'
 
   const handleCreateLabel = useCallback(async () => {
     if (isLoading) return
@@ -74,11 +85,14 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({orderId}),
       })
+      const rawBody = await response.text()
       let result: any = null
       try {
-        result = await response.json()
+        result = rawBody ? JSON.parse(rawBody) : null
       } catch {
-        result = null
+        throw new Error(
+          `Unexpected response from ${base}. Ensure SANITY_STUDIO_NETLIFY_BASE points to your Netlify site.`,
+        )
       }
 
       if (!response.ok || (result && result.error)) {
@@ -134,15 +148,19 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
 
   return (
     <Flex direction="column" gap={3} padding={4}>
-      {provider !== 'easypost' && (
+      {!isEasyPost && (
         <Text size={1} muted>
-          Shipping provider overridden to {provider}. EasyPost functions will still be used.
+          {provider === 'parcelcraft'
+            ? 'Parcelcraft manages label creation in the Stripe Dashboard. Use the button below to launch the app when you need a shipping label.'
+            : `Shipping provider set to ${provider || 'stripe'}. EasyPost automation is disabled.`}
         </Text>
       )}
 
       {!resolvedLabelUrl && !resolvedTrackingUrl && (
         <Text size={1} muted>
-          No shipping label yet. Create one to generate tracking automatically.
+          {isEasyPost
+            ? 'No shipping label yet. Create one to generate tracking automatically.'
+            : 'No shipping label recorded yet. Create a label in Stripe/Parcelcraft to populate tracking info here.'}
         </Text>
       )}
 
@@ -172,12 +190,23 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
         <Text size={1}>Tracking number: {resolvedTrackingNumber}</Text>
       )}
 
-      <Button
-        text={isLoading ? 'Creating EasyPost label…' : '📦 Create EasyPost Label'}
-        tone="default"
-        onClick={handleCreateLabel}
-        disabled={isLoading}
-      />
+      {isEasyPost ? (
+        <Button
+          text={isLoading ? 'Creating EasyPost label…' : '📦 Create EasyPost Label'}
+          tone="default"
+          onClick={handleCreateLabel}
+          disabled={isLoading}
+        />
+      ) : (
+        <Button
+          text={provider === 'parcelcraft' ? 'Open Parcelcraft in Stripe' : 'Open Stripe Dashboard'}
+          tone="primary"
+          as="a"
+          href={providerPortalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        />
+      )}
     </Flex>
   )
 }

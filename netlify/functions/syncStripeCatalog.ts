@@ -61,6 +61,8 @@ type SanityProduct = {
   taxCode?: string
   shortDescription?: PortableValue
   description?: PortableValue
+  shippingWeight?: number | null
+  boxDimensions?: string | null
   stripeProductId?: string
   stripeDefaultPriceId?: string
   stripePriceId?: string
@@ -157,6 +159,83 @@ function selectPrice(product: SanityProduct): PriceInfo | null {
   return {amount, amountMajor, currency, source, nickname}
 }
 
+type ShippingDimensions = {
+  length: number
+  width: number
+  height: number
+}
+
+type ShippingDetails = {
+  weightLbs: number | null
+  weightOz: number | null
+  dimensions: ShippingDimensions | null
+  dimensionsLabel?: string
+}
+
+function toPositiveNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+  return null
+}
+
+function parseBoxDimensionsString(value?: string | null): ShippingDimensions | null {
+  if (!value || typeof value !== 'string') return null
+  const match = value.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
+  if (!match) return null
+  const [, rawLength, rawWidth, rawHeight] = match
+  const length = Number.parseFloat(rawLength)
+  const width = Number.parseFloat(rawWidth)
+  const height = Number.parseFloat(rawHeight)
+  if (!Number.isFinite(length) || !Number.isFinite(width) || !Number.isFinite(height)) return null
+  if (length <= 0 || width <= 0 || height <= 0) return null
+  return {
+    length: Number(length.toFixed(2)),
+    width: Number(width.toFixed(2)),
+    height: Number(height.toFixed(2)),
+  }
+}
+
+function formatDimensionLabel(value: number): string {
+  const rounded = Number(value.toFixed(2))
+  return Number.isInteger(rounded) ? String(Math.trunc(rounded)) : rounded.toString()
+}
+
+function resolveShippingDetails(product: SanityProduct): ShippingDetails {
+  const weightLbs = toPositiveNumber(product.shippingWeight)
+  const weightOz = weightLbs !== null ? Number((weightLbs * 16).toFixed(2)) : null
+  const dimensions = parseBoxDimensionsString(product.boxDimensions)
+  const dimensionsLabel = dimensions
+    ? [dimensions.length, dimensions.width, dimensions.height].map(formatDimensionLabel).join('x')
+    : typeof product.boxDimensions === 'string'
+      ? product.boxDimensions.trim() || undefined
+      : undefined
+  return {
+    weightLbs,
+    weightOz,
+    dimensions,
+    dimensionsLabel,
+  }
+}
+
+function buildPackageDimensions(
+  shipping: ShippingDetails | null,
+): Stripe.ProductCreateParams.PackageDimensions | null {
+  if (!shipping || shipping.weightOz === null || !shipping.dimensions) return null
+  return {
+    length: shipping.dimensions.length,
+    width: shipping.dimensions.width,
+    height: shipping.dimensions.height,
+    weight: shipping.weightOz,
+  }
+}
+
 function filterMetadata(meta: Record<string, unknown>): Record<string, string> {
   const result: Record<string, string> = {}
   for (const [key, value] of Object.entries(meta)) {
@@ -170,7 +249,11 @@ function filterMetadata(meta: Record<string, unknown>): Record<string, string> {
   return result
 }
 
-function buildMetadata(product: SanityProduct, normalizedId: string): Record<string, string> {
+function buildMetadata(
+  product: SanityProduct,
+  normalizedId: string,
+  shipping: ShippingDetails,
+): Record<string, string> {
   return filterMetadata({
     sanity_product_id: normalizedId,
     sanity_slug: product.slug,
@@ -179,6 +262,11 @@ function buildMetadata(product: SanityProduct, normalizedId: string): Record<str
     sanity_dataset: SANITY_DATASET,
     sanity_title: product.title,
     sanity_availability: product.availability,
+    shipping_weight_lbs:
+      typeof shipping.weightLbs === 'number' ? shipping.weightLbs.toString() : undefined,
+    shipping_weight_oz:
+      typeof shipping.weightOz === 'number' ? shipping.weightOz.toString() : undefined,
+    shipping_box_dimensions: shipping.dimensionsLabel,
   })
 }
 
@@ -322,7 +410,11 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
     return {docId: normalizedId, title, status: 'skipped', reason: 'Missing product price'}
   }
 
-  const metadata = buildMetadata(product, normalizedId)
+  const shippingDetails = resolveShippingDetails(product)
+  const metadata = buildMetadata(product, normalizedId, shippingDetails)
+  const packageDimensions = buildPackageDimensions(shippingDetails)
+  const shippable =
+    shippingDetails.weightOz !== null || shippingDetails.dimensions ? true : undefined
   const description = selectDescription(product)
   const active = determineActive(product)
   const imageArray = product.primaryImage ? [product.primaryImage] : undefined
@@ -334,7 +426,7 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
 
   if (stripeProductId) {
     try {
-      stripeProduct = await stripe.products.update(stripeProductId, {
+      const updatePayload: Stripe.ProductUpdateParams = {
         name: title,
         active,
         description: description || undefined,
@@ -343,7 +435,14 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
         ...(product.taxCode && product.taxCode.startsWith('txcd_')
           ? {tax_code: product.taxCode}
           : {}),
-      })
+      }
+      if (packageDimensions) {
+        updatePayload.package_dimensions = packageDimensions
+      }
+      if (shippable !== undefined) {
+        updatePayload.shippable = shippable
+      }
+      stripeProduct = await stripe.products.update(stripeProductId, updatePayload)
       productUpdated = true
     } catch (err) {
       if (isStripeMissingError(err)) {
@@ -355,7 +454,7 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   }
 
   if (!stripeProductId) {
-    const created = await stripe.products.create({
+    const createPayload: Stripe.ProductCreateParams = {
       name: title,
       active,
       description: description || undefined,
@@ -364,7 +463,14 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
       ...(product.taxCode && product.taxCode.startsWith('txcd_')
         ? {tax_code: product.taxCode}
         : {}),
-    })
+    }
+    if (packageDimensions) {
+      createPayload.package_dimensions = packageDimensions
+    }
+    if (shippable !== undefined) {
+      createPayload.shippable = shippable
+    }
+    const created = await stripe.products.create(createPayload)
     stripeProduct = created
     stripeProductId = created.id
     productCreated = true
@@ -529,16 +635,18 @@ export const handler: Handler = async (event) => {
           price,
           salePrice,
           onSale,
-          availability,
-          taxBehavior,
-          taxCode,
-          shortDescription,
-          description,
-          coreRequired,
-          promotionTagline,
-          stripeProductId,
-          stripeDefaultPriceId,
-          stripePrices,
+        availability,
+        taxBehavior,
+        taxCode,
+        shortDescription,
+        description,
+        shippingWeight,
+        boxDimensions,
+        coreRequired,
+        promotionTagline,
+        stripeProductId,
+        stripeDefaultPriceId,
+        stripePrices,
           "primaryImage": images[0].asset->url
         }`,
         {ids: Array.from(idSet)},
@@ -553,16 +661,18 @@ export const handler: Handler = async (event) => {
           price,
           salePrice,
           onSale,
-          availability,
-          taxBehavior,
-          taxCode,
-          shortDescription,
-          description,
-          coreRequired,
-          promotionTagline,
-          stripeProductId,
-          stripeDefaultPriceId,
-          stripePrices,
+        availability,
+        taxBehavior,
+        taxCode,
+        shortDescription,
+        description,
+        shippingWeight,
+        boxDimensions,
+        coreRequired,
+        promotionTagline,
+        stripeProductId,
+        stripeDefaultPriceId,
+        stripePrices,
           "primaryImage": images[0].asset->url
         }[0...$limit]`,
         {limit},
@@ -577,16 +687,18 @@ export const handler: Handler = async (event) => {
           price,
           salePrice,
           onSale,
-          availability,
-          taxBehavior,
-          taxCode,
-          shortDescription,
-          description,
-          coreRequired,
-          promotionTagline,
-          stripeProductId,
-          stripeDefaultPriceId,
-          stripePrices,
+        availability,
+        taxBehavior,
+        taxCode,
+        shortDescription,
+        description,
+        shippingWeight,
+        boxDimensions,
+        coreRequired,
+        promotionTagline,
+        stripeProductId,
+        stripeDefaultPriceId,
+        stripePrices,
           "primaryImage": images[0].asset->url
         }[0...$limit]`,
         {limit},

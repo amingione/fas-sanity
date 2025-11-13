@@ -84,8 +84,9 @@ const product = defineType({
             {
               name: 'alt',
               title: 'Alt Text',
-              type: 'string',
-              description: 'Describe the image for accessibility & SEO',
+              type: 'reference',
+              to: [{type: 'altText'}],
+              description: 'Select a reusable alt text variation from the global list.',
             },
           ],
           options: {hotspot: true},
@@ -550,9 +551,25 @@ const product = defineType({
       type: 'url',
       description:
         'Auto-filled from the product slug; override only when a custom canonical is required.',
-      initialValue: ({document}: {document?: any}) => {
-        const slug = document?.slug?.current
-        return slug ? `https://fasmotorsports.com/shop/${slug}` : ''
+      initialValue: (props) => {
+        const slug = props?.slug?.current
+        return slug ? `https://fasmotorsports.com/products/${slug}` : ''
+      },
+      components: {
+        field: (props: any) => {
+          const slug = props.document?.slug?.current
+          const autoValue = slug ? `https://fasmotorsports.com/products/${slug}` : ''
+
+          if (!props.value || props.value === autoValue) {
+            props.onChange({
+              patch: {
+                set: autoValue,
+              },
+            })
+          }
+
+          return props.renderDefault(props)
+        },
       },
       group: 'seo',
     }),
