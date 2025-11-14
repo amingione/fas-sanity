@@ -106,11 +106,13 @@ function buildAltText(keywords: string[]): string {
     return ''
   }
 
+  // Make a copy so we don't mutate the input array.
+  const trimmedKeywords = [...keywords]
   // Construct the alt text and trim to stay within the 125 character recommendation.
-  let suggestion = keywords.join(' ')
-  while (suggestion.length > 125 && keywords.length > 1) {
-    keywords.pop()
-    suggestion = keywords.join(' ')
+  let suggestion = trimmedKeywords.join(' ')
+  while (suggestion.length > 125 && trimmedKeywords.length > 1) {
+    trimmedKeywords.pop()
+    suggestion = trimmedKeywords.join(' ')
   }
 
   return normalizeAltText(suggestion)
@@ -236,7 +238,7 @@ const AltTextInput = (props: StringInputProps) => {
 
               <Box>
                 <Text size={1} weight="semibold">
-                  Preview &amp; edit
+                  Preview & edit
                 </Text>
                 <TextArea
                   value={draftAltText}

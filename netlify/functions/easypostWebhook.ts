@@ -35,46 +35,7 @@ function getHeader(headers: Record<string, any> | undefined, key: string): strin
   return undefined
 }
 
-function signaturesMatch(
-  providedRaw: string,
-  computedHex: string,
-  computedBase64: string,
-): boolean {
-  const provided = providedRaw.trim()
-  if (!provided) return false
-
-  try {
-    const providedHex = Buffer.from(provided, 'hex')
-    const expectedHex = Buffer.from(computedHex, 'hex')
-    if (
-      providedHex.length > 0 &&
-      expectedHex.length === providedHex.length &&
-      timingSafeEqual(providedHex, expectedHex)
-    ) {
-      return true
-    }
-  } catch {
-    // ignore hex parse errors
-  }
-
-  try {
-    const providedBase64 = Buffer.from(provided, 'base64')
-    const expectedBase64 = Buffer.from(computedBase64, 'base64')
-    if (
-      providedBase64.length > 0 &&
-      expectedBase64.length === providedBase64.length &&
-      timingSafeEqual(providedBase64, expectedBase64)
-    ) {
-      return true
-    }
-  } catch {
-    // ignore base64 parse errors
-  }
-
-  return provided === computedHex || provided === computedBase64
-}
-
-function verifySignature(rawBody: string, headers: Record<string, any> | undefined): boolean {
+function verifySignature(rawBody: Buffer, headers: Record<string, any> | undefined): boolean {
   if (!WEBHOOK_SECRET) return true
   const headerSignature =
     getHeader(headers, 'x-hmac-signature') ||
@@ -86,11 +47,19 @@ function verifySignature(rawBody: string, headers: Record<string, any> | undefin
     return false
   }
 
-  const hmac = createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest()
-  const computedHex = hmac.toString('hex')
-  const computedBase64 = hmac.toString('base64')
+  const hmac = createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest('hex')
+  const expectedSignature = `hmac-sha256-hex=${hmac}`
+  const provided = headerSignature.trim()
 
-  return signaturesMatch(headerSignature, computedHex, computedBase64)
+  try {
+    const expectedBuffer = Buffer.from(expectedSignature, 'utf8')
+    const providedBuffer = Buffer.from(provided, 'utf8')
+    if (expectedBuffer.length !== providedBuffer.length) return false
+    return timingSafeEqual(expectedBuffer, providedBuffer)
+  } catch (err) {
+    console.warn('easypostWebhook signature comparison failed', err)
+    return false
+  }
 }
 
 type EasyPostEvent = {
@@ -209,8 +178,12 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  const rawBody = event.body || ''
-  if (!verifySignature(rawBody, event.headers || {})) {
+  const incomingBody = event.body || ''
+  const rawBodyBuffer = event.isBase64Encoded
+    ? Buffer.from(incomingBody, 'base64')
+    : Buffer.from(incomingBody, 'utf8')
+
+  if (!verifySignature(rawBodyBuffer, event.headers || {})) {
     return {
       statusCode: 401,
       headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
@@ -220,6 +193,7 @@ export const handler: Handler = async (event) => {
 
   let payload: EasyPostEvent | null = null
   try {
+    const rawBody = rawBodyBuffer.toString('utf8')
     payload = JSON.parse(rawBody || '{}')
   } catch (err) {
     console.error('easypostWebhook failed to parse payload', err)
