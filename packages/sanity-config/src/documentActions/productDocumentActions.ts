@@ -87,8 +87,9 @@ export function resolveProductDocumentActions(
           try {
             const result = original.onHandle?.()
             await (result instanceof Promise ? result : Promise.resolve(result))
-          } finally {
             await refreshAndGenerateTags(props, {patchDraft: false})
+          } finally {
+            props.onComplete()
           }
         },
       }
