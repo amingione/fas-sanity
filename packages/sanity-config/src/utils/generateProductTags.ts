@@ -490,7 +490,7 @@ export async function generateProductTags(
   }
 
   const generated = ensureUniqueOrder(
-    normalizedTags.filter((tag) => !!tag && tag.length > 2)
+    normalizedTags.filter(shouldKeepTag)
   )
 
   const manualTags = Array.isArray(doc.tags)
