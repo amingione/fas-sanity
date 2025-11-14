@@ -2977,12 +2977,17 @@ async function fetchChargeResource(
 
 async function fetchPaymentIntentResource(
   resource: string | Stripe.PaymentIntent | null | undefined,
+  opts: {expandCharges?: boolean} = {},
 ): Promise<Stripe.PaymentIntent | null> {
   if (!resource) return null
   if (typeof resource !== 'string') return resource
   if (!stripe) return null
   try {
-    return await stripe.paymentIntents.retrieve(resource)
+    const expandCharges = opts.expandCharges !== false
+    const expand = expandCharges
+      ? (['charges.data.payment_method_details', 'latest_charge'] as string[])
+      : undefined
+    return await stripe.paymentIntents.retrieve(resource, expand ? {expand} : undefined)
   } catch (err) {
     console.warn('stripeWebhook: unable to load payment intent for diagnostics', err)
     return null
@@ -4897,7 +4902,9 @@ export const handler: Handler = async (event) => {
         let paymentIntent: Stripe.PaymentIntent | null = null
         try {
           if (session.payment_intent) {
-            paymentIntent = await stripe.paymentIntents.retrieve(String(session.payment_intent))
+            paymentIntent = await stripe.paymentIntents.retrieve(String(session.payment_intent), {
+              expand: ['charges.data.payment_method_details', 'latest_charge'],
+            })
           }
         } catch {}
 
@@ -4952,16 +4959,35 @@ export const handler: Handler = async (event) => {
         let receiptUrl: string | undefined
         let chargeBillingName: string | undefined
         try {
-          const ch = (paymentIntent as any)?.charges?.data?.[0]
-          if (ch) {
-            chargeId = ch.id || undefined
-            receiptUrl = ch.receipt_url || undefined
-            const c = ch.payment_method_details?.card
-            cardBrand = c?.brand || undefined
-            cardLast4 = c?.last4 || undefined
-            chargeBillingName = ch?.billing_details?.name || undefined
+          let chargeRecord: Stripe.Charge | null = null
+          const chargeList = (paymentIntent as any)?.charges?.data
+          if (Array.isArray(chargeList) && chargeList.length > 0) {
+            chargeRecord = chargeList[chargeList.length - 1] as Stripe.Charge
+          } else if (paymentIntent?.latest_charge) {
+            if (typeof paymentIntent.latest_charge === 'string') {
+              chargeRecord = stripe
+                ? await stripe.charges.retrieve(paymentIntent.latest_charge, {
+                    expand: ['payment_method_details'],
+                  })
+                : null
+            } else if (
+              paymentIntent.latest_charge &&
+              typeof paymentIntent.latest_charge === 'object'
+            ) {
+              chargeRecord = paymentIntent.latest_charge as Stripe.Charge
+            }
           }
-        } catch {}
+          if (chargeRecord) {
+            chargeId = chargeRecord.id || chargeId
+            receiptUrl = chargeRecord.receipt_url || receiptUrl
+            const c = chargeRecord.payment_method_details?.card
+            cardBrand = c?.brand || cardBrand
+            cardLast4 = c?.last4 || cardLast4
+            chargeBillingName = chargeRecord.billing_details?.name || chargeBillingName
+          }
+        } catch (err) {
+          console.warn('stripeWebhook: failed to resolve card details for checkout', err)
+        }
 
         const metadataOrderNumberRaw = extractMetadataOrderNumber(metadata) || ''
         const metadataInvoiceNumber =

@@ -1,24 +1,7 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
-import React, {useMemo, useState} from 'react'
-import {Button} from '@sanity/ui'
-
-function getFnBase(): string {
-  const envBase = (
-    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  ) as string | undefined
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    try {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    } catch (err) {
-      console.warn('Failed to read local base URL', err)
-    }
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+import React, {useMemo, useRef, useState} from 'react'
+import {Button, Text} from '@sanity/ui'
+import {getNetlifyFunctionBaseCandidates, resolveNetlifyBase} from '../../utils/netlifyBase'
 
 type BackfillResponse = Record<string, any>
 
@@ -58,8 +41,15 @@ const descriptionStyle: React.CSSProperties = {
   color: 'var(--card-muted-fg-color)',
 }
 
-export default function AdminTools() {
-  const base = useMemo(() => getFnBase().replace(/\/$/, ''), [])
+const DEFAULT_BASE = resolveNetlifyBase().replace(/\/$/, '')
+
+const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, ref) {
+  const netlifyBases = useMemo(
+    () => getNetlifyFunctionBaseCandidates().map((candidate) => candidate.replace(/\/$/, '')),
+    [],
+  )
+  const [activeBase, setActiveBase] = useState(() => (netlifyBases[0] || DEFAULT_BASE).replace(/\/$/, ''))
+  const lastSuccessfulBase = useRef<string>(activeBase)
   const [globalDryRun, setGlobalDryRun] = useState(true)
   const [checkoutDryRun, setCheckoutDryRun] = useState(true)
   const [checkoutStatus, setCheckoutStatus] = useState<'all' | 'success' | 'failure'>('all')
@@ -155,15 +145,47 @@ export default function AdminTools() {
         payload.dryRun = dryRun
       }
 
-      const url = `${base}/.netlify/functions/${functionName}${params.toString() ? `?${params.toString()}` : ''}`
+      const path = `/.netlify/functions/${functionName}${params.toString() ? `?${params.toString()}` : ''}`
       const headers: Record<string, string> = {'Content-Type': 'application/json'}
       if (secret) headers.Authorization = `Bearer ${secret.trim()}`
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: Object.keys(payload).length ? JSON.stringify(payload) : undefined,
-      })
-      const data: BackfillResponse = await response.json().catch(() => ({}))
+      const performRequest = async (): Promise<Response> => {
+        const attempts = Array.from(
+          new Set([lastSuccessfulBase.current, ...netlifyBases, DEFAULT_BASE]),
+        ).filter((candidate): candidate is string => Boolean(candidate))
+        let lastError: any = null
+        for (const candidate of attempts) {
+          const normalized = candidate.replace(/\/$/, '')
+          try {
+            const response = await fetch(`${normalized}${path}`, {
+              method: 'POST',
+              headers,
+              body: Object.keys(payload).length ? JSON.stringify(payload) : undefined,
+            })
+            lastSuccessfulBase.current = normalized
+            setActiveBase(normalized)
+            try {
+              window.localStorage?.setItem('NLFY_BASE', normalized)
+            } catch {
+              // ignore storage errors
+            }
+            return response
+          } catch (err) {
+            lastError = err
+          }
+        }
+        throw lastError || new Error('All Netlify bases failed')
+      }
+
+      const response = await performRequest()
+      const rawBody = await response.text()
+      let data: BackfillResponse = {}
+      try {
+        data = rawBody ? JSON.parse(rawBody) : {}
+      } catch {
+        throw new Error(
+          `Unexpected response from ${activeBase}. Ensure SANITY_STUDIO_NETLIFY_BASE points to Netlify.`,
+        )
+      }
       if (!response.ok || data?.error) {
         updateMessage(key, `Error: ${data?.error || response.status}`)
       } else {
@@ -271,8 +293,11 @@ export default function AdminTools() {
   )
 
   return (
-    <div style={{padding: 16, maxWidth: 880}}>
+    <div ref={ref} style={{padding: 16, maxWidth: 880}}>
       <h2 style={{margin: '8px 0'}}>Admin Tools</h2>
+      <Text size={1} style={{marginBottom: 12}}>
+        Netlify base: {activeBase}
+      </Text>
 
       <section style={cardStyle}>
         <h3 style={{marginTop: 0}}>Orders Backfill</h3>
@@ -960,4 +985,6 @@ export default function AdminTools() {
       </section>
     </div>
   )
-}
+})
+
+export default AdminTools

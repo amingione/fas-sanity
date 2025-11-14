@@ -8,6 +8,15 @@ function normalizeNetlifyBase(value?: string | null): string | null {
   return trimmed.replace(/\/+$/, '')
 }
 
+function isHostedStudio(base: string): boolean {
+  try {
+    const hostname = new URL(base).hostname.toLowerCase()
+    return /\.sanity\.studio$/.test(hostname)
+  } catch {
+    return false
+  }
+}
+
 function getNetlifyFunctionBaseCandidates(): string[] {
   const localNetlifyBases = [
     normalizeNetlifyBase('http://localhost:8888'),
@@ -53,4 +62,19 @@ function getNetlifyFunctionBaseCandidates(): string[] {
   return Array.from(new Set(ordered))
 }
 
-export {DEFAULT_NETLIFY_BASE, getNetlifyFunctionBaseCandidates, normalizeNetlifyBase}
+function resolveNetlifyBase(): string {
+  const candidates = getNetlifyFunctionBaseCandidates()
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    if (isHostedStudio(candidate)) continue
+    return candidate
+  }
+  return DEFAULT_NETLIFY_BASE
+}
+
+export {
+  DEFAULT_NETLIFY_BASE,
+  getNetlifyFunctionBaseCandidates,
+  normalizeNetlifyBase,
+  resolveNetlifyBase,
+}

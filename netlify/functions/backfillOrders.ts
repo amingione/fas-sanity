@@ -85,6 +85,36 @@ function hasMetadataSummary(item: any): boolean {
   return metadata.upgrades.some((entry: unknown) => typeof entry === 'string' && entry.trim())
 }
 
+function normalizeNameValue(value?: unknown): string {
+  if (typeof value !== 'string') return ''
+  const trimmed = value.trim().replace(/\s+/g, ' ')
+  if (!trimmed || looksLikeEmail(trimmed)) return ''
+  return trimmed
+}
+
+function looksLikeEmail(value?: string): boolean {
+  if (!value) return false
+  return value.includes('@')
+}
+
+function deriveCustomerName(doc: any): string | undefined {
+  const shippingName = normalizeNameValue(doc?.shippingAddress?.name)
+  if (shippingName) return shippingName
+
+  const refFirst = normalizeNameValue(doc?.customerRefFirstName)
+  const refLast = normalizeNameValue(doc?.customerRefLastName)
+  const combined = [refFirst, refLast].filter(Boolean).join(' ').trim()
+  if (combined) return combined
+
+  const legacyName = normalizeNameValue(doc?.customerRefLegacyName)
+  if (legacyName) return legacyName
+
+  const refShipping = normalizeNameValue(doc?.customerRefShippingName)
+  if (refShipping) return refShipping
+
+  return undefined
+}
+
 function normalizeOrigin(value?: string | null): string {
   if (!value) return ''
   return value.trim().replace(/\/+$/, '')
@@ -419,7 +449,11 @@ export const handler: Handler = async (event) => {
           stripeSessionId,
           orderNumber,
           customerName,
-          shippingAddress
+          shippingAddress,
+          "customerRefFirstName": customerRef->firstName,
+          "customerRefLastName": customerRef->lastName,
+          "customerRefLegacyName": customerRef->name,
+          "customerRefShippingName": customerRef->shippingAddress.name
         }[0...$limit]`,
         {limit: pageSize, cursor},
       )
@@ -504,11 +538,18 @@ export const handler: Handler = async (event) => {
           }
         }
 
-        if (!doc.customerName) {
-          const shippingName = doc?.shippingAddress?.name
-            ? String(doc.shippingAddress.name).trim()
-            : ''
-          if (shippingName) setOps.customerName = shippingName
+        const rawCustomerName =
+          typeof doc.customerName === 'string' ? doc.customerName.trim() : ''
+        const hasValidCustomerName =
+          rawCustomerName.length > 0 && !looksLikeEmail(rawCustomerName)
+
+        if (!hasValidCustomerName) {
+          const derivedName = deriveCustomerName(doc)
+          if (derivedName) {
+            setOps.customerName = derivedName
+          } else if (rawCustomerName && looksLikeEmail(rawCustomerName)) {
+            setOps.customerName = null
+          }
         }
 
         if (!doc.orderNumber) {

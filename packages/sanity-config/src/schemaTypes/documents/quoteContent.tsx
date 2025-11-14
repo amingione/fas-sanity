@@ -3,6 +3,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react'
 import {TextInput} from '@sanity/ui'
 import {PatchEvent, defineField, defineType, set, unset, useClient, useFormValue} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 import ConvertToInvoiceButton from '../../components/studio/ConvertToInvoiceButton'
 import QuoteStatusWithTimeline from '../../components/inputs/QuoteStatusWithTimeline'
@@ -23,20 +24,7 @@ function fmt(value?: number) {
   return number.toFixed(2)
 }
 
-function getFnBase(): string {
-  const envBase =
-    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  if (envBase) return envBase
-  try {
-    if (typeof window !== 'undefined') {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    }
-  } catch {}
-  return 'https://fassanity.fasmotorsports.com'
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 function QuoteNumberInput(props: any) {
   const {value, onChange, readOnly} = props

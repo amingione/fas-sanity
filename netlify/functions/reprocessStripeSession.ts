@@ -522,7 +522,10 @@ async function upsertOrder({
     .trim()
 
   const email = resolveEmail(metadata, session, paymentIntent)
+  const shippingAddress = extractShippingAddress(session, email || undefined)
+
   const customerName =
+    shippingAddress?.name ||
     metadata['customer_name'] ||
     metadata['bill_to_name'] ||
     metadata['ship_to_name'] ||
@@ -610,7 +613,6 @@ async function upsertOrder({
   const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
 
   const cart = await buildCartFromSession(stripeSessionId, metadata)
-  const shippingAddress = extractShippingAddress(session, email || undefined)
 
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined

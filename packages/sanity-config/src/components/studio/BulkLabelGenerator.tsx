@@ -2,6 +2,7 @@ import React, {useState, useEffect, useMemo} from 'react'
 import {useClient} from 'sanity'
 import {Card, Button, Stack, Text, Box} from '@sanity/ui'
 import {formatApiError} from '../../utils/formatApiError'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 type EasyPostAddress = {
   name?: string
@@ -36,21 +37,7 @@ type ShippingLabelDoc = {
   dimensions?: ShipmentDimensions
 }
 
-function getFnBase(): string {
-  const envBase = (
-    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  ) as string | undefined
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    try {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    } catch {}
-  }
-  return ''
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 function isValidWeight(weight: ShipmentWeight): boolean {
   if (typeof weight === 'number') return Number.isFinite(weight) && weight > 0

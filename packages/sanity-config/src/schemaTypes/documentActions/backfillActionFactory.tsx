@@ -1,6 +1,7 @@
 import {useMemo, useState} from 'react'
 import {Box, Button, Flex, Stack, Switch, Text, TextInput, useToast} from '@sanity/ui'
 import type {DocumentActionComponent} from 'sanity'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 function readEnv(name: string): string {
   try {
@@ -38,17 +39,7 @@ function setStoredValue(key: string, value: string) {
   }
 }
 
-export function getFnBase(): string {
-  const envBase = readEnv('SANITY_STUDIO_NETLIFY_BASE')
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    const ls = getStoredValue('NLFY_BASE')
-    if (ls) return ls
-    const origin = window.location?.origin
-    if (origin && /^https?:\/\//i.test(origin)) return origin
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+export const getFnBase = (): string => resolveNetlifyBase()
 
 type BackfillActionConfig = {
   label: string

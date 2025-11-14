@@ -121,6 +121,66 @@ function formatTrackerMessage(tracker: any): string | undefined {
   return parts.length ? `EasyPost update — ${parts.join(' • ')}` : undefined
 }
 
+const ORDER_METADATA_KEYS = ['sanityOrderId', 'sanity_order_id', 'orderId', 'order_id']
+
+function normalizeOrderId(value?: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
+}
+
+function extractOrderIdFromShipment(shipment: any): string | null {
+  const metadataSources = [shipment?.metadata, shipment?.options?.metadata].filter(Boolean)
+  for (const source of metadataSources) {
+    for (const key of ORDER_METADATA_KEYS) {
+      const normalized = normalizeOrderId(source?.[key])
+      if (normalized) return normalized
+    }
+  }
+  const referenceCandidates = [shipment?.options?.reference, shipment?.reference]
+  for (const ref of referenceCandidates) {
+    const normalized = normalizeOrderId(ref)
+    if (normalized) return normalized
+  }
+  return null
+}
+
+function extractTrackingNumber(payload: any): string | null {
+  const candidate =
+    payload?.tracker?.tracking_code ||
+    payload?.tracking_code ||
+    payload?.result?.tracking_code ||
+    payload?.shipment?.tracking_code ||
+    null
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null
+}
+
+function extractLabelUrl(payload: any): string | null {
+  const candidate =
+    payload?.shipment?.postage_label?.label_url ||
+    payload?.result?.postage_label?.label_url ||
+    payload?.postage_label?.label_url ||
+    null
+  return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null
+}
+
+function buildTrackingUrl(payload: any, carrier?: string, trackingCode?: string | null): string | null {
+  const direct =
+    payload?.tracker?.public_url ||
+    payload?.public_url ||
+    payload?.tracking_url ||
+    payload?.result?.public_url ||
+    null
+  if (typeof direct === 'string' && direct.trim()) return direct.trim()
+  if (carrier && trackingCode) {
+    return `https://www.easypost.com/tracking/${encodeURIComponent(carrier)}/${encodeURIComponent(
+      trackingCode,
+    )}`
+  }
+  return null
+}
+
 async function handleTracker(tracker: any) {
   const trackerId = tracker?.id
   const trackingCode = tracker?.tracking_code
@@ -131,8 +191,8 @@ async function handleTracker(tracker: any) {
     return
   }
 
-  const order = await sanity.fetch<{_id: string}>(
-    `*[_type == "order" && (easyPostTrackerId == $trackerId || easyPostShipmentId == $shipmentId || trackingNumber == $trackingCode)][0]{ _id }`,
+  const order = await sanity.fetch<{_id: string; trackingNumber?: string; trackingUrl?: string; status?: string}>(
+    `*[_type == "order" && (easyPostTrackerId == $trackerId || easyPostShipmentId == $shipmentId || trackingNumber == $trackingCode)][0]{ _id, trackingNumber, trackingUrl, status }`,
     {
       trackerId: trackerId || null,
       shipmentId: shipmentId || null,
@@ -157,10 +217,8 @@ async function handleTracker(tracker: any) {
     tracker?.created_at ||
     new Date().toISOString()
 
-  const patchSet = Object.fromEntries(
+  const patchSet: Record<string, any> = Object.fromEntries(
     Object.entries({
-      trackingUrl: tracker?.public_url || undefined,
-      trackingNumber: trackingCode || undefined,
       shippingCarrier: tracker?.carrier || undefined,
       'shippingStatus.carrier': tracker?.carrier || undefined,
       'shippingStatus.trackingCode': trackingCode || undefined,
@@ -169,6 +227,16 @@ async function handleTracker(tracker: any) {
       'shippingStatus.lastEventAt': lastEventAt ? new Date(lastEventAt).toISOString() : undefined,
     }).filter(([, value]) => value !== undefined),
   )
+
+  if (tracker?.public_url && !order.trackingUrl) {
+    patchSet.trackingUrl = tracker.public_url
+  }
+  if (trackingCode && !order.trackingNumber) {
+    patchSet.trackingNumber = trackingCode
+  }
+  if (trackingCode && order.status !== 'fulfilled') {
+    patchSet.status = 'fulfilled'
+  }
 
   const logEntry = {
     _type: 'shippingLogEntry',
@@ -181,11 +249,75 @@ async function handleTracker(tracker: any) {
     createdAt: new Date().toISOString(),
   }
 
-  const patch = sanity.patch(order._id)
+  const patch = sanity.patch(order._id).setIfMissing({})
   if (Object.keys(patchSet).length) patch.set(patchSet)
   patch.setIfMissing({shippingLog: []}).append('shippingLog', [logEntry])
 
   await patch.commit({autoGenerateArrayKeys: true})
+}
+
+async function handleShipment(shipment: any) {
+  const shipmentId = shipment?.id
+  if (!shipmentId) {
+    console.warn('easypostWebhook shipment missing id')
+    return
+  }
+
+  const trackingNumber = extractTrackingNumber({shipment})
+  const labelUrl = extractLabelUrl({shipment})
+  const carrier =
+    shipment?.selected_rate?.carrier ||
+    shipment?.tracker?.carrier ||
+    shipment?.rates?.[0]?.carrier ||
+    shipment?.carrier ||
+    undefined
+  const trackingUrl = buildTrackingUrl({shipment}, carrier, trackingNumber)
+
+  const orderIdCandidate = extractOrderIdFromShipment(shipment)
+  const order = await sanity.fetch<{
+    _id: string
+    shippingLabelUrl?: string
+    trackingNumber?: string
+    trackingUrl?: string
+    status?: string
+  }>(
+    `*[_type == "order" && (
+      _id == $orderId ||
+      easyPostShipmentId == $shipmentId ||
+      trackingNumber == $trackingCode
+    )][0]{ _id, shippingLabelUrl, trackingNumber, trackingUrl, status }`,
+    {
+      orderId: orderIdCandidate || null,
+      shipmentId,
+      trackingCode: trackingNumber || null,
+    },
+  )
+
+  if (!order?._id) {
+    console.warn('easypostWebhook unable to locate order for shipment', {
+      shipmentId,
+      orderIdCandidate,
+    })
+    return
+  }
+
+  const setOps: Record<string, any> = {}
+  if (labelUrl && !order.shippingLabelUrl) {
+    setOps.shippingLabelUrl = labelUrl
+  }
+  if (trackingNumber && !order.trackingNumber) {
+    setOps.trackingNumber = trackingNumber
+  }
+  if (trackingUrl && !order.trackingUrl) {
+    setOps.trackingUrl = trackingUrl
+  }
+  if (trackingNumber && order.status !== 'fulfilled') {
+    setOps.status = 'fulfilled'
+  }
+
+  if (!Object.keys(setOps).length) return
+
+  await sanity.patch(order._id).setIfMissing({}).set(setOps).commit({autoGenerateArrayKeys: true})
 }
 
 export const handler: Handler = async (event) => {
@@ -242,6 +374,8 @@ export const handler: Handler = async (event) => {
     const result = payload.result || {}
     if (result?.object === 'Tracker') {
       await handleTracker(result)
+    } else if (result?.object === 'Shipment') {
+      await handleShipment(result)
     }
   } catch (err) {
     console.error('easypostWebhook processing error', err)
