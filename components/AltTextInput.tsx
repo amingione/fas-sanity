@@ -38,10 +38,54 @@ const STOP_WORDS = new Set([
 const KEYWORD_REGEX = /[\p{L}0-9+/.-]+/gu
 
 /**
+ * Convert portable text blocks to plain text string.
+ * Handles both string input and portable text array structures.
+ */
+function portableTextToPlain(input: string | any): string {
+  // If it's already a plain string and doesn't look like JSON, return it
+  if (typeof input === 'string') {
+    const trimmed = input.trim()
+    // Try to parse as JSON if it looks like a stringified array
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          input = parsed
+        } else {
+          return input
+        }
+      } catch {
+        return input
+      }
+    } else {
+      return input
+    }
+  }
+
+  if (!Array.isArray(input)) {
+    return String(input)
+  }
+
+  return input
+    .map((block) => {
+      if (!block || typeof block !== 'object') return ''
+      if (block._type !== 'block' || !Array.isArray(block.children)) return ''
+      return block.children
+        .map((child: any) => (typeof child?.text === 'string' ? child.text : ''))
+        .join('')
+    })
+    .filter((text) => typeof text === 'string' && text.trim())
+    .join('\n\n')
+    .trim()
+}
+
+/**
  * Extract keywords from the provided product information.
  */
 function extractKeywords(productTitle: string, productDescription: string): string[] {
-  const source = `${productTitle} ${productDescription}`.trim()
+  const plainTitle = portableTextToPlain(productTitle)
+  const plainDescription = portableTextToPlain(productDescription)
+  const source = `${plainTitle} ${plainDescription}`.trim()
 
   if (!source) {
     return []
