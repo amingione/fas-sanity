@@ -1,4 +1,5 @@
 import {defineType, defineField} from 'sanity'
+import AltTextInput from '../components/AltTextInput'
 
 const altText = defineType({
   name: 'altText',
@@ -16,6 +17,9 @@ const altText = defineType({
       name: 'text',
       title: 'Alternative Text',
       type: 'string',
+      components: {
+        input: AltTextInput,
+      },
       description: 'The actual alt text string for accessibility and SEO (e.g., "FAS Motorsports 6.7L Powerstroke High-Flow Piping Kit installed in a 2022 Ford F-250 engine bay.")',
       validation: (Rule) => Rule.required().min(10).max(125).warning('Alt text should be descriptive (10-125 characters recommended).'),
     }),
