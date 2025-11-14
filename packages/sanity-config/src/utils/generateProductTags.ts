@@ -159,7 +159,8 @@ function shouldKeepTag(tag: string): boolean {
   }
 
   const parts = tag.split('-')
-  if (!parts.some((part) => !STOP_WORDS.has(part) || ESSENTIAL_SHORT_TAGS.has(part))) {
+  // If every part is a stop word and not essential, reject the tag
+  if (parts.every((part) => STOP_WORDS.has(part) && !ESSENTIAL_SHORT_TAGS.has(part))) {
     return false
   }
 
