@@ -273,7 +273,7 @@ async function resolveReferenceLabels(
   ids: string[]
 ): Promise<string[]> {
   if (!ids.length) return []
-  const query = `*[_id in $ids]{_id, title, name, label, modelName, make, trim, "fullName": coalesce(make, brand, manufacturer)}`
+  const query = `*[_id in $ids]{_id, title, name, label, modelName, make, trim, brand, manufacturer, "fullName": coalesce(make, brand, manufacturer)}`
 
   const docs = await client.fetch<
     Array<{
