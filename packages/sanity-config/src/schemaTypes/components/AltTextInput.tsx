@@ -1,6 +1,7 @@
 import {useCallback, useMemo, useState} from 'react'
 import type {SanityClient, SanityDocumentLike, StringInputProps} from 'sanity'
-import {Button, Card, Stack, Text, set, useClient, useFormValue} from 'sanity'
+import {Button, Card, Stack, Text} from '@sanity/ui'
+import {set, useClient, useFormValue} from 'sanity'
 
 const STOP_WORDS = new Set([
   'the',
