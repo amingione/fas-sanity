@@ -307,9 +307,12 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   const [optionLookup, setOptionLookup] = useState<Map<string, AddressOption>>(new Map())
   const autoFilledRef = useRef(false)
   const stripeSummary = useFormValue(['stripeSummary']) as Record<string, any> | null
+  const schemaOptions = schemaType.options as Record<string, any> | undefined
+  const lookupSetting = schemaOptions?.showSavedAddressLookup
+  const showLookup = lookupSetting === true
 
   useEffect(() => {
-    if (!mapping) return
+    if (!mapping || !showLookup) return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -333,7 +336,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
     return () => {
       cancelled = true
     }
-  }, [client, mapping])
+  }, [client, mapping, showLookup])
 
   useEffect(() => {
     if (!mapping) return
@@ -391,11 +394,6 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
 
   const inputId =
     id || (Array.isArray(path) ? ['address-lookup', ...path].join('-') : 'address-lookup-input')
-
-  const schemaOptions = schemaType.options as Record<string, any> | undefined
-  const lookupSetting = schemaOptions?.showSavedAddressLookup
-  const showLookup =
-    typeof lookupSetting === 'boolean' ? lookupSetting : schemaType.name !== 'shippingAddress'
 
   return (
     <Stack space={4}>

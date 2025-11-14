@@ -2,29 +2,9 @@
 import type {DocumentActionComponent} from 'sanity'
 import {formatApiError} from '../../utils/formatApiError'
 import {readStudioEnv} from '../../utils/studioEnv'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
-function getNetlifyBase(): string {
-  const envBase = (
-    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  ) as string | undefined
-  if (envBase) return envBase.replace(/\/$/, '')
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = window.localStorage?.getItem('NLFY_BASE')
-      if (stored) return stored.replace(/\/$/, '')
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) {
-        if (/\.sanity\.studio$/i.test(new URL(origin).hostname)) {
-          return 'https://fassanity.fasmotorsports.com'
-        }
-        return origin.replace(/\/$/, '')
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+const getNetlifyBase = (): string => resolveNetlifyBase()
 
 export const createEasyPostLabelAction: DocumentActionComponent = (props) => {
   const provider = (

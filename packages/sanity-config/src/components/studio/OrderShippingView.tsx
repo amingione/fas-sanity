@@ -5,6 +5,7 @@ import {DownloadIcon, EnvelopeIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import {formatOrderNumber} from '../../utils/orderNumber'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 type DocumentViewProps = {
   document?: {
@@ -153,22 +154,7 @@ const resolvePatchTargets = (rawId?: string) => {
   return published && published !== id ? [id, published] : [id]
 }
 
-const getFnBase = (): string => {
-  const envBase =
-    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = window.localStorage?.getItem('NLFY_BASE')
-      if (stored) return stored
-    } catch {
-      // ignore
-    }
-    const origin = window.location?.origin
-    if (origin && /^https?:/i.test(origin)) return origin
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 async function openUrl(url: string) {
   try {

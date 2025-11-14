@@ -1,21 +1,8 @@
 import React from 'react'
 import {Button, useToast} from '@sanity/ui'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
-function getFnBase(): string {
-  const envBase = (
-    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  ) as string | undefined
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    try {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    } catch {}
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 type CheckResponse = {
   ok: boolean

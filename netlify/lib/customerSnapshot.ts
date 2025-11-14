@@ -217,7 +217,7 @@ export async function updateCustomerProfileForOrder({
     `{
       "orders": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
-        ($id == "" && $email != "" && customerEmail == $email)
+        ($email != "" && customerEmail == $email)
       )] | order(coalesce(orderDate, createdAt, _createdAt) desc)[0...10]{
         orderNumber,
         status,
@@ -226,17 +226,17 @@ export async function updateCustomerProfileForOrder({
       },
       "orderCount": count(*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
-        ($id == "" && $email != "" && customerEmail == $email)
+        ($email != "" && customerEmail == $email)
       )]),
       "orderTotals": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
-        ($id == "" && $email != "" && customerEmail == $email)
+        ($email != "" && customerEmail == $email)
       ) && status != "cancelled"]{
         "amount": coalesce(totalAmount, amountSubtotal + amountTax + amountShipping, totalAmount, total)
       },
       "quotes": *[_type == "quote" && (
         ($id != "" && (customer._ref == $id || customerRef._ref == $id)) ||
-        ($id == "" && $email != "" && (customer->email == $email || billTo.email == $email))
+        ($email != "" && (customer->email == $email || billTo.email == $email))
       )] | order(coalesce(createdAt, _createdAt) desc)[0...10]{
         "quoteId": coalesce(quoteNumber, _id),
         status,
@@ -245,11 +245,11 @@ export async function updateCustomerProfileForOrder({
       },
       "quoteCount": count(*[_type == "quote" && (
         ($id != "" && (customer._ref == $id || customerRef._ref == $id)) ||
-        ($id == "" && $email != "" && (customer->email == $email || billTo.email == $email))
+        ($email != "" && (customer->email == $email || billTo.email == $email))
       )]),
       "shippingDocs": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
-        ($id == "" && $email != "" && customerEmail == $email)
+        ($email != "" && customerEmail == $email)
       ) && defined(shippingAddress.addressLine1)]{
         shippingAddress
       }

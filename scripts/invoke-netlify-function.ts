@@ -13,11 +13,40 @@ for (const filename of ENV_FILES) {
   }
 }
 
-const [, , functionName, payloadArg] = process.argv
+const [, , functionName, payloadArg, ...extraArgs] = process.argv
 
 if (!functionName) {
   console.error('Usage: pnpm tsx scripts/invoke-netlify-function.ts <functionName> [jsonPayload]')
   process.exit(1)
+}
+
+type QueryParams = Record<string, string>
+
+function parseQueryArgs(args: string[]): QueryParams {
+  const params: QueryParams = {}
+  for (const arg of args) {
+    if (!arg.startsWith('--')) continue
+    const trimmed = arg.slice(2)
+    if (!trimmed) continue
+    const eqIndex = trimmed.indexOf('=')
+    if (eqIndex === -1) {
+      params[trimmed] = 'true'
+    } else {
+      const key = trimmed.slice(0, eqIndex)
+      const value = trimmed.slice(eqIndex + 1)
+      if (!key) continue
+      params[key] = value
+    }
+  }
+  return params
+}
+
+function formatQueryString(params: QueryParams) {
+  const entries = Object.entries(params)
+  if (!entries.length) return ''
+  return entries
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&')
 }
 
 async function main() {
@@ -34,7 +63,7 @@ async function main() {
     process.exit(1)
   }
 
-  const bodyObject = payloadArg ? JSON.parse(payloadArg) : {}
+  const bodyObject: Record<string, any> = payloadArg ? JSON.parse(payloadArg) : {}
 
   const headers: Record<string, string> = {'Content-Type': 'application/json'}
   if (process.env.BACKFILL_SECRET) {
@@ -43,16 +72,23 @@ async function main() {
     headers.authorization = token
   }
 
+  const queryParams = parseQueryArgs(extraArgs)
+  if ('dryRun' in queryParams) {
+    const val = queryParams.dryRun.toLowerCase()
+    bodyObject.dryRun = val === 'true'
+  }
+  const rawQuery = formatQueryString(queryParams)
+
   const event: HandlerEvent = {
     httpMethod: 'POST',
     headers,
     multiValueHeaders: {},
-    queryStringParameters: {},
+    queryStringParameters: Object.keys(queryParams).length ? queryParams : {},
     multiValueQueryStringParameters: {},
     body: JSON.stringify(bodyObject),
     isBase64Encoded: false,
     rawUrl: `http://localhost/.netlify/functions/${functionName}`,
-    rawQuery: '',
+    rawQuery,
     path: `/.netlify/functions/${functionName}`,
   }
 

@@ -2,25 +2,11 @@ import React, {useEffect, useMemo, useState} from 'react'
 import {Button, Text} from '@sanity/ui'
 import {set, useClient, useFormValue} from 'sanity'
 import {formatApiError} from '../../utils/formatApiError'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 // Resolve the Netlify functions base dynamically.
 // Priority: ENV -> localStorage -> empty (caller must set)
-function getFnBase(): string {
-  const envBase = (
-    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  ) as string | undefined
-  if (envBase) return envBase
-  if (typeof window !== 'undefined') {
-    const saved = window.localStorage?.getItem('NLFY_BASE') || ''
-    if (saved) return saved
-    // Fallback to current origin so production Studio works without manual input
-    try {
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    } catch {}
-  }
-  return ''
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 function setFnBase(next: string) {
   try {

@@ -25,6 +25,7 @@ import {
   CustomersDocumentTable,
 } from '../components/studio/documentTables'
 import {CogIcon} from '@sanity/icons'
+import StripeAnalyticsDashboard from './components/StripeAnalyticsDashboard'
 
 const API_VERSION = '2024-10-01'
 
@@ -169,6 +170,9 @@ const createCustomersList = (S: any) =>
                 CustomersRecentlyAddedTableView,
               ),
             ),
+          S.divider(),
+          S.documentTypeListItem('invoice').title('Invoices'),
+          S.documentTypeListItem('quote').title('Quotes'),
         ]),
     )
 
@@ -181,15 +185,6 @@ const createFinanceList = (S: any) =>
       S.list()
         .title('Finance')
         .items([
-          S.documentTypeListItem('invoice')
-            .title('Invoices')
-            .child(
-              S.documentTypeList('invoice')
-                .title('Invoices')
-                .apiVersion(API_VERSION)
-                .filter('_type == "invoice"')
-                .defaultOrdering([{field: 'invoiceDate', direction: 'desc'}]),
-            ),
           S.documentTypeListItem('bill')
             .title('Bills')
             .child(
@@ -217,9 +212,17 @@ const createFinanceList = (S: any) =>
                 .filter('_type == "expense"')
                 .defaultOrdering([{field: 'date', direction: 'desc'}]),
             ),
-          S.divider(),
           S.documentTypeListItem('bankAccount').title('Bank accounts'),
-          S.documentTypeListItem('vendor').title('Vendors'),
+          S.divider(),
+          S.listItem()
+            .id('finance-analytics')
+            .title('Analytics (Stripe Overview)')
+            .child(
+              S.component()
+                .id('finance-analytics-pane')
+                .title('Stripe Analytics')
+                .component(StripeAnalyticsDashboard as ComponentType),
+            ),
         ]),
     )
 
@@ -293,31 +296,6 @@ const createMarketingSection = (S: any) =>
         ]),
     )
 
-const createAdministrationSection = (S: any) =>
-  S.listItem()
-    .id('administration')
-    .title('Administration')
-    .icon(WrenchIcon)
-    .child(
-      S.list()
-        .title('Administration')
-        .items([
-          S.listItem()
-            .id('admin-tools')
-            .title('Admin tools')
-            .icon(WrenchIcon)
-            .child(
-              S.component()
-                .id('admin-tools-pane')
-                .title('Admin tools')
-                .component(AdminTools as any),
-            ),
-          S.divider(),
-          createFinanceList(S),
-          S.divider(),
-        ]),
-    )
-
 export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('FAS Dashboard')
@@ -341,7 +319,18 @@ export const deskStructure: StructureResolver = (S) =>
       S.divider(),
       createMarketingSection(S),
       S.divider(),
-      createAdministrationSection(S),
+      createFinanceList(S),
+      S.divider(),
+      S.listItem()
+        .id('admin-tools')
+        .title('Admin Tools')
+        .icon(WrenchIcon)
+        .child(
+          S.component()
+            .id('admin-tools-pane')
+            .title('Admin Tools')
+            .component(AdminTools as any),
+        ),
       S.divider(),
       S.listItem()
         .id('print-settings')

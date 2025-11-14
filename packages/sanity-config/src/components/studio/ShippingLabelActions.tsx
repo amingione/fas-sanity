@@ -3,30 +3,9 @@ import React, {useCallback, useMemo, useState} from 'react'
 import {Button, Flex, Text, useToast} from '@sanity/ui'
 import {useFormValue} from 'sanity'
 import {readStudioEnv} from '../../utils/studioEnv'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
-function getFnBase(): string {
-  const envBase = (
-    typeof process !== 'undefined' ? (process as any)?.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  ) as string | undefined
-  if (envBase) return envBase.replace(/\/$/, '')
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = window.localStorage?.getItem('NLFY_BASE')
-      if (stored) return stored.replace(/\/$/, '')
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) {
-        // The Studio is hosted on sanity.studio, but Netlify functions live elsewhere.
-        if (/\.sanity\.studio$/i.test(new URL(origin).hostname)) {
-          return 'https://fassanity.fasmotorsports.com'
-        }
-        return origin.replace(/\/$/, '')
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }
-  return 'https://fassanity.fasmotorsports.com'
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 interface ShippingLabelActionsProps {
   doc: Record<string, any>

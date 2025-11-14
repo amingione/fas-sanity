@@ -1,9 +1,32 @@
-import {defineType, defineField} from 'sanity'
+import React, {useEffect} from 'react'
+import {defineType, defineField, set} from 'sanity'
+import type {StringFieldProps} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 import AutoSKUInput from '../../components/AutoSKUInput'
 import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
+
+type CanonicalFieldProps = StringFieldProps & {
+  document?: any
+  onChange?: (patch: any) => void
+}
+
+const CanonicalUrlField: React.ComponentType<CanonicalFieldProps> = (props) => {
+  const slug = props.document?.slug?.current
+  const autoValue = slug ? `https://fasmotorsports.com/products/${slug}` : ''
+  const {value, onChange} = props
+
+  useEffect(() => {
+    if (!onChange) return
+    if (!autoValue) return
+    if (!value) {
+      onChange(set(autoValue))
+    }
+  }, [autoValue, value, onChange])
+
+  return props.renderDefault(props)
+}
 
 /**
  * SIMPLIFIED PRODUCT SCHEMA
@@ -460,7 +483,7 @@ const product = defineType({
     }),
     defineField({
       name: 'addOns',
-      title: 'Upgrades & Add-ons (Optional)',
+      title: 'Upgrades',
       type: 'array',
       of: [{type: 'addOn'}],
       description:
@@ -555,22 +578,7 @@ const product = defineType({
         const slug = props?.slug?.current
         return slug ? `https://fasmotorsports.com/products/${slug}` : ''
       },
-      components: {
-        field: (props: any) => {
-          const slug = props.document?.slug?.current
-          const autoValue = slug ? `https://fasmotorsports.com/products/${slug}` : ''
-
-          if (!props.value || props.value === autoValue) {
-            props.onChange({
-              patch: {
-                set: autoValue,
-              },
-            })
-          }
-
-          return props.renderDefault(props)
-        },
-      },
+      components: {field: CanonicalUrlField},
       group: 'seo',
     }),
     defineField({
@@ -821,14 +829,6 @@ const product = defineType({
       title: 'Focus Keyword',
       type: 'string',
       description: 'Primary keyword to target for on-page SEO.',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'altText',
-      title: 'Alt Text',
-      type: 'array',
-      of: [{type: 'string'}],
-      description: 'Global list of alternative text variations to reuse across media assets.',
       group: 'seo',
     }),
     defineField({

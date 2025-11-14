@@ -19,6 +19,7 @@ import {
   Tooltip,
 } from '@sanity/ui'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 import './invoiceStyles.css'
 
@@ -49,22 +50,7 @@ function useMaybeFormValue<T = unknown>(path: FormValuePath): T | undefined {
   }
 }
 
-function getFnBase(): string {
-  // Prefer env (works in Node/CLI). In Studio, you can also store an override in localStorage under 'NLFY_BASE'.
-  const envBase =
-    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_NETLIFY_BASE : undefined
-  if (envBase) return envBase
-  try {
-    if (typeof window !== 'undefined') {
-      const ls = window.localStorage?.getItem('NLFY_BASE')
-      if (ls) return ls
-      // default to current origin in production Studio
-      const origin = window.location?.origin
-      if (origin && /^https?:\/\//i.test(origin)) return origin
-    }
-  } catch {}
-  return 'https://fassanity.fasmotorsports.com'
-}
+const getFnBase = (): string => resolveNetlifyBase()
 
 const DEFAULT_INVOICE_PREFIX = (() => {
   const raw =

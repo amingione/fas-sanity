@@ -75,12 +75,24 @@ export const handler: Handler = async (event) => {
   let optInDefaults = 0
   let updatedStamped = 0
   let rolesDefaulted = 0
+  let namesHydrated = 0
 
   try {
     while (true) {
       const docs: any[] = await sanity.fetch(
         `*[_type == "customer" && _id > $cursor] | order(_id) {
-          _id, userId, roles, updatedAt, emailOptIn, marketingOptIn, textOptIn
+          _id,
+          userId,
+          roles,
+          updatedAt,
+          emailOptIn,
+          marketingOptIn,
+          textOptIn,
+          name,
+          firstName,
+          lastName,
+          "shippingName": shippingAddress.name,
+          "billingName": billingAddress.name
         }[0...$limit]`,
         {cursor, limit: pageSize},
       )
@@ -88,6 +100,12 @@ export const handler: Handler = async (event) => {
       for (const d of docs) {
         total++
         const setOps: Record<string, any> = {}
+
+        const nameUpdates = deriveNamePatch(d)
+        if (Object.keys(nameUpdates).length > 0) {
+          Object.assign(setOps, nameUpdates)
+          namesHydrated++
+        }
 
         if (d.userId && typeof d.userId === 'string' && d.userId.startsWith('auth0|')) {
           setOps.userId = null
@@ -156,6 +174,71 @@ export const handler: Handler = async (event) => {
       optInDefaults,
       updatedStamped,
       rolesDefaulted,
+      namesHydrated,
     }),
   }
+}
+
+function normalizeName(value?: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim().replace(/\s+/g, ' ')
+  if (!trimmed || looksLikeEmail(trimmed)) return undefined
+  return trimmed
+}
+
+function splitName(full?: string) {
+  const normalized = normalizeName(full)
+  if (!normalized) return {first: undefined, last: undefined}
+  const parts = normalized.split(' ')
+  if (parts.length === 1) {
+    return {first: parts[0], last: undefined}
+  }
+  const [first, ...rest] = parts
+  return {
+    first,
+    last: rest.join(' ').trim() || undefined,
+  }
+}
+
+function looksLikeEmail(value?: string): boolean {
+  if (!value) return false
+  return value.includes('@')
+}
+
+function deriveNamePatch(doc: any): Record<string, string | null> {
+  const patch: Record<string, string | null> = {}
+  const rawFirst = typeof doc?.firstName === 'string' ? doc.firstName : undefined
+  const rawLast = typeof doc?.lastName === 'string' ? doc.lastName : undefined
+  const currentFirst = normalizeName(rawFirst)
+  const currentLast = normalizeName(rawLast)
+
+  const fallback =
+    normalizeName(doc?.name) ||
+    normalizeName(doc?.shippingName) ||
+    normalizeName(doc?.billingName)
+
+  const needsFirst = !currentFirst
+  const needsLast = !currentLast
+
+  if (needsFirst || needsLast) {
+    const {first, last} = splitName(fallback)
+    if (needsFirst && first) {
+      patch.firstName = first
+    }
+    if (needsLast && last) {
+      patch.lastName = last
+    }
+    if (needsFirst && !patch.firstName && fallback) {
+      patch.firstName = fallback
+    }
+  }
+
+  if (needsFirst && !patch.firstName && looksLikeEmail(rawFirst)) {
+    patch.firstName = null
+  }
+  if (needsLast && !patch.lastName && looksLikeEmail(rawLast)) {
+    patch.lastName = null
+  }
+
+  return patch
 }
