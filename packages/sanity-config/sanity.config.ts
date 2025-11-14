@@ -23,6 +23,7 @@ import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
 import {deskStructureBuilderTool} from './src/plugins/deskStructureBuilder'
 import resolveDocumentActions from './src/resolveDocumentActions'
+import {resolveProductDocumentActions} from './src/documentActions/productDocumentActions'
 import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
@@ -146,7 +147,8 @@ export default defineConfig({
   },
 
   document: {
-    actions: (prev, context) => resolveDocumentActions(prev, context),
+    actions: (prev, context) =>
+      resolveProductDocumentActions(resolveDocumentActions(prev, context), context),
     badges: resolveDocumentBadges,
   },
 

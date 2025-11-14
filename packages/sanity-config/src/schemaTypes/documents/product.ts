@@ -127,7 +127,11 @@ const product = defineType({
       title: 'Tags',
       type: 'array',
       of: [{type: 'string'}],
-      description: 'Freeform keywords to help internal search, merchandising, or quick filters.',
+      description:
+        'SEO-optimized tags generated from product details (you can still review and edit them manually).',
+      options: {
+        layout: 'tags',
+      },
       group: 'essentials',
     }),
     defineField({
