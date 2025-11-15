@@ -278,14 +278,12 @@ const createMarketingSection = (S: any) =>
                   S.divider(),
                   S.listItem()
                     .title('Email Subscribers')
+                    .schemaType('marketingOptIn')
                     .child(
                       S.documentList()
-                        .title('Email Subscribers')
-                        .filter('_type == "customer" && emailMarketing.subscribed == true')
                         .apiVersion(API_VERSION)
-                        .defaultOrdering([
-                          {field: 'emailMarketing.subscribedAt', direction: 'desc'},
-                        ]),
+                        .title('Email Subscribers')
+                        .filter('_type == "marketingOptIn"'),
                     ),
                 ]),
             ),

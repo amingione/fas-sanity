@@ -1,4 +1,6 @@
 import {defineField, defineType} from 'sanity'
+import {KEY_FEATURE_ICON_OPTIONS} from '../../constants/keyFeatureIcons'
+import KeyFeatureIconInput from '../../components/inputs/KeyFeatureIconInput'
 
 export const collapsibleFeatureType = defineType({
   name: 'collapsibleFeature',
@@ -17,6 +19,12 @@ export const collapsibleFeatureType = defineType({
       title: 'Icon',
       type: 'string',
       description: 'Front-end icon identifier (coordinate with the storefront icon set)',
+      options: {
+        list: KEY_FEATURE_ICON_OPTIONS,
+      },
+      components: {
+        input: KeyFeatureIconInput,
+      },
     }),
     defineField({
       name: 'summary',
@@ -24,7 +32,7 @@ export const collapsibleFeatureType = defineType({
       type: 'text',
       rows: 2,
       description: 'One or two sentences that show while collapsed',
-      validation: (Rule) => Rule.required().max(240),
+      validation: (Rule) => Rule.max(240),
     }),
     defineField({
       name: 'details',
@@ -49,4 +57,3 @@ export const collapsibleFeatureType = defineType({
     },
   },
 })
-

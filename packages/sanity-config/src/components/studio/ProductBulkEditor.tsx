@@ -28,11 +28,14 @@ declare global {
   }
 }
 
+type ProductStatus = 'active' | 'draft' | 'paused' | 'archived'
+
 type ProductDoc = {
   _id: string
   title?: string
   slug?: {current?: string}
   sku?: string
+  status?: ProductStatus
   mpn?: string
   price?: number
   salePrice?: number
@@ -156,6 +159,25 @@ type SpreadsheetColumn = {
 const TRUE_VALUES = new Set(['true', '1', 'yes', 'y'])
 const FALSE_VALUES = new Set(['false', '0', 'no', 'n'])
 
+const PRODUCT_STATUS_OPTIONS: Array<{value: ProductStatus; label: string}> = [
+  {value: 'active', label: 'Active — Live'},
+  {value: 'draft', label: 'Draft — Hidden'},
+  {value: 'paused', label: 'Paused — Temporarily hidden'},
+  {value: 'archived', label: 'Archived — Retired'},
+]
+
+const PRODUCT_STATUS_VALUES: Record<string, ProductStatus> = {
+  active: 'active',
+  live: 'active',
+  'active — live': 'active',
+  'active - live': 'active',
+  draft: 'draft',
+  paused: 'paused',
+  'pause': 'paused',
+  archived: 'archived',
+  archive: 'archived',
+}
+
 const AVAILABILITY_VALUES: Record<string, 'in_stock' | 'out_of_stock' | 'preorder' | 'backorder'> =
   {
     in_stock: 'in_stock',
@@ -204,6 +226,20 @@ function parseBooleanCell(raw: string) {
   if (TRUE_VALUES.has(normalized)) return {ok: true as const, value: true}
   if (FALSE_VALUES.has(normalized)) return {ok: true as const, value: false}
   return {ok: false as const, message: `Expected TRUE/FALSE, received "${raw}".`}
+}
+
+function parseStatusCell(raw: string) {
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    return {ok: true as const, value: undefined as ProductStatus | undefined}
+  }
+  const normalized = trimmed.toLowerCase()
+  const mapped = PRODUCT_STATUS_VALUES[normalized]
+  if (mapped) return {ok: true as const, value: mapped}
+  return {
+    ok: false as const,
+    message: 'Status must be Active, Draft, Paused, or Archived.',
+  }
 }
 
 function parseAvailabilityCell(raw: string) {
@@ -255,6 +291,17 @@ const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
     headerKey: 'title',
     getValue: (product) => product.title || '',
     setValue: (raw) => makeUpdate('title', raw.trim() as EditableProduct['title']),
+  },
+  {
+    header: 'Status',
+    headerKey: 'status',
+    getValue: (product) => product.status || '',
+    setValue: (raw) => {
+      const result = parseStatusCell(raw)
+      if (!result.ok) return {type: 'error', message: result.message}
+      if (result.value === undefined) return null
+      return makeUpdate('status', result.value as EditableProduct['status'])
+    },
   },
   {
     header: 'Sanity ID',
@@ -558,6 +605,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
         const projection = `{
             _id,
             title,
+            status,
             slug,
             sku,
             mpn,
@@ -935,6 +983,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       const payload: Record<string, any> = {
         title: product.title || '',
         sku: product.sku || undefined,
+        status: product.status || undefined,
         price: Number.isFinite(product.price) ? Number(product.price) : undefined,
         salePrice: Number.isFinite(product.salePrice) ? Number(product.salePrice) : undefined,
         onSale: Boolean(product.onSale),
@@ -1322,6 +1371,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                   {[
                     'ID / SKU',
                     'Title',
+                    'Status',
                     'Price',
                     'Sale Price',
                     'On Sale?',
@@ -1397,6 +1447,25 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                             updateProductField(product._id, 'title', event.currentTarget.value)
                           }
                         />
+                      </td>
+                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <select
+                          value={product.status || ''}
+                          onChange={(event) =>
+                            updateProductField(
+                              product._id,
+                              'status',
+                              (event.currentTarget.value || undefined) as EditableProduct['status'],
+                            )
+                          }
+                        >
+                          <option value="">Select status</option>
+                          {PRODUCT_STATUS_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                         <TextInput

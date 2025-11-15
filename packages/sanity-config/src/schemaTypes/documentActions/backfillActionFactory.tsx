@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react'
 import {Box, Button, Flex, Stack, Switch, Text, TextInput, useToast} from '@sanity/ui'
-import type {DocumentActionComponent} from 'sanity'
+import type {DocumentActionComponent, DocumentActionProps} from 'sanity'
 import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 function readEnv(name: string): string {
@@ -45,12 +45,41 @@ type BackfillActionConfig = {
   label: string
   functionName: string
   resultSummary: (data: Record<string, any>, dryRun: boolean) => string
+  supportsDryRun?: boolean
+  buildRequest?: (
+    props: DocumentActionProps,
+    options: {dryRun: boolean},
+  ) => {
+    queryParams?: Record<
+      string,
+      string | number | boolean | Array<string | number | boolean> | null | undefined
+    >
+    body?: Record<string, unknown>
+  }
+}
+
+function appendQueryParam(
+  params: URLSearchParams,
+  key: string,
+  value: string | number | boolean | Array<string | number | boolean> | null | undefined,
+) {
+  if (value === undefined || value === null) return
+  const values = Array.isArray(value) ? value : [value]
+  for (const entry of values) {
+    if (entry === undefined || entry === null) continue
+    const normalized =
+      typeof entry === 'boolean' ? (entry ? 'true' : 'false') : String(entry).trim()
+    if (!normalized) continue
+    params.append(key, normalized)
+  }
 }
 
 export function createBackfillAction({
   label,
   functionName,
   resultSummary,
+  supportsDryRun = true,
+  buildRequest,
 }: BackfillActionConfig): DocumentActionComponent {
   return (props) => {
     const {onComplete} = props
@@ -77,15 +106,30 @@ export function createBackfillAction({
       try {
         setStoredValue('BACKFILL_SECRET', secret.trim())
 
-        const query = dryRun ? '?dryRun=true' : ''
-        const url = `${baseUrl}/.netlify/functions/${functionName}${query}`
+        const requestOverrides = buildRequest ? buildRequest(props, {dryRun}) : undefined
+        const params = new URLSearchParams()
+        if (supportsDryRun && dryRun) {
+          params.set('dryRun', 'true')
+        }
+        if (requestOverrides?.queryParams) {
+          for (const [key, value] of Object.entries(requestOverrides.queryParams)) {
+            appendQueryParam(params, key, value)
+          }
+        }
+        const queryString = params.toString()
+        const url = `${baseUrl}/.netlify/functions/${functionName}${queryString ? `?${queryString}` : ''}`
 
         const headers: Record<string, string> = {'Content-Type': 'application/json'}
         if (secret.trim()) {
           headers.Authorization = `Bearer ${secret.trim()}`
         }
 
-        const res = await fetch(url, {method: 'POST', headers})
+        const bodyPayload =
+          requestOverrides?.body && Object.keys(requestOverrides.body).length
+            ? JSON.stringify(requestOverrides.body)
+            : undefined
+
+        const res = await fetch(url, {method: 'POST', headers, body: bodyPayload})
         const data = await res.json().catch(() => ({}))
 
         if (!res.ok || data?.error) {
@@ -130,15 +174,17 @@ export function createBackfillAction({
                       below.
                     </Text>
                   </Box>
-                  <Flex align="center" gap={3}>
-                    <Switch
-                      id={`${functionName}-dry-run`}
-                      checked={dryRun}
-                      onChange={(event) => setDryRun(event.currentTarget.checked)}
-                      disabled={isSubmitting}
-                    />
-                    <Text>Dry run</Text>
-                  </Flex>
+                  {supportsDryRun && (
+                    <Flex align="center" gap={3}>
+                      <Switch
+                        id={`${functionName}-dry-run`}
+                        checked={dryRun}
+                        onChange={(event) => setDryRun(event.currentTarget.checked)}
+                        disabled={isSubmitting}
+                      />
+                      <Text>Dry run</Text>
+                    </Flex>
+                  )}
                   <Stack space={2}>
                     <Text size={1} style={{color: 'var(--card-fg-color)'}}>
                       Optional bearer secret

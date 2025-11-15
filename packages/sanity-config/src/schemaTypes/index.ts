@@ -229,6 +229,7 @@ import {checkType} from './documents/check'
 import expense from './documents/expense'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
 import emailCampaign from './documents/emailCampaign'
+import marketingOptIn from './documents/marketingOptIn'
 
 const documents = [
   collectionType,
@@ -259,6 +260,7 @@ const documents = [
   expense,
   stripeWebhookEvent,
   emailCampaign,
+  marketingOptIn,
   merchantFeed,
   shoppingCampaign,
   campaign,
