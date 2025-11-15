@@ -3,6 +3,7 @@ import {defineType, defineField, set} from 'sanity'
 import type {StringFieldProps} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 import AutoSKUInput from '../../components/AutoSKUInput'
+import ProductImageAltReferenceInput from '../../components/inputs/ProductImageAltReferenceInput'
 import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
@@ -47,7 +48,7 @@ const product = defineType({
   title: 'Product',
   type: 'document',
   groups: [
-    {name: 'essentials', title: '✓ Essentials', default: true},
+    {name: 'essentials', title: 'Essentials', default: true},
     {name: 'content', title: 'Content & Description'},
     {name: 'key features', title: 'Key Features'},
     {name: 'pricing', title: 'Pricing & Sale'},
@@ -109,7 +110,11 @@ const product = defineType({
               title: 'Alt Text',
               type: 'reference',
               to: [{type: 'altText'}],
-              description: 'Select a reusable alt text variation from the global list.',
+              description:
+                'Select a reusable alt text variation from the global list. Legacy string values are imported automatically.',
+              components: {
+                input: ProductImageAltReferenceInput,
+              },
             },
           ],
           options: {hotspot: true},
@@ -734,6 +739,15 @@ const product = defineType({
       title: 'Inventory Count',
       type: 'number',
       validation: (Rule) => Rule.min(0),
+      fieldset: 'merchant',
+      group: 'advanced',
+    }),
+    defineField({
+      name: 'shippingLabel',
+      title: 'Merchant Shipping Label',
+      type: 'string',
+      description:
+        'Maps to Google Merchant Center shipping_label. Use to flag Install Only vs. Performance Parts, or leave blank to use default shipping rules.',
       fieldset: 'merchant',
       group: 'advanced',
     }),

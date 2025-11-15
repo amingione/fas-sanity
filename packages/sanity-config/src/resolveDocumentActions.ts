@@ -5,6 +5,7 @@ import {reprocessStripeSessionAction} from './schemaTypes/documentActions/reproc
 import {backfillInvoicesAction} from './schemaTypes/documentActions/backfillInvoicesAction'
 import {backfillCustomersAction} from './schemaTypes/documentActions/backfillCustomersAction'
 import {forceDeleteUnlinkAction} from './schemaTypes/documentActions/forceDeleteUnlinkAction'
+import {backfillProductAction} from './schemaTypes/documentActions/backfillProductAction'
 import {
   refundStripeInvoiceAction,
 } from './schemaTypes/documentActions/refundStripeAction'
@@ -23,6 +24,9 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'customer') {
     list.push(backfillCustomersAction)
+  }
+  if (context.schemaType === 'product') {
+    list.push(backfillProductAction)
   }
   if (['vehicleModel', 'filterTag', 'product'].includes(context.schemaType)) {
     list.push(forceDeleteUnlinkAction)

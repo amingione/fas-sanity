@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react'
+import React, {useEffect, useMemo, useState} from 'react'
 import {
   Badge,
   Box,
@@ -24,6 +24,11 @@ import {
 } from '@sanity/icons'
 import imageUrlBuilder from '@sanity/image-url'
 import {useClient} from 'sanity'
+
+type ReferenceLike = {
+  _ref?: string | null
+}
+
 type ProductDocument = {
   title?: string | null
   price?: number | null
@@ -38,11 +43,16 @@ type ProductDocument = {
   } | null
   images?: Array<{
     _key?: string
-    alt?: string | null
+    alt?: string | ReferenceLike | null
     asset?: {
       _ref?: string | null
     } | null
   }> | null
+}
+
+const normalizeRefId = (ref?: string | null) => {
+  if (!ref) return null
+  return ref.replace(/^drafts\./, '')
 }
 
 type ProductEditorPaneProps = {
@@ -83,6 +93,7 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   const document = (props.document?.displayed || {}) as ProductDocument
   const client = useClient({apiVersion: '2024-10-01'})
   const imageBuilder = useMemo(() => imageUrlBuilder(client), [client])
+  const [heroAlt, setHeroAlt] = useState(document.title || 'Untitled product')
 
   const title = document.title || 'Untitled product'
   const price = document.price
@@ -106,7 +117,6 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
   }, [imageBuilder, primaryImage, primaryImageRef])
   const imagePreviewUrl = heroImageUrl || PRODUCT_PLACEHOLDER_IMAGE
   const hasUploadedImage = Boolean(heroImageUrl)
-  const heroAlt = primaryImage?.alt || title
 
   const statusTone = statusToneMap[statusValue] || 'default'
   const statusLabel = statusLabelMap[statusValue] || 'Draft'
@@ -115,6 +125,49 @@ const ProductEditorPane: React.FC<ProductEditorPaneProps> = (props) => {
     typeof inventoryAvailable === 'number'
       ? `${inventoryAvailable.toLocaleString()} in stock`
       : 'Inventory managed externally'
+
+  useEffect(() => {
+    const rawAlt = primaryImage?.alt
+
+    if (typeof rawAlt === 'string') {
+      const trimmed = rawAlt.trim()
+      setHeroAlt(trimmed || title)
+      return
+    }
+
+    const refId = rawAlt && typeof rawAlt === 'object' ? (rawAlt as ReferenceLike)._ref : undefined
+    const normalizedId = normalizeRefId(refId ?? null)
+
+    if (!normalizedId) {
+      setHeroAlt(title)
+      return
+    }
+
+    let cancelled = false
+
+    client
+      .fetch<{text?: string} | null>(
+        `*[_type == "altText" && (_id == $publishedId || _id == $draftId)][0]{text}`,
+        {
+          publishedId: normalizedId,
+          draftId: `drafts.${normalizedId}`,
+        },
+      )
+      .then((result) => {
+        if (!cancelled) {
+          setHeroAlt(result?.text?.trim() || title)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHeroAlt(title)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [client, primaryImage, title])
 
   return (
     <Box padding={[4, 5, 6]}>
