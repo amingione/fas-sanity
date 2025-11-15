@@ -13,4 +13,5 @@ ignoredBuiltDependencies:
   - unix-dgram
 
 patchedDependencies:
+  '@sanity/ui@3.1.11': patches/@sanity__ui@3.1.11.patch
   react-refractor@4.0.0: patches/react-refractor@4.0.0.patch
