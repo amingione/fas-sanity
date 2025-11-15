@@ -1,0 +1,64 @@
+diff --git a/dist/index.js b/dist/index.js
+index d45fc749e48083f374abfe4149a2cf257e8c9abd..cb9557a7103236bcf105421a90e30e0dea670159 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1251,8 +1251,8 @@ const LOADING_BAR_HEIGHT = 2, STATUS_CARD_TONE = {
+   success: "alert",
+   info: "alert"
+ }, LONG_ENOUGH_BUT_NOT_TOO_LONG = 1e3 * 60 * 60 * 24 * 24;
+-function Toast(props) {
+-  const $ = reactCompilerRuntime.c(50);
++const Toast = react.forwardRef(function(props, forwardedRef) {
++  const $ = reactCompilerRuntime.c(51);
+   let closable, description, duration, onClose, restProps, status, t0, title, updatedAt;
+   $[0] !== props ? ({
+     closable,
+@@ -1316,12 +1316,12 @@ function Toast(props) {
+     }, onAnimationComplete: onClose }, `progress-${updatedAt}`)
+   ] }), $[31] = cardTone, $[32] = duration, $[33] = hasDuration, $[34] = onClose, $[35] = radius, $[36] = transition, $[37] = updatedAt, $[38] = visualDuration, $[39] = t11) : t11 = $[39];
+   let t12;
+-  return $[40] !== cardTone || $[41] !== radius || $[42] !== restProps || $[43] !== role || $[44] !== t10 || $[45] !== t11 || $[46] !== t5 || $[47] !== transition || $[48] !== visualDuration ? (t12 = /* @__PURE__ */ jsxRuntime.jsxs(MotionToast, { "data-ui": "Toast", role, ...restProps, "data-has-duration": t5, custom: visualDuration, radius, shadow: 2, tone: cardTone, forwardedAs: "li", layout: "position", variants: container, initial, animate, exit, transition, children: [
++  return $[40] !== cardTone || $[41] !== radius || $[42] !== restProps || $[43] !== role || $[44] !== t10 || $[45] !== t11 || $[46] !== t5 || $[47] !== transition || $[48] !== visualDuration || $[49] !== forwardedRef ? (t12 = /* @__PURE__ */ jsxRuntime.jsxs(MotionToast, { "data-ui": "Toast", role, ...restProps, "data-has-duration": t5, custom: visualDuration, radius, shadow: 2, tone: cardTone, forwardedAs: "li", layout: "position", variants: container, initial, animate, exit, transition, ref: forwardedRef, children: [
+     t10,
+     t11
+-  ] }), $[40] = cardTone, $[41] = radius, $[42] = restProps, $[43] = role, $[44] = t10, $[45] = t11, $[46] = t5, $[47] = transition, $[48] = visualDuration, $[49] = t12) : t12 = $[49], t12;
+-}
+-Toast.displayName = "Toast";
++  ] }), $[40] = cardTone, $[41] = radius, $[42] = restProps, $[43] = role, $[44] = t10, $[45] = t11, $[46] = t5, $[47] = transition, $[48] = visualDuration, $[49] = forwardedRef, $[50] = t12) : t12 = $[50], t12;
++});
++Toast.displayName = "ForwardRef(Toast)";
+ const container = {
+   initial: {
+     y: 32,
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 0b0d6aefa1db40f8e2f799556a6af05a2773d521..fe59a3b7e6f587598ae68e1c83f7a7eedadd2a00 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1257,8 +1257,8 @@ const LOADING_BAR_HEIGHT = 2, STATUS_CARD_TONE = {
+   success: "alert",
+   info: "alert"
+ }, LONG_ENOUGH_BUT_NOT_TOO_LONG = 1e3 * 60 * 60 * 24 * 24;
+-function Toast(props) {
+-  const $ = c(50);
++const Toast = forwardRef(function(props, forwardedRef) {
++  const $ = c(51);
+   let closable, description, duration, onClose, restProps, status, t0, title, updatedAt;
+   $[0] !== props ? ({
+     closable,
+@@ -1322,12 +1322,12 @@ function Toast(props) {
+     }, onAnimationComplete: onClose }, `progress-${updatedAt}`)
+   ] }), $[31] = cardTone, $[32] = duration, $[33] = hasDuration, $[34] = onClose, $[35] = radius, $[36] = transition, $[37] = updatedAt, $[38] = visualDuration, $[39] = t11) : t11 = $[39];
+   let t12;
+-  return $[40] !== cardTone || $[41] !== radius || $[42] !== restProps || $[43] !== role || $[44] !== t10 || $[45] !== t11 || $[46] !== t5 || $[47] !== transition || $[48] !== visualDuration ? (t12 = /* @__PURE__ */ jsxs(MotionToast, { "data-ui": "Toast", role, ...restProps, "data-has-duration": t5, custom: visualDuration, radius, shadow: 2, tone: cardTone, forwardedAs: "li", layout: "position", variants: container, initial, animate, exit, transition, children: [
++  return $[40] !== cardTone || $[41] !== radius || $[42] !== restProps || $[43] !== role || $[44] !== t10 || $[45] !== t11 || $[46] !== t5 || $[47] !== transition || $[48] !== visualDuration || $[49] !== forwardedRef ? (t12 = /* @__PURE__ */ jsxs(MotionToast, { "data-ui": "Toast", role, ...restProps, "data-has-duration": t5, custom: visualDuration, radius, shadow: 2, tone: cardTone, forwardedAs: "li", layout: "position", variants: container, initial, animate, exit, transition, ref: forwardedRef, children: [
+     t10,
+     t11
+-  ] }), $[40] = cardTone, $[41] = radius, $[42] = restProps, $[43] = role, $[44] = t10, $[45] = t11, $[46] = t5, $[47] = transition, $[48] = visualDuration, $[49] = t12) : t12 = $[49], t12;
+-}
+-Toast.displayName = "Toast";
++  ] }), $[40] = cardTone, $[41] = radius, $[42] = restProps, $[43] = role, $[44] = t10, $[45] = t11, $[46] = t5, $[47] = transition, $[48] = visualDuration, $[49] = forwardedRef, $[50] = t12) : t12 = $[50], t12;
++});
++Toast.displayName = "ForwardRef(Toast)";
+ const container = {
+   initial: {
+     y: 32,
