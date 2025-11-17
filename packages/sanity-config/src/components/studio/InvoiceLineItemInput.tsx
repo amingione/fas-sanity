@@ -1,6 +1,11 @@
 import React, {useEffect, useState} from 'react'
 import {set, useClient} from 'sanity'
 
+const normalizeProductId = (value?: string | null) => {
+  if (!value) return ''
+  return value.replace(/^drafts\./, '')
+}
+
 export default function InvoiceLineItemInput(props: any) {
   const {value, onChange} = props
   const client = useClient({apiVersion: '2024-10-01'})
@@ -18,7 +23,7 @@ export default function InvoiceLineItemInput(props: any) {
     let t: ReturnType<typeof setTimeout> | null = setTimeout(async () => {
       try {
         const rs = await client.fetch(
-          `*[_type == "product" && (title match $q || sku match $q)][0...8]{_id, title, sku, price}`,
+          `*[_type == "product" && !(_id in path("drafts.**")) && (title match $q || sku match $q)][0...8]{_id, title, sku, price}`,
           {q: `${q}*`},
         )
         setResults(Array.isArray(rs) ? rs : [])
@@ -32,9 +37,11 @@ export default function InvoiceLineItemInput(props: any) {
   }, [client, search, mode])
 
   function onPickProduct(p: any) {
+    const normalizedId = normalizeProductId(p?._id)
+    if (!normalizedId) return
     const patch: any = {
       kind: 'product',
-      product: {_type: 'reference', _ref: p._id},
+      product: {_type: 'reference', _ref: normalizedId},
       description: p.title,
       sku: p.sku,
       unitPrice: typeof p.price === 'number' ? p.price : Number(p.price || 0),

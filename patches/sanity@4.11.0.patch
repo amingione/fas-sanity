@@ -43,3 +43,15 @@
 -    return element.addEventListener("wheel", preventWheel), () => {
 +    return element.addEventListener("wheel", preventWheel, { passive: true }), () => {
 *** End Patch
+*** Begin Patch
+*** Update File: lib/index.js
+@@
+-      }, index) => /* @__PURE__ */ jsxRuntime.jsxs(Item, { id: id2, sortable: isSortable, disableTransition: this.state.disableTransition, children: [
++      }, index) => /* @__PURE__ */ jsxRuntime.jsxs(Item, { id: id2, sortable: isSortable, ...(isSortable ? {disableTransition: this.state.disableTransition} : {}), children: [
+*** End Patch
+*** Begin Patch
+*** Update File: lib/index.mjs
+@@
+-      }, index) => /* @__PURE__ */ jsxs(Item, { id: id2, sortable: isSortable, disableTransition: this.state.disableTransition, children: [
++      }, index) => /* @__PURE__ */ jsxs(Item, { id: id2, sortable: isSortable, ...(isSortable ? {disableTransition: this.state.disableTransition} : {}), children: [
+*** End Patch
