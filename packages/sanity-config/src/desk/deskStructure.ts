@@ -44,6 +44,22 @@ const documentTablePane = (S: any, id: string, title: string, component: Compone
 const ProductsAllTableView: ComponentType = () =>
   React.createElement(ProductsDocumentTable as any, {title: 'All products', pageSize: 12})
 
+const ProductsPausedTableView: ComponentType = () =>
+  React.createElement(ProductsDocumentTable as any, {
+    title: 'Paused',
+    pageSize: 12,
+    baseFilter: 'status == "paused"',
+    initialStatusFilter: 'paused',
+  })
+
+const ProductsArchivedTableView: ComponentType = () =>
+  React.createElement(ProductsDocumentTable as any, {
+    title: 'Archived',
+    pageSize: 12,
+    baseFilter: 'status == "archived"',
+    initialStatusFilter: 'archived',
+  })
+
 const CustomersAllTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {title: 'All customers', pageSize: 10})
 
@@ -115,6 +131,16 @@ const createProductsList = (S: any) =>
             .title('All products')
             .child(documentTablePane(S, 'products-all', 'All products', ProductsAllTableView)),
           S.divider(),
+          S.listItem()
+            .id('products-paused')
+            .title('Paused')
+            .child(documentTablePane(S, 'products-paused', 'Paused', ProductsPausedTableView)),
+          S.listItem()
+            .id('products-archived')
+            .title('Archived')
+            .child(
+              documentTablePane(S, 'products-archived', 'Archived', ProductsArchivedTableView),
+            ),
           S.divider(),
           S.documentTypeListItem('category').title('Categories'),
           S.documentTypeListItem('productBundle').title('Bundles'),
