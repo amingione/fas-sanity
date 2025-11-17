@@ -4,6 +4,7 @@ import type {StringFieldProps} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 import AutoSKUInput from '../../components/AutoSKUInput'
 import ProductImageAltReferenceInput from '../../components/inputs/ProductImageAltReferenceInput'
+import ProductJsonLdPreview from '../../components/studio/ProductJsonLdPreview'
 import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
@@ -227,6 +228,14 @@ const product = defineType({
       description: 'Discounted price when on sale',
       validation: (Rule) => Rule.min(0),
       hidden: ({parent}) => !parent?.onSale,
+      group: 'pricing',
+    }),
+    defineField({
+      name: 'priceCurrency',
+      title: 'Currency',
+      type: 'string',
+      description: 'ISO 4217 currency code for schema.org markup (e.g., USD)',
+      initialValue: 'USD',
       group: 'pricing',
     }),
 
@@ -589,6 +598,26 @@ const product = defineType({
       },
       components: {field: CanonicalUrlField},
       group: 'seo',
+    }),
+    defineField({
+      name: 'structuredDataOverrides',
+      title: 'Structured Data Overrides',
+      type: 'text',
+      rows: 6,
+      description:
+        'Optional raw JSON that will be merged with the generated Product JSON-LD. Use this for advanced cases only.',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'structuredDataPreview',
+      title: 'Structured Data Preview',
+      type: 'text',
+      readOnly: true,
+      group: 'seo',
+      components: {
+        input: ProductJsonLdPreview,
+      },
+      description: 'Auto-generated JSON-LD snippet based on the fields above.',
     }),
     defineField({
       name: 'noindex',
