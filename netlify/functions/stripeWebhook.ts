@@ -5082,8 +5082,8 @@ export const handler: Handler = async (event) => {
           const stripeInvoiceFromSession =
             typeof (session as any)?.invoice === 'string'
               ? (session as any)?.invoice
-              : typeof paymentIntent?.invoice === 'string'
-                ? paymentIntent.invoice
+              : typeof (paymentIntent as any)?.invoice === 'string'
+                ? (paymentIntent as any).invoice
                 : undefined
           const invoiceNumberFromSession =
             typeof (session as any)?.invoice_number === 'string'
@@ -5406,11 +5406,14 @@ export const handler: Handler = async (event) => {
               ? pi.customer
               : (pi.customer as Stripe.Customer | undefined)?.id
           const billingAddress =
-            normalizeStripeContactAddress(ch?.billing_details?.address as Stripe.Address | undefined, {
-              name: chargeBillingName || undefined,
-              email,
-              phone: ch?.billing_details?.phone || undefined,
-            }) || undefined
+            normalizeStripeContactAddress(
+              ch?.billing_details?.address as Stripe.Address | undefined,
+              {
+                name: chargeBillingName || undefined,
+                email,
+                phone: ch?.billing_details?.phone || undefined,
+              },
+            ) || undefined
           let amountShipping: number | undefined = undefined
           const rawPaymentStatus = (pi.status || '').toLowerCase()
           let paymentStatus = rawPaymentStatus || 'pending'
@@ -5426,13 +5429,15 @@ export const handler: Handler = async (event) => {
             ) || ''
           let invoiceDocId = metadataInvoiceId || null
           if (!invoiceDocId) {
+            const piAny = pi as any
+            const stripeInvoiceId =
+              typeof piAny.invoice === 'string'
+                ? piAny.invoice
+                : (piAny.invoice as Stripe.Invoice | undefined)?.id
             invoiceDocId =
               (await findInvoiceDocumentIdForEvent({
                 metadata: meta,
-                stripeInvoiceId:
-                  typeof pi.invoice === 'string'
-                    ? pi.invoice
-                    : (pi.invoice as Stripe.Invoice | undefined)?.id,
+                stripeInvoiceId,
                 invoiceNumber: metadataInvoiceNumber || undefined,
                 paymentIntentId: pi.id,
               })) || null
