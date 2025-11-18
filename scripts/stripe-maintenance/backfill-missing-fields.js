@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const path = require('path')
 const {
   createSanityClient,
   createStripeClient,
@@ -16,7 +15,9 @@ const ORDER_QUERY = (limit) => `*[_type == "order" && (
     !defined(cardLast4) ||
     !defined(receiptUrl) ||
     !defined(invoiceRef) ||
-    !defined(customerRef)
+    !defined(customerRef) ||
+    !defined(stripeCustomerId) ||
+    stripeCustomerId == ""
   )] | order(_createdAt desc)[0...${limit}]{
     _id,
     orderNumber,
@@ -135,6 +136,8 @@ async function run() {
     if (!order.cardBrand && stripeDetails.cardBrand) patch.cardBrand = stripeDetails.cardBrand
     if (!order.cardLast4 && stripeDetails.cardLast4) patch.cardLast4 = stripeDetails.cardLast4
     if (!order.receiptUrl && stripeDetails.receiptUrl) patch.receiptUrl = stripeDetails.receiptUrl
+    if (!order.stripeCustomerId && stripeDetails.stripeCustomerId)
+      patch.stripeCustomerId = stripeDetails.stripeCustomerId
 
     let invoiceDocId = order.invoiceRef?._ref || null
     if (!invoiceDocId && stripeDetails.invoiceStripeId) {

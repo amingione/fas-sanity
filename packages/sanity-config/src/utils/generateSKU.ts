@@ -61,7 +61,7 @@ export async function syncSKUToStripe(sku?: string | null, stripeProductId?: str
   }
 
   try {
-    const stripe = new Stripe(secret, {apiVersion: '2023-10-16'})
+    const stripe = new Stripe(secret, {apiVersion: '2025-08-27.basil'})
     await stripe.products.update(stripeProductId, {metadata: {sku}})
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -7,12 +7,14 @@ import {
   ProductsDocumentTable,
 } from './documentTables'
 import CalendarTasksWidget from './CalendarTasksWidget'
+import RecentDownloadsWidget from './downloads/RecentDownloadsWidget'
 
 const HomePane = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   return (
     <Box padding={4} ref={ref}>
       <Stack space={4}>
         <CalendarTasksWidget />
+        <RecentDownloadsWidget />
         <OrdersDocumentTable
           title="New orders"
           filter={NEW_ORDERS_FILTER}

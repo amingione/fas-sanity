@@ -8,6 +8,7 @@ export type ProductRequirements = {
   id: string
   slug?: string
   title?: string
+  productType?: string
   options: ProductOptionRequirement[]
   customizations: ProductCustomizationRequirement[]
 }
@@ -32,6 +33,7 @@ const PRODUCT_REQUIREMENTS_QUERY = `
     _id,
     "slug": slug.current,
     title,
+    productType,
     "options": coalesce(options, [])[]{
       "name": coalesce(title, ""),
       "required": coalesce(required, true)
@@ -133,18 +135,25 @@ export async function fetchProductRequirements({
 
   const options = (Array.isArray(document.options) ? document.options : [])
     .map(normalizeOption)
-    .filter((option): option is ProductOptionRequirement => Boolean(option))
+    .filter(
+      (option: ReturnType<typeof normalizeOption>): option is ProductOptionRequirement =>
+        Boolean(option),
+    )
 
   const customizations = (Array.isArray(document.customizations) ? document.customizations : [])
     .map(normalizeCustomization)
-    .filter((customization): customization is ProductCustomizationRequirement =>
-      Boolean(customization),
+    .filter(
+      (
+        customization: ReturnType<typeof normalizeCustomization>,
+      ): customization is ProductCustomizationRequirement => Boolean(customization),
     )
 
   return {
     id: document._id as string,
     slug: typeof document.slug === 'string' ? document.slug : undefined,
     title: typeof document.title === 'string' ? document.title : undefined,
+    productType:
+      typeof document.productType === 'string' ? document.productType : undefined,
     options,
     customizations,
   }

@@ -13,8 +13,7 @@ import {
 import {Box, Button, Card, Flex, Inline, Select, Spinner, Stack, Text, TextInput, useToast} from '@sanity/ui'
 import type {ComponentType} from 'react'
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
-import {FormField, FormInput, useClient, useDocumentOperation} from 'sanity'
-import type {DocumentViewComponent} from 'sanity/desk'
+import {FormField, useClient, useDocumentOperation} from 'sanity'
 import {IntentLink} from 'sanity/router'
 import EditableFieldWrapper from '../components/EditableFieldWrapper'
 import OrderItemsList from '../components/OrderItemsList'
@@ -224,8 +223,6 @@ const SECTION_ICONS: Record<string, ComponentType> = {
   shipping: PinIcon,
 }
 
-const EDITABLE_FIELD_WHITELIST = new Set(['status', 'manualTrackingNumber'])
-
 const ORDER_STATUS_OPTIONS: OrderStatus[] = ['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded']
 
 const STRIPE_SYNC_FIELDS = new Set([
@@ -253,7 +250,7 @@ const REFERENCE_TARGETS: Record<string, string> = {
   invoiceRef: 'invoice',
 }
 
-export const orderView: DocumentViewComponent = (props) => {
+const OrderViewComponent = (props: any) => {
   const {documentId, schemaType, document} = props
   const order = (document?.displayed || {}) as OrderDocument
   const client = useClient({apiVersion: '2024-10-01'})
@@ -331,10 +328,13 @@ export const orderView: DocumentViewComponent = (props) => {
     [config.hiddenFields],
   )
 
-  const editableFields = useMemo(
-    () => new Set(config.editableFields?.length ? config.editableFields : DEFAULT_ORDER_VIEW_CONFIG.editableFields),
-    [config.editableFields],
-  )
+  const editableFields = useMemo(() => {
+    const configList =
+      Array.isArray(config.editableFields) && config.editableFields.length > 0
+        ? config.editableFields
+        : DEFAULT_ORDER_VIEW_CONFIG.editableFields
+    return new Set(configList)
+  }, [config.editableFields])
 
   const protectedFields = useMemo(
     () => new Set([...(config.protectedFields || []), ...STRIPE_SYNC_FIELDS]),
@@ -370,6 +370,7 @@ export const orderView: DocumentViewComponent = (props) => {
 
   const handleStatusChange = useCallback(
     (nextValue: string) => {
+      if (!editableFields.has('status')) return
       const nextStatus = (nextValue as OrderStatus) || ''
       setStatusDraft(nextStatus)
       if (!nextStatus || nextStatus === order.status) return
@@ -380,10 +381,11 @@ export const orderView: DocumentViewComponent = (props) => {
         description: `Order status changed to ${nextStatus}`,
       })
     },
-    [order.status, patch, pushToast],
+    [editableFields, order.status, patch, pushToast],
   )
 
   const handleManualTrackingCommit = useCallback(() => {
+    if (!editableFields.has('manualTrackingNumber')) return
     const trimmed = manualTrackingDraft.trim()
     if (!trimmed && !order.manualTrackingNumber) return
     if (trimmed === order.manualTrackingNumber) return
@@ -401,7 +403,7 @@ export const orderView: DocumentViewComponent = (props) => {
         title: 'Tracking number cleared',
       })
     }
-  }, [manualTrackingDraft, order.manualTrackingNumber, patch, pushToast])
+  }, [editableFields, manualTrackingDraft, order.manualTrackingNumber, patch, pushToast])
 
   const renderSection = (section: OrderViewSection) => {
     const sectionKey = section._key || section.title
@@ -432,7 +434,7 @@ export const orderView: DocumentViewComponent = (props) => {
       <Stack space={2}>
         {field.note && <Text size={1}>{field.note}</Text>}
         {isStripeLocked && (
-          <Inline space={2} align="center">
+          <Inline space={2} style={{alignItems: 'center'}}>
             <WarningOutlineIcon style={{fontSize: 14}} />
             <Text size={1} muted>
               Synced from Stripe. Editing is disabled.
@@ -465,20 +467,18 @@ export const orderView: DocumentViewComponent = (props) => {
     ]
     return (
       <FormField key={field.fieldName} title={field.label} description={getFieldDescription(field)}>
-        <FormInput>
-          <Card padding={3} radius={2} tone="transparent" border>
-            {fieldsToShow.map((fieldName) => (
-              <Flex key={fieldName} justify="space-between" style={{gap: 8}}>
-                <Text size={1} muted>
-                  {formatAddressLabel(fieldName)}
-                </Text>
-                <Text size={2}>
-                  {(value as ShippingAddress | undefined)?.[fieldName as keyof ShippingAddress] || '—'}
-                </Text>
-              </Flex>
-            ))}
-          </Card>
-        </FormInput>
+        <Card padding={3} radius={2} tone="transparent" border>
+          {fieldsToShow.map((fieldName) => (
+            <Flex key={fieldName} justify="space-between" style={{gap: 8}}>
+              <Text size={1} muted>
+                {formatAddressLabel(fieldName)}
+              </Text>
+              <Text size={2}>
+                {(value as ShippingAddress | undefined)?.[fieldName as keyof ShippingAddress] || '—'}
+              </Text>
+            </Flex>
+          ))}
+        </Card>
       </FormField>
     )
   }
@@ -495,21 +495,19 @@ export const orderView: DocumentViewComponent = (props) => {
       ) : undefined)
     return (
       <FormField key={field.fieldName} title={field.label} description={description}>
-        <FormInput>
-          {refValue?._ref ? (
-            <IntentLink
-              intent="edit"
-              params={{id: refValue._ref, type: targetType || schemaTypeName}}
-              style={{display: 'inline-flex'}}
-            >
-              <Button icon={LaunchIcon} text="Open document" tone="primary" mode="bleed" />
-            </IntentLink>
-          ) : (
-            <Text size={1} muted>
-              Not linked
-            </Text>
-          )}
-        </FormInput>
+        {refValue?._ref ? (
+          <IntentLink
+            intent="edit"
+            params={{id: refValue._ref, type: targetType || schemaTypeName}}
+            style={{display: 'inline-flex'}}
+          >
+            <Button icon={LaunchIcon} text="Open document" tone="primary" mode="bleed" />
+          </IntentLink>
+        ) : (
+          <Text size={1} muted>
+            Not linked
+          </Text>
+        )}
       </FormField>
     )
   }
@@ -518,24 +516,22 @@ export const orderView: DocumentViewComponent = (props) => {
     const value = order[field.fieldName as keyof OrderDocument] as string | undefined
     return (
       <FormField key={field.fieldName} title={field.label} description={getFieldDescription(field)}>
-        <FormInput>
-          {value ? (
-            <Button
-              as="a"
-              href={value}
-              target="_blank"
-              rel="noopener noreferrer"
-              text="Open link"
-              icon={LaunchIcon}
-              tone="primary"
-              mode="bleed"
-            />
-          ) : (
-            <Text size={1} muted>
-              Not available
-            </Text>
-          )}
-        </FormInput>
+        {value ? (
+          <Button
+            as="a"
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            text="Open link"
+            icon={LaunchIcon}
+            tone="primary"
+            mode="bleed"
+          />
+        ) : (
+          <Text size={1} muted>
+            Not available
+          </Text>
+        )}
       </FormField>
     )
   }
@@ -568,7 +564,7 @@ export const orderView: DocumentViewComponent = (props) => {
         />
       </EditableFieldWrapper>
       {order.manualTrackingNumber && (
-        <Inline space={3} align="center">
+        <Inline space={3} style={{alignItems: 'center'}}>
           <CheckmarkCircleIcon style={{color: 'var(--card-fg-color)', fontSize: 16}} />
           <Card paddingX={3} paddingY={2} radius={2} tone="positive" border>
             <Text size={1}>Tracking saved</Text>
@@ -581,9 +577,7 @@ export const orderView: DocumentViewComponent = (props) => {
   const renderDefaultField = (field: OrderViewField) => {
     const fieldName = field.fieldName as keyof OrderDocument
     const value = order[fieldName]
-    const isStripeLocked = protectedFields.has(field.fieldName as string)
-
-    const title = <Text>{field.label}</Text>
+    const title = field.label
 
     const descriptionContent = getFieldDescription(field)
 
@@ -602,9 +596,7 @@ export const orderView: DocumentViewComponent = (props) => {
 
     return (
       <FormField key={field.fieldName} title={title} description={descriptionContent}>
-        <FormInput>
-          <TextInput value={displayValue} readOnly />
-        </FormInput>
+        <TextInput value={displayValue} readOnly />
       </FormField>
     )
   }
@@ -617,9 +609,7 @@ export const orderView: DocumentViewComponent = (props) => {
           title={field.label}
           description={getFieldDescription(field)}
         >
-          <FormInput>
-            <OrderItemsList items={order.cart} currency={order.currency} />
-          </FormInput>
+          <OrderItemsList items={order.cart} currency={order.currency} />
         </FormField>
       )
     }
@@ -698,7 +688,7 @@ export const orderView: DocumentViewComponent = (props) => {
   return (
     <Stack space={4} padding={4}>
       {loadingConfig && (
-        <Inline space={3} align="center">
+        <Inline space={3} style={{alignItems: 'center'}}>
           <Spinner size={2} muted />
           <Text size={1}>Loading order view preferences…</Text>
         </Inline>
@@ -706,7 +696,7 @@ export const orderView: DocumentViewComponent = (props) => {
       {renderSummaryCards()}
       {config.sections.map((section) => renderSection(section))}
       <Card tone="transparent" padding={3}>
-        <Inline space={3} align="center">
+        <Inline space={3} style={{alignItems: 'center'}}>
           <TrolleyIcon />
           <Text size={1} muted>
             All fields except status and manual tracking are read-only to preserve Stripe syncs.
@@ -717,4 +707,5 @@ export const orderView: DocumentViewComponent = (props) => {
   )
 }
 
+export const orderView = OrderViewComponent
 export default orderView

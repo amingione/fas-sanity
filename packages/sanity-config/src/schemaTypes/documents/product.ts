@@ -5,7 +5,11 @@ import {googleProductCategories} from '../constants/googleProductCategories'
 import AutoSKUInput from '../../components/AutoSKUInput'
 import ProductImageAltReferenceInput from '../../components/inputs/ProductImageAltReferenceInput'
 import ProductJsonLdPreview from '../../components/studio/ProductJsonLdPreview'
+import SeoCharacterCountInput from '../../components/inputs/SeoCharacterCountInput'
+import FocusKeywordInput from '../../components/inputs/FocusKeywordInput'
+import ShippingCalculatorPreview from '../../components/inputs/ShippingCalculatorPreview'
 import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
+import ProductMarketingInsights from '../../components/studio/ProductMarketingInsights'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 
@@ -30,77 +34,224 @@ const CanonicalUrlField: React.ComponentType<CanonicalFieldProps> = (props) => {
   return props.renderDefault(props)
 }
 
-/**
- * SIMPLIFIED PRODUCT SCHEMA
- *
- * Groups reorganized by priority:
- * 1. Essentials - Must-have fields to create a product
- * 2. Content - Description and product info
- * 3. Pricing - Price, sales, Stripe integration
- * 4. Media - Images and videos
- * 5. Options - Product variants and add-ons
- * 6. Compatibility - Vehicle fitment
- * 7. SEO - Search engine optimization
- * 8. Advanced - Less commonly used fields
- */
+type VisibilityContext = {
+  document?: Record<string, any>
+  parent?: Record<string, any>
+}
+
+const resolveProductType = (context?: VisibilityContext): string => {
+  const docType = context?.document?.productType || context?.parent?.productType
+  return docType || 'physical'
+}
+
+const isPhysicalOrBundle = (context?: VisibilityContext): boolean => {
+  const type = resolveProductType(context)
+  return type === 'physical' || type === 'bundle'
+}
+
+const isServiceProduct = (context?: VisibilityContext): boolean => resolveProductType(context) === 'service'
+
+const isBundleProduct = (context?: VisibilityContext): boolean => resolveProductType(context) === 'bundle'
+
+const merchantFieldWarning = (Rule: any, message: string) =>
+  Rule.custom((value: unknown, context: any) => {
+    const productType =
+      typeof context?.document?.productType === 'string'
+        ? context.document.productType.toLowerCase()
+        : 'physical'
+    if (productType === 'service') return true
+    if (typeof value === 'number') return Number.isFinite(value) ? true : false
+    if (typeof value === 'string') return value.trim() ? true : false
+    return false
+  }).warning(message)
 
 const product = defineType({
   name: 'product',
   title: 'Product',
   type: 'document',
   groups: [
-    {name: 'essentials', title: 'Essentials', default: true},
-    {name: 'content', title: 'Content & Description'},
-    {name: 'key features', title: 'Key Features'},
-    {name: 'pricing', title: 'Pricing & Sale'},
-    {name: 'media', title: 'Images & Media'},
-    {name: 'options', title: 'Options & Upgrades'},
+    {name: 'basic', title: 'Basic Info', default: true},
+    {name: 'details', title: 'Product Details'},
+    {name: 'options', title: 'Options & Variants'},
+    {name: 'shipping', title: 'Shipping & Fulfillment'},
+    {name: 'service', title: 'Service Details'},
+    {name: 'bundle', title: 'Bundle Components'},
+    {name: 'inventory', title: 'Inventory'},
     {name: 'compatibility', title: 'Vehicle Compatibility'},
-    {name: 'shipping', title: 'Shipping & Logistics'},
-    {name: 'seo', title: 'SEO & Metadata'},
-    {name: 'advanced', title: 'Advanced Settings'},
+    {name: 'seo', title: 'SEO & Marketing'},
+    {name: 'stripe', title: 'Stripe Sync'},
+    {name: 'advanced', title: 'Advanced'},
   ],
   fieldsets: [
     {
-      name: 'stripe',
-      title: 'Stripe Integration (Auto-synced - Read Only)',
+      name: 'productDetails',
+      title: 'Product Storytelling',
       options: {collapsible: true, collapsed: true},
     },
     {
-      name: 'shipping',
-      title: 'Shipping Configuration (Required)',
+      name: 'optionsAndVariants',
+      title: 'Options & Variants',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'shippingDetails',
+      title: 'Shipping Requirements',
       options: {collapsible: true, collapsed: false},
     },
     {
+      name: 'serviceDetails',
+      title: 'Service Logistics',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'bundleContents',
+      title: 'Bundle Components',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'inventorySettings',
+      title: 'Inventory',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'compatibilityDetails',
+      title: 'Vehicle Compatibility',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'seo',
+      title: 'SEO & Marketing',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'seoAdvanced',
+      title: 'Advanced SEO Controls',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'stripe',
+      title: 'Stripe Sync (read only)',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
       name: 'merchant',
-      title: 'Google Merchant Center (Required)',
-      options: {collapsible: true, collapsed: false},
+      title: 'Merchant & Advanced',
+      options: {collapsible: true, collapsed: true},
     },
   ],
   fields: [
-    // ============================================
-    // ESSENTIALS - Required to create a product
-    // ============================================
     defineField({
       name: 'title',
-      title: 'Product Title',
+      title: 'Title',
       type: 'string',
-      description: 'The name of your product as it appears on the website',
-      validation: (Rule) => Rule.required(),
-      group: 'essentials',
+      description: 'Product name as it appears on the website and in Google search results.',
+      validation: (Rule) =>
+        Rule.required().max(100).error('Title is required and should stay under 100 characters.'),
+      group: 'basic',
     }),
     defineField({
       name: 'slug',
       title: 'URL Slug',
       type: 'slug',
       options: {source: 'title', maxLength: 96},
-      description: 'Auto-generated from title. Used in product URL',
+      description: 'Auto-generated from the title. Used for storefront URLs and canonical links.',
       validation: (Rule) => Rule.required(),
-      group: 'essentials',
+      group: 'basic',
+    }),
+    defineField({
+      name: 'status',
+      title: 'Status',
+      type: 'string',
+      description: 'Controls product visibility across the storefront and API.',
+      options: {
+        layout: 'radio',
+        list: [
+          {title: 'Active - Live on website', value: 'active'},
+          {title: 'Draft - Not published yet', value: 'draft'},
+          {title: 'Paused - Temporarily hidden', value: 'paused'},
+          {title: 'Archived - No longer available', value: 'archived'},
+        ],
+      },
+      initialValue: 'active',
+      validation: (Rule) => Rule.required(),
+      group: 'basic',
+    }),
+    defineField({
+      name: 'productType',
+      title: 'Product Type',
+      type: 'string',
+      description: 'What kind of offer this is so the correct fields, badges, and catalogs are shown.',
+      options: {
+        layout: 'radio',
+        list: [
+          {title: '🔧 Physical Product (ships to customer)', value: 'physical'},
+          {title: '⚙️ Service (installation, tuning, labor)', value: 'service'},
+          {title: '📦 Bundle/Package (multiple items)', value: 'bundle'},
+        ],
+      },
+      initialValue: 'physical',
+      validation: (Rule) => Rule.required(),
+      group: 'basic',
+    }),
+    defineField({
+      name: 'sku',
+      title: 'SKU',
+      type: 'string',
+      description: 'Auto-generated and Stripe-synced SKU using the FAS format.',
+      readOnly: true,
+      group: 'basic',
+      components: {input: AutoSKUInput},
+      initialValue: async ({document, getClient}) => {
+        try {
+          const client = getClient?.({apiVersion: '2024-10-01'})
+          if (!client) return ''
+          const sku = await generateFasSKU(document?.title, (document as any)?.platform, client)
+          if (document?.stripeProductId) {
+            await syncSKUToStripe(sku, document.stripeProductId)
+          }
+          return sku
+        } catch (error) {
+          console.warn('Failed to set initial SKU:', error)
+          return ''
+        }
+      },
+    }),
+    defineField({
+      name: 'price',
+      title: 'Price (USD)',
+      type: 'number',
+      description: 'Base price in USD. Sale pricing or shipping fees are managed elsewhere.',
+      validation: (Rule) => Rule.required().min(0),
+      group: 'basic',
+    }),
+    defineField({
+      name: 'onSale',
+      title: 'On Sale?',
+      type: 'boolean',
+      description: 'Toggle to show a sale price badge on the storefront.',
+      initialValue: false,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'salePrice',
+      title: 'Sale Price (USD)',
+      type: 'number',
+      description: 'Discounted price shown when the product is on sale.',
+      validation: (Rule) => Rule.min(0),
+      hidden: ({document}) => document?.onSale !== true,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'priceCurrency',
+      title: 'Currency',
+      type: 'string',
+      description: 'ISO 4217 currency code, defaults to USD.',
+      initialValue: 'USD',
+      group: 'basic',
     }),
     defineField({
       name: 'images',
-      title: 'Product Images',
+      title: 'Images',
       type: 'array',
       of: [
         {
@@ -121,195 +272,12 @@ const product = defineType({
           options: {hotspot: true},
         },
       ],
-      description: 'Main product gallery images',
-      group: 'essentials',
-      validation: (Rule) =>
-        Rule.min(1).warning('Add at least one photo so the product looks good on the storefront.'),
-    }),
-    defineField({
-      name: 'status',
-      title: 'Status',
-      type: 'string',
-      description: 'Controls product visibility',
-      options: {
-        layout: 'radio',
-        list: [
-          {title: 'Active - Live on website', value: 'active'},
-          {title: 'Draft - Not published yet', value: 'draft'},
-          {title: 'Paused - Temporarily hidden', value: 'paused'},
-          {title: 'Archived - No longer available', value: 'archived'},
-        ],
-      },
-      initialValue: 'active',
-      group: 'essentials',
-    }),
-    defineField({
-      name: 'category',
-      title: 'Categories',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'category'}]}],
-      description: 'Organize products into categories for shop filtering',
-      group: 'essentials',
-    }),
-    defineField({
-      name: 'tags',
-      title: 'Tags',
-      type: 'array',
-      of: [{type: 'string'}],
       description:
-        'SEO-optimized tags generated from product details (you can still review and edit them manually).',
-      options: {
-        layout: 'tags',
-      },
-      group: 'essentials',
+        'First image is the main hero photo. Add 3-5 shots that show angles, install context, or branding.',
+      validation: (Rule) =>
+        Rule.required().min(1).error('Product needs at least one image before it can go live.'),
+      group: 'basic',
     }),
-    defineField({
-      name: 'sku',
-      title: 'SKU',
-      type: 'string',
-      description: 'Auto-generated and Stripe-synced SKU using the FAS format.',
-      readOnly: true,
-      group: 'essentials',
-      components: {input: AutoSKUInput},
-      initialValue: async ({document, getClient}) => {
-        try {
-          const client = getClient?.({apiVersion: '2024-10-01'})
-          if (!client) return ''
-          const sku = await generateFasSKU(document?.title, (document as any)?.platform, client)
-          if (document?.stripeProductId) {
-            await syncSKUToStripe(sku, document.stripeProductId)
-          }
-          return sku
-        } catch (error) {
-          console.warn('Failed to set initial SKU:', error)
-          return ''
-        }
-      },
-    }),
-    defineField({
-      name: 'featured',
-      title: 'Featured Product',
-      type: 'boolean',
-      description: 'Show this product in featured sections',
-      initialValue: false,
-      group: 'essentials',
-    }),
-    defineField({
-      name: 'promotionTagline',
-      title: 'Promotion Tagline',
-      type: 'string',
-      description: 'Marketing tagline or highlight for product cards.',
-      group: 'content',
-    }),
-
-    // ============================================
-    // PRICING - Price and sale configuration
-    // ============================================
-    defineField({
-      name: 'price',
-      title: 'Regular Price (USD)',
-      type: 'number',
-      description: 'Base product price',
-      validation: (Rule) => Rule.min(0),
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'onSale',
-      title: 'On Sale?',
-      type: 'boolean',
-      description: 'Enable to show sale pricing',
-      initialValue: false,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'salePrice',
-      title: 'Sale Price (USD)',
-      type: 'number',
-      description: 'Discounted price when on sale',
-      validation: (Rule) => Rule.min(0),
-      hidden: ({parent}) => !parent?.onSale,
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'priceCurrency',
-      title: 'Currency',
-      type: 'string',
-      description: 'ISO 4217 currency code for schema.org markup (e.g., USD)',
-      initialValue: 'USD',
-      group: 'pricing',
-    }),
-
-    // Stripe Integration (Auto-managed, collapsible)
-    defineField({
-      name: 'stripeProductId',
-      title: 'Stripe Product ID',
-      type: 'string',
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeDefaultPriceId',
-      title: 'Stripe Default Price ID',
-      type: 'string',
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripePriceId',
-      title: 'Stripe Primary Price ID',
-      type: 'string',
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeActive',
-      title: 'Stripe Active Status',
-      type: 'boolean',
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeUpdatedAt',
-      title: 'Stripe Updated At',
-      type: 'datetime',
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeLastSyncedAt',
-      title: 'Last Synced with Stripe',
-      type: 'datetime',
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripePrices',
-      title: 'Stripe Price History',
-      type: 'array',
-      of: [{type: 'stripePriceSnapshot'}],
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-    defineField({
-      name: 'stripeMetadata',
-      title: 'Stripe Metadata',
-      type: 'array',
-      of: [{type: 'stripeMetadataEntry'}],
-      readOnly: true,
-      fieldset: 'stripe',
-      group: 'pricing',
-    }),
-
-    // ============================================
-    // CONTENT - Product descriptions
-    // ============================================
     defineField({
       name: 'shortDescription',
       title: 'Short Description',
@@ -327,9 +295,13 @@ const product = defineType({
           },
         },
       ],
-      description: 'Brief intro shown near title/price (1-2 sentences)',
-      validation: (Rule) => Rule.max(2).warning('Keep it concise'),
-      group: 'content',
+      description: '1-2 compelling sentences shown on product cards and checkout summaries.',
+      validation: (Rule) =>
+        Rule.required()
+          .min(1)
+          .max(2)
+          .error('Short description should be one or two short sentences.'),
+      group: 'basic',
     }),
     defineField({
       name: 'description',
@@ -365,55 +337,93 @@ const product = defineType({
         },
         {type: 'image', options: {hotspot: true}},
       ],
-      description: 'Full product description with formatting',
-      group: 'content',
+      description: 'The full story, install guidance, and FAQs that help customers say yes.',
+      validation: (Rule) => Rule.required().min(1).error('Full description is required.'),
+      group: 'basic',
+    }),
+    defineField({
+      name: 'category',
+      title: 'Categories',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'category'}]}],
+      description: 'At least one category so the product appears in the right storefront sections.',
+      validation: (Rule) =>
+        Rule.required().min(1).error('Select at least one category for storefront filtering.'),
+      group: 'basic',
+    }),
+    defineField({
+      name: 'tags',
+      title: 'Internal Tags',
+      type: 'array',
+      of: [{type: 'string'}],
+      options: {layout: 'tags'},
+      description: 'Quick search helpers or marketing campaigns. Not customer-facing.',
+      group: 'details',
+    }),
+    defineField({
+      name: 'featured',
+      title: 'Featured Product',
+      type: 'boolean',
+      description: 'Show in featured carousels on the home page and landing pages.',
+      initialValue: false,
+      group: 'details',
+    }),
+    defineField({
+      name: 'promotionTagline',
+      title: 'Promotion Tagline',
+      type: 'string',
+      description: 'Optional badge such as “Track Tested” or “Limited Batch”.',
+      group: 'details',
     }),
     defineField({
       name: 'keyFeatures',
       title: 'Key Features',
       type: 'array',
       of: [{type: 'collapsibleFeature'}],
-      description: 'Highlight main selling points with icons',
-      group: 'key features',
+      description: 'Highlight the three most important benefits with icons.',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
     defineField({
       name: 'importantNotes',
       title: 'Important Notes / Warnings',
       type: 'array',
       of: [{type: 'block'}],
-      description: 'Critical info displayed prominently (e.g., fitment requirements, warnings)',
-      group: 'content',
+      description:
+        'Call out fitment requirements, tuning needs, or anything that protects the customer experience.',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
     defineField({
       name: 'specifications',
       title: 'Technical Specifications',
       type: 'array',
-      description: 'Key/value specs shown in table (Material, Weight, Dimensions, etc.)',
       of: [{type: 'specItem'}],
-      group: 'content',
+      description: 'Material, finish, torque specs, or other data customers need.',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
     defineField({
       name: 'attributes',
       title: 'Product Attributes',
       type: 'array',
       of: [{type: 'attribute'}],
-      description: 'Additional attributes (Color: Black, Finish: Anodized, etc.)',
-      group: 'content',
+      description: 'Additional attributes (Color: Black, Finish: Anodized, etc.).',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
     defineField({
       name: 'includedInKit',
       title: "What's Included",
       type: 'array',
       of: [{type: 'kitItem'}],
-      description: 'List items included in the kit (bolts, gaskets, instructions)',
-      group: 'content',
+      description: 'List every piece inside the box or installation package.',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
-
-    // Product FAQ
     defineField({
       name: 'faq',
       title: 'Product FAQ',
-      description: 'Common questions and answers for this product.',
       type: 'array',
       options: {collapsible: true, collapsed: true} as any,
       of: [
@@ -435,34 +445,33 @@ const product = defineType({
           },
         },
       ],
-      group: 'content',
+      description: 'Answer common objections up front.',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
-
     defineField({
       name: 'mediaAssets',
       title: 'Additional Media',
       type: 'array',
       of: [{type: 'mediaItem'}],
-      description: 'Videos, PDFs, installation guides, etc.',
-      group: 'media',
+      description: 'Videos, install guides, dyno sheets, or PDF downloads.',
+      fieldset: 'productDetails',
+      group: 'details',
     }),
-
-    // ============================================
-    // OPTIONS - Product variants and add-ons
-    // ============================================
     defineField({
-      name: 'productType',
-      title: 'Product Type',
+      name: 'variantStrategy',
+      title: 'Variant Structure',
       type: 'string',
-      description: 'Simple = single product, Variable = has options (color/size)',
-      initialValue: 'simple',
+      description: 'Use “Requires options” when customers must choose size, finish, or platform.',
       options: {
-        list: [
-          {title: 'Simple Product', value: 'simple'},
-          {title: 'Variable Product (has options)', value: 'variable'},
-        ],
         layout: 'radio',
+        list: [
+          {title: 'Single item (no variants)', value: 'simple'},
+          {title: 'Requires options before checkout', value: 'variable'},
+        ],
       },
+      initialValue: 'simple',
+      fieldset: 'optionsAndVariants',
       group: 'options',
     }),
     defineField({
@@ -476,231 +485,245 @@ const product = defineType({
         {type: 'customProductOption.size'},
         {type: 'customProductOption.custom'},
       ],
-      hidden: ({parent}) => parent?.productType !== 'variable',
+      hidden: ({document, parent}) => {
+        if (!isPhysicalOrBundle({document, parent})) return true
+        const variantType = document?.variantStrategy || parent?.variantStrategy || 'simple'
+        return variantType !== 'variable'
+      },
       validation: (Rule) =>
         Rule.custom((options, context) => {
-          const productType = (context?.parent as {productType?: string} | undefined)?.productType
-          if (productType !== 'variable') return true
+          const doc = context?.document as any
+          const variantType = doc?.variantStrategy || 'simple'
+          const type = doc?.productType || 'physical'
+          if (type !== 'physical' && type !== 'bundle') return true
+          if (variantType !== 'variable') return true
           if (!Array.isArray(options) || options.length === 0) {
-            return 'Variable products need at least one option set'
+            return 'Add at least one option so the customer can make a selection.'
           }
           const anyOptional = options.some((opt: any) => opt && opt.required === false)
           if (anyOptional) {
-            return 'All defined product options must be required for customers to choose before adding to cart.'
+            return 'All defined product options must be required for customers to choose before checkout.'
           }
           return true
         }),
+      fieldset: 'optionsAndVariants',
+      group: 'options',
+    }),
+    defineField({
+      name: 'customizations',
+      title: 'Customizations',
+      type: 'array',
+      of: [{type: 'productCustomization'}],
+      description: 'Collect engraving text, notes, or tuning preferences from the customer.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'optionsAndVariants',
+      group: 'options',
+    }),
+    defineField({
+      name: 'addOns',
+      title: 'Add-Ons',
+      type: 'array',
+      of: [{type: 'addOn'}],
+      description: 'Upsell extras the customer may choose in addition to required product options.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'optionsAndVariants',
       group: 'options',
     }),
     defineField({
       name: 'customPaint',
       title: 'Custom Paint Options',
       type: 'customPaint',
-      description: 'Enable custom paint color selection',
+      description: 'Enable custom paint color selection.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'optionsAndVariants',
       group: 'options',
     }),
     defineField({
-      name: 'addOns',
-      title: 'Upgrades',
-      type: 'array',
-      of: [{type: 'addOn'}],
-      description:
-        'Upsell extras the customer may choose in addition to required product options (e.g., ceramic bearings, install kits).',
-      group: 'options',
-    }),
-
-    // ============================================
-    // COMPATIBILITY - Vehicle fitment
-    // ============================================
-    defineField({
-      name: 'compatibleVehicles',
-      title: 'Compatible Vehicles',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'vehicleModel'}]}],
-      description: 'Link to compatible vehicle models',
-      group: 'compatibility',
-    }),
-    defineField({
-      name: 'tune',
-      title: 'Associated Tune',
-      type: 'reference',
-      to: [{type: 'tune'}],
-      description: 'Link to tune if applicable',
-      group: 'compatibility',
-    }),
-    defineField({
-      name: 'averageHorsepower',
-      title: 'Average Horsepower Gain',
-      type: 'number',
-      description: 'Expected HP increase',
-      group: 'compatibility',
-    }),
-
-    // ============================================
-    // SEO - Search engine optimization
-    // ============================================
-    defineField({
-      name: 'metaTitle',
-      title: 'Meta Title',
+      name: 'serviceDuration',
+      title: 'Service Duration',
       type: 'string',
-      description: 'SEO title (50-60 chars recommended)',
-      validation: (Rule) => Rule.max(60).warning('Keep under 60 characters'),
-      group: 'seo',
+      description: 'Estimated appointment or labor time (e.g., “3 hours” or “Full day”).',
+      hidden: ({document, parent}) => !isServiceProduct({document, parent}),
+      fieldset: 'serviceDetails',
+      group: 'service',
     }),
     defineField({
-      name: 'metaDescription',
-      title: 'Meta Description',
+      name: 'serviceLocation',
+      title: 'Service Location',
+      type: 'string',
+      description: 'Where the work happens (FAS shop, remote, customer location, etc.).',
+      hidden: ({document, parent}) => !isServiceProduct({document, parent}),
+      fieldset: 'serviceDetails',
+      group: 'service',
+    }),
+    defineField({
+      name: 'serviceDeliverables',
+      title: "What's Included in the Service",
+      type: 'array',
+      of: [{type: 'string'}],
+      description: 'List the labor steps or deliverables so customers know what is covered.',
+      hidden: ({document, parent}) => !isServiceProduct({document, parent}),
+      fieldset: 'serviceDetails',
+      group: 'service',
+    }),
+    defineField({
+      name: 'serviceLaborNotes',
+      title: 'Labor & Equipment Notes',
       type: 'text',
       rows: 3,
-      description: 'SEO description (140-160 chars recommended)',
-      validation: (Rule) => Rule.max(160).warning('Keep under 160 characters'),
-      group: 'seo',
+      description: 'Internal notes about tools, lifts, or staffing required.',
+      hidden: ({document, parent}) => !isServiceProduct({document, parent}),
+      fieldset: 'serviceDetails',
+      group: 'service',
     }),
     defineField({
-      name: 'brand',
-      title: 'Brand / Manufacturer',
-      type: 'string',
-      description: 'Brand name for schema.org markup',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'gtin',
-      title: 'GTIN (UPC/EAN)',
-      type: 'string',
-      description: 'Product barcode for Google Shopping',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'mpn',
-      title: 'MPN',
-      type: 'string',
-      description: 'Manufacturer Part Number',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'socialImage',
-      title: 'Social Share Image',
-      type: 'image',
-      options: {hotspot: true},
-      fields: [{name: 'alt', title: 'Alt Text', type: 'string'}],
-      description: 'Custom image for social media sharing (1200×630px)',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'canonicalUrl',
-      title: 'Canonical URL',
-      type: 'url',
-      description:
-        'Auto-filled from the product slug; override only when a custom canonical is required.',
-      initialValue: (props) => {
-        const slug = props?.slug?.current
-        return slug ? `https://fasmotorsports.com/products/${slug}` : ''
-      },
-      components: {field: CanonicalUrlField},
-      group: 'seo',
-    }),
-    defineField({
-      name: 'structuredDataOverrides',
-      title: 'Structured Data Overrides',
+      name: 'serviceSchedulingNotes',
+      title: 'Scheduling Guidance',
       type: 'text',
-      rows: 6,
-      description:
-        'Optional raw JSON that will be merged with the generated Product JSON-LD. Use this for advanced cases only.',
-      group: 'seo',
+      rows: 3,
+      description: 'Add lead time, days of the week, or customer prep instructions.',
+      hidden: ({document, parent}) => !isServiceProduct({document, parent}),
+      fieldset: 'serviceDetails',
+      group: 'service',
     }),
     defineField({
-      name: 'structuredDataPreview',
-      title: 'Structured Data Preview',
-      type: 'text',
-      readOnly: true,
-      group: 'seo',
-      components: {
-        input: ProductJsonLdPreview,
+      name: 'bundleComponents',
+      title: 'Bundle Components',
+      type: 'array',
+      description: 'Reference each product that ships in this bundle or package.',
+      hidden: ({document, parent}) => !isBundleProduct({document, parent}),
+      of: [
+        {
+          type: 'object',
+          name: 'bundleComponent',
+          fields: [
+            {
+              name: 'product',
+              title: 'Product',
+              type: 'reference',
+              to: [{type: 'product'}],
+              description: 'Link to the product that is included in this bundle.',
+            },
+            {
+              name: 'title',
+              title: 'Override Title',
+              type: 'string',
+              description: 'Optional label shown to customers instead of the referenced product name.',
+            },
+            {
+              name: 'quantity',
+              title: 'Quantity',
+              type: 'number',
+              initialValue: 1,
+              validation: (Rule) => Rule.min(1),
+            },
+            {
+              name: 'notes',
+              title: 'Notes',
+              type: 'text',
+              rows: 2,
+              description: 'Clarify compatibility, install order, or packaging tips.',
+            },
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              productTitle: 'product.title',
+              quantity: 'quantity',
+            },
+            prepare({title, productTitle, quantity}) {
+              const label = title || productTitle || 'Bundle component'
+              const qty =
+                typeof quantity === 'number' && quantity > 1 ? `x${quantity}` : ''
+              return {
+                title: label,
+                subtitle: qty,
+              }
+            },
+          },
+        },
+      ],
+      fieldset: 'bundleContents',
+      group: 'bundle',
+    }),
+    defineField({
+      name: 'shippingProfile',
+      title: 'Shipping Profile',
+      type: 'string',
+      description: 'Quick presets for common packages. Helps teams choose the right box.',
+      options: {
+        list: [
+          {title: 'Small Parcel (0-10 lbs)', value: 'small_parcel'},
+          {title: 'Standard Box (11-30 lbs)', value: 'standard'},
+          {title: 'Oversized (31-60 lbs)', value: 'oversized'},
+          {title: 'Freight / Pallet', value: 'freight'},
+        ],
       },
-      description: 'Auto-generated JSON-LD snippet based on the fields above.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'shippingDetails',
+      group: 'shipping',
     }),
-    defineField({
-      name: 'noindex',
-      title: 'Hide from Search Engines',
-      type: 'boolean',
-      initialValue: false,
-      description: 'Prevent search engines from indexing',
-      group: 'seo',
-    }),
-
-    // ============================================
-    // ADVANCED - Less frequently used fields
-    // ============================================
-
-    // Related Products
-    defineField({
-      name: 'relatedProducts',
-      title: 'Related Products',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'product'}]}],
-      description: 'Manually curated related products (auto-computed by default)',
-      group: 'advanced',
-    }),
-    defineField({
-      name: 'upsellProducts',
-      title: 'Upsell Products',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'product'}]}],
-      description: 'Premium alternatives to suggest',
-      group: 'advanced',
-    }),
-
-    // Product Tags
-    defineField({
-      name: 'filters',
-      title: 'Filter Tags',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'filterTag'}]}],
-      description: 'Tags for shop filtering',
-      group: 'advanced',
-    }),
-
-    // Shipping Configuration (Required)
     defineField({
       name: 'shippingWeight',
       title: 'Weight (lbs)',
       type: 'number',
-      fieldset: 'shipping',
+      description: 'Actual shipping weight in pounds. Used to calculate shipping costs.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const doc = context.document as any
+          const type = (doc?.productType as string) || 'physical'
+          if (type === 'service') {
+            return value ? 'warning: Services do not need shipping info' : true
+          }
+          if (type === 'physical' || type === 'bundle') {
+            if (typeof value !== 'number' || value <= 0) {
+              return 'Provide the shipping weight so rates stay accurate.'
+            }
+            if (value > 50) {
+              return 'warning: Heavy item - may require freight shipping'
+            }
+          }
+          return true
+        }),
+      fieldset: 'shippingDetails',
       group: 'shipping',
     }),
     defineField({
       name: 'boxDimensions',
-      title: 'Box Size',
+      title: 'Box Dimensions (L×W×H in inches)',
       type: 'string',
-      description: 'Format: 18x12x10 inches',
-      fieldset: 'shipping',
+      description: 'Format example: 18x12x10. Helps detect oversize surcharges.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const doc = context.document as any
+          const type = (doc?.productType as string) || 'physical'
+          if (type === 'service') {
+            return value ? 'warning: Services do not need shipping info' : true
+          }
+          if (type === 'physical' || type === 'bundle') {
+            if (
+              !value ||
+              !/^\s*\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?\s*$/.test(value)
+            ) {
+              return 'Enter dimensions using LxWxH inches so we can quote shipping.'
+            }
+          }
+          return true
+        }),
+      fieldset: 'shippingDetails',
       group: 'shipping',
     }),
     defineField({
       name: 'handlingTime',
       title: 'Handling Time (Days)',
       type: 'number',
-      description: 'Business days needed to prepare and hand off the shipment.',
+      description: 'Business days needed to prep and hand off the shipment. Default is 2.',
+      initialValue: 2,
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
       validation: (Rule) => Rule.min(0),
-      fieldset: 'shipping',
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'installOnly',
-      title: 'Install Only (No Shipping)',
-      type: 'boolean',
-      description: 'In-store installation only',
-      initialValue: false,
-      fieldset: 'shipping',
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'coreRequired',
-      title: 'Core Required',
-      type: 'boolean',
-      description: 'Indicates if the product requires a customer core return or exchange.',
-      initialValue: false,
-      fieldset: 'shipping',
+      fieldset: 'shippingDetails',
       group: 'shipping',
     }),
     defineField({
@@ -708,30 +731,116 @@ const product = defineType({
       title: 'Shipping Class',
       type: 'string',
       options: {
-        list: ['Standard', 'Oversized', 'Freight', 'Free Shipping', 'Install Only'],
+        list: [
+          {title: 'Standard', value: 'Standard'},
+          {title: 'Oversized', value: 'Oversized'},
+          {title: 'Freight', value: 'Freight'},
+        ],
       },
-      fieldset: 'shipping',
+      description: 'Guides which label template, packing materials, and Stripe metadata to use.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const doc = context.document as any
+          const type = (doc?.productType as string) || 'physical'
+          if (type === 'service') {
+            return value ? 'warning: Services do not need shipping info' : true
+          }
+          if (type === 'physical' || type === 'bundle') {
+            return value ? true : 'Select a shipping class so fulfillment knows how to pack it.'
+          }
+          return true
+        }),
+      fieldset: 'shippingDetails',
       group: 'shipping',
     }),
     defineField({
       name: 'shipsAlone',
       title: 'Ships Separately',
       type: 'boolean',
-      description: 'Cannot ship with other items',
-      fieldset: 'shipping',
+      description: 'Enable when the item cannot ship with other products.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'shippingDetails',
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'shippingPreview',
+      title: 'Shipping Cost Preview',
+      type: 'object',
+      fields: [
+        {
+          name: 'placeholder',
+          type: 'string',
+          hidden: true,
+          readOnly: true,
+        },
+      ],
+      readOnly: true,
+      components: {input: ShippingCalculatorPreview},
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'shippingDetails',
       group: 'shipping',
     }),
     defineField({
       name: 'specialShippingNotes',
-      title: 'Special Shipping Notes',
+      title: 'Special Shipping Instructions',
       type: 'text',
       rows: 4,
-      description: 'Internal or customer-facing shipping notes that must accompany orders.',
-      fieldset: 'shipping',
+      description: 'Internal or customer-facing notes that must accompany this shipment.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'shippingDetails',
       group: 'shipping',
     }),
-
-    // Google Merchant Center Requirements
+    defineField({
+      name: 'coreRequired',
+      title: 'Core Required',
+      type: 'boolean',
+      description: 'Indicates if the product requires a customer core return or exchange.',
+      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      fieldset: 'shippingDetails',
+      group: 'shipping',
+    }),
+    defineField({
+      name: 'installOnly',
+      title: 'Install Only (Legacy)',
+      type: 'boolean',
+      description: 'Automatically enabled when Product Type is “Service”. Keeps legacy workflows intact.',
+      readOnly: true,
+      hidden: ({document, parent}) => resolveProductType({document, parent}) !== 'service',
+      fieldset: 'shippingDetails',
+      group: 'shipping',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'trackInventory',
+      title: 'Track Inventory',
+      type: 'boolean',
+      description: 'Disable only for made-to-order items. When off, quantity is ignored.',
+      initialValue: true,
+      fieldset: 'inventorySettings',
+      group: 'inventory',
+    }),
+    defineField({
+      name: 'manualInventoryCount',
+      title: 'Quantity on Hand',
+      type: 'number',
+      description: 'Only required when inventory tracking is enabled.',
+      hidden: ({document, parent}) => {
+        const track = (document?.trackInventory ?? parent?.trackInventory) ?? true
+        return track === false
+      },
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const track = (context.document as any)?.trackInventory
+          if (track === false) return true
+          if (typeof value !== 'number' || value < 0) {
+            return 'Enter the on-hand quantity or disable inventory tracking.'
+          }
+          return true
+        }),
+      fieldset: 'inventorySettings',
+      group: 'inventory',
+    }),
     defineField({
       name: 'availability',
       title: 'Availability Status',
@@ -745,8 +854,8 @@ const product = defineType({
         ],
       },
       initialValue: 'in_stock',
-      fieldset: 'merchant',
-      group: 'advanced',
+      fieldset: 'inventorySettings',
+      group: 'inventory',
     }),
     defineField({
       name: 'condition',
@@ -760,25 +869,246 @@ const product = defineType({
         ],
       },
       initialValue: 'new',
-      fieldset: 'merchant',
-      group: 'advanced',
+      fieldset: 'inventorySettings',
+      group: 'inventory',
     }),
     defineField({
-      name: 'manualInventoryCount',
-      title: 'Inventory Count',
+      name: 'compatibleVehicles',
+      title: 'Compatible Vehicles',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'vehicleModel'}]}],
+      description: 'Link to compatible vehicle models to power fitment search.',
+      hidden: ({document, parent}) => isServiceProduct({document, parent}),
+      fieldset: 'compatibilityDetails',
+      group: 'compatibility',
+    }),
+    defineField({
+      name: 'tune',
+      title: 'Required Tune',
+      type: 'reference',
+      to: [{type: 'tune'}],
+      description: 'Link to a tune document if installation requires it.',
+      hidden: ({document, parent}) => isServiceProduct({document, parent}),
+      fieldset: 'compatibilityDetails',
+      group: 'compatibility',
+    }),
+    defineField({
+      name: 'averageHorsepower',
+      title: 'Average HP Gain',
       type: 'number',
-      validation: (Rule) => Rule.min(0),
+      description: 'Expected horsepower increase for marketing and comparison tables.',
+      hidden: ({document, parent}) => isServiceProduct({document, parent}),
+      fieldset: 'compatibilityDetails',
+      group: 'compatibility',
+    }),
+    defineField({
+      name: 'metaTitle',
+      title: 'Meta Title',
+      type: 'string',
+      description: 'This appears in Google search results. Include your focus keyword.',
+      components: {input: SeoCharacterCountInput},
+      validation: (Rule) =>
+        Rule.required().max(60).error('Meta title is required and should stay under 60 characters.'),
+      fieldset: 'seo',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'metaDescription',
+      title: 'Meta Description',
+      type: 'text',
+      rows: 3,
+      description: 'Convince searchers to click. Include benefits and keywords (max 160 characters).',
+      components: {input: SeoCharacterCountInput},
+      validation: (Rule) =>
+        Rule.required().max(160).error('Missing SEO description - product may not rank well.'),
+      fieldset: 'seo',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'focusKeyword',
+      title: 'Focus Keyword',
+      type: 'string',
+      description: 'Main search term you want to rank for.',
+      components: {input: FocusKeywordInput},
+      fieldset: 'seo',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'marketingInsightsPanel',
+      title: 'Marketing Insights',
+      type: 'object',
+      readOnly: true,
+      description: 'Channel performance for paid orders attributed to this product.',
+      components: {input: ProductMarketingInsights},
+      fields: [{name: 'placeholder', type: 'string', hidden: true}],
+      fieldset: 'seo',
+      group: 'seo',
+      hidden: ({document}) => !document?._id,
+    }),
+    defineField({
+      name: 'socialImage',
+      title: 'Social Share Image',
+      type: 'image',
+      options: {hotspot: true},
+      fields: [{name: 'alt', title: 'Alt Text', type: 'string'}],
+      description: 'Custom 1200×630 image for social links.',
+      fieldset: 'seo',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'canonicalUrl',
+      title: 'Canonical URL',
+      type: 'url',
+      description: 'Auto-filled from the product slug; override only when a custom canonical is required.',
+      components: {field: CanonicalUrlField},
+      fieldset: 'seo',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'noindex',
+      title: 'Hide from Search Engines',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Enable only for campaigns or duplicates that should not be indexed.',
+      fieldset: 'seoAdvanced',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'structuredDataOverrides',
+      title: 'Structured Data Overrides',
+      type: 'text',
+      rows: 6,
+      description: 'Optional raw JSON that will be merged with the generated Product JSON-LD.',
+      fieldset: 'seoAdvanced',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'structuredDataPreview',
+      title: 'Structured Data Preview',
+      type: 'text',
+      readOnly: true,
+      components: {
+        input: ProductJsonLdPreview,
+      },
+      description: 'Auto-generated JSON-LD snippet based on the fields above.',
+      fieldset: 'seoAdvanced',
+      group: 'seo',
+    }),
+    defineField({
+      name: 'stripeProductId',
+      title: 'Stripe Product ID',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripeDefaultPriceId',
+      title: 'Stripe Default Price ID',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripePriceId',
+      title: 'Stripe Primary Price ID',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripeActive',
+      title: 'Stripe Active Status',
+      type: 'boolean',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripeUpdatedAt',
+      title: 'Stripe Updated At',
+      type: 'datetime',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      title: 'Last Synced with Stripe',
+      type: 'datetime',
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripePrices',
+      title: 'Stripe Price History',
+      type: 'array',
+      of: [{type: 'stripePriceSnapshot'}],
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'stripeMetadata',
+      title: 'Stripe Metadata',
+      type: 'array',
+      of: [{type: 'stripeMetadataEntry'}],
+      readOnly: true,
+      fieldset: 'stripe',
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'relatedProducts',
+      title: 'Related Products',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'product'}]}],
+      description: 'Manually curated related products (auto-computed by default).',
+      group: 'advanced',
+    }),
+    defineField({
+      name: 'upsellProducts',
+      title: 'Upsell Products',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'product'}]}],
+      description: 'Premium alternatives to suggest.',
+      group: 'advanced',
+    }),
+    defineField({
+      name: 'filters',
+      title: 'Filter Tags',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'filterTag'}]}],
+      description: 'Tags used for storefront filtering.',
+      group: 'advanced',
+    }),
+    defineField({
+      name: 'brand',
+      title: 'Brand / Manufacturer',
+      type: 'string',
+      description: 'Displayed in structured data and Google Merchant Center feeds.',
       fieldset: 'merchant',
       group: 'advanced',
     }),
     defineField({
-      name: 'shippingLabel',
-      title: 'Merchant Shipping Label',
+      name: 'gtin',
+      title: 'GTIN (UPC/EAN)',
       type: 'string',
-      description:
-        'Maps to Google Merchant Center shipping_label. Use to flag Install Only vs. Performance Parts, or leave blank to use default shipping rules.',
+      description: 'Product barcode for Google Shopping.',
       fieldset: 'merchant',
       group: 'advanced',
+      validation: (Rule) => merchantFieldWarning(Rule, '⚠️ Add GTIN for Google Shopping'),
+    }),
+    defineField({
+      name: 'mpn',
+      title: 'MPN',
+      type: 'string',
+      description: 'Manufacturer Part Number.',
+      fieldset: 'merchant',
+      group: 'advanced',
+      validation: (Rule) => merchantFieldWarning(Rule, '⚠️ Add MPN for Google Shopping'),
     }),
     defineField({
       name: 'googleProductCategory',
@@ -787,6 +1117,16 @@ const product = defineType({
       options: {
         list: googleProductCategories.map((category) => ({title: category, value: category})),
       },
+      fieldset: 'merchant',
+      group: 'advanced',
+      validation: (Rule) => merchantFieldWarning(Rule, '⚠️ Select Google Product Category'),
+    }),
+    defineField({
+      name: 'shippingLabel',
+      title: 'Merchant Shipping Label',
+      type: 'string',
+      description:
+        'Maps to Google Merchant Center shipping_label. Use for Install Only vs. Performance Parts.',
       fieldset: 'merchant',
       group: 'advanced',
     }),
@@ -812,7 +1152,6 @@ const product = defineType({
       fieldset: 'merchant',
       group: 'advanced',
     }),
-
     defineField({
       name: 'merchantData',
       title: 'Merchant Data',
@@ -832,13 +1171,12 @@ const product = defineType({
         }),
       ],
       options: {collapsible: true},
+      fieldset: 'merchant',
       group: 'advanced',
     }),
-
-    // Deprecated fields (hidden unless they have values)
     defineField({
       name: 'variationOptions',
-      title: 'Variation Options (deprecated)',
+      title: 'Variation Options (legacy)',
       type: 'array',
       of: [{type: 'string'}],
       readOnly: true,
@@ -869,28 +1207,6 @@ const product = defineType({
       hidden: ({parent}) => !parent?.material,
       readOnly: true,
       group: 'advanced',
-    }),
-
-    defineField({
-      name: 'focusKeyword',
-      title: 'Focus Keyword',
-      type: 'string',
-      description: 'Primary keyword to target for on-page SEO.',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'seoSlug',
-      title: 'SEO Slug',
-      type: 'slug',
-      options: {
-        source: 'title',
-        slugify: (input: string) =>
-          input
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, ''),
-      },
-      group: 'seo',
     }),
   ],
 

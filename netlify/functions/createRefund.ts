@@ -332,7 +332,7 @@ export const handler: Handler = async (event) => {
         livemode: Boolean((refund as any)?.livemode),
         pending_webhooks: 0,
         request: {id: null, idempotency_key: null},
-        type: eventTypeForRefund(refund.status),
+        type: eventTypeForRefund(refund.status || undefined),
       } as unknown as Stripe.Event
       await handleRefundWebhookEvent(eventPayload)
     } catch (err) {

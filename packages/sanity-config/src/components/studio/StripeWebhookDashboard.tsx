@@ -291,7 +291,7 @@ const StripeWebhookDashboard = React.forwardRef<HTMLDivElement, Record<string, n
             <Card radius={3} shadow={1} style={{overflow: 'auto', flex: 1}}>
               <Box style={{minWidth: '880px'}}>
                 <Grid
-                  columns={GRID_TEMPLATE}
+                  columns={6}
                   gap={GRID_GAP}
                   padding={3}
                   style={{
@@ -300,6 +300,7 @@ const StripeWebhookDashboard = React.forwardRef<HTMLDivElement, Record<string, n
                     zIndex: 1,
                     backgroundColor: 'var(--card-background-color)',
                     borderBottom: '1px solid var(--card-border-color)',
+                    gridTemplateColumns: GRID_TEMPLATE,
                   }}
                 >
                   <Label size={1}>Received</Label>
@@ -313,13 +314,14 @@ const StripeWebhookDashboard = React.forwardRef<HTMLDivElement, Record<string, n
                   {filtered.map((event) => (
                     <Grid
                       key={event.id}
-                      columns={GRID_TEMPLATE}
+                      columns={6}
                       gap={GRID_GAP}
                       paddingX={3}
                       paddingY={2}
                       style={{
                         cursor: 'pointer',
                         alignItems: 'center',
+                        gridTemplateColumns: GRID_TEMPLATE,
                       }}
                       onClick={() => setSelected(event)}
                     >

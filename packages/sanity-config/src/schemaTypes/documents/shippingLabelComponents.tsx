@@ -180,7 +180,7 @@ export function ServiceRateInput(props: any) {
         />
       </div>
       {!canQuote && (
-        <Text tone="caution" size={1} style={{marginTop: 4}}>
+        <Text size={1} style={{marginTop: 4, color: 'var(--card-caution-fg-color)'}}>
           Fill required fields: {missing.join(', ')}
         </Text>
       )}
@@ -190,7 +190,7 @@ export function ServiceRateInput(props: any) {
         </Text>
       )}
       {error && (
-        <Text tone="critical" size={1}>
+        <Text size={1} style={{color: 'var(--card-critical-fg-color)'}}>
           {error}
         </Text>
       )}
@@ -299,7 +299,12 @@ export function GenerateAndPrintPanel(props: any) {
     }
   }
 
-  const messageTone = message?.tone === 'default' ? undefined : message?.tone
+  const messageToneColors: Record<'positive' | 'critical' | 'default', string> = {
+    positive: 'var(--card-positive-fg-color)',
+    critical: 'var(--card-critical-fg-color)',
+    default: 'inherit',
+  }
+  const messageColor = message ? messageToneColors[message.tone] : undefined
 
   return (
     <div style={{borderTop: '1px solid var(--card-border-color)', paddingTop: 12}}>
@@ -311,7 +316,7 @@ export function GenerateAndPrintPanel(props: any) {
         loading={busy}
       />
       {message ? (
-        <Text size={1} tone={messageTone} style={{marginTop: 8}}>
+        <Text size={1} style={{marginTop: 8, color: messageColor}}>
           {message.text}
         </Text>
       ) : null}

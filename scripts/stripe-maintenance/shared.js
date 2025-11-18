@@ -1,7 +1,8 @@
 const Stripe = require('stripe')
 const {createClient} = require('@sanity/client')
 
-const DEFAULT_API_VERSION = '2024-10-01'
+const DEFAULT_SANITY_API_VERSION = '2024-10-01'
+const DEFAULT_STRIPE_API_VERSION = '2025-08-27.basil'
 
 function requireEnv(name) {
   const value = process.env[name]
@@ -24,7 +25,7 @@ function createSanityClient() {
   return createClient({
     projectId,
     dataset,
-    apiVersion: DEFAULT_API_VERSION,
+    apiVersion: DEFAULT_SANITY_API_VERSION,
     token,
     useCdn: false,
     perspective: 'raw',
@@ -36,7 +37,7 @@ function createStripeClient() {
   if (!secret) {
     throw new Error('Missing STRIPE_SECRET_KEY for Stripe maintenance scripts')
   }
-  return new Stripe(secret, {apiVersion: DEFAULT_API_VERSION})
+  return new Stripe(secret, {apiVersion: DEFAULT_STRIPE_API_VERSION})
 }
 
 function normalizeStripeAddress(address, contact) {
@@ -75,7 +76,8 @@ async function findCustomerIdByStripeId(sanity, stripeCustomerId) {
 }
 
 module.exports = {
-  DEFAULT_API_VERSION,
+  DEFAULT_SANITY_API_VERSION,
+  DEFAULT_STRIPE_API_VERSION,
   requireEnv,
   createSanityClient,
   createStripeClient,

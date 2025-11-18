@@ -23,6 +23,7 @@ import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
 import {deskStructureBuilderTool} from './src/plugins/deskStructureBuilder'
 import resolveDocumentActions from './src/resolveDocumentActions'
+import {resolveDownloadDocumentActions} from './src/documentActions/downloadDocumentActions'
 import {resolveProductDocumentActions} from './src/documentActions/productDocumentActions'
 import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
@@ -148,7 +149,10 @@ export default defineConfig({
 
   document: {
     actions: (prev, context) =>
-      resolveProductDocumentActions(resolveDocumentActions(prev, context), context),
+      resolveProductDocumentActions(
+        resolveDownloadDocumentActions(resolveDocumentActions(prev, context), context),
+        context,
+      ),
     badges: resolveDocumentBadges,
     views: [
       {

@@ -57,7 +57,11 @@ function OrderStatusBadge({status}: OrderStatusBadgeProps) {
         gap: 6,
       }}
     >
-      {IconComponent && <IconComponent style={{fontSize: 14}} />}
+      {IconComponent && (
+        <span style={{display: 'inline-flex', fontSize: 14}}>
+          <IconComponent />
+        </span>
+      )}
       {STATUS_LABELS[status] ?? status}
     </Badge>
   )

@@ -1,6 +1,5 @@
-import {Badge, Card, Inline, Text} from '@sanity/ui'
+import {Badge, Card, Inline, Stack, Text} from '@sanity/ui'
 import type {ReactNode} from 'react'
-import {FormField, FormInput} from 'sanity'
 
 type EditableFieldWrapperProps = {
   label: string
@@ -9,31 +8,27 @@ type EditableFieldWrapperProps = {
 }
 
 function EditableFieldWrapper({label, description, children}: EditableFieldWrapperProps) {
-  const title = (
-    <Inline space={3} align="center">
-      <Text>{label}</Text>
-      <Badge tone="primary" mode="outline">
-        Editable
-      </Badge>
-    </Inline>
-  )
-
   return (
-    <FormField title={title} description={description}>
-      <FormInput>
-        <Card
-          padding={2}
-          radius={2}
-          tone="primary"
-          border
-          style={{
-            boxShadow: '0 0 0 1px var(--card-focus-ring-color)',
-          }}
-        >
-          {children}
-        </Card>
-      </FormInput>
-    </FormField>
+    <Stack space={2}>
+      <Inline space={3} style={{alignItems: 'center'}}>
+        <Text weight="semibold">{label}</Text>
+        <Badge tone="primary" mode="outline">
+          Editable
+        </Badge>
+      </Inline>
+      {description ? <div style={{fontSize: 'var(--font-size-1)'}}>{description}</div> : null}
+      <Card
+        padding={2}
+        radius={2}
+        tone="primary"
+        border
+        style={{
+          boxShadow: '0 0 0 1px var(--card-focus-ring-color)',
+        }}
+      >
+        {children}
+      </Card>
+    </Stack>
   )
 }
 

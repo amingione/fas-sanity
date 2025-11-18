@@ -489,8 +489,12 @@ export const handler: Handler = async (event) => {
             })
           if (needs) {
             setOps.cart = fixedCart
-            const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
-            const updatedHasMetadata = fixedCart.some((item) => hasMetadataSummary(item))
+            const originalHasMetadata = originalCart.some((item: unknown) =>
+              hasMetadataSummary(item),
+            )
+            const updatedHasMetadata = fixedCart.some((item: unknown) =>
+              hasMetadataSummary(item),
+            )
             if (updatedHasMetadata && !originalHasMetadata) {
               metadataBackfilledForOrder = true
             }
@@ -529,8 +533,12 @@ export const handler: Handler = async (event) => {
           if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
             setOps.cart = enrichedCart
             if (!metadataBackfilledForOrder) {
-              const originalHasMetadata = originalCart.some((item) => hasMetadataSummary(item))
-              const updatedHasMetadata = enrichedCart.some((item) => hasMetadataSummary(item))
+              const originalHasMetadata = originalCart.some((item: unknown) =>
+                hasMetadataSummary(item),
+              )
+              const updatedHasMetadata = enrichedCart.some((item: unknown) =>
+                hasMetadataSummary(item),
+              )
               if (updatedHasMetadata && !originalHasMetadata) {
                 metadataBackfilledForOrder = true
               }

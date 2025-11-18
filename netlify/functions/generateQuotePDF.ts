@@ -197,6 +197,7 @@ export const handler: Handler = async (event) => {
     const headerBorderRgb = rgb(headerLineColor.r, headerLineColor.g, headerLineColor.b)
     const lightBackgroundRgb = rgb(lightBgColor.r, lightBgColor.g, lightBgColor.b)
     const mutedRgb = rgb(mutedColor.r, mutedColor.g, mutedColor.b)
+    const continuationGray = rgb(0.4, 0.4, 0.4)
 
     const pdf = await PDFDocument.create()
     let page = pdf.addPage([612, 792]) // US Letter (72 dpi)
@@ -430,7 +431,7 @@ export const handler: Handler = async (event) => {
       y -= 18
       if (y < 120) {
         // footer before page break
-        page.drawText('Continued…', {x: width - 140, y: 40, size: 10, font, color: gray})
+        page.drawText('Continued…', {x: width - 140, y: 40, size: 10, font, color: continuationGray})
         // new page
         const p = pdf.addPage([612, 792])
         y = p.getSize().height - 40

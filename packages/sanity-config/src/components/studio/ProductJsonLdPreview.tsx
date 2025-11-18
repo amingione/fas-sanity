@@ -31,6 +31,7 @@ const ProductJsonLdPreview = (props: StringInputProps) => {
     return buildProductJsonLd(documentData, {
       imageBuilder: builder,
       siteUrl,
+      refreshKey: nonce,
     })
   }, [builder, documentData, siteUrl, nonce])
 

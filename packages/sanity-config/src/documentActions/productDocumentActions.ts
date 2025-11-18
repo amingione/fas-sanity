@@ -13,22 +13,19 @@ type TagActionArray = DocumentActionComponent[] & {
 }
 
 function isProduct(props: DocumentActionProps) {
-  return props.schemaType === 'product'
+  return props.type === 'product'
 }
 
 function toPublishedId(id: string) {
   return id.replace(/^drafts\./, '')
 }
 
-function getClient(context: DocumentActionsContext) {
-  return context.getClient({apiVersion: API_VERSION})
-}
-
 async function refreshAndGenerateTags(
+  context: DocumentActionsContext,
   props: DocumentActionProps,
-  {patchDraft}: {patchDraft: boolean}
+  {patchDraft}: {patchDraft: boolean},
 ) {
-  const client = getClient(props.context)
+  const client = context.getClient({apiVersion: API_VERSION})
   const targetId = patchDraft && props.draft?._id ? props.draft._id : toPublishedId(props.id)
   const latestDoc =
     (await client.getDocument<ProductDocument>(targetId)) ??
@@ -47,21 +44,23 @@ async function refreshAndGenerateTags(
   }
 }
 
-const GenerateTagsAction: DocumentActionComponent = (props) => {
-  if (!isProduct(props)) return null
+const createGenerateTagsAction =
+  (context: DocumentActionsContext): DocumentActionComponent =>
+  (props) => {
+    if (!isProduct(props)) return null
 
-  return {
-    label: 'Generate SEO Tags',
-    onHandle: async () => {
-      try {
-        await refreshAndGenerateTags(props, {patchDraft: true})
-      } finally {
-        props.onComplete()
-      }
-    },
-    disabled: !props.draft && !props.published,
+    return {
+      label: 'Generate SEO Tags',
+      onHandle: async () => {
+        try {
+          await refreshAndGenerateTags(context, props, {patchDraft: true})
+        } finally {
+          props.onComplete()
+        }
+      },
+      disabled: !props.draft && !props.published,
+    }
   }
-}
 
 export function resolveProductDocumentActions(
   prev: DocumentActionComponent[],
@@ -72,13 +71,16 @@ export function resolveProductDocumentActions(
   const tagged = prev as TagActionArray
   if (tagged[TAG_ACTIONS_FLAG]) return prev
 
+  const generateTagsAction = createGenerateTagsAction(context)
+
   const enhancedList = prev.map((action) => {
     if (!action) return action
 
     const wrapped: DocumentActionComponent = (props) => {
       const original = action(props)
       if (!original || !isProduct(props)) return original
-      if (original.name !== 'publish') return original
+      const originalName = typeof (original as any)?.name === 'string' ? (original as any).name : null
+      if (originalName !== 'publish') return original
 
       return {
         ...original,
@@ -86,8 +88,8 @@ export function resolveProductDocumentActions(
         onHandle: async () => {
           try {
             const result = original.onHandle?.()
-            await (result instanceof Promise ? result : Promise.resolve(result))
-            await refreshAndGenerateTags(props, {patchDraft: false})
+            await Promise.resolve(result)
+            await refreshAndGenerateTags(context, props, {patchDraft: false})
           } finally {
             props.onComplete()
           }
@@ -98,7 +100,7 @@ export function resolveProductDocumentActions(
     return Object.assign(wrapped, action)
   })
 
-  const enhanced: TagActionArray = [...enhancedList, GenerateTagsAction]
+  const enhanced: TagActionArray = [...enhancedList, generateTagsAction]
   Object.defineProperty(enhanced, TAG_ACTIONS_FLAG, {value: true})
 
   return enhanced

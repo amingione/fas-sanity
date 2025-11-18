@@ -1,6 +1,13 @@
 import {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
+import {
+  appendAttributionMetadata,
+  buildAttributionDocument,
+  extractAttributionFromPayload,
+  extractAttributionFromQuery,
+  mergeAttributionParams,
+} from '../lib/attribution'
 
 // --- CORS (Studio at 8888/3333)
 const DEFAULT_ORIGINS = (
@@ -191,8 +198,9 @@ export const handler: Handler = async (event) => {
   })
 
   let invoiceId = ''
+  let payload: Record<string, any> = {}
   try {
-    const payload = JSON.parse(event.body || '{}')
+    payload = JSON.parse(event.body || '{}')
     invoiceId = String(payload.invoiceId || '').trim()
   } catch {
     return {
@@ -208,6 +216,19 @@ export const handler: Handler = async (event) => {
       headers: {...CORS, 'Content-Type': 'application/json'},
       body: JSON.stringify({message: 'Missing invoiceId'}),
     }
+
+  const utmFromPayload = extractAttributionFromPayload(payload)
+  const utmFromQuery = extractAttributionFromQuery(event.queryStringParameters || {})
+  const referrerHeader = event.headers?.referer || event.headers?.Referer || undefined
+  const utmParams = mergeAttributionParams(
+    utmFromPayload,
+    utmFromQuery,
+    referrerHeader ? {referrer: referrerHeader} : {},
+  )
+  if (!utmParams.capturedAt) {
+    utmParams.capturedAt = new Date().toISOString()
+  }
+  const checkoutAttributionDoc = buildAttributionDocument(utmParams)
 
   try {
     // Fetch invoice doc
@@ -258,6 +279,25 @@ export const handler: Handler = async (event) => {
         statusCode: 404,
         headers: {...CORS, 'Content-Type': 'application/json'},
         body: JSON.stringify({message: 'Invoice not found'}),
+      }
+    }
+
+    if (CAN_PATCH && checkoutAttributionDoc) {
+      try {
+        const variants = idVariants(invoiceId)
+        for (const variantId of variants) {
+          try {
+            await sanity
+              .patch(variantId)
+              .set({attribution: checkoutAttributionDoc})
+              .commit({autoGenerateArrayKeys: true})
+            break
+          } catch {
+            // Try the next variant if this one failed (e.g., missing permissions)
+          }
+        }
+      } catch (err) {
+        console.warn('createCheckout: failed to persist attribution on invoice', err)
       }
     }
 
@@ -417,6 +457,7 @@ export const handler: Handler = async (event) => {
       sanity_invoice_id: invoiceId,
       sanity_invoice_number: String(invoice.invoiceNumber || ''),
     }
+    appendAttributionMetadata(metadata as Record<string, string>, utmParams)
     if (customerName) metadata.bill_to_name = customerName
     if (customerEmail) metadata.bill_to_email = customerEmail
     if (invoice?.invoiceNumber) metadata.order_number = String(invoice.invoiceNumber)
@@ -491,6 +532,7 @@ export const handler: Handler = async (event) => {
         ...metadata,
         checkout_invoice_created: 'true',
       }
+      appendAttributionMetadata(invoiceMetadata as Record<string, string>, utmParams)
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',

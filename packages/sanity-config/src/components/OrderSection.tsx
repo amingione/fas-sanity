@@ -15,7 +15,11 @@ const renderIcon = (icon?: ComponentType | ReactNode) => {
   if (!icon) return null
   if (typeof icon === 'function') {
     const IconComponent = icon as ComponentType
-    return <IconComponent style={{fontSize: 16}} />
+    return (
+      <span style={{display: 'inline-flex', fontSize: 16}}>
+        <IconComponent />
+      </span>
+    )
   }
   return icon
 }

@@ -61,8 +61,11 @@ type SanityProduct = {
   taxCode?: string
   shortDescription?: PortableValue
   description?: PortableValue
-  shippingWeight?: number | null
+  shippingWeight?: number | string | null
   boxDimensions?: string | null
+  shippingClass?: string | null
+  handlingTime?: number | string | null
+  shipsAlone?: boolean | null
   stripeProductId?: string
   stripeDefaultPriceId?: string
   stripePriceId?: string
@@ -185,6 +188,19 @@ function toPositiveNumber(value: unknown): number | null {
   return null
 }
 
+function toNonNegativeNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed
+    }
+  }
+  return null
+}
+
 function parseBoxDimensionsString(value?: string | null): ShippingDimensions | null {
   if (!value || typeof value !== 'string') return null
   const match = value.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
@@ -267,6 +283,12 @@ function buildMetadata(
     shipping_weight_oz:
       typeof shipping.weightOz === 'number' ? shipping.weightOz.toString() : undefined,
     shipping_box_dimensions: shipping.dimensionsLabel,
+    shipping_weight:
+      typeof shipping.weightLbs === 'number' ? shipping.weightLbs.toString() : undefined,
+    shipping_dimensions: shipping.dimensionsLabel,
+    shipping_class: product.shippingClass,
+    handling_time: toNonNegativeNumber(product.handlingTime)?.toString(),
+    ships_alone: product.shipsAlone ? 'true' : undefined,
   })
 }
 
@@ -642,6 +664,9 @@ export const handler: Handler = async (event) => {
         description,
         shippingWeight,
         boxDimensions,
+        shippingClass,
+        handlingTime,
+        shipsAlone,
         coreRequired,
         promotionTagline,
         stripeProductId,
@@ -668,6 +693,9 @@ export const handler: Handler = async (event) => {
         description,
         shippingWeight,
         boxDimensions,
+        shippingClass,
+        handlingTime,
+        shipsAlone,
         coreRequired,
         promotionTagline,
         stripeProductId,
@@ -694,6 +722,9 @@ export const handler: Handler = async (event) => {
         description,
         shippingWeight,
         boxDimensions,
+        shippingClass,
+        handlingTime,
+        shipsAlone,
         coreRequired,
         promotionTagline,
         stripeProductId,

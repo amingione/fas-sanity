@@ -44,6 +44,7 @@ export type BuildProductJsonLdOptions = {
   siteUrl?: string
   imageBuilder?: ImageUrlBuilder
   defaultCurrency?: string
+  refreshKey?: number
 }
 
 export type ProductJsonLdResult = {
@@ -231,11 +232,10 @@ export const buildProductJsonLd = (
         return {json: merged, errors, warnings}
       }
       warnings.push('structuredDataOverrides must be a JSON object; ignoring value.')
-    } catch (err) {
+    } catch {
       warnings.push('structuredDataOverrides contains invalid JSON and was ignored.')
     }
   }
 
   return {json: jsonLd, errors, warnings}
 }
-

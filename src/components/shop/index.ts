@@ -1,2 +1,6 @@
 export {ProductAddToCartButton} from './ProductAddToCartButton'
 export type {ProductAddToCartButtonProps} from './ProductAddToCartButton'
+export {ProductTypeBadge} from './ProductTypeBadge'
+export type {ProductTypeBadgeProps} from './ProductTypeBadge'
+export {ServiceCatalog} from './ServiceCatalog'
+export type {ServiceCatalogProps} from './ServiceCatalog'

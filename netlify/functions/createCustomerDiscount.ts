@@ -164,9 +164,12 @@ export const handler: Handler = async (event) => {
       let discount: Stripe.Discount | null = null
       try {
         // Latest Stripe API supports explicit create endpoint but older versions rely on customer update
-        const response = (await stripe.customers.update(stripeCustomerId, {
-          coupon: coupon.id,
-        })) as Stripe.Customer
+        const response = (await stripe.customers.update(
+          stripeCustomerId,
+          {
+            coupon: coupon.id,
+          } as Stripe.CustomerUpdateParams & {coupon: string},
+        )) as Stripe.Customer
         discount = (response.discount || null) as Stripe.Discount | null
       } catch (err) {
         console.warn('createCustomerDiscount: failed to update customer with coupon', err)
@@ -243,7 +246,10 @@ export const handler: Handler = async (event) => {
     }
 
     try {
-      await stripe.customers.update(stripeCustomerId, {coupon: ''})
+      await stripe.customers.update(
+        stripeCustomerId,
+        {coupon: ''} as Stripe.CustomerUpdateParams & {coupon?: string},
+      )
       if (body.stripeDiscountId) {
         await removeCustomerDiscountRecord({
           sanity,

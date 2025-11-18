@@ -133,9 +133,9 @@ export async function updateCustomerProfileForOrder({
   customerName,
   metadata,
   defaultRoles,
-}: UpdateCustomerArgs): Promise<void> {
+}: UpdateCustomerArgs): Promise<string | null> {
   const email = (rawEmail || '').toLowerCase().trim()
-  if (!initialCustomerId && !email) return
+  if (!initialCustomerId && !email) return null
 
   let customerId = initialCustomerId || null
   let customerDoc: any = null
@@ -211,11 +211,11 @@ export async function updateCustomerProfileForOrder({
       }
     } catch (err) {
       console.warn('customerSnapshot: failed to create customer', err)
-      return
+      return null
     }
   }
 
-  if (!customerId) return
+  if (!customerId) return null
 
   const stats = await sanity.fetch(
     `{
@@ -406,4 +406,6 @@ export async function updateCustomerProfileForOrder({
       console.warn('customerSnapshot: failed to ensure order.customerRef linkage', err)
     }
   }
+
+  return customerId
 }
