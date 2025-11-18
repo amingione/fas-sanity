@@ -1,17 +1,19 @@
 import React, {type ComponentType} from 'react'
 import type {StructureResolver} from 'sanity/structure'
 import {
+  BarChartIcon,
   BasketIcon,
   BillIcon,
   CheckmarkCircleIcon,
   ClipboardIcon,
   ClockIcon,
   CreditCardIcon,
-  DocumentIcon,
   EnvelopeIcon,
   HomeIcon,
+  BulbOutlineIcon,
   LinkIcon,
   PackageIcon,
+  PresentationIcon,
   RocketIcon,
   TagIcon,
   TrashIcon,
@@ -22,7 +24,11 @@ import {
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
 import AdminTools from '../components/studio/AdminTools'
-import DownloadsPreviewList from '../components/studio/downloads/DownloadsPreviewList'
+import {downloadsStructure} from '../structure/downloadsStructure'
+import MerchantFeedPreview from '../components/studio/MerchantFeedPreview'
+import MerchantCenterDashboard from '../components/studio/MerchantCenterDashboard'
+import AttributionDashboard from '../components/studio/AttributionDashboard'
+import ComingSoonPane from '../components/studio/ComingSoonPane'
 import {EXPIRED_SESSION_PANEL_TITLE} from '../utils/orderFilters'
 import {
   AbandonedOrdersDocumentTable,
@@ -387,18 +393,62 @@ const createSalesChannelsList = (S: any) =>
         .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
     )
 
+const MarketingAnalyticsPane: ComponentType = () =>
+  React.createElement(ComingSoonPane as any, {
+    title: 'Marketing Analytics',
+    description: 'Integrated campaign ROI reporting is coming soon.',
+    actions: [
+      {
+        label: 'View sales dashboard',
+        href: '#',
+      },
+    ],
+  })
+
 const createMarketingSection = (S: any) =>
   S.listItem()
     .id('marketing')
     .title('Marketing')
-    .icon(EnvelopeIcon)
+    .icon(BarChartIcon)
     .child(
       S.list()
         .title('Marketing')
         .items([
           S.listItem()
+            .id('merchant-feed-validator')
+            .title('🛍️ Product Feed Validator')
+            .icon(BasketIcon)
+            .child(
+              S.component()
+                .id('merchant-feed-preview')
+                .title('Product Feed Validator')
+                .component(MerchantFeedPreview as any),
+            ),
+          S.listItem()
+            .id('merchant-center-dashboard')
+            .title('Merchant Center Dashboard')
+            .icon(PresentationIcon)
+            .child(
+              S.component()
+                .id('merchant-center-dashboard-pane')
+                .title('Merchant Center Dashboard')
+                .component(MerchantCenterDashboard as any),
+            ),
+          S.listItem()
+            .id('attribution-dashboard')
+            .title('Attribution')
+            .icon(LinkIcon)
+            .child(
+              S.component()
+                .id('attribution-dashboard-pane')
+                .title('Attribution Dashboard')
+                .component(AttributionDashboard as any),
+            ),
+          S.divider(),
+          S.listItem()
             .id('email-marketing')
-            .title('Email Marketing')
+            .title('📧 Email Campaigns')
+            .icon(EnvelopeIcon)
             .child(
               S.list()
                 .title('Email Marketing')
@@ -420,8 +470,28 @@ const createMarketingSection = (S: any) =>
                 ]),
             ),
           S.divider(),
-          S.documentTypeListItem('campaign').title('Campaigns'),
-          S.documentTypeListItem('attribution').title('Attribution'),
+          S.listItem()
+            .id('marketing-campaigns')
+            .title('🎯 Campaigns')
+            .icon(BulbOutlineIcon)
+            .child(
+              S.documentTypeList('shoppingCampaign')
+                .apiVersion(API_VERSION)
+                .title('Campaigns')
+                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}]),
+            ),
+          S.divider(),
+          S.listItem()
+            .id('marketing-analytics')
+            .title('📈 Analytics')
+            .icon(BarChartIcon)
+            .child(
+              S.component()
+                .id('marketing-analytics-pane')
+                .title('Marketing Analytics')
+                .component(MarketingAnalyticsPane as any),
+            ),
+          S.divider(),
           createSalesChannelsList(S),
         ]),
     )
@@ -473,15 +543,6 @@ export const deskStructure: StructureResolver = (S) =>
             .title('Print & PDF Settings'),
         ),
       S.divider(),
-      S.listItem()
-        .id('downloads')
-        .title('Downloads')
-        .icon(DocumentIcon)
-        .child(
-          S.component()
-            .id('downloads-preview')
-            .title('Downloads')
-            .component(DownloadsPreviewList as any),
-        ),
+      downloadsStructure(S),
     ])
 export default deskStructure

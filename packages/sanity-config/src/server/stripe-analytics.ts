@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
 
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2024-12-18'
+const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2025-08-27.basil'
 const DAY_SECONDS = 60 * 60 * 24
 const DAY_BUCKETS = 30
 const DEFAULT_CHARGE_SCAN_LIMIT = getNumericEnv(
@@ -221,11 +221,13 @@ async function collectTopProducts(
           item.price?.id ||
           `unknown-${aggregates.size}`
 
+        const priceProductName =
+          (item.price && (item.price as any)?.product_data?.name) ||
+          (typeof item.price?.product === 'object'
+            ? ((item.price.product as Stripe.Product)?.name ?? null)
+            : null)
         const name =
-          item.description ||
-          item.price?.product_data?.name ||
-          item.price?.nickname ||
-          'Untitled product'
+          item.description || priceProductName || item.price?.nickname || 'Untitled product'
 
         const aggregate = aggregates.get(productKey) || {name, total: 0, units: 0}
         aggregate.name = aggregate.name || name

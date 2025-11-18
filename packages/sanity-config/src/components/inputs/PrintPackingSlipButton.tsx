@@ -9,6 +9,7 @@ interface ExtendedStringInputProps extends StringInputProps {
     orderRef?: {
       _ref?: string
     }
+    orderNumber?: string | null
   }
 }
 

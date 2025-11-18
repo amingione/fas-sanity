@@ -526,6 +526,10 @@ export function computeShippingMetrics(
     const product = findProductForItem(item, products)
     if (!product) continue
 
+    if ((product.productType || '').toLowerCase() === 'service') {
+      continue
+    }
+
     const shippingClass = String(product.shippingClass || '').toLowerCase()
     if (shippingClass.includes('install')) {
       continue

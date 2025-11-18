@@ -833,6 +833,24 @@ export default defineType({
       type: 'reference',
       to: [{type: 'order'}],
     }),
+    defineField({
+      name: 'attribution',
+      title: 'Marketing Attribution',
+      type: 'object',
+      readOnly: true,
+      description: 'UTM parameters captured when the checkout was created.',
+      options: {collapsible: true, collapsed: true},
+      fields: [
+        {name: 'source', title: 'Source', type: 'string', readOnly: true},
+        {name: 'medium', title: 'Medium', type: 'string', readOnly: true},
+        {name: 'campaign', title: 'Campaign', type: 'string', readOnly: true},
+        {name: 'content', title: 'Content', type: 'string', readOnly: true},
+        {name: 'term', title: 'Term/Keyword', type: 'string', readOnly: true},
+        {name: 'landingPage', title: 'Landing Page', type: 'url', readOnly: true},
+        {name: 'referrer', title: 'Referrer', type: 'url', readOnly: true},
+        {name: 'capturedAt', title: 'Captured At', type: 'datetime', readOnly: true},
+      ],
+    }),
     // Legacy compatibility (hidden): previously used `order` and `customer` field names
     defineField({
       name: 'order',

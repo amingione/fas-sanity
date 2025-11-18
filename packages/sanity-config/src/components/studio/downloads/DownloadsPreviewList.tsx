@@ -18,6 +18,11 @@ type DownloadRow = {
   fileSize?: number | null
   fileType?: string | null
   publishedAt?: string | null
+  documentType?: 'download' | 'template' | 'reference' | 'guide'
+  category?: 'marketing' | 'operations' | 'technical' | 'legal' | 'templates'
+  accessLevel?: 'public' | 'internal' | 'admin'
+  version?: string | null
+  lastUpdated?: string | null
 }
 
 const LOADING_FALLBACK = (
@@ -37,8 +42,37 @@ const DOWNLOAD_PROJECTION = `{
   'fileUrl': file.asset->url,
   'fileSize': file.asset->size,
   'fileType': file.asset->extension,
-  publishedAt
+  publishedAt,
+  documentType,
+  category,
+  accessLevel,
+  version,
+  lastUpdated
 }`
+
+const DOCUMENT_TYPE_LABELS: Record<
+  NonNullable<DownloadRow['documentType']>,
+  {icon: string; label: string}
+> = {
+  download: {icon: '📥', label: 'Download'},
+  template: {icon: '📋', label: 'Template'},
+  reference: {icon: '📖', label: 'Reference Doc'},
+  guide: {icon: '📚', label: 'Internal Guide'},
+}
+
+const CATEGORY_LABELS: Record<NonNullable<DownloadRow['category']>, string> = {
+  marketing: 'Marketing',
+  operations: 'Operations',
+  technical: 'Technical',
+  legal: 'Legal',
+  templates: 'Templates',
+}
+
+const ACCESS_LABELS: Record<NonNullable<DownloadRow['accessLevel']>, string> = {
+  public: 'Public',
+  internal: 'Internal',
+  admin: 'Admin only',
+}
 
 function formatFileSize(size?: number | null): string {
   if (typeof size !== 'number' || Number.isNaN(size) || size <= 0) return '—'
@@ -68,14 +102,35 @@ function DownloadPreview({download}: {download: DownloadRow}) {
   const ref = useRef<HTMLButtonElement | null>(null)
   const router = useRouter()
 
+  const typeMeta = download.documentType ? DOCUMENT_TYPE_LABELS[download.documentType] : null
+  const categoryLabel = download.category ? CATEGORY_LABELS[download.category] : null
+  const accessLabel = download.accessLevel ? ACCESS_LABELS[download.accessLevel] : null
   const title = download.title || download.fileName || 'Untitled download'
+  const decoratedTitle = typeMeta ? `${typeMeta.icon} ${title}` : title
   const subtitleParts = useMemo(() => {
     const parts: string[] = []
+    if (typeMeta) parts.push(typeMeta.label)
+    if (categoryLabel) parts.push(categoryLabel)
+    if (download.version) parts.push(download.version)
+    if (accessLabel) parts.push(accessLabel)
     if (download.fileType) parts.push((download.fileType ?? '').toUpperCase())
     if (typeof download.fileSize === 'number') parts.push(formatFileSize(download.fileSize))
-    if (download.publishedAt) parts.push(`Published ${formatDate(download.publishedAt)}`)
+    if (download.lastUpdated) {
+      parts.push(`Updated ${formatDate(download.lastUpdated)}`)
+    } else if (download.publishedAt) {
+      parts.push(`Published ${formatDate(download.publishedAt)}`)
+    }
     return parts
-  }, [download.fileSize, download.fileType, download.publishedAt])
+  }, [
+    typeMeta,
+    categoryLabel,
+    accessLabel,
+    download.version,
+    download.fileSize,
+    download.fileType,
+    download.lastUpdated,
+    download.publishedAt,
+  ])
 
   const handleOpen = () => router.navigateIntent('edit', {id: download._id, type: download._type})
 
@@ -105,7 +160,7 @@ function DownloadPreview({download}: {download: DownloadRow}) {
           </Card>
           <Stack flex={1} space={2}>
             <Text weight="medium" size={2}>
-              {title}
+              {decoratedTitle}
             </Text>
             {download.description ? (
               <Text size={1} muted>
@@ -161,7 +216,7 @@ export default function DownloadsPreviewList() {
     async (pageIndex: number) => {
       const start = pageIndex * PAGE_SIZE
       const end = start + PAGE_SIZE
-      const query = `*[_type == "downloadResource"] | order(coalesce(publishedAt, _createdAt) desc, _createdAt desc)[$start...$end]${DOWNLOAD_PROJECTION}`
+      const query = `*[_type == "downloadResource" && isArchived != true] | order(coalesce(lastUpdated, _updatedAt) desc, _createdAt desc)[$start...$end]${DOWNLOAD_PROJECTION}`
       try {
         const result = await client.fetch<DownloadRow[]>(query, {start, end})
         return result

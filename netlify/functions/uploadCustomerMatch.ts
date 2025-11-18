@@ -24,7 +24,9 @@ export const handler: Handler = async (event) => {
   try {
     const body: UploadRequestBody = JSON.parse(event.body || '{}')
     const emails = Array.isArray(body.emails)
-      ? body.emails.filter((email): email is string => typeof email === 'string' && email.trim())
+      ? body.emails.filter(
+          (email): email is string => typeof email === 'string' && Boolean(email.trim()),
+        )
       : []
 
     if (!emails.length) {
@@ -48,7 +50,7 @@ export const handler: Handler = async (event) => {
       }),
     })
 
-    const tokenJson = await tokenResp.json()
+    const tokenJson = (await tokenResp.json()) as {access_token?: string; [key: string]: unknown}
 
     if (!tokenJson.access_token) {
       console.error('uploadCustomerMatch OAuth Error:', tokenJson)
@@ -88,7 +90,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify(payload),
     })
 
-    const uploadJson = await uploadResp.json()
+    const uploadJson = (await uploadResp.json()) as Record<string, unknown>
 
     if (!uploadResp.ok) {
       console.error('uploadCustomerMatch Google Ads API Error:', uploadJson)

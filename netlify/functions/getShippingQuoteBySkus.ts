@@ -169,6 +169,7 @@ export const handler: Handler = async (event) => {
         _id,
         title,
         sku,
+        productType,
         shippingWeight,
         boxDimensions,
         shipsAlone,
@@ -252,6 +253,11 @@ export const handler: Handler = async (event) => {
 
       if (!prod) {
         missingProducts.push(identifier)
+        continue
+      }
+
+      if ((prod?.productType || '').toLowerCase() === 'service') {
+        if (!installOnlyItems.includes(identifier)) installOnlyItems.push(identifier)
         continue
       }
 

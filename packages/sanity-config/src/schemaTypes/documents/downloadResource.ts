@@ -26,13 +26,75 @@ export default defineType({
       group: 'content',
     }),
     defineField({
+      name: 'documentType',
+      title: 'Document Type',
+      type: 'string',
+      group: 'content',
+      options: {
+        layout: 'radio',
+        list: [
+          {title: '📥 Download (for customers)', value: 'download'},
+          {title: '📋 Template (duplicatable)', value: 'template'},
+          {title: '📖 Reference Doc (read-only)', value: 'reference'},
+          {title: '📚 Internal Guide', value: 'guide'},
+        ],
+      },
+      initialValue: 'download',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'category',
+      title: 'Category',
+      type: 'string',
+      group: 'content',
+      options: {
+        list: [
+          {title: '📢 Marketing Materials', value: 'marketing'},
+          {title: '⚙️ Operations', value: 'operations'},
+          {title: '🔧 Technical Specs', value: 'technical'},
+          {title: '⚖️ Legal Documents', value: 'legal'},
+          {title: '📝 Templates', value: 'templates'},
+        ],
+      },
+    }),
+    defineField({
+      name: 'accessLevel',
+      title: 'Who Can Access',
+      type: 'string',
+      group: 'content',
+      options: {
+        layout: 'radio',
+        list: [
+          {title: 'Public (anyone with link)', value: 'public'},
+          {title: 'Internal (staff only)', value: 'internal'},
+          {title: 'Admin (admin only)', value: 'admin'},
+        ],
+      },
+      initialValue: 'internal',
+    }),
+    defineField({
+      name: 'isTemplate',
+      title: 'Template',
+      type: 'boolean',
+      group: 'content',
+      description: 'Enable duplication workflow for reusable document templates.',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'version',
+      title: 'Version',
+      type: 'string',
+      group: 'metadata',
+      description: 'e.g., v1.0, v2.1',
+    }),
+    defineField({
       name: 'file',
       title: 'File',
       type: 'file',
       group: 'content',
       options: {
         storeOriginalFilename: true,
-        accept: ['application/pdf', '.pdf', '.zip'],
+        accept: 'application/pdf,.pdf,.zip',
       },
       validation: (Rule) => Rule.required().error('Select a PDF or ZIP file to upload.'),
     }),
@@ -57,24 +119,77 @@ export default defineType({
       group: 'metadata',
     }),
     defineField({
+      name: 'relatedDocuments',
+      title: 'Related Documents',
+      type: 'array',
+      of: [{type: 'reference', to: [{type: 'downloadResource'}]}],
+      group: 'metadata',
+    }),
+    defineField({
       name: 'publishedAt',
       title: 'Published at',
       type: 'datetime',
       group: 'metadata',
     }),
+    defineField({
+      name: 'lastUpdated',
+      title: 'Last Updated',
+      type: 'datetime',
+      group: 'metadata',
+      readOnly: true,
+      description: 'Automatically updated when the document is saved.',
+      initialValue: () => new Date().toISOString(),
+    }),
+    defineField({
+      name: 'isArchived',
+      title: 'Archived',
+      type: 'boolean',
+      group: 'metadata',
+      hidden: true,
+      initialValue: false,
+    }),
+    defineField({
+      name: 'archivedAt',
+      title: 'Archived At',
+      type: 'datetime',
+      group: 'metadata',
+      hidden: true,
+      readOnly: true,
+    }),
   ],
   preview: {
     select: {
       title: 'title',
+      documentType: 'documentType',
+      category: 'category',
+      version: 'version',
       media: 'file.asset',
       subtitle: 'file.asset.originalFilename',
     },
-    prepare(selection) {
-      const {title, media, subtitle} = selection
+    prepare({title, documentType, category, version, media, subtitle}) {
+      const typeIcon =
+        {
+          download: '📥',
+          template: '📋',
+          reference: '📖',
+          guide: '📚',
+        }[documentType as 'download' | 'template' | 'reference' | 'guide'] || '📄'
+      const categoryLabel =
+        {
+          marketing: 'Marketing',
+          operations: 'Operations',
+          technical: 'Technical',
+          legal: 'Legal',
+          templates: 'Templates',
+        }[category as 'marketing' | 'operations' | 'technical' | 'legal' | 'templates'] ||
+        'Uncategorized'
+
       return {
-        title: title || '(untitled download)',
+        title: `${typeIcon} ${title || '(untitled download)'}`,
         media,
-        subtitle: subtitle || 'Download file',
+        subtitle: `${categoryLabel}${version ? ` • ${version}` : ''} ${
+          subtitle ? `• ${subtitle}` : ''
+        }`.trim(),
       }
     },
   },

@@ -14,7 +14,16 @@ const FALLBACK_API_VERSION = '2024-10-01'
 
 export function useWorkspaceClient(options?: UseClientOptions) {
   const {apiVersion = FALLBACK_API_VERSION, ...restOptions} = options || {}
-  const {dataset, perspective, projectId, stega, token, useCdn, withCredentials} = restOptions
+  const normalizedOptions = restOptions ?? {}
+  const {
+    dataset,
+    perspective,
+    projectId,
+    stega,
+    token,
+    useCdn,
+    withCredentials,
+  } = normalizedOptions as Partial<ClientConfig> & SourceClientOptions
 
   let baseClient: ReturnType<typeof useClient> | null = null
 

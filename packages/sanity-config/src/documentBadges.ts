@@ -1,4 +1,5 @@
 import type {DocumentBadgeComponent, DocumentBadgeDescription, DocumentBadgesResolver} from 'sanity'
+import {getMerchantFeedIssues, isServiceProduct} from './utils/merchantCenter'
 
 type BadgeColor = NonNullable<DocumentBadgeDescription['color']>
 
@@ -93,11 +94,31 @@ const productStripeBadge: DocumentBadgeComponent = (props) => {
   return null
 }
 
+const merchantCenterBadge: DocumentBadgeComponent = (props) => {
+  if (props.type !== 'product') return null
+  const source = (props.draft || props.published || null) as any
+  if (!source || isServiceProduct(source)) return null
+  const missing = getMerchantFeedIssues(source)
+  if (!missing.length) {
+    return {
+      label: 'Google Ready',
+      title: 'Ready for Google Shopping feed',
+      color: 'success',
+    }
+  }
+  return {
+    label: `Needs Fix (${missing.length})`,
+    title: `Missing: ${missing.join(', ')}`,
+    color: 'warning',
+  }
+}
+
 const productBadges: DocumentBadgeComponent[] = [
   productStatusBadge,
   productFeaturedBadge,
   productSaleBadge,
   productStripeBadge,
+  merchantCenterBadge,
 ]
 
 export const resolveDocumentBadges: DocumentBadgesResolver = (prevBadges, context) => {

@@ -137,7 +137,18 @@ export const handler: Handler = async (event) => {
   const skus = items.map((i) => (i?.sku || '').trim()).filter(Boolean)
   const titles = items.map((i) => (i?.name || '').trim()).filter(Boolean)
   const products: any[] = await sanity.fetch(
-    `*[_type == "product" && (sku in $skus || title in $titles)]{_id, title, sku, shippingWeight, boxDimensions, shipsAlone, shippingClass, coreRequired, promotionTagline}`,
+    `*[_type == "product" && (sku in $skus || title in $titles)]{
+      _id,
+      title,
+      sku,
+      productType,
+      shippingWeight,
+      boxDimensions,
+      shipsAlone,
+      shippingClass,
+      coreRequired,
+      promotionTagline
+    }`,
     {skus, titles},
   )
 
@@ -175,6 +186,11 @@ export const handler: Handler = async (event) => {
   for (const ci of items) {
     const qty = Number(ci?.quantity || 1)
     const prod = findProd(ci)
+    if ((prod?.productType || '').toLowerCase() === 'service') {
+      const sku = (prod?.sku || ci?.sku || '').toString()
+      if (sku && !installOnlySkus.includes(sku)) installOnlySkus.push(sku)
+      continue
+    }
     const weight = Number(prod?.shippingWeight || 0)
     const dims = parseDims(prod?.boxDimensions || '') || null
     const shipsAlone = Boolean(prod?.shipsAlone)

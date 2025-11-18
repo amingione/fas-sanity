@@ -54,7 +54,7 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
         return (
           <Card key={key} padding={3} radius={2} border>
             <Flex gap={4} wrap="wrap">
-              <Box flex={2} minWidth={200}>
+              <Box flex={2} style={{minWidth: 200}}>
                 <Text size={3} weight="semibold">
                   {item.name || item.productName || 'Product'}
                 </Text>

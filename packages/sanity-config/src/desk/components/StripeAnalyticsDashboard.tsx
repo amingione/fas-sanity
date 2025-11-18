@@ -84,9 +84,9 @@ const StripeAnalyticsDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat('en-US'), [])
 
-  const chartSource = Array.isArray(payload?.salesByDay) ? payload.salesByDay : []
   const chartPoints = useMemo(() => {
-    const points = chartSource.map((point) => ({
+    const source = Array.isArray(payload?.salesByDay) ? payload.salesByDay : []
+    const points = source.map((point) => ({
       date: typeof point?.date === 'string' ? point.date : '',
       total: coerceNumber(point?.total),
     }))
@@ -98,7 +98,7 @@ const StripeAnalyticsDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
       const y = 100 - (point.total / max) * 100
       return {...point, x, y}
     })
-  }, [chartSource])
+  }, [payload?.salesByDay])
 
   const chartPath = useMemo(() => {
     if (!chartPoints.length) return ''

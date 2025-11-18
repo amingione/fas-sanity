@@ -216,7 +216,7 @@ export function MerchantFeedPreview() {
             <Stack space={5}>
               {validation.map((issue) => (
                 <Box key={issue.id}>
-                  <Label muted size={1}>
+                  <Label muted size={1} style={{marginBottom: '0.5rem'}}>
                     {issue.title || issue.id}
                   </Label>
                   <Text size={1}>Missing: {issue.missing.join(', ')}</Text>

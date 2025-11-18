@@ -52,6 +52,7 @@ import {specItemType} from './objects/specItemType'
 import {kitItemType} from './objects/kitItemType'
 import {attributeType} from './objects/attributeType'
 import {mediaItemType} from './objects/mediaItemType'
+import {productCustomizationType} from './objects/productCustomizationType'
 import {billToType} from './objects/billToType'
 import {shipToType} from './objects/shipToType'
 import {quoteLineItemType} from './objects/quoteLineItemType'
@@ -143,6 +144,7 @@ const objects = [
   kitItemType,
   attributeType,
   mediaItemType,
+  productCustomizationType,
   billToType,
   shipToType,
   quoteLineItemType,

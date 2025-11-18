@@ -141,6 +141,7 @@ const orderSchema = defineType({
     {name: 'items', title: 'Items', default: true},
     {name: 'shipping', title: 'Shipping'},
     {name: 'payment', title: 'Payment'},
+    {name: 'marketing', title: 'Attribution & Marketing'},
     {name: 'advanced', title: 'Advanced'},
   ],
   fields: [
@@ -188,6 +189,30 @@ const orderSchema = defineType({
       title: 'Order Date',
       group: 'overview',
       readOnly: true,
+    },
+    {
+      name: 'attribution',
+      title: 'Attribution',
+      type: 'object',
+      group: 'marketing',
+      options: {collapsible: true, collapsed: false},
+      fields: [
+        {name: 'source', type: 'string', title: 'Source', readOnly: true},
+        {name: 'medium', type: 'string', title: 'Medium', readOnly: true},
+        {name: 'campaign', type: 'string', title: 'Campaign', readOnly: true},
+        {name: 'content', type: 'string', title: 'Content', readOnly: true},
+        {name: 'term', type: 'string', title: 'Term/Keyword', readOnly: true},
+        {name: 'landingPage', type: 'url', title: 'Landing Page', readOnly: true},
+        {name: 'referrer', type: 'url', title: 'Referrer', readOnly: true},
+        {name: 'capturedAt', type: 'datetime', title: 'Captured At', readOnly: true},
+        {
+          name: 'campaignRef',
+          title: 'Linked Campaign',
+          type: 'reference',
+          to: [{type: 'shoppingCampaign'}],
+          readOnly: true,
+        },
+      ],
     },
 
     // ========== CUSTOMER GROUP ==========

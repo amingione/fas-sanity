@@ -448,7 +448,6 @@ export function mapStripeLineItem(
       )
     : undefined
   const customizationCandidates = normalizeDetails(
-    derivedOptions.customizations,
     ...CUSTOMIZATION_METADATA_KEYS.map((key) => metadata.map[key]),
   )
   const customizations = customizationCandidates.length ? customizationCandidates : undefined

@@ -26,6 +26,12 @@ import {
   removeCustomerDiscountRecord,
   syncCustomerDiscountRecord,
 } from '../lib/customerDiscounts'
+import {
+  buildAttributionDocument,
+  extractAttributionFromMetadata,
+  hasAttributionData,
+  AttributionParams,
+} from '../lib/attribution'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -279,6 +285,45 @@ function normalizeStripeContactAddress(
   if (address.postal_code) normalized.postalCode = address.postal_code
   if (address.country) normalized.country = address.country
   return normalized
+}
+
+function resolveStripeCustomerId(
+  value?: string | Stripe.Customer | Stripe.DeletedCustomer | null,
+): string | undefined {
+  if (!value) return undefined
+  if (typeof value === 'string') {
+    return value.trim() || undefined
+  }
+  if (typeof value === 'object' && typeof (value as Stripe.Customer).id === 'string') {
+    const id = (value as Stripe.Customer).id
+    return id ? id.trim() || undefined : undefined
+  }
+  return undefined
+}
+
+async function ensureCustomerStripeDetails(options: {
+  customerId?: string | null
+  stripeCustomerId?: string | null
+  billingAddress?: NormalizedContactAddress | undefined
+}): Promise<void> {
+  const customerId = options.customerId
+  if (!customerId) return
+  const patch: Record<string, any> = {}
+  if (options.stripeCustomerId) patch.stripeCustomerId = options.stripeCustomerId
+  if (options.billingAddress) patch.billingAddress = options.billingAddress
+  patch.stripeLastSyncedAt = new Date().toISOString()
+  if (
+    !options.stripeCustomerId &&
+    !options.billingAddress &&
+    Object.keys(patch).length <= 1
+  ) {
+    return
+  }
+  try {
+    await sanity.patch(customerId).set(patch).commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to upsert customer Stripe metadata', err)
+  }
 }
 
 async function findInvoiceDocumentIdForEvent(input: {
@@ -1430,6 +1475,15 @@ const INVOICE_METADATA_NUMBER_KEYS = [
 const QUOTE_METADATA_ID_KEYS = ['sanity_quote_id', 'quote_id', 'sanityQuoteId', 'quoteId']
 const QUOTE_METADATA_NUMBER_KEYS = ['sanity_quote_number', 'quote_number', 'quoteNumber']
 
+const CUSTOMER_METADATA_ID_KEYS = [
+  'stripe_customer_id',
+  'stripeCustomerId',
+  'sanity_customer_id',
+  'sanityCustomerId',
+  'customer_id',
+  'customerId',
+]
+
 const PAYMENT_LINK_METADATA_ID_KEYS = [
   'sanity_payment_link_id',
   'payment_link_id',
@@ -1490,6 +1544,107 @@ function slugifyValue(value: string): string {
       .replace(/^-+|-+$/g, '')
       .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
   )
+}
+
+async function ensureCampaignDocument(attribution: AttributionParams): Promise<string | null> {
+  const campaignName = attribution?.campaign ? attribution.campaign.trim() : ''
+  if (!campaignName) return null
+  const campaignKey = slugifyValue(campaignName)
+  try {
+    const existing = await sanity.fetch<{_id: string} | null>(
+      `*[_type == "shoppingCampaign" && campaignKey == $key][0]{_id}`,
+      {key: campaignKey},
+    )
+    if (existing?._id) return existing._id
+    const created = await sanity.create(
+      {
+        _type: 'shoppingCampaign',
+        campaign: campaignName,
+        campaignKey,
+        utmSource: attribution.source,
+        utmMedium: attribution.medium,
+      },
+      {autoGenerateArrayKeys: true},
+    )
+    return created?._id || null
+  } catch (err) {
+    console.warn('stripeWebhook: failed to ensure campaign document', err)
+    return null
+  }
+}
+
+async function recordCampaignMetrics(
+  campaignId: string | null,
+  orderId?: string,
+  amount?: number,
+) {
+  if (!campaignId) return
+  try {
+    if (orderId) {
+      const alreadyLinked = await sanity.fetch<number>(
+        `count(*[_type == "shoppingCampaign" && _id == $campaignId && references($orderId)])`,
+        {campaignId, orderId},
+      )
+      if (alreadyLinked > 0) return
+    }
+
+    let patch = sanity
+      .patch(campaignId)
+      .setIfMissing({
+        orders: [],
+        metrics: {orderCount: 0, revenueTotal: 0},
+      } as any)
+      .inc({'metrics.orderCount': 1})
+      .set({'metrics.lastOrderAt': new Date().toISOString()})
+
+    if (typeof amount === 'number' && Number.isFinite(amount)) {
+      patch = patch.inc({'metrics.revenueTotal': amount})
+    }
+    if (orderId) {
+      patch = patch.append('orders', [{_type: 'reference', _ref: orderId, _key: randomUUID()}])
+    }
+    await patch.commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to update campaign metrics', err)
+  }
+}
+
+async function applyAttributionToOrder(orderId: string, attributionParams?: AttributionParams | null) {
+  const doc = buildAttributionDocument(attributionParams || undefined)
+  if (!doc) return
+  let campaignId: string | null = null
+  if (doc.campaign) {
+    campaignId = await ensureCampaignDocument(doc)
+    if (campaignId) {
+      ;(doc as any).campaignRef = {_type: 'reference', _ref: campaignId}
+    }
+  }
+  try {
+    await sanity
+      .patch(orderId)
+      .set({attribution: doc})
+      .commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to apply attribution to order', err)
+  }
+}
+
+function toPositiveNumber(value?: string | number | null): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed > 0) return parsed
+  }
+  return null
+}
+
+function toNonNegativeNumber(value?: string | number | null): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed
+  }
+  return null
 }
 
 async function ensureUniqueProductSlug(baseSlug: string): Promise<string> {
@@ -1625,10 +1780,25 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
     typeof product.default_price === 'string' ? product.default_price : product.default_price?.id
   const sku = skuCandidates.find(Boolean)
 
+  const shippingUpdates: Record<string, any> = {}
+  const shippingWeight = toPositiveNumber(metadata.shipping_weight || metadata.shipping_weight_lbs)
+  if (shippingWeight !== null) shippingUpdates.shippingWeight = shippingWeight
+  const handling = toNonNegativeNumber(metadata.handling_time)
+  if (handling !== null) shippingUpdates.handlingTime = handling
+  const shippingDims = metadata.shipping_dimensions || metadata.shipping_box_dimensions
+  if (shippingDims) shippingUpdates.boxDimensions = shippingDims
+  if (metadata.shipping_class) shippingUpdates.shippingClass = metadata.shipping_class
+  if ('ships_alone' in metadata) {
+    shippingUpdates.shipsAlone = ['true', '1', 'yes'].includes(
+      (metadata.ships_alone || '').toLowerCase(),
+    )
+  }
+
   const setOps: Record<string, any> = {
     stripeProductId: product.id,
     stripeActive: product.active,
     stripeUpdatedAt: updatedAt,
+    ...shippingUpdates,
   }
   if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
 
@@ -1660,6 +1830,7 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
     stripeProductId: product.id,
     stripeActive: product.active,
     stripeUpdatedAt: updatedAt,
+    ...shippingUpdates,
   }
   if (defaultPriceId) payload.stripeDefaultPriceId = defaultPriceId
   if (sku) payload.sku = sku
@@ -3436,7 +3607,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       ($pi != '' && paymentIntentId == $pi) ||
       ($charge != '' && chargeId == $charge) ||
       ($session != '' && stripeSessionId == $session)
-    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, paymentStatus, invoiceRef->{ _id } }`,
+    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, paymentStatus, attribution, invoiceRef->{ _id } }`,
     params,
   )
 
@@ -3485,10 +3656,39 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     }
   }
 
+  let campaignIdForMetrics: string | null = null
+  if (event?.metadata) {
+    const attrParams = extractAttributionFromMetadata(event.metadata)
+    const attrDoc = buildAttributionDocument(attrParams)
+    if (attrDoc) {
+      if (attrDoc.campaign) {
+        campaignIdForMetrics = await ensureCampaignDocument(attrDoc)
+        if (campaignIdForMetrics) {
+          ;(attrDoc as any).campaignRef = {_type: 'reference', _ref: campaignIdForMetrics}
+        }
+      }
+      orderPatch.attribution = attrDoc
+    }
+  }
+
   try {
     await sanity.patch(order._id).set(orderPatch).commit({autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to update order payment status', err)
+  }
+  const normalizedPaymentStatus =
+    typeof paymentStatus === 'string' ? paymentStatus.toLowerCase() : undefined
+  const shouldRecordCampaignMetrics =
+    Boolean(campaignIdForMetrics) &&
+    (normalizedPaymentStatus === 'paid' ||
+      normalizedPaymentStatus === 'succeeded' ||
+      normalizedPaymentStatus === 'complete')
+  if (campaignIdForMetrics && shouldRecordCampaignMetrics) {
+    await recordCampaignMetrics(
+      campaignIdForMetrics,
+      order._id,
+      typeof event?.amount === 'number' ? event.amount : undefined,
+    )
   }
 
   const fetchInvoiceId = async (): Promise<string | null> => {
@@ -3585,7 +3785,7 @@ const getCheckoutAsyncDefaults = (
   return {metadata, eventType, invoiceStripeStatus, amount, currency}
 }
 
-async function handleCheckoutAsyncPaymentSucceeded(
+export async function handleCheckoutAsyncPaymentSucceeded(
   session: Stripe.Checkout.Session,
   context: CheckoutAsyncContext = {},
 ): Promise<void> {
@@ -3947,6 +4147,10 @@ async function handleCheckoutExpired(
 
       const created = await sanity.create(baseDoc as any, {autoGenerateArrayKeys: true})
       orderId = created?._id || null
+      if (orderId) {
+        const attr = extractAttributionFromMetadata(metadata)
+        await applyAttributionToOrder(orderId, attr)
+      }
     } catch (err) {
       console.warn('stripeWebhook: failed to create order for expired checkout', err)
     }
@@ -4011,6 +4215,10 @@ async function handleCheckoutExpired(
         .set(patchData)
         .setIfMissing({webhookNotified: true})
         .commit({autoGenerateArrayKeys: true})
+      if (orderId) {
+        const attr = extractAttributionFromMetadata(metadata)
+        await applyAttributionToOrder(orderId, attr)
+      }
     } catch (err) {
       console.warn('stripeWebhook: failed to update order after checkout expiration', err)
     }
@@ -4932,15 +5140,17 @@ export const handler: Handler = async (event) => {
         const stripeSessionId = session.id
         const metadata = (session.metadata || {}) as Record<string, string>
         const userIdMeta =
-          (
-            metadata['auth0_user_id'] ||
-            metadata['auth0_sub'] ||
-            metadata['userId'] ||
-            metadata['user_id'] ||
-            ''
-          )
-            .toString()
-            .trim() || undefined
+        (
+          metadata['auth0_user_id'] ||
+          metadata['auth0_sub'] ||
+          metadata['userId'] ||
+          metadata['user_id'] ||
+          ''
+        )
+          .toString()
+          .trim() || undefined
+        const metadataCustomerId =
+          firstString(CUSTOMER_METADATA_ID_KEYS.map((key) => metadata[key])) || undefined
 
         // Enrich with Stripe payment details if available
         let paymentIntent: Stripe.PaymentIntent | null = null
@@ -5034,11 +5244,18 @@ export const handler: Handler = async (event) => {
         }
 
         const stripeCustomerIdValue =
-          typeof paymentIntent?.customer === 'string'
-            ? paymentIntent.customer
-            : typeof session.customer === 'string'
-              ? session.customer
-              : undefined
+          resolveStripeCustomerId(
+            paymentIntent?.customer as
+              | string
+              | Stripe.Customer
+              | Stripe.DeletedCustomer
+              | null
+              | undefined,
+          ) ||
+          resolveStripeCustomerId(
+            session.customer as string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined,
+          ) ||
+          metadataCustomerId
 
         const billingAddress =
           normalizeStripeContactAddress(
@@ -5137,10 +5354,20 @@ export const handler: Handler = async (event) => {
 
         // 3) Upsert an Order doc for visibility/fulfillment
         try {
-          const existingOrder = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
-            {sid: stripeSessionId},
-          )
+          const existingOrderId =
+            (await findOrderDocumentIdForEvent({
+              metadata,
+              paymentIntentId: paymentIntent?.id || null,
+              sessionId: stripeSessionId,
+              invoiceDocId,
+              invoiceNumber: metadataInvoiceNumber || null,
+            })) || null
+          const existingOrder = existingOrderId
+            ? await sanity.fetch<{_id: string; packingSlipUrl?: string | null}>(
+                `*[_type == "order" && _id == $id][0]{_id, packingSlipUrl}`,
+                {id: existingOrderId},
+              )
+            : null
           const existingId = existingOrder?._id || null
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
           const shouldSendConfirmation =
@@ -5175,6 +5402,7 @@ export const handler: Handler = async (event) => {
             stripeCustomerId: stripeCustomerIdValue || undefined,
             checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
             ...(shippingAddress ? {shippingAddress} : {}),
+            ...(billingAddress ? {billingAddress} : {}),
             ...(userIdMeta ? {userId: userIdMeta} : {}),
             ...(cart.length ? {cart} : {}),
           }
@@ -5260,6 +5488,16 @@ export const handler: Handler = async (event) => {
           }
 
           if (orderId) {
+            const checkoutAttribution = extractAttributionFromMetadata(
+              metadata as Record<string, any>,
+              (paymentIntent?.metadata as Record<string, any> | undefined) || undefined,
+            )
+            if (hasAttributionData(checkoutAttribution)) {
+              await applyAttributionToOrder(orderId, checkoutAttribution)
+            }
+          }
+
+          if (orderId) {
             await appendOrderEvent(orderId, {
               eventType: webhookEvent.type,
               status: paymentStatus,
@@ -5301,21 +5539,30 @@ export const handler: Handler = async (event) => {
             }
           }
 
+          let customerDocIdForPatch =
+            ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
           try {
-            await updateCustomerProfileForOrder({
+            const updatedCustomerId = await updateCustomerProfileForOrder({
               sanity,
               orderId,
-              customerId: (baseDoc as any)?.customerRef?._ref,
+              customerId: customerDocIdForPatch,
               email: normalizedEmail || email || undefined,
               shippingAddress,
               billingAddress,
               stripeCustomerId: stripeCustomerIdValue,
               stripeSyncTimestamp: new Date().toISOString(),
               customerName,
+              metadata,
             })
+            if (updatedCustomerId) customerDocIdForPatch = updatedCustomerId
           } catch (err) {
             console.warn('stripeWebhook: failed to refresh customer profile', err)
           }
+          await ensureCustomerStripeDetails({
+            customerId: customerDocIdForPatch,
+            stripeCustomerId: stripeCustomerIdValue,
+            billingAddress,
+          })
 
           if (shouldSendConfirmation && orderId) {
             try {
@@ -5375,6 +5622,8 @@ export const handler: Handler = async (event) => {
           (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
             .toString()
             .trim() || undefined
+        const metadataCustomerId =
+          firstString(CUSTOMER_METADATA_ID_KEYS.map((key) => meta[key])) || undefined
         const metadataInvoiceId = normalizeSanityId(meta['sanity_invoice_id'])
         const checkoutSessionMeta =
           (
@@ -5402,9 +5651,9 @@ export const handler: Handler = async (event) => {
           const chargeBillingName = ch?.billing_details?.name || undefined
           const shippingAddr: any = (pi as any)?.shipping?.address || undefined
           const stripeCustomerIdValue =
-            typeof pi.customer === 'string'
-              ? pi.customer
-              : (pi.customer as Stripe.Customer | undefined)?.id
+            resolveStripeCustomerId(
+              pi.customer as string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined,
+            ) || metadataCustomerId
           const billingAddress =
             normalizeStripeContactAddress(
               ch?.billing_details?.address as Stripe.Address | undefined,
@@ -5503,18 +5752,33 @@ export const handler: Handler = async (event) => {
           }
           const shippingMetrics = computeShippingMetrics(cart, cartProducts)
 
-          const existingOrder = await sanity.fetch(
-            `*[_type == "order" && stripeSessionId == $sid][0]{_id, packingSlipUrl}`,
-            {sid: pi.id},
-          )
+          const existingOrderId =
+            (await findOrderDocumentIdForEvent({
+              metadata: meta,
+              paymentIntentId: pi.id,
+              sessionId: checkoutSessionMeta || pi.id,
+              invoiceDocId,
+              invoiceNumber: metadataInvoiceNumber || null,
+            })) || null
+          const existingOrder = existingOrderId
+            ? await sanity.fetch<{
+                _id: string
+                packingSlipUrl?: string | null
+                stripeSessionId?: string | null
+              }>(`*[_type == "order" && _id == $id][0]{_id, packingSlipUrl, stripeSessionId}`, {
+                id: existingOrderId,
+              })
+            : null
           const existingId = existingOrder?._id || null
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
           const shouldSendConfirmation =
             !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
+          const resolvedStripeSessionId =
+            existingOrder?.stripeSessionId || checkoutSessionMeta || pi.id
           const baseDoc: any = {
             _type: 'order',
             stripeSource: 'payment_intent',
-            stripeSessionId: pi.id,
+            stripeSessionId: resolvedStripeSessionId,
             orderNumber: normalizedOrderNumber,
             customerName,
             customerEmail: email || undefined,
@@ -5548,6 +5812,7 @@ export const handler: Handler = async (event) => {
                   },
                 }
               : {}),
+            ...(billingAddress ? {billingAddress} : {}),
             ...(cart.length ? {cart} : {}),
           }
           applyShippingMetrics(baseDoc, shippingMetrics)
@@ -5633,7 +5898,7 @@ export const handler: Handler = async (event) => {
               occurredAt: webhookEvent.created,
               metadata: meta,
             })
-            await markExpiredCartRecovered(checkoutSessionMeta, orderId, {
+            await markExpiredCartRecovered(resolvedStripeSessionId, orderId, {
               eventType: 'checkout.recovered',
               status: 'recovered',
               label: 'Payment intent recovered checkout',
@@ -5666,21 +5931,30 @@ export const handler: Handler = async (event) => {
           }
 
           if (orderId) {
+            let customerDocIdForPatch =
+              ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
             try {
-              await updateCustomerProfileForOrder({
+              const updatedCustomerId = await updateCustomerProfileForOrder({
                 sanity,
                 orderId,
-                customerId: (baseDoc as any)?.customerRef?._ref,
+                customerId: customerDocIdForPatch,
                 email: normalizedEmail || email || undefined,
                 shippingAddress: (baseDoc as any)?.shippingAddress,
                 billingAddress,
                 stripeCustomerId: stripeCustomerIdValue,
                 stripeSyncTimestamp: new Date().toISOString(),
                 customerName,
+                metadata: meta,
               })
+              if (updatedCustomerId) customerDocIdForPatch = updatedCustomerId
             } catch (err) {
               console.warn('stripeWebhook: failed to refresh customer profile for PI', err)
             }
+            await ensureCustomerStripeDetails({
+              customerId: customerDocIdForPatch,
+              stripeCustomerId: stripeCustomerIdValue,
+              billingAddress,
+            })
           }
 
           if (shouldSendConfirmation && orderId) {
@@ -5776,3 +6050,4 @@ export const handler: Handler = async (event) => {
 }
 
 // Netlify picks up the named export automatically; avoid duplicate exports.
+export default handler

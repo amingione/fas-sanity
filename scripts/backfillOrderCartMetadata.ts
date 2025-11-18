@@ -55,12 +55,60 @@ function resolveMetadataEntries(item: CartItem): any[] | undefined {
   return undefined
 }
 
-async function backfillOrderCartMetadata(batchSize = 20) {
+type CliOptions = {
+  batchSize: number
+  maxDocs?: number
+}
+
+function parseCliOptions(): CliOptions {
+  const opts: CliOptions = {batchSize: 20}
+  for (const raw of process.argv.slice(2)) {
+    const [key, value = 'true'] = raw.includes('=') ? raw.split('=') : [raw, undefined]
+    switch (key) {
+      case '--batch':
+      case '--batchSize':
+        if (value !== undefined) {
+          const parsed = Number(value)
+          if (Number.isFinite(parsed) && parsed > 0) {
+            opts.batchSize = Math.floor(parsed)
+          }
+        }
+        break
+      case '--max':
+      case '--limit':
+        if (value !== undefined) {
+          const parsed = Number(value)
+          if (Number.isFinite(parsed) && parsed > 0) {
+            opts.maxDocs = Math.floor(parsed)
+          }
+        }
+        break
+      case '--help':
+      case '-h':
+        console.log('Usage: pnpm tsx scripts/backfillOrderCartMetadata.ts [--batch 20] [--max 100]')
+        process.exit(0)
+      default:
+        break
+    }
+  }
+  return opts
+}
+
+async function backfillOrderCartMetadata(batchSize = 20, maxDocs?: number) {
   let processed = 0
+  console.log(
+    `Starting order cart metadata backfill (batch=${batchSize}, max=${maxDocs ?? '∞'})`,
+  )
 
   while (true) {
+    if (maxDocs && processed >= maxDocs) break
+    const effectiveLimit = maxDocs ? Math.min(batchSize, maxDocs - processed) : batchSize
+    if (effectiveLimit <= 0) break
     const orders: OrderDoc[] = await client.fetch(
-      `*[_type == "order" && count(cart[defined(metadata) && !defined(metadata.option_summary) || defined(optionSummary) || defined(upgrades)]) > 0][0...$limit]{
+      `*[_type == "order" && count(cart[
+          (!defined(metadata) || !defined(metadata.option_summary)) &&
+          (defined(optionSummary) || defined(upgrades))
+        ]) > 0][0...$limit]{
         _id,
         cart[]{
           _key,
@@ -70,10 +118,14 @@ async function backfillOrderCartMetadata(batchSize = 20) {
           metadataEntries
         }
       }`,
-      {limit: batchSize},
+      {limit: effectiveLimit},
     )
 
-    if (!orders.length) break
+    if (!orders.length) {
+      console.log('No orders matched query – exiting.')
+      break
+    }
+    console.log(`Fetched ${orders.length} order(s) to update`)
 
     for (const order of orders) {
       if (!Array.isArray(order.cart) || order.cart.length === 0) continue
@@ -119,8 +171,9 @@ async function backfillOrderCartMetadata(batchSize = 20) {
   console.log(`Backfill complete. Updated ${processed} order${processed === 1 ? '' : 's'}.`)
 }
 
-backfillOrderCartMetadata().catch((err) => {
+const {batchSize, maxDocs} = parseCliOptions()
+
+backfillOrderCartMetadata(batchSize, maxDocs).catch((err) => {
   console.error('Failed to backfill order cart metadata', err)
   process.exit(1)
 })
-

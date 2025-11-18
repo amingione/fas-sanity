@@ -25,7 +25,7 @@ type InvoiceRecord = {
   id: string
   invoiceNumber: string
   customerName: string
-  status: 'pending' | 'paid' | 'refunded' | 'cancelled'
+  status: 'pending' | 'paid' | 'refunded' | 'partially_refunded' | 'cancelled'
   statusLabel: string
   amount: number
   invoiceDateIso: string
@@ -38,7 +38,7 @@ type InvoiceRecord = {
 }
 
 const DAY = 24 * 60 * 60 * 1000
-const CLOSED_STATUSES = new Set(['paid', 'refunded', 'cancelled'])
+const CLOSED_STATUSES = new Set(['paid', 'refunded', 'partially_refunded', 'cancelled'])
 
 const STATUS_OPTIONS: Array<{value: string; label: string}> = [
   {value: 'all', label: 'All'},

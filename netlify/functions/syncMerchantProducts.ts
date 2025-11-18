@@ -105,11 +105,12 @@ export const handler: Handler = async (event) => {
     const content = google.content({version: 'v2.1', auth})
 
     const products = await sanity.fetch(
-      `*[_type == "product" && defined(price) && price > 0]{
+      `*[_type == "product" && defined(price) && price > 0 && productType != "service"]{
         _id,
         title,
         slug,
         sku,
+        productType,
         mpn,
         price,
         salePrice,
@@ -192,7 +193,7 @@ export const handler: Handler = async (event) => {
         const currency =
           (product?.currency || product?.priceCurrency || 'USD').toString().toUpperCase() || 'USD'
         const shippingWeight = toPositiveNumber(product?.shippingWeight)
-        const productType =
+        const productCategoryPath =
           Array.isArray(product?.categories) && product.categories.length > 0
             ? product.categories.join(' > ')
             : undefined
@@ -225,8 +226,8 @@ export const handler: Handler = async (event) => {
           googleProduct.salePrice = {value: salePrice.toFixed(2), currency}
         }
 
-        if (productType) {
-          googleProduct.productType = productType
+        if (productCategoryPath) {
+          googleProduct.productType = productCategoryPath
         }
 
         if (googleProductCategory) {

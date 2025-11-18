@@ -53,7 +53,11 @@ async function main() {
   process.env.STRIPE_WEBHOOK_NO_VERIFY = process.env.STRIPE_WEBHOOK_NO_VERIFY || '1'
 
   const handlerModule = await import('../../netlify/functions/stripeWebhook.ts')
-  const handler = handlerModule.handler || handlerModule.default
+  const handler =
+    handlerModule.handler ||
+    (typeof handlerModule.default === 'function'
+      ? handlerModule.default
+      : handlerModule.default?.handler)
   if (!handler) throw new Error('Unable to import stripeWebhook handler')
 
   const fakeSignature = process.env.STRIPE_SIGNATURE || 't=0,v1=fake'

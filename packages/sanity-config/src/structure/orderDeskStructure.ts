@@ -1,5 +1,3 @@
-import {StructureBuilder as S} from 'sanity/structure'
-
 export const orderDeskStructure = (S: any) =>
   S.listItem()
     .title('Orders')
