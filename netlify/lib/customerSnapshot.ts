@@ -30,6 +30,7 @@ type UpdateCustomerArgs = {
   customerId?: string | null
   email?: string | null
   shippingAddress?: ShippingLike | null
+  billingAddress?: ShippingLike | null
   stripeCustomerId?: string | null
   stripeSyncTimestamp?: string | null
   customerName?: string | null
@@ -126,6 +127,7 @@ export async function updateCustomerProfileForOrder({
   customerId: initialCustomerId,
   email: rawEmail,
   shippingAddress: shippingFromOrder,
+  billingAddress,
   stripeCustomerId,
   stripeSyncTimestamp,
   customerName,
@@ -155,6 +157,7 @@ export async function updateCustomerProfileForOrder({
   }
 
   const shippingNormalized = normalizeShippingAddress(shippingFromOrder)
+  const billingNormalized = normalizeShippingAddress(billingAddress)
   const legacyShippingString = shippingNormalized
     ? [
         shippingNormalized.street,
@@ -193,6 +196,7 @@ export async function updateCustomerProfileForOrder({
             },
           ]
         : undefined,
+      billingAddress: billingNormalized,
       stripeCustomerId: stripeCustomerId || undefined,
       stripeLastSyncedAt: stripeSyncTimestamp || undefined,
       ...(shippingFromOrder?.phone ? {phone: shippingFromOrder.phone} : {}),
@@ -269,6 +273,19 @@ export async function updateCustomerProfileForOrder({
         .filter((entry: any) => entry.orderNumber)
     : []
 
+  const dedupedOrders: typeof orderSummaries = []
+  const orderKeys = new Set<string>()
+  for (const entry of orderSummaries) {
+    const key =
+      (entry?.orderNumber || '')
+        .toString()
+        .trim()
+        .toUpperCase() || `${entry?.orderNumber || ''}|${entry?.orderDate || ''}`
+    if (key && orderKeys.has(key)) continue
+    if (key) orderKeys.add(key)
+    dedupedOrders.push(entry)
+  }
+
   const lifetimeSpend = Array.isArray(stats?.orderTotals)
     ? stats.orderTotals.reduce((sum: number, entry: any) => {
         const amount = typeof entry?.amount === 'number' ? entry.amount : Number(entry?.amount || 0)
@@ -320,6 +337,20 @@ export async function updateCustomerProfileForOrder({
     if (key) addressesSet.set(key, shippingEntry)
   }
 
+  if (billingNormalized) {
+    const billingEntry: CustomerAddressEntry = {
+      _type: 'customerAddress',
+      label: billingAddress?.name || 'Billing',
+      street: billingNormalized.street,
+      city: billingNormalized.city,
+      state: billingNormalized.state,
+      zip: billingNormalized.postalCode,
+      country: billingNormalized.country,
+    }
+    const key = addressKey(billingEntry)
+    if (key) addressesSet.set(key, billingEntry)
+  }
+
   if (Array.isArray(stats?.shippingDocs)) {
     stats.shippingDocs.forEach((doc: any) => {
       const addrEntry = toCustomerAddressEntry(doc?.shippingAddress)
@@ -334,15 +365,16 @@ export async function updateCustomerProfileForOrder({
   const nameParts = splitName(shippingFromOrder?.name || customerName || '')
 
   const patch: Record<string, any> = {
-    orderCount: typeof stats?.orderCount === 'number' ? stats.orderCount : orderSummaries.length,
+    orderCount: typeof stats?.orderCount === 'number' ? stats.orderCount : dedupedOrders.length,
     quoteCount: typeof stats?.quoteCount === 'number' ? stats.quoteCount : quoteSummaries.length,
     lifetimeSpend: Number(lifetimeSpend.toFixed(2)),
-    orders: orderSummaries,
+    orders: dedupedOrders,
     quotes: quoteSummaries,
     updatedAt: new Date().toISOString(),
   }
 
   if (shippingNormalized) patch.shippingAddress = shippingNormalized
+  if (billingNormalized) patch.billingAddress = billingNormalized
   if (addressesArray.length) patch.addresses = addressesArray
   if (stripeCustomerId) patch.stripeCustomerId = stripeCustomerId
   if (stripeSyncTimestamp) patch.stripeLastSyncedAt = stripeSyncTimestamp
