@@ -3,14 +3,21 @@ import type {StructureResolver} from 'sanity/structure'
 import {
   BasketIcon,
   BillIcon,
+  CheckmarkCircleIcon,
+  ClipboardIcon,
+  ClockIcon,
+  CreditCardIcon,
   DocumentIcon,
   EnvelopeIcon,
   HomeIcon,
   LinkIcon,
   PackageIcon,
+  RocketIcon,
   TagIcon,
+  TrashIcon,
   TrolleyIcon,
   UserIcon,
+  WarningOutlineIcon,
   WrenchIcon,
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
@@ -88,6 +95,103 @@ const CustomersRecentlyAddedTableView: ComponentType = () =>
     ],
     pageSize: 10,
   })
+
+type OrderWorkflowConfig = {
+  id: string
+  title: string
+  filter: string
+  icon: ComponentType
+}
+
+const ORDER_WORKFLOW_ITEMS: OrderWorkflowConfig[] = [
+  {
+    id: 'needs-fulfillment',
+    title: '🔴 Needs Fulfillment',
+    icon: PackageIcon,
+    filter:
+      '_type == "order" && status == "paid" && !defined(manualTrackingNumber) && !defined(trackingNumber)',
+  },
+  {
+    id: 'ready-to-ship',
+    title: '📦 Ready to Ship',
+    icon: TrolleyIcon,
+    filter:
+      '_type == "order" && status == "paid" && (defined(manualTrackingNumber) || defined(trackingNumber)) && status != "shipped"',
+  },
+  {
+    id: 'shipped',
+    title: '🚚 Shipped',
+    icon: RocketIcon,
+    filter: '_type == "order" && status == "shipped"',
+  },
+  {
+    id: 'fulfilled',
+    title: '✅ Fulfilled',
+    icon: CheckmarkCircleIcon,
+    filter: '_type == "order" && status == "fulfilled"',
+  },
+  {
+    id: 'recent-orders',
+    title: '⏰ Recent Orders (Last 30 Days)',
+    icon: ClockIcon,
+    filter:
+      '_type == "order" && status == "paid" && dateTime(createdAt) > dateTime(now()) - 60*60*24*30',
+  },
+  {
+    id: 'all-paid-orders',
+    title: '💰 All Paid Orders',
+    icon: CreditCardIcon,
+    filter: '_type == "order" && status == "paid"',
+  },
+  {
+    id: 'cancelled-refunded',
+    title: '⚠️ Cancelled & Refunded',
+    icon: WarningOutlineIcon,
+    filter: '_type == "order" && (status == "cancelled" || status == "refunded")',
+  },
+  {
+    id: 'expired-carts',
+    title: '🗑️ Expired Carts',
+    icon: TrashIcon,
+    filter: '_type == "order" && status == "expired"',
+  },
+  {
+    id: 'all-orders',
+    title: '📋 All Orders',
+    icon: ClipboardIcon,
+    filter: '_type == "order"',
+  },
+]
+
+const createOrderWorkflowList = (S: any) => {
+  const baseOrderList = S.documentTypeList('order').apiVersion(API_VERSION)
+  return S.listItem()
+    .id('order-workflows')
+    .title('Order workflow views')
+    .icon(TrolleyIcon)
+    .child(
+      S.list()
+        .title('Order workflow views')
+        .items(
+          ORDER_WORKFLOW_ITEMS.map((item) =>
+            S.listItem()
+              .id(item.id)
+              .title(item.title)
+              .icon(item.icon)
+              .child(
+                S.documentList()
+                  .apiVersion(API_VERSION)
+                  .title(item.title)
+                  .filter(item.filter)
+                  .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
+                  .initialValueTemplates(baseOrderList.getInitialValueTemplates())
+                  .menuItems(baseOrderList.getMenuItems())
+                  .canHandleIntent(baseOrderList.getCanHandleIntent()),
+              ),
+          ),
+        ),
+    )
+}
 
 const createOrdersList = (S: any) =>
   S.listItem()
@@ -261,6 +365,8 @@ const createSalesOperationsSection = (S: any) =>
       S.list()
         .title('Orders')
         .items([
+          createOrderWorkflowList(S),
+          S.divider(),
           createOrdersList(S),
           S.divider(),
           createAbandonedCartsPane(S),

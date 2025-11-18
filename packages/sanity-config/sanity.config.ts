@@ -28,7 +28,7 @@ import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 import {fasBrandTheme} from './src/theme/fasBrandTheme'
-// Import order actions
+import {orderView} from './src/views/orderView'
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -150,6 +150,13 @@ export default defineConfig({
     actions: (prev, context) =>
       resolveProductDocumentActions(resolveDocumentActions(prev, context), context),
     badges: resolveDocumentBadges,
+    views: [
+      {
+        id: 'order-management-view',
+        title: 'Order Management',
+        component: orderView,
+      },
+    ],
   },
 
   schema: {
