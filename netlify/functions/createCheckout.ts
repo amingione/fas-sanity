@@ -7,6 +7,7 @@ import {
   extractAttributionFromPayload,
   extractAttributionFromQuery,
   mergeAttributionParams,
+  parseDeviceInfo,
 } from '../lib/attribution'
 
 // --- CORS (Studio at 8888/3333)
@@ -220,14 +221,27 @@ export const handler: Handler = async (event) => {
   const utmFromPayload = extractAttributionFromPayload(payload)
   const utmFromQuery = extractAttributionFromQuery(event.queryStringParameters || {})
   const referrerHeader = event.headers?.referer || event.headers?.Referer || undefined
+  const landingPageHeader =
+    event.headers?.['x-landing-page'] ||
+    event.headers?.['X-Landing-Page'] ||
+    event.headers?.origin ||
+    undefined
+  const landingPagePayload =
+    typeof payload?.landingPage === 'string' ? payload.landingPage : undefined
+  const userAgent = event.headers?.['user-agent'] || event.headers?.['User-Agent'] || undefined
+  const deviceInfo = parseDeviceInfo(userAgent)
   const utmParams = mergeAttributionParams(
     utmFromPayload,
     utmFromQuery,
     referrerHeader ? {referrer: referrerHeader} : {},
+    landingPagePayload || landingPageHeader ? {landingPage: landingPagePayload || landingPageHeader} : {},
+    deviceInfo,
   )
   if (!utmParams.capturedAt) {
     utmParams.capturedAt = new Date().toISOString()
   }
+  if (!utmParams.firstTouch) utmParams.firstTouch = utmParams.capturedAt
+  if (!utmParams.lastTouch) utmParams.lastTouch = utmParams.capturedAt
   const checkoutAttributionDoc = buildAttributionDocument(utmParams)
 
   try {

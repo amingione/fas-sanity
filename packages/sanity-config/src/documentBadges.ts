@@ -113,12 +113,44 @@ const merchantCenterBadge: DocumentBadgeComponent = (props) => {
   }
 }
 
+const productWholesaleBadge: DocumentBadgeComponent = (props) => {
+  if (props.type !== 'product') return null
+  const source = (props.draft || props.published || null) as any
+  if (!source || source.productType === 'service') return null
+  const enabled = source.availableForWholesale !== false
+  const hasPricing = [
+    'wholesalePriceStandard',
+    'wholesalePricePreferred',
+    'wholesalePricePlatinum',
+  ].some((field) => typeof source?.[field] === 'number' && Number.isFinite(source[field]))
+  if (!enabled) {
+    return {
+      label: 'Wholesale Off',
+      title: 'Wholesale visibility disabled for this product',
+      color: 'primary',
+    }
+  }
+  if (hasPricing) {
+    return {
+      label: 'Wholesale Ready',
+      title: 'Wholesale pricing configured',
+      color: 'success',
+    }
+  }
+  return {
+    label: 'Wholesale Missing',
+    title: 'Enable wholesale pricing for this product',
+    color: 'warning',
+  }
+}
+
 const productBadges: DocumentBadgeComponent[] = [
   productStatusBadge,
   productFeaturedBadge,
   productSaleBadge,
   productStripeBadge,
   merchantCenterBadge,
+  productWholesaleBadge,
 ]
 
 export const resolveDocumentBadges: DocumentBadgesResolver = (prevBadges, context) => {

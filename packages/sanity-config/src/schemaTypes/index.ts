@@ -96,6 +96,7 @@ import campaign from './marketing/campaigns/campaign'
 import attribution from './marketing/attribution'
 import marketingChannel from './marketing/marketingChannel'
 import altText from './documents/altText'
+import customerPortalAccess from './documents/customerPortalAccess'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -223,15 +224,31 @@ import shippingLabel from './documents/shippingLabel'
 import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
 import vendor from './documents/vendor'
+import vendorApplication from './documents/vendorApplication'
+import vendorQuote from './documents/vendorQuote'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
 import freightQuote from './documents/freightQuote'
 import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
 import expense from './documents/expense'
+import profitLoss from './documents/profitLoss'
+import cashFlow from './documents/cashFlow'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
 import emailCampaign from './documents/emailCampaign'
+import emailTemplate from './documents/emailTemplate'
+import emailAutomation from './documents/emailAutomation'
+import emailLog from './documents/emailLog'
+import attribution from './documents/attribution'
 import marketingOptIn from './documents/marketingOptIn'
+import service from './documents/service'
+import appointment from './documents/appointment'
+import workOrder from './documents/workOrder'
+import vehicle from './documents/vehicle'
+import inventory from './documents/inventoryRecord'
+import inventoryTransaction from './documents/inventoryTransaction'
+import manufacturingOrder from './documents/manufacturingOrder'
+import attributionSnapshot from './marketing/attributionSnapshot'
 
 const documents = [
   collectionType,
@@ -244,15 +261,25 @@ const documents = [
   shippingLabel,
   invoice,
   stripeWebhook,
+  vendorApplication,
   vendor,
+  vendorQuote,
   bill,
   order,
+  service,
+  appointment,
+  workOrder,
+  manufacturingOrder,
+  inventory,
+  inventoryTransaction,
   expiredCart,
   category,
   productBundle,
   bankAccountType,
   checkType,
   customer,
+  customerPortalAccess,
+  vehicle,
   shippingOption,
   freightQuote,
   vehicleModel,
@@ -260,13 +287,19 @@ const documents = [
   tune,
   wheelQuote,
   expense,
+  profitLoss,
+  cashFlow,
   stripeWebhookEvent,
   emailCampaign,
+  emailTemplate,
+  emailAutomation,
+  emailLog,
   marketingOptIn,
   merchantFeed,
   shoppingCampaign,
   campaign,
   attribution,
+  attributionSnapshot,
   marketingChannel,
   downloadResource,
   altText,

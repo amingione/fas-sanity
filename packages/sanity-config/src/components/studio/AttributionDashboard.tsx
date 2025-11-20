@@ -1,173 +1,320 @@
+import {useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
-import {useEffect, useMemo, useState} from 'react'
-import {Card, Flex, Grid, Spinner, Stack, Text, Button} from '@sanity/ui'
-import {WarningOutlineIcon} from '@sanity/icons'
-import {useRouter} from 'sanity/router'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Stack,
+  Text,
+} from '@sanity/ui'
 
-type OrderAttribution = {
+type AttributionDoc = {
+  utmSource?: string
+  utmCampaign?: string
+  orderValue?: number
+  touchpoints?: number
+  sessionId?: string
+  customer?: {_ref?: string}
+}
+
+type SpendSnapshot = {
   source?: string
-  medium?: string
-  campaign?: string
+  spend?: number
+  newCustomers?: number
 }
 
-type OrderSummary = {
-  _id: string
-  orderNumber?: string
-  totalAmount?: number
-  amountSubtotal?: number
-  amountTax?: number
-  currency?: string
-  createdAt?: string
-  attribution?: OrderAttribution | null
+type LtvRow = {
+  lifetimeValue?: number
+  firstSource?: string
 }
 
-type QueryResult = {
-  total: number
-  paid: number
-  orders: OrderSummary[]
+type DashboardQueryResult = {
+  attributions: AttributionDoc[]
+  expiredCarts: number
+  spend: SpendSnapshot[]
+  ltv: LtvRow[]
 }
 
-const PAID_FILTER = '(status in ["paid","fulfilled","shipped"] || paymentStatus == "paid")'
+const DATE_PRESETS = [
+  {label: '7d', days: 7},
+  {label: '30d', days: 30},
+  {label: '90d', days: 90},
+]
 
-const ATTRIBUTION_QUERY = `{
-  "total": count(*[_type == "order"]),
-  "paid": count(*[_type == "order" && ${PAID_FILTER}]),
-  "orders": *[_type == "order" && ${PAID_FILTER}]{
-    _id,
-    orderNumber,
-    totalAmount,
-    amountSubtotal,
-    amountTax,
-    currency,
-    createdAt,
-    attribution
-  } | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...200]
+const DASHBOARD_QUERY = `{
+  "attributions": *[_type == "attribution" && createdAt >= $start]{
+    utmSource,
+    utmCampaign,
+    orderValue,
+    touchpoints,
+    sessionId,
+    customer
+  },
+  "expiredCarts": count(*[_type == "expiredCart" && coalesce(expiredAt, _createdAt) >= $start]),
+  "spend": *[_type == "attributionSnapshot" && coalesce(syncDate, _updatedAt) >= $start]{
+    source,
+    "spend": metrics.spend,
+    "newCustomers": metrics.newCustomers
+  },
+  "ltv": *[_type == "customer" && defined(lifetimeValue)]{
+    lifetimeValue,
+    "firstSource": *[_type == "attribution" && customer._ref == ^._id] | order(createdAt asc)[0].utmSource
+  }
 }`
 
-const StatCard = ({
+const formatCurrency = (value?: number | null) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '$0'
+  return new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(value)
+}
+
+const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`
+
+const SOURCE_LABELS: Record<string, string> = {
+  google: 'Google',
+  facebook: 'Facebook',
+  email: 'Email',
+  direct: 'Direct',
+  other: 'Other',
+}
+
+const normalizeSource = (value?: string) => {
+  if (!value) return 'direct'
+  const compare = value.toLowerCase()
+  if (compare.includes('google')) return 'google'
+  if (compare.includes('facebook') || compare.includes('meta')) return 'facebook'
+  if (compare.includes('email') || compare.includes('klaviyo') || compare.includes('newsletter'))
+    return 'email'
+  if (compare === 'direct' || compare === '(direct)' || compare === 'none') return 'direct'
+  return 'other'
+}
+
+const RangeButton = ({
   label,
-  value,
-  tone = 'primary',
+  active,
+  onClick,
 }: {
   label: string
-  value: string | number
-  tone?: 'primary' | 'positive' | 'caution'
+  active: boolean
+  onClick: () => void
 }) => (
-  <Card padding={4} radius={2} tone={tone === 'caution' ? 'caution' : undefined} border shadow={1}>
-    <Stack space={2}>
-      <Text size={1} muted>
-        {label}
-      </Text>
-      <Text size={3} weight="semibold">
-        {value}
-      </Text>
-    </Stack>
-  </Card>
+  <Button
+    mode={active ? 'default' : 'ghost'}
+    tone={active ? 'primary' : 'default'}
+    text={label}
+    onClick={onClick}
+  />
 )
 
-const amountForOrder = (order: OrderSummary): number => {
-  if (typeof order.totalAmount === 'number' && Number.isFinite(order.totalAmount)) {
-    return order.totalAmount
-  }
-  const subtotal = Number.isFinite(order.amountSubtotal) ? Number(order.amountSubtotal) : 0
-  const tax = Number.isFinite(order.amountTax) ? Number(order.amountTax) : 0
-  return subtotal + tax
+const FunnelStep = ({label, value, max}: {label: string; value: number; max: number}) => {
+  const percent = max > 0 ? value / max : 0
+  return (
+    <Stack space={2}>
+      <Flex justify="space-between" align="center">
+        <Text size={1}>{label}</Text>
+        <Badge tone="primary">{value}</Badge>
+      </Flex>
+      <Box
+        padding={1}
+        radius={3}
+        style={{
+          background: 'var(--card-border-color)',
+          height: 12,
+        }}
+      >
+        <Box
+          style={{
+            width: `${Math.max(percent * 100, 4)}%`,
+            height: '100%',
+            background: 'var(--card-accent-fg-color)',
+            borderRadius: 4,
+          }}
+        />
+      </Box>
+    </Stack>
+  )
 }
 
 export default function AttributionDashboard() {
   const client = useClient({apiVersion: '2024-10-01'})
-  const router = useRouter()
-  const [data, setData] = useState<QueryResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [rangeDays, setRangeDays] = useState(30)
+  const [data, setData] = useState<DashboardQueryResult | null>(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const rangeStart = useMemo(() => {
+    const now = new Date()
+    const start = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000)
+    return start.toISOString()
+  }, [rangeDays])
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const result = await client.fetch<QueryResult>(ATTRIBUTION_QUERY)
+      const result = await client.fetch<DashboardQueryResult>(DASHBOARD_QUERY, {start: rangeStart})
       setData(result)
     } catch (err) {
       console.error('AttributionDashboard: failed to load data', err)
-      setError(err instanceof Error ? err.message : 'Failed to load attribution data.')
+      setError(err instanceof Error ? err.message : 'Unable to load attribution data.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [client, rangeStart])
 
   useEffect(() => {
     load()
-  }, [])
+  }, [load])
 
-  const attributedOrders = useMemo(() => {
-    if (!data?.orders) return []
-    return data.orders.filter((order) => {
-      const source = order.attribution?.source
-      return typeof source === 'string' && source.trim().length > 0
+  const revenueBySource = useMemo(() => {
+    const totals: Record<string, number> = {google: 0, facebook: 0, email: 0, direct: 0, other: 0}
+    data?.attributions?.forEach((attr) => {
+      const bucket = normalizeSource(attr.utmSource)
+      totals[bucket] += Number(attr.orderValue || 0)
     })
+    return totals
   }, [data])
 
-  const unattributedCount = useMemo(() => {
-    if (!data) return 0
-    return Math.max(0, (data.paid || 0) - attributedOrders.length)
-  }, [data, attributedOrders])
-
-  const sourceStats = useMemo(() => {
-    const stats = new Map<
+  const campaignPerformance = useMemo(() => {
+    const map = new Map<
       string,
       {
-        count: number
+        orders: number
         revenue: number
       }
     >()
-    attributedOrders.forEach((order) => {
-      const source = order.attribution?.source || 'unknown'
-      const amount = amountForOrder(order)
-      const existing = stats.get(source) || {count: 0, revenue: 0}
-      existing.count += 1
-      existing.revenue += amount
-      stats.set(source, existing)
+    data?.attributions?.forEach((attr) => {
+      const key = (attr.utmCampaign || 'Uncategorized').trim() || 'Uncategorized'
+      const entry = map.get(key) || {orders: 0, revenue: 0}
+      entry.orders += 1
+      entry.revenue += Number(attr.orderValue || 0)
+      map.set(key, entry)
     })
-    return Array.from(stats.entries()).sort((a, b) => b[1].revenue - a[1].revenue)
-  }, [attributedOrders])
+    return Array.from(map.entries())
+      .map(([campaign, stats]) => ({
+        campaign,
+        orders: stats.orders,
+        revenue: stats.revenue,
+        avgOrderValue: stats.orders > 0 ? stats.revenue / stats.orders : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
+  }, [data])
 
-  const campaignStats = useMemo(() => {
-    const stats = new Map<
+  const cacRows = useMemo(() => {
+    const spendMap = new Map<
       string,
       {
-        count: number
-        revenue: number
+        spend: number
+        reportedCustomers: number
       }
     >()
-    attributedOrders.forEach((order) => {
-      const campaign = order.attribution?.campaign || 'uncategorized'
-      const amount = amountForOrder(order)
-      const existing = stats.get(campaign) || {count: 0, revenue: 0}
-      existing.count += 1
-      existing.revenue += amount
-      stats.set(campaign, existing)
+    data?.spend?.forEach((row) => {
+      const key = normalizeSource(row.source)
+      const existing = spendMap.get(key) || {spend: 0, reportedCustomers: 0}
+      existing.spend += Number(row.spend || 0)
+      existing.reportedCustomers += Number(row.newCustomers || 0)
+      spendMap.set(key, existing)
     })
-    return Array.from(stats.entries()).sort((a, b) => b[1].revenue - a[1].revenue)
-  }, [attributedOrders])
 
-  const recentOrders = attributedOrders.slice(0, 10)
+    const customerSets = new Map<string, Set<string>>()
+    data?.attributions?.forEach((attr) => {
+      const key = normalizeSource(attr.utmSource)
+      if (!customerSets.has(key)) customerSets.set(key, new Set())
+      const ref = attr.customer?._ref
+      if (ref) customerSets.get(key)!.add(ref)
+    })
+
+    const sources = Array.from(new Set([...spendMap.keys(), ...customerSets.keys()]))
+    return sources
+      .map((source) => {
+        const spend = spendMap.get(source)?.spend || 0
+        const distinctCustomers = customerSets.get(source)?.size || 0
+        const reportedCustomers = spendMap.get(source)?.reportedCustomers || 0
+        const customers = Math.max(distinctCustomers, reportedCustomers)
+        return {
+          source,
+          spend,
+          customers,
+          cac: customers > 0 ? spend / customers : 0,
+        }
+      })
+      .sort((a, b) => b.spend - a.spend)
+  }, [data])
+
+  const ltvBySource = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        customers: number
+        total: number
+      }
+    >()
+    data?.ltv?.forEach((row) => {
+      const source = normalizeSource(row.firstSource)
+      const entry = groups.get(source) || {customers: 0, total: 0}
+      entry.customers += 1
+      entry.total += Number(row.lifetimeValue || 0)
+      groups.set(source, entry)
+    })
+    return Array.from(groups.entries()).map(([source, stats]) => ({
+      source,
+      customers: stats.customers,
+      avgLTV: stats.customers > 0 ? stats.total / stats.customers : 0,
+    }))
+  }, [data])
+
+  const conversionFunnel = useMemo(() => {
+    const purchases = data?.attributions?.length || 0
+    const checkout = data?.attributions?.filter((attr) => Boolean(attr.sessionId)).length || 0
+    const addToCart = checkout + (data?.expiredCarts || 0)
+    const visits =
+      (data?.attributions?.reduce((sum, attr) => sum + Number(attr.touchpoints || 1), 0) || 0) +
+      purchases
+    const max = Math.max(visits, addToCart, checkout, purchases)
+    return {
+      steps: [
+        {label: 'Visits', value: Math.max(visits, max)},
+        {label: 'Add to Cart', value: addToCart},
+        {label: 'Checkout', value: checkout},
+        {label: 'Purchase', value: purchases},
+      ],
+      max,
+    }
+  }, [data])
+
+  const totalRevenue = useMemo(() => {
+    return data?.attributions?.reduce((sum, attr) => sum + Number(attr.orderValue || 0), 0) || 0
+  }, [data])
 
   return (
     <Stack space={4}>
-      <Flex align="center" justify="space-between">
+      <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
         <Stack space={2}>
-          <Text size={3} weight="semibold">
+          <Heading as="h2" size={3}>
             Attribution Overview
-          </Text>
+          </Heading>
           <Text size={1} muted>
-            Understand which channels and campaigns are driving revenue.
+            Measure the impact of marketing channels and campaigns over time.
           </Text>
         </Stack>
-        <Button text="Refresh" mode="bleed" onClick={load} disabled={loading} />
+        <Flex gap={2} align="center">
+          {DATE_PRESETS.map((preset) => (
+            <RangeButton
+              key={preset.label}
+              label={preset.label}
+              active={rangeDays === preset.days}
+              onClick={() => setRangeDays(preset.days)}
+            />
+          ))}
+          <Button text="Refresh" mode="ghost" onClick={load} disabled={loading} />
+        </Flex>
       </Flex>
 
       {loading && (
-        <Card padding={4} radius={2} tone="primary" border>
+        <Card padding={4} radius={2} border tone="primary">
           <Flex align="center" gap={3}>
             <Spinner />
             <Text>Loading attribution data…</Text>
@@ -177,102 +324,167 @@ export default function AttributionDashboard() {
 
       {error && (
         <Card padding={4} radius={2} tone="critical" border>
-          <Text>{error}</Text>
+          <Stack space={2}>
+            <Text weight="semibold">Unable to load data</Text>
+            <Text size={1}>{error}</Text>
+            <Button text="Retry" onClick={load} />
+          </Stack>
         </Card>
       )}
 
-      {data && (
+      {!error && data && (
         <>
           <Grid columns={[1, 2, 4]} gap={4}>
-            <StatCard label="Total Orders" value={data.total} />
-            <StatCard label="Paid Orders" value={data.paid} />
-            <StatCard
-              label="Attributed (Paid)"
-              value={attributedOrders.length}
-              tone="positive"
-            />
-            <StatCard label="Unattributed (Paid)" value={unattributedCount} tone="caution" />
+            <Card padding={4} radius={2} border>
+              <Stack space={2}>
+                <Text size={1} muted>Total Revenue</Text>
+                <Text size={3} weight="semibold">
+                  {formatCurrency(totalRevenue)}
+                </Text>
+              </Stack>
+            </Card>
+            <Card padding={4} radius={2} border>
+              <Stack space={2}>
+                <Text size={1} muted>Purchases</Text>
+                <Text size={3} weight="semibold">
+                  {data.attributions.length}
+                </Text>
+              </Stack>
+            </Card>
+            <Card padding={4} radius={2} border>
+              <Stack space={2}>
+                <Text size={1} muted>Expired Carts</Text>
+                <Text size={3} weight="semibold">
+                  {data.expiredCarts}
+                </Text>
+              </Stack>
+            </Card>
+            <Card padding={4} radius={2} border>
+              <Stack space={2}>
+                <Text size={1} muted>Sources tracked</Text>
+                <Text size={3} weight="semibold">
+                  {Object.entries(revenueBySource).filter(([, value]) => value > 0).length}
+                </Text>
+              </Stack>
+            </Card>
+          </Grid>
+
+          <Card padding={4} radius={2} border>
+            <Stack space={4}>
+              <Text weight="semibold">Revenue by Source</Text>
+              <Grid columns={[1, 2, 5]} gap={4}>
+                {Object.entries(revenueBySource).map(([source, value]) => (
+                  <Card key={source} padding={3} radius={2} tone="transparent" border>
+                    <Stack space={2}>
+                      <Text size={1} muted>
+                        {SOURCE_LABELS[source] || source}
+                      </Text>
+                      <Text weight="semibold">{formatCurrency(value)}</Text>
+                    </Stack>
+                  </Card>
+                ))}
+              </Grid>
+            </Stack>
+          </Card>
+
+          <Card padding={4} radius={2} border>
+            <Stack space={3}>
+              <Text weight="semibold">Campaign Performance</Text>
+              <Stack as="div" space={2}>
+                {campaignPerformance.length === 0 && (
+                  <Text size={1} muted>
+                    No campaign attribution data yet.
+                  </Text>
+                )}
+                {campaignPerformance.slice(0, 6).map((row) => (
+                  <Flex
+                    key={row.campaign}
+                    justify="space-between"
+                    align="center"
+                    style={{borderBottom: '1px solid var(--card-border-color)', paddingBottom: 6}}
+                  >
+                    <Stack space={1}>
+                      <Text weight="medium">{row.campaign}</Text>
+                      <Text size={1} muted>
+                        {row.orders} orders
+                      </Text>
+                    </Stack>
+                    <Stack style={{textAlign: 'right'}} space={1}>
+                      <Text weight="semibold">{formatCurrency(row.revenue)}</Text>
+                      <Text size={1} muted>
+                        Avg {formatCurrency(row.avgOrderValue)}
+                      </Text>
+                    </Stack>
+                  </Flex>
+                ))}
+              </Stack>
+            </Stack>
+          </Card>
+
+          <Grid columns={[1, 2]} gap={4}>
+            <Card padding={4} radius={2} border>
+              <Stack space={3}>
+                <Text weight="semibold">Customer Acquisition Cost</Text>
+                {cacRows.length === 0 && (
+                  <Text size={1} muted>
+                    No spend data captured yet.
+                  </Text>
+                )}
+                <Stack space={2}>
+                  {cacRows.map((row) => (
+                    <Flex key={row.source} justify="space-between" align="center">
+                      <Stack space={1}>
+                        <Text weight="medium">{SOURCE_LABELS[row.source] || row.source}</Text>
+                        <Text size={1} muted>
+                          {row.customers} customers
+                        </Text>
+                      </Stack>
+                      <Stack style={{textAlign: 'right'}} space={1}>
+                        <Text>{formatCurrency(row.spend)}</Text>
+                        <Text size={1} muted>CAC {formatCurrency(row.cac)}</Text>
+                      </Stack>
+                    </Flex>
+                  ))}
+                </Stack>
+              </Stack>
+            </Card>
+
+            <Card padding={4} radius={2} border>
+              <Stack space={3}>
+                <Text weight="semibold">Lifetime Value by Source</Text>
+                {ltvBySource.length === 0 && (
+                  <Text size={1} muted>
+                    Not enough LTV data yet.
+                  </Text>
+                )}
+                <Stack space={2}>
+                  {ltvBySource.map((row) => (
+                    <Flex key={row.source} justify="space-between" align="center">
+                      <Stack space={1}>
+                        <Text weight="medium">{SOURCE_LABELS[row.source] || row.source}</Text>
+                        <Text size={1} muted>
+                          {row.customers} customers
+                        </Text>
+                      </Stack>
+                      <Text>{formatCurrency(row.avgLTV)}</Text>
+                    </Flex>
+                  ))}
+                </Stack>
+              </Stack>
+            </Card>
           </Grid>
 
           <Card padding={4} radius={2} border>
             <Stack space={3}>
               <Flex align="center" gap={2}>
-                <Text weight="semibold">Top Sources ({sourceStats.length})</Text>
+                <Text weight="semibold">Conversion Funnel</Text>
+                <Badge tone="primary">{rangeDays}-day lookback</Badge>
               </Flex>
-              {sourceStats.length === 0 && <Text size={1}>No attributed orders yet.</Text>}
-              <Stack as="ul" space={2} style={{listStyle: 'none', margin: 0, padding: 0}}>
-                {sourceStats.slice(0, 6).map(([source, stat]) => (
-                  <Flex
-                    key={source}
-                    as="li"
-                    justify="space-between"
-                    style={{borderBottom: '1px solid var(--card-border-color)', paddingBottom: 6}}
-                  >
-                    <Text weight="medium">{source}</Text>
-                    <Text size={1}>
-                      {stat.count} orders • ${stat.revenue.toFixed(2)}
-                    </Text>
-                  </Flex>
+              <Grid columns={[1, 2, 4]} gap={3}>
+                {conversionFunnel.steps.map((step) => (
+                  <FunnelStep key={step.label} label={step.label} value={step.value} max={conversionFunnel.max || 1} />
                 ))}
-              </Stack>
-            </Stack>
-          </Card>
-
-          <Card padding={4} radius={2} border>
-            <Stack space={3}>
-              <Flex align="center" gap={2}>
-                <Text weight="semibold">Top Campaigns</Text>
-              </Flex>
-              {campaignStats.length === 0 && <Text size={1}>No campaign data captured yet.</Text>}
-              <Stack as="ul" space={2} style={{listStyle: 'none', margin: 0, padding: 0}}>
-                {campaignStats.slice(0, 6).map(([campaign, stat]) => (
-                  <Flex key={campaign} as="li" justify="space-between" style={{paddingBottom: 6}}>
-                    <Text weight="medium">{campaign}</Text>
-                    <Text size={1}>
-                      {stat.count} orders • ${stat.revenue.toFixed(2)}
-                    </Text>
-                  </Flex>
-                ))}
-              </Stack>
-            </Stack>
-          </Card>
-
-          <Card padding={4} radius={2} border>
-            <Stack space={3}>
-              <Flex align="center" gap={2}>
-                <WarningOutlineIcon />
-                <Text weight="semibold">Recent Attributed Orders</Text>
-              </Flex>
-              {recentOrders.length === 0 && <Text size={1}>No attributed orders yet.</Text>}
-              <Stack space={3}>
-                {recentOrders.map((order) => (
-                  <Flex
-                    key={order._id}
-                    justify="space-between"
-                    style={{borderBottom: '1px solid var(--card-border-color)', paddingBottom: 8}}
-                  >
-                    <Stack space={1}>
-                      <Text weight="medium">
-                        {order.orderNumber || `Order ${order._id.slice(-6)}`}
-                      </Text>
-                      <Text size={1} muted>
-                        {order.attribution?.source || 'unknown'} • {order.attribution?.campaign || 'No campaign'}
-                      </Text>
-                    </Stack>
-                    <Flex align="center" gap={2}>
-                      <Text size={1} weight="semibold">
-                        ${amountForOrder(order).toFixed(2)}
-                      </Text>
-                      <Button
-                        text="Open"
-                        tone="primary"
-                        mode="ghost"
-                        onClick={() => router.navigateIntent('edit', {id: order._id, type: 'order'})}
-                      />
-                    </Flex>
-                  </Flex>
-                ))}
-              </Stack>
+              </Grid>
             </Stack>
           </Card>
         </>

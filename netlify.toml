@@ -32,6 +32,14 @@
   name = "syncMarketingAttribution"
   schedule = "0 2 * * *"
 
+[[scheduled_function]]
+  name = "update-customer-segments"
+  schedule = "30 3 * * *"
+
+[[scheduled_function]]
+  name = "inventoryReorderCheck"
+  schedule = "0 9 * * *"
+
 # Bypass redirect for known static assets
 [[redirects]]
   from = "/site.webmanifest"

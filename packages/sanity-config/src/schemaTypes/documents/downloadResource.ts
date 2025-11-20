@@ -1,5 +1,12 @@
 import {defineField, defineType} from 'sanity'
 import {DocumentIcon} from '@sanity/icons'
+import TemplateFlagInput from '../../components/inputs/TemplateFlagInput'
+
+const isFileFocusedType = (documentType?: string | null) =>
+  documentType === 'download' || documentType === 'template'
+
+const isContentFocusedType = (documentType?: string | null) =>
+  documentType === 'reference' || documentType === 'guide'
 
 export default defineType({
   name: 'downloadResource',
@@ -43,6 +50,77 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'content',
+      title: 'Content',
+      type: 'array',
+      description: 'Rich text editor for reference docs and guides.',
+      group: 'content',
+      of: [
+        {
+          type: 'block',
+          styles: [
+            {title: 'Normal', value: 'normal'},
+            {title: 'H1', value: 'h1'},
+            {title: 'H2', value: 'h2'},
+            {title: 'H3', value: 'h3'},
+            {title: 'Quote', value: 'blockquote'},
+          ],
+          lists: [
+            {title: 'Bullet', value: 'bullet'},
+            {title: 'Numbered', value: 'number'},
+            {title: 'Checklist', value: 'checklist'},
+          ],
+          marks: {
+            decorators: [
+              {title: 'Strong', value: 'strong'},
+              {title: 'Emphasis', value: 'em'},
+              {title: 'Underline', value: 'underline'},
+              {title: 'Code', value: 'code'},
+            ],
+            annotations: [
+              {
+                name: 'link',
+                title: 'Link',
+                type: 'object',
+                fields: [
+                  {
+                    name: 'href',
+                    title: 'URL',
+                    type: 'url',
+                  },
+                  {
+                    name: 'openInNewTab',
+                    title: 'Open in new tab',
+                    type: 'boolean',
+                    initialValue: true,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          type: 'image',
+          options: {hotspot: true},
+          fields: [
+            {
+              name: 'alt',
+              title: 'Alt text',
+              type: 'string',
+              validation: (Rule) => Rule.max(120),
+            },
+            {
+              name: 'caption',
+              title: 'Caption',
+              type: 'string',
+              validation: (Rule) => Rule.max(200),
+            },
+          ],
+        },
+      ],
+      hidden: ({document}) => isFileFocusedType(document?.documentType),
+    }),
+    defineField({
       name: 'category',
       title: 'Category',
       type: 'string',
@@ -79,6 +157,9 @@ export default defineType({
       group: 'content',
       description: 'Enable duplication workflow for reusable document templates.',
       initialValue: false,
+      components: {
+        input: TemplateFlagInput,
+      },
     }),
     defineField({
       name: 'version',
@@ -96,7 +177,8 @@ export default defineType({
         storeOriginalFilename: true,
         accept: 'application/pdf,.pdf,.zip',
       },
-      validation: (Rule) => Rule.required().error('Select a PDF or ZIP file to upload.'),
+      description: 'Upload PDF or ZIP assets. Hidden for guides and reference entries.',
+      hidden: ({document}) => isContentFocusedType(document?.documentType),
     }),
     defineField({
       name: 'slug',

@@ -30,6 +30,8 @@ import StudioLayout from './src/components/studio/StudioLayout'
 import {fasTheme} from './src/theme/fasTheme'
 import {fasBrandTheme} from './src/theme/fasBrandTheme'
 import {orderView} from './src/views/orderView'
+import CustomerDashboard from './src/components/studio/CustomerDashboard'
+import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -159,6 +161,16 @@ export default defineConfig({
         id: 'order-management-view',
         title: 'Order Management',
         component: orderView,
+      },
+      {
+        id: 'customer-dashboard',
+        title: 'Customer Dashboard',
+        component: CustomerDashboard,
+      },
+      {
+        id: 'vehicle-history',
+        title: 'Vehicle Service History',
+        component: VehicleServiceHistory,
       },
     ],
   },

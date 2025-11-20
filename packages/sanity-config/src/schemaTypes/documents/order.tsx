@@ -135,6 +135,9 @@ const orderSchema = defineType({
   title: 'Order',
   type: 'document',
   icon: PackageIcon,
+  initialValue: () => ({
+    orderType: 'in-store',
+  }),
   groups: [
     {name: 'overview', title: 'Overview'},
     {name: 'customer', title: 'Customer'},
@@ -167,6 +170,22 @@ const orderSchema = defineType({
       components: {input: OrderNumberInput},
     },
     {
+      name: 'orderType',
+      type: 'string',
+      title: 'Order Type',
+      group: 'overview',
+      options: {
+        list: [
+          {title: '🛒 Online Order', value: 'online'},
+          {title: '🏪 In-Store Order', value: 'in-store'},
+          {title: '🏭 Wholesale Order', value: 'wholesale'},
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'online',
+      validation: (Rule) => Rule.required(),
+    },
+    {
       name: 'status',
       type: 'string',
       title: 'Order Status',
@@ -182,6 +201,126 @@ const orderSchema = defineType({
         layout: 'dropdown',
       },
       readOnly: false,
+    },
+    {
+      name: 'wholesaleWorkflowStatus',
+      title: 'Wholesale Workflow Status',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Requested', value: 'requested'},
+          {title: 'Awaiting PO', value: 'awaiting_po'},
+          {title: 'In Production', value: 'in_production'},
+          {title: 'Ready to Ship', value: 'ready_to_ship'},
+          {title: 'Delivered', value: 'delivered'},
+        ],
+      },
+      hidden: ({document}) => document?.orderType !== 'wholesale',
+      group: 'overview',
+    },
+    {
+      name: 'wholesaleDetails',
+      title: 'Wholesale Details',
+      type: 'object',
+      hidden: ({document}) => document?.orderType !== 'wholesale',
+      group: 'overview',
+      options: {collapsible: true, collapsed: false},
+      fields: [
+        {
+          name: 'vendor',
+          title: 'Vendor',
+          type: 'reference',
+          to: [{type: 'vendor'}],
+        },
+        {
+          name: 'pricingTier',
+          title: 'Pricing Tier',
+          type: 'string',
+          options: {
+            list: [
+              {title: 'Standard', value: 'standard'},
+              {title: 'Preferred', value: 'preferred'},
+              {title: 'Platinum', value: 'platinum'},
+            ],
+          },
+        },
+        {
+          name: 'bulkQuantity',
+          title: 'Bulk Quantity',
+          type: 'number',
+          validation: (Rule) => Rule.min(1),
+        },
+        {
+          name: 'expectedShipDate',
+          title: 'Expected Ship Date',
+          type: 'date',
+        },
+        {
+          name: 'paymentTerms',
+          title: 'Payment Terms',
+          type: 'string',
+          options: {
+            list: [
+              {title: 'Net 30', value: 'net_30'},
+              {title: 'Net 60', value: 'net_60'},
+              {title: 'Due on Receipt', value: 'due_on_receipt'},
+            ],
+            layout: 'radio',
+          },
+        },
+        {
+          name: 'bulkUnitPrice',
+          title: 'Bulk Unit Price',
+          type: 'number',
+          validation: (Rule) => Rule.min(0),
+        },
+        {
+          name: 'notes',
+          title: 'Wholesale Notes',
+          type: 'text',
+          rows: 3,
+        },
+      ],
+    },
+    {
+      name: 'inStoreDetails',
+      title: 'In-Store Details',
+      type: 'object',
+      hidden: ({document}) => document?.orderType !== 'in-store',
+      group: 'overview',
+      options: {collapsible: true, collapsed: false},
+      fields: [
+        {
+          name: 'appointment',
+          title: 'Appointment',
+          type: 'reference',
+          to: [{type: 'appointment'}],
+        },
+        {
+          name: 'workOrder',
+          title: 'Work Order',
+          type: 'reference',
+          to: [{type: 'workOrder'}],
+        },
+        {
+          name: 'bay',
+          title: 'Service Bay',
+          type: 'string',
+          options: {
+            list: [
+              {title: 'Bay 1', value: 'bay1'},
+              {title: 'Bay 2', value: 'bay2'},
+              {title: 'Bay 3', value: 'bay3'},
+              {title: 'Bay 4', value: 'bay4'},
+            ],
+          },
+        },
+        {
+          name: 'technician',
+          title: 'Technician',
+          type: 'string',
+        },
+      ],
     },
     {
       name: 'createdAt',
@@ -205,6 +344,13 @@ const orderSchema = defineType({
         {name: 'landingPage', type: 'url', title: 'Landing Page', readOnly: true},
         {name: 'referrer', type: 'url', title: 'Referrer', readOnly: true},
         {name: 'capturedAt', type: 'datetime', title: 'Captured At', readOnly: true},
+        {name: 'device', type: 'string', title: 'Device', readOnly: true},
+        {name: 'browser', type: 'string', title: 'Browser', readOnly: true},
+        {name: 'os', type: 'string', title: 'Operating System', readOnly: true},
+        {name: 'sessionId', type: 'string', title: 'Session ID', readOnly: true},
+        {name: 'touchpoints', type: 'number', title: 'Touchpoints', readOnly: true},
+        {name: 'firstTouch', type: 'datetime', title: 'First Touch', readOnly: true},
+        {name: 'lastTouch', type: 'datetime', title: 'Last Touch', readOnly: true},
         {
           name: 'campaignRef',
           title: 'Linked Campaign',
@@ -294,6 +440,7 @@ const orderSchema = defineType({
       type: 'object',
       title: 'Shipping Address',
       group: 'shipping',
+      hidden: ({document}) => document?.orderType !== 'online',
       fields: [
         {name: 'name', type: 'string', title: 'Recipient Name'},
         {name: 'phone', type: 'string', title: 'Phone'},
@@ -312,6 +459,7 @@ const orderSchema = defineType({
       title: 'Tracking Number',
       description: 'Add tracking number to mark order as fulfilled',
       group: 'shipping',
+      hidden: ({document}) => document?.orderType !== 'online',
     },
     {
       name: 'trackingNumber',
@@ -319,6 +467,7 @@ const orderSchema = defineType({
       title: 'Tracking Number (Auto)',
       group: 'shipping',
       readOnly: true,
+      hidden: ({document}) => document?.orderType !== 'online',
     },
     {
       name: 'trackingUrl',
@@ -326,6 +475,7 @@ const orderSchema = defineType({
       title: 'Tracking URL',
       group: 'shipping',
       readOnly: true,
+      hidden: ({document}) => document?.orderType !== 'online',
     },
     {
       name: 'shippingLabelUrl',
@@ -333,6 +483,7 @@ const orderSchema = defineType({
       title: 'Shipping Label',
       group: 'shipping',
       readOnly: true,
+      hidden: ({document}) => document?.orderType !== 'online',
     },
     {
       name: 'packingSlipUrl',
@@ -340,6 +491,7 @@ const orderSchema = defineType({
       title: 'Packing Slip',
       group: 'shipping',
       readOnly: true,
+      hidden: ({document}) => document?.orderType !== 'online',
     },
     {
       name: 'fulfilledAt',
@@ -347,6 +499,7 @@ const orderSchema = defineType({
       title: 'Fulfilled Date',
       group: 'shipping',
       readOnly: true,
+      hidden: ({document}) => document?.orderType !== 'online',
     },
 
     // ========== PAYMENT GROUP ==========

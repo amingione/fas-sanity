@@ -1,0 +1,441 @@
+---
+import Layout from '../layouts/Layout.astro'
+---
+
+<Layout title="Become a Vendor | FAS Motorsports">
+  <div class="vendor-application-page">
+    <div class="hero">
+      <h1>Become a FAS Motorsports Vendor</h1>
+      <p>Join our network of authorized dealers and distributors</p>
+    </div>
+
+    <div class="container">
+      <div class="benefits">
+        <h2>Vendor Benefits</h2>
+        <ul>
+          <li>✅ Wholesale pricing (20-40% off retail)</li>
+          <li>✅ Flexible payment terms (Net 30/60)</li>
+          <li>✅ Priority support</li>
+          <li>✅ Marketing materials</li>
+          <li>✅ Drop shipping available</li>
+        </ul>
+      </div>
+
+      <form id="vendor-application-form" class="application-form">
+        <h2>Application Form</h2>
+
+        <!-- Company Information -->
+        <fieldset>
+          <legend>Company Information</legend>
+
+          <label>
+            <span>Company Name *</span>
+            <input type="text" name="companyName" required />
+          </label>
+
+          <label>
+            <span>Business Type *</span>
+            <select name="businessType" required>
+              <option value="">Select...</option>
+              <option value="Retail Shop">Retail Shop</option>
+              <option value="Online Store">Online Store</option>
+              <option value="Distributor">Distributor</option>
+              <option value="Installer">Installer</option>
+              <option value="Performance Shop">Performance Shop</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <div class="row">
+            <label>
+              <span>Tax ID / EIN</span>
+              <input type="text" name="taxId" />
+            </label>
+
+            <label>
+              <span>Years in Business</span>
+              <input type="number" name="yearsInBusiness" min="0" />
+            </label>
+          </div>
+
+          <label>
+            <span>Website</span>
+            <input type="url" name="website" placeholder="https://" />
+          </label>
+        </fieldset>
+
+        <!-- Contact Information -->
+        <fieldset>
+          <legend>Contact Information</legend>
+
+          <label>
+            <span>Contact Name *</span>
+            <input type="text" name="contactName" required />
+          </label>
+
+          <label>
+            <span>Title</span>
+            <input type="text" name="contactTitle" placeholder="Owner, Manager, etc." />
+          </label>
+
+          <div class="row">
+            <label>
+              <span>Email *</span>
+              <input type="email" name="email" required />
+            </label>
+
+            <label>
+              <span>Phone *</span>
+              <input type="tel" name="phone" required />
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- Business Address -->
+        <fieldset>
+          <legend>Business Address</legend>
+
+          <label>
+            <span>Street Address *</span>
+            <input type="text" name="businessAddress.street" required />
+          </label>
+
+          <label>
+            <span>City *</span>
+            <input type="text" name="businessAddress.city" required />
+          </label>
+
+          <div class="row">
+            <label>
+              <span>State *</span>
+              <input type="text" name="businessAddress.state" required />
+            </label>
+
+            <label>
+              <span>ZIP Code *</span>
+              <input type="text" name="businessAddress.zip" required />
+            </label>
+          </div>
+
+          <label>
+            <span>Country *</span>
+            <input type="text" name="businessAddress.country" value="US" required />
+          </label>
+        </fieldset>
+
+        <!-- Business Details -->
+        <fieldset>
+          <legend>Business Details</legend>
+
+          <label>
+            <span>Estimated Monthly Volume *</span>
+            <select name="estimatedMonthlyVolume" required>
+              <option value="">Select...</option>
+              <option value="$1,000 - $5,000">$1,000 - $5,000</option>
+              <option value="$5,000 - $10,000">$5,000 - $10,000</option>
+              <option value="$10,000 - $25,000">$10,000 - $25,000</option>
+              <option value="$25,000 - $50,000">$25,000 - $50,000</option>
+              <option value="$50,000+">$50,000+</option>
+            </select>
+          </label>
+
+          <label>
+            <span>How did you hear about us?</span>
+            <input type="text" name="howDidYouHear" />
+          </label>
+
+          <label>
+            <span>Additional Information</span>
+            <textarea name="additionalNotes" rows="4" placeholder="Tell us about your business..."></textarea>
+          </label>
+        </fieldset>
+
+        <!-- Tax Exemption -->
+        <fieldset>
+          <legend>Tax Information</legend>
+
+          <label class="checkbox">
+            <input type="checkbox" name="taxExempt" id="taxExempt" />
+            <span>We are tax exempt</span>
+          </label>
+
+          <div id="tax-cert-upload" style="display: none;">
+            <label>
+              <span>Upload Tax Exemption Certificate</span>
+              <input type="file" name="taxExemptCertificate" accept=".pdf,.jpg,.jpeg,.png" />
+              <small>PDF, JPG, or PNG format</small>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="submit-btn">Submit Application</button>
+        </div>
+
+        <div id="form-message"></div>
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const initVendorApplicationForm = () => {
+    const taxCheckbox = document.getElementById('taxExempt') as HTMLInputElement | null
+    const taxUpload = document.getElementById('tax-cert-upload') as HTMLElement | null
+    const form = document.getElementById('vendor-application-form') as HTMLFormElement | null
+    const message = document.getElementById('form-message') as HTMLElement | null
+
+    const toggleTaxUpload = () => {
+      if (!taxUpload) return
+      if (taxCheckbox && taxCheckbox.checked) {
+        taxUpload.style.display = 'block'
+      } else {
+        taxUpload.style.display = 'none'
+      }
+    }
+
+    taxCheckbox?.addEventListener('change', toggleTaxUpload)
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      if (!form || !message) return
+
+      const formData = new FormData(form)
+      const submitButton = form.querySelector('button[type="submit"]')
+      if (!(submitButton instanceof HTMLButtonElement)) return
+
+      submitButton.disabled = true
+      submitButton.textContent = 'Submitting...'
+      message.innerHTML = ''
+
+      try {
+        const response = await fetch('/.netlify/functions/vendor-application', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result?.error || 'Submission failed')
+        }
+
+        message.innerHTML = `
+          <div class="success-message">
+            <h3>✅ Application Submitted Successfully!</h3>
+            <p><strong>Application Number:</strong> ${result.applicationNumber}</p>
+            <p>Thank you for your interest in becoming a FAS Motorsports vendor.
+            We'll review your application and get back to you within 2-3 business days.</p>
+            <p>If you have any questions, please contact us at
+            <a href="mailto:wholesale@fasmotorsports.com">wholesale@fasmotorsports.com</a></p>
+          </div>
+        `
+        form.reset()
+        toggleTaxUpload()
+        submitButton.disabled = false
+        submitButton.textContent = 'Submit Application'
+      } catch (error) {
+        const description = error instanceof Error ? error.message : 'Please try again or contact us directly.'
+        message.innerHTML = `
+          <div class="error-message">
+            <h3>❌ Submission Failed</h3>
+            <p>${description}</p>
+          </div>
+        `
+        submitButton.disabled = false
+        submitButton.textContent = 'Submit Application'
+      }
+    })
+
+    toggleTaxUpload()
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVendorApplicationForm)
+  } else {
+    initVendorApplicationForm()
+  }
+</script>
+
+<style>
+  .vendor-application-page {
+    min-height: 100vh;
+    background: #f5f5f5;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, #000 0%, #333 100%);
+    color: white;
+    padding: 4rem 2rem;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 3rem;
+    margin: 0 0 1rem 0;
+  }
+
+  .hero p {
+    font-size: 1.25rem;
+    opacity: 0.9;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: -2rem auto 4rem;
+    padding: 0 2rem;
+  }
+
+  .benefits {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+  }
+
+  .benefits h2 {
+    margin-top: 0;
+  }
+
+  .benefits ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .benefits li {
+    padding: 0.5rem 0;
+    font-size: 1.1rem;
+  }
+
+  .application-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  fieldset {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  legend {
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 0 0.5rem;
+  }
+
+  label {
+    display: block;
+    margin: 1rem 0;
+  }
+
+  label span {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: #000;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .checkbox input {
+    width: auto;
+  }
+
+  small {
+    display: block;
+    margin-top: 0.25rem;
+    color: #666;
+    font-size: 0.875rem;
+  }
+
+  .form-actions {
+    margin-top: 2rem;
+    text-align: center;
+  }
+
+  .submit-btn {
+    background: #000;
+    color: white;
+    padding: 1rem 3rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    background: #333;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .success-message,
+  .error-message {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+  }
+
+  .success-message {
+    background: #e8f5e9;
+    border: 1px solid #4caf50;
+    color: #2e7d32;
+  }
+
+  .error-message {
+    background: #ffebee;
+    border: 1px solid #f44336;
+    color: #c62828;
+  }
+
+  .success-message h3,
+  .error-message h3 {
+    margin-top: 0;
+  }
+
+  @media (max-width: 768px) {
+    .row {
+      grid-template-columns: 1fr;
+    }
+
+    .hero h1 {
+      font-size: 2rem;
+    }
+  }
+</style>

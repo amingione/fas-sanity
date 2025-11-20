@@ -22,6 +22,7 @@ type OrderDoc = {
   _id: string
   orderNumber?: string
   paymentIntentId?: string
+  stripeSessionId?: string
   cardBrand?: string
   cardLast4?: string
   receiptUrl?: string
@@ -35,6 +36,13 @@ type CliOptions = {
   limit?: number
   dryRun: boolean
 }
+
+const PAYMENT_INTENT_EXPAND_FIELDS: string[] = [
+  'charges.data.payment_method_details',
+  'charges.data.billing_details',
+  'latest_charge.payment_method_details',
+  'latest_charge.billing_details',
+]
 
 const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -99,7 +107,9 @@ function createStripeClient() {
   if (!key) {
     throw new Error('Missing STRIPE_SECRET_KEY environment variable.')
   }
-  return new Stripe(key, {apiVersion: '2023-10-16'})
+  return new Stripe(key, {
+    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+  })
 }
 
 function normalizeStripeContactAddress(
@@ -155,7 +165,7 @@ async function findCustomerId(
   return null
 }
 
-const ORDER_QUERY = `*[_type == "order" && defined(paymentIntentId) && (
+const ORDER_QUERY = `*[_type == "order" && (defined(paymentIntentId) || defined(stripeSessionId)) && (
   !defined(cardBrand) || cardBrand == "" ||
   !defined(cardLast4) || cardLast4 == "" ||
   !defined(receiptUrl) || receiptUrl == "" ||
@@ -164,6 +174,7 @@ const ORDER_QUERY = `*[_type == "order" && defined(paymentIntentId) && (
   _id,
   orderNumber,
   paymentIntentId,
+  stripeSessionId,
   cardBrand,
   cardLast4,
   receiptUrl,
@@ -175,6 +186,84 @@ const ORDER_QUERY = `*[_type == "order" && defined(paymentIntentId) && (
 
 function describeOrder(order: OrderDoc): string {
   return order.orderNumber ? `${order.orderNumber} (${order._id})` : order._id
+}
+
+async function fetchPaymentIntent(stripe: Stripe, id: string): Promise<Stripe.PaymentIntent | null> {
+  const normalized = id.trim()
+  if (!normalized) return null
+  try {
+    return await stripe.paymentIntents.retrieve(normalized, {expand: [...PAYMENT_INTENT_EXPAND_FIELDS]})
+  } catch (err) {
+    console.warn(`Failed to load payment intent ${normalized}`, err)
+    return null
+  }
+}
+
+async function fetchCheckoutSession(
+  stripe: Stripe,
+  id?: string,
+): Promise<Stripe.Checkout.Session | null> {
+  const normalized = (id || '').trim()
+  if (!normalized) return null
+  try {
+    return await stripe.checkout.sessions.retrieve(normalized, {
+      expand: [
+        'payment_intent.charges.data.payment_method_details',
+        'payment_intent.charges.data.billing_details',
+      ],
+    })
+  } catch (err) {
+    console.warn(`Failed to load checkout session ${normalized}`, err)
+    return null
+  }
+}
+
+function resolveChargeFromPaymentIntent(paymentIntent?: Stripe.PaymentIntent | null): Stripe.Charge | null {
+  if (!paymentIntent) return null
+  const charges = (((paymentIntent as any)?.charges?.data || []) as Stripe.Charge[]) || []
+  if (charges.length) {
+    return charges[charges.length - 1] as Stripe.Charge
+  }
+  if (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object') {
+    return paymentIntent.latest_charge as Stripe.Charge
+  }
+  return null
+}
+
+function resolveChargeFromSession(session?: Stripe.Checkout.Session | null): Stripe.Charge | null {
+  if (!session?.payment_intent) return null
+  if (typeof session.payment_intent === 'object' && session.payment_intent) {
+    const pi = session.payment_intent as Stripe.PaymentIntent
+    const charges = (((pi as any)?.charges?.data || []) as Stripe.Charge[]) || []
+    if (charges.length) return charges[charges.length - 1] as Stripe.Charge
+  }
+  return null
+}
+
+async function loadStripeDetails(
+  stripe: Stripe,
+  order: OrderDoc,
+): Promise<{paymentIntent: Stripe.PaymentIntent | null; session: Stripe.Checkout.Session | null}> {
+  let paymentIntent: Stripe.PaymentIntent | null = null
+  let session: Stripe.Checkout.Session | null = null
+
+  if (order.paymentIntentId) {
+    paymentIntent = await fetchPaymentIntent(stripe, order.paymentIntentId)
+  }
+  if (!paymentIntent && order.stripeSessionId) {
+    session = await fetchCheckoutSession(stripe, order.stripeSessionId)
+    const sessionIntent = session?.payment_intent
+    if (sessionIntent && typeof sessionIntent === 'object') {
+      paymentIntent = sessionIntent as Stripe.PaymentIntent
+    } else if (typeof sessionIntent === 'string') {
+      paymentIntent = await fetchPaymentIntent(stripe, sessionIntent)
+    }
+  }
+  if (!session && order.stripeSessionId) {
+    session = await fetchCheckoutSession(stripe, order.stripeSessionId)
+  }
+
+  return {paymentIntent, session}
 }
 
 async function patchCustomer(
@@ -202,37 +291,40 @@ async function processOrder(
   order: OrderDoc,
   dryRun: boolean,
 ): Promise<boolean> {
-  if (!order.paymentIntentId) {
-    console.warn(`Skipping ${describeOrder(order)} (missing paymentIntentId)`)
-    return false
-  }
-  let paymentIntent: Stripe.PaymentIntent
-  try {
-    paymentIntent = await stripe.paymentIntents.retrieve(order.paymentIntentId, {
-      expand: ['charges.data.payment_method_details', 'charges.data.billing_details', 'latest_charge'],
-    })
-  } catch (err) {
-    console.warn(`Failed to load payment intent for ${describeOrder(order)}`, err)
+  const {paymentIntent, session} = await loadStripeDetails(stripe, order)
+  if (!paymentIntent && !session) {
+    console.warn(
+      `Skipping ${describeOrder(order)} (unable to load payment intent or checkout session)`,
+    )
     return false
   }
 
-  const charges = (paymentIntent.charges?.data || []) as Stripe.Charge[]
-  let charge: Stripe.Charge | null = null
-  if (charges.length) {
-    charge = charges[charges.length - 1]
-  } else if (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object') {
-    charge = paymentIntent.latest_charge as Stripe.Charge
-  }
+  const charge =
+    resolveChargeFromPaymentIntent(paymentIntent) || resolveChargeFromSession(session) || null
 
   const cardBrand = charge?.payment_method_details?.card?.brand
   const cardLast4 = charge?.payment_method_details?.card?.last4
   const receiptUrl = charge?.receipt_url
-  const stripeCustomerId = resolveStripeCustomerId(paymentIntent.customer)
+  const stripeCustomerId =
+    resolveStripeCustomerId(paymentIntent?.customer) ||
+    resolveStripeCustomerId(session?.customer || null)
   const billingAddress = normalizeStripeContactAddress(charge?.billing_details?.address, {
     name: charge?.billing_details?.name || undefined,
-    email: charge?.billing_details?.email || paymentIntent.receipt_email || undefined,
+    email:
+      charge?.billing_details?.email ||
+      paymentIntent?.receipt_email ||
+      session?.customer_details?.email ||
+      undefined,
     phone: charge?.billing_details?.phone || undefined,
-  })
+  }) ||
+    normalizeStripeContactAddress(
+      (session?.customer_details?.address as Stripe.Address | undefined) || undefined,
+      {
+        name: session?.customer_details?.name || undefined,
+        email: session?.customer_details?.email || undefined,
+        phone: session?.customer_details?.phone || undefined,
+      },
+    )
 
   const orderPatch: Record<string, any> = {}
   if (cardBrand && cardBrand !== order.cardBrand) orderPatch.cardBrand = cardBrand
@@ -242,6 +334,9 @@ async function processOrder(
     orderPatch.stripeCustomerId = stripeCustomerId
   }
   if (billingAddress) orderPatch.billingAddress = billingAddress
+  if (paymentIntent?.id && paymentIntent.id !== order.paymentIntentId) {
+    orderPatch.paymentIntentId = paymentIntent.id
+  }
   if (Object.keys(orderPatch).length) {
     orderPatch.stripeLastSyncedAt = new Date().toISOString()
     if (dryRun) {
@@ -268,29 +363,55 @@ async function main() {
   const options = parseCliOptions(process.argv.slice(2))
   const sanity = createSanityClient()
   const stripe = createStripeClient()
-  const limit = options.limit || 200
-  const orders = await sanity.fetch<OrderDoc[]>(ORDER_QUERY, {limit})
-  if (!orders.length) {
-    console.log('No orders require Stripe card data backfill.')
-    return
-  }
 
-  console.log(`Found ${orders.length} order(s) missing card metadata.`)
+  const batchSize = options.limit || 100
+  let batchNumber = 0
   let succeeded = 0
   let failed = 0
-  for (const order of orders) {
-    try {
-      const ok = await processOrder(sanity, stripe, order, options.dryRun)
-      if (ok) succeeded += 1
-      else failed += 1
-    } catch (err) {
-      failed += 1
-      console.warn(`Unexpected error processing ${describeOrder(order)}`, err)
+  let totalProcessed = 0
+
+  while (true) {
+    const orders = await sanity.fetch<OrderDoc[]>(ORDER_QUERY, {limit: batchSize})
+    if (!orders.length) {
+      if (batchNumber === 0) {
+        console.log('No orders require Stripe card data backfill.')
+      }
+      break
+    }
+
+    batchNumber += 1
+    console.log(
+      `Processing batch ${batchNumber} (${orders.length} order${
+        orders.length === 1 ? '' : 's'
+      })...`,
+    )
+
+    let processedInBatch = 0
+
+    for (const order of orders) {
+      totalProcessed += 1
+      try {
+        const ok = await processOrder(sanity, stripe, order, options.dryRun)
+        if (ok) {
+          succeeded += 1
+          processedInBatch += 1
+        } else {
+          failed += 1
+        }
+      } catch (err) {
+        failed += 1
+        console.warn(`Unexpected error processing ${describeOrder(order)}`, err)
+      }
+    }
+
+    if (processedInBatch === 0) {
+      console.warn('No orders in this batch could be processed; stopping to avoid infinite loop.')
+      break
     }
   }
 
   console.log(
-    `Backfill complete. succeeded=${succeeded}, failed=${failed}, dryRun=${options.dryRun}`,
+    `Backfill complete. processed=${totalProcessed}, succeeded=${succeeded}, failed=${failed}, dryRun=${options.dryRun}`,
   )
 }
 

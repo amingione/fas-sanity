@@ -32,6 +32,8 @@
     "backfill:checkout-async-failure": "pnpm backfill:checkout-async -- --status failure",
     "backfill:products:core": "tsx scripts/backfillProductCoreFields.ts",
     "backfill:orders:cart-metadata": "tsx scripts/backfillOrderCartMetadata.ts",
+    "backfill:wholesale-pricing": "tsx scripts/backfill-wholesale-pricing.ts",
+    "enhance:vendors": "tsx scripts/enhance-existing-vendors.ts",
     "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
   },
   "keywords": [
@@ -68,6 +70,7 @@
     "googleapis": "^131.0.0",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.1",
+    "multiparty": "^4.2.3",
     "netlify-cli": "^23.9.1",
     "node-fetch": "^3.3.2",
     "pdf-lib": "^1.17.1",
@@ -77,6 +80,7 @@
     "react-dom": "18.3.1",
     "react-icons": "^5.5.0",
     "react-is": "^19.1.0",
+    "recharts": "^2.12.7",
     "refractor": "^5.0.0",
     "resend": "^4.8.0",
     "sanity": "^4.11.0",
@@ -93,6 +97,7 @@
     "@sanity/eslint-config-studio": "^5.0.2",
     "@tailwindcss/vite": "^4.1.16",
     "@types/jspdf": "^1.3.3",
+    "@types/multiparty": "^4.2.1",
     "@types/node": "^22.18.12",
     "@types/pdfkit": "^0.13.9",
     "@types/react": "^18.0.25",

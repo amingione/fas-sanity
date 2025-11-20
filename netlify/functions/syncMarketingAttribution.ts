@@ -244,8 +244,8 @@ export const handler: Handler = async (event) => {
           .join('-')
 
       tx.createOrReplace({
-        _id: `attribution.${id}`.replace(/[^a-z0-9._-]+/gi, '-'),
-        _type: 'attribution',
+        _id: `attributionSnapshot.${id}`.replace(/[^a-z0-9._-]+/gi, '-'),
+        _type: 'attributionSnapshot',
         source: record.source,
         externalId: record.externalId,
         syncDate: record.syncDate || now,

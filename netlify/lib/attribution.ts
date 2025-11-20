@@ -7,6 +7,14 @@ export type AttributionParams = {
   landingPage?: string
   referrer?: string
   capturedAt?: string
+  device?: string
+  browser?: string
+  os?: string
+  sessionId?: string
+  firstTouch?: string
+  lastTouch?: string
+  touchpoints?: string
+  orderValue?: string
 }
 
 const normalize = (value?: unknown): string | undefined => {
@@ -24,6 +32,14 @@ const FIELD_MAP: Record<keyof AttributionParams, string[]> = {
   landingPage: ['landing_page', 'landingPage', 'utm_landing_page'],
   referrer: ['utm_referrer', 'referrer'],
   capturedAt: ['utm_captured_at', 'capturedAt'],
+  device: ['device', 'device_type', 'utm_device'],
+  browser: ['browser', 'browser_name', 'user_browser'],
+  os: ['os', 'operating_system', 'user_os'],
+  sessionId: ['session_id', 'sessionId', 'stripe_session_id', 'checkout_session_id'],
+  firstTouch: ['first_touch', 'firstTouch'],
+  lastTouch: ['last_touch', 'lastTouch'],
+  touchpoints: ['touchpoints', 'visit_count', 'visits'],
+  orderValue: ['order_value', 'value'],
 }
 
 const extractFromObject = (input: Record<string, any> | null | undefined): AttributionParams => {
@@ -51,9 +67,7 @@ export const mergeAttributionParams = (...sets: AttributionParams[]): Attributio
   return merged
 }
 
-export const extractAttributionFromPayload = (
-  payload?: Record<string, any> | null,
-): AttributionParams => {
+export const extractAttributionFromPayload = (payload?: Record<string, any> | null): AttributionParams => {
   if (!payload) return {}
   const directFields = extractFromObject(payload)
   const nested =
@@ -63,9 +77,7 @@ export const extractAttributionFromPayload = (
   return mergeAttributionParams(directFields, nested)
 }
 
-export const extractAttributionFromQuery = (
-  query?: Record<string, string | string[] | undefined> | null,
-): AttributionParams => {
+export const extractAttributionFromQuery = (query?: Record<string, string | string[] | undefined> | null): AttributionParams => {
   if (!query) return {}
   const normalized: Record<string, any> = {}
   for (const [key, value] of Object.entries(query)) {
@@ -75,10 +87,7 @@ export const extractAttributionFromQuery = (
   return extractFromObject(normalized)
 }
 
-export const appendAttributionMetadata = (
-  metadata: Record<string, string>,
-  params: AttributionParams,
-) => {
+export const appendAttributionMetadata = (metadata: Record<string, string>, params: AttributionParams): void => {
   if (!metadata || !params) return
   if (params.source) metadata.utm_source = params.source
   if (params.medium) metadata.utm_medium = params.medium
@@ -88,14 +97,18 @@ export const appendAttributionMetadata = (
   if (params.landingPage) metadata.landing_page = params.landingPage
   if (params.referrer) metadata.utm_referrer = params.referrer
   if (params.capturedAt) metadata.utm_captured_at = params.capturedAt
+  if (params.device) metadata.device_type = params.device
+  if (params.browser) metadata.browser_name = params.browser
+  if (params.os) metadata.operating_system = params.os
+  if (params.sessionId) metadata.checkout_session_id = params.sessionId
+  if (params.touchpoints) metadata.touchpoints = params.touchpoints
 }
 
-export const buildAttributionDocument = (
-  params?: AttributionParams,
-): AttributionParams | null => {
+export const buildAttributionDocument = (params?: AttributionParams): AttributionParams | null => {
   if (!params) return null
   const doc: AttributionParams = {}
-  (Object.keys(FIELD_MAP) as (keyof AttributionParams)[]).forEach((key) => {
+  const fields = Object.keys(FIELD_MAP) as (keyof AttributionParams)[]
+  fields.forEach((key) => {
     const value = normalize(params[key])
     if (value) doc[key] = value
   })
@@ -109,9 +122,34 @@ export const hasAttributionData = (params?: AttributionParams | null): boolean =
   return Object.values(params).some((value) => Boolean(normalize(value)))
 }
 
-export const extractAttributionFromMetadata = (
-  ...sources: Array<Record<string, any> | null | undefined>
-): AttributionParams => {
+export const extractAttributionFromMetadata = (...sources: Array<Record<string, any> | null | undefined>): AttributionParams => {
   const extracted = sources.map((source) => extractFromObject(source || null))
   return mergeAttributionParams(...extracted)
+}
+
+export const parseDeviceInfo = (
+  userAgent?: string | null,
+): Pick<AttributionParams, 'device' | 'browser' | 'os'> => {
+  if (!userAgent) return {}
+  const ua = userAgent.toLowerCase()
+  const info: Pick<AttributionParams, 'device' | 'browser' | 'os'> = {}
+
+  if (/ipad|tablet/.test(ua)) info.device = 'tablet'
+  else if (/mobile|iphone|android/.test(ua)) info.device = 'mobile'
+  else info.device = 'desktop'
+
+  if (/chrome/.test(ua) && !/edge|edg\//.test(ua)) info.browser = 'chrome'
+  else if (/safari/.test(ua) && !/chrome/.test(ua)) info.browser = 'safari'
+  else if (/firefox/.test(ua)) info.browser = 'firefox'
+  else if (/edg\//.test(ua)) info.browser = 'edge'
+  else info.browser = 'other'
+
+  if (/windows/.test(ua)) info.os = 'windows'
+  else if (/mac os x/.test(ua) && !/iphone/.test(ua)) info.os = 'macos'
+  else if (/iphone|ipad|ios/.test(ua)) info.os = 'ios'
+  else if (/android/.test(ua)) info.os = 'android'
+  else if (/linux/.test(ua)) info.os = 'linux'
+  else info.os = 'other'
+
+  return info
 }

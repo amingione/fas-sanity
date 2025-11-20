@@ -531,6 +531,21 @@ export default defineType({
       description: 'Internal label. Customers see the quote number.',
     }),
     defineField({
+      name: 'quoteType',
+      title: 'Quote Type',
+      type: 'string',
+      options: {
+        list: [
+          {title: '🏪 In-Store Service Quote', value: 'in-store'},
+          {title: '🏭 Wholesale Quote', value: 'wholesale'},
+          {title: '🛒 Online Quote', value: 'online'},
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'in-store',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
       name: 'quoteDate',
       title: 'Quote Date',
       type: 'date',

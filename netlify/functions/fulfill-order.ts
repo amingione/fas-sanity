@@ -2,6 +2,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {createEasyPostLabel} from './easypostCreateLabel'
+import {consumeInventoryForItems} from '../../shared/inventory'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -56,9 +57,11 @@ type FulfillRequest = {
 type OrderSummary = {
   _id: string
   status?: string
+  orderNumber?: string
   trackingNumber?: string
   trackingUrl?: string
   shippingLabelUrl?: string
+  cart?: Array<{quantity?: number; name?: string; productRef?: {_ref?: string}}>
 }
 
 export const handler: Handler = async (event) => {
@@ -90,7 +93,15 @@ export const handler: Handler = async (event) => {
   }
 
   const order = await sanity.fetch<OrderSummary | null>(
-    `*[_type == "order" && _id == $id][0]{ _id, status, trackingNumber, trackingUrl, shippingLabelUrl }`,
+    `*[_type == "order" && _id == $id][0]{
+      _id,
+      status,
+      orderNumber,
+      trackingNumber,
+      trackingUrl,
+      shippingLabelUrl,
+      cart[]{quantity, name, productRef{_ref}}
+    }`,
     {id: orderId},
   )
   if (!order) {
@@ -146,6 +157,27 @@ export const handler: Handler = async (event) => {
       fulfilledAt: fulfillmentTimestamp,
     })
     .commit({autoGenerateArrayKeys: true})
+
+  try {
+    if (order.cart?.length) {
+      await consumeInventoryForItems({
+        client: sanity,
+        items: order.cart
+          .filter((item) => item?.productRef?._ref)
+          .map((item) => ({
+            productRef: item!.productRef,
+            quantity: item?.quantity,
+            name: item?.name,
+          })),
+        type: 'sold',
+        referenceDocId: orderId,
+        referenceLabel: order.orderNumber,
+        createdBy: 'fulfill-order',
+      })
+    }
+  } catch (err) {
+    console.warn('fulfill-order: inventory deduction failed', err)
+  }
 
   return jsonResponse(200, corsHeaders, {
     success: true,

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vendor Application | FAS Motorsports</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0f172a;
+        color: #0f172a;
+      }
+      main {
+        min-height: 100vh;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 2rem 1rem 4rem;
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+      }
+      form {
+        width: min(900px, 100%);
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 40px 120px rgba(15, 23, 42, 0.4);
+        padding: 2.5rem;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 2rem;
+        color: #0f172a;
+      }
+      section {
+        margin-top: 2rem;
+      }
+      section > h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: #0f172a;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+      }
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.35rem;
+        font-size: 0.95rem;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 0.75rem 0.9rem;
+        border-radius: 12px;
+        border: 1px solid rgba(15, 23, 42, 0.15);
+        font-size: 1rem;
+        background: #f8fafc;
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+      .checkbox input {
+        width: auto;
+      }
+      .actions {
+        margin-top: 2.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      button[type='submit'] {
+        border: none;
+        border-radius: 999px;
+        padding: 0.95rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        background: linear-gradient(120deg, #ec4899, #6366f1);
+        color: #fff;
+        cursor: pointer;
+        transition: transform 150ms ease, opacity 150ms ease;
+      }
+      button[type='submit']:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .status {
+        font-size: 0.95rem;
+      }
+      .status.success {
+        color: #0f9d58;
+      }
+      .status.error {
+        color: #d93025;
+      }
+      .reference-block {
+        padding: 1rem;
+        border-radius: 16px;
+        background: #f1f5f9;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <form id="vendorApplication">
+        <header>
+          <p style="color: #6366f1; font-weight: 600; letter-spacing: 0.08em">PARTNER WITH US</p>
+          <h1>Wholesale Vendor Application</h1>
+          <p style="color: #475569">
+            Tell us about your business to unlock wholesale pricing, dedicated account support, and
+            access to our manufacturing queue.
+          </p>
+        </header>
+
+        <section>
+          <h2>Company Information</h2>
+          <div class="grid two">
+            <div>
+              <label for="companyName">Company Name *</label>
+              <input id="companyName" name="companyName" required />
+            </div>
+            <div>
+              <label for="businessType">Business Type</label>
+              <select id="businessType" name="businessType">
+                <option value="">Select</option>
+                <option>Retail Shop</option>
+                <option>Online Store</option>
+                <option>Distributor</option>
+                <option>Installer</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="taxId">Tax ID / EIN</label>
+              <input id="taxId" name="taxId" />
+            </div>
+            <div>
+              <label for="yearsInBusiness">Years in Business</label>
+              <input id="yearsInBusiness" name="yearsInBusiness" type="number" min="0" />
+            </div>
+            <div>
+              <label for="website">Website</label>
+              <input id="website" name="website" type="url" />
+            </div>
+            <div>
+              <label for="estimatedMonthlyVolume">Estimated Monthly Volume</label>
+              <select id="estimatedMonthlyVolume" name="estimatedMonthlyVolume">
+                <option value="">Select</option>
+                <option>$1,000 - $5,000</option>
+                <option>$5,000 - $10,000</option>
+                <option>$10,000 - $25,000</option>
+                <option>$25,000 - $50,000</option>
+                <option>$50,000+</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Contact Information</h2>
+          <div class="grid two">
+            <div>
+              <label for="contactName">Primary Contact *</label>
+              <input id="contactName" name="contactName" required />
+            </div>
+            <div>
+              <label for="contactTitle">Title</label>
+              <input id="contactTitle" name="contactTitle" />
+            </div>
+            <div>
+              <label for="email">Email *</label>
+              <input id="email" name="email" type="email" required />
+            </div>
+            <div>
+              <label for="phone">Phone *</label>
+              <input id="phone" name="phone" required />
+            </div>
+            <div>
+              <label for="alternatePhone">Alternate Phone</label>
+              <input id="alternatePhone" name="alternatePhone" />
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Business Address</h2>
+          <div class="grid two">
+            <div>
+              <label for="businessStreet">Street</label>
+              <input id="businessStreet" name="businessStreet" />
+            </div>
+            <div>
+              <label for="businessCity">City</label>
+              <input id="businessCity" name="businessCity" />
+            </div>
+            <div>
+              <label for="businessState">State</label>
+              <input id="businessState" name="businessState" />
+            </div>
+            <div>
+              <label for="businessZip">ZIP / Postal</label>
+              <input id="businessZip" name="businessZip" />
+            </div>
+            <div>
+              <label for="businessCountry">Country</label>
+              <input id="businessCountry" name="businessCountry" value="US" />
+            </div>
+          </div>
+          <div class="checkbox">
+            <input type="checkbox" id="shippingAddressSame" name="shippingAddressSame" checked />
+            <label for="shippingAddressSame" style="margin-bottom: 0">Shipping address matches business address</label>
+          </div>
+          <div id="shippingFields" style="margin-top: 1rem; display: none">
+            <div class="grid two">
+              <div>
+                <label for="shippingStreet">Shipping Street</label>
+                <input id="shippingStreet" name="shippingStreet" />
+              </div>
+              <div>
+                <label for="shippingCity">Shipping City</label>
+                <input id="shippingCity" name="shippingCity" />
+              </div>
+              <div>
+                <label for="shippingState">Shipping State</label>
+                <input id="shippingState" name="shippingState" />
+              </div>
+              <div>
+                <label for="shippingZip">Shipping ZIP</label>
+                <input id="shippingZip" name="shippingZip" />
+              </div>
+              <div>
+                <label for="shippingCountry">Shipping Country</label>
+                <input id="shippingCountry" name="shippingCountry" value="US" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Business Details</h2>
+          <div class="grid">
+            <div>
+              <label for="productsInterested">Products of Interest</label>
+              <textarea id="productsInterested" name="productsInterested" placeholder="List products or categories"></textarea>
+            </div>
+            <div>
+              <label for="currentSuppliers">Current Suppliers</label>
+              <textarea id="currentSuppliers" name="currentSuppliers"></textarea>
+            </div>
+            <div>
+              <label for="howDidYouHear">How did you hear about us?</label>
+              <input id="howDidYouHear" name="howDidYouHear" />
+            </div>
+            <div class="checkbox">
+              <input type="checkbox" id="taxExempt" name="taxExempt" />
+              <label for="taxExempt" style="margin-bottom: 0">We are tax exempt</label>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Trade References</h2>
+          <div class="grid" id="references">
+            <div class="reference-block" data-reference>
+              <div class="grid two">
+                <div>
+                  <label>Company</label>
+                  <input name="referenceCompany" />
+                </div>
+                <div>
+                  <label>Contact Name</label>
+                  <input name="referenceContact" />
+                </div>
+                <div>
+                  <label>Phone</label>
+                  <input name="referencePhone" />
+                </div>
+                <div>
+                  <label>Email</label>
+                  <input name="referenceEmail" type="email" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" id="addReference" style="margin-top: 1rem; border: none; background: none; color: #6366f1; font-weight: 600; cursor: pointer">
+            + Add another reference
+          </button>
+        </section>
+
+        <section>
+          <h2>Additional Information</h2>
+          <textarea id="additionalNotes" name="additionalNotes" placeholder="Anything else we should know?"></textarea>
+        </section>
+
+        <div class="actions">
+          <button type="submit">Submit Application</button>
+          <p class="status" id="statusMessage"></p>
+        </div>
+      </form>
+    </main>
+    <script>
+      const form = document.getElementById('vendorApplication')
+      const statusMessage = document.getElementById('statusMessage')
+      const shippingToggle = document.getElementById('shippingAddressSame')
+      const shippingFields = document.getElementById('shippingFields')
+      const referencesContainer = document.getElementById('references')
+      const addReferenceButton = document.getElementById('addReference')
+
+      shippingToggle.addEventListener('change', () => {
+        shippingFields.style.display = shippingToggle.checked ? 'none' : 'block'
+      })
+
+      addReferenceButton.addEventListener('click', () => {
+        const block = document.createElement('div')
+        block.className = 'reference-block'
+        block.dataset.reference = 'true'
+        block.innerHTML = `
+          <div class="grid two">
+            <div>
+              <label>Company</label>
+              <input name="referenceCompany" />
+            </div>
+            <div>
+              <label>Contact Name</label>
+              <input name="referenceContact" />
+            </div>
+            <div>
+              <label>Phone</label>
+              <input name="referencePhone" />
+            </div>
+            <div>
+              <label>Email</label>
+              <input name="referenceEmail" type="email" />
+            </div>
+          </div>`
+        referencesContainer.appendChild(block)
+      })
+
+      const collectReferences = () => {
+        const blocks = referencesContainer.querySelectorAll('[data-reference]')
+        const references = []
+        blocks.forEach((block) => {
+          const companyName = block.querySelector('[name="referenceCompany"]').value.trim()
+          const contactName = block.querySelector('[name="referenceContact"]').value.trim()
+          const phone = block.querySelector('[name="referencePhone"]').value.trim()
+          const email = block.querySelector('[name="referenceEmail"]').value.trim()
+          if (companyName || contactName || phone || email) {
+            references.push({companyName, contactName, phone, email})
+          }
+        })
+        return references
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault()
+        const formData = new FormData(form)
+        const payload = {
+          companyName: formData.get('companyName'),
+          businessType: formData.get('businessType'),
+          taxId: formData.get('taxId'),
+          yearsInBusiness: formData.get('yearsInBusiness'),
+          website: formData.get('website'),
+          contactName: formData.get('contactName'),
+          contactTitle: formData.get('contactTitle'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          alternatePhone: formData.get('alternatePhone'),
+          businessAddress: {
+            street: formData.get('businessStreet'),
+            city: formData.get('businessCity'),
+            state: formData.get('businessState'),
+            zip: formData.get('businessZip'),
+            country: formData.get('businessCountry'),
+          },
+          shippingAddressSame: formData.get('shippingAddressSame') !== null,
+          shippingAddress: {
+            street: formData.get('shippingStreet'),
+            city: formData.get('shippingCity'),
+            state: formData.get('shippingState'),
+            zip: formData.get('shippingZip'),
+            country: formData.get('shippingCountry'),
+          },
+          estimatedMonthlyVolume: formData.get('estimatedMonthlyVolume'),
+          productsInterested: (formData.get('productsInterested') || '')
+            .toString()
+            .split(/[,\n]/)
+            .map((entry) => entry.trim())
+            .filter(Boolean),
+          currentSuppliers: formData.get('currentSuppliers'),
+          howDidYouHear: formData.get('howDidYouHear'),
+          taxExempt: formData.get('taxExempt') !== null,
+          references: collectReferences(),
+          additionalNotes: formData.get('additionalNotes'),
+        }
+
+        statusMessage.textContent = 'Submitting application…'
+        statusMessage.className = 'status'
+        form.querySelector('button[type="submit"]').disabled = true
+
+        try {
+          const response = await fetch('/.netlify/functions/submitVendorApplication', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+          })
+          const result = await response.json()
+          if (!response.ok) {
+            throw new Error(result?.error || 'Submission failed')
+          }
+          statusMessage.textContent = `Thank you! Your application number is ${result.applicationNumber}.`
+          statusMessage.className = 'status success'
+          form.reset()
+          shippingFields.style.display = 'none'
+        } catch (error) {
+          statusMessage.textContent = error instanceof Error ? error.message : 'Submission failed'
+          statusMessage.className = 'status error'
+        } finally {
+          form.querySelector('button[type="submit"]').disabled = false
+        }
+      })
+    </script>
+  </body>
+</html>

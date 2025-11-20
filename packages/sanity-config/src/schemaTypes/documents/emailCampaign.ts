@@ -16,6 +16,21 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'trackingSlug',
+      title: 'Tracking Slug',
+      type: 'slug',
+      description: 'Used for the utm_campaign parameter to connect revenue attribution.',
+      options: {
+        source: 'title',
+        slugify: (input) =>
+          input
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, ''),
+      },
+    }),
+    defineField({
       name: 'subject',
       title: 'Email Subject Line',
       type: 'string',
@@ -164,10 +179,11 @@ export default defineType({
       type: 'string',
       options: {
         list: [
-          {title: '📝 Draft', value: 'draft'},
-          {title: '🕐 Scheduled', value: 'scheduled'},
-          {title: '✅ Sent', value: 'sent'},
-          {title: '❌ Cancelled', value: 'cancelled'},
+          {title: 'Draft', value: 'draft'},
+          {title: 'Scheduled', value: 'scheduled'},
+          {title: 'Sending', value: 'sending'},
+          {title: 'Sent', value: 'sent'},
+          {title: 'Paused', value: 'paused'},
         ],
         layout: 'radio',
       },
@@ -175,10 +191,10 @@ export default defineType({
       readOnly: ({document}) => document?.status === 'sent',
     }),
     defineField({
-      name: 'scheduledFor',
-      title: 'Schedule Send Time',
+      name: 'scheduledSendDate',
+      title: 'Scheduled Send Date',
       type: 'datetime',
-      description: 'Leave empty to send immediately when triggered',
+      description: 'Date/time the campaign should start sending.',
       hidden: ({parent}) => parent?.status !== 'scheduled',
     }),
     defineField({
@@ -189,9 +205,68 @@ export default defineType({
       placeholder: 'your-email@example.com',
     }),
     defineField({
-      name: 'sentAt',
-      title: 'Sent At',
+      name: 'sentDate',
+      title: 'Sent Date',
       type: 'datetime',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'recipientCount',
+      title: 'Recipients',
+      type: 'number',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'sentCount',
+      title: 'Sent Count',
+      type: 'number',
+      initialValue: 0,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'deliveredCount',
+      title: 'Delivered Count',
+      type: 'number',
+      initialValue: 0,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'openedCount',
+      title: 'Opened Count',
+      type: 'number',
+      initialValue: 0,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'clickedCount',
+      title: 'Clicked Count',
+      type: 'number',
+      initialValue: 0,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'unsubscribedCount',
+      title: 'Unsubscribed Count',
+      type: 'number',
+      initialValue: 0,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'openRate',
+      title: 'Open Rate',
+      type: 'number',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'clickRate',
+      title: 'Click Rate',
+      type: 'number',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'unsubscribeRate',
+      title: 'Unsubscribe Rate',
+      type: 'number',
       readOnly: true,
     }),
     defineField({
@@ -223,31 +298,32 @@ export default defineType({
       title: 'title',
       subject: 'subject',
       status: 'status',
-      sentAt: 'sentAt',
+      sentDate: 'sentDate',
     },
     prepare({
       title,
       subject,
       status,
-      sentAt,
+      sentDate,
     }: {
       title?: string
       subject?: string
       status?: string
-      sentAt?: string
+      sentDate?: string
     }) {
       const statusMap = {
         draft: '📝',
-        scheduled: '🕐',
+        scheduled: '🗓️',
+        sending: '📤',
         sent: '✅',
-        cancelled: '❌',
+        paused: '⏸️',
       } as const
 
       const statusEmoji = statusMap[status as keyof typeof statusMap] || '📧'
 
       return {
         title: title,
-        subtitle: `${statusEmoji} ${subject}${sentAt ? ` • Sent ${new Date(sentAt).toLocaleDateString()}` : ''}`,
+        subtitle: `${statusEmoji} ${subject}${sentDate ? ` • Sent ${new Date(sentDate).toLocaleDateString()}` : ''}`,
       }
     },
   },
