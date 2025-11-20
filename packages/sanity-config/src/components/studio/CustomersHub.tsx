@@ -2,7 +2,7 @@ import React, {useMemo, useState} from 'react'
 import {Button, Card, Flex, Menu, MenuButton, MenuDivider, MenuItem, Stack, Text} from '@sanity/ui'
 import {useRouter} from 'sanity/router'
 
-import CustomerDashboard from './CustomerDashboard'
+import CustomerDashboard from './CustomersOverviewDashboard'
 import QuotesDashboard from './QuotesDashboard'
 
 type CustomerTab = 'overview' | 'quotes'

@@ -1,6 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
-import {Resend} from 'resend'
+import {sendEmail} from '../../packages/sanity-config/src/utils/emailService'
 import {toHTML} from '@portabletext/to-html'
 
 const sanity = createClient({
@@ -11,7 +11,6 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
 
 const SEGMENT_QUERIES: Record<string, string> = {
   all_subscribers:
@@ -50,6 +49,7 @@ function portableTextToHtml(blocks: any[]): string {
 }
 
 function generateEmailHtml(campaign: any, unsubscribeUrl: string): string {
+  const utmSlug = campaign.trackingSlug?.current || campaign.trackingSlug || ''
   const contentHtml = portableTextToHtml(campaign.content || [])
   const ctaButton =
     campaign.ctaButton?.text && campaign.ctaButton?.url
@@ -57,7 +57,10 @@ function generateEmailHtml(campaign: any, unsubscribeUrl: string): string {
       <table role="presentation" style="margin: 30px auto;">
         <tr>
           <td style="border-radius: 4px; background: #0066cc;">
-            <a href="${campaign.ctaButton.url}" style="background: #0066cc; border: 15px solid #0066cc; font-family: sans-serif; font-size: 16px; line-height: 1.1; text-align: center; text-decoration: none; display: block; border-radius: 4px; font-weight: bold; color: #ffffff;">
+            <a href="${appendCampaignUtm(
+              campaign.ctaButton.url,
+              utmSlug,
+            )}" style="background: #0066cc; border: 15px solid #0066cc; font-family: sans-serif; font-size: 16px; line-height: 1.1; text-align: center; text-decoration: none; display: block; border-radius: 4px; font-weight: bold; color: #ffffff;">
               ${campaign.ctaButton.text}
             </a>
           </td>
@@ -112,6 +115,51 @@ function generateEmailHtml(campaign: any, unsubscribeUrl: string): string {
   `
 }
 
+const appendCampaignUtm = (url: string, slug?: string) => {
+  if (!slug) return url
+  const hasQuery = url.includes('?')
+  const separator = hasQuery ? '&' : '?'
+  const params = `utm_source=email&utm_medium=campaign&utm_campaign=${encodeURIComponent(slug)}`
+  return `${url}${separator}${params}`
+}
+
+const htmlToText = (html: string) =>
+  html
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+const createEmailLogEntry = async ({
+  to,
+  subject,
+  campaignId,
+  contextKey,
+}: {
+  to: string
+  subject: string
+  campaignId: string
+  contextKey: string
+}) => {
+  const doc = await sanity.create(
+    {
+      _type: 'emailLog',
+      to,
+      subject,
+      status: 'queued',
+      campaign: {_type: 'reference', _ref: campaignId},
+      contextKey,
+    },
+    {autoGenerateArrayKeys: true},
+  )
+  return doc._id
+}
+
+const updateEmailLogStatus = async (logId: string, patch: Record<string, any>) => {
+  await sanity.patch(logId).set(patch).commit({autoGenerateArrayKeys: true})
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {statusCode: 405, body: 'Method Not Allowed'}
@@ -137,6 +185,7 @@ export const handler: Handler = async (event) => {
         fromEmail,
         replyTo,
         content,
+        trackingSlug,
         ctaButton,
         segment,
         customQuery,
@@ -185,34 +234,93 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const results = await Promise.allSettled(
-      customers.map(async (customer) => {
-        const unsubscribeUrl = `${process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com'}/unsubscribe?email=${encodeURIComponent(customer.email)}&id=${customer._id}`
+    const siteBase = process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com'
+    let sent = 0
+    let failed = 0
 
-        return resend.emails.send({
-          from: `${campaign.fromName} <${campaign.fromEmail}>`,
-          to: customer.email,
-          replyTo: campaign.replyTo || campaign.fromEmail,
+    for (const customer of customers) {
+      const to = (customer.email || '').trim()
+      if (!to) continue
+      const unsubscribeUrl = `${siteBase}/unsubscribe?email=${encodeURIComponent(to)}&id=${customer._id}`
+      const html = generateEmailHtml(campaign, unsubscribeUrl)
+      const text = htmlToText(html)
+
+      if (isTest) {
+        try {
+          await sendEmail({
+            to,
+            subject: campaign.subject,
+            html,
+            text,
+            from: `${campaign.fromName} <${campaign.fromEmail}>`,
+            replyTo: campaign.replyTo || campaign.fromEmail,
+          })
+          sent += 1
+        } catch (err) {
+          console.error('sendEmailCampaign: test send failed', err)
+          failed += 1
+        }
+        continue
+      }
+
+      const contextKey = `campaign:${campaignId}:${to.toLowerCase()}`
+      const existingLog = await sanity.fetch<number>(
+        `count(*[_type == "emailLog" && contextKey == $key])`,
+        {key: contextKey},
+      )
+      if (existingLog > 0) continue
+
+      const logId = await createEmailLogEntry({
+        to,
+        subject: campaign.subject,
+        campaignId,
+        contextKey,
+      })
+
+      try {
+        const result = await sendEmail({
+          to,
           subject: campaign.subject,
-          html: generateEmailHtml(campaign, unsubscribeUrl),
-          headers: {
-            'X-Entity-Ref-ID': campaignId,
-          },
+          html,
+          text,
+          from: `${campaign.fromName} <${campaign.fromEmail}>`,
+          replyTo: campaign.replyTo || campaign.fromEmail,
+          emailLogId: logId,
         })
-      }),
-    )
-
-    const successful = results.filter((r) => r.status === 'fulfilled').length
-    const failed = results.filter((r) => r.status === 'rejected').length
+        await updateEmailLogStatus(logId, {
+          status: 'sent',
+          sentAt: new Date().toISOString(),
+          emailServiceId: result.id,
+        })
+        sent += 1
+      } catch (err: any) {
+        failed += 1
+        await updateEmailLogStatus(logId, {
+          status: 'failed',
+          error: err?.message || 'Email send failed',
+        })
+      }
+    }
 
     if (!isTest) {
+      const timestamp = new Date().toISOString()
       await sanity
         .patch(campaignId)
         .set({
           status: 'sent',
-          sentAt: new Date().toISOString(),
+          sentDate: timestamp,
+          sentAt: timestamp,
+          recipientCount: customers.length,
+          sentCount: sent,
+          deliveredCount: 0,
+          openedCount: 0,
+          clickedCount: 0,
+          unsubscribedCount: 0,
+          openRate: 0,
+          clickRate: 0,
+          unsubscribeRate: 0,
           'stats.recipientCount': customers.length,
-          'stats.sent': successful,
+          'stats.sent': sent,
           'stats.failed': failed,
         })
         .commit()
@@ -222,8 +330,8 @@ export const handler: Handler = async (event) => {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        sent: successful,
-        failed: failed,
+        sent,
+        failed,
         total: customers.length,
         isTest,
       }),

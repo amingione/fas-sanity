@@ -7,8 +7,8 @@ import {defineType, defineField} from 'sanity'
  * upsert metrics without producing duplicates.
  */
 export default defineType({
-  name: 'attribution',
-  title: 'Marketing Attribution',
+  name: 'attributionSnapshot',
+  title: 'Marketing Attribution Snapshot',
   type: 'document',
   description:
     'Daily (or per-sync) marketing attribution metrics collected from paid, organic, email, and affiliate channels.',

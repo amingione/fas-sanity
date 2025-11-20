@@ -10,6 +10,7 @@ import FocusKeywordInput from '../../components/inputs/FocusKeywordInput'
 import ShippingCalculatorPreview from '../../components/inputs/ShippingCalculatorPreview'
 import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
 import ProductMarketingInsights from '../../components/studio/ProductMarketingInsights'
+import WholesalePricingControls from '../../components/inputs/WholesalePricingControls'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 
@@ -55,15 +56,17 @@ const isBundleProduct = (context?: VisibilityContext): boolean => resolveProduct
 
 const merchantFieldWarning = (Rule: any, message: string) =>
   Rule.custom((value: unknown, context: any) => {
+    const doc = context?.document || {}
+    const status = doc?.status
+    if (status && status !== 'active') return true
     const productType =
-      typeof context?.document?.productType === 'string'
-        ? context.document.productType.toLowerCase()
-        : 'physical'
+      typeof doc?.productType === 'string' ? doc.productType.toLowerCase() : 'physical'
     if (productType === 'service') return true
-    if (typeof value === 'number') return Number.isFinite(value) ? true : false
-    if (typeof value === 'string') return value.trim() ? true : false
-    return false
-  }).warning(message)
+    if (typeof value === 'number') return Number.isFinite(value) ? true : message
+    if (typeof value === 'string') return value.trim() ? true : message
+    if (value) return true
+    return message
+  }).warning()
 
 const product = defineType({
   name: 'product',
@@ -78,6 +81,7 @@ const product = defineType({
     {name: 'bundle', title: 'Bundle Components'},
     {name: 'inventory', title: 'Inventory'},
     {name: 'compatibility', title: 'Vehicle Compatibility'},
+    {name: 'wholesale', title: 'Wholesale Pricing'},
     {name: 'seo', title: 'SEO & Marketing'},
     {name: 'stripe', title: 'Stripe Sync'},
     {name: 'advanced', title: 'Advanced'},
@@ -116,6 +120,11 @@ const product = defineType({
     {
       name: 'compatibilityDetails',
       title: 'Vehicle Compatibility',
+      options: {collapsible: true, collapsed: true},
+    },
+    {
+      name: 'wholesalePricing',
+      title: 'Wholesale Pricing',
       options: {collapsible: true, collapsed: true},
     },
     {
@@ -223,6 +232,73 @@ const product = defineType({
       description: 'Base price in USD. Sale pricing or shipping fees are managed elsewhere.',
       validation: (Rule) => Rule.required().min(0),
       group: 'basic',
+    }),
+    defineField({
+      name: 'manufacturingCost',
+      title: 'Manufacturing Cost (USD)',
+      type: 'number',
+      description: 'Internal cost to produce or assemble this product. Used for margin analysis.',
+      validation: (Rule) => Rule.min(0),
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
+    }),
+    defineField({
+      name: 'wholesalePricingHelper',
+      title: 'Wholesale Pricing Helper',
+      type: 'string',
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
+      components: {input: WholesalePricingControls},
+    }),
+    defineField({
+      name: 'wholesalePriceStandard',
+      title: 'Wholesale Price – Standard',
+      type: 'number',
+      description: 'Pricing for standard vendors.',
+      validation: (Rule) => Rule.min(0),
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
+      hidden: ({document}) => document?.productType === 'service',
+    }),
+    defineField({
+      name: 'wholesalePricePreferred',
+      title: 'Wholesale Price – Preferred',
+      type: 'number',
+      description: 'Pricing for preferred vendors.',
+      validation: (Rule) => Rule.min(0),
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
+      hidden: ({document}) => document?.productType === 'service',
+    }),
+    defineField({
+      name: 'wholesalePricePlatinum',
+      title: 'Wholesale Price – Platinum',
+      type: 'number',
+      description: 'Pricing for platinum vendors.',
+      validation: (Rule) => Rule.min(0),
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
+      hidden: ({document}) => document?.productType === 'service',
+    }),
+    defineField({
+      name: 'minimumWholesaleQuantity',
+      title: 'Minimum Wholesale Quantity',
+      type: 'number',
+      validation: (Rule) => Rule.min(1),
+      initialValue: 1,
+      description: 'Minimum quantity required for wholesale pricing to apply.',
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
+      hidden: ({document}) => document?.productType === 'service',
+    }),
+    defineField({
+      name: 'availableForWholesale',
+      title: 'Available for Wholesale',
+      type: 'boolean',
+      initialValue: true,
+      description: 'When enabled, the product appears in wholesale catalogs and vendor portals.',
+      group: 'wholesale',
+      fieldset: 'wholesalePricing',
     }),
     defineField({
       name: 'onSale',
@@ -1096,10 +1172,21 @@ const product = defineType({
       name: 'gtin',
       title: 'GTIN (UPC/EAN)',
       type: 'string',
-      description: 'Product barcode for Google Shopping.',
+      description: 'Product barcode for Google Shopping. Recommended but not required.',
       fieldset: 'merchant',
       group: 'advanced',
-      validation: (Rule) => merchantFieldWarning(Rule, '⚠️ Add GTIN for Google Shopping'),
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const status = context?.document?.status
+          const productType =
+            typeof context?.document?.productType === 'string'
+              ? context.document.productType.toLowerCase()
+              : 'physical'
+          if (!value && status === 'active' && productType !== 'service') {
+            return '⚠️ GTIN recommended for Google Shopping (not required)'
+          }
+          return true
+        }).warning(),
     }),
     defineField({
       name: 'mpn',

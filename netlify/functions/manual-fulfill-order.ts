@@ -10,6 +10,7 @@ import {
   titleCase,
 } from '../lib/orderFormatting'
 import {canonicalizeTrackingNumber, validateTrackingNumber} from '../../shared/tracking'
+import {consumeInventoryForItems} from '../../shared/inventory'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -202,7 +203,8 @@ export const handler: Handler = async (event) => {
         manualTrackingNumber,
         fulfilledAt,
         shippingAddress,
-        shippingLog[]{status, trackingNumber}
+        shippingLog[]{status, trackingNumber},
+        cart[]{quantity, name, productRef{_ref}}
       }`,
         {baseId, draftId},
       )
@@ -268,6 +270,26 @@ export const handler: Handler = async (event) => {
         log('error', 'sanity patch failed', {targetId, orderId: baseId, error: err})
         return jsonResponse(500, corsHeaders, {success: false, message: 'Failed to update order'})
       }
+    }
+    try {
+      if (order.cart?.length) {
+        await consumeInventoryForItems({
+          client: sanity,
+          items: order.cart
+            .filter((item: any) => item?.productRef?._ref)
+            .map((item: any) => ({
+              productRef: item.productRef,
+              quantity: item.quantity,
+              name: item.name,
+            })),
+          type: 'sold',
+          referenceDocId: baseId,
+          referenceLabel: order.orderNumber,
+          createdBy: 'manual-fulfill-order',
+        })
+      }
+    } catch (error) {
+      log('error', 'inventory deduction failed', {orderId: baseId, error})
     }
   } else {
     log('info', 'simulation: skipping sanity patch', {orderId: baseId})

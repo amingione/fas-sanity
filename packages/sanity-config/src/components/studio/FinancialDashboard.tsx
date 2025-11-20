@@ -1,1922 +1,571 @@
-import React, {useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
-import {useRouter} from 'sanity/router'
-import {Badge, Box, Button, Card, Flex, Heading, Spinner, Stack, Text} from '@sanity/ui'
-import {ArrowLeftIcon, ArrowRightIcon} from '@sanity/icons'
-import {format, formatDistanceToNow} from 'date-fns'
-import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Stack,
+  Text,
+  Tooltip,
+} from '@sanity/ui'
+import {DownloadIcon, RefreshIcon} from '@sanity/icons'
+import {
+  exportProfitLossCsv,
+  exportProfitLossPdf,
+  exportRevenueReportCsv,
+  type ProfitLossSnapshot,
+  type RevenueExportRow,
+} from '../../utils/financeExports'
 
-const DAY = 24 * 60 * 60 * 1000
-const LOOKBACK_DAYS = 365
-const CASHFLOW_MONTHS = 12
+const API_VERSION = '2024-10-01'
 
-const RANGE_PRESETS = [
-  {label: '30 days', value: 30},
-  {label: '90 days', value: 90},
-  {label: '365 days', value: 365},
-] as const
-
-type RangePreset = (typeof RANGE_PRESETS)[number]['value']
-
-type IntegrationKey = 'orders' | 'payouts' | 'analytics'
-
-const DASHBOARD_QUERY = `{
-  "orders": *[
-    _type == "order" &&
-    (${GROQ_FILTER_EXCLUDE_EXPIRED}) &&
-    !(_id in path("drafts.**")) &&
-    defined(totalAmount) &&
-    dateTime(coalesce(createdAt, _createdAt)) >= dateTime($start)
-  ]{
-    _id,
-    createdAt,
-    _createdAt,
-    totalAmount,
-    amountSubtotal,
-    amountTax,
-    amountShipping,
-    amountRefunded,
-    status,
-    paymentStatus
-  } | order(coalesce(createdAt, _createdAt) desc),
-  "invoices": *[
-    _type == "invoice" &&
-    !(_id in path("drafts.**")) &&
-    dateTime(coalesce(invoiceDate, _createdAt)) >= dateTime($start)
-  ]{
-    _id,
-    invoiceDate,
-    _createdAt,
-    dueDate,
-    status,
-    total,
-    amount,
-    amountSubtotal,
-    amountTax,
-    invoiceNumber,
-    orderNumber
-  } | order(coalesce(invoiceDate, _createdAt) desc),
-  "expenses": *[
-    _type == "expense" &&
-    !(_id in path("drafts.**")) &&
-    dateTime(coalesce(date, _createdAt)) >= dateTime($start)
-  ]{
-    _id,
-    date,
-    _createdAt,
-    amount,
-    category
-  } | order(coalesce(date, _createdAt) desc)
-}`
-
-type RawOrder = {
-  _id: string
-  createdAt?: string
-  _createdAt?: string
-  totalAmount?: number | null
-  amountSubtotal?: number | null
-  amountTax?: number | null
-  amountShipping?: number | null
-  amountRefunded?: number | null
-  status?: string | null
-  paymentStatus?: string | null
+type ProfitLossOverview = ProfitLossSnapshot & {
+  cogs?: number
 }
 
-type RawInvoice = {
-  _id: string
-  invoiceDate?: string | null
-  _createdAt?: string | null
-  dueDate?: string | null
-  status?: string | null
-  total?: number | null
-  amount?: number | null
-  amountSubtotal?: number | null
-  amountTax?: number | null
+type RevenueChannels = {
+  onlineRevenue?: number
+  inStoreRevenue?: number
+  wholesaleRevenue?: number
+  onlineCogs?: number
+  inStoreCogs?: number
+  wholesaleCogs?: number
 }
 
-type RawExpense = {
-  _id: string
-  date?: string | null
-  _createdAt?: string | null
-  amount?: number | null
-  category?: string | null
+type CashFlowSnapshot = {
+  totalCashIn?: number
+  totalCashOut?: number
+  netCashFlow?: number
+  endingBalance?: number
+  accountsReceivable?: number
+  accountsPayable?: number
+  cashFromSales?: number
+  cashFromWholesale?: number
 }
 
-type FetchResult = {
-  orders: RawOrder[]
-  invoices: RawInvoice[]
-  expenses: RawExpense[]
+type TrendPoint = {
+  period: string
+  netRevenue?: number
+  netProfit?: number
+  netMargin?: number
 }
 
-type NormalizedOrder = {
-  id: string
-  timestamp: number
-  total: number
-  refundedAmount: number
-  status: string
-  paymentStatus: string
-}
+type ExpenseBreakdown = Array<{category: string; total: number}>
 
-type NormalizedInvoice = {
-  id: string
-  timestamp: number
-  dueTimestamp: number | null
-  total: number
-  status: string
-}
-
-type NormalizedExpense = {
-  id: string
-  timestamp: number
-  amount: number
-  category: string
-}
-
-type NormalizedData = {
-  orders: NormalizedOrder[]
-  invoices: NormalizedInvoice[]
-  expenses: NormalizedExpense[]
-}
-
-type CategoryBreakdown = {
-  category: string
-  total: number
-}
-
-type SalesPoint = {
-  date: number
-  total: number
-}
-
-type CashflowPoint = {
-  label: string
-  income: number
-  expense: number
-  net: number
-}
-
-type Summary = {
-  rangeStart: number
-  rangeEnd: number
-  generatedAt: number
-  orderCount: number
-  grossSales: number
-  previousGrossSales: number
-  grossChangePct: number | null
-  netSales: number
-  previousNetSales: number
-  netChangePct: number | null
-  refunds: number
-  averageOrder: number
-  expenseTotal: number
-  previousExpenseTotal: number
-  expenseChangePct: number | null
-  netProfit: number
-  previousNetProfit: number
-  netProfitChangePct: number | null
-  expenseCategories: CategoryBreakdown[]
-  outstanding: number
-  overdue: number
-  overdueCount: number
-  dueSoonCount: number
-  dueSoonTotal: number
-  notDueTotal: number
-  paidLast30: number
-  unpaidLast30: number
-  invoiceCountLast30: number
-  salesSeries: SalesPoint[]
-  cashflowSeries: CashflowPoint[]
-}
-
-type TrafficResponse = {
-  range: {start: string; end: string}
-  totals: {visitors: number; pageviews: number; sessions: number}
-  daily: Array<{date: string; visitors: number; pageviews: number; sessions: number}>
-}
-
-type TrafficSummary = {
-  visitors: number
-  pageviews: number
-  sessions: number
-  trend: number[]
-  trendDates: number[]
-  recentDaily: Array<{date: number; visitors: number; pageviews: number; sessions: number}>
-}
-
-type PayoutResponse = {
-  currency: string
-  nextArrival?: string
-  nextAmount?: number
-  pendingBalance: number
-  availableBalance: number
-  recentPayouts: Array<{
-    id: string
-    arrivalDate: string
-    amount: number
-    status: string
-    method: string
+type DashboardQueryResult = {
+  profitLoss: ProfitLossOverview | null
+  expenses: Array<{category?: string; amount?: number}>
+  channelOrders: Array<{orderType?: string | null; totalAmount?: number | null}>
+  channelTransactions: Array<{
+    quantity?: number | null
+    unitCost?: number | null
+    referenceDoc?: {orderType?: string | null} | null
   }>
+  cashFlow: CashFlowSnapshot | null
+  trend: TrendPoint[]
 }
 
-type PayoutSummary = {
-  currency: string
-  nextArrival?: number
-  nextAmount?: number
-  pending: number
-  available: number
-  recent: Array<{id: string; arrival: number; amount: number; status: string; method: string}>
-}
-
-const FinancialDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>(
-  (_props, ref) => {
-    const client = useClient({apiVersion: '2024-10-01'})
-    const router = useRouter()
-
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [raw, setRaw] = useState<FetchResult | null>(null)
-    const [traffic, setTraffic] = useState<TrafficSummary | null>(null)
-    const [payouts, setPayouts] = useState<PayoutSummary | null>(null)
-    const [range, setRange] = useState<RangePreset>(30)
-    const [activeIntegration, setActiveIntegration] = useState<IntegrationKey | null>(null)
-
-    useEffect(() => {
-      let cancelled = false
-
-      async function load() {
-        setLoading(true)
-        setError(null)
-        try {
-          const start = new Date(Date.now() - LOOKBACK_DAYS * DAY).toISOString()
-          const [sanityResult, trafficResult, payoutResult] = await Promise.all([
-            client.fetch<FetchResult>(DASHBOARD_QUERY, {start}),
-            fetch(`/.netlify/functions/fetchSiteTraffic?start=${encodeURIComponent(start)}`)
-              .then((res) => (res.ok ? res.json() : null))
-              .catch((err) => {
-                console.warn('traffic fetch failed', err)
-                return null
-              }),
-            fetch('/.netlify/functions/fetchStripePayouts')
-              .then((res) => (res.ok ? res.json() : null))
-              .catch((err) => {
-                console.warn('payout fetch failed', err)
-                return null
-              }),
-          ])
-
-          if (cancelled) return
-          setRaw(sanityResult)
-          setTraffic(trafficResult ? summarizeTraffic(trafficResult as TrafficResponse) : null)
-          setPayouts(payoutResult ? summarizePayout(payoutResult as PayoutResponse) : null)
-        } catch (err: any) {
-          console.error('Financial dashboard load failed', err)
-          if (!cancelled) setError(err?.message || 'Unable to load financial dashboard data.')
-        } finally {
-          if (!cancelled) setLoading(false)
-        }
-      }
-
-      load()
-      return () => {
-        cancelled = true
-      }
-    }, [client])
-
-    const normalized = useMemo(() => (raw ? normalize(raw) : null), [raw])
-    const summary = useMemo(
-      () => (normalized ? summarize(normalized, range) : null),
-      [normalized, range],
-    )
-
-    const handleRangeChange = (value: RangePreset) => setRange(value)
-    const handleCreateInvoice = () => router.navigateIntent('create', {type: 'invoice'})
-    const handleCreateOrder = () => router.navigateIntent('create', {type: 'order'})
-
-    return (
-      <Box
-        ref={ref}
-        padding={[3, 4, 5]}
-        style={{
-          background: 'var(--studio-surface-overlay)',
-          minHeight: '100%',
-          borderRadius: '28px',
-          border: '1px solid var(--studio-border)',
-          boxShadow: 'var(--studio-shadow)',
-          backdropFilter: 'blur(18px)',
-        }}
-      >
-        <Stack space={4}>
-          <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
-            <Stack space={1}>
-              <Heading size={3}>Financial dashboard</Heading>
-              {summary ? (
-                <Text size={1} muted>
-                  Updated {formatDistanceToNow(new Date(summary.generatedAt), {addSuffix: true})}
-                </Text>
-              ) : null}
-            </Stack>
-            <Flex gap={2} style={{flexWrap: 'wrap'}}>
-              {RANGE_PRESETS.map((preset) => (
-                <Button
-                  key={preset.value}
-                  text={preset.label}
-                  tone={range === preset.value ? 'primary' : 'default'}
-                  mode={range === preset.value ? 'default' : 'ghost'}
-                  onClick={() => handleRangeChange(preset.value)}
-                />
-              ))}
-              <Button text="Create invoice" tone="primary" onClick={handleCreateInvoice} />
-              <Button text="Record order" onClick={handleCreateOrder} />
-            </Flex>
-          </Flex>
-
-          {loading ? (
-            <Card
-              padding={6}
-              radius={4}
-              shadow={1}
-              style={{background: 'var(--studio-surface-strong)'}}
-            >
-              <Flex align="center" justify="center" direction="column" gap={3}>
-                <Spinner muted />
-                <Text muted>Preparing your financial insights…</Text>
-              </Flex>
-            </Card>
-          ) : error ? (
-            <Card padding={5} radius={4} shadow={1} tone="critical">
-              <Stack space={3}>
-                <Heading size={2}>Unable to load dashboard</Heading>
-                <Text muted size={1}>
-                  {error}
-                </Text>
-              </Stack>
-            </Card>
-          ) : summary && normalized ? (
-            activeIntegration ? (
-              <IntegrationDetailView
-                integration={activeIntegration}
-                summary={summary}
-                normalized={normalized}
-                payouts={payouts}
-                traffic={traffic}
-                onBack={() => setActiveIntegration(null)}
-                range={range}
-              />
-            ) : (
-              <Box
-                style={{
-                  display: 'grid',
-                  gap: '16px',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                }}
-              >
-                <ProfitLossCard summary={summary} range={range} />
-                <ExpensesCard summary={summary} />
-                <CashFlowCard summary={summary} />
-                <InvoicesCard summary={summary} range={range} />
-                <SalesCard summary={summary} />
-                <Stack space={3} style={{minWidth: '300px'}}>
-                  <IntegrationsCard
-                    summary={summary}
-                    traffic={traffic}
-                    payouts={payouts}
-                    dataLoaded={!!raw}
-                    onSelectIntegration={setActiveIntegration}
-                  />
-                  <AccountsReceivableCard summary={summary} />
-                </Stack>
-              </Box>
-            )
-          ) : null}
-        </Stack>
-      </Box>
-    )
-  },
-)
-
-FinancialDashboard.displayName = 'FinancialDashboard'
-
-export default FinancialDashboard
-
-function ProfitLossCard({summary, range}: {summary: Summary; range: RangePreset}) {
-  const income = summary.netSales
-  const expenses = summary.expenseTotal
-  const net = summary.netProfit
-  const netChange = summary.netProfitChangePct
-  const previousTransactions = number(summary.orderCount)
-  const incomeShare = income + expenses > 0 ? (income / (income + expenses)) * 100 : 0
-  const expenseShare = income + expenses > 0 ? (expenses / (income + expenses)) * 100 : 0
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Flex justify="space-between" align="center">
-          <Stack space={1}>
-            <Heading size={2}>Profit &amp; loss</Heading>
-            <Text size={1} muted>
-              Net profit for the last {range} days
-            </Text>
-          </Stack>
-          <TrendBadge value={netChange} />
-        </Flex>
-
-        <Stack space={2}>
-          <Text size={1} muted>
-            Net profit
-          </Text>
-          <Heading size={4}>{currency(net)}</Heading>
-        </Stack>
-
-        <Stack space={3}>
-          <ProgressStat
-            label="Income"
-            value={currency(income)}
-            change={summary.netChangePct}
-            percent={incomeShare}
-            tone="positive"
-          />
-          <ProgressStat
-            label="Expenses"
-            value={currency(expenses)}
-            change={summary.expenseChangePct}
-            percent={expenseShare}
-            tone="critical"
-          />
-        </Stack>
-
-        <Flex justify="space-between" align="center" gap={2} style={{flexWrap: 'wrap'}}>
-          <Text size={1} muted>
-            {previousTransactions} transactions this period
-          </Text>
-          <Button as="a" href="/desk/expense" text="Categorize transactions" mode="ghost" />
-        </Flex>
-      </Stack>
-    </Card>
-  )
-}
-
-function ExpensesCard({summary}: {summary: Summary}) {
-  const total = summary.expenseTotal
-  const change = summary.expenseChangePct
-  const categories = buildCategorySegments(summary.expenseCategories)
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Flex justify="space-between" align="center">
-          <Stack space={1}>
-            <Heading size={2}>Expenses</Heading>
-            <Text size={1} muted>
-              Spending for this period
-            </Text>
-          </Stack>
-          <TrendBadge value={change} />
-        </Flex>
-
-        <Flex align="center" gap={4} style={{flexWrap: 'wrap'}}>
-          <DonutChart
-            size={140}
-            thickness={28}
-            segments={categories.map((entry) => ({
-              label: entry.category,
-              value: entry.total,
-              color: entry.color,
-            }))}
-            total={total}
-          >
-            <Flex direction="column" align="center" gap={1}>
-              <Text size={1} muted>
-                Total spend
-              </Text>
-              <Text weight="semibold">{currency(total)}</Text>
-            </Flex>
-          </DonutChart>
-
-          <Stack space={2} flex={1}>
-            {categories.map((entry) => (
-              <LegendRow
-                key={entry.category}
-                label={entry.category}
-                value={currency(entry.total)}
-                percent={total > 0 ? (entry.total / total) * 100 : 0}
-                color={entry.color}
-              />
-            ))}
-          </Stack>
-        </Flex>
-      </Stack>
-    </Card>
-  )
-}
-
-function CashFlowCard({summary}: {summary: Summary}) {
-  const net = summary.cashflowSeries.reduce((acc, point) => acc + point.net, 0)
-  const moneyIn = summary.cashflowSeries.reduce((acc, point) => acc + point.income, 0)
-  const moneyOut = summary.cashflowSeries.reduce((acc, point) => acc + point.expense, 0)
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Flex justify="space-between" align="center">
-          <Stack space={1}>
-            <Heading size={2}>Cash flow trend</Heading>
-            <Text size={1} muted>
-              Net movement over the last {CASHFLOW_MONTHS} months
-            </Text>
-          </Stack>
-          <Badge tone={net >= 0 ? 'positive' : 'critical'}>{currency(net)}</Badge>
-        </Flex>
-
-        <LineChart
-          points={summary.cashflowSeries.map((point) => point.net)}
-          labels={summary.cashflowSeries.map((point) => point.label)}
-          stroke="rgba(34, 197, 94, 0.9)"
-          background="rgba(34, 197, 94, 0.15)"
-          height={120}
-        />
-
-        <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <SnapshotMetric label="Money in" value={moneyIn} tone="positive" />
-          <SnapshotMetric label="Money out" value={moneyOut} tone="critical" />
-        </Flex>
-      </Stack>
-    </Card>
-  )
-}
-
-function InvoicesCard({summary, range}: {summary: Summary; range: RangePreset}) {
-  const overduePct = summary.outstanding > 0 ? (summary.overdue / summary.outstanding) * 100 : 0
-  const dueSoonPct =
-    summary.outstanding > 0 ? (summary.dueSoonTotal / summary.outstanding) * 100 : 0
-  const paidPct =
-    summary.paidLast30 + summary.unpaidLast30 > 0
-      ? (summary.paidLast30 / (summary.paidLast30 + summary.unpaidLast30)) * 100
-      : 0
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Flex justify="space-between" align="center">
-          <Stack space={1}>
-            <Heading size={2}>Invoices</Heading>
-            <Text size={1} muted>
-              Outstanding last {range} days
-            </Text>
-          </Stack>
-          <Badge tone={summary.overdueCount > 0 ? 'critical' : 'positive'}>
-            {summary.overdueCount > 0 ? `${summary.overdueCount} overdue` : 'Up to date'}
-          </Badge>
-        </Flex>
-
-        <Stack space={2}>
-          <Flex justify="space-between" align="center">
-            <Text size={1} muted>
-              Total outstanding
-            </Text>
-            <Text weight="semibold">{currency(summary.outstanding)}</Text>
-          </Flex>
-          <FullWidthBar>
-            <Segment width={overduePct} color="#ef4444" label="Overdue" />
-            <Segment width={dueSoonPct} color="#f97316" label="Due soon" />
-            <Segment
-              width={Math.max(0, 100 - overduePct - dueSoonPct)}
-              color="#0ea5e9"
-              label="Current"
-            />
-          </FullWidthBar>
-          <Flex justify="space-between">
-            <Text size={1} muted>
-              Overdue {currency(summary.overdue)}
-            </Text>
-            <Text size={1} muted>
-              Not yet due {currency(summary.notDueTotal)}
-            </Text>
-          </Flex>
-        </Stack>
-
-        <Stack space={2}>
-          <Flex justify="space-between" align="center">
-            <Text size={1} muted>
-              Last 30 days
-            </Text>
-            <Text size={1} muted>
-              {summary.invoiceCountLast30} invoices
-            </Text>
-          </Flex>
-          <FullWidthBar>
-            <Segment width={paidPct} color="#22c55e" label="Paid" />
-            <Segment width={Math.max(0, 100 - paidPct)} color="#facc15" label="Open" />
-          </FullWidthBar>
-          <Flex justify="space-between">
-            <Text size={1} muted>
-              Paid {currency(summary.paidLast30)}
-            </Text>
-            <Text size={1} muted>
-              Open {currency(summary.unpaidLast30)}
-            </Text>
-          </Flex>
-        </Stack>
-      </Stack>
-    </Card>
-  )
-}
-
-function SalesCard({summary}: {summary: Summary}) {
-  const totalSales = summary.salesSeries.reduce((sum, point) => sum + point.total, 0)
-  const average = summary.salesSeries.length > 0 ? totalSales / summary.salesSeries.length : 0
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Stack space={1}>
-          <Heading size={2}>Sales</Heading>
-          <Text size={1} muted>
-            Last {summary.salesSeries.length} days
-          </Text>
-        </Stack>
-
-        <Stack space={2}>
-          <Heading size={3}>{currency(totalSales)}</Heading>
-          <Text size={1} muted>
-            Average {currency(average)} per day
-          </Text>
-        </Stack>
-
-        <LineChart
-          points={summary.salesSeries.map((point) => point.total)}
-          labels={summary.salesSeries.map((point) => format(new Date(point.date), 'MMM d'))}
-          stroke="rgba(14, 165, 233, 0.9)"
-          background="rgba(14, 165, 233, 0.15)"
-          height={120}
-        />
-      </Stack>
-    </Card>
-  )
-}
-
-function IntegrationsCard({
-  summary,
-  traffic,
-  payouts,
-  dataLoaded,
-  onSelectIntegration,
-}: {
-  summary: Summary
-  traffic: TrafficSummary | null
-  payouts: PayoutSummary | null
-  dataLoaded: boolean
-  onSelectIntegration: (integration: IntegrationKey) => void
-}) {
-  const integrations: Array<{
-    key: IntegrationKey
-    name: string
-    status: string
-    tone: 'positive' | 'critical'
-    detail: string
-  }> = [
-    {
-      key: 'orders',
-      name: 'Sanity orders',
-      status: dataLoaded ? 'Connected' : 'With issues',
-      tone: dataLoaded ? 'positive' : 'critical',
-      detail: `${summary.orderCount} orders analysed`,
-    },
-    {
-      key: 'payouts',
-      name: 'Stripe payouts',
-      status: payouts ? 'Connected' : 'With issues',
-      tone: payouts ? 'positive' : 'critical',
-      detail: payouts
-        ? payouts.nextArrival
-          ? `Next payout ${format(new Date(payouts.nextArrival), 'MMM d')}`
-          : 'Pending balance available'
-        : 'Connect Stripe payouts',
-    },
-    {
-      key: 'analytics',
-      name: 'Site analytics',
-      status: traffic ? 'Connected' : 'With issues',
-      tone: traffic ? 'positive' : 'critical',
-      detail: traffic
-        ? `${number(traffic.visitors)} visitors this period`
-        : 'Connect analytics source',
-    },
-  ]
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={3}>
-        <Heading size={2}>My integrations</Heading>
-        <Stack space={2}>
-          {integrations.map((integration) => (
-            <Card
-              key={integration.key}
-              padding={3}
-              radius={3}
-              shadow={0}
-              tone="transparent"
-              style={{
-                background: 'var(--studio-surface-soft)',
-                cursor: 'pointer',
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label={`View ${integration.name} integration`}
-              onClick={() => onSelectIntegration(integration.key)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  onSelectIntegration(integration.key)
-                }
-              }}
-            >
-              <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
-                <Stack space={1}>
-                  <Text weight="semibold">{integration.name}</Text>
-                  <Text size={1} muted>
-                    {integration.detail}
-                  </Text>
-                </Stack>
-                <Flex align="center" gap={2}>
-                  <Badge tone={integration.tone}>{integration.status}</Badge>
-                  <Box style={{color: '#0f172a'}}>
-                    <ArrowRightIcon />
-                  </Box>
-                </Flex>
-              </Flex>
-            </Card>
-          ))}
-        </Stack>
-      </Stack>
-    </Card>
-  )
-}
-
-function IntegrationDetailView({
-  integration,
-  summary,
-  normalized,
-  payouts,
-  traffic,
-  onBack,
-  range,
-}: {
-  integration: IntegrationKey
-  summary: Summary
-  normalized: NormalizedData
-  payouts: PayoutSummary | null
-  traffic: TrafficSummary | null
-  onBack: () => void
-  range: RangePreset
-}) {
-  const rangeLabel =
-    RANGE_PRESETS.find((preset) => preset.value === range)?.label || `${range} days`
-
-  if (integration === 'orders') {
-    return (
-      <OrdersIntegrationSection
-        summary={summary}
-        normalized={normalized}
-        onBack={onBack}
-        rangeLabel={rangeLabel}
-      />
-    )
-  }
-
-  if (integration === 'payouts') {
-    return <PayoutsIntegrationSection payouts={payouts} onBack={onBack} />
-  }
-
-  return <AnalyticsIntegrationSection traffic={traffic} onBack={onBack} rangeLabel={rangeLabel} />
-}
-
-function OrdersIntegrationSection({
-  summary,
-  normalized,
-  onBack,
-  rangeLabel,
-}: {
-  summary: Summary
-  normalized: NormalizedData
-  onBack: () => void
-  rangeLabel: string
-}) {
-  const router = useRouter()
-  const ordersInRange = normalized.orders
-    .filter((order) => order.timestamp >= summary.rangeStart && order.timestamp <= summary.rangeEnd)
-    .sort((a, b) => b.timestamp - a.timestamp)
-
-  const statusBreakdown = aggregateCounts(ordersInRange.map((order) => order.status))
-  const paymentBreakdown = aggregateCounts(
-    ordersInRange.map((order) => order.paymentStatus || 'unknown'),
-  )
-
-  const recentOrders = ordersInRange.slice(0, 8)
-
-  return (
-    <IntegrationShell
-      title="Sanity orders integration"
-      description={`Order performance for the last ${rangeLabel}`}
-      onBack={onBack}
-    >
-      <Stack space={5}>
-        <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <DetailStatCard
-            label="Orders analysed"
-            value={number(ordersInRange.length)}
-            helper={`${rangeLabel} window`}
-          />
-          <DetailStatCard
-            label="Gross sales"
-            value={currency(summary.grossSales)}
-            helper="Before refunds"
-          />
-          <DetailStatCard
-            label="Net sales"
-            value={currency(summary.netSales)}
-            helper="After refunds"
-          />
-          <DetailStatCard
-            label="Average order value"
-            value={currency(summary.averageOrder)}
-            helper="Across connected stores"
-          />
-        </Flex>
-
-        <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <StatusList title="Order status" items={statusBreakdown} />
-          <StatusList title="Payment status" items={paymentBreakdown} />
-        </Flex>
-
-        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
-          <Stack space={3}>
-            <Heading size={2}>Recent orders</Heading>
-            <Stack space={2}>
-              {recentOrders.length === 0 ? (
-                <Text size={1} muted>
-                  No orders captured in this range yet.
-                </Text>
-              ) : (
-                recentOrders.map((order) => (
-                  <Flex
-                    key={order.id}
-                    align="center"
-                    justify="space-between"
-                    gap={3}
-                    style={{flexWrap: 'wrap'}}
-                  >
-                    <Stack space={1}>
-                      <Text weight="semibold">Order {shortId(order.id)}</Text>
-                      <Text size={1} muted>
-                        {currency(order.total)} ·{' '}
-                        {format(new Date(order.timestamp), 'MMM d, yyyy p')} ·{' '}
-                        {formatDistanceToNow(new Date(order.timestamp), {addSuffix: true})}
-                      </Text>
-                      <Text size={1} muted>
-                        Status: {toTitleCase(order.status)} · Payment:{' '}
-                        {toTitleCase(order.paymentStatus || 'unknown')}
-                      </Text>
-                    </Stack>
-                    <Button
-                      text="View order"
-                      mode="ghost"
-                      tone="primary"
-                      onClick={() => router.navigateIntent('edit', {id: order.id, type: 'order'})}
-                    />
-                  </Flex>
-                ))
-              )}
-            </Stack>
-          </Stack>
-        </Card>
-      </Stack>
-    </IntegrationShell>
-  )
-}
-
-function PayoutsIntegrationSection({
-  payouts,
-  onBack,
-}: {
-  payouts: PayoutSummary | null
-  onBack: () => void
-}) {
-  if (!payouts) {
-    return (
-      <IntegrationShell
-        title="Stripe payouts integration"
-        description="Connect Stripe to track deposits, balances, and payout schedules."
-        onBack={onBack}
-      >
-        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
-          <Stack space={2}>
-            <Text weight="semibold">No payout data available</Text>
-            <Text size={1} muted>
-              We couldn&rsquo;t load payout activity. Confirm your Stripe credentials or try again
-              later.
-            </Text>
-          </Stack>
-        </Card>
-      </IntegrationShell>
-    )
-  }
-
-  const recent = [...payouts.recent]
-    .filter((entry) => Number.isFinite(entry.arrival))
-    .sort((a, b) => b.arrival - a.arrival)
-    .slice(0, 6)
-
-  return (
-    <IntegrationShell
-      title="Stripe payouts integration"
-      description="Balance and payout timing from your connected Stripe account."
-      onBack={onBack}
-    >
-      <Stack space={5}>
-        <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <DetailStatCard
-            label="Available balance"
-            value={currency(payouts.available)}
-            helper="Ready to pay out"
-          />
-          <DetailStatCard
-            label="Pending balance"
-            value={currency(payouts.pending)}
-            helper="Awaiting settlement"
-          />
-          <DetailStatCard
-            label="Next payout"
-            value={payouts.nextArrival ? format(new Date(payouts.nextArrival), 'MMM d, yyyy') : '—'}
-            helper={payouts.nextAmount ? currency(payouts.nextAmount) : 'Amount pending'}
-          />
-        </Flex>
-
-        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
-          <Stack space={3}>
-            <Heading size={2}>Recent payouts</Heading>
-            <Stack space={2}>
-              {recent.length === 0 ? (
-                <Text size={1} muted>
-                  No payouts recorded yet.
-                </Text>
-              ) : (
-                recent.map((payout) => (
-                  <Flex
-                    key={payout.id}
-                    align="center"
-                    justify="space-between"
-                    gap={3}
-                    style={{flexWrap: 'wrap'}}
-                  >
-                    <Stack space={1}>
-                      <Text weight="semibold">{currency(payout.amount)}</Text>
-                      <Text size={1} muted>
-                        {format(new Date(payout.arrival), 'MMM d, yyyy')} ·{' '}
-                        {toTitleCase(payout.status)} · {payout.method}
-                      </Text>
-                    </Stack>
-                    <Badge
-                      tone={
-                        payout.status === 'paid'
-                          ? 'positive'
-                          : payout.status === 'pending'
-                            ? 'default'
-                            : 'critical'
-                      }
-                    >
-                      {toTitleCase(payout.status)}
-                    </Badge>
-                  </Flex>
-                ))
-              )}
-            </Stack>
-          </Stack>
-        </Card>
-      </Stack>
-    </IntegrationShell>
-  )
-}
-
-function AnalyticsIntegrationSection({
-  traffic,
-  onBack,
-  rangeLabel,
-}: {
-  traffic: TrafficSummary | null
-  onBack: () => void
-  rangeLabel: string
-}) {
-  if (!traffic) {
-    return (
-      <IntegrationShell
-        title="Site analytics integration"
-        description="Connect your analytics source to track traffic alongside revenue."
-        onBack={onBack}
-      >
-        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
-          <Stack space={2}>
-            <Text weight="semibold">No analytics data available</Text>
-            <Text size={1} muted>
-              We couldn&rsquo;t load visitor data. Ensure your analytics integration is configured
-              and try again.
-            </Text>
-          </Stack>
-        </Card>
-      </IntegrationShell>
-    )
-  }
-
-  const labels = traffic.trendDates.map((date) => format(new Date(date), 'MMM d'))
-  const trendPoints = traffic.trend
-  const hasTrend = trendPoints.length > 1
-
-  return (
-    <IntegrationShell
-      title="Site analytics integration"
-      description={`Visitor activity for the last ${rangeLabel}`}
-      onBack={onBack}
-    >
-      <Stack space={5}>
-        <Flex gap={3} style={{flexWrap: 'wrap'}}>
-          <DetailStatCard
-            label="Visitors"
-            value={number(traffic.visitors)}
-            helper={`${rangeLabel} window`}
-          />
-          <DetailStatCard
-            label="Sessions"
-            value={number(traffic.sessions)}
-            helper="Unique sessions"
-          />
-          <DetailStatCard
-            label="Pageviews"
-            value={number(traffic.pageviews)}
-            helper="Total views"
-          />
-        </Flex>
-
-        {hasTrend ? (
-          <Card
-            padding={4}
-            radius={3}
-            shadow={0}
-            style={{background: 'var(--studio-surface-soft)'}}
-          >
-            <Stack space={3}>
-              <Heading size={2}>Session trend</Heading>
-              <LineChart
-                points={trendPoints}
-                labels={labels}
-                stroke="rgba(99, 102, 241, 0.9)"
-                background="rgba(99, 102, 241, 0.18)"
-                height={140}
-              />
-            </Stack>
-          </Card>
-        ) : null}
-
-        <Card padding={4} radius={3} shadow={0} style={{background: 'var(--studio-surface-soft)'}}>
-          <Stack space={3}>
-            <Heading size={2}>Recent daily metrics</Heading>
-            <Stack space={2}>
-              {traffic.recentDaily.length === 0 ? (
-                <Text size={1} muted>
-                  No recent analytics samples available.
-                </Text>
-              ) : (
-                traffic.recentDaily.map((day) => (
-                  <Flex
-                    key={day.date}
-                    align="center"
-                    justify="space-between"
-                    gap={3}
-                    style={{flexWrap: 'wrap'}}
-                  >
-                    <Text weight="semibold">{format(new Date(day.date), 'EEE, MMM d')}</Text>
-                    <Flex gap={3} style={{flexWrap: 'wrap'}}>
-                      <Badge tone="primary">{number(day.visitors)} visitors</Badge>
-                      <Badge tone="default">{number(day.sessions)} sessions</Badge>
-                      <Badge tone="default">{number(day.pageviews)} views</Badge>
-                    </Flex>
-                  </Flex>
-                ))
-              )}
-            </Stack>
-          </Stack>
-        </Card>
-      </Stack>
-    </IntegrationShell>
-  )
-}
-
-function IntegrationShell({
-  title,
-  description,
-  onBack,
-  children,
-}: {
-  title: string
-  description: string
-  onBack: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Flex align="center" justify="space-between" gap={3} style={{flexWrap: 'wrap'}}>
-          <Stack space={1}>
-            <Heading size={3}>{title}</Heading>
-            <Text size={1} muted>
-              {description}
-            </Text>
-          </Stack>
-          <Button icon={ArrowLeftIcon} text="Back to dashboard" mode="ghost" onClick={onBack} />
-        </Flex>
-        {children}
-      </Stack>
-    </Card>
-  )
-}
-
-function DetailStatCard({label, value, helper}: {label: string; value: string; helper?: string}) {
-  return (
-    <Card
-      padding={4}
-      radius={3}
-      shadow={0}
-      style={{background: 'var(--studio-surface-soft)', flex: '1 1 220px'}}
-    >
-      <Stack space={1}>
-        <Text size={1} muted>
-          {label}
-        </Text>
-        <Text weight="semibold">{value}</Text>
-        {helper ? (
-          <Text size={1} muted>
-            {helper}
-          </Text>
-        ) : null}
-      </Stack>
-    </Card>
-  )
-}
-
-function StatusList({title, items}: {title: string; items: Array<{label: string; count: number}>}) {
-  return (
-    <Card
-      padding={4}
-      radius={3}
-      shadow={0}
-      style={{background: 'var(--studio-surface-soft)', flex: '1 1 240px'}}
-    >
-      <Stack space={2}>
-        <Heading size={2}>{title}</Heading>
-        <Stack space={1}>
-          {items.length === 0 ? (
-            <Text size={1} muted>
-              No data recorded.
-            </Text>
-          ) : (
-            items.map((item) => (
-              <Flex key={item.label} align="center" justify="space-between">
-                <Text>{toTitleCase(item.label)}</Text>
-                <Badge tone="default">{number(item.count)}</Badge>
-              </Flex>
-            ))
-          )}
-        </Stack>
-      </Stack>
-    </Card>
-  )
-}
-
-function aggregateCounts(values: Array<string | null | undefined>) {
-  const tally = new Map<string, number>()
-  values.forEach((value) => {
-    const key = (value || 'unknown').toLowerCase().trim() || 'unknown'
-    tally.set(key, (tally.get(key) || 0) + 1)
-  })
-  return Array.from(tally.entries())
-    .map(([label, count]) => ({label, count}))
-    .sort((a, b) => b.count - a.count)
-}
-
-function shortId(id: string) {
-  const clean = id.replace('drafts.', '')
-  return clean.length <= 8 ? clean : clean.slice(-8).toUpperCase()
-}
-
-function toTitleCase(value: string) {
-  return value
-    .split(/\s|_|-/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-function AccountsReceivableCard({summary}: {summary: Summary}) {
-  const total = summary.outstanding
-  const segments = [
-    {label: 'Overdue', value: summary.overdue, color: '#ef4444'},
-    {label: 'Due soon', value: summary.dueSoonTotal, color: '#f97316'},
-    {
-      label: 'Current',
-      value: Math.max(0, summary.notDueTotal - summary.dueSoonTotal),
-      color: '#22c55e',
-    },
-  ]
-
-  return (
-    <Card
-      padding={[4, 5]}
-      radius={4}
-      shadow={1}
-      style={{background: 'var(--studio-surface-strong)'}}
-    >
-      <Stack space={4}>
-        <Flex justify="space-between" align="center">
-          <Heading size={2}>Accounts receivable</Heading>
-          <Text size={1} muted>
-            As of today
-          </Text>
-        </Flex>
-
-        <Flex align="center" gap={4} style={{flexWrap: 'wrap'}}>
-          <DonutChart size={140} thickness={28} segments={segments} total={total}>
-            <Flex direction="column" align="center" gap={1}>
-              <Text size={1} muted>
-                Total AR
-              </Text>
-              <Text weight="semibold">{currency(total)}</Text>
-            </Flex>
-          </DonutChart>
-
-          <Stack space={2} flex={1}>
-            {segments.map((segment) => (
-              <LegendRow
-                key={segment.label}
-                label={segment.label}
-                value={currency(segment.value)}
-                percent={total > 0 ? (segment.value / total) * 100 : 0}
-                color={segment.color}
-              />
-            ))}
-          </Stack>
-        </Flex>
-      </Stack>
-    </Card>
-  )
-}
-
-function ProgressStat({
-  label,
-  value,
-  change,
-  percent,
-  tone,
-}: {
-  label: string
-  value: string
-  change: number | null
-  percent: number
-  tone: 'positive' | 'critical'
-}) {
-  const color = tone === 'positive' ? '#22c55e' : '#ef4444'
-  const background = 'rgba(148, 163, 184, 0.2)'
-
-  return (
-    <Stack space={1}>
-      <Flex justify="space-between" align="center">
-        <Text size={1} muted>
-          {label}
-        </Text>
-        <TrendBadge value={change} />
-      </Flex>
-      <Flex justify="space-between" align="center">
-        <Text weight="semibold">{value}</Text>
-        <Text size={1} muted>
-          {percent.toFixed(1)}%
-        </Text>
-      </Flex>
-      <Box style={{height: 8, background, borderRadius: 9999}}>
-        <Box
-          style={{
-            width: `${Math.min(100, percent)}%`,
-            height: '100%',
-            background: color,
-            borderRadius: 9999,
-          }}
-        />
-      </Box>
-    </Stack>
-  )
-}
-
-function LegendRow({
-  label,
-  value,
-  percent,
-  color,
-}: {
-  label: string
-  value: string
-  percent: number
-  color: string
-}) {
-  return (
-    <Flex align="center" justify="space-between" gap={3}>
-      <Flex align="center" gap={2}>
-        <Box style={{width: 10, height: 10, borderRadius: '50%', background: color}} />
-        <Text size={1}>{label}</Text>
-      </Flex>
-      <Stack style={{textAlign: 'right'}} space={1}>
-        <Text weight="semibold">{value}</Text>
-        <Text size={1} muted>
-          {percent.toFixed(1)}%
-        </Text>
-      </Stack>
-    </Flex>
-  )
-}
-
-function TrendBadge({value}: {value: number | null}) {
-  if (value === null) {
-    return (
-      <Badge mode="outline" tone="default" radius={3}>
-        —
-      </Badge>
-    )
-  }
-  const positive = value > 0
-  const negative = value < 0
-  const tone: 'default' | 'positive' | 'critical' = positive
-    ? 'positive'
-    : negative
-      ? 'critical'
-      : 'default'
-  const symbol = positive ? '▲' : negative ? '▼' : '•'
-  const magnitude = Math.abs(value).toFixed(1)
-  return (
-    <Badge tone={tone} radius={3}>
-      {`${symbol} ${magnitude}%`}
-    </Badge>
-  )
-}
-
-function DonutChart({
-  segments,
-  size,
-  thickness,
-  total,
-  children,
-}: {
-  segments: Array<{label: string; value: number; color: string}>
-  size: number
-  thickness: number
-  total: number
-  children?: React.ReactNode
-}) {
-  const datasetTotal = segments.reduce((sum, segment) => sum + segment.value, 0)
-  const safeTotal = datasetTotal > 0 ? datasetTotal : 1
-  let current = 0
-  const gradient = segments
-    .map((segment) => {
-      const start = (current / safeTotal) * 360
-      current += segment.value
-      const end = (current / safeTotal) * 360
-      return `${segment.color} ${start}deg ${Math.min(360, end)}deg`
-    })
-    .join(', ')
-  const hasData = datasetTotal > 0
-
-  return (
-    <Box
-      style={{
-        position: 'relative',
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: hasData ? `conic-gradient(${gradient})` : '#e2e8f0',
-      }}
-    >
-      <Box
-        style={{
-          position: 'absolute',
-          inset: thickness,
-          borderRadius: '50%',
-          background: 'var(--studio-surface-strong)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          padding: '8px',
-        }}
-      >
-        {children}
-      </Box>
-    </Box>
-  )
-}
-
-function LineChart({
-  points,
-  labels,
-  stroke,
-  background,
-  height = 100,
-}: {
-  points: number[]
-  labels?: string[]
-  stroke: string
-  background: string
-  height?: number
-}) {
-  if (!points || points.length < 2) {
-    return <Box style={{height, background: '#e2e8f0', borderRadius: 8}} />
-  }
-  const max = Math.max(...points)
-  const min = Math.min(...points)
-  const range = max - min || 1
-  const width = 280
-  const step = points.length > 1 ? width / (points.length - 1) : width
-  const coords = points
-    .map((value, index) => {
-      const x = Math.round(index * step)
-      const y = Math.round(height - ((value - min) / range) * height)
-      return `${x},${y}`
-    })
-    .join(' ')
-
-  const area = `0,${height} ${coords} ${width},${height}`
-
-  return (
-    <Box style={{width: '100%'}}>
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-        <polyline fill={background} stroke="none" points={area} />
-        <polyline
-          fill="none"
-          stroke={stroke}
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          points={coords}
-        />
-      </svg>
-      {labels && labels.length > 0 ? (
-        <Flex justify="space-between" marginTop={2}>
-          <Text size={0} muted>
-            {labels[0]}
-          </Text>
-          <Text size={0} muted>
-            {labels[labels.length - 1]}
-          </Text>
-        </Flex>
-      ) : null}
-    </Box>
-  )
-}
-
-function SnapshotMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: number
-  tone: 'positive' | 'critical'
-}) {
-  const color = tone === 'positive' ? '#22c55e' : '#ef4444'
-  return (
-    <Card
-      padding={3}
-      radius={3}
-      shadow={0}
-      style={{background: 'rgba(15, 23, 42, 0.04)', flex: '1 1 120px'}}
-    >
-      <Stack space={1}>
-        <Text size={1} muted>
-          {label}
-        </Text>
-        <Text weight="semibold" style={{color}}>
-          {currency(value)}
-        </Text>
-      </Stack>
-    </Card>
-  )
-}
-
-function FullWidthBar({children}: {children: React.ReactNode}) {
-  return (
-    <Box
-      style={{height: 10, borderRadius: 9999, overflow: 'hidden', display: 'flex', width: '100%'}}
-    >
-      {children}
-    </Box>
-  )
-}
-
-function Segment({width, color, label}: {width: number; color: string; label: string}) {
-  return (
-    <Box
-      style={{width: `${Math.max(0, Math.min(width, 100))}%`, background: color}}
-      aria-label={label}
-    />
-  )
-}
-
-function normalize(raw: FetchResult): NormalizedData {
-  const orders: NormalizedOrder[] = raw.orders
-    .map((order) => {
-      const timestamp = parseTimestamp(order.createdAt) ?? parseTimestamp(order._createdAt)
-      if (!timestamp) return null
-      return {
-        id: order._id,
-        timestamp,
-        total: computeOrderTotal(order),
-        refundedAmount: Number(order.amountRefunded) || 0,
-        status: (order.status || 'pending').toLowerCase(),
-        paymentStatus: (order.paymentStatus || '').toLowerCase(),
-      }
-    })
-    .filter(Boolean) as NormalizedOrder[]
-
-  const invoices: NormalizedInvoice[] = raw.invoices
-    .map((invoice) => {
-      const timestamp = parseTimestamp(invoice.invoiceDate) ?? parseTimestamp(invoice._createdAt)
-      if (!timestamp) return null
-      const dueTimestamp = parseTimestamp(invoice.dueDate)
-      return {
-        id: invoice._id,
-        timestamp,
-        dueTimestamp,
-        total: computeInvoiceTotal(invoice),
-        status: (invoice.status || 'pending').toLowerCase(),
-      }
-    })
-    .filter(Boolean) as NormalizedInvoice[]
-
-  const expenses: NormalizedExpense[] = raw.expenses
-    .map((expense) => {
-      const timestamp = parseTimestamp(expense.date) ?? parseTimestamp(expense._createdAt)
-      if (!timestamp) return null
-      return {
-        id: expense._id,
-        timestamp,
-        amount: Number(expense.amount) || 0,
-        category: (expense.category || 'Uncategorized').trim() || 'Uncategorized',
-      }
-    })
-    .filter(Boolean) as NormalizedExpense[]
-
-  return {orders, invoices, expenses}
-}
-
-function summarize(data: NormalizedData, rangeDays: RangePreset): Summary {
-  const now = Date.now()
-  const rangeStart = now - rangeDays * DAY
-  const previousStart = rangeStart - rangeDays * DAY
-
-  const currentOrders = data.orders.filter(
-    (order) => order.timestamp >= rangeStart && order.timestamp <= now,
-  )
-  const previousOrders = data.orders.filter(
-    (order) => order.timestamp >= previousStart && order.timestamp < rangeStart,
-  )
-
-  const grossSales = currentOrders.reduce(
-    (sum, order) => (isCancelled(order.status) ? sum : sum + order.total),
-    0,
-  )
-  const previousGrossSales = previousOrders.reduce(
-    (sum, order) => (isCancelled(order.status) ? sum : sum + order.total),
-    0,
-  )
-
-  const refunds = currentOrders.reduce((sum, order) => {
-    if (isCancelled(order.status)) {
-      // Cancelled orders - count full amount as refunded
-      return sum + order.total
-    } else if (order.paymentStatus.includes('refund')) {
-      // Refunded or partially refunded - use actual refunded amount
-      return sum + order.refundedAmount
-    }
-    return sum
-  }, 0)
-  const previousRefunds = previousOrders.reduce((sum, order) => {
-    if (isCancelled(order.status)) {
-      // Cancelled orders - count full amount as refunded
-      return sum + order.total
-    } else if (order.paymentStatus.includes('refund')) {
-      // Refunded or partially refunded - use actual refunded amount
-      return sum + order.refundedAmount
-    }
-    return sum
-  }, 0)
-
-  const netSales = grossSales - refunds
-  const previousNetSales = previousGrossSales - previousRefunds
-
-  const orderCount = currentOrders.length
-  const averageOrder = orderCount > 0 ? grossSales / orderCount : 0
-
-  const currentExpenses = data.expenses.filter(
-    (expense) => expense.timestamp >= rangeStart && expense.timestamp <= now,
-  )
-  const previousExpenses = data.expenses.filter(
-    (expense) => expense.timestamp >= previousStart && expense.timestamp < rangeStart,
-  )
-  const expenseTotal = currentExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-  const previousExpenseTotal = previousExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-
-  const netProfit = netSales - expenseTotal
-  const previousNetProfit = previousNetSales - previousExpenseTotal
-
-  const expenseCategories = aggregateCategories(currentExpenses)
-
-  const currentInvoices = data.invoices.filter(
-    (invoice) => invoice.timestamp >= rangeStart && invoice.timestamp <= now,
-  )
-  const outstandingInvoices = currentInvoices.filter((invoice) => !isClosedInvoice(invoice.status))
-  const outstanding = outstandingInvoices.reduce((sum, invoice) => sum + invoice.total, 0)
-  const overdueInvoices = outstandingInvoices.filter(
-    (invoice) => invoice.dueTimestamp !== null && invoice.dueTimestamp < now,
-  )
-  const overdue = overdueInvoices.reduce((sum, invoice) => sum + invoice.total, 0)
-  const dueSoonInvoices = outstandingInvoices.filter((invoice) => {
-    if (!invoice.dueTimestamp) return false
-    return invoice.dueTimestamp >= now && invoice.dueTimestamp <= now + 14 * DAY
-  })
-  const dueSoonTotal = dueSoonInvoices.reduce((sum, invoice) => sum + invoice.total, 0)
-  const notDueTotal = Math.max(0, outstanding - overdue)
-
-  const thirtyStart = now - 30 * DAY
-  const last30Invoices = data.invoices.filter(
-    (invoice) => invoice.timestamp >= thirtyStart && invoice.timestamp <= now,
-  )
-  const paidLast30 = last30Invoices
-    .filter((invoice) => isPaidInvoice(invoice.status))
-    .reduce((sum, invoice) => sum + invoice.total, 0)
-  const unpaidLast30 = last30Invoices
-    .filter((invoice) => !isPaidInvoice(invoice.status))
-    .reduce((sum, invoice) => sum + invoice.total, 0)
-
-  const salesSeries = buildSalesSeries(currentOrders, Math.min(rangeDays, 30), now)
-  const cashflowSeries = buildCashflowSeries(currentOrders, currentExpenses, now, CASHFLOW_MONTHS)
-
-  return {
-    rangeStart,
-    rangeEnd: now,
-    generatedAt: now,
-    orderCount,
-    grossSales,
-    previousGrossSales,
-    grossChangePct: computeChangePct(previousGrossSales, grossSales),
-    netSales,
-    previousNetSales,
-    netChangePct: computeChangePct(previousNetSales, netSales),
-    refunds,
-    averageOrder,
-    expenseTotal,
-    previousExpenseTotal,
-    expenseChangePct: computeChangePct(previousExpenseTotal, expenseTotal),
+const DASHBOARD_QUERY = `
+{
+  "profitLoss": *[_type == "profitLoss" && period == $currentPeriod][0]{
+    period,
+    netRevenue,
+    cogs,
+    totalExpenses,
     netProfit,
-    previousNetProfit,
-    netProfitChangePct: computeChangePct(previousNetProfit, netProfit),
-    expenseCategories,
-    outstanding,
-    overdue,
-    overdueCount: overdueInvoices.length,
-    dueSoonCount: dueSoonInvoices.length,
-    dueSoonTotal,
-    notDueTotal,
-    paidLast30,
-    unpaidLast30,
-    invoiceCountLast30: last30Invoices.length,
-    salesSeries,
-    cashflowSeries,
+    netMargin,
+    grossMargin,
+    grossRevenue,
+    returns,
+    revenueOnline,
+    revenueInStore,
+    revenueWholesale,
+    operatingProfit,
+    avgOrderValue,
+    avgProfitPerOrder
+  },
+  "expenses": *[_type == "expense" && date >= $thisMonth && status == "paid"]{
+    category,
+    amount
+  },
+  "channelOrders": *[
+    _type == "order" &&
+    !(_id in path("drafts.**")) &&
+    status == "paid" &&
+    _createdAt >= $thisMonth
+  ]{
+    orderType,
+    totalAmount
+  },
+  "channelTransactions": *[
+    _type == "inventoryTransaction" &&
+    type == "sold" &&
+    transactionDate >= $thisMonth
+  ]{
+    quantity,
+    unitCost,
+    referenceDoc->{orderType}
+  },
+  "cashFlow": *[_type == "cashFlow" && period == $currentPeriod][0]{
+    totalCashIn,
+    totalCashOut,
+    netCashFlow,
+    endingBalance,
+    accountsReceivable,
+    accountsPayable,
+    cashFromSales,
+    cashFromWholesale
+  },
+  "trend": *[_type == "profitLoss" && period >= $twelveMonthsAgo] | order(period asc){
+    period,
+    netRevenue,
+    netProfit,
+    netMargin
   }
 }
+`
 
-function buildSalesSeries(orders: NormalizedOrder[], days: number, now: number): SalesPoint[] {
-  const points: SalesPoint[] = []
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const dayStart = now - i * DAY
-    const dayEnd = dayStart + DAY
-    const total = orders
-      .filter(
-        (order) =>
-          order.timestamp >= dayStart && order.timestamp < dayEnd && !isCancelled(order.status),
-      )
-      .reduce((sum, order) => sum + order.total, 0)
-    points.push({date: dayStart, total})
+const currency = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'})
+
+const PIE_COLORS = [
+  '#2563EB',
+  '#F97316',
+  '#0EA5E9',
+  '#10B981',
+  '#A855F7',
+  '#EC4899',
+  '#F59E0B',
+  '#475569',
+]
+
+const startOfMonthUtc = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+const addMonthsUtc = (date: Date, offset: number) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1))
+const formatPeriod = (date: Date) =>
+  `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+
+const groupExpenses = (entries: Array<{category?: string; amount?: number}>): ExpenseBreakdown => {
+  const map = new Map<string, number>()
+  for (const entry of entries) {
+    const key = entry?.category || 'other'
+    const amount = Number(entry?.amount || 0)
+    if (!Number.isFinite(amount) || amount <= 0) continue
+    map.set(key, (map.get(key) || 0) + amount)
   }
-  return points
-}
-
-function buildCashflowSeries(
-  orders: NormalizedOrder[],
-  expenses: NormalizedExpense[],
-  now: number,
-  months: number,
-): CashflowPoint[] {
-  const result: CashflowPoint[] = []
-  const endDate = new Date(now)
-  const base = new Date(endDate.getFullYear(), endDate.getMonth(), 1).getTime()
-
-  for (let i = months - 1; i >= 0; i -= 1) {
-    const start = new Date(base)
-    start.setMonth(start.getMonth() - i)
-    const end = new Date(start)
-    end.setMonth(end.getMonth() + 1)
-
-    const startMs = start.getTime()
-    const endMs = end.getTime()
-
-    const income = orders
-      .filter(
-        (order) =>
-          order.timestamp >= startMs && order.timestamp < endMs && !isCancelled(order.status),
-      )
-      .reduce((sum, order) => sum + order.total, 0)
-
-    const expense = expenses
-      .filter((entry) => entry.timestamp >= startMs && entry.timestamp < endMs)
-      .reduce((sum, entry) => sum + entry.amount, 0)
-
-    result.push({label: format(start, 'MMM'), income, expense, net: income - expense})
-  }
-
-  return result
-}
-
-function aggregateCategories(expenses: NormalizedExpense[]): CategoryBreakdown[] {
-  const grouped = new Map<string, number>()
-  expenses.forEach((expense) => {
-    grouped.set(expense.category, (grouped.get(expense.category) || 0) + expense.amount)
-  })
-  return Array.from(grouped.entries())
+  return Array.from(map.entries())
     .map(([category, total]) => ({category, total}))
     .sort((a, b) => b.total - a.total)
 }
 
-function buildCategorySegments(categories: CategoryBreakdown[]) {
-  const palette = ['#6366f1', '#22c55e', '#f59e0b', '#0ea5e9', '#ec4899', '#14b8a6']
-  if (categories.length === 0) {
-    return [
-      {
-        category: 'No expenses',
-        total: 0,
-        color: '#cbd5f5',
-      },
-    ]
+const getChannelRows = (channels: RevenueChannels | null | undefined) => {
+  if (!channels) return []
+  return [
+    {
+      label: 'Online',
+      revenue: channels.onlineRevenue || 0,
+      cogs: channels.onlineCogs || 0,
+      channel: 'online',
+    },
+    {
+      label: 'In-Store',
+      revenue: channels.inStoreRevenue || 0,
+      cogs: channels.inStoreCogs || 0,
+      channel: 'in-store',
+    },
+    {
+      label: 'Wholesale',
+      revenue: channels.wholesaleRevenue || 0,
+      cogs: channels.wholesaleCogs || 0,
+      channel: 'wholesale',
+    },
+  ].map((row) => {
+    const grossProfit = row.revenue - row.cogs
+    const grossMargin = row.revenue > 0 ? (grossProfit / row.revenue) * 100 : 0
+    return {...row, grossProfit, grossMargin}
+  })
+}
+
+const deriveRevenueChannels = (
+  orders: Array<{orderType?: string | null; totalAmount?: number | null}>,
+  transactions: Array<{
+    quantity?: number | null
+    unitCost?: number | null
+    referenceDoc?: {orderType?: string | null} | null
+  }>,
+): RevenueChannels => {
+  const totals: RevenueChannels = {
+    onlineRevenue: 0,
+    inStoreRevenue: 0,
+    wholesaleRevenue: 0,
+    onlineCogs: 0,
+    inStoreCogs: 0,
+    wholesaleCogs: 0,
   }
-  const top = categories.slice(0, 5)
-  const other = categories.slice(5).reduce((sum, entry) => sum + entry.total, 0)
-  const mapped = top.map((entry, index) => ({...entry, color: palette[index % palette.length]}))
-  if (other > 0) {
-    mapped.push({category: 'Other', total: other, color: '#94a3b8'})
+  orders.forEach((order) => {
+    const amount = Number(order.totalAmount ?? 0)
+    if (order.orderType === 'online') totals.onlineRevenue += amount
+    else if (order.orderType === 'in-store') totals.inStoreRevenue += amount
+    else if (order.orderType === 'wholesale') totals.wholesaleRevenue += amount
+  })
+  transactions.forEach((txn) => {
+    const amount = Number(txn.quantity ?? 0) * Number(txn.unitCost ?? 0)
+    const channel = txn.referenceDoc?.orderType
+    if (channel === 'online') totals.onlineCogs += amount
+    else if (channel === 'in-store') totals.inStoreCogs += amount
+    else if (channel === 'wholesale') totals.wholesaleCogs += amount
+  })
+  return totals
+}
+
+const TrendChart = ({data}: {data: TrendPoint[]}) => {
+  if (!data?.length) {
+    return (
+      <Box padding={3}>
+        <Text size={1} muted>
+          Not enough history to display trends.
+        </Text>
+      </Box>
+    )
   }
-  return mapped
-}
+  const width = 560
+  const height = 220
+  const padding = 24
+  const revenueMax = Math.max(...data.map((point) => Number(point.netRevenue || 0)), 1)
+  const xFor = (index: number) =>
+    padding + (index / Math.max(1, data.length - 1)) * (width - padding * 2)
+  const yForValue = (value: number) =>
+    height - padding - (value / revenueMax) * (height - padding * 2)
+  const yForMargin = (value: number) =>
+    height - padding - (value / 100) * (height - padding * 2)
 
-function summarizeTraffic(raw: TrafficResponse): TrafficSummary {
-  const recent = Array.isArray(raw.daily) ? raw.daily.slice(-30) : []
-  const trendPairs = recent
-    .map((point) => ({
-      date: Date.parse(point.date),
-      sessions: Number(point.sessions) || 0,
-    }))
-    .filter((entry) => Number.isFinite(entry.date))
+  const buildPath = (key: 'netRevenue' | 'netProfit', scale: (value: number) => number) =>
+    data
+      .map((point, index) => {
+        const val = Number(point[key] || 0)
+        return `${index === 0 ? 'M' : 'L'} ${xFor(index)} ${scale(val)}`
+      })
+      .join(' ')
 
-  const dailyWindow = recent.slice(-14).map((point) => ({
-    date: Date.parse(point.date),
-    visitors: Number(point.visitors) || 0,
-    pageviews: Number(point.pageviews) || 0,
-    sessions: Number(point.sessions) || 0,
-  }))
+  const revenuePath = buildPath('netRevenue', yForValue)
+  const profitPath = buildPath('netProfit', yForValue)
+  const marginPath = data
+    .map((point, index) => {
+      const val = Number(point.netMargin || 0)
+      return `${index === 0 ? 'M' : 'L'} ${xFor(index)} ${yForMargin(val)}`
+    })
+    .join(' ')
 
-  const validDaily = dailyWindow.filter((entry) => Number.isFinite(entry.date))
-
-  return {
-    visitors: raw.totals?.visitors || 0,
-    pageviews: raw.totals?.pageviews || 0,
-    sessions: raw.totals?.sessions || 0,
-    trend: trendPairs.map((entry) => entry.sessions),
-    trendDates: trendPairs.map((entry) => entry.date),
-    recentDaily: validDaily,
-  }
-}
-
-function summarizePayout(raw: PayoutResponse): PayoutSummary {
-  return {
-    currency: (raw.currency || 'usd').toLowerCase(),
-    nextArrival: raw.nextArrival ? Date.parse(raw.nextArrival) : undefined,
-    nextAmount: raw.nextAmount,
-    pending: Number(raw.pendingBalance) || 0,
-    available: Number(raw.availableBalance) || 0,
-    recent:
-      raw.recentPayouts?.map((payout) => ({
-        id: payout.id,
-        arrival: Date.parse(payout.arrivalDate),
-        amount: payout.amount,
-        status: payout.status,
-        method: payout.method,
-      })) || [],
-  }
-}
-
-function isCancelled(status: string): boolean {
-  const normalized = status.toLowerCase()
-  return normalized === 'cancelled' || normalized === 'canceled' || normalized === 'expired'
-}
-
-function isClosedInvoice(status: string): boolean {
-  const normalized = status.toLowerCase()
-  return ['paid', 'refunded', 'cancelled', 'canceled', 'expired'].includes(normalized)
-}
-
-function isPaidInvoice(status: string): boolean {
-  const normalized = status.toLowerCase()
   return (
-    normalized.includes('paid') || normalized.includes('deposit') || normalized.includes('complete')
+    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
+      <path d={revenuePath} fill="none" stroke="#2563EB" strokeWidth={2} />
+      <path d={profitPath} fill="none" stroke="#22C55E" strokeWidth={2} strokeDasharray="4 4" />
+      <path d={marginPath} fill="none" stroke="#F97316" strokeWidth={2} strokeDasharray="2 6" />
+      {data.map((point, index) => (
+        <text
+          key={point.period}
+          x={xFor(index)}
+          y={height - 4}
+          fontSize={10}
+          textAnchor="middle"
+          fill="#475569"
+        >
+          {point.period}
+        </text>
+      ))}
+    </svg>
   )
 }
 
-function computeOrderTotal(order: RawOrder): number {
-  const direct = Number(order.totalAmount)
-  const subtotal = Number(order.amountSubtotal) || 0
-  const tax = Number(order.amountTax) || 0
-  const shipping = Number(order.amountShipping) || 0
-  let total = direct || subtotal + tax + shipping
-  if (total >= 100000) total = total / 100
-  return Number.isFinite(total) ? total : 0
-}
+const FinancialDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
+  const client = useClient({apiVersion: API_VERSION})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [overview, setOverview] = useState<ProfitLossOverview | null>(null)
+  const [revenueChannels, setRevenueChannels] = useState<RevenueChannels | null>(null)
+  const [cashFlow, setCashFlow] = useState<CashFlowSnapshot | null>(null)
+  const [trend, setTrend] = useState<TrendPoint[]>([])
+  const [expenses, setExpenses] = useState<ExpenseBreakdown>([])
 
-function computeInvoiceTotal(invoice: RawInvoice): number {
-  const direct = Number(invoice.total)
-  const amount = Number(invoice.amount)
-  const subtotal = Number(invoice.amountSubtotal) || 0
-  const tax = Number(invoice.amountTax) || 0
-  let total = direct || amount || subtotal + tax
-  if (total >= 100000) total = total / 100
-  return Number.isFinite(total) ? total : 0
-}
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const now = new Date()
+      const monthStart = startOfMonthUtc(now)
+      const currentPeriod = formatPeriod(monthStart)
+      const twelveMonthsAgo = formatPeriod(addMonthsUtc(monthStart, -11))
+      const data = (await client.fetch(DASHBOARD_QUERY, {
+        currentPeriod,
+        thisMonth: monthStart.toISOString(),
+        twelveMonthsAgo,
+      })) as DashboardQueryResult
+      setOverview(data.profitLoss || null)
+      setRevenueChannels(
+        deriveRevenueChannels(data.channelOrders || [], data.channelTransactions || []),
+      )
+      setCashFlow(data.cashFlow || null)
+      setTrend(data.trend || [])
+      setExpenses(groupExpenses(data.expenses || []))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [client])
 
-function parseTimestamp(value?: string | null): number | null {
-  if (!value) return null
-  const parsed = Date.parse(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
-function computeChangePct(previous: number, current: number): number | null {
-  if (!Number.isFinite(previous) || !Number.isFinite(current)) return null
-  if (previous === 0) return current === 0 ? 0 : null
-  return ((current - previous) / Math.abs(previous)) * 100
-}
+  const revenueRows = useMemo(() => getChannelRows(revenueChannels), [revenueChannels])
 
-function currency(value: number, currencyCode = 'usd') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currencyCode.toUpperCase(),
-    maximumFractionDigits: 2,
-  }).format(value || 0)
-}
+  const totalExpenses = useMemo(
+    () => expenses.reduce((sum, entry) => sum + entry.total, 0),
+    [expenses],
+  )
 
-function number(value: number) {
-  return new Intl.NumberFormat('en-US', {maximumFractionDigits: 0}).format(value || 0)
-}
+  const expensePieStyle = useMemo(() => {
+    if (!expenses.length || totalExpenses <= 0) return {background: '#E2E8F0'}
+    let start = 0
+    const segments: string[] = []
+    expenses.forEach((entry, index) => {
+      const percent = (entry.total / totalExpenses) * 360
+      const end = start + percent
+      const color = PIE_COLORS[index % PIE_COLORS.length]
+      segments.push(`${color} ${start}deg ${end}deg`)
+      start = end
+    })
+    return {background: `conic-gradient(${segments.join(', ')})`}
+  }, [expenses, totalExpenses])
+
+  const revenueExportRows = useMemo<RevenueExportRow[]>(() => {
+    const totalGross = revenueRows.reduce((sum, row) => sum + row.grossProfit, 0)
+    return revenueRows.map((row) => ({
+      label: row.label,
+      channel: row.channel,
+      revenue: row.revenue,
+      cogs: row.cogs,
+      grossProfit: row.grossProfit,
+      grossMargin: row.grossMargin,
+      contribution: totalGross > 0 ? (row.grossProfit / totalGross) * 100 : 0,
+    }))
+  }, [revenueRows])
+
+  const handleProfitLossCsv = () => overview && exportProfitLossCsv(overview)
+  const handleProfitLossPdf = () => overview && exportProfitLossPdf(overview)
+  const handleRevenueExport = () => revenueExportRows.length && exportRevenueReportCsv(revenueExportRows)
+
+  return (
+    <Stack ref={ref} space={4} padding={4}>
+      <Flex align="center" justify="space-between">
+        <Heading size={3}>📊 Financial Dashboard</Heading>
+        <Flex gap={2}>
+          <Tooltip content={<Box padding={2}>Refresh data</Box>}>
+            <Button
+              icon={RefreshIcon}
+              mode="ghost"
+              tone="primary"
+              text="Refresh"
+              onClick={refresh}
+              disabled={loading}
+            />
+          </Tooltip>
+          <Tooltip content={<Box padding={2}>Export the latest P&amp;L as CSV</Box>}>
+            <Button
+              icon={DownloadIcon}
+              mode="ghost"
+              text="Export CSV"
+              disabled={!overview}
+              onClick={handleProfitLossCsv}
+            />
+          </Tooltip>
+          <Button
+            icon={DownloadIcon}
+            tone="primary"
+            text="Export PDF"
+            disabled={!overview}
+            onClick={handleProfitLossPdf}
+          />
+        </Flex>
+      </Flex>
+
+      {error && (
+        <Card tone="critical" padding={4} radius={2}>
+          <Text>{error}</Text>
+        </Card>
+      )}
+
+      {loading ? (
+        <Flex align="center" justify="center" padding={5}>
+          <Spinner />
+        </Flex>
+      ) : (
+        <>
+          <Card padding={4} radius={3} shadow={1}>
+            <Flex justify="space-between" align="center" marginBottom={3}>
+              <Heading size={2}>Profit &amp; Loss (This Month)</Heading>
+              {overview?.netMargin !== undefined && (
+                <Text size={1} muted>
+                  Gross Margin {overview.grossMargin?.toFixed(1)}% · Net Margin{' '}
+                  {overview.netMargin?.toFixed(1)}%
+                </Text>
+              )}
+            </Flex>
+            <Grid columns={[1, 2, 5]} gap={3}>
+              <MetricCard label="Net Revenue" value={overview?.netRevenue} />
+              <MetricCard label="COGS" value={overview?.cogs} muted />
+              <MetricCard label="Expenses" value={overview?.totalExpenses} muted />
+              <MetricCard label="Net Profit" value={overview?.netProfit} accent />
+              <MetricCard
+                label="Net Margin"
+                value={
+                  typeof overview?.netMargin === 'number'
+                    ? `${overview.netMargin.toFixed(1)}%`
+                    : undefined
+                }
+              />
+            </Grid>
+          </Card>
+
+          <Card padding={4} radius={3} shadow={1}>
+            <Flex justify="space-between" align="center" marginBottom={3}>
+              <Heading size={2}>Revenue by Channel</Heading>
+              <Button
+                icon={DownloadIcon}
+                text="Export Revenue CSV"
+                mode="ghost"
+                disabled={!revenueExportRows.length}
+                onClick={handleRevenueExport}
+              />
+            </Flex>
+            <Grid columns={[1, 3]} gap={3}>
+              {revenueRows.map((row) => (
+                <Card key={row.label} padding={3} tone="transparent" border radius={2}>
+                  <Stack space={2}>
+                    <Text size={1} weight="semibold">
+                      {row.label}
+                    </Text>
+                    <Text size={3}>{currency.format(row.revenue)}</Text>
+                    <Text size={1} muted>
+                      COGS {currency.format(row.cogs)}
+                    </Text>
+                    <Text size={1} tone="positive">
+                      Margin {row.grossMargin.toFixed(1)}%
+                    </Text>
+                  </Stack>
+                </Card>
+              ))}
+            </Grid>
+          </Card>
+
+          <Grid columns={[1, 2]} gap={4}>
+            <Card padding={4} radius={3} shadow={1}>
+              <Heading size={2} marginBottom={3}>
+                Expense Breakdown
+              </Heading>
+              <Flex gap={4} wrap="wrap">
+                <Box
+                  style={{
+                    width: 160,
+                    height: 160,
+                    borderRadius: '50%',
+                    ...expensePieStyle,
+                  }}
+                />
+                <Stack space={2} flex={1}>
+                  {expenses.map((entry, index) => (
+                    <Flex key={entry.category} align="center" justify="space-between">
+                      <Flex align="center" gap={2}>
+                        <Box
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            backgroundColor: PIE_COLORS[index % PIE_COLORS.length],
+                          }}
+                        />
+                        <Text size={1}>{entry.category}</Text>
+                      </Flex>
+                      <Text size={1}>{currency.format(entry.total)}</Text>
+                    </Flex>
+                  ))}
+                  {!expenses.length && (
+                    <Text size={1} muted>
+                      No paid expenses recorded this month.
+                    </Text>
+                  )}
+                </Stack>
+              </Flex>
+            </Card>
+
+            <Card padding={4} radius={3} shadow={1}>
+              <Heading size={2} marginBottom={3}>
+                Cash Flow
+              </Heading>
+              <Grid columns={[1, 2]} gap={3}>
+                <MetricCard label="Cash In" value={cashFlow?.totalCashIn} />
+                <MetricCard label="Cash Out" value={cashFlow?.totalCashOut} muted />
+                <MetricCard label="Net Cash Flow" value={cashFlow?.netCashFlow} accent />
+                <MetricCard label="Ending Balance" value={cashFlow?.endingBalance} />
+              </Grid>
+              <Stack marginTop={3} space={2}>
+                <Text size={1} muted>
+                  Accounts Receivable: {currency.format(cashFlow?.accountsReceivable || 0)}
+                </Text>
+                <Text size={1} muted>
+                  Accounts Payable: {currency.format(cashFlow?.accountsPayable || 0)}
+                </Text>
+              </Stack>
+            </Card>
+          </Grid>
+
+          <Card padding={4} radius={3} shadow={1}>
+            <Heading size={2} marginBottom={3}>
+              Performance Trends (12 months)
+            </Heading>
+            <TrendChart data={trend} />
+          </Card>
+        </>
+      )}
+    </Stack>
+  )
+});
+
+const MetricCard = ({
+  label,
+  value,
+  muted,
+  accent,
+}: {
+  label: string
+  value?: number | string | null
+  muted?: boolean
+  accent?: boolean
+}) => {
+  const displayValue =
+    typeof value === 'number'
+      ? currency.format(value)
+      : typeof value === 'string'
+      ? value
+      : currency.format(0)
+
+  return (
+    <Card padding={3} radius={2} tone={accent ? 'primary' : 'transparent'} border>
+      <Stack space={1}>
+        <Text size={1} muted>
+          {label}
+        </Text>
+        <Text size={2} weight="semibold" tone={accent ? 'positive' : muted ? 'default' : undefined}>
+          {displayValue}
+        </Text>
+      </Stack>
+    </Card>
+  )
+};
+
+export default FinancialDashboard

@@ -4,14 +4,16 @@ import {useClient} from 'sanity'
 
 interface Vendor {
   _id: string
-  name?: string
   companyName?: string
-  contactPerson?: string
-  email?: string
+  vendorNumber?: string
   status?: string
-  approved?: boolean
+  primaryContact?: {
+    name?: string
+    email?: string
+  }
+  onboardedAt?: string
   _createdAt: string
-}
+}*** End Patch
 
 export default function VendorAdminDashboard() {
   const client = useClient({apiVersion: '2024-10-01'})
@@ -22,12 +24,11 @@ export default function VendorAdminDashboard() {
       .fetch(
         `*[_type == "vendor"]{
           _id,
-          name,
           companyName,
-          contactPerson,
-          email,
+          vendorNumber,
           status,
-          approved,
+          primaryContact,
+          onboardedAt,
           _createdAt
         } | order(_createdAt desc)`,
       )
@@ -39,18 +40,6 @@ export default function VendorAdminDashboard() {
     fetchVendors()
   }, [fetchVendors])
 
-  const handleApproval = async (id: string, approved: boolean) => {
-    try {
-      await client
-        .patch(id)
-        .set({approved, status: approved ? 'Approved' : 'Rejected'})
-        .commit()
-      fetchVendors()
-    } catch (err) {
-      console.error('Approval failed:', err)
-    }
-  }
-
   return (
     <div style={{padding: '2rem'}}>
       <h1>Vendor Applications</h1>
@@ -58,26 +47,25 @@ export default function VendorAdminDashboard() {
         <thead>
           <tr>
             <th>Business Name</th>
+            <th>Vendor #</th>
             <th>Contact</th>
             <th>Email</th>
             <th>Status</th>
-            <th>Approved</th>
-            <th>Submitted</th>
-            <th>Actions</th>
+            <th>Onboarded</th>
           </tr>
         </thead>
         <tbody>
           {vendors.map((vendor) => (
             <tr key={vendor._id}>
-              <td>{vendor.companyName || vendor.name || 'N/A'}</td>
-              <td>{vendor.contactPerson || 'N/A'}</td>
-              <td>{vendor.email || 'N/A'}</td>
+              <td>{vendor.companyName || 'N/A'}</td>
+              <td>{vendor.vendorNumber || '—'}</td>
+              <td>{vendor.primaryContact?.name || 'N/A'}</td>
+              <td>{vendor.primaryContact?.email || 'N/A'}</td>
               <td>{vendor.status || 'N/A'}</td>
-              <td>{vendor.approved ? 'Yes' : 'No'}</td>
-              <td>{new Date(vendor._createdAt).toLocaleDateString()}</td>
               <td>
-                <button onClick={() => handleApproval(vendor._id, true)}>Approve</button>
-                <button onClick={() => handleApproval(vendor._id, false)}>Reject</button>
+                {vendor.onboardedAt
+                  ? new Date(vendor.onboardedAt).toLocaleDateString()
+                  : new Date(vendor._createdAt).toLocaleDateString()}
               </td>
             </tr>
           ))}

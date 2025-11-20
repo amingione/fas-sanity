@@ -32,6 +32,8 @@ import {
   hasAttributionData,
   AttributionParams,
 } from '../lib/attribution'
+import {reserveInventoryForItems} from '../../shared/inventory'
+import {runOrderPlacedAutomations} from '../lib/emailAutomations'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -100,6 +102,34 @@ function candidateFromSessionId(id?: string | null): string | undefined {
   const digits = core.replace(/\D/g, '')
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
   return undefined
+}
+
+async function customerIsVendor(customerId?: string | null): Promise<boolean> {
+  if (!customerId) return false
+  try {
+    const customer = await sanity.fetch<{customerType?: string; roles?: string[]}>(
+      `*[_type == "customer" && _id == $id][0]{customerType, roles}`,
+      {id: customerId},
+    )
+    const type = customer?.customerType || ''
+    const roles = Array.isArray(customer?.roles) ? customer?.roles : []
+    if (type === 'vendor' || type === 'both') return true
+    if (roles.includes('vendor')) return true
+    return false
+  } catch (error) {
+    console.warn('stripeWebhook: failed to resolve customer vendor status', error)
+    return false
+  }
+}
+
+async function maybeApplyWholesaleOrderType(orderId?: string | null, customerId?: string | null) {
+  if (!orderId || !customerId) return
+  if (!(await customerIsVendor(customerId))) return
+  try {
+    await sanity.patch(orderId).set({orderType: 'wholesale'}).commit({autoGenerateArrayKeys: true})
+  } catch (error) {
+    console.warn('stripeWebhook: failed to tag wholesale order', error)
+  }
 }
 
 async function generateRandomOrderNumber(): Promise<string> {
@@ -312,11 +342,7 @@ async function ensureCustomerStripeDetails(options: {
   if (options.stripeCustomerId) patch.stripeCustomerId = options.stripeCustomerId
   if (options.billingAddress) patch.billingAddress = options.billingAddress
   patch.stripeLastSyncedAt = new Date().toISOString()
-  if (
-    !options.stripeCustomerId &&
-    !options.billingAddress &&
-    Object.keys(patch).length <= 1
-  ) {
+  if (!options.stripeCustomerId && !options.billingAddress && Object.keys(patch).length <= 1) {
     return
   }
   try {
@@ -614,6 +640,65 @@ const appendOrderEvent = async (
 ): Promise<void> => {
   if (!orderId) return
   await appendEventsToDocument(orderId, 'orderEvents', [buildOrderEventRecord(event)])
+}
+
+const autoReserveInventoryForOrder = async (
+  orderId: string | null | undefined,
+  items: CartItem[] | undefined,
+  orderNumber?: string | null,
+) => {
+  if (!orderId || !Array.isArray(items) || items.length === 0) return
+  const payload = items
+    .filter((item): item is CartItem => Boolean(item?.productRef?._ref))
+    .map((item) => ({
+      productRef: item.productRef,
+      quantity: item.quantity,
+      name: item.name,
+    }))
+  if (!payload.length) return
+  try {
+    const result = await reserveInventoryForItems({
+      client: sanity,
+      items: payload,
+      referenceDocId: orderId,
+      referenceLabel: orderNumber || undefined,
+      createdBy: 'stripeWebhook',
+    })
+    if (result.insufficient.length || result.missing.length) {
+      const messages = [
+        ...result.insufficient.map(
+          (entry) =>
+            `${entry.productTitle || entry.productId || 'Item'} needs ${entry.required} | available ${entry.available}`,
+        ),
+        ...result.missing.map((entry) => entry.reason || 'Missing inventory record'),
+      ]
+      await appendOrderEvent(orderId, {
+        eventType: 'inventory.reservation',
+        status: 'insufficient',
+        label: 'Inventory reservation issue',
+        message: messages.join(' • '),
+      })
+    } else {
+      await appendOrderEvent(orderId, {
+        eventType: 'inventory.reservation',
+        status: 'reserved',
+        label: 'Inventory reserved',
+        message: `Reserved ${payload.length} line items`,
+      })
+    }
+  } catch (error) {
+    console.warn('stripeWebhook: autoReserveInventoryForOrder failed', error)
+    try {
+      await appendOrderEvent(orderId, {
+        eventType: 'inventory.reservation',
+        status: 'error',
+        label: 'Inventory reservation error',
+        message: (error as Error)?.message,
+      })
+    } catch {
+      // ignore logging failure
+    }
+  }
 }
 
 const appendExpiredCartEvent = async (
@@ -1573,11 +1658,7 @@ async function ensureCampaignDocument(attribution: AttributionParams): Promise<s
   }
 }
 
-async function recordCampaignMetrics(
-  campaignId: string | null,
-  orderId?: string,
-  amount?: number,
-) {
+async function recordCampaignMetrics(campaignId: string | null, orderId?: string, amount?: number) {
   if (!campaignId) return
   try {
     if (orderId) {
@@ -1609,7 +1690,10 @@ async function recordCampaignMetrics(
   }
 }
 
-async function applyAttributionToOrder(orderId: string, attributionParams?: AttributionParams | null) {
+async function applyAttributionToOrder(
+  orderId: string,
+  attributionParams?: AttributionParams | null,
+) {
   const doc = buildAttributionDocument(attributionParams || undefined)
   if (!doc) return
   let campaignId: string | null = null
@@ -1620,12 +1704,72 @@ async function applyAttributionToOrder(orderId: string, attributionParams?: Attr
     }
   }
   try {
-    await sanity
-      .patch(orderId)
-      .set({attribution: doc})
-      .commit({autoGenerateArrayKeys: true})
+    await sanity.patch(orderId).set({attribution: doc}).commit({autoGenerateArrayKeys: true})
+    await upsertAttributionDocumentForOrder(orderId, doc)
   } catch (err) {
     console.warn('stripeWebhook: failed to apply attribution to order', err)
+  }
+}
+
+async function upsertAttributionDocumentForOrder(
+  orderId: string,
+  doc: AttributionParams,
+): Promise<void> {
+  try {
+    const orderRecord = await sanity.fetch<{
+      _id: string
+      totalAmount?: number
+      amountSubtotal?: number
+      amountTax?: number
+      customerRef?: {_ref: string}
+    } | null>(
+      `*[_type == "order" && _id == $id][0]{_id,totalAmount,amountSubtotal,amountTax,customerRef}`,
+      {
+        id: orderId,
+      },
+    )
+    if (!orderRecord?._id) return
+    const totalAmount = toPositiveNumber(orderRecord.totalAmount)
+    const subtotalAmount = toPositiveNumber(orderRecord.amountSubtotal)
+    const taxAmount = toPositiveNumber(orderRecord.amountTax)
+    const base = typeof totalAmount === 'number' ? totalAmount : subtotalAmount
+    const orderValue =
+      (typeof base === 'number' ? base + (typeof taxAmount === 'number' ? taxAmount : 0) : null) ??
+      toPositiveNumber(doc.orderValue)
+    const touchpointsNumber = toPositiveNumber(doc.touchpoints)
+    const createdAt = doc.capturedAt || new Date().toISOString()
+    const attrDoc: Record<string, any> & {_id: string; _type: 'attribution'} = {
+      _id: `attribution.${orderId}`.replace(/[^a-z0-9._-]+/gi, '-'),
+      _type: 'attribution',
+      order: {_type: 'reference', _ref: orderId},
+      customer: orderRecord.customerRef?._ref
+        ? {_type: 'reference', _ref: orderRecord.customerRef._ref}
+        : undefined,
+      utmSource: doc.source,
+      utmMedium: doc.medium,
+      utmCampaign: doc.campaign,
+      utmContent: doc.content,
+      utmTerm: doc.term,
+      referrer: doc.referrer,
+      landingPage: doc.landingPage,
+      device: doc.device,
+      browser: doc.browser,
+      os: doc.os,
+      sessionId: doc.sessionId,
+      firstTouch: doc.firstTouch || createdAt,
+      lastTouch: doc.lastTouch || createdAt,
+      touchpoints: typeof touchpointsNumber === 'number' ? touchpointsNumber : undefined,
+      orderValue: typeof orderValue === 'number' ? orderValue : undefined,
+      createdAt,
+    }
+    Object.keys(attrDoc).forEach((key) => {
+      if (attrDoc[key] === undefined || attrDoc[key] === null) {
+        delete attrDoc[key]
+      }
+    })
+    await sanity.createOrReplace(attrDoc, {autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to upsert attribution document', err)
   }
 }
 
@@ -3615,6 +3759,18 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
 
   const existingPaymentStatus =
     typeof order?.paymentStatus === 'string' ? order.paymentStatus.trim().toLowerCase() : undefined
+  const normalizedOrderStatus =
+    typeof orderStatus === 'string' ? orderStatus.trim().toLowerCase() : undefined
+  const previouslyPaid = existingPaymentStatus
+    ? ['paid', 'fulfilled', 'shipped'].includes(existingPaymentStatus)
+    : false
+  const normalizedPaymentStatus =
+    typeof paymentStatus === 'string' ? paymentStatus.toLowerCase() : undefined
+  const nowPaid =
+    normalizedPaymentStatus === 'paid' ||
+    normalizedPaymentStatus === 'succeeded' ||
+    normalizedOrderStatus === 'paid'
+  const shouldTriggerOrderPlaced = nowPaid && !previouslyPaid
   const shouldPreserveRefundedStatus = Boolean(
     preserveExistingRefundedStatus &&
       existingPaymentStatus &&
@@ -3658,7 +3814,10 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
 
   let campaignIdForMetrics: string | null = null
   if (event?.metadata) {
-    const attrParams = extractAttributionFromMetadata(event.metadata)
+    const attrParams = extractAttributionFromMetadata(
+      event.metadata as Record<string, any> | undefined,
+      stripeSessionId ? {session_id: stripeSessionId} : undefined,
+    )
     const attrDoc = buildAttributionDocument(attrParams)
     if (attrDoc) {
       if (attrDoc.campaign) {
@@ -3676,8 +3835,13 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   } catch (err) {
     console.warn('stripeWebhook: failed to update order payment status', err)
   }
-  const normalizedPaymentStatus =
-    typeof paymentStatus === 'string' ? paymentStatus.toLowerCase() : undefined
+  if (shouldTriggerOrderPlaced) {
+    try {
+      await runOrderPlacedAutomations(order._id, {respectDelay: true})
+    } catch (err) {
+      console.warn('stripeWebhook: order automation trigger failed', err)
+    }
+  }
   const shouldRecordCampaignMetrics =
     Boolean(campaignIdForMetrics) &&
     (normalizedPaymentStatus === 'paid' ||
@@ -4066,6 +4230,7 @@ async function handleCheckoutExpired(
         stripeSource: 'checkout.session',
         stripeSessionId: session.id,
         orderNumber: normalizedOrderNumber,
+        orderType: 'online',
         slug: orderSlug ? {_type: 'slug', current: orderSlug} : undefined,
         customerName,
         customerEmail: email || undefined,
@@ -4148,7 +4313,10 @@ async function handleCheckoutExpired(
       const created = await sanity.create(baseDoc as any, {autoGenerateArrayKeys: true})
       orderId = created?._id || null
       if (orderId) {
-        const attr = extractAttributionFromMetadata(metadata)
+        const attr = extractAttributionFromMetadata(
+          metadata,
+          session?.id ? {session_id: session.id} : undefined,
+        )
         await applyAttributionToOrder(orderId, attr)
       }
     } catch (err) {
@@ -4216,7 +4384,10 @@ async function handleCheckoutExpired(
         .setIfMissing({webhookNotified: true})
         .commit({autoGenerateArrayKeys: true})
       if (orderId) {
-        const attr = extractAttributionFromMetadata(metadata)
+        const attr = extractAttributionFromMetadata(
+          metadata,
+          session?.id ? {session_id: session.id} : undefined,
+        )
         await applyAttributionToOrder(orderId, attr)
       }
     } catch (err) {
@@ -5140,15 +5311,15 @@ export const handler: Handler = async (event) => {
         const stripeSessionId = session.id
         const metadata = (session.metadata || {}) as Record<string, string>
         const userIdMeta =
-        (
-          metadata['auth0_user_id'] ||
-          metadata['auth0_sub'] ||
-          metadata['userId'] ||
-          metadata['user_id'] ||
-          ''
-        )
-          .toString()
-          .trim() || undefined
+          (
+            metadata['auth0_user_id'] ||
+            metadata['auth0_sub'] ||
+            metadata['userId'] ||
+            metadata['user_id'] ||
+            ''
+          )
+            .toString()
+            .trim() || undefined
         const metadataCustomerId =
           firstString(CUSTOMER_METADATA_ID_KEYS.map((key) => metadata[key])) || undefined
 
@@ -5253,7 +5424,12 @@ export const handler: Handler = async (event) => {
               | undefined,
           ) ||
           resolveStripeCustomerId(
-            session.customer as string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined,
+            session.customer as
+              | string
+              | Stripe.Customer
+              | Stripe.DeletedCustomer
+              | null
+              | undefined,
           ) ||
           metadataCustomerId
 
@@ -5491,6 +5667,10 @@ export const handler: Handler = async (event) => {
             const checkoutAttribution = extractAttributionFromMetadata(
               metadata as Record<string, any>,
               (paymentIntent?.metadata as Record<string, any> | undefined) || undefined,
+              {
+                session_id: stripeSessionId,
+                order_value: typeof totalAmount === 'number' ? String(totalAmount) : undefined,
+              },
             )
             if (hasAttributionData(checkoutAttribution)) {
               await applyAttributionToOrder(orderId, checkoutAttribution)
@@ -5539,6 +5719,10 @@ export const handler: Handler = async (event) => {
             }
           }
 
+          if (orderId && paymentStatus === 'paid' && cart.length) {
+            await autoReserveInventoryForOrder(orderId, cart, normalizedOrderNumber)
+          }
+
           let customerDocIdForPatch =
             ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
           try {
@@ -5563,6 +5747,13 @@ export const handler: Handler = async (event) => {
             stripeCustomerId: stripeCustomerIdValue,
             billingAddress,
           })
+          if (orderId) {
+            await maybeApplyWholesaleOrderType(orderId, customerDocIdForPatch)
+          }
+
+          if (orderId) {
+            await maybeApplyWholesaleOrderType(orderId, customerDocIdForPatch)
+          }
 
           if (shouldSendConfirmation && orderId) {
             try {
@@ -5928,6 +6119,10 @@ export const handler: Handler = async (event) => {
             } catch (err) {
               console.warn('stripeWebhook: packing slip auto upload failed', err)
             }
+          }
+
+          if (orderId && paymentStatus === 'paid' && cart.length) {
+            await autoReserveInventoryForOrder(orderId, cart, normalizedOrderNumber)
           }
 
           if (orderId) {

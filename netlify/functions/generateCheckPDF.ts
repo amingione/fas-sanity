@@ -340,7 +340,8 @@ async function generateBillCheck(billId: string) {
       paidDate,
       checkNumber,
       vendor->{
-        name,
+        companyName,
+        businessAddress,
         address
       }
     }`,
@@ -351,7 +352,14 @@ async function generateBillCheck(billId: string) {
     throw new Error('Bill not found')
   }
 
-  if (!bill.amount || !bill.vendor?.name || !bill.vendor?.address) {
+  const vendorName = bill.vendor?.companyName || bill.vendor?.name
+  const vendorAddress =
+    bill.vendor?.address ||
+    [bill.vendor?.businessAddress?.street, bill.vendor?.businessAddress?.city, bill.vendor?.businessAddress?.state, bill.vendor?.businessAddress?.zip]
+      .filter(Boolean)
+      .join(', ')
+
+  if (!bill.amount || !vendorName || !vendorAddress) {
     throw new Error('Incomplete bill data for check generation')
   }
 
@@ -364,23 +372,23 @@ async function generateBillCheck(billId: string) {
 
   doc.fontSize(10).text(`Date: ${date}`, 400, 50)
   doc.text(`Check #: ${bill.checkNumber || 'TBD'}`, 400, 65)
-  doc.text(`Pay to the Order of: ${bill.vendor.name}`, 50, 90)
+  doc.text(`Pay to the Order of: ${vendorName}`, 50, 90)
   doc.text(amountFormatted, 400, 90)
   doc.text(amountWritten, 50, 110)
   doc.text(`Memo: ${bill.description || ''}`, 50, 130)
 
   doc.moveTo(36, sectionHeight).lineTo(576, sectionHeight).stroke()
   doc.fontSize(12).text('Check Stub', 50, sectionHeight + 20)
-  doc.fontSize(10).text(`Payee: ${bill.vendor.name}`, 50, sectionHeight + 40)
-  doc.text(`Address: ${bill.vendor.address}`, 50, sectionHeight + 55)
+  doc.fontSize(10).text(`Payee: ${vendorName}`, 50, sectionHeight + 40)
+  doc.text(`Address: ${vendorAddress}`, 50, sectionHeight + 55)
   doc.text(`Amount: ${amountFormatted}`, 50, sectionHeight + 70)
   doc.text(`Memo: ${bill.description || ''}`, 50, sectionHeight + 85)
 
   const copyY = sectionHeight * 2
   doc.moveTo(36, copyY).lineTo(576, copyY).stroke()
   doc.fontSize(12).text('Check Stub (Copy)', 50, copyY + 20)
-  doc.fontSize(10).text(`Payee: ${bill.vendor.name}`, 50, copyY + 40)
-  doc.text(`Address: ${bill.vendor.address}`, 50, copyY + 55)
+  doc.fontSize(10).text(`Payee: ${vendorName}`, 50, copyY + 40)
+  doc.text(`Address: ${vendorAddress}`, 50, copyY + 55)
   doc.text(`Amount: ${amountFormatted}`, 50, copyY + 70)
   doc.text(`Memo: ${bill.description || ''}`, 50, copyY + 85)
 
