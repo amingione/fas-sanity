@@ -32,7 +32,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const {email, name} = JSON.parse(event.body || '{}')
+    const {email, name, source} = JSON.parse(event.body || '{}')
 
     if (!email || !email.includes('@')) {
       return {
@@ -44,7 +44,6 @@ export const handler: Handler = async (event) => {
 
     const emailLower = email.toLowerCase().trim()
 
-    // === NEW: SAVE TO SANITY ===
     // Check if customer exists
     const existingCustomer = await sanityClient.fetch(
       `*[_type == "customer" && email == $email][0]`,
@@ -62,13 +61,12 @@ export const handler: Handler = async (event) => {
           marketingOptIn: true,
           'emailMarketing.subscribed': true,
           'emailMarketing.subscribedAt': new Date().toISOString(),
-          'emailMarketing.source': 'popup_modal',
+          'emailMarketing.source': source || 'popup_modal',
           'emailMarketing.status': 'subscribed',
         })
         .commit()
 
       customerId = existingCustomer._id
-      console.log('Updated existing customer:', customerId)
     } else {
       // Create new customer
       const newCustomer = await sanityClient.create({
@@ -84,16 +82,15 @@ export const handler: Handler = async (event) => {
         emailMarketing: {
           subscribed: true,
           subscribedAt: new Date().toISOString(),
-          source: 'popup_modal',
+          source: source || 'popup_modal',
           status: 'subscribed',
         },
       })
 
       customerId = newCustomer._id
-      console.log('Created new customer:', customerId)
     }
 
-    // === EXISTING: ADD TO RESEND (keep your existing code) ===
+    // Add to Resend audience
     try {
       await resend.contacts.create({
         email: emailLower,
@@ -102,35 +99,35 @@ export const handler: Handler = async (event) => {
         audienceId: process.env.RESEND_AUDIENCE_ID!,
       })
     } catch (resendError) {
-      console.error('Resend audience error:', resendError)
-      // Don't fail if already exists
+      console.error('Resend error:', resendError)
+      // Don't fail if Resend fails - Sanity is source of truth
     }
 
-    // === EXISTING: SEND WELCOME EMAIL (keep your existing code) ===
-    await resend.emails.send({
-      from: 'FAS Motorsports <info@fasmotorsports.com>',
-      to: emailLower,
-      subject: 'Welcome to FAS Motorsports!',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #000;">Thanks for subscribing!</h1>
+    // Send welcome email
+    try {
+      await resend.emails.send({
+        from: 'FAS Motorsports <info@fasmotorsports.com>',
+        to: emailLower,
+        subject: 'Welcome to FAS Motorsports!',
+        html: `
+          <h1>Thanks for subscribing!</h1>
           <p>Hi ${name || 'there'},</p>
           <p>You're now subscribed to FAS Motorsports updates.</p>
-          <p><strong>You'll be the first to know about:</strong></p>
+          <p>You'll be the first to know about:</p>
           <ul>
-            <li>🚀 New product launches</li>
-            <li>💰 Exclusive deals and promotions</li>
-            <li>🏁 Performance tips and tricks</li>
-            <li>📅 Event announcements</li>
+            <li>New product launches</li>
+            <li>Exclusive deals and promotions</li>
+            <li>Performance tips and tricks</li>
+            <li>Event announcements</li>
           </ul>
           <p>Thanks for being part of the FAS family!</p>
-          <hr style="margin: 2rem 0; border: none; border-top: 1px solid #ddd;">
-          <p style="font-size: 12px; color: #666;">
-            You can unsubscribe anytime by clicking the link in our emails.
-          </p>
-        </div>
-      `,
-    })
+          <p><small>You can unsubscribe anytime by clicking the link in our emails.</small></p>
+        `,
+      })
+    } catch (emailError) {
+      console.error('Welcome email error:', emailError)
+      // Don't fail if email fails
+    }
 
     return {
       statusCode: 200,
