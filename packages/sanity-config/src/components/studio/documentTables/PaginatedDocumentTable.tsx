@@ -25,6 +25,7 @@ export interface PaginatedDocumentTableProps<TData extends Record<string, unknow
   pageSize?: number
   emptyState?: string
   filter?: string
+  apiVersion?: string
   includeDrafts?: boolean
   excludeExpired?: boolean
   headerActions?: React.ReactNode
@@ -98,12 +99,13 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   pageSize = 8,
   emptyState = 'No documents found.',
   filter,
+  apiVersion = API_VERSION,
   includeDrafts = false,
   excludeExpired = true,
   headerActions,
   onPageItemsChange,
 }: PaginatedDocumentTableProps<TData>) {
-  const client = useClient({apiVersion: API_VERSION})
+  const client = useClient({apiVersion})
   const router = useRouter()
   const [items, setItems] = useState<RowResult<TData>[]>([])
   const [total, setTotal] = useState<number>(0)

@@ -137,10 +137,11 @@ const CustomersAllTableView: ComponentType = () =>
 
 const CustomersSubscribedTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {
-    title: 'Subscribed to email',
-    filter: '(emailOptIn == true || marketingOptIn == true)',
+    title: 'Subscribed to Email',
+    filter: '_type == "customer" && (emailOptIn == true || marketingOptIn == true)',
     emptyState: 'No subscribed customers',
     pageSize: 10,
+    apiVersion: '2024-01-01',
   })
 
 const CustomersNoOrdersTableView: ComponentType = () =>

@@ -50,6 +50,7 @@ type CustomersDocumentTableProps = {
   emptyState?: string
   pageSize?: number
   orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
+  apiVersion?: string
 }
 
 export default function CustomersDocumentTable({
@@ -58,6 +59,7 @@ export default function CustomersDocumentTable({
   emptyState = 'No customers',
   pageSize = 10,
   orderings,
+  apiVersion,
 }: CustomersDocumentTableProps = {}) {
   type CustomerRow = CustomerRowData & {_id: string; _type: string}
   const resolvedOrderings = orderings ?? [
@@ -74,6 +76,7 @@ export default function CustomersDocumentTable({
       pageSize={pageSize}
       filter={filter}
       emptyState={emptyState}
+      apiVersion={apiVersion}
       columns={[
         {
           key: 'name',

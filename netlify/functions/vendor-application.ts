@@ -1,98 +1,16 @@
-import type {Handler, HandlerEvent} from '@netlify/functions'
+import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
-import multiparty from 'multiparty'
-import {createReadStream} from 'fs'
-import {Readable} from 'stream'
+import {Resend} from 'resend'
 
-const client = (() => {
-  const projectId = process.env.SANITY_PROJECT_ID
-  const token = process.env.SANITY_WRITE_TOKEN
-  if (!projectId || !token) {
-    console.warn('vendor-application function missing SANITY_PROJECT_ID or SANITY_WRITE_TOKEN')
-    return null
-  }
+const sanityClient = createClient({
+  projectId: process.env.SANITY_PROJECT_ID!,
+  dataset: process.env.SANITY_DATASET || 'production',
+  token: process.env.SANITY_WRITE_TOKEN!,
+  apiVersion: '2024-01-01',
+  useCdn: false,
+})
 
-  return createClient({
-    projectId,
-    dataset: process.env.SANITY_DATASET || 'production',
-    token,
-    apiVersion: '2024-01-01',
-    useCdn: false,
-  })
-})()
-
-type ParsedForm = {
-  fields: Record<string, string[] | undefined>
-  files: Record<string, multiparty.File[] | undefined>
-}
-
-const normalizeHeader = (headers: HandlerEvent['headers']): string | undefined => {
-  if (!headers) return undefined
-  return (
-    headers['content-type'] ||
-    headers['Content-Type'] ||
-    headers['CONTENT-TYPE'] ||
-    headers['content_type']
-  )
-}
-
-const parseForm = (event: HandlerEvent): Promise<ParsedForm> =>
-  new Promise((resolve, reject) => {
-    const contentType = normalizeHeader(event.headers)
-    if (!contentType) {
-      reject(new Error('Missing Content-Type header'))
-      return
-    }
-
-    const bodyBuffer = Buffer.from(event.body || '', event.isBase64Encoded ? 'base64' : 'utf8')
-    const stream = new Readable({
-      read() {
-        this.push(bodyBuffer)
-        this.push(null)
-      },
-    }) as Readable & {headers: Record<string, string>}
-
-    stream.headers = {
-      'content-type': contentType,
-      'content-length': String(bodyBuffer.length),
-    }
-
-    const form = new multiparty.Form()
-    form.parse(stream as any, (err, fields, files) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve({fields, files})
-      }
-    })
-  })
-
-const getFieldValue = (
-  fields: Record<string, string[] | undefined>,
-  name: string,
-): string | null => {
-  const value = fields[name]
-  if (!value || value.length === 0) return null
-  return value[0]
-}
-
-const getFieldValues = (fields: Record<string, string[] | undefined>, name: string): string[] => {
-  const value = fields[name]
-  if (!value) return []
-  return value.filter((entry) => typeof entry === 'string' && entry.length > 0)
-}
-
-const parseBoolean = (value: string | null, defaultValue = false) => {
-  if (value == null) return defaultValue
-  const normalized = value.toLowerCase()
-  return normalized === 'true' || normalized === 'on' || normalized === '1'
-}
-
-const parseNumberField = (value: string | null): number | undefined => {
-  if (!value) return undefined
-  const parsed = Number.parseInt(value, 10)
-  return Number.isNaN(parsed) ? undefined : parsed
-}
+const resend = new Resend(process.env.RESEND_API_KEY!)
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -113,99 +31,176 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  if (!client) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({error: 'Server misconfiguration: missing Sanity credentials'}),
-    }
-  }
-
   try {
-    const {fields, files} = await parseForm(event)
-    const getField = (name: string) => getFieldValue(fields, name)
+    const data = JSON.parse(event.body || '{}')
 
-    const applicationNumber = `APP-${Date.now().toString().slice(-6)}`
-    const yearsInBusiness = parseNumberField(getField('yearsInBusiness'))
-    const productsInterested = getFieldValues(fields, 'productsInterested')
-    const taxExempt = parseBoolean(getField('taxExempt'), false)
-    const shippingAddressSame = parseBoolean(getField('shippingAddressSame'), true)
-
-    let taxCertAssetId: string | null = null
-    const taxFiles = files.taxExemptCertificate
-    if (Array.isArray(taxFiles) && taxFiles[0]) {
-      const file = taxFiles[0]
-      const stream = createReadStream(file.path)
-      const asset = await client.assets.upload('file', stream, {
-        filename: file.originalFilename || 'tax-certificate.pdf',
-      })
-      taxCertAssetId = asset?._id || null
+    // Validate required fields
+    const required = [
+      'companyName',
+      'businessType',
+      'contactName',
+      'contactEmail',
+      'contactPhone',
+      'street',
+      'city',
+      'state',
+      'zip',
+      'yearsInBusiness',
+      'taxId',
+      'estimatedMonthlyVolume',
+    ]
+    for (const field of required) {
+      if (!data[field]) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({error: `${field} is required`}),
+        }
+      }
     }
 
-    const shippingAddress = !shippingAddressSame
-      ? {
-          street: getField('shippingAddress.street'),
-          city: getField('shippingAddress.city'),
-          state: getField('shippingAddress.state'),
-          zip: getField('shippingAddress.zip'),
-          country: getField('shippingAddress.country') || 'US',
-        }
-      : undefined
+    // Generate application number
+    const applicationNumber = `APP-${Date.now().toString().slice(-6)}`
 
-    const application = await client.create({
+    // Create vendor application in Sanity
+    const application = await sanityClient.create({
       _type: 'vendorApplication',
       applicationNumber,
       status: 'pending',
       submittedAt: new Date().toISOString(),
-      companyName: getField('companyName'),
-      businessType: getField('businessType'),
-      taxId: getField('taxId'),
-      yearsInBusiness,
-      website: getField('website'),
-      contactName: getField('contactName'),
-      contactTitle: getField('contactTitle'),
-      email: getField('email'),
-      phone: getField('phone'),
-      alternatePhone: getField('alternatePhone'),
-      businessAddress: {
-        street: getField('businessAddress.street'),
-        city: getField('businessAddress.city'),
-        state: getField('businessAddress.state'),
-        zip: getField('businessAddress.zip'),
-        country: getField('businessAddress.country') || 'US',
+
+      // Company info
+      companyName: data.companyName,
+      businessType: data.businessType,
+      website: data.website || null,
+      yearsInBusiness: data.yearsInBusiness,
+      taxId: data.taxId,
+
+      // Contact
+      primaryContact: {
+        name: data.contactName,
+        title: data.contactTitle,
+        email: data.contactEmail.toLowerCase(),
+        phone: data.contactPhone,
       },
-      shippingAddressSame,
-      ...(shippingAddress ? {shippingAddress} : {}),
-      estimatedMonthlyVolume: getField('estimatedMonthlyVolume'),
-      productsInterested,
-      currentSuppliers: getField('currentSuppliers'),
-      howDidYouHear: getField('howDidYouHear'),
-      additionalNotes: getField('additionalNotes'),
-      taxExempt,
-      ...(taxCertAssetId
-        ? {
-            taxExemptCertificate: {
-              _type: 'file',
-              asset: {_type: 'reference', _ref: taxCertAssetId},
-            },
-          }
-        : {}),
+
+      // Address
+      businessAddress: {
+        street: data.street,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        country: 'US',
+      },
+
+      // Business details
+      estimatedMonthlyVolume: data.estimatedMonthlyVolume,
+      productsInterested: data.productsInterested || null,
+      currentSuppliers: data.currentSuppliers || null,
+      taxExempt: data.taxExempt || false,
+      additionalInfo: data.additionalInfo || null,
+      referralSource: data.referralSource || null,
     })
 
-    console.log('Vendor application created', application._id)
+    // Send confirmation email to applicant
+    try {
+      await resend.emails.send({
+        from: 'FAS Motorsports <info@fasmotorsports.com>',
+        to: data.contactEmail,
+        subject: 'Vendor Application Received - FAS Motorsports',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1>Application Received!</h1>
+            <p>Hi ${data.contactName},</p>
+            <p>Thanks for applying to become a FAS Motorsports vendor partner.</p>
+            
+            <div style="background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+              <p style="margin: 0;"><strong>Application Number:</strong> ${applicationNumber}</p>
+              <p style="margin: 0.5rem 0 0 0;"><strong>Company:</strong> ${data.companyName}</p>
+            </div>
+            
+            <h2>What's Next?</h2>
+            <ol>
+              <li>Our team will review your application (1-2 business days)</li>
+              <li>We'll contact you to discuss pricing tiers and terms</li>
+              <li>Once approved, you'll receive your vendor account credentials</li>
+              <li>Start ordering at wholesale prices!</li>
+            </ol>
+            
+            <p>If you have any questions, reply to this email or call us at <strong>(XXX) XXX-XXXX</strong>.</p>
+            
+            <p>Thanks,<br>The FAS Motorsports Team</p>
+          </div>
+        `,
+      })
+    } catch (emailError) {
+      console.error('Confirmation email error:', emailError)
+      // Don't fail if email fails
+    }
+
+    // Send notification to FAS team
+    try {
+      await resend.emails.send({
+        from: 'FAS Motorsports <info@fasmotorsports.com>',
+        to: 'amber@fasmotorsports.com',
+        subject: `New Vendor Application: ${data.companyName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif;">
+            <h1>New Vendor Application</h1>
+            <p><strong>Application Number:</strong> ${applicationNumber}</p>
+            
+            <h2>Company Information</h2>
+            <ul>
+              <li><strong>Company:</strong> ${data.companyName}</li>
+              <li><strong>Type:</strong> ${data.businessType}</li>
+              <li><strong>Website:</strong> ${data.website || 'N/A'}</li>
+              <li><strong>Years in Business:</strong> ${data.yearsInBusiness}</li>
+              <li><strong>Tax ID:</strong> ${data.taxId}</li>
+              <li><strong>Tax Exempt:</strong> ${data.taxExempt ? 'Yes' : 'No'}</li>
+            </ul>
+            
+            <h2>Contact</h2>
+            <ul>
+              <li><strong>Name:</strong> ${data.contactName}</li>
+              <li><strong>Title:</strong> ${data.contactTitle}</li>
+              <li><strong>Email:</strong> ${data.contactEmail}</li>
+              <li><strong>Phone:</strong> ${data.contactPhone}</li>
+            </ul>
+            
+            <h2>Business Details</h2>
+            <ul>
+              <li><strong>Estimated Monthly Volume:</strong> ${data.estimatedMonthlyVolume}</li>
+              <li><strong>Products Interested:</strong> ${data.productsInterested || 'N/A'}</li>
+              <li><strong>Current Suppliers:</strong> ${data.currentSuppliers || 'N/A'}</li>
+              <li><strong>How They Heard:</strong> ${data.referralSource || 'N/A'}</li>
+            </ul>
+            
+            ${data.additionalInfo ? `
+              <h2>Additional Info</h2>
+              <p>${data.additionalInfo}</p>
+            ` : ''}
+            
+            <hr style="margin: 2rem 0;">
+            <p><a href="https://fasmotorsports.com/studio/desk/wholesale;vendorApplications;pending" style="background: #000; color: white; padding: 1rem 2rem; text-decoration: none; border-radius: 4px; display: inline-block;">Review in Studio →</a></p>
+          </div>
+        `,
+      })
+    } catch (notificationError) {
+      console.error('Notification email error:', notificationError)
+    }
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
+        message: 'Application submitted successfully',
         applicationNumber,
         applicationId: application._id,
-        message: 'Application submitted successfully',
       }),
     }
   } catch (error) {
-    console.error('Vendor application error', error)
+    console.error('Vendor application error:', error)
     return {
       statusCode: 500,
       headers,
