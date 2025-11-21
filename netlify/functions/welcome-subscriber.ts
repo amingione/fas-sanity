@@ -3,7 +3,7 @@ import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 
 const sanityClient = createClient({
-  projectId: process.env.SANITY_PROJECT_ID!,
+  projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
   dataset: process.env.SANITY_DATASET || 'production',
   token: process.env.SANITY_WRITE_TOKEN!,
   apiVersion: '2024-01-01',
