@@ -134,7 +134,6 @@ const readFileAsBase64 = (file: File): Promise<string> =>
 
 export const sendCustomerEmailAction: DocumentActionComponent = (props) => {
   const doc = (props.draft || props.published) as CustomerDocument | null
-  if (props.type !== 'customer' || !doc) return null
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [templateKey, setTemplateKey] = useState<string>('welcome')
@@ -142,6 +141,14 @@ export const sendCustomerEmailAction: DocumentActionComponent = (props) => {
   const [body, setBody] = useState<string>(() => EMAIL_TEMPLATES.welcome.body(doc?.firstName))
   const [attachments, setAttachments] = useState<AttachmentDraft[]>([])
   const [sending, setSending] = useState(false)
+
+  if (props.type !== 'customer' || !doc) {
+    return {
+      label: 'Send Email',
+      disabled: true,
+      title: 'Customer is not available yet.',
+    }
+  }
 
   if (!doc.email) {
     return {
