@@ -353,11 +353,10 @@ export const manageWorkOrderAction: DocumentActionComponent = (props) => {
   const [completing, setCompleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  if (!doc) return null
-
-  const docId = props.id.replace(/^drafts\./, '')
+  const docId = props.id?.replace(/^drafts\./, '') ?? ''
 
   const loadDetail = useCallback(async () => {
+    if (!docId) return
     setLoading(true)
     try {
       const result = await client.fetch<WorkOrderDetails>(
@@ -412,13 +411,14 @@ export const manageWorkOrderAction: DocumentActionComponent = (props) => {
     } finally {
       setLoading(false)
     }
-  }, [client, docId, toast])
+  }, [client, docId ?? null, toast])
 
   useEffect(() => {
-    if (isOpen) {
-      loadDetail()
-    }
-  }, [isOpen, loadDetail])
+    if (!isOpen || !doc) return
+    loadDetail()
+  }, [isOpen, doc?._id ?? null, loadDetail])
+
+  if (!doc) return null
 
   const resetDialogState = () => {
     setSearchTerm('')

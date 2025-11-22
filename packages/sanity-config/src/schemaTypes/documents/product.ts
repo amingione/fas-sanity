@@ -749,15 +749,16 @@ const product = defineType({
         Rule.custom((value, context) => {
           const doc = context.document as any
           const type = (doc?.productType as string) || 'physical'
+          const warn = (message: string) => ({level: 'warning', message})
           if (type === 'service') {
-            return value ? 'warning: Services do not need shipping info' : true
+            return value ? warn('Services do not need shipping info') : true
           }
           if (type === 'physical' || type === 'bundle') {
             if (typeof value !== 'number' || value <= 0) {
-              return 'Provide the shipping weight so rates stay accurate.'
+              return warn('Provide the shipping weight so rates stay accurate.')
             }
             if (value > 50) {
-              return 'warning: Heavy item - may require freight shipping'
+              return warn('⚠️ Heavy item - may require freight shipping')
             }
           }
           return true
@@ -775,15 +776,16 @@ const product = defineType({
         Rule.custom((value, context) => {
           const doc = context.document as any
           const type = (doc?.productType as string) || 'physical'
+          const warn = (message: string) => ({level: 'warning', message})
           if (type === 'service') {
-            return value ? 'warning: Services do not need shipping info' : true
+            return value ? warn('Services do not need shipping info') : true
           }
           if (type === 'physical' || type === 'bundle') {
             if (
               !value ||
               !/^\s*\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?\s*$/.test(value)
             ) {
-              return 'Enter dimensions using LxWxH inches so we can quote shipping.'
+              return warn('Enter dimensions using LxWxH inches so we can quote shipping.')
             }
           }
           return true
@@ -819,11 +821,14 @@ const product = defineType({
         Rule.custom((value, context) => {
           const doc = context.document as any
           const type = (doc?.productType as string) || 'physical'
+          const warn = (message: string) => ({level: 'warning', message})
           if (type === 'service') {
-            return value ? 'warning: Services do not need shipping info' : true
+            return value ? warn('Services do not need shipping info') : true
           }
           if (type === 'physical' || type === 'bundle') {
-            return value ? true : 'Select a shipping class so fulfillment knows how to pack it.'
+            return value
+              ? true
+              : warn('Select a shipping class so fulfillment knows how to pack it.')
           }
           return true
         }),
