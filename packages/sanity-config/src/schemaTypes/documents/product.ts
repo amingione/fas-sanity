@@ -750,6 +750,10 @@ const product = defineType({
           const doc = context.document as any
           const type = (doc?.productType as string) || 'physical'
           const warn = (message: string) => ({level: 'warning', message})
+          const freightSelected =
+            (typeof doc?.shippingClass === 'string' &&
+              doc.shippingClass.toLowerCase() === 'freight') ||
+            doc?.shippingProfile === 'freight'
           if (type === 'service') {
             return value ? warn('Services do not need shipping info') : true
           }
@@ -757,7 +761,7 @@ const product = defineType({
             if (typeof value !== 'number' || value <= 0) {
               return warn('Provide the shipping weight so rates stay accurate.')
             }
-            if (value > 50) {
+            if (value > 50 && !freightSelected) {
               return warn('⚠️ Heavy item - may require freight shipping')
             }
           }
