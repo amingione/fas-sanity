@@ -1909,6 +1909,21 @@ const buildAccountsReceivableStructure = (S: any) =>
         ]),
     )
 
+const createBlogSection = (S: any) =>
+  S.listItem()
+    .id('blog')
+    .title('Blog')
+    .icon(DocumentIcon)
+    .child(
+      S.list()
+        .title('Blog')
+        .items([
+          S.documentTypeListItem('post').title('Posts').icon(DocumentIcon),
+          S.documentTypeListItem('blogCategory').title('Categories').icon(TagIcon),
+          S.documentTypeListItem('user').title('Authors').icon(UserIcon),
+        ]),
+    )
+
 const buildReportsStructure = (S: any) =>
   S.listItem()
     .id('finance-reports')
@@ -1978,6 +1993,7 @@ export const deskStructure: StructureResolver = (S) =>
       createWholesaleManufacturingSection(S),
 
       S.divider().title('F.A.S. Resources'),
+      createBlogSection(S),
       createMarketingSection(S),
       createAnalyticsSection(S),
       downloadsStructure(S),
