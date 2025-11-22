@@ -4,6 +4,8 @@ import order from './documents/order'
 import bill from './documents/bill'
 import merchantFeed from './documents/merchantFeed'
 import shoppingCampaign from './documents/shoppingCampaign'
+import blogCategory from './documents/blog/blogCategory'
+import blogPost from './documents/blog/blogPost'
 import {buildQuote} from './objects/buildQuote'
 import {accordionGroupType} from './objects/module/accordionGroupType'
 import {accordionType} from './objects/module/accordionType'
@@ -93,7 +95,6 @@ import tune from './documents/tune'
 import wheelQuote from './documents/wheelQuote'
 import downloadResource from './documents/downloadResource'
 import campaign from './marketing/campaigns/campaign'
-import attribution from './marketing/attribution'
 import marketingChannel from './marketing/marketingChannel'
 import altText from './documents/altText'
 import customerPortalAccess from './documents/customerPortalAccess'
@@ -249,11 +250,13 @@ import inventory from './documents/inventoryRecord'
 import inventoryTransaction from './documents/inventoryTransaction'
 import manufacturingOrder from './documents/manufacturingOrder'
 import attributionSnapshot from './marketing/attributionSnapshot'
+import user from './documents/user'
 
 const documents = [
   collectionType,
   colorThemeType,
   pageType,
+  blogPost,
   product,
   productVariantType,
   quote,
@@ -274,6 +277,7 @@ const documents = [
   inventoryTransaction,
   expiredCart,
   category,
+  blogCategory,
   productBundle,
   bankAccountType,
   checkType,
@@ -294,6 +298,7 @@ const documents = [
   emailTemplate,
   emailAutomation,
   emailLog,
+  user,
   marketingOptIn,
   merchantFeed,
   shoppingCampaign,
