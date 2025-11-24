@@ -226,6 +226,9 @@ import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
 import vendor from './documents/vendor'
 import vendorApplication from './documents/vendorApplication'
+import purchaseOrder from './documents/purchaseOrder'
+import vendorMessage from './documents/vendorMessage'
+import vendorProduct from './documents/vendorProduct'
 import vendorQuote from './documents/vendorQuote'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
@@ -266,6 +269,9 @@ const documents = [
   stripeWebhook,
   vendorApplication,
   vendor,
+  purchaseOrder,
+  vendorMessage,
+  vendorProduct,
   vendorQuote,
   bill,
   order,
