@@ -254,6 +254,9 @@ import inventoryTransaction from './documents/inventoryTransaction'
 import manufacturingOrder from './documents/manufacturingOrder'
 import attributionSnapshot from './marketing/attributionSnapshot'
 import user from './documents/user'
+import {analyticsSettingsType} from './documents/analyticsSettings'
+import {searchSettingsType} from './documents/searchSettings'
+import {searchQueryType} from './documents/searchQuery'
 
 const documents = [
   collectionType,
@@ -314,14 +317,23 @@ const documents = [
   marketingChannel,
   downloadResource,
   altText,
+  searchQueryType,
 ]
 
 import {homeType} from './singletons/homeType'
 import {settingsType as siteSettingsType} from './singletons/siteSettingsType'
 import {dashboardViewType} from './singletons/dashboardViewType'
+import {shippingSettingsType} from './singletons/shippingSettings'
 import printSettings from './documents/printSettings'
 
-const singletons = [homeType, siteSettingsType, dashboardViewType]
+const singletons = [
+  homeType,
+  siteSettingsType,
+  dashboardViewType,
+  shippingSettingsType,
+  analyticsSettingsType,
+  searchSettingsType,
+]
 
 export const schemaTypes = [
   ...annotations,

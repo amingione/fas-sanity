@@ -9,6 +9,9 @@ import {backfillProductAction} from './schemaTypes/documentActions/backfillProdu
 import {
   refundStripeInvoiceAction,
 } from './schemaTypes/documentActions/refundStripeAction'
+import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
+import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
+import {purchaseOrderLabelAction} from './schemaTypes/documentActions/purchaseOrderLabel'
 import {orderActions} from './schemaTypes/documents/order'
 import {
   approveVendorApplicationAction,
@@ -47,11 +50,14 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
   if (context.schemaType === 'invoice') {
     list.push(createShippingLabel)
+    list.push(getShippingRatesAction)
+    list.push(purchaseShippingLabelAction)
     list.push(reprocessStripeSessionAction)
     list.push(backfillInvoicesAction)
     list.push(refundStripeInvoiceAction)
   }
   if (context.schemaType === 'order') {
+    list.push(purchaseOrderLabelAction)
     return orderActions(list, context)
   }
   if (context.schemaType === 'vendorApplication') {
