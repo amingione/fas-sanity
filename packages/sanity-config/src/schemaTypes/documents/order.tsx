@@ -1,6 +1,6 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 // src/schemaTypes/documents/order.tsx
-import {defineType} from 'sanity'
+import {defineField, defineType} from 'sanity'
 import {PackageIcon, DocumentPdfIcon, ResetIcon} from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
 import React from 'react'
@@ -360,6 +360,25 @@ const orderSchema = defineType({
         },
       ],
     },
+    defineField({
+      name: 'analytics',
+      type: 'object',
+      title: 'Order Analytics',
+      description: 'Attribution and performance data',
+      readOnly: true,
+      group: 'marketing',
+      options: {collapsible: true, collapsed: true},
+      fields: [
+        {name: 'customerLifetimeValue', type: 'number', title: 'Customer LTV', description: 'Customer lifetime value at time of order'},
+        {name: 'customerOrderNumber', type: 'number', title: 'Customer Order #', description: 'Which order number this is for the customer (1st, 2nd, etc.)'},
+        {name: 'daysSinceLastOrder', type: 'number', title: 'Days Since Last Order', description: "Days since customer's previous order"},
+        {name: 'timeToConversion', type: 'number', title: 'Time to Conversion (hours)', description: 'Hours from first visit to purchase'},
+        {name: 'sessionCount', type: 'number', title: 'Session Count', description: 'Number of sessions before purchase'},
+        {name: 'touchpointCount', type: 'number', title: 'Marketing Touchpoints', description: 'Number of marketing interactions before purchase'},
+        {name: 'profitMargin', type: 'number', title: 'Profit Margin', description: 'Estimated profit margin for this order'},
+        {name: 'fulfillmentCost', type: 'number', title: 'Fulfillment Cost', description: 'Total cost to fulfill (shipping + handling)'},
+      ],
+    }),
 
     // ========== CUSTOMER GROUP ==========
     {
@@ -435,6 +454,494 @@ const orderSchema = defineType({
     // Removed: Order-level FAQ does not belong here
 
     // ========== SHIPPING GROUP ==========
+    defineField({
+      name: 'fulfillmentWorkflow',
+      type: 'object',
+      title: 'Fulfillment Workflow',
+      description: 'Detailed order processing stages',
+      group: 'shipping',
+      options: {collapsible: true, collapsed: false},
+      fields: [
+        {
+          name: 'currentStage',
+          type: 'string',
+          title: 'Current Stage',
+          options: {
+            list: [
+              {title: '1️⃣ Order Received', value: 'received'},
+              {title: '2️⃣ Payment Verified', value: 'payment_verified'},
+              {title: '3️⃣ Fraud Check', value: 'fraud_check'},
+              {title: '4️⃣ Inventory Allocated', value: 'inventory_allocated'},
+              {title: '5️⃣ Ready to Pick', value: 'ready_to_pick'},
+              {title: '6️⃣ Picking in Progress', value: 'picking'},
+              {title: '7️⃣ Picked', value: 'picked'},
+              {title: '8️⃣ Quality Check', value: 'quality_check'},
+              {title: '9️⃣ Packing', value: 'packing'},
+              {title: '🔟 Packed', value: 'packed'},
+              {title: '🏷️ Label Created', value: 'label_created'},
+              {title: '📦 Ready to Ship', value: 'ready_to_ship'},
+              {title: '🚚 Handed to Carrier', value: 'shipped'},
+              {title: '✅ Delivered', value: 'delivered'},
+              {title: '⚠️ On Hold', value: 'on_hold'},
+              {title: '❌ Cancelled', value: 'cancelled'},
+            ],
+            layout: 'dropdown',
+          },
+          initialValue: 'received',
+          validation: (Rule) => Rule.required(),
+        },
+        {
+          name: 'stages',
+          type: 'array',
+          title: 'Stage History',
+          description: 'Timeline of all fulfillment stages',
+          of: [
+            defineField({
+              type: 'object',
+              name: 'stage',
+              fields: [
+                {
+                  name: 'stage',
+                  type: 'string',
+                  title: 'Stage',
+                  options: {
+                    list: [
+                      'received',
+                      'payment_verified',
+                      'fraud_check',
+                      'inventory_allocated',
+                      'ready_to_pick',
+                      'picking',
+                      'picked',
+                      'quality_check',
+                      'packing',
+                      'packed',
+                      'label_created',
+                      'ready_to_ship',
+                      'shipped',
+                      'delivered',
+                      'on_hold',
+                      'cancelled',
+                    ],
+                  },
+                },
+                {name: 'timestamp', type: 'datetime', title: 'Timestamp'},
+                {name: 'completedBy', type: 'string', title: 'Completed By', description: 'User or system that completed this stage'},
+                {name: 'notes', type: 'text', title: 'Notes', rows: 2},
+                {name: 'duration', type: 'number', title: 'Duration (minutes)', description: 'Time spent in this stage'},
+              ],
+              preview: {
+                select: {
+                  stage: 'stage',
+                  timestamp: 'timestamp',
+                  user: 'completedBy',
+                },
+                prepare({stage, timestamp, user}) {
+                  return {
+                    title: stage?.replace('_', ' ').toUpperCase(),
+                    subtitle: `${new Date(timestamp as string).toLocaleString()} • ${user || 'System'}`,
+                  }
+                },
+              },
+            }),
+          ],
+        },
+        {
+          name: 'pickingDetails',
+          type: 'object',
+          title: 'Picking Details',
+          options: {collapsible: true, collapsed: true},
+          fields: [
+            {name: 'assignedTo', type: 'reference', title: 'Assigned Picker', to: [{type: 'user'}]},
+            {name: 'pickingStarted', type: 'datetime', title: 'Picking Started'},
+            {name: 'pickingCompleted', type: 'datetime', title: 'Picking Completed'},
+            {
+              name: 'pickList',
+              type: 'array',
+              title: 'Pick List',
+              of: [
+                defineField({
+                  type: 'object',
+                  fields: [
+                    {name: 'product', type: 'reference', to: [{type: 'product'}]},
+                    {name: 'sku', type: 'string', title: 'SKU'},
+                    {name: 'quantity', type: 'number', title: 'Quantity'},
+                    {name: 'location', type: 'string', title: 'Warehouse Location', description: 'Bin/shelf location'},
+                    {name: 'picked', type: 'boolean', title: 'Picked', initialValue: false},
+                    {name: 'pickedAt', type: 'datetime', title: 'Picked At'},
+                  ],
+                }),
+              ],
+            },
+            {name: 'pickingNotes', type: 'text', title: 'Picking Notes', rows: 3},
+          ],
+        },
+        {
+          name: 'packingDetails',
+          type: 'object',
+          title: 'Packing Details',
+          options: {collapsible: true, collapsed: true},
+          fields: [
+            {name: 'assignedTo', type: 'reference', title: 'Assigned Packer', to: [{type: 'user'}]},
+            {name: 'packingStarted', type: 'datetime', title: 'Packing Started'},
+            {name: 'packingCompleted', type: 'datetime', title: 'Packing Completed'},
+            {
+              name: 'packingStation',
+              type: 'string',
+              title: 'Packing Station',
+              description: 'Which station was used',
+            },
+            {
+              name: 'boxSize',
+              type: 'string',
+              title: 'Box Size',
+              options: {
+                list: [
+                  'Small (12x9x4)',
+                  'Medium (16x12x6)',
+                  'Large (20x16x8)',
+                  'Extra Large (24x20x12)',
+                  'Custom',
+                ],
+              },
+            },
+            {
+              name: 'packingMaterials',
+              type: 'array',
+              title: 'Packing Materials Used',
+              of: [
+                defineField({
+                  type: 'object',
+                  fields: [
+                    {
+                      name: 'material',
+                      type: 'string',
+                      title: 'Material',
+                      options: {
+                        list: [
+                          'Bubble wrap',
+                          'Packing peanuts',
+                          'Air pillows',
+                          'Foam inserts',
+                          'Paper fill',
+                          'Cardboard dividers',
+                        ],
+                      },
+                    },
+                    {name: 'quantity', type: 'number', title: 'Quantity'},
+                  ],
+                }),
+              ],
+            },
+            {
+              name: 'actualWeight',
+              type: 'number',
+              title: 'Actual Weight (lbs)',
+              description: 'Measured weight of packed box',
+            },
+            {
+              name: 'actualDimensions',
+              type: 'object',
+              title: 'Actual Dimensions',
+              fields: [
+                {name: 'length', type: 'number', title: 'Length (in)'},
+                {name: 'width', type: 'number', title: 'Width (in)'},
+                {name: 'height', type: 'number', title: 'Height (in)'},
+              ],
+            },
+            {name: 'qualityCheckPassed', type: 'boolean', title: 'Quality Check Passed'},
+            {name: 'packingNotes', type: 'text', title: 'Packing Notes', rows: 3},
+          ],
+        },
+        {
+          name: 'holdDetails',
+          type: 'object',
+          title: 'Hold Details',
+          description: 'Information when order is on hold',
+          hidden: ({document}) => document?.fulfillmentWorkflow?.currentStage !== 'on_hold',
+          fields: [
+            {
+              name: 'reason',
+              type: 'string',
+              title: 'Hold Reason',
+              options: {
+                list: [
+                  'Payment issue',
+                  'Fraud review',
+                  'Out of stock',
+                  'Address verification needed',
+                  'Customer request',
+                  'Damaged inventory',
+                  'Other',
+                ],
+              },
+            },
+            {name: 'details', type: 'text', title: 'Hold Details', rows: 3},
+            {name: 'placedOnHoldAt', type: 'datetime', title: 'Placed on Hold'},
+            {name: 'placedOnHoldBy', type: 'string', title: 'Placed on Hold By'},
+            {name: 'expectedResolutionDate', type: 'date', title: 'Expected Resolution Date'},
+            {name: 'customerNotified', type: 'boolean', title: 'Customer Notified', initialValue: false},
+          ],
+        },
+        {
+          name: 'sla',
+          type: 'object',
+          title: 'Service Level Agreement',
+          description: 'Fulfillment time targets',
+          fields: [
+            {name: 'targetShipDate', type: 'date', title: 'Target Ship Date', description: 'When this order should ship by'},
+            {name: 'targetDeliveryDate', type: 'date', title: 'Target Delivery Date', description: 'Promised delivery date to customer'},
+            {
+              name: 'priority',
+              type: 'string',
+              title: 'Priority',
+              options: {
+                list: [
+                  {title: '🔴 Urgent', value: 'urgent'},
+                  {title: '🟡 High', value: 'high'},
+                  {title: '🟢 Normal', value: 'normal'},
+                  {title: '⚪ Low', value: 'low'},
+                ],
+              },
+              initialValue: 'normal',
+            },
+            {
+              name: 'isLate',
+              type: 'boolean',
+              title: 'Behind Schedule',
+              description: 'Order is past target ship date',
+              readOnly: true,
+            },
+            {
+              name: 'daysUntilDue',
+              type: 'number',
+              title: 'Days Until Due',
+              description: 'Days remaining until target ship date',
+              readOnly: true,
+            },
+          ],
+        },
+        {
+          name: 'metrics',
+          type: 'object',
+          title: 'Fulfillment Metrics',
+          readOnly: true,
+          fields: [
+            {
+              name: 'totalFulfillmentTime',
+              type: 'number',
+              title: 'Total Fulfillment Time (hours)',
+              description: 'Time from order to shipment',
+            },
+            {name: 'pickingTime', type: 'number', title: 'Picking Time (minutes)'},
+            {name: 'packingTime', type: 'number', title: 'Packing Time (minutes)'},
+            {
+              name: 'timeInQueue',
+              type: 'number',
+              title: 'Time in Queue (hours)',
+              description: 'Time waiting before picking started',
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
+      name: 'fulfillment',
+      type: 'object',
+      title: 'Fulfillment & Shipping',
+      description: 'Shipping label, tracking, and delivery status',
+      group: 'shipping',
+      options: {
+        collapsible: true,
+        collapsed: false,
+      },
+      fields: [
+        {
+          name: 'status',
+          type: 'string',
+          title: 'Fulfillment Status',
+          description: 'Current stage of order fulfillment',
+          options: {
+            list: [
+              {title: '📦 Unfulfilled', value: 'unfulfilled'},
+              {title: '🏷️ Label Created', value: 'label_created'},
+              {title: '📮 Shipped', value: 'shipped'},
+              {title: '🚚 In Transit', value: 'in_transit'},
+              {title: '📬 Out for Delivery', value: 'out_for_delivery'},
+              {title: '✅ Delivered', value: 'delivered'},
+              {title: '⚠️ Exception', value: 'exception'},
+              {title: '❌ Failed Delivery', value: 'failed'},
+              {title: '↩️ Returned', value: 'returned'},
+            ],
+            layout: 'dropdown',
+          },
+          initialValue: 'unfulfilled',
+        },
+        {
+          name: 'trackingNumber',
+          type: 'string',
+          title: 'Tracking Number',
+          description: 'Carrier tracking number for customer lookup',
+        },
+        {
+          name: 'trackingUrl',
+          type: 'url',
+          title: 'Tracking URL',
+          description: 'Direct link to carrier tracking page',
+        },
+        {
+          name: 'carrier',
+          type: 'string',
+          title: 'Actual Carrier',
+          description: 'Carrier that fulfilled the shipment (USPS, UPS, FedEx)',
+          options: {
+            list: ['USPS', 'UPS', 'FedEx', 'DHL', 'OnTrac', 'Other'],
+          },
+        },
+        {
+          name: 'service',
+          type: 'string',
+          title: 'Service Level',
+          description: 'Actual service used (Priority Mail, Ground, etc.)',
+        },
+        {
+          name: 'labelUrl',
+          type: 'url',
+          title: 'Shipping Label URL',
+          description: 'Printable shipping label from EasyPost',
+        },
+        {
+          name: 'labelFormat',
+          type: 'string',
+          title: 'Label Format',
+          options: {
+            list: ['PDF', 'PNG', 'ZPL', 'EPL2'],
+          },
+          initialValue: 'PDF',
+        },
+        {
+          name: 'labelPurchasedAt',
+          type: 'datetime',
+          title: 'Label Purchased',
+          description: 'When the shipping label was created',
+        },
+        {
+          name: 'shippedAt',
+          type: 'datetime',
+          title: 'Shipped Date',
+          description: 'When package was handed to carrier',
+        },
+        {
+          name: 'estimatedDelivery',
+          type: 'datetime',
+          title: 'Estimated Delivery',
+          description: 'Expected delivery date from carrier',
+        },
+        {
+          name: 'deliveredAt',
+          type: 'datetime',
+          title: 'Delivered Date',
+          description: 'Actual delivery timestamp',
+        },
+        {
+          name: 'signatureRequired',
+          type: 'boolean',
+          title: 'Signature Required',
+          initialValue: false,
+        },
+        {
+          name: 'insuranceAmount',
+          type: 'number',
+          title: 'Insurance Amount ($)',
+          description: 'Declared value for shipping insurance',
+        },
+        {
+          name: 'easypostShipmentId',
+          type: 'string',
+          title: 'EasyPost Shipment ID',
+          description: 'EasyPost shipment reference (shp_...)',
+          readOnly: true,
+        },
+        {
+          name: 'easypostTrackerId',
+          type: 'string',
+          title: 'EasyPost Tracker ID',
+          description: 'EasyPost tracker reference (trk_...)',
+          readOnly: true,
+        },
+        {
+          name: 'easypostRateId',
+          type: 'string',
+          title: 'EasyPost Rate ID',
+          description: 'Selected rate from EasyPost quote',
+          readOnly: true,
+        },
+        {
+          name: 'actualShippingCost',
+          type: 'number',
+          title: 'Actual Shipping Cost',
+          description: 'What we paid for the label (may differ from customer charge)',
+        },
+        {
+          name: 'trackingEvents',
+          type: 'array',
+          title: 'Tracking History',
+          description: 'Timeline of tracking updates from carrier',
+          of: [
+            {
+              type: 'object',
+              name: 'trackingEvent',
+              fields: [
+                {
+                  name: 'status',
+                  type: 'string',
+                  title: 'Status Code',
+                },
+                {
+                  name: 'message',
+                  type: 'text',
+                  title: 'Status Message',
+                  rows: 2,
+                },
+                {
+                  name: 'location',
+                  type: 'string',
+                  title: 'Location',
+                  description: 'City, State or facility name',
+                },
+                {
+                  name: 'timestamp',
+                  type: 'datetime',
+                  title: 'Event Time',
+                },
+                {
+                  name: 'source',
+                  type: 'string',
+                  title: 'Data Source',
+                  options: {
+                    list: ['carrier', 'easypost', 'manual'],
+                  },
+                },
+              ],
+              preview: {
+                select: {
+                  title: 'status',
+                  subtitle: 'message',
+                  description: 'timestamp',
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'fulfillmentNotes',
+          type: 'text',
+          title: 'Fulfillment Notes',
+          description: 'Internal notes about packing, shipping issues, etc.',
+          rows: 3,
+        },
+      ],
+    }),
     {
       name: 'shippingAddress',
       type: 'object',
