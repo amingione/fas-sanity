@@ -467,6 +467,195 @@ export default defineType({
     }),
 
     defineField({
+      name: 'shipping',
+      type: 'object',
+      title: 'Shipping Details',
+      description: 'Shipping method, cost, and tracking information',
+      fieldset: 'pricing',
+      options: {
+        collapsible: true,
+        collapsed: false,
+      },
+      fields: [
+        {
+          name: 'requiresShipping',
+          type: 'boolean',
+          title: 'Requires Shipping',
+          description: 'Disable for in-store pickup or install-only services',
+          initialValue: true,
+        },
+        {
+          name: 'shippingCost',
+          type: 'number',
+          title: 'Shipping Cost',
+          description: 'Amount charged to customer for shipping',
+          validation: (Rule) => Rule.min(0),
+        },
+        {
+          name: 'shippingMethod',
+          type: 'string',
+          title: 'Shipping Method',
+          description: 'Selected carrier and service level',
+          options: {
+            list: [
+              {title: 'USPS Ground Advantage', value: 'usps_ground_advantage'},
+              {title: 'USPS Priority Mail', value: 'usps_priority'},
+              {title: 'USPS Priority Mail Express', value: 'usps_express'},
+              {title: 'UPS Ground', value: 'ups_ground'},
+              {title: 'UPS 2nd Day Air', value: 'ups_2day'},
+              {title: 'UPS Next Day Air', value: 'ups_next_day'},
+              {title: 'FedEx Ground', value: 'fedex_ground'},
+              {title: 'FedEx 2Day', value: 'fedex_2day'},
+              {title: 'FedEx Standard Overnight', value: 'fedex_overnight'},
+              {title: 'Customer Pickup', value: 'pickup'},
+              {title: 'Local Delivery', value: 'local_delivery'},
+            ],
+          },
+        },
+        {
+          name: 'easypostRateId',
+          type: 'string',
+          title: 'EasyPost Rate ID',
+          description: 'Selected rate from EasyPost quote (rate_...)',
+          readOnly: true,
+        },
+        {
+          name: 'easypostShipmentId',
+          type: 'string',
+          title: 'EasyPost Shipment ID',
+          description: 'Created shipment reference (shp_...)',
+          readOnly: true,
+        },
+        {
+          name: 'packageWeight',
+          type: 'number',
+          title: 'Package Weight (lbs)',
+          description: 'Total weight including packaging',
+          validation: (Rule) => Rule.min(0).precision(2),
+        },
+        {
+          name: 'packageDimensions',
+          type: 'object',
+          title: 'Package Dimensions',
+          description: 'Box size for rate calculation',
+          fields: [
+            {
+              name: 'length',
+              type: 'number',
+              title: 'Length (inches)',
+              validation: (Rule) => Rule.min(0).precision(2),
+            },
+            {
+              name: 'width',
+              type: 'number',
+              title: 'Width (inches)',
+              validation: (Rule) => Rule.min(0).precision(2),
+            },
+            {
+              name: 'height',
+              type: 'number',
+              title: 'Height (inches)',
+              validation: (Rule) => Rule.min(0).precision(2),
+            },
+          ],
+        },
+        {
+          name: 'availableRates',
+          type: 'array',
+          title: 'Available Shipping Rates',
+          description: 'Rates fetched from EasyPost',
+          readOnly: true,
+          of: [
+            {
+              type: 'object',
+              name: 'shippingRate',
+              fields: [
+                {
+                  name: 'rateId',
+                  type: 'string',
+                  title: 'Rate ID',
+                },
+                {
+                  name: 'carrier',
+                  type: 'string',
+                  title: 'Carrier',
+                },
+                {
+                  name: 'service',
+                  type: 'string',
+                  title: 'Service',
+                },
+                {
+                  name: 'rate',
+                  type: 'number',
+                  title: 'Rate ($)',
+                },
+                {
+                  name: 'deliveryDays',
+                  type: 'number',
+                  title: 'Delivery Days',
+                },
+                {
+                  name: 'estimatedDeliveryDate',
+                  type: 'date',
+                  title: 'Est. Delivery',
+                },
+              ],
+              preview: {
+                select: {
+                  carrier: 'carrier',
+                  service: 'service',
+                  rate: 'rate',
+                  days: 'deliveryDays',
+                },
+                prepare({carrier, service, rate, days}) {
+                  return {
+                    title: `${carrier} ${service}`,
+                    subtitle: `$${rate} • ${days} days`,
+                  }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'trackingNumber',
+          type: 'string',
+          title: 'Tracking Number',
+        },
+        {
+          name: 'trackingUrl',
+          type: 'url',
+          title: 'Tracking URL',
+        },
+        {
+          name: 'labelUrl',
+          type: 'url',
+          title: 'Shipping Label URL',
+        },
+        {
+          name: 'labelPurchasedAt',
+          type: 'datetime',
+          title: 'Label Purchased',
+        },
+        {
+          name: 'fulfillmentStatus',
+          type: 'string',
+          title: 'Fulfillment Status',
+          options: {
+            list: [
+              {title: 'Not Shipped', value: 'not_shipped'},
+              {title: 'Label Created', value: 'label_created'},
+              {title: 'Shipped', value: 'shipped'},
+              {title: 'Delivered', value: 'delivered'},
+            ],
+          },
+          initialValue: 'not_shipped',
+        },
+      ],
+    }),
+
+    defineField({
       name: 'orderRef',
       title: 'Related Order',
       type: 'reference',
