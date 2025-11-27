@@ -10,6 +10,7 @@ import {
   enrichCartItemsFromSanity,
   computeShippingMetrics,
   fetchProductsForCart,
+  findProductForItem,
 } from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
@@ -1296,6 +1297,117 @@ function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
   }
 }
 
+function determineOrderType(metadata?: Record<string, string | undefined>): string {
+  const source = metadata || {}
+  const explicit = (source['orderType'] || source['order_type'] || '').toString().trim()
+  if (explicit) return explicit
+
+  const sourceHint = (source['source'] || '').toString().trim().toLowerCase()
+  if (sourceHint === 'pos' || sourceHint === 'in-store') return 'in-store'
+
+  const customerType = (source['customer_type'] || '').toString().trim().toLowerCase()
+  if (customerType === 'wholesale') return 'wholesale'
+
+  return 'online'
+}
+
+function ensureRequiredPaymentDetails(
+  target: Record<string, any>,
+  details: {brand?: string | null | undefined; last4?: string | null | undefined; receiptUrl?: string | null | undefined},
+  contextLabel: string,
+) {
+  const brand = (details.brand || '').toString().trim()
+  const last4 = (details.last4 || '').toString().trim()
+  const receipt = (details.receiptUrl || '').toString().trim()
+
+  target.cardBrand = brand || 'unknown'
+  target.cardLast4 = last4 || 'unknown'
+  target.receiptUrl = receipt || 'https://'
+
+  if (!brand || !last4 || !receipt) {
+    const missing = []
+    if (!brand) missing.push('cardBrand')
+    if (!last4) missing.push('cardLast4')
+    if (!receipt) missing.push('receiptUrl')
+    console.error(`stripeWebhook: missing payment details [${missing.join(', ')}] (${contextLabel})`)
+  }
+}
+
+type CartRequirementContext = {
+  source?: string
+  sessionId?: string | null
+  orderId?: string | null
+}
+
+function describeCartContext(context?: CartRequirementContext): string {
+  if (!context) return ''
+  const parts: string[] = []
+  if (context.source) parts.push(`source=${context.source}`)
+  if (context.sessionId) parts.push(`session=${context.sessionId}`)
+  if (context.orderId) parts.push(`order=${context.orderId}`)
+  return parts.length ? ` (${parts.join(' | ')})` : ''
+}
+
+function normalizeRequiredStringArray(value: unknown): string[] {
+  return uniqueStrings(coerceStringArray(value))
+}
+
+function enforceCartRequirements(
+  cart: CartItem[],
+  products: CartProductSummary[],
+  context?: CartRequirementContext,
+): CartItem[] {
+  if (!Array.isArray(cart)) return []
+
+  const productIndex = new Map<string, CartProductSummary>()
+  for (const product of products) {
+    if (product?._id) {
+      productIndex.set(product._id, product)
+    }
+  }
+
+  return cart.map((item, index) => {
+    if (!item || typeof item !== 'object') return item
+    const normalized: CartItem = {...item}
+
+    const referencedProduct = normalized.productRef?._ref
+      ? productIndex.get(normalized.productRef._ref)
+      : undefined
+    const matchedProduct = referencedProduct || findProductForItem(normalized, products) || undefined
+
+    if (!normalized.productRef && matchedProduct?._id) {
+      normalized.productRef = {_type: 'reference', _ref: matchedProduct._id}
+    }
+
+    if (!normalized.sku && matchedProduct?.sku) {
+      normalized.sku = matchedProduct.sku
+    }
+
+    normalized.optionDetails = normalizeRequiredStringArray(normalized.optionDetails)
+    normalized.upgrades = normalizeRequiredStringArray(normalized.upgrades)
+
+    const missing: string[] = []
+    if (!normalized.productRef?._ref) missing.push('productRef')
+    if (!normalized.sku) missing.push('sku')
+
+    if (missing.length) {
+      const validationIssues = uniqueStrings([
+        ...(Array.isArray(normalized.validationIssues) ? normalized.validationIssues : []),
+        ...missing.map((field) => `Missing required cart field: ${field}`),
+      ])
+      if (validationIssues.length) {
+        normalized.validationIssues = validationIssues
+      }
+      console.error(
+        `stripeWebhook: cart item missing required fields [${missing.join(', ')}]${describeCartContext(context)}`,
+        {index, item: normalized},
+      )
+    }
+
+    return normalized
+  })
+}
+
 async function buildCartFromSessionLineItems(
   sessionId: string,
   metadata: Record<string, string>,
@@ -1326,7 +1438,11 @@ async function buildCartFromSessionLineItems(
     if (!productSummaries.length && cartItems.length) {
       productSummaries = await fetchProductsForCart(cartItems, sanity)
     }
-    return {items: cartItems, products: productSummaries}
+    const normalizedCart = enforceCartRequirements(cartItems, productSummaries, {
+      source: 'checkout.session',
+      sessionId,
+    })
+    return {items: normalizedCart, products: productSummaries}
   } catch (err) {
     console.warn('stripeWebhook: listLineItems failed', err)
     let fallback = cartItemsFromMetadata(metadata)
@@ -1342,10 +1458,18 @@ async function buildCartFromSessionLineItems(
       if (!productSummaries.length && fallback.length) {
         productSummaries = await fetchProductsForCart(fallback, sanity)
       }
-      return {items: fallback, products: productSummaries}
+      const normalizedFallback = enforceCartRequirements(fallback, productSummaries, {
+        source: 'checkout.session',
+        sessionId,
+      })
+      return {items: normalizedFallback, products: productSummaries}
     } catch {
       const productSummaries = fallback.length ? await fetchProductsForCart(fallback, sanity) : []
-      return {items: fallback, products: productSummaries}
+      const normalizedFallback = enforceCartRequirements(fallback, productSummaries, {
+        source: 'checkout.session',
+        sessionId,
+      })
+      return {items: normalizedFallback, products: productSummaries}
     }
   }
 }
@@ -1503,6 +1627,15 @@ const sanity = createClient({
   useCdn: false,
 })
 
+// Dedicated client for strict order creation + backfill requirements.
+const webhookSanityClient = createClient({
+  projectId: process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET!,
+  token: (process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN) as string,
+  apiVersion: '2024-01-01',
+  useCdn: false,
+})
+
 const money = (value?: number) =>
   typeof value === 'number' && Number.isFinite(value) ? `$${value.toFixed(2)}` : ''
 
@@ -1529,6 +1662,305 @@ const renderAddressText = (address?: any): string => {
     address?.country,
   ].filter((line) => Boolean(line && String(line).trim()))
   return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Strict order creation helpers (mandatory field enforcement)
+// ---------------------------------------------------------------------------
+
+async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Session) {
+  const email = checkoutSession.customer_details?.email || checkoutSession.customer_email || ''
+  const name = checkoutSession.customer_details?.name || ''
+
+  let customer = await webhookSanityClient.fetch<{_id: string; name?: string} | null>(
+    `*[_type == "customer" && email == $email][0]{_id, name}`,
+    {email},
+  )
+
+  if (!customer) {
+    customer = await webhookSanityClient.create({
+      _type: 'customer',
+      email: email || undefined,
+      name: name || (email ? email.split('@')[0] : 'Customer'),
+      stripeCustomerId: checkoutSession.customer || null,
+      customerType: 'retail',
+      roles: ['customer'],
+    })
+    console.log(`✅ Created new customer: ${customer.name || email}`)
+  }
+
+  return customer
+}
+
+async function strictGetPaymentDetails(paymentIntentId?: string | null) {
+  const details: {cardBrand: string; cardLast4: string; receiptUrl: string} = {
+    cardBrand: '',
+    cardLast4: '',
+    receiptUrl: '',
+  }
+
+  if (!paymentIntentId) return details
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['charges.data.payment_method_details'],
+    })
+    const charge = paymentIntent.charges.data?.[0]
+    if (charge) {
+      if (charge.payment_method_details?.card) {
+        details.cardBrand = charge.payment_method_details.card.brand || ''
+        details.cardLast4 = charge.payment_method_details.card.last4 || ''
+      }
+      if (charge.receipt_url) details.receiptUrl = charge.receipt_url
+    }
+  } catch (error: any) {
+    console.error('Error fetching payment details:', error?.message || error)
+  }
+
+  return details
+}
+
+async function strictFindProductForCartItem(item: Stripe.LineItem) {
+  const sku = item.price?.metadata?.sku
+  if (sku) {
+    const product = await webhookSanityClient.fetch<{_id: string; title?: string; sku?: string} | null>(
+      `*[_type == "product" && sku == $sku][0]{_id, title, sku}`,
+      {sku},
+    )
+    if (product) return product
+  }
+
+  const productId = item.price?.product
+  if (productId) {
+    const product = await webhookSanityClient.fetch<{_id: string; title?: string; sku?: string} | null>(
+      `*[_type == "product" && _id match $id][0]{_id, title, sku}`,
+      {id: `*${productId}*`},
+    )
+    if (product) return product
+  }
+
+  const searchName = (item.description || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const product = await webhookSanityClient.fetch<{_id: string; title?: string; sku?: string} | null>(
+    `*[_type == "product" && lower(title) match "*${searchName}*"][0]{_id, title, sku}`,
+  )
+  if (!product) console.error(`❌ No product found for: ${item.description}`)
+  return product
+}
+
+function strictParseOptions(metadata?: Stripe.Metadata | null): string[] {
+  if (!metadata?.options) return []
+  if (Array.isArray(metadata.options)) return metadata.options as unknown as string[]
+  if (typeof metadata.options === 'string') {
+    return metadata.options
+      .split(',')
+      .map((opt) => opt.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+function strictParseUpgrades(metadata?: Stripe.Metadata | null): string[] {
+  if (!metadata?.upgrades) return []
+  if (Array.isArray(metadata.upgrades)) return metadata.upgrades as unknown as string[]
+  if (typeof metadata.upgrades === 'string') {
+    return metadata.upgrades
+      .split(',')
+      .map((opt) => opt.trim())
+      .filter(Boolean)
+  }
+  return []
+}
+
+async function strictBuildCartItems(lineItems: Stripe.ApiList<Stripe.LineItem>) {
+  const cart: CartItem[] = []
+
+  for (const item of lineItems.data) {
+    const product = await strictFindProductForCartItem(item)
+    const metadata = (item.price?.metadata || item.metadata || {}) as Stripe.Metadata
+    cart.push({
+      _type: 'orderCartItem',
+      _key: Math.random().toString(36).substr(2, 9),
+      name: item.description,
+      productRef: product ? {_type: 'reference', _ref: product._id} : null,
+      sku: product?.sku || metadata.sku || '',
+      optionDetails: strictParseOptions(metadata),
+      upgrades: strictParseUpgrades(metadata),
+      price: item.price?.unit_amount ? item.price.unit_amount / 100 : undefined,
+      quantity: item.quantity,
+      total: item.amount_total ? item.amount_total / 100 : undefined,
+    })
+  }
+
+  return cart
+}
+
+function strictDetermineOrderType(session: Stripe.Checkout.Session): string {
+  const meta = (session.metadata || {}) as Record<string, string>
+  if (meta.orderType) return meta.orderType
+  if (meta.source === 'pos' || meta.location) return 'in-store'
+  const customerType = (session.customer_details as any)?.metadata?.customerType
+  if (customerType === 'wholesale') return 'wholesale'
+  return 'online'
+}
+
+function strictCaptureAttribution(session: Stripe.Checkout.Session) {
+  const metadata = (session.metadata || {}) as Record<string, string>
+  return {
+    source: metadata.utm_source || 'direct',
+    medium: metadata.utm_medium || 'website',
+    campaign: metadata.utm_campaign || null,
+    content: metadata.utm_content || null,
+    term: metadata.utm_term || null,
+    landingPage: metadata.landing_page || null,
+    referrer: metadata.referrer || null,
+    capturedAt: new Date().toISOString(),
+    device: metadata.device || 'unknown',
+    browser: metadata.browser || null,
+    os: metadata.os || null,
+    sessionId: metadata.session_id || null,
+    touchpoints: 1,
+    firstTouch: new Date().toISOString(),
+    lastTouch: new Date().toISOString(),
+    campaignRef: null,
+  }
+}
+
+async function strictCreateInvoice(order: any, customer: {_id: string; name?: string} | null) {
+  const invoice = await webhookSanityClient.create({
+    _type: 'invoice',
+    title: `Invoice for ${order.orderNumber}`,
+    invoiceNumber: (order.orderNumber || '').toString().replace('FAS-', 'INV-'),
+    status: 'paid',
+    invoiceDate: order.createdAt,
+    dueDate: order.createdAt,
+    paymentTerms: 'Paid in full',
+    customerRef: customer
+      ? {
+          _type: 'reference',
+          _ref: customer._id,
+        }
+      : undefined,
+    orderRef: {
+      _type: 'reference',
+      _ref: order._id,
+    },
+    billTo: {
+      name: order.customerName,
+      email: order.customerEmail,
+    },
+    lineItems: (order.cart || []).map((item: any) => ({
+      _type: 'invoiceLineItem',
+      _key: Math.random().toString(36).substr(2, 9),
+      description: item.name,
+      sku: item.sku || '',
+      quantity: item.quantity || 1,
+      unitPrice: item.price || 0,
+      total: item.total || 0,
+    })),
+    subtotal: order.amountSubtotal || 0,
+    tax: order.amountTax || 0,
+    shipping: order.amountShipping || 0,
+    total: order.totalAmount || 0,
+  })
+
+  return invoice
+}
+
+async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session) {
+  const customer = await strictFindOrCreateCustomer(checkoutSession)
+  const paymentDetails = await strictGetPaymentDetails(checkoutSession.payment_intent as string)
+  const lineItems = await stripe.checkout.sessions.listLineItems(checkoutSession.id, {
+    expand: ['data.price.product'],
+  })
+  const cart = await strictBuildCartItems(lineItems)
+
+  const normalizedCart = cart.map((item) => ({
+    ...item,
+    optionDetails: Array.isArray(item.optionDetails) ? item.optionDetails : [],
+    upgrades: Array.isArray(item.upgrades) ? item.upgrades : [],
+  }))
+
+  const totalAmount = checkoutSession.amount_total ? checkoutSession.amount_total / 100 : 0
+  const amountSubtotal = Number.isFinite(Number((checkoutSession as any)?.amount_subtotal))
+    ? Number((checkoutSession as any)?.amount_subtotal) / 100
+    : 0
+  const amountTax = Number.isFinite(Number((checkoutSession as any)?.total_details?.amount_tax))
+    ? Number((checkoutSession as any)?.total_details?.amount_tax) / 100
+    : 0
+  const amountShipping = Number.isFinite(
+    Number((checkoutSession as any)?.total_details?.amount_shipping || (checkoutSession as any)?.shipping_cost?.amount_total),
+  )
+    ?
+        Number(
+          (checkoutSession as any)?.total_details?.amount_shipping ||
+            (checkoutSession as any)?.shipping_cost?.amount_total,
+        ) / 100
+    : 0
+
+  const existingOrder = await webhookSanityClient.fetch<
+    | {_id: string; invoiceRef?: {_ref: string}; orderNumber?: string; cart?: any[]}
+    | null
+  >(
+    `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart}`,
+    {
+      sid: checkoutSession.id,
+    },
+  )
+
+  const orderNumber = existingOrder?.orderNumber || (await generateRandomOrderNumber())
+  const baseOrderPayload: any = {
+    _type: 'order',
+    stripeSessionId: checkoutSession.id,
+    stripeSource: 'checkout.session',
+    orderNumber,
+    orderType: strictDetermineOrderType(checkoutSession),
+    status: 'paid',
+    createdAt: new Date().toISOString(),
+    paymentStatus: checkoutSession.payment_status || 'paid',
+    customerName: customer?.name || checkoutSession.customer_details?.name || 'Customer',
+    customerEmail: checkoutSession.customer_details?.email || checkoutSession.customer_email || '',
+    customerRef: customer?._id
+      ? {
+          _type: 'reference',
+          _ref: customer._id,
+        }
+      : undefined,
+    cardBrand: paymentDetails.cardBrand,
+    cardLast4: paymentDetails.cardLast4,
+    receiptUrl: paymentDetails.receiptUrl,
+    paymentIntentId: checkoutSession.payment_intent,
+    stripeSessionStatus: checkoutSession.status || undefined,
+    cart: normalizedCart,
+    totalAmount,
+    amountSubtotal,
+    amountTax,
+    amountShipping,
+    currency: (checkoutSession.currency || '').toLowerCase(),
+    attribution: strictCaptureAttribution(checkoutSession),
+  }
+
+  const order = existingOrder
+    ? await webhookSanityClient
+        .patch(existingOrder._id)
+        .set(baseOrderPayload)
+        .setIfMissing({orderNumber})
+        .commit({autoGenerateArrayKeys: true})
+    : await webhookSanityClient.create(baseOrderPayload, {autoGenerateArrayKeys: true})
+
+  if (order?._id && !existingOrder?.invoiceRef) {
+    const invoice = await strictCreateInvoice(order, customer)
+    await webhookSanityClient
+      .patch(order._id)
+      .set({
+        invoiceRef: {
+          _type: 'reference',
+          _ref: invoice._id,
+        },
+      })
+      .commit()
+  }
+
+  return order
 }
 
 const PRODUCT_METADATA_ID_KEYS = [
@@ -5306,503 +5738,11 @@ export const handler: Handler = async (event) => {
 
       case 'checkout.session.completed': {
         const session = webhookEvent.data.object as Stripe.Checkout.Session
-        const email = session.customer_details?.email || session.customer_email || ''
-        const totalAmount = (Number(session.amount_total || 0) || 0) / 100
-        const stripeSessionId = session.id
-        const metadata = (session.metadata || {}) as Record<string, string>
-        const userIdMeta =
-          (
-            metadata['auth0_user_id'] ||
-            metadata['auth0_sub'] ||
-            metadata['userId'] ||
-            metadata['user_id'] ||
-            ''
-          )
-            .toString()
-            .trim() || undefined
-        const metadataCustomerId =
-          firstString(CUSTOMER_METADATA_ID_KEYS.map((key) => metadata[key])) || undefined
-
-        // Enrich with Stripe payment details if available
-        let paymentIntent: Stripe.PaymentIntent | null = null
         try {
-          if (session.payment_intent) {
-            paymentIntent = await stripe.paymentIntents.retrieve(String(session.payment_intent), {
-              expand: ['charges.data.payment_method_details', 'latest_charge'],
-            })
-          }
-        } catch {}
-
-        const currency =
-          ((session as any)?.currency || (paymentIntent as any)?.currency || '')
-            .toString()
-            .toLowerCase() || undefined
-        const sessionStatus = (session.status || '').toString().toLowerCase()
-        const rawPaymentStatus = (session.payment_status || paymentIntent?.status || '')
-          .toString()
-          .toLowerCase()
-        const normalizedPaymentStatus = rawPaymentStatus.trim()
-        let paymentStatus: string = normalizedPaymentStatus
-        if (
-          ['paid', 'succeeded', 'complete', 'no_payment_required'].includes(normalizedPaymentStatus)
-        ) {
-          paymentStatus = 'paid'
-        } else if (sessionStatus === 'expired') {
-          paymentStatus = 'expired'
-        } else if (['canceled', 'cancelled'].includes(normalizedPaymentStatus)) {
-          paymentStatus = 'cancelled'
-        } else if (FAILED_CHECKOUT_PAYMENT_STATUSES.has(normalizedPaymentStatus)) {
-          paymentStatus = 'failed'
-        } else if (!paymentStatus) {
-          paymentStatus = 'pending'
-        }
-        let derivedOrderStatus: 'paid' | 'cancelled' | 'closed' | 'expired'
-        if (sessionStatus === 'expired') derivedOrderStatus = 'expired'
-        else if (paymentStatus === 'cancelled' || paymentStatus === 'failed')
-          derivedOrderStatus = 'cancelled'
-        else derivedOrderStatus = 'paid'
-        const amountSubtotal = Number.isFinite(Number((session as any)?.amount_subtotal))
-          ? Number((session as any)?.amount_subtotal) / 100
-          : undefined
-        const amountTax = Number.isFinite(Number((session as any)?.total_details?.amount_tax))
-          ? Number((session as any)?.total_details?.amount_tax) / 100
-          : undefined
-        const amountDiscount = Number.isFinite(
-          Number((session as any)?.total_details?.amount_discount),
-        )
-          ? Number((session as any)?.total_details?.amount_discount) / 100
-          : undefined
-        let amountShipping = (() => {
-          const a = Number((session as any)?.shipping_cost?.amount_total)
-          if (Number.isFinite(a)) return a / 100
-          const b = Number((session as any)?.total_details?.amount_shipping)
-          return Number.isFinite(b) ? b / 100 : undefined
-        })()
-        let chargeId: string | undefined
-        let cardBrand: string | undefined
-        let cardLast4: string | undefined
-        let receiptUrl: string | undefined
-        let chargeBillingName: string | undefined
-        try {
-          let chargeRecord: Stripe.Charge | null = null
-          const chargeList = (paymentIntent as any)?.charges?.data
-          if (Array.isArray(chargeList) && chargeList.length > 0) {
-            chargeRecord = chargeList[chargeList.length - 1] as Stripe.Charge
-          } else if (paymentIntent?.latest_charge) {
-            if (typeof paymentIntent.latest_charge === 'string') {
-              chargeRecord = stripe
-                ? await stripe.charges.retrieve(paymentIntent.latest_charge, {
-                    expand: ['payment_method_details'],
-                  })
-                : null
-            } else if (
-              paymentIntent.latest_charge &&
-              typeof paymentIntent.latest_charge === 'object'
-            ) {
-              chargeRecord = paymentIntent.latest_charge as Stripe.Charge
-            }
-          }
-          if (chargeRecord) {
-            chargeId = chargeRecord.id || chargeId
-            receiptUrl = chargeRecord.receipt_url || receiptUrl
-            const c = chargeRecord.payment_method_details?.card
-            cardBrand = c?.brand || cardBrand
-            cardLast4 = c?.last4 || cardLast4
-            chargeBillingName = chargeRecord.billing_details?.name || chargeBillingName
-          }
+          await createOrderFromCheckout(session)
         } catch (err) {
-          console.warn('stripeWebhook: failed to resolve card details for checkout', err)
+          console.error('stripeWebhook: strict checkout order creation failed', err)
         }
-
-        const stripeCustomerIdValue =
-          resolveStripeCustomerId(
-            paymentIntent?.customer as
-              | string
-              | Stripe.Customer
-              | Stripe.DeletedCustomer
-              | null
-              | undefined,
-          ) ||
-          resolveStripeCustomerId(
-            session.customer as
-              | string
-              | Stripe.Customer
-              | Stripe.DeletedCustomer
-              | null
-              | undefined,
-          ) ||
-          metadataCustomerId
-
-        const billingAddress =
-          normalizeStripeContactAddress(
-            session.customer_details?.address ||
-              (paymentIntent as any)?.charges?.data?.[0]?.billing_details?.address ||
-              undefined,
-            {
-              name: session.customer_details?.name || chargeBillingName || undefined,
-              email,
-              phone: session.customer_details?.phone || undefined,
-            },
-          ) || undefined
-
-        const metadataOrderNumberRaw = extractMetadataOrderNumber(metadata) || ''
-        const metadataInvoiceNumber =
-          firstString(
-            INVOICE_METADATA_NUMBER_KEYS.map((key) => metadata[key as keyof typeof metadata]),
-          ) || ''
-        // Use the shared helper so metadata fallbacks and live Stripe rate
-        // lookups stay in sync across reprocessing + webhook flows.
-        const shippingDetails = await resolveStripeShippingDetails({
-          metadata,
-          session,
-          paymentIntent,
-          fallbackAmount: amountShipping,
-          stripe,
-        })
-        if (shippingDetails.amount !== undefined) {
-          amountShipping = shippingDetails.amount
-        }
-        const orderNumber = await resolveOrderNumber({
-          metadataOrderNumber: metadataOrderNumberRaw,
-          invoiceNumber: metadataInvoiceNumber,
-          fallbackId: stripeSessionId,
-        })
-        const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
-
-        const metadataInvoiceId = normalizeSanityId(metadata['sanity_invoice_id'])
-        let invoiceDocId = metadataInvoiceId || null
-        if (!invoiceDocId) {
-          const stripeInvoiceFromSession =
-            typeof (session as any)?.invoice === 'string'
-              ? (session as any)?.invoice
-              : typeof (paymentIntent as any)?.invoice === 'string'
-                ? (paymentIntent as any).invoice
-                : undefined
-          const invoiceNumberFromSession =
-            typeof (session as any)?.invoice_number === 'string'
-              ? (session as any)?.invoice_number
-              : undefined
-          invoiceDocId =
-            (await findInvoiceDocumentIdForEvent({
-              metadata,
-              stripeInvoiceId: stripeInvoiceFromSession,
-              invoiceNumber: invoiceNumberFromSession,
-              paymentIntentId: paymentIntent?.id || null,
-            })) || null
-        }
-        const metadataCustomerName = (metadata['bill_to_name'] || metadata['customer_name'] || '')
-          .toString()
-          .trim()
-        // 2) Gather enriched data: line items + shipping
-        const {items: cart, products: cartProducts} = await buildCartFromSessionLineItems(
-          stripeSessionId,
-          metadata,
-        )
-        const shippingMetrics = computeShippingMetrics(cart, cartProducts)
-        const shippingAddress = normalizeStripeContactAddress(
-          ((session as any)?.shipping_details?.address as Stripe.Address | undefined) ||
-            (session.customer_details?.address as Stripe.Address | undefined),
-          {
-            name:
-              (session as any)?.shipping_details?.name ||
-              session.customer_details?.name ||
-              chargeBillingName ||
-              undefined,
-            email,
-            phone:
-              (session as any)?.shipping_details?.phone ||
-              session.customer_details?.phone ||
-              undefined,
-          },
-        )
-
-        const customerName =
-          (
-            shippingAddress?.name ||
-            metadataCustomerName ||
-            session.customer_details?.name ||
-            chargeBillingName ||
-            email ||
-            ''
-          )
-            .toString()
-            .trim() || undefined
-
-        // 3) Upsert an Order doc for visibility/fulfillment
-        try {
-          const existingOrderId =
-            (await findOrderDocumentIdForEvent({
-              metadata,
-              paymentIntentId: paymentIntent?.id || null,
-              sessionId: stripeSessionId,
-              invoiceDocId,
-              invoiceNumber: metadataInvoiceNumber || null,
-            })) || null
-          const existingOrder = existingOrderId
-            ? await sanity.fetch<{_id: string; packingSlipUrl?: string | null}>(
-                `*[_type == "order" && _id == $id][0]{_id, packingSlipUrl}`,
-                {id: existingOrderId},
-              )
-            : null
-          const existingId = existingOrder?._id || null
-          const normalizedEmail = typeof email === 'string' ? email.trim() : ''
-          const shouldSendConfirmation =
-            !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
-
-          const baseDoc: any = {
-            _type: 'order',
-            stripeSource: 'checkout.session',
-            stripeSessionId,
-            orderNumber: normalizedOrderNumber,
-            customerName,
-            customerEmail: email || undefined,
-            totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            status: derivedOrderStatus,
-            createdAt: new Date().toISOString(),
-            paymentStatus,
-            stripeCheckoutStatus: sessionStatus || undefined,
-            stripeSessionStatus: sessionStatus || undefined,
-            stripeCheckoutMode: session.mode || undefined,
-            stripePaymentIntentStatus: paymentIntent?.status || undefined,
-            stripeLastSyncedAt: new Date().toISOString(),
-            currency,
-            amountSubtotal,
-            amountTax,
-            amountDiscount,
-            paymentIntentId: paymentIntent?.id || undefined,
-            chargeId,
-            cardBrand,
-            cardLast4,
-            receiptUrl,
-            ...(invoiceDocId ? {invoiceRef: {_type: 'reference', _ref: invoiceDocId}} : {}),
-            stripeCustomerId: stripeCustomerIdValue || undefined,
-            checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
-            ...(shippingAddress ? {shippingAddress} : {}),
-            ...(billingAddress ? {billingAddress} : {}),
-            ...(userIdMeta ? {userId: userIdMeta} : {}),
-            ...(cart.length ? {cart} : {}),
-          }
-          applyShippingMetrics(baseDoc, shippingMetrics)
-          baseDoc.stripeSummary = buildStripeSummary({
-            session,
-            paymentIntent,
-            eventType: webhookEvent.type,
-            eventCreated: webhookEvent.created,
-          })
-
-          const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
-          const shippingCurrencyForDoc =
-            shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
-          if (shippingDetails.carrier) {
-            baseDoc.shippingCarrier = shippingDetails.carrier
-          }
-          if (
-            shippingDetails.serviceName ||
-            shippingDetails.serviceCode ||
-            shippingAmountForDoc !== undefined
-          ) {
-            baseDoc.selectedService = {
-              carrierId: shippingDetails.carrierId || undefined,
-              carrier: shippingDetails.carrier || undefined,
-              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-              amount: shippingAmountForDoc,
-              currency: shippingCurrencyForDoc || 'USD',
-              deliveryDays: shippingDetails.deliveryDays,
-              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-            }
-          }
-
-          if (shippingAmountForDoc !== undefined) {
-            baseDoc.amountShipping = shippingAmountForDoc
-            baseDoc.selectedShippingAmount = shippingAmountForDoc
-          }
-          if (shippingCurrencyForDoc) {
-            baseDoc.selectedShippingCurrency = shippingCurrencyForDoc
-          }
-          if (shippingDetails.deliveryDays !== undefined) {
-            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-          }
-          if (shippingDetails.estimatedDeliveryDate) {
-            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-          }
-          if (shippingDetails.serviceCode) {
-            baseDoc.shippingServiceCode = shippingDetails.serviceCode
-          }
-          if (shippingDetails.serviceName) {
-            baseDoc.shippingServiceName = shippingDetails.serviceName
-          }
-          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-            baseDoc.shippingMetadata = shippingDetails.metadata
-          }
-
-          const orderSlug = createOrderSlug(normalizedOrderNumber, stripeSessionId)
-          if (orderSlug) baseDoc.slug = {_type: 'slug', current: orderSlug}
-
-          if (!baseDoc.customerRef) {
-            try {
-              const resolvedRef = await resolveCustomerReference(stripeCustomerIdValue, email)
-              if (resolvedRef) baseDoc.customerRef = resolvedRef
-            } catch (err) {
-              console.warn('stripeWebhook: failed to resolve customer reference', err)
-            }
-          }
-
-          let orderId = existingId
-          if (existingId) {
-            await sanity
-              .patch(existingId)
-              .set(baseDoc)
-              .setIfMissing({webhookNotified: true})
-              .commit({autoGenerateArrayKeys: true})
-          } else {
-            const created = await sanity.create(
-              {...baseDoc, webhookNotified: true},
-              {autoGenerateArrayKeys: true},
-            )
-            orderId = created?._id
-          }
-
-          if (orderId) {
-            const checkoutAttribution = extractAttributionFromMetadata(
-              metadata as Record<string, any>,
-              (paymentIntent?.metadata as Record<string, any> | undefined) || undefined,
-              {
-                session_id: stripeSessionId,
-                order_value: typeof totalAmount === 'number' ? String(totalAmount) : undefined,
-              },
-            )
-            if (hasAttributionData(checkoutAttribution)) {
-              await applyAttributionToOrder(orderId, checkoutAttribution)
-            }
-          }
-
-          if (orderId) {
-            await appendOrderEvent(orderId, {
-              eventType: webhookEvent.type,
-              status: paymentStatus,
-              label: 'Checkout completed',
-              message: `Checkout session ${stripeSessionId} completed with status ${session.payment_status || 'unknown'}`,
-              amount: totalAmount,
-              currency: currency ? currency.toUpperCase() : undefined,
-              stripeEventId: webhookEvent.id,
-              occurredAt: webhookEvent.created,
-              metadata,
-            })
-            await markExpiredCartRecovered(stripeSessionId, orderId, {
-              eventType: 'checkout.recovered',
-              status: 'recovered',
-              label: 'Converted to order',
-              message: `Order ${normalizedOrderNumber || orderId} created from checkout ${stripeSessionId}`,
-              amount: totalAmount,
-              currency: currency ? currency.toUpperCase() : undefined,
-              stripeEventId: webhookEvent.id,
-              occurredAt: webhookEvent.created,
-              metadata,
-            })
-            try {
-              if (!existingOrder?.packingSlipUrl) {
-                const packingSlipUrl = await generatePackingSlipAsset({
-                  sanity,
-                  orderId,
-                  invoiceId: invoiceDocId || undefined,
-                })
-                if (packingSlipUrl) {
-                  await sanity
-                    .patch(orderId)
-                    .set({packingSlipUrl})
-                    .commit({autoGenerateArrayKeys: true})
-                }
-              }
-            } catch (err) {
-              console.warn('stripeWebhook: packing slip auto upload failed', err)
-            }
-          }
-
-          if (orderId && paymentStatus === 'paid' && cart.length) {
-            await autoReserveInventoryForOrder(orderId, cart, normalizedOrderNumber)
-          }
-
-          let customerDocIdForPatch =
-            ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
-          try {
-            const updatedCustomerId = await updateCustomerProfileForOrder({
-              sanity,
-              orderId,
-              customerId: customerDocIdForPatch,
-              email: normalizedEmail || email || undefined,
-              shippingAddress,
-              billingAddress,
-              stripeCustomerId: stripeCustomerIdValue,
-              stripeSyncTimestamp: new Date().toISOString(),
-              customerName,
-              metadata,
-            })
-            if (updatedCustomerId) customerDocIdForPatch = updatedCustomerId
-          } catch (err) {
-            console.warn('stripeWebhook: failed to refresh customer profile', err)
-          }
-          await ensureCustomerStripeDetails({
-            customerId: customerDocIdForPatch,
-            stripeCustomerId: stripeCustomerIdValue,
-            billingAddress,
-          })
-          if (orderId) {
-            await maybeApplyWholesaleOrderType(orderId, customerDocIdForPatch)
-          }
-
-          if (orderId) {
-            await maybeApplyWholesaleOrderType(orderId, customerDocIdForPatch)
-          }
-
-          if (shouldSendConfirmation && orderId) {
-            try {
-              await sendOrderConfirmationEmail({
-                to: normalizedEmail,
-                orderNumber,
-                customerName,
-                items: cart,
-                totalAmount,
-                subtotal: typeof amountSubtotal === 'number' ? amountSubtotal : undefined,
-                taxAmount: typeof amountTax === 'number' ? amountTax : undefined,
-                shippingAmount: typeof amountShipping === 'number' ? amountShipping : undefined,
-                shippingAddress,
-              })
-              await sanity
-                .patch(orderId)
-                .set({confirmationEmailSent: true})
-                .commit({autoGenerateArrayKeys: true})
-            } catch (err) {
-              console.warn('stripeWebhook: order confirmation email failed', err)
-            }
-          }
-
-          // 4) Auto-fulfillment: call our Netlify function to generate packing slip, label, and email
-          try {
-            if (orderId) {
-              const base = (
-                process.env.SANITY_STUDIO_NETLIFY_BASE ||
-                process.env.PUBLIC_SITE_URL ||
-                process.env.AUTH0_BASE_URL ||
-                ''
-              ).trim()
-              if (base && base.startsWith('http')) {
-                const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfill-order`
-                await fetch(url, {
-                  method: 'POST',
-                  headers: {'Content-Type': 'application/json'},
-                  body: JSON.stringify({orderId}),
-                })
-              }
-            }
-          } catch (e) {
-            console.warn('stripeWebhook: auto-fulfillment call failed', e)
-          }
-        } catch (e) {
-          console.error('stripeWebhook: failed to upsert Order doc:', e)
-          // Do not fail the webhook; Stripe will retry and we may create duplicates otherwise
-        }
-
         break
       }
 
@@ -5903,7 +5843,7 @@ export const handler: Handler = async (event) => {
               ''
             )
               .toString()
-              .trim() || undefined
+              .trim() || 'Guest Customer'
 
           let cart: CartItem[] = []
           let cartProducts: CartProductSummary[] = []
@@ -5941,6 +5881,12 @@ export const handler: Handler = async (event) => {
               )
             }
           }
+          cart = enforceCartRequirements(cart, cartProducts, {
+            source: 'payment_intent',
+            sessionId: checkoutSessionMeta || pi.id,
+            orderId: normalizedOrderNumber,
+          })
+
           const shippingMetrics = computeShippingMetrics(cart, cartProducts)
 
           const existingOrderId =
@@ -5971,6 +5917,7 @@ export const handler: Handler = async (event) => {
             stripeSource: 'payment_intent',
             stripeSessionId: resolvedStripeSessionId,
             orderNumber: normalizedOrderNumber,
+            orderType: determineOrderType(meta),
             customerName,
             customerEmail: email || undefined,
             totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
@@ -5982,9 +5929,6 @@ export const handler: Handler = async (event) => {
             currency,
             paymentIntentId: pi.id,
             chargeId,
-            cardBrand,
-            cardLast4,
-            receiptUrl,
             ...(invoiceDocId ? {invoiceRef: {_type: 'reference', _ref: invoiceDocId}} : {}),
             stripeCustomerId: stripeCustomerIdValue || undefined,
             checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
@@ -6006,6 +5950,11 @@ export const handler: Handler = async (event) => {
             ...(billingAddress ? {billingAddress} : {}),
             ...(cart.length ? {cart} : {}),
           }
+          ensureRequiredPaymentDetails(
+            baseDoc,
+            {brand: cardBrand, last4: cardLast4, receiptUrl},
+            `payment_intent ${pi.id}`,
+          )
           applyShippingMetrics(baseDoc, shippingMetrics)
           baseDoc.stripeSummary = buildStripeSummary({
             paymentIntent: pi,
