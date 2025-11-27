@@ -206,7 +206,7 @@ function looksLikeSanityId(value?: string | null): boolean {
   return /^[a-zA-Z0-9]{1,2}[-a-zA-Z0-9]{8,}/.test(value) || value.startsWith('product-')
 }
 
-function findProductForItem(
+export function findProductForItem(
   item: CartItem,
   products: CartProductSummary[],
 ): CartProductSummary | null {
