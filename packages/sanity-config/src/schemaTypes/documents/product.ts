@@ -9,6 +9,7 @@ import FocusKeywordInput from '../../components/inputs/FocusKeywordInput'
 import ShippingCalculatorPreview from '../../components/inputs/ShippingCalculatorPreview'
 import ProductMarketingInsights from '../../components/studio/ProductMarketingInsights'
 import WholesalePricingControls from '../../components/inputs/WholesalePricingControls'
+import SalePricingInput from '../../components/inputs/SalePricingInput'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 
@@ -295,47 +296,60 @@ const product = defineType({
       group: 'basic',
     }),
     defineField({
-      name: 'discountInput',
+      name: 'discountType',
       type: 'string',
-      title: 'Discount Amount',
-      description:
-        "Enter discount as percentage (e.g., '25%') or dollar amount (e.g., '$50'). Sale price is auto-calculated.",
-      placeholder: '25% or $50',
+      title: 'Discount Type',
+      options: {
+        list: [
+          {title: 'Percentage Off', value: 'percentage'},
+          {title: 'Fixed Dollar Amount', value: 'fixed_amount'},
+        ],
+        layout: 'radio',
+      },
+      hidden: ({document}) => !document?.onSale,
       validation: (Rule) =>
         Rule.custom((value, context) => {
-          if (!value) return true
-          if (typeof value !== 'string') return 'Enter as percentage (25%) or dollar amount ($50)'
-          const percentMatch = value.match(/^\s*(\d+(?:\.\d+)?)%\s*$/)
-          const dollarMatch = value.match(/^\s*\$?(\d+(?:\.\d+)?)\s*$/)
-          if (!percentMatch && !dollarMatch) {
-            return 'Enter as percentage (25%) or dollar amount ($50)'
-          }
-          if (percentMatch) {
-            const percent = parseFloat(percentMatch[1])
-            if (!(percent > 0 && percent < 100)) {
-              return 'Percentage must be between 0 and 100'
-            }
-          }
-          if (dollarMatch) {
-            const amount = parseFloat(dollarMatch[1])
-            const price = (context.document as any)?.price
-            if (typeof price === 'number' && amount >= price) {
-              return 'Discount amount must be less than product price'
-            }
+          if (context.document?.onSale && !value) {
+            return 'Please select a discount type'
           }
           return true
         }),
+      group: 'basic',
+    }),
+    defineField({
+      name: 'discountValue',
+      type: 'number',
+      title: 'Discount Value',
+      description:
+        'Enter percentage (e.g., 10 for 10% off) or dollar amount (e.g., 100 for $100 off).',
       hidden: ({document}) => !document?.onSale,
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          if (context.document?.onSale && (value === undefined || value === null)) {
+            return 'Please enter a discount value'
+          }
+          if (value !== undefined && value !== null && value <= 0) {
+            return 'Discount must be greater than 0'
+          }
+          return true
+        }),
       group: 'basic',
     }),
     defineField({
       name: 'salePrice',
       type: 'number',
       title: 'Sale Price (USD)',
-      description: 'Auto-calculated from discount. You can also enter manually.',
+      description: 'Auto-calculated from discount type and value.',
+      components: {input: SalePricingInput},
       validation: (Rule) =>
         Rule.min(0).custom((salePrice, context) => {
           const price = (context.document as any)?.price
+          if (typeof salePrice === 'number' && salePrice < 0) {
+            return 'Sale price cannot be negative'
+          }
+          if (context.document?.onSale && (salePrice === undefined || salePrice === null)) {
+            return 'Sale price is required while on sale'
+          }
           if (typeof salePrice === 'number' && typeof price === 'number' && salePrice >= price) {
             return 'Sale price must be less than regular price'
           }
