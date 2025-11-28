@@ -4,6 +4,9 @@ import type {
   DocumentActionsContext,
 } from 'sanity'
 import {generateProductTags, type ProductDocument} from '../utils/generateProductTags'
+import {ensureProductCodes} from '../utils/generateProductCodes'
+import {ensureShippingConfig} from '../utils/ensureShippingConfig'
+import {ensureSalePricing} from '../utils/ensureSalePricing'
 
 const API_VERSION = '2024-10-01'
 const TAG_ACTIONS_FLAG = Symbol.for('fas.productTagsApplied')
@@ -44,6 +47,33 @@ async function refreshAndGenerateTags(
   }
 }
 
+async function ensureCodesBeforePublish(
+  context: DocumentActionsContext,
+  props: DocumentActionProps,
+) {
+  const client = context.getClient({apiVersion: API_VERSION})
+  const targetId = props.draft?._id || props.id
+
+  if (!targetId) return
+
+  try {
+    await ensureShippingConfig(targetId, client, {
+      log: (...args: unknown[]) => console.log('[shipping-config]', ...args),
+    })
+    await ensureSalePricing(targetId, client, {
+      log: (...args: unknown[]) => console.log('[sale-pricing]', ...args),
+    })
+    await ensureProductCodes(targetId, client, {
+      log: (...args: unknown[]) => console.log('[product-codes]', ...args),
+    })
+  } catch (error) {
+    console.warn(
+      'Failed to auto-generate SKU/MPN, shipping config, or sale pricing before publish',
+      error,
+    )
+  }
+}
+
 const createGenerateTagsAction =
   (context: DocumentActionsContext): DocumentActionComponent =>
   (props) => {
@@ -76,19 +106,20 @@ export function resolveProductDocumentActions(
   const enhancedList = prev.map((action) => {
     if (!action) return action
 
-    const wrapped: DocumentActionComponent = (props) => {
-      const original = action(props)
-      if (!original || !isProduct(props)) return original
-      const originalName = typeof (original as any)?.name === 'string' ? (original as any).name : null
-      if (originalName !== 'publish') return original
+      const wrapped: DocumentActionComponent = (props) => {
+        const original = action(props)
+        if (!original || !isProduct(props)) return original
+        const originalName = typeof (original as any)?.name === 'string' ? (original as any).name : null
+        if (originalName !== 'publish') return original
 
-      return {
-        ...original,
-        label: 'Publish with SEO Tags',
-        onHandle: async () => {
-          try {
-            const result = original.onHandle?.()
-            await Promise.resolve(result)
+        return {
+          ...original,
+          label: 'Publish with Codes, Shipping, Sales & SEO Tags',
+          onHandle: async () => {
+            try {
+              await ensureCodesBeforePublish(context, props)
+              const result = original.onHandle?.()
+              await Promise.resolve(result)
             await refreshAndGenerateTags(context, props, {patchDraft: false})
           } finally {
             props.onComplete()

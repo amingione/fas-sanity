@@ -2,13 +2,11 @@ import React, {useEffect} from 'react'
 import {defineType, defineField, set} from 'sanity'
 import type {StringFieldProps} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
-import AutoSKUInput from '../../components/AutoSKUInput'
 import ProductImageAltReferenceInput from '../../components/inputs/ProductImageAltReferenceInput'
 import ProductJsonLdPreview from '../../components/studio/ProductJsonLdPreview'
 import SeoCharacterCountInput from '../../components/inputs/SeoCharacterCountInput'
 import FocusKeywordInput from '../../components/inputs/FocusKeywordInput'
 import ShippingCalculatorPreview from '../../components/inputs/ShippingCalculatorPreview'
-import {generateFasSKU, syncSKUToStripe} from '../../utils/generateSKU'
 import ProductMarketingInsights from '../../components/studio/ProductMarketingInsights'
 import WholesalePricingControls from '../../components/inputs/WholesalePricingControls'
 
@@ -206,24 +204,9 @@ const product = defineType({
       name: 'sku',
       title: 'SKU',
       type: 'string',
-      description: 'Auto-generated and Stripe-synced SKU using the FAS format.',
+      description: 'Auto-generated on product creation.',
       readOnly: true,
       group: 'basic',
-      components: {input: AutoSKUInput},
-      initialValue: async ({document, getClient}) => {
-        try {
-          const client = getClient?.({apiVersion: '2024-10-01'})
-          if (!client) return ''
-          const sku = await generateFasSKU(document?.title, (document as any)?.platform, client)
-          if (document?.stripeProductId) {
-            await syncSKUToStripe(sku, document.stripeProductId)
-          }
-          return sku
-        } catch (error) {
-          console.warn('Failed to set initial SKU:', error)
-          return ''
-        }
-      },
     }),
     defineField({
       name: 'price',
@@ -310,11 +293,78 @@ const product = defineType({
     }),
     defineField({
       name: 'salePrice',
-      title: 'Sale Price (USD)',
       type: 'number',
-      description: 'Discounted price shown when the product is on sale.',
+      title: 'Sale Price (USD)',
+      description: 'Discounted price when on sale. Must be less than regular price.',
+      validation: (Rule) =>
+        Rule.min(0).custom((salePrice, context) => {
+          const price = (context.document as any)?.price
+          if (typeof salePrice === 'number' && typeof price === 'number' && salePrice >= price) {
+            return 'Sale price must be less than regular price'
+          }
+          return true
+        }),
+      hidden: ({document}) => !document?.onSale,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'compareAtPrice',
+      type: 'number',
+      title: 'Compare At Price (USD)',
+      description: 'Original price to show strikethrough. Defaults to regular price if not set.',
       validation: (Rule) => Rule.min(0),
-      hidden: ({document}) => document?.onSale !== true,
+      hidden: ({document}) => !document?.onSale,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'discountPercent',
+      type: 'number',
+      title: 'Discount Percentage',
+      description: "Auto-calculated discount percentage for badges (e.g., '30% OFF')",
+      readOnly: true,
+      hidden: ({document}) => !document?.onSale,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'saleStartDate',
+      type: 'datetime',
+      title: 'Sale Start Date',
+      description: 'When the sale begins. Leave empty for immediate start.',
+      hidden: ({document}) => !document?.onSale,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'saleEndDate',
+      type: 'datetime',
+      title: 'Sale End Date',
+      description: 'When the sale ends. Leave empty for no end date.',
+      validation: (Rule) =>
+        Rule.custom((endDate, context) => {
+          const startDate = (context.document as any)?.saleStartDate
+          if (endDate && startDate && new Date(endDate) <= new Date(startDate)) {
+            return 'End date must be after start date'
+          }
+          return true
+        }),
+      hidden: ({document}) => !document?.onSale,
+      group: 'basic',
+    }),
+    defineField({
+      name: 'saleLabel',
+      type: 'string',
+      title: 'Sale Badge Label',
+      description: "Custom badge text (e.g., 'Black Friday', 'Cyber Monday', 'Clearance')",
+      options: {
+        list: [
+          {title: 'Sale', value: 'sale'},
+          {title: 'Black Friday', value: 'black-friday'},
+          {title: 'Cyber Monday', value: 'cyber-monday'},
+          {title: 'Clearance', value: 'clearance'},
+          {title: 'Limited Time', value: 'limited-time'},
+          {title: 'Hot Deal', value: 'hot-deal'},
+        ],
+      },
+      hidden: ({document}) => !document?.onSale,
       group: 'basic',
     }),
     defineField({
@@ -731,7 +781,7 @@ const product = defineType({
       group: 'shipping',
       options: {
         collapsible: true,
-        collapsed: true,
+        collapsed: false,
       },
       fields: [
         {
@@ -746,7 +796,7 @@ const product = defineType({
           type: 'number',
           title: 'Weight (lbs)',
           description: 'Product weight for shipping calculation',
-          validation: (Rule) => Rule.min(0).precision(2),
+          validation: (Rule) => Rule.required().min(0).precision(2),
         },
         {
           name: 'dimensions',
@@ -758,19 +808,19 @@ const product = defineType({
               name: 'length',
               type: 'number',
               title: 'Length (inches)',
-              validation: (Rule) => Rule.min(0).precision(2),
+              validation: (Rule) => Rule.required().min(0).precision(2),
             },
             {
               name: 'width',
               type: 'number',
               title: 'Width (inches)',
-              validation: (Rule) => Rule.min(0).precision(2),
+              validation: (Rule) => Rule.required().min(0).precision(2),
             },
             {
               name: 'height',
               type: 'number',
               title: 'Height (inches)',
-              validation: (Rule) => Rule.min(0).precision(2),
+              validation: (Rule) => Rule.required().min(0).precision(2),
             },
           ],
         },
@@ -813,23 +863,6 @@ const product = defineType({
           initialValue: false,
         },
       ],
-    }),
-    defineField({
-      name: 'shippingProfile',
-      title: 'Shipping Profile',
-      type: 'string',
-      description: 'Quick presets for common packages. Helps teams choose the right box.',
-      options: {
-        list: [
-          {title: 'Small Parcel (0-10 lbs)', value: 'small_parcel'},
-          {title: 'Standard Box (11-30 lbs)', value: 'standard'},
-          {title: 'Oversized (31-60 lbs)', value: 'oversized'},
-          {title: 'Freight / Pallet', value: 'freight'},
-        ],
-      },
-      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
-      fieldset: 'shippingDetails',
-      group: 'shipping',
     }),
     defineField({
       name: 'shippingWeight',
@@ -1293,7 +1326,8 @@ const product = defineType({
       name: 'mpn',
       title: 'MPN',
       type: 'string',
-      description: 'Manufacturer Part Number.',
+      description: 'Auto-generated on product creation.',
+      readOnly: true,
       fieldset: 'merchant',
       group: 'advanced',
       validation: (Rule) => merchantFieldWarning(Rule, '⚠️ Add MPN for Google Shopping'),
