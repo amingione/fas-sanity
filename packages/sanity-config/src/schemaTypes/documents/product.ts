@@ -1620,6 +1620,8 @@ const product = defineType({
               title: 'Top Return Reasons',
               of: [
                 defineField({
+                  name: 'returnReason',
+                  title: 'Return Reason',
                   type: 'object',
                   fields: [
                     {name: 'reason', type: 'string', title: 'Reason'},
