@@ -330,6 +330,11 @@ const product = defineType({
       type: 'datetime',
       title: 'Sale Start Date',
       description: 'When the sale begins. Leave empty for immediate start.',
+      options: {
+        dateFormat: 'YYYY-MM-DD',
+        timeFormat: 'HH:mm',
+        timeStep: 15,
+      },
       hidden: ({document}) => !document?.onSale,
       group: 'basic',
     }),
@@ -346,6 +351,11 @@ const product = defineType({
           }
           return true
         }),
+      options: {
+        dateFormat: 'YYYY-MM-DD',
+        timeFormat: 'HH:mm',
+        timeStep: 15,
+      },
       hidden: ({document}) => !document?.onSale,
       group: 'basic',
     }),
@@ -363,7 +373,9 @@ const product = defineType({
           {title: 'Limited Time', value: 'limited-time'},
           {title: 'Hot Deal', value: 'hot-deal'},
         ],
+        layout: 'dropdown',
       },
+      initialValue: 'sale',
       hidden: ({document}) => !document?.onSale,
       group: 'basic',
     }),
