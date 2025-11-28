@@ -8,6 +8,7 @@ type ProductForSale = {
   salePrice?: number | null
   compareAtPrice?: number | null
   discountPercent?: number | null
+  discountInput?: string | null
 }
 
 export type EnsureSalePricingResult = {
@@ -33,7 +34,7 @@ export async function ensureSalePricing(
   const log = options?.log || ((...args: unknown[]) => console.log('[sale-pricing]', ...args))
 
   const product = await client.fetch<ProductForSale>(
-    `*[_id == $productId][0]{_id, _rev, onSale, price, salePrice, compareAtPrice, discountPercent}`,
+    `*[_id == $productId][0]{_id, _rev, onSale, price, salePrice, compareAtPrice, discountPercent, discountInput}`,
     {productId},
   )
 
@@ -46,13 +47,36 @@ export async function ensureSalePricing(
   const salePrice = toNumber(product.salePrice)
   const price = toNumber(product.price)
   const compareAt = toNumber(product.compareAtPrice)
+  const discountInput = typeof product.discountInput === 'string' ? product.discountInput : undefined
 
   const originalPrice = compareAt ?? price
 
   const patch = client.patch(product._id)
   if (product._rev) patch.ifRevisionId(product._rev)
 
-  if (!onSale || salePrice === undefined) {
+  const setOps: Record<string, unknown> = {}
+
+  let computedSalePrice: number | undefined
+
+  if (onSale && discountInput && price !== undefined) {
+    const percentMatch = discountInput.match(/^\\s*(\\d+(?:\\.\\d+)?)%\\s*$/)
+    const dollarMatch = discountInput.match(/^\\s*\\$?(\\d+(?:\\.\\d+)?)\\s*$/)
+    if (percentMatch) {
+      const percent = Number(percentMatch[1])
+      if (percent > 0 && percent < 100) {
+        computedSalePrice = Math.round((price - price * (percent / 100)) * 100) / 100
+      }
+    } else if (dollarMatch) {
+      const amount = Number(dollarMatch[1])
+      if (amount > 0 && amount < price) {
+        computedSalePrice = Math.round((price - amount) * 100) / 100
+      }
+    }
+  }
+
+  const effectiveSalePrice = computedSalePrice ?? salePrice
+
+  if (!onSale || effectiveSalePrice === undefined) {
     if (product.discountPercent !== null && product.discountPercent !== undefined) {
       patch.unset(['discountPercent'])
       await patch.commit({autoGenerateArrayKeys: true})
@@ -67,14 +91,21 @@ export async function ensureSalePricing(
     return {updated: false, skippedReason: 'missing original price'}
   }
 
-  if (salePrice >= originalPrice) {
+  if (effectiveSalePrice >= originalPrice) {
     log(`Sale price is not less than original for ${product._id}; skipping discount calc.`)
     return {updated: false, skippedReason: 'sale price not less than original'}
   }
 
-  const discount = Math.max(0, Math.round(((originalPrice - salePrice) / originalPrice) * 100))
+  if (computedSalePrice !== undefined) {
+    setOps.salePrice = computedSalePrice
+  }
 
-  const setOps: Record<string, unknown> = {discountPercent: discount}
+  const discount = Math.max(
+    0,
+    Math.round(((originalPrice - effectiveSalePrice) / originalPrice) * 100),
+  )
+
+  setOps.discountPercent = discount
   if (compareAt === undefined && price !== undefined) {
     setOps.compareAtPrice = price
   }
@@ -83,8 +114,10 @@ export async function ensureSalePricing(
 
   await patch.commit({autoGenerateArrayKeys: true})
 
+  const saleForLog =
+    computedSalePrice !== undefined ? computedSalePrice : effectiveSalePrice ?? salePrice
   log(
-    `Updated discountPercent for ${product._id} to ${discount}% (salePrice=${salePrice}, original=${originalPrice}).`,
+    `Updated discountPercent for ${product._id} to ${discount}% (salePrice=${saleForLog}, original=${originalPrice}).`,
   )
 
   return {updated: true, discountPercent: discount}
