@@ -201,6 +201,13 @@ const objects = [
         title: 'Favicon',
         options: {hotspot: true},
       },
+      {
+        name: 'nextMpnNumber',
+        type: 'number',
+        title: 'Next MPN Serial Number',
+        description: 'Auto-incrementing serial number for MPN generation',
+        initialValue: 636,
+      },
       {name: 'seo', type: 'seo', title: 'Global SEO'},
     ],
   },
