@@ -59,8 +59,8 @@ export async function ensureSalePricing(
   let computedSalePrice: number | undefined
 
   if (onSale && discountInput && price !== undefined) {
-    const percentMatch = discountInput.match(/^\\s*(\\d+(?:\\.\\d+)?)%\\s*$/)
-    const dollarMatch = discountInput.match(/^\\s*\\$?(\\d+(?:\\.\\d+)?)\\s*$/)
+    const percentMatch = discountInput.match(/^\s*(\d+(?:\.\d+)?)%\s*$/)
+    const dollarMatch = discountInput.match(/^\s*\$?(\d+(?:\.\d+)?)\s*$/)
     if (percentMatch) {
       const percent = Number(percentMatch[1])
       if (percent > 0 && percent < 100) {
