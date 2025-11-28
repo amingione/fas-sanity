@@ -48,9 +48,11 @@ const isPhysicalOrBundle = (context?: VisibilityContext): boolean => {
   return type === 'physical' || type === 'bundle'
 }
 
-const isServiceProduct = (context?: VisibilityContext): boolean => resolveProductType(context) === 'service'
+const isServiceProduct = (context?: VisibilityContext): boolean =>
+  resolveProductType(context) === 'service'
 
-const isBundleProduct = (context?: VisibilityContext): boolean => resolveProductType(context) === 'bundle'
+const isBundleProduct = (context?: VisibilityContext): boolean =>
+  resolveProductType(context) === 'bundle'
 
 const merchantFieldWarning = (Rule: any, message: string) =>
   Rule.custom((value: unknown, context: any) => {
@@ -187,7 +189,8 @@ const product = defineType({
       name: 'productType',
       title: 'Product Type',
       type: 'string',
-      description: 'What kind of offer this is so the correct fields, badges, and catalogs are shown.',
+      description:
+        'What kind of offer this is so the correct fields, badges, and catalogs are shown.',
       options: {
         layout: 'radio',
         list: [
@@ -292,10 +295,44 @@ const product = defineType({
       group: 'basic',
     }),
     defineField({
+      name: 'discountInput',
+      type: 'string',
+      title: 'Discount Amount',
+      description:
+        "Enter discount as percentage (e.g., '25%') or dollar amount (e.g., '$50'). Sale price is auto-calculated.",
+      placeholder: '25% or $50',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          if (!value) return true
+          if (typeof value !== 'string') return 'Enter as percentage (25%) or dollar amount ($50)'
+          const percentMatch = value.match(/^\s*(\d+(?:\.\d+)?)%\s*$/)
+          const dollarMatch = value.match(/^\s*\$?(\d+(?:\.\d+)?)\s*$/)
+          if (!percentMatch && !dollarMatch) {
+            return 'Enter as percentage (25%) or dollar amount ($50)'
+          }
+          if (percentMatch) {
+            const percent = parseFloat(percentMatch[1])
+            if (!(percent > 0 && percent < 100)) {
+              return 'Percentage must be between 0 and 100'
+            }
+          }
+          if (dollarMatch) {
+            const amount = parseFloat(dollarMatch[1])
+            const price = (context.document as any)?.price
+            if (typeof price === 'number' && amount >= price) {
+              return 'Discount amount must be less than product price'
+            }
+          }
+          return true
+        }),
+      hidden: ({document}) => !document?.onSale,
+      group: 'basic',
+    }),
+    defineField({
       name: 'salePrice',
       type: 'number',
       title: 'Sale Price (USD)',
-      description: 'Discounted price when on sale. Must be less than regular price.',
+      description: 'Auto-calculated from discount. You can also enter manually.',
       validation: (Rule) =>
         Rule.min(0).custom((salePrice, context) => {
           const price = (context.document as any)?.price
@@ -746,7 +783,8 @@ const product = defineType({
               name: 'title',
               title: 'Override Title',
               type: 'string',
-              description: 'Optional label shown to customers instead of the referenced product name.',
+              description:
+                'Optional label shown to customers instead of the referenced product name.',
             },
             {
               name: 'quantity',
@@ -771,8 +809,7 @@ const product = defineType({
             },
             prepare({title, productTitle, quantity}) {
               const label = title || productTitle || 'Bundle component'
-              const qty =
-                typeof quantity === 'number' && quantity > 1 ? `x${quantity}` : ''
+              const qty = typeof quantity === 'number' && quantity > 1 ? `x${quantity}` : ''
               return {
                 title: label,
                 subtitle: qty,
@@ -1026,7 +1063,8 @@ const product = defineType({
       name: 'installOnly',
       title: 'Install Only (Legacy)',
       type: 'boolean',
-      description: 'Automatically enabled when Product Type is “Service”. Keeps legacy workflows intact.',
+      description:
+        'Automatically enabled when Product Type is “Service”. Keeps legacy workflows intact.',
       readOnly: true,
       hidden: ({document, parent}) => resolveProductType({document, parent}) !== 'service',
       fieldset: 'shippingDetails',
@@ -1048,7 +1086,7 @@ const product = defineType({
       type: 'number',
       description: 'Only required when inventory tracking is enabled.',
       hidden: ({document, parent}) => {
-        const track = (document?.trackInventory ?? parent?.trackInventory) ?? true
+        const track = document?.trackInventory ?? parent?.trackInventory ?? true
         return track === false
       },
       validation: (Rule) =>
@@ -1130,7 +1168,9 @@ const product = defineType({
       description: 'This appears in Google search results. Include your focus keyword.',
       components: {input: SeoCharacterCountInput},
       validation: (Rule) =>
-        Rule.required().max(60).error('Meta title is required and should stay under 60 characters.'),
+        Rule.required()
+          .max(60)
+          .error('Meta title is required and should stay under 60 characters.'),
       fieldset: 'seo',
       group: 'seo',
     }),
@@ -1139,7 +1179,8 @@ const product = defineType({
       title: 'Meta Description',
       type: 'text',
       rows: 3,
-      description: 'Convince searchers to click. Include benefits and keywords (max 160 characters).',
+      description:
+        'Convince searchers to click. Include benefits and keywords (max 160 characters).',
       components: {input: SeoCharacterCountInput},
       validation: (Rule) =>
         Rule.required().max(160).error('Missing SEO description - product may not rank well.'),
@@ -1181,7 +1222,8 @@ const product = defineType({
       name: 'canonicalUrl',
       title: 'Canonical URL',
       type: 'url',
-      description: 'Auto-filled from the product slug; override only when a custom canonical is required.',
+      description:
+        'Auto-filled from the product slug; override only when a custom canonical is required.',
       components: {field: CanonicalUrlField},
       fieldset: 'seo',
       group: 'seo',
@@ -1459,7 +1501,13 @@ const product = defineType({
           type: 'object',
           title: 'Page Views',
           fields: [
-            {name: 'total', type: 'number', title: 'Total Views', description: 'All-time page views', initialValue: 0},
+            {
+              name: 'total',
+              type: 'number',
+              title: 'Total Views',
+              description: 'All-time page views',
+              initialValue: 0,
+            },
             {name: 'last7Days', type: 'number', title: 'Last 7 Days', initialValue: 0},
             {name: 'last30Days', type: 'number', title: 'Last 30 Days', initialValue: 0},
             {name: 'last90Days', type: 'number', title: 'Last 90 Days', initialValue: 0},
@@ -1505,8 +1553,18 @@ const product = defineType({
               description: 'Average revenue per order',
             },
             {name: 'last7DaysSales', type: 'number', title: 'Sales (Last 7 Days)', initialValue: 0},
-            {name: 'last30DaysSales', type: 'number', title: 'Sales (Last 30 Days)', initialValue: 0},
-            {name: 'last90DaysSales', type: 'number', title: 'Sales (Last 90 Days)', initialValue: 0},
+            {
+              name: 'last30DaysSales',
+              type: 'number',
+              title: 'Sales (Last 30 Days)',
+              initialValue: 0,
+            },
+            {
+              name: 'last90DaysSales',
+              type: 'number',
+              title: 'Sales (Last 90 Days)',
+              initialValue: 0,
+            },
             {
               name: 'bestSellingRank',
               type: 'number',
