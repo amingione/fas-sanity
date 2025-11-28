@@ -9,6 +9,8 @@ type ProductForSale = {
   compareAtPrice?: number | null
   discountPercent?: number | null
   discountInput?: string | null
+  discountType?: 'percentage' | 'fixed_amount' | null
+  discountValue?: number | null
 }
 
 export type EnsureSalePricingResult = {
@@ -34,7 +36,7 @@ export async function ensureSalePricing(
   const log = options?.log || ((...args: unknown[]) => console.log('[sale-pricing]', ...args))
 
   const product = await client.fetch<ProductForSale>(
-    `*[_id == $productId][0]{_id, _rev, onSale, price, salePrice, compareAtPrice, discountPercent, discountInput}`,
+    `*[_id == $productId][0]{_id, _rev, onSale, price, salePrice, compareAtPrice, discountPercent, discountInput, discountType, discountValue}`,
     {productId},
   )
 
@@ -48,6 +50,11 @@ export async function ensureSalePricing(
   const price = toNumber(product.price)
   const compareAt = toNumber(product.compareAtPrice)
   const discountInput = typeof product.discountInput === 'string' ? product.discountInput : undefined
+  const discountType =
+    product.discountType === 'percentage' || product.discountType === 'fixed_amount'
+      ? product.discountType
+      : undefined
+  const discountValue = toNumber(product.discountValue)
 
   const originalPrice = compareAt ?? price
 
@@ -58,23 +65,37 @@ export async function ensureSalePricing(
 
   let computedSalePrice: number | undefined
 
-  if (onSale && discountInput && price !== undefined) {
-    const percentMatch = discountInput.match(/^\s*(\d+(?:\.\d+)?)%\s*$/)
-    const dollarMatch = discountInput.match(/^\s*\$?(\d+(?:\.\d+)?)\s*$/)
-    if (percentMatch) {
-      const percent = Number(percentMatch[1])
-      if (percent > 0 && percent < 100) {
-        computedSalePrice = Math.round((price - price * (percent / 100)) * 100) / 100
-      }
-    } else if (dollarMatch) {
-      const amount = Number(dollarMatch[1])
-      if (amount > 0 && amount < price) {
-        computedSalePrice = Math.round((price - amount) * 100) / 100
+  if (onSale && price !== undefined) {
+    if (discountType && discountValue !== undefined) {
+      const raw =
+        discountType === 'percentage'
+          ? price - price * (discountValue / 100)
+          : price - discountValue
+      computedSalePrice = Math.round(raw * 100) / 100
+    } else if (discountInput) {
+      const percentMatch = discountInput.match(/^\s*(\d+(?:\.\d+)?)%\s*$/)
+      const dollarMatch = discountInput.match(/^\s*\$?(\d+(?:\.\d+)?)\s*$/)
+      if (percentMatch) {
+        const percent = Number(percentMatch[1])
+        if (percent > 0 && percent < 100) {
+          computedSalePrice = Math.round((price - price * (percent / 100)) * 100) / 100
+        }
+      } else if (dollarMatch) {
+        const amount = Number(dollarMatch[1])
+        if (amount > 0 && amount < price) {
+          computedSalePrice = Math.round((price - amount) * 100) / 100
+        }
       }
     }
   }
 
-  const effectiveSalePrice = computedSalePrice ?? salePrice
+  if (computedSalePrice !== undefined && computedSalePrice < 0) {
+    computedSalePrice = 0
+  }
+
+  const normalizedSalePrice =
+    salePrice !== undefined && salePrice < 0 ? 0 : salePrice
+  const effectiveSalePrice = computedSalePrice ?? normalizedSalePrice
 
   if (!onSale || effectiveSalePrice === undefined) {
     if (product.discountPercent !== null && product.discountPercent !== undefined) {
