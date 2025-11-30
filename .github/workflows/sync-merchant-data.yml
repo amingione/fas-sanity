@@ -1,0 +1,55 @@
+name: Sync Merchant & Ads Data
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # 2 AM EST / 6 AM UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write GMC service account key
+        if: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY != '' }}
+        run: |
+          echo "${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}" > /tmp/gmc-key.json
+        shell: bash
+
+      - name: Sync GMC Status
+        run: pnpm sync:gmc-status
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_WRITE_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+          GMC_SERVICE_ACCOUNT_KEY_FILE: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY_FILE }}
+          GMC_SERVICE_ACCOUNT_KEY: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}
+          GMC_CONTENT_API_MERCHANT_ID: ${{ secrets.GMC_CONTENT_API_MERCHANT_ID }}
+
+      - name: Sync Google Ads Performance
+        run: pnpm sync:ads-performance
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_WRITE_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+          GOOGLE_ADS_CLIENT_ID: ${{ secrets.GOOGLE_ADS_CLIENT_ID }}
+          GOOGLE_ADS_CLIENT_SECRET: ${{ secrets.GOOGLE_ADS_CLIENT_SECRET }}
+          GOOGLE_ADS_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_ADS_DEVELOPER_TOKEN }}
+          GOOGLE_ADS_CUSTOMER_ID: ${{ secrets.GOOGLE_ADS_CUSTOMER_ID }}
+          GOOGLE_ADS_REFRESH_TOKEN: ${{ secrets.GOOGLE_ADS_REFRESH_TOKEN }}

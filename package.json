@@ -34,7 +34,9 @@
     "backfill:orders:cart-metadata": "tsx scripts/backfillOrderCartMetadata.ts",
     "backfill:wholesale-pricing": "tsx scripts/backfill-wholesale-pricing.ts",
     "enhance:vendors": "tsx scripts/enhance-existing-vendors.ts",
-    "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts"
+    "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts",
+    "sync:gmc-status": "tsx scripts/sync-gmc-status.ts",
+    "sync:ads-performance": "tsx scripts/sync-google-ads-performance.ts"
   },
   "keywords": [
     "sanity"
@@ -69,6 +71,7 @@
     "dotenv": "^16.6.1",
     "get-stream": "^5.2.0",
     "googleapis": "^131.0.0",
+    "google-ads-api": "^17.0.0",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.1",
     "multiparty": "^4.2.3",
