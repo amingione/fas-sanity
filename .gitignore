@@ -41,6 +41,7 @@ Thumbs.db
 .env.*.local
 *.local
 .env.development.local
+gmc-key.json
 # Vite/Next.js cache (if using)
 .vite/
 .next/

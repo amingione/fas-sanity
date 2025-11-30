@@ -1465,6 +1465,38 @@ const product = defineType({
       group: 'advanced',
     }),
     defineField({
+      name: 'merchantCenterStatus',
+      title: 'Merchant Center Status',
+      type: 'object',
+      readOnly: true,
+      options: {collapsible: true, collapsed: false},
+      fields: [
+        {name: 'isApproved', type: 'boolean', title: 'Approved for Shopping'},
+        {name: 'needsGtin', type: 'boolean', title: 'Missing GTIN'},
+        {name: 'needsMpn', type: 'boolean', title: 'Missing MPN'},
+        {name: 'needsCategory', type: 'boolean', title: 'Missing Google Category'},
+        defineField({
+          name: 'issues',
+          title: 'Issues',
+          type: 'array',
+          of: [
+            defineField({
+              name: 'issue',
+              type: 'object',
+              fields: [
+                {name: 'code', type: 'string'},
+                {name: 'description', type: 'string'},
+                {name: 'severity', type: 'string'},
+              ],
+            }),
+          ],
+        }),
+        {name: 'lastSynced', type: 'datetime', title: 'Last Synced'},
+      ],
+      fieldset: 'merchant',
+      group: 'advanced',
+    }),
+    defineField({
       name: 'variationOptions',
       title: 'Variation Options (legacy)',
       type: 'array',
@@ -1659,6 +1691,22 @@ const product = defineType({
               description: 'Clicks from email campaigns',
               initialValue: 0,
             },
+          ],
+        }),
+        defineField({
+          name: 'ads',
+          type: 'object',
+          title: 'Google Ads Performance (Last 30 Days)',
+          options: {collapsible: true, collapsed: true},
+          fields: [
+            {name: 'impressions', type: 'number', title: 'Impressions'},
+            {name: 'clicks', type: 'number', title: 'Clicks'},
+            {name: 'conversions', type: 'number', title: 'Conversions'},
+            {name: 'adSpend', type: 'number', title: 'Ad Spend (USD)'},
+            {name: 'revenue', type: 'number', title: 'Revenue (USD)'},
+            {name: 'roas', type: 'number', title: 'ROAS (Return on Ad Spend)'},
+            {name: 'ctr', type: 'number', title: 'CTR (%)'},
+            {name: 'lastUpdated', type: 'datetime', title: 'Last Updated'},
           ],
         }),
         defineField({

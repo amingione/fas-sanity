@@ -38,6 +38,7 @@ import {
   makeExpenseRecurringAction,
   markExpensePaidAction,
 } from './schemaTypes/documentActions/expenseActions'
+import SyncMerchantFeedAction from './schemaTypes/documentActions/syncMerchantFeedAction'
 import {
   adjustInventoryAction,
   reserveInventoryAction,
@@ -79,6 +80,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'product') {
     list.push(backfillProductAction)
+    list.push(SyncMerchantFeedAction)
   }
   if (context.schemaType === 'appointment') {
     list.push(startWorkOrderAction)
