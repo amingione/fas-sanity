@@ -5,6 +5,9 @@ import {
   Card,
   Flex,
   Inline,
+  Menu,
+  MenuButton,
+  MenuItem,
   Spinner,
   Stack,
   Text,
@@ -52,6 +55,7 @@ type ProductDoc = {
   googleProductCategory?: string
   installOnly?: boolean
   shippingLabel?: string
+  shippingClass?: 'Standard' | 'Oversized' | 'Freight' | string
   productHighlights?: string[]
   productDetails?: string[]
   specifications?: ProductSpecification[] | null
@@ -62,10 +66,25 @@ type ProductDoc = {
   material?: string
   productLength?: string
   productWidth?: string
+  productType?: 'physical' | 'service' | 'bundle' | string
+  discountType?: 'percentage' | 'fixed_amount' | string
+  discountValue?: number
+  compareAtPrice?: number
+  saleStartDate?: string
+  saleEndDate?: string
+  saleLabel?: string
+  availableForWholesale?: boolean
+  wholesalePriceStandard?: number
+  wholesalePricePreferred?: number
+  wholesalePricePlatinum?: number
+  minimumWholesaleQuantity?: number
+  manufacturingCost?: number
   shortDescription?: any
   description?: any
   images?: string[]
-  categories?: string[]
+  categories?: Array<{_id?: string; title?: string}>
+  compatibleVehicles?: Array<{_id?: string; title?: string}>
+  tags?: string[]
 }
 
 type EditableProduct = ProductDoc & {
@@ -74,6 +93,48 @@ type EditableProduct = ProductDoc & {
   isSaving?: boolean
   dirty?: boolean
 }
+
+type NamedRef = {
+  _id?: string
+  title?: string
+}
+
+type ColumnKey =
+  | 'title'
+  | 'status'
+  | 'productType'
+  | 'sanityId'
+  | 'sku'
+  | 'price'
+  | 'salePrice'
+  | 'onSale'
+  | 'discountType'
+  | 'discountValue'
+  | 'saleStartDate'
+  | 'saleEndDate'
+  | 'saleLabel'
+  | 'availability'
+  | 'condition'
+  | 'manualInventoryCount'
+  | 'brand'
+  | 'mpn'
+  | 'taxBehavior'
+  | 'taxCode'
+  | 'shippingWeight'
+  | 'boxDimensions'
+  | 'shippingClass'
+  | 'googleProductCategory'
+  | 'categories'
+  | 'compatibleVehicles'
+  | 'installOnly'
+  | 'shippingLabel'
+  | 'tags'
+  | 'availableForWholesale'
+  | 'wholesalePriceStandard'
+  | 'wholesalePricePreferred'
+  | 'wholesalePricePlatinum'
+  | 'minimumWholesaleQuantity'
+  | 'manufacturingCost'
 
 import {readStudioEnv} from '../../utils/studioEnv'
 
@@ -150,6 +211,7 @@ type ApplyResult =
   | null
 
 type SpreadsheetColumn = {
+  key: ColumnKey
   header: string
   headerKey: string
   getValue: (product: EditableProduct) => string
@@ -164,6 +226,69 @@ const PRODUCT_STATUS_OPTIONS: Array<{value: ProductStatus; label: string}> = [
   {value: 'draft', label: 'Draft — Hidden'},
   {value: 'paused', label: 'Paused — Temporarily hidden'},
   {value: 'archived', label: 'Archived — Retired'},
+]
+
+const PRODUCT_TYPE_OPTIONS: Array<{value: 'physical' | 'service' | 'bundle'; label: string}> = [
+  {value: 'physical', label: 'Physical'},
+  {value: 'service', label: 'Service'},
+  {value: 'bundle', label: 'Bundle'},
+]
+
+const DISCOUNT_TYPE_OPTIONS: Array<{value: 'percentage' | 'fixed_amount'; label: string}> = [
+  {value: 'percentage', label: 'Percentage Off'},
+  {value: 'fixed_amount', label: 'Fixed Dollar Amount'},
+]
+
+const SALE_LABEL_OPTIONS: Array<{value: string; label: string}> = [
+  {value: 'sale', label: 'Sale'},
+  {value: 'black-friday', label: 'Black Friday'},
+  {value: 'cyber-monday', label: 'Cyber Monday'},
+  {value: 'clearance', label: 'Clearance'},
+  {value: 'limited-time', label: 'Limited Time'},
+  {value: 'hot-deal', label: 'Hot Deal'},
+]
+
+const SHIPPING_CLASS_OPTIONS: Array<{value: string; label: string}> = [
+  {value: 'Standard', label: 'Standard'},
+  {value: 'Oversized', label: 'Oversized'},
+  {value: 'Freight', label: 'Freight'},
+]
+
+const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = [
+  'title',
+  'status',
+  'productType',
+  'sku',
+  'price',
+  'salePrice',
+  'onSale',
+  'discountType',
+  'discountValue',
+  'saleStartDate',
+  'saleEndDate',
+  'saleLabel',
+  'availability',
+  'condition',
+  'manualInventoryCount',
+  'brand',
+  'mpn',
+  'taxBehavior',
+  'taxCode',
+  'shippingWeight',
+  'boxDimensions',
+  'shippingClass',
+  'googleProductCategory',
+  'categories',
+  'compatibleVehicles',
+  'installOnly',
+  'shippingLabel',
+  'tags',
+  'availableForWholesale',
+  'wholesalePriceStandard',
+  'wholesalePricePreferred',
+  'wholesalePricePlatinum',
+  'minimumWholesaleQuantity',
+  'manufacturingCost',
 ]
 
 const PRODUCT_STATUS_VALUES: Record<string, ProductStatus> = {
@@ -278,6 +403,129 @@ function parseTaxBehaviorCell(raw: string) {
   return {ok: false as const, message: `Tax behavior must be Taxable or Exempt.`}
 }
 
+function splitMultiValue(raw: string): string[] {
+  if (!raw.trim()) return []
+  return raw
+    .split(/[,\n]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+function normalizeRefList(value?: NamedRef[] | null): NamedRef[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const normalized: NamedRef[] = []
+  value.forEach((item) => {
+    if (!item) return
+    const id = typeof item._id === 'string' ? item._id : undefined
+    const title = typeof item.title === 'string' ? item.title.trim() : undefined
+    const key = id || (title ? title.toLowerCase() : '')
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    normalized.push({_id: id, title})
+  })
+  return normalized
+}
+
+function areRefsEqual(a?: NamedRef[] | null, b?: NamedRef[] | null): boolean {
+  const aList = normalizeRefList(a)
+  const bList = normalizeRefList(b)
+  if (aList.length !== bList.length) return false
+  return aList.every((item, index) => {
+    const other = bList[index]
+    const aKey = item._id || (item.title ? item.title.toLowerCase() : '')
+    const bKey = other?._id || (other?.title ? other.title.toLowerCase() : '')
+    return aKey === bKey
+  })
+}
+
+function formatRefTitles(refs?: NamedRef[] | null): string {
+  const normalized = normalizeRefList(refs)
+  return normalized.map((ref) => ref.title || ref._id || '').filter(Boolean).join(', ')
+}
+
+function resolveNamesToRefs(
+  names: string[],
+  byId: Map<string, NamedRef>,
+  byTitle: Map<string, NamedRef>,
+) {
+  const refs: NamedRef[] = []
+  const missing: string[] = []
+  names.forEach((name) => {
+    const byIdMatch = byId.get(name)
+    const byTitleMatch = byTitle.get(name.toLowerCase())
+    const match = byIdMatch || byTitleMatch
+    if (match) {
+      refs.push({_id: match._id, title: match.title})
+    } else {
+      missing.push(name)
+    }
+  })
+  return {refs: normalizeRefList(refs), missing}
+}
+
+function formatDateCell(value?: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return localDate.toISOString().slice(0, 16).replace('T', ' ')
+}
+
+function toDateInputValue(value?: string | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return localDate.toISOString().slice(0, 16)
+}
+
+function parseDateValue(raw: string) {
+  const trimmed = raw.trim()
+  if (!trimmed) return {ok: true as const, value: undefined as string | undefined}
+  const normalized = trimmed.replace(' ', 'T')
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) {
+    return {ok: false as const, message: `Expected a valid date/time, received "${raw}".`}
+  }
+  return {ok: true as const, value: date.toISOString()}
+}
+
+function normalizeTagsList(value?: string[] | null): string[] {
+  if (!Array.isArray(value)) return []
+  const seen = new Set<string>()
+  const tags: string[] = []
+  value.forEach((tag) => {
+    if (typeof tag !== 'string') return
+    const trimmed = tag.trim()
+    if (!trimmed || seen.has(trimmed)) return
+    seen.add(trimmed)
+    tags.push(trimmed)
+  })
+  return tags
+}
+
+function parseTagsInput(raw: string): string[] {
+  if (!raw.trim()) return []
+  const parts = raw
+    .split(/[,\n]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  return normalizeTagsList(parts)
+}
+
+function formatTagsCell(tags?: string[] | null): string {
+  const normalized = normalizeTagsList(tags)
+  return normalized.join(', ')
+}
+
+function areTagsEqual(a?: string[] | null, b?: string[] | null): boolean {
+  const aNorm = normalizeTagsList(a)
+  const bNorm = normalizeTagsList(b)
+  if (aNorm.length !== bNorm.length) return false
+  return aNorm.every((tag, index) => tag === bNorm[index])
+}
+
 function makeUpdate<K extends keyof EditableProduct>(
   key: K,
   value: EditableProduct[K],
@@ -285,223 +533,463 @@ function makeUpdate<K extends keyof EditableProduct>(
   return {type: 'update', key, value}
 }
 
-const SPREADSHEET_COLUMNS: SpreadsheetColumn[] = [
-  {
-    header: 'Title',
-    headerKey: 'title',
-    getValue: (product) => product.title || '',
-    setValue: (raw) => makeUpdate('title', raw.trim() as EditableProduct['title']),
-  },
-  {
-    header: 'Status',
-    headerKey: 'status',
-    getValue: (product) => product.status || '',
-    setValue: (raw) => {
-      const result = parseStatusCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      if (result.value === undefined) return null
-      return makeUpdate('status', result.value as EditableProduct['status'])
-    },
-  },
-  {
-    header: 'Sanity ID',
-    headerKey: 'sanity id',
-    getValue: (product) => product._id,
-  },
-  {
-    header: 'SKU',
-    headerKey: 'sku',
-    getValue: (product) => product.sku || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate('sku', (next ? next : undefined) as EditableProduct['sku'])
-    },
-  },
-  {
-    header: 'Price',
-    headerKey: 'price',
-    getValue: (product) => formatNumberCell(product.price),
-    setValue: (raw) => {
-      const result = parseNumberCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      return makeUpdate('price', result.value as EditableProduct['price'])
-    },
-  },
-  {
-    header: 'Sale Price',
-    headerKey: 'sale price',
-    getValue: (product) => formatNumberCell(product.salePrice),
-    setValue: (raw) => {
-      const result = parseNumberCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      return makeUpdate('salePrice', result.value as EditableProduct['salePrice'])
-    },
-  },
-  {
-    header: 'On Sale',
-    headerKey: 'on sale',
-    getValue: (product) => formatBooleanCell(product.onSale),
-    setValue: (raw) => {
-      const result = parseBooleanCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      if (result.value === undefined) return null
-      return makeUpdate('onSale', result.value as EditableProduct['onSale'])
-    },
-  },
-  {
-    header: 'Availability',
-    headerKey: 'availability',
-    getValue: (product) => product.availability || '',
-    setValue: (raw) => {
-      const result = parseAvailabilityCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      if (result.value === undefined) return null
-      return makeUpdate('availability', result.value as EditableProduct['availability'])
-    },
-  },
-  {
-    header: 'Condition',
-    headerKey: 'condition',
-    getValue: (product) => product.condition || '',
-    setValue: (raw) => {
-      const result = parseConditionCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      if (result.value === undefined) return null
-      return makeUpdate('condition', result.value as EditableProduct['condition'])
-    },
-  },
-  {
-    header: 'Manual Inventory Count',
-    headerKey: 'manual inventory count',
-    getValue: (product) => formatNumberCell(product.manualInventoryCount),
-    setValue: (raw) => {
-      const result = parseNumberCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      return makeUpdate(
-        'manualInventoryCount',
-        result.value as EditableProduct['manualInventoryCount'],
-      )
-    },
-  },
-  {
-    header: 'Brand',
-    headerKey: 'brand',
-    getValue: (product) => product.brand || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate('brand', (next || undefined) as EditableProduct['brand'])
-    },
-  },
-  {
-    header: 'MPN',
-    headerKey: 'mpn',
-    getValue: (product) => product.mpn || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate('mpn', (next || undefined) as EditableProduct['mpn'])
-    },
-  },
-  {
-    header: 'Identifier Exists',
-    headerKey: 'identifier exists',
-    getValue: (product) => (product.mpn ? 'TRUE' : 'FALSE'),
-  },
-  {
-    header: 'Tax Behavior',
-    headerKey: 'tax behavior',
-    getValue: (product) => product.taxBehavior || '',
-    setValue: (raw) => {
-      const result = parseTaxBehaviorCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      return makeUpdate('taxBehavior', result.value as EditableProduct['taxBehavior'])
-    },
-  },
-  {
-    header: 'Tax Code',
-    headerKey: 'tax code',
-    getValue: (product) => product.taxCode || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate('taxCode', (next || undefined) as EditableProduct['taxCode'])
-    },
-  },
-  {
-    header: 'Shipping Weight',
-    headerKey: 'shipping weight',
-    getValue: (product) => formatNumberCell(product.shippingWeight),
-    setValue: (raw) => {
-      const result = parseNumberCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      return makeUpdate('shippingWeight', result.value as EditableProduct['shippingWeight'])
-    },
-  },
-  {
-    header: 'Box Dimensions',
-    headerKey: 'box dimensions',
-    getValue: (product) => product.boxDimensions || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate('boxDimensions', (next || undefined) as EditableProduct['boxDimensions'])
-    },
-  },
-  {
-    header: 'Google Product Category',
-    headerKey: 'google product category',
-    getValue: (product) => product.googleProductCategory || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate(
-        'googleProductCategory',
-        (next || undefined) as EditableProduct['googleProductCategory'],
-      )
-    },
-  },
-  {
-    header: 'Install Only',
-    headerKey: 'install only',
-    getValue: (product) => formatBooleanCell(product.installOnly),
-    setValue: (raw) => {
-      const result = parseBooleanCell(raw)
-      if (!result.ok) return {type: 'error', message: result.message}
-      if (result.value === undefined) return null
-      return makeUpdate('installOnly', result.value as EditableProduct['installOnly'])
-    },
-  },
-  {
-    header: 'Shipping Label',
-    headerKey: 'shipping label',
-    getValue: (product) => product.shippingLabel || '',
-    setValue: (raw) => {
-      const next = raw.trim()
-      return makeUpdate('shippingLabel', (next || undefined) as EditableProduct['shippingLabel'])
-    },
-  },
-]
+function buildSpreadsheetColumns(options: {
+  categoryById: Map<string, NamedRef>
+  categoryByTitle: Map<string, NamedRef>
+  vehicleById: Map<string, NamedRef>
+  vehicleByTitle: Map<string, NamedRef>
+}): SpreadsheetColumn[] {
+  const resolveCategories = (raw: string, product: EditableProduct) => {
+    const values = splitMultiValue(raw)
+    if (values.length === 0) {
+      if (normalizeRefList(product.categories).length === 0) return null
+      return makeUpdate('categories', [] as any)
+    }
+    const {refs, missing} = resolveNamesToRefs(
+      values,
+      options.categoryById,
+      options.categoryByTitle,
+    )
+    if (missing.length > 0) {
+      return {
+        type: 'error',
+        message: `Unknown categories: ${missing.join(', ')}`,
+      } as ApplyResult
+    }
+    if (areRefsEqual(product.categories, refs)) return null
+    return makeUpdate('categories', refs as any)
+  }
 
-const SANITY_ID_COLUMN_INDEX = SPREADSHEET_COLUMNS.findIndex(
-  (column) => column.headerKey === 'sanity id',
-)
+  const resolveVehicles = (raw: string, product: EditableProduct) => {
+    const values = splitMultiValue(raw)
+    if (values.length === 0) {
+      if (normalizeRefList(product.compatibleVehicles).length === 0) return null
+      return makeUpdate('compatibleVehicles', [] as any)
+    }
+    const {refs, missing} = resolveNamesToRefs(values, options.vehicleById, options.vehicleByTitle)
+    if (missing.length > 0) {
+      return {
+        type: 'error',
+        message: `Unknown vehicles: ${missing.join(', ')}`,
+      } as ApplyResult
+    }
+    if (areRefsEqual(product.compatibleVehicles, refs)) return null
+    return makeUpdate('compatibleVehicles', refs as any)
+  }
+
+  return [
+    {
+      key: 'title',
+      header: 'Title',
+      headerKey: 'title',
+      getValue: (product) => product.title || '',
+      setValue: (raw) => makeUpdate('title', raw.trim() as EditableProduct['title']),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      headerKey: 'status',
+      getValue: (product) => product.status || '',
+      setValue: (raw) => {
+        const result = parseStatusCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        if (result.value === undefined) return null
+        return makeUpdate('status', result.value as EditableProduct['status'])
+      },
+    },
+    {
+      key: 'productType',
+      header: 'Product Type',
+      headerKey: 'product type',
+      getValue: (product) => product.productType || '',
+      setValue: (raw) => {
+        const value = raw.trim().toLowerCase()
+        if (!value) return null
+        if (!['physical', 'service', 'bundle'].includes(value)) {
+          return {type: 'error', message: 'Product type must be Physical, Service, or Bundle.'}
+        }
+        return makeUpdate('productType', value as EditableProduct['productType'])
+      },
+    },
+    {
+      key: 'sanityId',
+      header: 'Sanity ID',
+      headerKey: 'sanity id',
+      getValue: (product) => product._id,
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      headerKey: 'sku',
+      getValue: (product) => product.sku || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('sku', (next ? next : undefined) as EditableProduct['sku'])
+      },
+    },
+    {
+      key: 'price',
+      header: 'Price',
+      headerKey: 'price',
+      getValue: (product) => formatNumberCell(product.price),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('price', result.value as EditableProduct['price'])
+      },
+    },
+    {
+      key: 'salePrice',
+      header: 'Sale Price',
+      headerKey: 'sale price',
+      getValue: (product) => formatNumberCell(product.salePrice),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('salePrice', result.value as EditableProduct['salePrice'])
+      },
+    },
+    {
+      key: 'onSale',
+      header: 'On Sale',
+      headerKey: 'on sale',
+      getValue: (product) => formatBooleanCell(product.onSale),
+      setValue: (raw) => {
+        const result = parseBooleanCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        if (result.value === undefined) return null
+        return makeUpdate('onSale', result.value as EditableProduct['onSale'])
+      },
+    },
+    {
+      key: 'discountType',
+      header: 'Discount Type',
+      headerKey: 'discount type',
+      getValue: (product) => product.discountType || '',
+      setValue: (raw) => {
+        const value = raw.trim().toLowerCase()
+        if (!value) return null
+        if (!['percentage', 'fixed_amount'].includes(value)) {
+          return {type: 'error', message: 'Discount type must be Percentage or Fixed Dollar Amount.'}
+        }
+        return makeUpdate('discountType', value as EditableProduct['discountType'])
+      },
+    },
+    {
+      key: 'discountValue',
+      header: 'Discount Value',
+      headerKey: 'discount value',
+      getValue: (product) => formatNumberCell(product.discountValue),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('discountValue', result.value as EditableProduct['discountValue'])
+      },
+    },
+    {
+      key: 'saleStartDate',
+      header: 'Sale Start Date',
+      headerKey: 'sale start date',
+      getValue: (product) => formatDateCell(product.saleStartDate),
+      setValue: (raw) => {
+        const result = parseDateValue(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('saleStartDate', result.value as EditableProduct['saleStartDate'])
+      },
+    },
+    {
+      key: 'saleEndDate',
+      header: 'Sale End Date',
+      headerKey: 'sale end date',
+      getValue: (product) => formatDateCell(product.saleEndDate),
+      setValue: (raw) => {
+        const result = parseDateValue(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('saleEndDate', result.value as EditableProduct['saleEndDate'])
+      },
+    },
+    {
+      key: 'saleLabel',
+      header: 'Sale Badge Label',
+      headerKey: 'sale badge label',
+      getValue: (product) => product.saleLabel || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('saleLabel', (next || undefined) as EditableProduct['saleLabel'])
+      },
+    },
+    {
+      key: 'availability',
+      header: 'Availability',
+      headerKey: 'availability',
+      getValue: (product) => product.availability || '',
+      setValue: (raw) => {
+        const result = parseAvailabilityCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        if (result.value === undefined) return null
+        return makeUpdate('availability', result.value as EditableProduct['availability'])
+      },
+    },
+    {
+      key: 'condition',
+      header: 'Condition',
+      headerKey: 'condition',
+      getValue: (product) => product.condition || '',
+      setValue: (raw) => {
+        const result = parseConditionCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        if (result.value === undefined) return null
+        return makeUpdate('condition', result.value as EditableProduct['condition'])
+      },
+    },
+    {
+      key: 'manualInventoryCount',
+      header: 'Manual Inventory Count',
+      headerKey: 'manual inventory count',
+      getValue: (product) => formatNumberCell(product.manualInventoryCount),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate(
+          'manualInventoryCount',
+          result.value as EditableProduct['manualInventoryCount'],
+        )
+      },
+    },
+    {
+      key: 'brand',
+      header: 'Brand',
+      headerKey: 'brand',
+      getValue: (product) => product.brand || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('brand', (next || undefined) as EditableProduct['brand'])
+      },
+    },
+    {
+      key: 'mpn',
+      header: 'MPN',
+      headerKey: 'mpn',
+      getValue: (product) => product.mpn || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('mpn', (next || undefined) as EditableProduct['mpn'])
+      },
+    },
+    {
+      key: 'taxBehavior',
+      header: 'Tax Behavior',
+      headerKey: 'tax behavior',
+      getValue: (product) => product.taxBehavior || '',
+      setValue: (raw) => {
+        const result = parseTaxBehaviorCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('taxBehavior', result.value as EditableProduct['taxBehavior'])
+      },
+    },
+    {
+      key: 'taxCode',
+      header: 'Tax Code',
+      headerKey: 'tax code',
+      getValue: (product) => product.taxCode || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('taxCode', (next || undefined) as EditableProduct['taxCode'])
+      },
+    },
+    {
+      key: 'shippingWeight',
+      header: 'Shipping Weight',
+      headerKey: 'shipping weight',
+      getValue: (product) => formatNumberCell(product.shippingWeight),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate('shippingWeight', result.value as EditableProduct['shippingWeight'])
+      },
+    },
+    {
+      key: 'boxDimensions',
+      header: 'Box Dimensions',
+      headerKey: 'box dimensions',
+      getValue: (product) => product.boxDimensions || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('boxDimensions', (next || undefined) as EditableProduct['boxDimensions'])
+      },
+    },
+    {
+      key: 'shippingClass',
+      header: 'Shipping Class',
+      headerKey: 'shipping class',
+      getValue: (product) => product.shippingClass || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('shippingClass', (next || undefined) as EditableProduct['shippingClass'])
+      },
+    },
+    {
+      key: 'googleProductCategory',
+      header: 'Google Product Category',
+      headerKey: 'google product category',
+      getValue: (product) => product.googleProductCategory || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate(
+          'googleProductCategory',
+          (next || undefined) as EditableProduct['googleProductCategory'],
+        )
+      },
+    },
+    {
+      key: 'categories',
+      header: 'Categories',
+      headerKey: 'categories',
+      getValue: (product) => formatRefTitles(product.categories),
+      setValue: resolveCategories,
+    },
+    {
+      key: 'compatibleVehicles',
+      header: 'Compatible Vehicles',
+      headerKey: 'compatible vehicles',
+      getValue: (product) => formatRefTitles(product.compatibleVehicles),
+      setValue: resolveVehicles,
+    },
+    {
+      key: 'installOnly',
+      header: 'Install Only',
+      headerKey: 'install only',
+      getValue: (product) => formatBooleanCell(product.installOnly),
+      setValue: (raw) => {
+        const result = parseBooleanCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        if (result.value === undefined) return null
+        return makeUpdate('installOnly', result.value as EditableProduct['installOnly'])
+      },
+    },
+    {
+      key: 'shippingLabel',
+      header: 'Shipping Label',
+      headerKey: 'shipping label',
+      getValue: (product) => product.shippingLabel || '',
+      setValue: (raw) => {
+        const next = raw.trim()
+        return makeUpdate('shippingLabel', (next || undefined) as EditableProduct['shippingLabel'])
+      },
+    },
+    {
+      key: 'tags',
+      header: 'Internal Tags',
+      headerKey: 'internal tags',
+      getValue: (product) => formatTagsCell(product.tags),
+      setValue: (raw, product) => {
+        const trimmed = raw.trim()
+        const currentTags = normalizeTagsList(product.tags)
+        if (!trimmed && currentTags.length === 0) return null
+        const nextTags = parseTagsInput(raw)
+        if (areTagsEqual(currentTags, nextTags)) return null
+        return makeUpdate('tags', nextTags as EditableProduct['tags'])
+      },
+    },
+    {
+      key: 'availableForWholesale',
+      header: 'Available for Wholesale',
+      headerKey: 'available for wholesale',
+      getValue: (product) => formatBooleanCell(product.availableForWholesale),
+      setValue: (raw) => {
+        const result = parseBooleanCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        if (result.value === undefined) return null
+        return makeUpdate(
+          'availableForWholesale',
+          result.value as EditableProduct['availableForWholesale'],
+        )
+      },
+    },
+    {
+      key: 'wholesalePriceStandard',
+      header: 'Wholesale Price - Standard',
+      headerKey: 'wholesale price - standard',
+      getValue: (product) => formatNumberCell(product.wholesalePriceStandard),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate(
+          'wholesalePriceStandard',
+          result.value as EditableProduct['wholesalePriceStandard'],
+        )
+      },
+    },
+    {
+      key: 'wholesalePricePreferred',
+      header: 'Wholesale Price - Preferred',
+      headerKey: 'wholesale price - preferred',
+      getValue: (product) => formatNumberCell(product.wholesalePricePreferred),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate(
+          'wholesalePricePreferred',
+          result.value as EditableProduct['wholesalePricePreferred'],
+        )
+      },
+    },
+    {
+      key: 'wholesalePricePlatinum',
+      header: 'Wholesale Price - Platinum',
+      headerKey: 'wholesale price - platinum',
+      getValue: (product) => formatNumberCell(product.wholesalePricePlatinum),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate(
+          'wholesalePricePlatinum',
+          result.value as EditableProduct['wholesalePricePlatinum'],
+        )
+      },
+    },
+    {
+      key: 'minimumWholesaleQuantity',
+      header: 'Minimum Wholesale Quantity',
+      headerKey: 'minimum wholesale quantity',
+      getValue: (product) => formatNumberCell(product.minimumWholesaleQuantity),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate(
+          'minimumWholesaleQuantity',
+          result.value as EditableProduct['minimumWholesaleQuantity'],
+        )
+      },
+    },
+    {
+      key: 'manufacturingCost',
+      header: 'Manufacturing Cost',
+      headerKey: 'manufacturing cost',
+      getValue: (product) => formatNumberCell(product.manufacturingCost),
+      setValue: (raw) => {
+        const result = parseNumberCell(raw)
+        if (!result.ok) return {type: 'error', message: result.message}
+        return makeUpdate(
+          'manufacturingCost',
+          result.value as EditableProduct['manufacturingCost'],
+        )
+      },
+    },
+  ]
+}
 
 type ParsedRow = {
   line: number
   values: Record<string, string>
 }
 
-function filterProductsByTerm(products: EditableProduct[], term: string): EditableProduct[] {
-  if (!term) return products
-  const lower = term.toLowerCase()
-  return products.filter((product) =>
-    [product.title, product.sku, product._id]
-      .filter(Boolean)
-      .some((value) => value!.toString().toLowerCase().includes(lower)),
-  )
-}
-
-function buildSpreadsheetMatrix(products: EditableProduct[]): string[][] {
-  const header = SPREADSHEET_COLUMNS.map((column) => column.header)
-  const rows = products.map((product) =>
-    SPREADSHEET_COLUMNS.map((column) => column.getValue(product)),
-  )
+function buildSpreadsheetMatrix(
+  products: EditableProduct[],
+  columns: SpreadsheetColumn[],
+): string[][] {
+  const header = columns.map((column) => column.header)
+  const rows = products.map((product) => columns.map((column) => column.getValue(product)))
   return [header, ...rows]
 }
 
@@ -560,6 +1048,114 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     endCol: number
   } | null>(null)
   const [isDraggingSelection, setIsDraggingSelection] = useState(false)
+  const [categoryOptions, setCategoryOptions] = useState<NamedRef[]>([])
+  const [vehicleOptions, setVehicleOptions] = useState<NamedRef[]>([])
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<ColumnKey>>(
+    () => new Set(DEFAULT_VISIBLE_COLUMNS),
+  )
+  const [filterProductType, setFilterProductType] = useState<string>('')
+  const [filterOnSale, setFilterOnSale] = useState<'all' | 'true' | 'false'>('all')
+  const [filterDiscountType, setFilterDiscountType] = useState<string>('')
+  const [filterShippingClass, setFilterShippingClass] = useState<string>('')
+  const [filterCategoryIds, setFilterCategoryIds] = useState<Set<string>>(new Set())
+  const [filterVehicleIds, setFilterVehicleIds] = useState<Set<string>>(new Set())
+  const [filterWholesale, setFilterWholesale] = useState<'all' | 'true' | 'false'>('all')
+
+  const categoryById = useMemo(() => {
+    const map = new Map<string, NamedRef>()
+    categoryOptions.forEach((option) => {
+      if (option?._id) map.set(option._id, option)
+    })
+    return map
+  }, [categoryOptions])
+
+  const categoryByTitle = useMemo(() => {
+    const map = new Map<string, NamedRef>()
+    categoryOptions.forEach((option) => {
+      if (option?.title) map.set(option.title.toLowerCase(), option)
+    })
+    return map
+  }, [categoryOptions])
+
+  const vehicleById = useMemo(() => {
+    const map = new Map<string, NamedRef>()
+    vehicleOptions.forEach((option) => {
+      if (option?._id) map.set(option._id, option)
+    })
+    return map
+  }, [vehicleOptions])
+
+  const vehicleByTitle = useMemo(() => {
+    const map = new Map<string, NamedRef>()
+    vehicleOptions.forEach((option) => {
+      if (option?.title) map.set(option.title.toLowerCase(), option)
+    })
+    return map
+  }, [vehicleOptions])
+
+  const spreadsheetColumns = useMemo(
+    () =>
+      buildSpreadsheetColumns({
+        categoryById,
+        categoryByTitle,
+        vehicleById,
+        vehicleByTitle,
+      }),
+    [categoryById, categoryByTitle, vehicleById, vehicleByTitle],
+  )
+
+  const activeSpreadsheetColumns = useMemo(
+    () =>
+      spreadsheetColumns.filter(
+        (column) => column.key === 'sanityId' || visibleColumnKeys.has(column.key),
+      ),
+    [spreadsheetColumns, visibleColumnKeys],
+  )
+
+  const sanityIdColumnIndex = useMemo(
+    () => activeSpreadsheetColumns.findIndex((column) => column.headerKey === 'sanity id'),
+    [activeSpreadsheetColumns],
+  )
+
+  const toggleVisibleColumn = useCallback((key: ColumnKey) => {
+    setVisibleColumnKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }, [])
+
+  const toggleCategoryFilter = useCallback((id: string) => {
+    setFilterCategoryIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleVehicleFilter = useCallback((id: string) => {
+    setFilterVehicleIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const clearFilters = useCallback(() => {
+    setFilterProductType('')
+    setFilterOnSale('all')
+    setFilterDiscountType('')
+    setFilterShippingClass('')
+    setFilterCategoryIds(new Set())
+    setFilterVehicleIds(new Set())
+    setFilterWholesale('all')
+  }, [])
 
   const headerCellStyle = {
     padding: '6px 10px',
@@ -596,6 +1192,36 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       'ui-monospace, SFMono-Regular, SFMono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
   }
 
+  const tableHeaderStyle: React.CSSProperties = {
+    textAlign: 'left',
+    padding: '12px 16px',
+    color: '#d1d5db',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetchLookups() {
+      try {
+        const [cats, vehicles] = await Promise.all([
+          client.fetch(`*[_type == "category"]{_id, title} | order(title asc)`),
+          client.fetch(`*[_type == "vehicleModel"]{_id, title} | order(title asc)`),
+        ])
+        if (cancelled) return
+        setCategoryOptions(Array.isArray(cats) ? cats : [])
+        setVehicleOptions(Array.isArray(vehicles) ? vehicles : [])
+      } catch (err) {
+        console.error('Bulk editor lookup fetch failed', err)
+      }
+    }
+    fetchLookups()
+    return () => {
+      cancelled = true
+    }
+  }, [client])
+
   useEffect(() => {
     let isMounted = true
     async function fetchProducts() {
@@ -606,11 +1232,17 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             _id,
             title,
             status,
+            productType,
             slug,
             sku,
             mpn,
             price,
             salePrice,
+            discountType,
+            discountValue,
+            saleStartDate,
+            saleEndDate,
+            saleLabel,
             onSale,
             availability,
             condition,
@@ -619,11 +1251,19 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             taxCode,
             installOnly,
             shippingLabel,
+            shippingClass,
             shippingWeight,
             boxDimensions,
             brand,
             canonicalUrl,
             googleProductCategory,
+            availableForWholesale,
+            wholesalePriceStandard,
+            wholesalePricePreferred,
+            wholesalePricePlatinum,
+            minimumWholesaleQuantity,
+            manufacturingCost,
+            tags,
             productHighlights,
             productDetails,
             specifications[]{
@@ -652,7 +1292,8 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             shortDescription,
             description,
             "images": images[].asset->url,
-            "categories": category[]->title
+            "categories": category[]->{_id, title},
+            "compatibleVehicles": compatibleVehicles[]->{_id, title}
           }`
         const query = hasSelection
           ? `*[_type == "product" && _id in $ids]${projection}`
@@ -698,14 +1339,78 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     }
   }, [client, productIds, toast])
 
-  const filteredProducts = useMemo(
-    () => filterProductsByTerm(products, searchTerm),
-    [products, searchTerm],
+  const applyFilters = useCallback(
+    (list: EditableProduct[]) => {
+      const term = searchTerm.trim().toLowerCase()
+      return list.filter((product) => {
+        if (term) {
+          const matches = [product.title, product.sku, product._id]
+            .filter(Boolean)
+            .some((value) => value!.toString().toLowerCase().includes(term))
+          if (!matches) return false
+        }
+
+        if (filterProductType && (product.productType || '').toLowerCase() !== filterProductType) {
+          return false
+        }
+
+        if (filterOnSale !== 'all') {
+          const onSale = Boolean(product.onSale)
+          if (filterOnSale === 'true' && !onSale) return false
+          if (filterOnSale === 'false' && onSale) return false
+        }
+
+        if (
+          filterDiscountType &&
+          (product.discountType || '').toString().toLowerCase() !== filterDiscountType
+        ) {
+          return false
+        }
+
+        if (filterShippingClass && (product.shippingClass || '') !== filterShippingClass) {
+          return false
+        }
+
+        if (filterWholesale !== 'all') {
+          const wholesale = Boolean(product.availableForWholesale)
+          if (filterWholesale === 'true' && !wholesale) return false
+          if (filterWholesale === 'false' && wholesale) return false
+        }
+
+        if (filterCategoryIds.size > 0) {
+          const categoryIds = normalizeRefList(product.categories)
+            .map((ref) => ref._id)
+            .filter(Boolean)
+          if (!categoryIds.some((id) => id && filterCategoryIds.has(id))) return false
+        }
+
+        if (filterVehicleIds.size > 0) {
+          const vehicleIds = normalizeRefList(product.compatibleVehicles)
+            .map((ref) => ref._id)
+            .filter(Boolean)
+          if (!vehicleIds.some((id) => id && filterVehicleIds.has(id))) return false
+        }
+
+        return true
+      })
+    },
+    [
+      searchTerm,
+      filterProductType,
+      filterOnSale,
+      filterDiscountType,
+      filterShippingClass,
+      filterWholesale,
+      filterCategoryIds,
+      filterVehicleIds,
+    ],
   )
+
+  const filteredProducts = useMemo(() => applyFilters(products), [applyFilters, products])
 
   const handleSwitchToCsv = () => {
     setSheetError(null)
-    setSheetRows(buildSpreadsheetMatrix(filteredProducts))
+    setSheetRows(buildSpreadsheetMatrix(filteredProducts, activeSpreadsheetColumns))
     setSelection(null)
     setActiveCell(null)
     setViewMode('csv')
@@ -720,7 +1425,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
 
   const handleRefreshCsv = () => {
     setSheetError(null)
-    setSheetRows(buildSpreadsheetMatrix(filteredProducts))
+    setSheetRows(buildSpreadsheetMatrix(filteredProducts, activeSpreadsheetColumns))
     setSelection(null)
   }
 
@@ -762,7 +1467,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       let rowChanged = false
       let rowError = false
 
-      for (const column of SPREADSHEET_COLUMNS) {
+      for (const column of activeSpreadsheetColumns) {
         if (!column.setValue) continue
         const rawValue = row.values[column.headerKey] ?? ''
         const result = column.setValue(rawValue, product)
@@ -812,8 +1517,8 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     }
 
     setProducts(updatedProducts)
-    const refreshed = filterProductsByTerm(updatedProducts, searchTerm)
-    setSheetRows(buildSpreadsheetMatrix(refreshed))
+    const refreshed = applyFilters(updatedProducts)
+    setSheetRows(buildSpreadsheetMatrix(refreshed, activeSpreadsheetColumns))
     setSheetApplying(false)
     toast.push({
       status: 'success',
@@ -878,7 +1583,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
   ) => {
     if (row === 0) return
     if ((event.target as HTMLElement).tagName === 'INPUT') return
-    if (!SPREADSHEET_COLUMNS[col]?.setValue) return
+    if (!activeSpreadsheetColumns[col]?.setValue) return
     event.preventDefault()
     setSelection({startRow: row, startCol: col, endRow: row, endCol: col})
     setIsDraggingSelection(true)
@@ -887,7 +1592,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
   const extendSelection = (row: number, col: number) => {
     setSelection((prev) => {
       if (!prev || !isDraggingSelection) return prev
-      if (row === 0 || !SPREADSHEET_COLUMNS[col]?.setValue) return prev
+      if (row === 0 || !activeSpreadsheetColumns[col]?.setValue) return prev
       return {
         startRow: prev.startRow,
         startCol: prev.startCol,
@@ -955,12 +1660,14 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
   useEffect(() => {
     if (viewMode !== 'csv') return
     const expectedRows = filteredProducts.length + 1
-    if (sheetRows.length !== expectedRows) {
-      setSheetRows(buildSpreadsheetMatrix(filteredProducts))
+    const expectedCols = activeSpreadsheetColumns.length
+    const currentCols = sheetRows[0]?.length ?? expectedCols
+    if (sheetRows.length !== expectedRows || currentCols !== expectedCols) {
+      setSheetRows(buildSpreadsheetMatrix(filteredProducts, activeSpreadsheetColumns))
       setSelection(null)
       setActiveCell(null)
     }
-  }, [viewMode, filteredProducts, sheetRows.length])
+  }, [viewMode, filteredProducts, sheetRows.length, activeSpreadsheetColumns])
 
   const updateProductField = (id: string, field: keyof EditableProduct, value: any) => {
     setProducts((prev) =>
@@ -980,12 +1687,23 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     if (!product._id) return
     try {
       updateProductField(product._id, 'isSaving', true)
+      const tagsPayload = Array.isArray(product.tags) ? normalizeTagsList(product.tags) : undefined
+      const categoryRefs = normalizeRefList(product.categories).filter((ref) => ref._id)
+      const vehicleRefs = normalizeRefList(product.compatibleVehicles).filter((ref) => ref._id)
       const payload: Record<string, any> = {
         title: product.title || '',
+        productType: product.productType || undefined,
         sku: product.sku || undefined,
         status: product.status || undefined,
         price: Number.isFinite(product.price) ? Number(product.price) : undefined,
         salePrice: Number.isFinite(product.salePrice) ? Number(product.salePrice) : undefined,
+        discountType: product.discountType || undefined,
+        discountValue: Number.isFinite(product.discountValue)
+          ? Number(product.discountValue)
+          : undefined,
+        saleStartDate: product.saleStartDate || undefined,
+        saleEndDate: product.saleEndDate || undefined,
+        saleLabel: product.saleLabel || undefined,
         onSale: Boolean(product.onSale),
         availability: product.availability || 'in_stock',
         condition: product.condition || 'new',
@@ -1002,9 +1720,38 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
         mpn: product.mpn || undefined,
         canonicalUrl: product.canonicalUrl || undefined,
         googleProductCategory: product.googleProductCategory || undefined,
+        availableForWholesale:
+          product.availableForWholesale === undefined
+            ? undefined
+            : Boolean(product.availableForWholesale),
+        wholesalePriceStandard: Number.isFinite(product.wholesalePriceStandard)
+          ? Number(product.wholesalePriceStandard)
+          : undefined,
+        wholesalePricePreferred: Number.isFinite(product.wholesalePricePreferred)
+          ? Number(product.wholesalePricePreferred)
+          : undefined,
+        wholesalePricePlatinum: Number.isFinite(product.wholesalePricePlatinum)
+          ? Number(product.wholesalePricePlatinum)
+          : undefined,
+        minimumWholesaleQuantity: Number.isFinite(product.minimumWholesaleQuantity)
+          ? Number(product.minimumWholesaleQuantity)
+          : undefined,
+        manufacturingCost: Number.isFinite(product.manufacturingCost)
+          ? Number(product.manufacturingCost)
+          : undefined,
         installOnly: Boolean(product.installOnly),
         shippingLabel: product.shippingLabel || undefined,
+        shippingClass: product.shippingClass || undefined,
       }
+      if (tagsPayload !== undefined) {
+        payload.tags = tagsPayload
+      }
+      payload.category =
+        categoryRefs.length > 0
+          ? categoryRefs.map((ref) => ({_type: 'reference', _ref: ref._id}))
+          : []
+      payload.compatibleVehicles =
+        vehicleRefs.length > 0 ? vehicleRefs.map((ref) => ({_type: 'reference', _ref: ref._id})) : []
 
       await client.patch(product._id).set(payload).commit({autoGenerateArrayKeys: true})
       toast.push({
@@ -1018,6 +1765,9 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             ? {
                 ...prod,
                 ...payload,
+                category: undefined,
+                categories: categoryRefs,
+                compatibleVehicles: vehicleRefs,
                 isSaving: false,
                 dirty: false,
               }
@@ -1082,7 +1832,10 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       const mpn = product.mpn || product.sku || product._id
       const identifierExists = product.mpn ? 'TRUE' : 'FALSE'
       const shippingWeight = product.shippingWeight ? `${product.shippingWeight} lb` : ''
-      const productType = Array.isArray(product.categories) ? product.categories.join(' > ') : ''
+      const categoryTitles = normalizeRefList(product.categories)
+        .map((cat) => cat.title)
+        .filter(Boolean)
+      const productType = categoryTitles.join(' > ')
       const googleCategory = product.googleProductCategory || ''
       const shippingLabel = product.shippingLabel || (product.installOnly ? 'install_only' : '')
       const derived = product.derivedFeed
@@ -1169,6 +1922,24 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
               placeholder="Search by title, SKU, or ID"
               style={{minWidth: 240}}
             />
+            <MenuButton
+              id="column-toggle"
+              button={<Button text="Columns" mode="ghost" />}
+              menu={
+                <Menu>
+                  {spreadsheetColumns
+                    .filter((column) => column.key !== 'sanityId')
+                    .map((column) => (
+                      <MenuItem
+                        key={column.key}
+                        text={column.header}
+                        selected={visibleColumnKeys.has(column.key)}
+                        onClick={() => toggleVisibleColumn(column.key)}
+                      />
+                    ))}
+                </Menu>
+              }
+            />
             <Button
               text={savingAll ? 'Saving…' : 'Save filtered'}
               tone="primary"
@@ -1190,6 +1961,114 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             />
           </Inline>
         </Flex>
+        <Inline space={2} style={{flexWrap: 'wrap'}}>
+          <select
+            value={filterProductType}
+            onChange={(event) => setFilterProductType(event.currentTarget.value)}
+          >
+            <option value="">All product types</option>
+            {PRODUCT_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterOnSale}
+            onChange={(event) => setFilterOnSale(event.currentTarget.value as any)}
+          >
+            <option value="all">All sale states</option>
+            <option value="true">On sale</option>
+            <option value="false">Not on sale</option>
+          </select>
+          <select
+            value={filterDiscountType}
+            onChange={(event) => setFilterDiscountType(event.currentTarget.value)}
+          >
+            <option value="">All discounts</option>
+            {DISCOUNT_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterShippingClass}
+            onChange={(event) => setFilterShippingClass(event.currentTarget.value)}
+          >
+            <option value="">All shipping classes</option>
+            {SHIPPING_CLASS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterWholesale}
+            onChange={(event) => setFilterWholesale(event.currentTarget.value as any)}
+          >
+            <option value="all">All wholesale</option>
+            <option value="true">Wholesale available</option>
+            <option value="false">Wholesale disabled</option>
+          </select>
+          <MenuButton
+            id="filter-categories"
+            button={
+              <Button
+                text={
+                  filterCategoryIds.size > 0
+                    ? `Categories (${filterCategoryIds.size})`
+                    : 'Categories'
+                }
+                mode="ghost"
+              />
+            }
+            menu={
+              <Menu style={{maxHeight: 320, overflowY: 'auto'}}>
+                {categoryOptions.length === 0 ? (
+                  <MenuItem text="No categories" disabled />
+                ) : (
+                  categoryOptions.map((option) => (
+                    <MenuItem
+                      key={option._id || option.title}
+                      text={option.title || option._id || 'Untitled'}
+                      selected={option._id ? filterCategoryIds.has(option._id) : false}
+                      onClick={() => option._id && toggleCategoryFilter(option._id)}
+                    />
+                  ))
+                )}
+              </Menu>
+            }
+          />
+          <MenuButton
+            id="filter-vehicles"
+            button={
+              <Button
+                text={
+                  filterVehicleIds.size > 0 ? `Vehicles (${filterVehicleIds.size})` : 'Vehicles'
+                }
+                mode="ghost"
+              />
+            }
+            menu={
+              <Menu style={{maxHeight: 320, overflowY: 'auto'}}>
+                {vehicleOptions.length === 0 ? (
+                  <MenuItem text="No vehicles" disabled />
+                ) : (
+                  vehicleOptions.map((option) => (
+                    <MenuItem
+                      key={option._id || option.title}
+                      text={option.title || option._id || 'Untitled'}
+                      selected={option._id ? filterVehicleIds.has(option._id) : false}
+                      onClick={() => option._id && toggleVehicleFilter(option._id)}
+                    />
+                  ))
+                )}
+              </Menu>
+            }
+          />
+          <Button text="Clear filters" mode="ghost" onClick={clearFilters} />
+        </Inline>
 
         {loading ? (
           <Flex align="center" justify="center" padding={5}>
@@ -1223,9 +2102,9 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                 >
                   <thead>
                     <tr>
-                      {(sheetRows[0] || SPREADSHEET_COLUMNS.map((column) => column.header)).map(
+                      {(sheetRows[0] || activeSpreadsheetColumns.map((column) => column.header)).map(
                         (header, columnIndex) => {
-                          const columnDef = SPREADSHEET_COLUMNS[columnIndex]
+                          const columnDef = activeSpreadsheetColumns[columnIndex]
                           const isStickyColumn = columnDef?.headerKey === 'title'
                           const stickyStyle = isStickyColumn
                             ? {
@@ -1241,7 +2120,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                               key={`header-${columnIndex}`}
                               style={{...headerCellStyle, ...stickyStyle}}
                             >
-                              {header || SPREADSHEET_COLUMNS[columnIndex]?.header || ''}
+                              {header || activeSpreadsheetColumns[columnIndex]?.header || ''}
                             </th>
                           )
                         },
@@ -1252,14 +2131,14 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                     {sheetRows.slice(1).map((row, dataIndex) => {
                       const sheetRowIndex = dataIndex + 1
                       const rowKey =
-                        (SANITY_ID_COLUMN_INDEX >= 0 ? row?.[SANITY_ID_COLUMN_INDEX] : undefined) ||
+                        (sanityIdColumnIndex >= 0 ? row?.[sanityIdColumnIndex] : undefined) ||
                         row?.[0] ||
                         `row-${sheetRowIndex}`
                       return (
                         <tr key={rowKey}>
                           {row.map((value, columnIndex) => {
                             const sheetColIndex = columnIndex
-                            const columnDef = SPREADSHEET_COLUMNS[sheetColIndex]
+                            const columnDef = activeSpreadsheetColumns[sheetColIndex]
                             const editable = Boolean(columnDef?.setValue)
                             const selected = isCellSelected(sheetRowIndex, sheetColIndex)
                             const active =
@@ -1368,48 +2247,88 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             <table style={{width: '100%', borderCollapse: 'collapse', minWidth: 960}}>
               <thead>
                 <tr style={{background: '#111827'}}>
-                  {[
-                    'ID / SKU',
-                    'Title',
-                    'Status',
-                    'Price',
-                    'Sale Price',
-                    'On Sale?',
-                    'Availability',
-                    'Condition',
-                    'Manual Inventory Count',
-                    'Brand',
-                    'MPN',
-                    'Tax Behavior',
-                    'Tax Code',
-                    'Shipping Weight (lb)',
-                    'Box Dimensions',
-                    'Google Product Category',
-                    'Highlights',
-                    'Details',
-                    'Color',
-                    'Size',
-                    'Material',
-                    'Length',
-                    'Width',
-                    'Install Only',
-                    'Shipping Label',
-                    'Actions',
-                  ].map((header) => (
-                    <th
-                      key={header}
-                      style={{
-                        textAlign: 'left',
-                        padding: '12px 16px',
-                        color: '#d1d5db',
-                        fontSize: 12,
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      {header}
-                    </th>
-                  ))}
+                  <th style={tableHeaderStyle}>ID / SKU</th>
+                  {visibleColumnKeys.has('title') && <th style={tableHeaderStyle}>Title</th>}
+                  {visibleColumnKeys.has('status') && <th style={tableHeaderStyle}>Status</th>}
+                  {visibleColumnKeys.has('productType') && (
+                    <th style={tableHeaderStyle}>Product Type</th>
+                  )}
+                  {visibleColumnKeys.has('price') && <th style={tableHeaderStyle}>Price</th>}
+                  {visibleColumnKeys.has('salePrice') && <th style={tableHeaderStyle}>Sale Price</th>}
+                  {visibleColumnKeys.has('onSale') && <th style={tableHeaderStyle}>On Sale?</th>}
+                  {visibleColumnKeys.has('discountType') && (
+                    <th style={tableHeaderStyle}>Discount Type</th>
+                  )}
+                  {visibleColumnKeys.has('discountValue') && (
+                    <th style={tableHeaderStyle}>Discount Value</th>
+                  )}
+                  {visibleColumnKeys.has('saleStartDate') && (
+                    <th style={tableHeaderStyle}>Sale Start</th>
+                  )}
+                  {visibleColumnKeys.has('saleEndDate') && (
+                    <th style={tableHeaderStyle}>Sale End</th>
+                  )}
+                  {visibleColumnKeys.has('saleLabel') && <th style={tableHeaderStyle}>Sale Badge</th>}
+                  {visibleColumnKeys.has('availability') && (
+                    <th style={tableHeaderStyle}>Availability</th>
+                  )}
+                  {visibleColumnKeys.has('condition') && <th style={tableHeaderStyle}>Condition</th>}
+                  {visibleColumnKeys.has('manualInventoryCount') && (
+                    <th style={tableHeaderStyle}>Manual Inventory Count</th>
+                  )}
+                  {visibleColumnKeys.has('brand') && <th style={tableHeaderStyle}>Brand</th>}
+                  {visibleColumnKeys.has('mpn') && <th style={tableHeaderStyle}>MPN</th>}
+                  {visibleColumnKeys.has('taxBehavior') && (
+                    <th style={tableHeaderStyle}>Tax Behavior</th>
+                  )}
+                  {visibleColumnKeys.has('taxCode') && <th style={tableHeaderStyle}>Tax Code</th>}
+                  {visibleColumnKeys.has('shippingWeight') && (
+                    <th style={tableHeaderStyle}>Shipping Weight (lb)</th>
+                  )}
+                  {visibleColumnKeys.has('boxDimensions') && (
+                    <th style={tableHeaderStyle}>Box Dimensions</th>
+                  )}
+                  {visibleColumnKeys.has('shippingClass') && (
+                    <th style={tableHeaderStyle}>Shipping Class</th>
+                  )}
+                  {visibleColumnKeys.has('googleProductCategory') && (
+                    <th style={tableHeaderStyle}>Google Product Category</th>
+                  )}
+                  {visibleColumnKeys.has('categories') && <th style={tableHeaderStyle}>Categories</th>}
+                  {visibleColumnKeys.has('compatibleVehicles') && (
+                    <th style={tableHeaderStyle}>Vehicles</th>
+                  )}
+                  {visibleColumnKeys.has('tags') && <th style={tableHeaderStyle}>Internal Tags</th>}
+                  {visibleColumnKeys.has('availableForWholesale') && (
+                    <th style={tableHeaderStyle}>Wholesale?</th>
+                  )}
+                  {visibleColumnKeys.has('wholesalePriceStandard') && (
+                    <th style={tableHeaderStyle}>Wholesale Std</th>
+                  )}
+                  {visibleColumnKeys.has('wholesalePricePreferred') && (
+                    <th style={tableHeaderStyle}>Wholesale Pref</th>
+                  )}
+                  {visibleColumnKeys.has('wholesalePricePlatinum') && (
+                    <th style={tableHeaderStyle}>Wholesale Plat</th>
+                  )}
+                  {visibleColumnKeys.has('minimumWholesaleQuantity') && (
+                    <th style={tableHeaderStyle}>Min Wholesale Qty</th>
+                  )}
+                  {visibleColumnKeys.has('manufacturingCost') && (
+                    <th style={tableHeaderStyle}>Manufacturing Cost</th>
+                  )}
+                  <th style={tableHeaderStyle}>Highlights</th>
+                  <th style={tableHeaderStyle}>Details</th>
+                  <th style={tableHeaderStyle}>Color</th>
+                  <th style={tableHeaderStyle}>Size</th>
+                  <th style={tableHeaderStyle}>Material</th>
+                  <th style={tableHeaderStyle}>Length</th>
+                  <th style={tableHeaderStyle}>Width</th>
+                  {visibleColumnKeys.has('installOnly') && <th style={tableHeaderStyle}>Install Only</th>}
+                  {visibleColumnKeys.has('shippingLabel') && (
+                    <th style={tableHeaderStyle}>Shipping Label</th>
+                  )}
+                  <th style={tableHeaderStyle}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1440,207 +2359,563 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.title || ''}
-                          onChange={(event) =>
-                            updateProductField(product._id, 'title', event.currentTarget.value)
-                          }
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <select
-                          value={product.status || ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'status',
-                              (event.currentTarget.value || undefined) as EditableProduct['status'],
-                            )
-                          }
+                      {visibleColumnKeys.has('title') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.title || ''}
+                            onChange={(event) =>
+                              updateProductField(product._id, 'title', event.currentTarget.value)
+                            }
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('status') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={product.status || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'status',
+                                (event.currentTarget.value ||
+                                  undefined) as EditableProduct['status'],
+                              )
+                            }
+                          >
+                            <option value="">Select status</option>
+                            {PRODUCT_STATUS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('productType') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={(product.productType as string) || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'productType',
+                                (event.currentTarget.value ||
+                                  undefined) as EditableProduct['productType'],
+                              )
+                            }
+                          >
+                            <option value="">Select type</option>
+                            {PRODUCT_TYPE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('price') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.price?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'price',
+                                sanitizeNumber(event.currentTarget.value, product.price),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('salePrice') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.salePrice?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'salePrice',
+                                sanitizeNumber(event.currentTarget.value, product.salePrice),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('onSale') && (
+                        <td
+                          style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}
                         >
-                          <option value="">Select status</option>
-                          {PRODUCT_STATUS_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.price?.toString() ?? ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'price',
-                              sanitizeNumber(event.currentTarget.value, product.price),
-                            )
-                          }
-                          inputMode="decimal"
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.salePrice?.toString() ?? ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'salePrice',
-                              sanitizeNumber(event.currentTarget.value, product.salePrice),
-                            )
-                          }
-                          inputMode="decimal"
-                        />
-                      </td>
-                      <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(product.onSale)}
-                          onChange={(event) =>
-                            updateProductField(product._id, 'onSale', event.currentTarget.checked)
-                          }
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <select
-                          value={product.availability || 'in_stock'}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'availability',
-                              event.currentTarget.value as any,
-                            )
-                          }
-                        >
-                          <option value="in_stock">In stock</option>
-                          <option value="out_of_stock">Out of stock</option>
-                          <option value="preorder">Preorder</option>
-                          <option value="backorder">Backorder</option>
-                        </select>
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <select
-                          value={product.condition || 'new'}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'condition',
-                              event.currentTarget.value as any,
-                            )
-                          }
-                        >
-                          <option value="new">New</option>
-                          <option value="refurbished">Refurbished</option>
-                          <option value="used">Used</option>
-                        </select>
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={
-                            product.manualInventoryCount !== undefined &&
-                            product.manualInventoryCount !== null
-                              ? product.manualInventoryCount.toString()
-                              : ''
-                          }
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'manualInventoryCount',
-                              sanitizeNumber(
+                          <input
+                            type="checkbox"
+                            checked={Boolean(product.onSale)}
+                            onChange={(event) =>
+                              updateProductField(product._id, 'onSale', event.currentTarget.checked)
+                            }
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('discountType') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={(product.discountType as string) || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'discountType',
+                                (event.currentTarget.value ||
+                                  undefined) as EditableProduct['discountType'],
+                              )
+                            }
+                          >
+                            <option value="">Select discount</option>
+                            {DISCOUNT_TYPE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('discountValue') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={
+                              product.discountValue !== undefined && product.discountValue !== null
+                                ? product.discountValue.toString()
+                                : ''
+                            }
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'discountValue',
+                                sanitizeNumber(event.currentTarget.value, product.discountValue),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('saleStartDate') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <input
+                            type="datetime-local"
+                            value={toDateInputValue(product.saleStartDate)}
+                            onChange={(event) => {
+                              const result = parseDateValue(event.currentTarget.value)
+                              if (!result.ok) return
+                              updateProductField(product._id, 'saleStartDate', result.value)
+                            }}
+                            style={{width: '100%'}}
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('saleEndDate') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <input
+                            type="datetime-local"
+                            value={toDateInputValue(product.saleEndDate)}
+                            onChange={(event) => {
+                              const result = parseDateValue(event.currentTarget.value)
+                              if (!result.ok) return
+                              updateProductField(product._id, 'saleEndDate', result.value)
+                            }}
+                            style={{width: '100%'}}
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('saleLabel') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={(product.saleLabel as string) || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'saleLabel',
+                                (event.currentTarget.value ||
+                                  undefined) as EditableProduct['saleLabel'],
+                              )
+                            }
+                          >
+                            <option value="">Select badge</option>
+                            {SALE_LABEL_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('availability') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={product.availability || 'in_stock'}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'availability',
+                                event.currentTarget.value as any,
+                              )
+                            }
+                          >
+                            <option value="in_stock">In stock</option>
+                            <option value="out_of_stock">Out of stock</option>
+                            <option value="preorder">Preorder</option>
+                            <option value="backorder">Backorder</option>
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('condition') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={product.condition || 'new'}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'condition',
+                                event.currentTarget.value as any,
+                              )
+                            }
+                          >
+                            <option value="new">New</option>
+                            <option value="refurbished">Refurbished</option>
+                            <option value="used">Used</option>
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('manualInventoryCount') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={
+                              product.manualInventoryCount !== undefined &&
+                              product.manualInventoryCount !== null
+                                ? product.manualInventoryCount.toString()
+                                : ''
+                            }
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'manualInventoryCount',
+                                sanitizeNumber(
+                                  event.currentTarget.value,
+                                  product.manualInventoryCount,
+                                ),
+                              )
+                            }
+                            inputMode="numeric"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('brand') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.brand || ''}
+                            onChange={(event) =>
+                              updateProductField(product._id, 'brand', event.currentTarget.value)
+                            }
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('mpn') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.mpn || ''}
+                            onChange={(event) =>
+                              updateProductField(product._id, 'mpn', event.currentTarget.value)
+                            }
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('taxBehavior') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={product.taxBehavior || 'taxable'}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'taxBehavior',
+                                event.currentTarget.value as any,
+                              )
+                            }
+                          >
+                            <option value="taxable">Taxable</option>
+                            <option value="exempt">Tax Exempt</option>
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('taxCode') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.taxCode || ''}
+                            onChange={(event) =>
+                              updateProductField(product._id, 'taxCode', event.currentTarget.value)
+                            }
+                            disabled={product.taxBehavior === 'exempt'}
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('shippingWeight') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.shippingWeight?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'shippingWeight',
+                                sanitizeNumber(event.currentTarget.value, product.shippingWeight),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('boxDimensions') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.boxDimensions || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'boxDimensions',
                                 event.currentTarget.value,
-                                product.manualInventoryCount,
-                              ),
-                            )
-                          }
-                          inputMode="numeric"
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.brand || ''}
-                          onChange={(event) =>
-                            updateProductField(product._id, 'brand', event.currentTarget.value)
-                          }
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.mpn || ''}
-                          onChange={(event) =>
-                            updateProductField(product._id, 'mpn', event.currentTarget.value)
-                          }
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <select
-                          value={product.taxBehavior || 'taxable'}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'taxBehavior',
-                              event.currentTarget.value as any,
-                            )
-                          }
+                              )
+                            }
+                            placeholder="LxWxH"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('shippingClass') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={product.shippingClass || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'shippingClass',
+                                event.currentTarget.value || undefined,
+                              )
+                            }
+                          >
+                            <option value="">Select class</option>
+                            {SHIPPING_CLASS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('googleProductCategory') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            value={product.googleProductCategory || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'googleProductCategory',
+                                event.currentTarget.value,
+                              )
+                            }
+                          >
+                            <option value="">Select category</option>
+                            {googleProductCategories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('categories') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            multiple
+                            value={normalizeRefList(product.categories)
+                              .map((ref) => ref._id)
+                              .filter(Boolean) as string[]}
+                            onChange={(event) => {
+                              const ids = Array.from(event.currentTarget.selectedOptions)
+                                .map((option) => option.value)
+                                .filter(Boolean)
+                              const nextRefs = ids
+                                .map((id) => categoryById.get(id))
+                                .filter(Boolean) as NamedRef[]
+                              updateProductField(
+                                product._id,
+                                'categories',
+                                normalizeRefList(nextRefs),
+                              )
+                            }}
+                            style={{minWidth: 200, height: 100}}
+                          >
+                            {categoryOptions.map((option) =>
+                              option._id ? (
+                                <option key={option._id} value={option._id}>
+                                  {option.title || option._id}
+                                </option>
+                              ) : null,
+                            )}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('compatibleVehicles') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <select
+                            multiple
+                            value={normalizeRefList(product.compatibleVehicles)
+                              .map((ref) => ref._id)
+                              .filter(Boolean) as string[]}
+                            onChange={(event) => {
+                              const ids = Array.from(event.currentTarget.selectedOptions)
+                                .map((option) => option.value)
+                                .filter(Boolean)
+                              const nextRefs = ids
+                                .map((id) => vehicleById.get(id))
+                                .filter(Boolean) as NamedRef[]
+                              updateProductField(
+                                product._id,
+                                'compatibleVehicles',
+                                normalizeRefList(nextRefs),
+                              )
+                            }}
+                            style={{minWidth: 200, height: 100}}
+                          >
+                            {vehicleOptions.map((option) =>
+                              option._id ? (
+                                <option key={option._id} value={option._id}>
+                                  {option.title || option._id}
+                                </option>
+                              ) : null,
+                            )}
+                          </select>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('tags') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <Stack space={1}>
+                            <TextInput
+                              value={formatTagsCell(product.tags)}
+                              onChange={(event) => {
+                                const nextTags = parseTagsInput(event.currentTarget.value)
+                                if (areTagsEqual(product.tags, nextTags)) return
+                                updateProductField(product._id, 'tags', nextTags)
+                              }}
+                              placeholder="campaign, remarketing, seasonal"
+                            />
+                            <Text size={0} style={{color: '#9ca3af'}}>
+                              Comma-separated internal labels
+                            </Text>
+                          </Stack>
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('availableForWholesale') && (
+                        <td
+                          style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}
                         >
-                          <option value="taxable">Taxable</option>
-                          <option value="exempt">Tax Exempt</option>
-                        </select>
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.taxCode || ''}
-                          onChange={(event) =>
-                            updateProductField(product._id, 'taxCode', event.currentTarget.value)
-                          }
-                          disabled={product.taxBehavior === 'exempt'}
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.shippingWeight?.toString() ?? ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'shippingWeight',
-                              sanitizeNumber(event.currentTarget.value, product.shippingWeight),
-                            )
-                          }
-                          inputMode="decimal"
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.boxDimensions || ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'boxDimensions',
-                              event.currentTarget.value,
-                            )
-                          }
-                          placeholder="LxWxH"
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <select
-                          value={product.googleProductCategory || ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'googleProductCategory',
-                              event.currentTarget.value,
-                            )
-                          }
-                        >
-                          <option value="">Select category</option>
-                          {googleProductCategories.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(product.availableForWholesale)}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'availableForWholesale',
+                                event.currentTarget.checked,
+                              )
+                            }
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('wholesalePriceStandard') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.wholesalePriceStandard?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'wholesalePriceStandard',
+                                sanitizeNumber(
+                                  event.currentTarget.value,
+                                  product.wholesalePriceStandard,
+                                ),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('wholesalePricePreferred') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.wholesalePricePreferred?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'wholesalePricePreferred',
+                                sanitizeNumber(
+                                  event.currentTarget.value,
+                                  product.wholesalePricePreferred,
+                                ),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('wholesalePricePlatinum') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.wholesalePricePlatinum?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'wholesalePricePlatinum',
+                                sanitizeNumber(
+                                  event.currentTarget.value,
+                                  product.wholesalePricePlatinum,
+                                ),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('minimumWholesaleQuantity') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.minimumWholesaleQuantity?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'minimumWholesaleQuantity',
+                                sanitizeNumber(
+                                  event.currentTarget.value,
+                                  product.minimumWholesaleQuantity,
+                                ),
+                              )
+                            }
+                            inputMode="numeric"
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('manufacturingCost') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.manufacturingCost?.toString() ?? ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'manufacturingCost',
+                                sanitizeNumber(
+                                  event.currentTarget.value,
+                                  product.manufacturingCost,
+                                ),
+                              )
+                            }
+                            inputMode="decimal"
+                          />
+                        </td>
+                      )}
                       <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                         <Stack space={2}>
                           <textarea
@@ -1734,32 +3009,38 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(product.installOnly)}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'installOnly',
-                              event.currentTarget.checked,
-                            )
-                          }
-                        />
-                      </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
-                        <TextInput
-                          value={product.shippingLabel || ''}
-                          onChange={(event) =>
-                            updateProductField(
-                              product._id,
-                              'shippingLabel',
-                              event.currentTarget.value,
-                            )
-                          }
-                          placeholder="install_only"
-                        />
-                      </td>
+                      {visibleColumnKeys.has('installOnly') && (
+                        <td
+                          style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(product.installOnly)}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'installOnly',
+                                event.currentTarget.checked,
+                              )
+                            }
+                          />
+                        </td>
+                      )}
+                      {visibleColumnKeys.has('shippingLabel') && (
+                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                          <TextInput
+                            value={product.shippingLabel || ''}
+                            onChange={(event) =>
+                              updateProductField(
+                                product._id,
+                                'shippingLabel',
+                                event.currentTarget.value,
+                              )
+                            }
+                            placeholder="install_only"
+                          />
+                        </td>
+                      )}
                       <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
                         <Stack space={2}>
                           <Button
