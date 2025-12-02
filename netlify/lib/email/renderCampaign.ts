@@ -18,6 +18,8 @@ const CTA_COLORS: Record<string, string> = {
   danger: '#dc2626',
 }
 
+const STYLE_TAG_REGEX = new RegExp('<style[\\s\\S]*?>[\\s\\S]*?</style>', 'gi')
+
 const appendCampaignUtm = (url: string, slug?: string) => {
   if (!slug) return url
   const hasQuery = url.includes('?')
@@ -119,7 +121,7 @@ export const renderCampaignHtml = (
 
 export const htmlToText = (html: string) =>
   html
-    .replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, '')
+    .replace(STYLE_TAG_REGEX, '')
     .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, '')
     .replace(/<[^>]+>/g, '')
     .replace(/\\s{2,}/g, ' ')
