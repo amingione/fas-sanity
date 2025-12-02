@@ -4,6 +4,7 @@ import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient, type SanityClient} from '@sanity/client'
 import Stripe from 'stripe'
+import {requireSanityCredentials} from '../sanityEnv'
 import {requireStripeSecretKey} from '../stripeEnv'
 
 export type RefundBackfillOptions = {
@@ -57,31 +58,8 @@ function getStripe(): Stripe {
 
 function getSanity(): SanityClient {
   if (cachedSanity) return cachedSanity
-  const projectId =
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
-    ''
-  const dataset =
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    process.env.NEXT_PUBLIC_SANITY_DATASET ||
-    'production'
-  const token = process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN
-
-  if (!projectId || !dataset || !token) {
-    throw new Error(
-      'Missing Sanity configuration. Ensure SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, and SANITY_API_TOKEN are set.',
-    )
-  }
-
-  cachedSanity = createClient({
-    projectId,
-    dataset,
-    apiVersion: '2024-04-10',
-    token,
-    useCdn: false,
-  })
+  const {projectId, dataset, token} = requireSanityCredentials()
+  cachedSanity = createClient({projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false})
   return cachedSanity
 }
 
