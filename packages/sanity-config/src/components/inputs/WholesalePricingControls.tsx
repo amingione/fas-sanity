@@ -11,7 +11,10 @@ const WholesalePricingControls = (props: any) => {
   const documentId = (useFormValue(['_id']) as string) || ''
   const productType = (useFormValue(['productType']) as string) || 'physical'
   const price = useFormValue(['price']) as number | undefined
-  const publishedId = useMemo(() => (documentId ? documentId.replace(/^drafts\./, '') : ''), [documentId])
+  const publishedId = useMemo(
+    () => (documentId ? documentId.replace(/^drafts\./, '') : ''),
+    [documentId],
+  )
   const {patch} = useDocumentOperation(publishedId || documentId, 'product')
   const toast = useToast()
 
@@ -65,13 +68,16 @@ const WholesalePricingControls = (props: any) => {
           Wholesale Pricing Assistant
         </Text>
         <Text size={1} muted>
-          Use this helper to populate standard (20%), preferred (30%), and platinum (40%) wholesale prices
-          from the base retail price. Example: $1,000 retail becomes $800 / $700 / $600 respectively.
+          Use this helper to populate standard (10%), preferred (12%), and platinum (15%) wholesale
+          prices from the base retail price. Example: $1,000 retail becomes $900 / $880 / $850
+          respectively.
         </Text>
         <Stack space={1}>
           <Text size={1}>Retail Price: {formatCurrency(price)}</Text>
           <Text size={1} muted>
-            Standard: {formatCurrency(calculated?.standard)} • Preferred: {formatCurrency(calculated?.preferred)} • Platinum: {formatCurrency(calculated?.platinum)}
+            Standard: {formatCurrency(calculated?.standard)} • Preferred:{' '}
+            {formatCurrency(calculated?.preferred)} • Platinum:{' '}
+            {formatCurrency(calculated?.platinum)}
           </Text>
         </Stack>
         <Button text="Calculate Wholesale Prices" tone="primary" onClick={handleApply} />

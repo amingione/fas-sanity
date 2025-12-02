@@ -8,9 +8,9 @@ import {getNetlifyFnBase} from './netlifyFnBase'
 const API_VERSION = '2024-10-01'
 
 const PRICING_TIERS = [
-  {label: 'Standard (20% off)', value: 'standard'},
-  {label: 'Preferred (30% off)', value: 'preferred'},
-  {label: 'Platinum (40% off)', value: 'platinum'},
+  {label: 'Standard (10% off)', value: 'standard'},
+  {label: 'Preferred (12% off)', value: 'preferred'},
+  {label: 'Platinum (15% off)', value: 'platinum'},
   {label: 'Custom', value: 'custom'},
 ]
 
@@ -75,8 +75,12 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
   const currentUser = useCurrentUser()
   const [isOpen, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [pricingTier, setPricingTier] = useState<'standard' | 'preferred' | 'platinum' | 'custom'>('standard')
-  const [paymentTerms, setPaymentTerms] = useState<'due_on_receipt' | 'net_15' | 'net_30' | 'net_60' | 'net_90'>('net_30')
+  const [pricingTier, setPricingTier] = useState<'standard' | 'preferred' | 'platinum' | 'custom'>(
+    'standard',
+  )
+  const [paymentTerms, setPaymentTerms] = useState<
+    'due_on_receipt' | 'net_15' | 'net_30' | 'net_60' | 'net_90'
+  >('net_30')
   const [creditLimit, setCreditLimit] = useState('10000')
   const [customDiscount, setCustomDiscount] = useState('20')
   const [minimumOrderAmount, setMinimumOrderAmount] = useState('500')
@@ -85,11 +89,15 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
   if (!doc || doc.status === 'approved') return null
 
   const baseId = props.id.replace(/^drafts\./, '')
-  const reviewer = currentUser?.user?.displayName || currentUser?.user?.name || 'Wholesale Team'
+  const reviewer = currentUser?.name || 'Wholesale Team'
 
   const handleApprove = async () => {
     if (!doc.companyName || !doc.contactName || !doc.email || !doc.phone) {
-      toast.push({status: 'warning', title: 'Missing required fields', description: 'Company name, contact, email, and phone are required.'})
+      toast.push({
+        status: 'warning',
+        title: 'Missing required fields',
+        description: 'Company name, contact, email, and phone are required.',
+      })
       return
     }
 
@@ -107,10 +115,11 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
         tierData.customDiscountPercentage = Number(customDiscount) || 0
       }
       const now = new Date().toISOString()
-      const shippingAddress = doc.shippingAddressSame === false ? doc.shippingAddress : doc.businessAddress
+      const shippingAddress =
+        doc.shippingAddressSame === false ? doc.shippingAddress : doc.businessAddress
 
-      const vendorDoc: Record<string, any> = {
-        _type: 'vendor',
+      const vendorDoc = {
+        _type: 'vendor' as const,
         vendorNumber,
         companyName: doc.companyName,
         displayName: doc.companyName,
@@ -191,8 +200,13 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
       <Text weight="semibold">Assign pricing & credit terms</Text>
       <Stack space={3}>
         <label>
-          <Text size={1} muted>Pricing tier</Text>
-          <Select value={pricingTier} onChange={(event) => setPricingTier(event.currentTarget.value as any)}>
+          <Text size={1} muted>
+            Pricing tier
+          </Text>
+          <Select
+            value={pricingTier}
+            onChange={(event) => setPricingTier(event.currentTarget.value as any)}
+          >
             {PRICING_TIERS.map((tier) => (
               <option key={tier.value} value={tier.value}>
                 {tier.label}
@@ -202,13 +216,23 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
         </label>
         {pricingTier === 'custom' && (
           <label>
-            <Text size={1} muted>Custom discount %</Text>
-            <TextInput value={customDiscount} onChange={(event) => setCustomDiscount(event.currentTarget.value)} />
+            <Text size={1} muted>
+              Custom discount %
+            </Text>
+            <TextInput
+              value={customDiscount}
+              onChange={(event) => setCustomDiscount(event.currentTarget.value)}
+            />
           </label>
         )}
         <label>
-          <Text size={1} muted>Payment terms</Text>
-          <Select value={paymentTerms} onChange={(event) => setPaymentTerms(event.currentTarget.value as any)}>
+          <Text size={1} muted>
+            Payment terms
+          </Text>
+          <Select
+            value={paymentTerms}
+            onChange={(event) => setPaymentTerms(event.currentTarget.value as any)}
+          >
             {PAYMENT_TERMS.map((term) => (
               <option key={term.value} value={term.value}>
                 {term.label}
@@ -216,22 +240,44 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
             ))}
           </Select>
         </label>
-       <label>
-         <Text size={1} muted>Credit limit (USD)</Text>
-         <TextInput value={creditLimit} onChange={(event) => setCreditLimit(event.currentTarget.value)} />
-       </label>
         <label>
-          <Text size={1} muted>Minimum order amount (USD)</Text>
-          <TextInput value={minimumOrderAmount} onChange={(event) => setMinimumOrderAmount(event.currentTarget.value)} />
+          <Text size={1} muted>
+            Credit limit (USD)
+          </Text>
+          <TextInput
+            value={creditLimit}
+            onChange={(event) => setCreditLimit(event.currentTarget.value)}
+          />
         </label>
         <label>
-          <Text size={1} muted>Account manager</Text>
-          <TextInput value={accountManager} onChange={(event) => setAccountManager(event.currentTarget.value)} placeholder="e.g. Jordan (Wholesale Team)" />
+          <Text size={1} muted>
+            Minimum order amount (USD)
+          </Text>
+          <TextInput
+            value={minimumOrderAmount}
+            onChange={(event) => setMinimumOrderAmount(event.currentTarget.value)}
+          />
+        </label>
+        <label>
+          <Text size={1} muted>
+            Account manager
+          </Text>
+          <TextInput
+            value={accountManager}
+            onChange={(event) => setAccountManager(event.currentTarget.value)}
+            placeholder="e.g. Jordan (Wholesale Team)"
+          />
         </label>
       </Stack>
       <Flex justify="flex-end" gap={3}>
         <Button text="Cancel" mode="ghost" disabled={busy} onClick={() => setOpen(false)} />
-        <Button text="Approve" tone="positive" disabled={busy} loading={busy} onClick={handleApprove} />
+        <Button
+          text="Approve"
+          tone="positive"
+          disabled={busy}
+          loading={busy}
+          onClick={handleApprove}
+        />
       </Flex>
     </Stack>
   )
@@ -266,7 +312,7 @@ export const rejectVendorApplicationAction: DocumentActionComponent = (props) =>
 
   if (!doc) return null
   const baseId = props.id.replace(/^drafts\./, '')
-  const reviewer = currentUser?.user?.displayName || currentUser?.user?.name || 'Wholesale Team'
+  const reviewer = currentUser?.name || 'Wholesale Team'
 
   const handleReject = async () => {
     setBusy(true)
@@ -276,7 +322,12 @@ export const rejectVendorApplicationAction: DocumentActionComponent = (props) =>
       : doc.internalNotes
 
     try {
-      const patchOps = {status: 'rejected', reviewedAt: now, reviewedBy: reviewer, internalNotes: notes}
+      const patchOps = {
+        status: 'rejected',
+        reviewedAt: now,
+        reviewedBy: reviewer,
+        internalNotes: notes,
+      }
       const tx = client.transaction()
       if (props.published) tx.patch(baseId, (patch) => patch.set(patchOps))
       if (props.draft) tx.patch(`drafts.${baseId}`, (patch) => patch.set(patchOps))
@@ -320,10 +371,25 @@ export const rejectVendorApplicationAction: DocumentActionComponent = (props) =>
             <Box padding={4}>
               <Stack space={4}>
                 <Text weight="semibold">Provide a reason (optional)</Text>
-                <TextArea value={reason} onChange={(event) => setReason(event.currentTarget.value)} rows={4} />
+                <TextArea
+                  value={reason}
+                  onChange={(event) => setReason(event.currentTarget.value)}
+                  rows={4}
+                />
                 <Flex justify="flex-end" gap={3}>
-                  <Button text="Cancel" mode="ghost" disabled={busy} onClick={() => setOpen(false)} />
-                  <Button text="Reject" tone="critical" disabled={busy} loading={busy} onClick={handleReject} />
+                  <Button
+                    text="Cancel"
+                    mode="ghost"
+                    disabled={busy}
+                    onClick={() => setOpen(false)}
+                  />
+                  <Button
+                    text="Reject"
+                    tone="critical"
+                    disabled={busy}
+                    loading={busy}
+                    onClick={handleReject}
+                  />
                 </Flex>
               </Stack>
             </Box>
@@ -344,7 +410,7 @@ export const holdVendorApplicationAction: DocumentActionComponent = (props) => {
 
   if (!doc) return null
   const baseId = props.id.replace(/^drafts\./, '')
-  const reviewer = currentUser?.user?.displayName || currentUser?.user?.name || 'Wholesale Team'
+  const reviewer = currentUser?.name || 'Wholesale Team'
 
   const handleHold = async () => {
     setBusy(true)
@@ -353,7 +419,12 @@ export const holdVendorApplicationAction: DocumentActionComponent = (props) => {
       ? [doc.internalNotes, `On hold ${now}: ${reason}`].filter(Boolean).join('\n')
       : doc.internalNotes
     try {
-      const patchOps = {status: 'on_hold', reviewedAt: now, reviewedBy: reviewer, internalNotes: notes}
+      const patchOps = {
+        status: 'on_hold',
+        reviewedAt: now,
+        reviewedBy: reviewer,
+        internalNotes: notes,
+      }
       const tx = client.transaction()
       if (props.published) tx.patch(baseId, (patch) => patch.set(patchOps))
       if (props.draft) tx.patch(`drafts.${baseId}`, (patch) => patch.set(patchOps))
@@ -385,10 +456,21 @@ export const holdVendorApplicationAction: DocumentActionComponent = (props) => {
           content: (
             <Box padding={4}>
               <Stack space={4}>
-                <Text size={1} muted>Optionally provide context for why this application is on hold.</Text>
-                <TextArea rows={4} value={reason} onChange={(event) => setReason(event.currentTarget.value)} />
+                <Text size={1} muted>
+                  Optionally provide context for why this application is on hold.
+                </Text>
+                <TextArea
+                  rows={4}
+                  value={reason}
+                  onChange={(event) => setReason(event.currentTarget.value)}
+                />
                 <Flex justify="flex-end" gap={3}>
-                  <Button text="Cancel" mode="ghost" disabled={busy} onClick={() => setOpen(false)} />
+                  <Button
+                    text="Cancel"
+                    mode="ghost"
+                    disabled={busy}
+                    onClick={() => setOpen(false)}
+                  />
                   <Button text="Place On Hold" tone="caution" loading={busy} onClick={handleHold} />
                 </Flex>
               </Stack>
