@@ -1,5 +1,5 @@
-import React from 'react'
-import {Text} from '@sanity/ui'
+import React, {useMemo, useState} from 'react'
+import {Button, Flex, Text} from '@sanity/ui'
 import {
   PaginatedDocumentTable,
   formatBoolean,
@@ -44,6 +44,55 @@ const formatLocation = (data: CustomerRowData) => {
   return parts.length ? parts.join(', ') : '—'
 }
 
+type SegmentFilterId = 'all' | 'vip' | 'repeat' | 'new' | 'at_risk' | 'inactive'
+
+type SegmentFilterOption = {
+  id: SegmentFilterId
+  title: string
+  filter?: string
+  description: string
+}
+
+const SEGMENT_FILTERS: SegmentFilterOption[] = [
+  {
+    id: 'all',
+    title: 'All',
+    description: 'Show every customer',
+  },
+  {
+    id: 'vip',
+    title: 'VIP Customers',
+    filter: '(segment == "vip") || coalesce(lifetimeValue, lifetimeSpend, 0) >= 10000',
+    description: 'Lifetime value above $10k or marked as VIP',
+  },
+  {
+    id: 'repeat',
+    title: 'Repeat Customers',
+    filter: '(segment == "repeat") || coalesce(totalOrders, orderCount, 0) >= 3',
+    description: 'Three or more orders',
+  },
+  {
+    id: 'new',
+    title: 'New Customers',
+    filter:
+      '(segment == "new") || dateTime(coalesce(firstOrderDate, _createdAt)) >= dateTime(now()) - 60*60*24*30',
+    description: 'Created within the last 30 days',
+  },
+  {
+    id: 'at_risk',
+    title: 'At Risk',
+    filter:
+      '(segment == "at_risk") || (coalesce(daysSinceLastOrder, 0) >= 180 && coalesce(daysSinceLastOrder, 0) < 365)',
+    description: 'No orders for 6+ months',
+  },
+  {
+    id: 'inactive',
+    title: 'Inactive',
+    filter: '(segment == "inactive") || coalesce(daysSinceLastOrder, 9999) >= 365',
+    description: 'No orders for 12+ months',
+  },
+]
+
 type CustomersDocumentTableProps = {
   title?: string
   filter?: string
@@ -51,6 +100,7 @@ type CustomersDocumentTableProps = {
   pageSize?: number
   orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
   apiVersion?: string
+  showSegmentFilters?: boolean
 }
 
 export default function CustomersDocumentTable({
@@ -60,12 +110,52 @@ export default function CustomersDocumentTable({
   pageSize = 10,
   orderings,
   apiVersion,
+  showSegmentFilters = false,
 }: CustomersDocumentTableProps = {}) {
   type CustomerRow = CustomerRowData & {_id: string; _type: string}
   const resolvedOrderings = orderings ?? [
     {field: '_updatedAt', direction: 'desc' as const},
     {field: '_createdAt', direction: 'desc' as const},
   ]
+  const [activeSegmentId, setActiveSegmentId] = useState<SegmentFilterId>('all')
+
+  const activeSegment = useMemo(
+    () => SEGMENT_FILTERS.find((option) => option.id === activeSegmentId) || SEGMENT_FILTERS[0],
+    [activeSegmentId],
+  )
+
+  const combinedFilter = useMemo(() => {
+    const parts: string[] = []
+    if (filter) {
+      parts.push(`(${filter})`)
+    }
+    if (activeSegment.filter) {
+      parts.push(`(${activeSegment.filter})`)
+    }
+    return parts.join(' && ') || undefined
+  }, [filter, activeSegment])
+
+  const resolvedEmptyState =
+    showSegmentFilters && activeSegment.id !== 'all'
+      ? `No ${activeSegment.title}`
+      : emptyState
+
+  const headerActions = showSegmentFilters ? (
+    <Flex align="center" gap={2} wrap="wrap">
+      <Text size={1} muted>
+        Segment
+      </Text>
+      {SEGMENT_FILTERS.map((option) => (
+        <Button
+          key={option.id}
+          text={option.title}
+          tone={option.id === activeSegment.id ? 'primary' : undefined}
+          mode={option.id === activeSegment.id ? 'default' : 'ghost'}
+          onClick={() => setActiveSegmentId(option.id)}
+        />
+      ))}
+    </Flex>
+  ) : undefined
 
   return (
     <PaginatedDocumentTable<CustomerRowData>
@@ -74,9 +164,10 @@ export default function CustomersDocumentTable({
       projection={CUSTOMER_PROJECTION}
       orderings={resolvedOrderings}
       pageSize={pageSize}
-      filter={filter}
-      emptyState={emptyState}
+      filter={combinedFilter}
+      emptyState={resolvedEmptyState}
       apiVersion={apiVersion}
+      headerActions={headerActions}
       columns={[
         {
           key: 'name',

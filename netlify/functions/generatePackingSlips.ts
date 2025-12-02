@@ -7,6 +7,7 @@ import {fetchPrintSettings, PrintSettings} from '../lib/printSettings'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
+  normalizeOptionSelections,
   normalizeMetadataEntries,
   shouldDisplayMetadataSegment,
   uniqueStrings,
@@ -224,6 +225,7 @@ const buildDetailList = (opts: {
   summary?: string | null
   optionDetails?: string[]
   upgrades?: string[]
+  upgradesTotal?: number
   validationIssues?: string[]
 }): string[] => {
   const details: string[] = []
@@ -258,7 +260,19 @@ const buildDetailList = (opts: {
 
   if (opts.upgrades?.length) {
     const upgrades = uniqueStrings(opts.upgrades)
-    if (upgrades.length) addDetail(`Upgrades: ${upgrades.join(', ')}`)
+    const upgradesTotalText =
+      typeof opts.upgradesTotal === 'number' ? formatCurrency(opts.upgradesTotal) : null
+    if (upgrades.length) {
+      const list =
+        upgrades.length === 1 && upgradesTotalText ? `${upgrades[0]} (${upgradesTotalText})` : upgrades.join(', ')
+      addDetail(`Upgrades: ${list}`)
+    }
+    if (upgradesTotalText && upgrades.length !== 1) {
+      addDetail(`Upgrades Total: ${upgradesTotalText}`)
+    }
+  } else if (typeof opts.upgradesTotal === 'number') {
+    const upgradesTotalText = formatCurrency(opts.upgradesTotal)
+    if (upgradesTotalText) addDetail(`Upgrades Total: ${upgradesTotalText}`)
   }
 
   if (opts.validationIssues?.length) {
@@ -303,17 +317,17 @@ const prepareItemPresentation = (source: {
     .map((segment) => segment.trim())
     .filter(Boolean)
   const title = nameSegments[0] || rawName
-  const summary =
-    (source.optionSummary || derived.optionSummary || '').toString().trim() || undefined
-  const optionDetails = uniqueStrings([
-    ...coerceStringArray(source.optionDetails),
-    ...derived.optionDetails,
-  ])
-  const upgrades = uniqueStrings([...coerceStringArray(source.upgrades), ...derived.upgrades])
+  const normalized = normalizeOptionSelections({
+    optionSummary: source.optionSummary || derived.optionSummary,
+    optionDetails: [...coerceStringArray(source.optionDetails), ...derived.optionDetails],
+    upgrades: [...coerceStringArray(source.upgrades), ...derived.upgrades],
+  })
+  const upgradesTotal = toNumber((source as any)?.upgradesTotal)
   const details = buildDetailList({
-    summary,
-    optionDetails,
-    upgrades,
+    summary: normalized.optionSummary,
+    optionDetails: normalized.optionDetails,
+    upgrades: normalized.upgrades,
+    upgradesTotal: upgradesTotal ?? undefined,
     validationIssues: coerceStringArray((source as any).validationIssues),
   })
   const detailSet = new Set(details.map((detail) => detail.toLowerCase()))

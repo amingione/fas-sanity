@@ -1,6 +1,6 @@
 import {defineField, defineType} from 'sanity'
 import ReferenceCodeInput from '../../components/inputs/ReferenceCodeInput'
-import {generateReferenceCode} from '../../../../../shared/referenceCodes'
+import {generateInitialVendorNumber} from '../../utils/generateVendorNumber'
 
 const API_VERSION = '2024-10-01'
 
@@ -50,6 +50,34 @@ export default defineType({
     {name: 'portal', title: 'Portal Access'},
     {name: 'settings', title: 'Settings'},
   ],
+  orderings: [
+    {
+      title: 'Vendor Number',
+      name: 'vendorNumberAsc',
+      by: [{field: 'vendorNumber', direction: 'asc'}],
+    },
+    {
+      title: 'Company Name',
+      name: 'companyNameAsc',
+      by: [{field: 'companyName', direction: 'asc'}],
+    },
+    {
+      title: 'Status',
+      name: 'statusAsc',
+      by: [
+        {field: 'status', direction: 'asc'},
+        {field: 'companyName', direction: 'asc'},
+      ],
+    },
+    {
+      title: 'Recently Updated',
+      name: 'recentlyUpdatedDesc',
+      by: [
+        {field: '_updatedAt', direction: 'desc'},
+        {field: 'companyName', direction: 'asc'},
+      ],
+    },
+  ],
   fields: [
     defineField({
       name: 'vendorNumber',
@@ -62,11 +90,7 @@ export default defineType({
       components: {input: ReferenceCodeInput},
       initialValue: async ({getClient}) => {
         const client = getClient?.({apiVersion: API_VERSION})
-        return generateReferenceCode(client, {
-          prefix: 'VEN-',
-          typeName: 'vendor',
-          fieldName: 'vendorNumber',
-        })
+        return generateInitialVendorNumber(client)
       },
     }),
     defineField({
@@ -545,12 +569,16 @@ export default defineType({
       subtitle: 'businessType',
       media: 'logo',
       status: 'status',
+      vendorNumber: 'vendorNumber',
     },
     prepare(selection) {
-      const {title, subtitle, media, status} = selection
+      const {title, subtitle, media, status, vendorNumber} = selection
+      const statusLabel = status || 'Status'
+      const typeLabel = subtitle || 'Vendor'
+      const vendorPrefix = vendorNumber ? `${vendorNumber} • ` : ''
       return {
         title,
-        subtitle: `${status || 'Status'} • ${subtitle || 'Vendor'}`,
+        subtitle: `${vendorPrefix}${statusLabel} • ${typeLabel}`,
         media,
       }
     },

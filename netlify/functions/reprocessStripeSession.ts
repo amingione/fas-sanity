@@ -10,6 +10,10 @@ import type {CartItem} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
+import {
+  applyShippingDetailsToDoc,
+  deriveFulfillmentFromMetadata,
+} from '../lib/fulfillmentFromMetadata'
 import {resolveStripeSecretKey} from '../lib/stripeEnv'
 // CORS helper (same pattern used elsewhere)
 const DEFAULT_ORIGINS = (
@@ -163,6 +167,11 @@ type ExistingOrderDoc = {
   stripeSessionId?: string | null
   paymentIntentId?: string | null
   packingSlipUrl?: string | null
+  trackingNumber?: string | null
+  trackingUrl?: string | null
+  shippingLabelUrl?: string | null
+  fulfillment?: Record<string, any> | null
+  fulfillmentWorkflow?: Record<string, any> | null
 }
 
 async function findExistingOrder(params: {
@@ -174,7 +183,8 @@ async function findExistingOrder(params: {
   orderNumberCandidates: string[]
 }): Promise<ExistingOrderDoc | null> {
   if (!sanity) return null
-  const projection = '{_id, orderNumber, stripeSessionId, paymentIntentId, packingSlipUrl}'
+  const projection =
+    '{_id, orderNumber, stripeSessionId, paymentIntentId, packingSlipUrl, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}'
 
   const attempt = async (
     query: string,
@@ -668,49 +678,39 @@ async function upsertOrder({
     eventCreated: Date.now() / 1000,
   })
 
-  const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
-  const shippingCurrencyForDoc =
-    shippingDetails.currency || (currency ? currency.toUpperCase() : undefined)
-  if (shippingDetails.carrier) {
-    baseDoc.shippingCarrier = shippingDetails.carrier
-  }
-  if (
-    shippingDetails.serviceName ||
-    shippingDetails.serviceCode ||
-    shippingAmountForDoc !== undefined
-  ) {
-    baseDoc.selectedService = {
-      carrierId: shippingDetails.carrierId || undefined,
-      carrier: shippingDetails.carrier || undefined,
-      service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-      serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-      amount: shippingAmountForDoc,
-      currency: shippingCurrencyForDoc || 'USD',
-      deliveryDays: shippingDetails.deliveryDays,
-      estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+  applyShippingDetailsToDoc(baseDoc, shippingDetails, currency ? currency.toUpperCase() : undefined)
+
+  const fulfillmentResult = deriveFulfillmentFromMetadata(
+    metadata,
+    shippingDetails,
+    new Date().toISOString(),
+    existingOrder?.fulfillment,
+  )
+  if (fulfillmentResult) {
+    const mergedFulfillment = existingOrder?.fulfillment
+      ? {...existingOrder.fulfillment, ...fulfillmentResult.fulfillment}
+      : fulfillmentResult.fulfillment
+    baseDoc.fulfillment = mergedFulfillment
+
+    const workflowProvided = fulfillmentResult.workflow
+    const hasExistingWorkflow =
+      existingOrder?.fulfillmentWorkflow && (existingOrder.fulfillmentWorkflow as any)?.currentStage
+    if (workflowProvided && !hasExistingWorkflow) {
+      baseDoc.fulfillmentWorkflow = workflowProvided
     }
-  }
-  if (shippingAmountForDoc !== undefined) {
-    baseDoc.amountShipping = shippingAmountForDoc
-    baseDoc.selectedShippingAmount = shippingAmountForDoc
-  }
-  if (shippingCurrencyForDoc) {
-    baseDoc.selectedShippingCurrency = shippingCurrencyForDoc
-  }
-  if (shippingDetails.deliveryDays !== undefined) {
-    baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-  }
-  if (shippingDetails.estimatedDeliveryDate) {
-    baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-  }
-  if (shippingDetails.serviceCode) {
-    baseDoc.shippingServiceCode = shippingDetails.serviceCode
-  }
-  if (shippingDetails.serviceName) {
-    baseDoc.shippingServiceName = shippingDetails.serviceName
-  }
-  if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-    baseDoc.shippingMetadata = shippingDetails.metadata
+
+    if (fulfillmentResult.topLevelFields?.trackingNumber && !existingOrder?.trackingNumber) {
+      baseDoc.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
+    }
+    if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
+      baseDoc.trackingUrl = fulfillmentResult.topLevelFields.trackingUrl
+    }
+    if (
+      fulfillmentResult.topLevelFields?.shippingLabelUrl &&
+      !existingOrder?.shippingLabelUrl
+    ) {
+      baseDoc.shippingLabelUrl = fulfillmentResult.topLevelFields.shippingLabelUrl
+    }
   }
 
   const orderSlug = createOrderSlug(normalizedOrderNumber, stripeSessionId)

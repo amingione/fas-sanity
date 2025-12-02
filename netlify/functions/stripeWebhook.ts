@@ -20,6 +20,8 @@ import {
   deriveOptionsFromMetadata,
   remainingMetadataEntries,
   coerceStringArray,
+  resolveUpgradeTotal,
+  normalizeOptionSelections,
   uniqueStrings,
 } from '@fas/sanity-config/utils/cartItemDetails'
 import {
@@ -35,6 +37,10 @@ import {
 } from '../lib/attribution'
 import {reserveInventoryForItems} from '../../shared/inventory'
 import {runOrderPlacedAutomations} from '../lib/emailAutomations'
+import {
+  applyShippingDetailsToDoc,
+  deriveFulfillmentFromMetadata,
+} from '../lib/fulfillmentFromMetadata'
 
 // Netlify delivers body as string; may be base64-encoded
 function getRawBody(event: any): Buffer {
@@ -1158,10 +1164,20 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
     ...coerceStringArray(optionDetailsValue),
     ...derivedOptions.optionDetails,
   ])
-  const summarySegments = optionSummary ? coerceStringArray(optionSummary) : []
-  const optionDetails = uniqueStrings([...optionDetailsCandidates, ...summarySegments])
-
-  const upgrades = uniqueStrings([...coerceStringArray(upgradesValue), ...derivedOptions.upgrades])
+  const normalizedSelections = normalizeOptionSelections({
+    optionSummary,
+    optionDetails: optionDetailsCandidates,
+    upgrades: [...coerceStringArray(upgradesValue), ...derivedOptions.upgrades],
+  })
+  const optionDetails = normalizedSelections.optionDetails
+  const upgrades = normalizedSelections.upgrades
+  const upgradesTotal = resolveUpgradeTotal({
+    metadataMap,
+    price,
+    quantity,
+    lineTotal: metadataLineTotal ?? undefined,
+    total: metadataTotal ?? undefined,
+  })
   const categories = uniqueStrings(coerceStringArray(categoriesValue))
 
   const resolvedDescription =
@@ -1230,9 +1246,10 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   if (resolvedDescription) item.description = resolvedDescription
   if (resolvedImage) item.image = resolvedImage
   if (resolvedProductUrl) item.productUrl = resolvedProductUrl
-  if (optionSummary) item.optionSummary = optionSummary
+  if (normalizedSelections.optionSummary) item.optionSummary = normalizedSelections.optionSummary
   if (optionDetails.length) item.optionDetails = optionDetails
   if (upgrades.length) item.upgrades = upgrades
+  if (upgradesTotal !== undefined) item.upgradesTotal = upgradesTotal
   if (categories.length) item.categories = categories
   const resolvedQuantityValue =
     typeof item.quantity === 'number' && Number.isFinite(item.quantity) ? item.quantity : undefined
@@ -1474,6 +1491,263 @@ async function buildCartFromSessionLineItems(
   }
 }
 
+const DISCOUNT_LABEL_KEYS = [
+  'discount_label',
+  'discountlabel',
+  'sale_label',
+  'salelabel',
+  'promotion',
+  'promotion_label',
+  'promotionlabel',
+  'promotion_tagline',
+  'promotiontagline',
+  'sale',
+  'sale_name',
+  'campaign',
+  'campaign_name',
+]
+
+function toCurrencyNumber(value?: number | null): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  return Math.round(value * 100) / 100
+}
+
+function parseBooleanFlag(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', '1', 'yes', 'y'].includes(normalized)) return true
+    if (['false', '0', 'no', 'n'].includes(normalized)) return false
+  }
+  return undefined
+}
+
+function normalizeLabel(raw?: string | null): string | undefined {
+  if (!raw) return undefined
+  const cleaned = raw.toString().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return undefined
+  return cleaned
+    .split(' ')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function extractLabelsFromMetadata(
+  source?: Record<string, unknown> | null,
+  keys: string[] = DISCOUNT_LABEL_KEYS,
+): string[] {
+  const labels = new Set<string>()
+  if (!source || typeof source !== 'object') return []
+  for (const [rawKey, rawValue] of Object.entries(source)) {
+    const normalizedKey = rawKey.toString().toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (!normalizedKey) continue
+    if (keys.some((key) => normalizedKey === key.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
+      const formatted = normalizeLabel(typeof rawValue === 'string' ? rawValue : String(rawValue))
+      if (formatted) labels.add(formatted)
+    }
+  }
+  return Array.from(labels)
+}
+
+function computeCartPricingSummary(cart: CartItem[], products: CartProductSummary[]) {
+  let subtotal = 0
+  let saleDiscount = 0
+  const labels = new Set<string>()
+
+  for (const item of cart) {
+    if (!item) continue
+    const product = findProductForItem(item, products) || null
+    const qtyRaw = typeof item.quantity === 'number' ? item.quantity : Number(item.quantity || 1)
+    const quantity = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1
+    const priceCandidates = [
+      product?.compareAtPrice,
+      product?.price,
+      typeof item.price === 'number' ? item.price : undefined,
+    ].filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0)
+    const basePrice = priceCandidates.length ? priceCandidates[0] : undefined
+    const salePriceCandidates = [
+      typeof item.price === 'number' ? item.price : undefined,
+      product?.salePrice,
+      product?.price,
+    ].filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0)
+    const salePrice = salePriceCandidates.length ? salePriceCandidates[0] : basePrice
+
+    if (basePrice) subtotal += basePrice * quantity
+    else if (salePrice) subtotal += salePrice * quantity
+
+    if (basePrice && salePrice && basePrice > salePrice) {
+      saleDiscount += (basePrice - salePrice) * quantity
+      const productLabel =
+        normalizeLabel(product?.promotionTagline) ||
+        normalizeLabel(product?.discountType) ||
+        normalizeLabel(product?.discountValue ? `${product.discountValue}` : undefined)
+      if (productLabel) labels.add(productLabel)
+    }
+
+    if (Array.isArray(item.metadataEntries)) {
+      for (const entry of item.metadataEntries) {
+        const label = normalizeLabel(entry?.value as string)
+        const key = (entry?.key || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (label && DISCOUNT_LABEL_KEYS.includes(key)) labels.add(label)
+      }
+    }
+  }
+
+  return {
+    subtotal: toCurrencyNumber(subtotal) ?? 0,
+    saleDiscount: toCurrencyNumber(saleDiscount) ?? 0,
+    labels: Array.from(labels),
+  }
+}
+
+function normalizeShippingMetadata(source?: Record<string, unknown> | null): Record<string, string> {
+  const normalized: Record<string, string> = {}
+  if (!source || typeof source !== 'object') return normalized
+  for (const [key, value] of Object.entries(source)) {
+    if (!key) continue
+    const strValue =
+      value === null || value === undefined
+        ? ''
+        : typeof value === 'string'
+          ? value
+          : String(value)
+    const trimmed = strValue.trim()
+    if (trimmed) normalized[key] = trimmed
+  }
+  return normalized
+}
+
+function mapShippingStatus(raw?: string | null): string | undefined {
+  const normalized = (raw || '').toString().toLowerCase()
+  if (!normalized) return undefined
+  if (normalized.includes('delivered')) return 'delivered'
+  if (normalized.includes('out_for_delivery')) return 'out_for_delivery'
+  if (normalized.includes('transit')) return 'in_transit'
+  if (normalized.includes('shipped')) return 'shipped'
+  if (normalized.includes('purchas')) return 'label_created'
+  if (normalized.includes('label')) return 'label_created'
+  if (normalized.includes('exception')) return 'exception'
+  if (normalized.includes('fail')) return 'failed'
+  if (normalized.includes('return')) return 'returned'
+  return normalized
+}
+
+async function handleShippingStatusSync(
+  payload: any,
+  context: {eventType?: string; stripeEventId?: string; eventCreated?: number | null},
+): Promise<void> {
+  const metadata = normalizeShippingMetadata((payload as any)?.metadata)
+  const sessionId =
+    metadata.checkout_session ||
+    metadata.checkout_session_id ||
+    metadata.session_id ||
+    metadata.sessionId ||
+    undefined
+  const invoiceNumber = metadata.invoice_number || metadata.invoiceNumber || undefined
+  const orderId = await findOrderDocumentIdForEvent({
+    metadata,
+    sessionId,
+    invoiceNumber,
+  })
+  if (!orderId) return
+
+  const trackingNumber =
+    (payload as any)?.tracking_number ||
+    (payload as any)?.tracking?.tracking_number ||
+    (payload as any)?.tracking?.number ||
+    metadata.tracking_number ||
+    metadata.trackingNumber
+  const trackingUrl =
+    (payload as any)?.tracking_url ||
+    (payload as any)?.tracking?.url ||
+    metadata.tracking_url ||
+    metadata.trackingUrl ||
+    metadata.parcelcraft_tracking_url
+  const labelUrl =
+    (payload as any)?.label_url ||
+    (payload as any)?.label_pdf ||
+    (payload as any)?.label?.url ||
+    metadata.label_url ||
+    metadata.labelUrl ||
+    metadata.parcelcraft_label_url ||
+    metadata.pc_label_url
+  const carrier =
+    (payload as any)?.carrier ||
+    (payload as any)?.tracking?.carrier ||
+    metadata.carrier ||
+    metadata.shipping_carrier
+  const service =
+    (payload as any)?.service ||
+    (payload as any)?.selected_rate?.service ||
+    (payload as any)?.tracking?.service ||
+    metadata.service ||
+    metadata.shipping_service
+  const statusRaw =
+    (payload as any)?.status ||
+    (payload as any)?.tracking_status ||
+    (payload as any)?.tracking?.status ||
+    metadata.tracking_status ||
+    metadata.status
+  const status = mapShippingStatus(statusRaw || (labelUrl ? 'label_created' : ''))
+  const purchasedAtRaw =
+    (payload as any)?.purchased_at ??
+    (payload as any)?.created ??
+    metadata.label_purchased_at ??
+    metadata.label_created_at
+  const purchasedAt = purchasedAtRaw ? toIsoTimestamp(purchasedAtRaw) : undefined
+  const etaRaw =
+    (payload as any)?.estimated_delivery ??
+    metadata.estimated_delivery ??
+    metadata.estimated_delivery_date ??
+    (payload as any)?.tracking?.estimated_delivery
+  const eta = etaRaw ? toIsoTimestamp(etaRaw) : undefined
+
+  const eventLabelParts = [
+    status ? status.replace(/_/g, ' ') : null,
+    trackingNumber ? `#${trackingNumber}` : null,
+    carrier ? carrier : null,
+  ].filter(Boolean)
+
+  const setOps: Record<string, any> = {}
+  if (status) setOps['fulfillment.status'] = status
+  if (trackingNumber) {
+    setOps['fulfillment.trackingNumber'] = trackingNumber
+    setOps.trackingNumber = trackingNumber
+  }
+  if (trackingUrl) {
+    setOps['fulfillment.trackingUrl'] = trackingUrl
+    setOps.trackingUrl = trackingUrl
+  }
+  if (labelUrl) {
+    setOps['fulfillment.shippingLabelUrl'] = labelUrl
+    setOps.shippingLabelUrl = labelUrl
+  }
+  if (carrier) setOps['fulfillment.carrier'] = carrier
+  if (service) setOps['fulfillment.service'] = service
+  if (purchasedAt) setOps['fulfillment.labelPurchasedAt'] = purchasedAt
+  if (eta) setOps['fulfillment.estimatedDelivery'] = eta
+
+  try {
+    await sanity.patch(orderId).set(setOps).commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('stripeWebhook: failed to sync shipping status', err)
+  }
+
+  try {
+    await appendOrderEvent(orderId, {
+      eventType: context.eventType || 'shipping.update',
+      status: status || 'label_created',
+      label: eventLabelParts.join(' • ') || 'Shipping update',
+      stripeEventId: context.stripeEventId,
+      occurredAt: context.eventCreated ?? null,
+      metadata,
+    })
+  } catch {
+    // ignore event append failures
+  }
+}
+
+
 async function recordExpiredCart(
   session: Stripe.Checkout.Session,
   opts: {
@@ -1693,7 +1967,22 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
 }
 
 async function strictGetPaymentDetails(paymentIntentId?: string | null) {
-  const details: {cardBrand: string; cardLast4: string; receiptUrl: string} = {
+  const details: {
+    cardBrand: string
+    cardLast4: string
+    receiptUrl: string
+    billingAddress?: {
+      name?: string | null
+      addressLine1?: string | null
+      addressLine2?: string | null
+      city?: string | null
+      state?: string | null
+      postalCode?: string | null
+      country?: string | null
+      phone?: string | null
+      email?: string | null
+    } | null
+  } = {
     cardBrand: '',
     cardLast4: '',
     receiptUrl: '',
@@ -1712,6 +2001,20 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
         details.cardLast4 = charge.payment_method_details.card.last4 || ''
       }
       if (charge.receipt_url) details.receiptUrl = charge.receipt_url
+      const billingDetails = charge.billing_details
+      if (billingDetails?.address) {
+        details.billingAddress = {
+          name: billingDetails.name || undefined,
+          addressLine1: billingDetails.address.line1 || undefined,
+          addressLine2: billingDetails.address.line2 || undefined,
+          city: billingDetails.address.city || undefined,
+          state: billingDetails.address.state || undefined,
+          postalCode: billingDetails.address.postal_code || undefined,
+          country: billingDetails.address.country || undefined,
+          phone: billingDetails.phone || undefined,
+          email: billingDetails.email || undefined,
+        }
+      }
     }
   } catch (error: any) {
     console.error('Error fetching payment details:', error?.message || error)
@@ -1825,7 +2128,55 @@ function strictCaptureAttribution(session: Stripe.Checkout.Session) {
   }
 }
 
-async function strictCreateInvoice(order: any, customer: {_id: string; name?: string} | null) {
+function buildInvoiceLineItems(
+  orderCart: any[],
+  products: CartProductSummary[] | null | undefined,
+): any[] {
+  if (!Array.isArray(orderCart) || !orderCart.length) return []
+  return orderCart.map((item: any) => {
+    const product = findProductForItem(item, products || []) || null
+    const quantity = Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1
+    const baseCandidates = [
+      product?.compareAtPrice,
+      product?.price,
+      product?.salePrice,
+      typeof item.price === 'number' ? item.price : undefined,
+    ].filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0)
+    const baseUnitPrice = baseCandidates.length ? baseCandidates[0] : 0
+    const total = baseUnitPrice * (quantity || 1)
+    return {
+      _type: 'invoiceLineItem',
+      _key: item._key || Math.random().toString(36).substr(2, 9),
+      description: item.name,
+      sku: item.sku || '',
+      quantity: quantity || 1,
+      unitPrice: toCurrencyNumber(baseUnitPrice) ?? 0,
+      lineTotal: toCurrencyNumber(total) ?? total,
+      total: toCurrencyNumber(total) ?? total,
+      optionSummary: item.optionSummary,
+      optionDetails: item.optionDetails,
+      upgrades: item.upgrades,
+      metadata: item.metadata,
+      metadataEntries: item.metadataEntries,
+    }
+  })
+}
+
+async function strictCreateInvoice(
+  order: any,
+  customer: {_id: string; name?: string} | null,
+  options: {
+    cartProducts?: CartProductSummary[]
+    amountDiscount?: number
+    discountLabel?: string
+    amountSubtotal?: number
+    totalAmount?: number
+  } = {},
+) {
+  const invoiceSubtotal = toCurrencyNumber(options.amountSubtotal) ?? toCurrencyNumber(order.amountSubtotal) ?? 0
+  const invoiceDiscount = toCurrencyNumber(options.amountDiscount) ?? toCurrencyNumber(order.amountDiscount) ?? 0
+  const invoiceTotal = toCurrencyNumber(options.totalAmount) ?? toCurrencyNumber(order.totalAmount) ?? 0
+
   const invoice = await webhookSanityClient.create({
     _type: 'invoice',
     title: `Invoice for ${order.orderNumber}`,
@@ -1848,19 +2199,14 @@ async function strictCreateInvoice(order: any, customer: {_id: string; name?: st
       name: order.customerName,
       email: order.customerEmail,
     },
-    lineItems: (order.cart || []).map((item: any) => ({
-      _type: 'invoiceLineItem',
-      _key: Math.random().toString(36).substr(2, 9),
-      description: item.name,
-      sku: item.sku || '',
-      quantity: item.quantity || 1,
-      unitPrice: item.price || 0,
-      total: item.total || 0,
-    })),
-    subtotal: order.amountSubtotal || 0,
+    lineItems: buildInvoiceLineItems(order.cart || [], options.cartProducts),
+    subtotal: invoiceSubtotal || 0,
+    discountLabel: options.discountLabel || order.discountLabel || undefined,
+    discountType: invoiceDiscount ? 'amount' : 'none',
+    discountValue: invoiceDiscount || undefined,
     tax: order.amountTax || 0,
     shipping: order.amountShipping || 0,
-    total: order.totalAmount || 0,
+    total: invoiceTotal || 0,
   })
 
   return invoice
@@ -1869,25 +2215,21 @@ async function strictCreateInvoice(order: any, customer: {_id: string; name?: st
 async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session) {
   const customer = await strictFindOrCreateCustomer(checkoutSession)
   const paymentDetails = await strictGetPaymentDetails(checkoutSession.payment_intent as string)
-  const lineItems = await stripe.checkout.sessions.listLineItems(checkoutSession.id, {
-    expand: ['data.price.product'],
-  })
-  const cart = await strictBuildCartItems(lineItems)
+  const sessionMeta = (checkoutSession.metadata || {}) as Record<string, string>
+  const {items: cartItems, products: cartProducts} = await buildCartFromSessionLineItems(
+    checkoutSession.id,
+    sessionMeta,
+  )
 
-  const normalizedCart = cart.map((item) => ({
+  const normalizedCart = cartItems.map((item) => ({
     ...item,
     optionDetails: Array.isArray(item.optionDetails) ? item.optionDetails : [],
     upgrades: Array.isArray(item.upgrades) ? item.upgrades : [],
   }))
 
-  const totalAmount = checkoutSession.amount_total ? checkoutSession.amount_total / 100 : 0
-  const amountSubtotal = Number.isFinite(Number((checkoutSession as any)?.amount_subtotal))
-    ? Number((checkoutSession as any)?.amount_subtotal) / 100
-    : 0
-  const amountTax = Number.isFinite(Number((checkoutSession as any)?.total_details?.amount_tax))
-    ? Number((checkoutSession as any)?.total_details?.amount_tax) / 100
-    : 0
-  const amountShipping = Number.isFinite(
+  const stripeSubtotal = toCurrencyNumber(toMajorUnits((checkoutSession as any)?.amount_subtotal)) ?? 0
+  const amountTax = toCurrencyNumber(toMajorUnits((checkoutSession as any)?.total_details?.amount_tax)) ?? 0
+  const amountShippingRaw = Number.isFinite(
     Number((checkoutSession as any)?.total_details?.amount_shipping || (checkoutSession as any)?.shipping_cost?.amount_total),
   )
     ?
@@ -1895,19 +2237,97 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
           (checkoutSession as any)?.total_details?.amount_shipping ||
             (checkoutSession as any)?.shipping_cost?.amount_total,
         ) / 100
-    : 0
+    : undefined
+
+  const shippingDetails = await resolveStripeShippingDetails({
+    metadata: sessionMeta,
+    session: checkoutSession,
+    fallbackAmount: amountShippingRaw,
+    stripe,
+  })
+  const currencyUpper = (checkoutSession.currency || '').toString().toUpperCase() || undefined
+  const currencyLower = (checkoutSession.currency || '').toString().toLowerCase() || undefined
+
+  const resolvedShippingAmount =
+    shippingDetails.amount !== undefined ? shippingDetails.amount : amountShippingRaw
+
+  const cartPricing = computeCartPricingSummary(normalizedCart, cartProducts)
+  const stripeDiscountAmount =
+    toCurrencyNumber(toMajorUnits((checkoutSession as any)?.total_details?.amount_discount)) ?? 0
+  const amountSubtotal =
+    toCurrencyNumber(cartPricing.subtotal || stripeSubtotal) ??
+    toCurrencyNumber(stripeSubtotal) ??
+    0
+  const saleDiscount = cartPricing.saleDiscount || 0
+  const amountDiscount = toCurrencyNumber(saleDiscount + stripeDiscountAmount) ?? 0
+  const discountPercent =
+    amountSubtotal && amountDiscount
+      ? toCurrencyNumber((amountDiscount / amountSubtotal) * 100)
+      : undefined
+  const labelCandidates = new Set<string>([
+    ...cartPricing.labels,
+    ...extractLabelsFromMetadata(sessionMeta),
+  ])
+  const formatPercent = (value?: number) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+    const rounded = Number(value.toFixed(2))
+    if (Number.isInteger(rounded)) return rounded.toFixed(0)
+    if (rounded % 1 === 0) return rounded.toFixed(0)
+    return rounded.toFixed(1)
+  }
+  const resolvedDiscountLabel = (() => {
+    const first = Array.from(labelCandidates)[0]
+    const percentLabel = formatPercent(discountPercent)
+    if (first && percentLabel) return `${first} - ${percentLabel}% off`
+    if (first) return first
+    if (percentLabel) return `${percentLabel}% off`
+    return undefined
+  })()
+
+  const computedTotal =
+    amountSubtotal - amountDiscount + (amountTax || 0) + (resolvedShippingAmount || 0)
+  const totalAmount =
+    toCurrencyNumber(toMajorUnits(checkoutSession.amount_total ?? undefined)) ??
+    toCurrencyNumber(computedTotal) ??
+    0
+
+  const emailOptInValue =
+    parseBooleanFlag(
+      sessionMeta['email_opt_in'] ||
+        sessionMeta['emailOptIn'] ||
+        sessionMeta['newsletter'] ||
+        sessionMeta['newsletter_opt_in'],
+    ) ?? undefined
+  const marketingOptInValue =
+    parseBooleanFlag(
+      sessionMeta['marketing_opt_in'] ||
+        sessionMeta['marketingOptIn'] ||
+        sessionMeta['promo_opt_in'] ||
+        sessionMeta['promoOptIn'],
+    ) ?? emailOptInValue
+  const textOptInValue = parseBooleanFlag(
+    sessionMeta['text_opt_in'] || sessionMeta['textOptIn'] || sessionMeta['sms_opt_in'] || sessionMeta['smsOptIn'],
+  )
+  const userIdValue =
+    sessionMeta['user_id'] ||
+    sessionMeta['userId'] ||
+    sessionMeta['auth0_user_id'] ||
+    sessionMeta['auth_user_id'] ||
+    undefined
 
   const existingOrder = await webhookSanityClient.fetch<
     | {_id: string; invoiceRef?: {_ref: string}; orderNumber?: string; cart?: any[]}
     | null
   >(
-    `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart}`,
+    `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
     {
       sid: checkoutSession.id,
     },
   )
 
   const orderNumber = existingOrder?.orderNumber || (await generateRandomOrderNumber())
+  const sessionMeta = (checkoutSession.metadata || {}) as Record<string, string>
+  const nowIso = new Date().toISOString()
   const baseOrderPayload: any = {
     _type: 'order',
     stripeSessionId: checkoutSession.id,
@@ -1915,7 +2335,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     orderNumber,
     orderType: strictDetermineOrderType(checkoutSession),
     status: 'paid',
-    createdAt: new Date().toISOString(),
+    createdAt: nowIso,
     paymentStatus: checkoutSession.payment_status || 'paid',
     customerName: customer?.name || checkoutSession.customer_details?.name || 'Customer',
     customerEmail: checkoutSession.customer_details?.email || checkoutSession.customer_email || '',
@@ -1931,12 +2351,48 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     paymentIntentId: checkoutSession.payment_intent,
     stripeSessionStatus: checkoutSession.status || undefined,
     cart: normalizedCart,
+    amountDiscount,
     totalAmount,
     amountSubtotal,
     amountTax,
-    amountShipping,
-    currency: (checkoutSession.currency || '').toLowerCase(),
+    amountShipping: resolvedShippingAmount ?? 0,
+    discountLabel: resolvedDiscountLabel,
+    discountPercent,
+    currency: currencyLower,
     attribution: strictCaptureAttribution(checkoutSession),
+  }
+
+  applyShippingDetailsToDoc(baseOrderPayload, shippingDetails, currencyUpper)
+
+  const fulfillmentResult = deriveFulfillmentFromMetadata(
+    sessionMeta,
+    shippingDetails,
+    nowIso,
+    (existingOrder as any)?.fulfillment,
+  )
+
+  if (fulfillmentResult) {
+    const mergedFulfillment = existingOrder?.fulfillment
+      ? {...existingOrder.fulfillment, ...fulfillmentResult.fulfillment}
+      : fulfillmentResult.fulfillment
+    baseOrderPayload.fulfillment = mergedFulfillment
+
+    const workflowProvided = fulfillmentResult.workflow
+    const hasExistingWorkflow =
+      existingOrder?.fulfillmentWorkflow && (existingOrder.fulfillmentWorkflow as any)?.currentStage
+    if (workflowProvided && !hasExistingWorkflow) {
+      baseOrderPayload.fulfillmentWorkflow = workflowProvided
+    }
+
+    if (fulfillmentResult.topLevelFields?.trackingNumber && !existingOrder?.trackingNumber) {
+      baseOrderPayload.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
+    }
+    if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
+      baseOrderPayload.trackingUrl = fulfillmentResult.topLevelFields.trackingUrl
+    }
+    if (fulfillmentResult.topLevelFields?.shippingLabelUrl && !existingOrder?.shippingLabelUrl) {
+      baseOrderPayload.shippingLabelUrl = fulfillmentResult.topLevelFields.shippingLabelUrl
+    }
   }
 
   const order = existingOrder
@@ -1948,7 +2404,13 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     : await webhookSanityClient.create(baseOrderPayload, {autoGenerateArrayKeys: true})
 
   if (order?._id && !existingOrder?.invoiceRef) {
-    const invoice = await strictCreateInvoice(order, customer)
+    const invoice = await strictCreateInvoice(order, customer, {
+      cartProducts,
+      amountDiscount,
+      discountLabel: resolvedDiscountLabel,
+      amountSubtotal,
+      totalAmount,
+    })
     await webhookSanityClient
       .patch(order._id)
       .set({
@@ -1958,6 +2420,30 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         },
       })
       .commit()
+  }
+
+  if (order?._id) {
+    try {
+      await updateCustomerProfileForOrder({
+        sanity: webhookSanityClient,
+        orderId: order._id,
+        customerId: (order as any)?.customerRef?._ref || customer?._id || undefined,
+        email: order.customerEmail,
+        shippingAddress: (baseOrderPayload as any)?.shippingAddress,
+        billingAddress: paymentDetails?.billingAddress,
+        stripeCustomerId: customer?.stripeCustomerId || undefined,
+        stripeSyncTimestamp: nowIso,
+        customerName: order.customerName,
+        metadata: sessionMeta,
+        defaultRoles: ['customer'],
+        emailOptIn: emailOptInValue,
+        marketingOptIn: marketingOptInValue,
+        textOptIn: textOptInValue,
+        userId: userIdValue,
+      })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to sync customer profile after checkout', err)
+    }
   }
 
   return order
@@ -5281,6 +5767,22 @@ export const handler: Handler = async (event) => {
         break
       }
 
+      case 'shipping.label.created':
+      case 'shipping.label.updated':
+      case 'shipping.tracking.updated': {
+        try {
+          const payload = webhookEvent.data.object as Record<string, any>
+          await handleShippingStatusSync(payload, {
+            eventType: webhookEvent.type,
+            stripeEventId: webhookEvent.id,
+            eventCreated: webhookEvent.created,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle shipping status event', err)
+        }
+        break
+      }
+
       case 'invoice.created':
       case 'invoice.deleted':
       case 'invoice.finalization_failed':
@@ -5902,9 +6404,17 @@ export const handler: Handler = async (event) => {
                 _id: string
                 packingSlipUrl?: string | null
                 stripeSessionId?: string | null
-              }>(`*[_type == "order" && _id == $id][0]{_id, packingSlipUrl, stripeSessionId}`, {
-                id: existingOrderId,
-              })
+                trackingNumber?: string | null
+                trackingUrl?: string | null
+                shippingLabelUrl?: string | null
+                fulfillment?: Record<string, any> | null
+                fulfillmentWorkflow?: Record<string, any> | null
+              }>(
+                `*[_type == "order" && _id == $id][0]{_id, packingSlipUrl, stripeSessionId, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
+                {
+                  id: existingOrderId,
+                },
+              )
             : null
           const existingId = existingOrder?._id || null
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
@@ -5956,55 +6466,44 @@ export const handler: Handler = async (event) => {
             `payment_intent ${pi.id}`,
           )
           applyShippingMetrics(baseDoc, shippingMetrics)
+          applyShippingDetailsToDoc(baseDoc, shippingDetails, currency ? currency.toUpperCase() : undefined)
           baseDoc.stripeSummary = buildStripeSummary({
             paymentIntent: pi,
             eventType: webhookEvent.type,
             eventCreated: webhookEvent.created,
           })
-          const shippingAmountForDoc = shippingDetails.amount ?? amountShipping
-          if (shippingAmountForDoc !== undefined) {
-            baseDoc.amountShipping = shippingAmountForDoc
-            baseDoc.selectedShippingAmount = shippingAmountForDoc
-          }
-          if (shippingDetails.carrier) {
-            baseDoc.shippingCarrier = shippingDetails.carrier
-          }
-          if (
-            shippingDetails.serviceName ||
-            shippingDetails.serviceCode ||
-            shippingAmountForDoc !== undefined
-          ) {
-            baseDoc.selectedService = {
-              carrierId: shippingDetails.carrierId || undefined,
-              carrier: shippingDetails.carrier || undefined,
-              service: shippingDetails.serviceName || shippingDetails.serviceCode || undefined,
-              serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName || undefined,
-              amount: shippingAmountForDoc,
-              currency:
-                shippingDetails.currency ||
-                (currency ? currency.toUpperCase() : undefined) ||
-                'USD',
-              deliveryDays: shippingDetails.deliveryDays,
-              estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+          const fulfillmentResult = deriveFulfillmentFromMetadata(
+            meta,
+            shippingDetails,
+            new Date().toISOString(),
+            (existingOrder as any)?.fulfillment,
+          )
+          if (fulfillmentResult) {
+            const mergedFulfillment = existingOrder?.fulfillment
+              ? {...existingOrder.fulfillment, ...fulfillmentResult.fulfillment}
+              : fulfillmentResult.fulfillment
+            baseDoc.fulfillment = mergedFulfillment
+
+            const workflowProvided = fulfillmentResult.workflow
+            const hasExistingWorkflow =
+              existingOrder?.fulfillmentWorkflow &&
+              (existingOrder.fulfillmentWorkflow as any)?.currentStage
+            if (workflowProvided && !hasExistingWorkflow) {
+              baseDoc.fulfillmentWorkflow = workflowProvided
             }
-          }
-          if (shippingDetails.currency) {
-            baseDoc.selectedShippingCurrency = shippingDetails.currency
-          }
-          if (shippingDetails.deliveryDays !== undefined) {
-            baseDoc.shippingDeliveryDays = shippingDetails.deliveryDays
-          }
-          if (shippingDetails.estimatedDeliveryDate) {
-            baseDoc.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-          }
-          if (shippingDetails.serviceCode) {
-            baseDoc.shippingServiceCode = shippingDetails.serviceCode
-          }
-          if (shippingDetails.serviceName) {
-            baseDoc.shippingServiceName = shippingDetails.serviceName
-          }
-          if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-            baseDoc.shippingMetadata = shippingDetails.metadata
+
+            if (fulfillmentResult.topLevelFields?.trackingNumber && !existingOrder?.trackingNumber) {
+              baseDoc.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
+            }
+            if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
+              baseDoc.trackingUrl = fulfillmentResult.topLevelFields.trackingUrl
+            }
+            if (
+              fulfillmentResult.topLevelFields?.shippingLabelUrl &&
+              !existingOrder?.shippingLabelUrl
+            ) {
+              baseDoc.shippingLabelUrl = fulfillmentResult.topLevelFields.shippingLabelUrl
+            }
           }
           const intentSlug = createOrderSlug(normalizedOrderNumber, pi.id)
           if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}

@@ -3,17 +3,11 @@ import {Badge, Box, Button, Card, Flex, Stack, Text} from '@sanity/ui'
 import {IntentLink} from 'sanity/router'
 import {useMemo} from 'react'
 import type {OrderCartItem} from '../types/order'
+import {normalizeOptionSelections} from '../utils/cartItemDetails'
 
 type OrderItemsListProps = {
   items?: OrderCartItem[] | null
   currency?: string
-}
-
-const buildOptionsSummary = (item: OrderCartItem): string | undefined => {
-  if (item.optionSummary) return item.optionSummary
-  const parts = [...(item.optionDetails || []), ...(item.upgrades || [])].filter(Boolean)
-  if (!parts.length) return undefined
-  return parts.join(', ')
 }
 
 const getLineTotal = (item: OrderCartItem): number | undefined => {
@@ -47,27 +41,48 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
 
   return (
     <Stack space={3}>
-      {items.map((item, index) => {
-        const lineTotal = getLineTotal(item)
-        const summary = buildOptionsSummary(item)
-        const key = item._key || `${item.sku || 'item'}-${index}`
-        return (
-          <Card key={key} padding={3} radius={2} border>
-            <Flex gap={4} wrap="wrap">
-              <Box flex={2} style={{minWidth: 200}}>
-                <Text size={3} weight="semibold">
-                  {item.name || item.productName || 'Product'}
-                </Text>
-                {item.sku && (
-                  <Text size={1} muted>
-                    SKU: {item.sku}
+        {items.map((item, index) => {
+          const lineTotal = getLineTotal(item)
+          const normalized = normalizeOptionSelections({
+            optionSummary: item.optionSummary,
+            optionDetails: item.optionDetails,
+            upgrades: item.upgrades,
+          })
+          const optionsText =
+            normalized.optionDetails.join(', ') || normalized.optionSummary || undefined
+          const upgradesText = normalized.upgrades.join(', ') || undefined
+          const upgradesTotal =
+            typeof item.upgradesTotal === 'number' && Number.isFinite(item.upgradesTotal)
+              ? item.upgradesTotal
+              : undefined
+          const key = item._key || `${item.sku || 'item'}-${index}`
+          return (
+            <Card key={key} padding={3} radius={2} border>
+              <Flex gap={4} wrap="wrap">
+                <Box flex={2} style={{minWidth: 200}}>
+                  <Text size={3} weight="semibold">
+                    {item.name || item.productName || 'Product'}
                   </Text>
-                )}
-                {summary && (
-                  <Text size={1} muted>
-                    Options: {summary}
-                  </Text>
-                )}
+                  {item.sku && (
+                    <Text size={1} muted>
+                      SKU: {item.sku}
+                    </Text>
+                  )}
+                  {optionsText && (
+                    <Text size={1} muted>
+                      Options: {optionsText}
+                    </Text>
+                  )}
+                  {upgradesText && (
+                    <Text size={1} muted>
+                      Upgrades: {upgradesText}
+                    </Text>
+                  )}
+                  {upgradesTotal !== undefined && (
+                    <Text size={1} muted>
+                      Upgrades Total: {formatter.format(upgradesTotal)}
+                    </Text>
+                  )}
                 {item.productRef?._ref && (
                   <IntentLink
                     intent="edit"

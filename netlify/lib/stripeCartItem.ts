@@ -2,6 +2,8 @@ import Stripe from 'stripe'
 import {
   coerceStringArray,
   deriveOptionsFromMetadata as deriveCartOptions,
+  normalizeOptionSelections,
+  resolveUpgradeTotal,
   uniqueStrings,
 } from '@fas/sanity-config/utils/cartItemDetails'
 
@@ -32,6 +34,7 @@ export type MappedCartItem = {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  upgradesTotal?: number
   customizations?: string[]
   price?: number
   quantity?: number
@@ -431,7 +434,6 @@ export function mapStripeLineItem(
     metadata.map.option_values,
     metadata.map.option_value_display,
   )
-  const optionDetails = optionDetailCandidates.length ? optionDetailCandidates : undefined
   const upgradesCandidates = normalizeDetails(
     derivedOptions.upgrades,
     metadata.map.upgrades,
@@ -439,14 +441,15 @@ export function mapStripeLineItem(
     metadata.map.upgrade_summary,
     metadata.map.upgrade_details,
   )
-  const upgrades = upgradesCandidates.length
-    ? uniqueStrings(
-        upgradesCandidates.map((entry) => {
-          const match = entry.match(/^(?:upgrades?|add[-_ ]?ons?)[:\-\s]+(.+)/i)
-          return match && match[1] ? match[1].trim() || entry : entry
-        }),
-      )
+  const normalizedOptions = normalizeOptionSelections({
+    optionSummary: summary,
+    optionDetails: optionDetailCandidates,
+    upgrades: upgradesCandidates,
+  })
+  const optionDetails = normalizedOptions.optionDetails.length
+    ? normalizedOptions.optionDetails
     : undefined
+  const upgrades = normalizedOptions.upgrades.length ? normalizedOptions.upgrades : undefined
   const customizationCandidates = normalizeDetails(
     ...CUSTOMIZATION_METADATA_KEYS.map((key) => metadata.map[key]),
   )
@@ -484,12 +487,19 @@ export function mapStripeLineItem(
 
   const metadataEntries = metadata.entries.length ? metadata.entries : undefined
   const metadataUpgrades = upgrades?.map((entry) => entry.trim()).filter(Boolean)
+  const upgradesTotal = resolveUpgradeTotal({
+    metadataMap: metadata.map,
+    price,
+    quantity: quantityValue,
+    lineTotal: derivedLineTotal,
+    total: derivedTotal,
+  })
+
   const metadataObject =
-    summary || (metadataUpgrades && metadataUpgrades.length)
+    normalizedOptions.optionSummary || (metadataUpgrades && metadataUpgrades.length)
       ? {
-          option_summary: summary || undefined,
-          upgrades:
-            metadataUpgrades && metadataUpgrades.length ? metadataUpgrades : undefined,
+          option_summary: normalizedOptions.optionSummary || undefined,
+          upgrades: metadataUpgrades && metadataUpgrades.length ? metadataUpgrades : undefined,
         }
       : undefined
 
@@ -504,9 +514,10 @@ export function mapStripeLineItem(
     description,
     image,
     productUrl,
-    optionSummary: summary,
+    optionSummary: normalizedOptions.optionSummary,
     optionDetails,
     upgrades,
+    upgradesTotal: upgradesTotal !== undefined ? upgradesTotal : undefined,
     customizations,
     price,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,

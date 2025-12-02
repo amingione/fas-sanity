@@ -61,7 +61,7 @@ type CustomerDashboardResponse = {
 
 const API_VERSION = '2024-10-01'
 const ORDER_TOTAL_EXPR =
-  'coalesce(totalAmount, amountSubtotal + amountTax + amountShipping, totalAmount, total, 0)'
+  'coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total, 0)'
 
 const CUSTOMER_DASHBOARD_QUERY = `{
   "metrics": {
