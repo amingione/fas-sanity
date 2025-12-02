@@ -1,6 +1,7 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import {defaultTheme, defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
+import {defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
 import './src/styles/tailwind.css'
+import {studioTheme} from '@sanity/ui'
 // Desk Tool import is different across Sanity versions; support both named and default
 // @ts-ignore
 import * as _desk from 'sanity/desk'
@@ -27,8 +28,6 @@ import {resolveDownloadDocumentActions} from './src/documentActions/downloadDocu
 import {resolveProductDocumentActions} from './src/documentActions/productDocumentActions'
 import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
-import {fasTheme} from './src/theme/fasTheme'
-import {fasBrandTheme} from './src/theme/fasBrandTheme'
 import {orderView} from './src/views/orderView'
 import CustomerDashboard from './src/components/studio/CustomerDashboard'
 import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
@@ -89,10 +88,7 @@ const getEnvFlag = (...names: string[]) => {
   return undefined
 }
 
-const useCoreTheme = envFlag(getEnv('SANITY_STUDIO_USE_CORE_THEME')) === true
-
-const brandTheme: StudioTheme = fasBrandTheme || (fasTheme as StudioTheme)
-const resolvedTheme: StudioTheme = useCoreTheme ? (defaultTheme as StudioTheme) : brandTheme
+const resolvedTheme: StudioTheme = studioTheme
 
 const disableVisionOverride = getEnvFlag(
   'SANITY_STUDIO_DISABLE_VISION',

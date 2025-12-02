@@ -1,8 +1,8 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
-import {Resend} from 'resend'
 import {sendEmail} from '../../packages/sanity-config/src/utils/emailService'
-import {toHTML} from '@portabletext/to-html'
+import {syncContact} from '../lib/resend/contacts'
+import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -11,10 +11,6 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const resendAudienceId = process.env.RESEND_AUDIENCE_ID
-
 
 const SEGMENT_QUERIES: Record<string, string> = {
   all_subscribers:
@@ -28,112 +24,8 @@ const SEGMENT_QUERIES: Record<string, string> = {
   inactive_customers:
     '*[_type == "customer" && emailMarketing.subscribed == true && count(*[_type == "order" && customerRef._ref == ^._id && createdAt > now() - 60*60*24*90]) == 0]',
   newsletter_only:
-    '*[_type == "customer" && emailMarketing.subscribed == true && emailMarketing.preferences.newsletter == true]',
+    '*[_type == "customer" && emailMarketing.subscribed == true && coalesce(emailMarketing.preferences.tips, emailMarketing.preferences.promotions, emailMarketing.preferences.newProducts) == true]',
 }
-
-function portableTextToHtml(blocks: any[]): string {
-  return toHTML(blocks || [], {
-    components: {
-      types: {
-        image: ({value}) => {
-          const assetRef = value?.asset?._ref
-          const imageUrl = assetRef
-            ? `https://cdn.sanity.io/images/${process.env.SANITY_STUDIO_PROJECT_ID}/${process.env.SANITY_STUDIO_DATASET}/${assetRef}`
-            : ''
-          return `<img src="${imageUrl}" alt="${value?.alt || ''}" style="max-width: 100%; height: auto;" />`
-        },
-      },
-      marks: {
-        link: ({value, children}) => {
-          return `<a href="${value?.href}" style="color: #0066cc;">${children}</a>`
-        },
-      },
-    },
-  })
-}
-
-function generateEmailHtml(campaign: any, unsubscribeUrl: string): string {
-  const utmSlug = campaign.trackingSlug?.current || campaign.trackingSlug || ''
-  const contentHtml = portableTextToHtml(campaign.content || [])
-  const ctaButton =
-    campaign.ctaButton?.text && campaign.ctaButton?.url
-      ? `
-      <table role="presentation" style="margin: 30px auto;">
-        <tr>
-          <td style="border-radius: 4px; background: #0066cc;">
-            <a href="${appendCampaignUtm(
-              campaign.ctaButton.url,
-              utmSlug,
-            )}" style="background: #0066cc; border: 15px solid #0066cc; font-family: sans-serif; font-size: 16px; line-height: 1.1; text-align: center; text-decoration: none; display: block; border-radius: 4px; font-weight: bold; color: #ffffff;">
-              ${campaign.ctaButton.text}
-            </a>
-          </td>
-        </tr>
-      </table>
-    `
-      : ''
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${campaign.subject}</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-        <table role="presentation" style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td align="center" style="padding: 40px 0;">
-              <table role="presentation" style="width: 600px; border-collapse: collapse; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <!-- Header -->
-                <tr>
-                  <td style="padding: 40px 30px; text-align: center; background: #000000;">
-                    <h1 style="margin: 0; color: #ffffff; font-size: 24px;">FAS Motorsports</h1>
-                  </td>
-                </tr>
-                
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 40px 30px; color: #333333; font-size: 16px; line-height: 1.6;">
-                    ${contentHtml}
-                    ${ctaButton}
-                  </td>
-                </tr>
-                
-                <!-- Footer -->
-                <tr>
-                  <td style="padding: 30px; text-align: center; background: #f8f8f8; color: #666666; font-size: 12px;">
-                    <p style="margin: 0 0 10px 0;">© ${new Date().getFullYear()} FAS Motorsports. All rights reserved.</p>
-                    <p style="margin: 0;">
-                      <a href="${unsubscribeUrl}" style="color: #666666; text-decoration: underline;">Unsubscribe</a>
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-    </html>
-  `
-}
-
-const appendCampaignUtm = (url: string, slug?: string) => {
-  if (!slug) return url
-  const hasQuery = url.includes('?')
-  const separator = hasQuery ? '&' : '?'
-  const params = `utm_source=email&utm_medium=campaign&utm_campaign=${encodeURIComponent(slug)}`
-  return `${url}${separator}${params}`
-}
-
-const htmlToText = (html: string) =>
-  html
-    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
 
 const createEmailLogEntry = async ({
   to,
@@ -164,20 +56,10 @@ const updateEmailLogStatus = async (logId: string, patch: Record<string, any>) =
   await sanity.patch(logId).set(patch).commit({autoGenerateArrayKeys: true})
 }
 
-const syncResendContact = async (email: string, name?: string) => {
-  if (!resend || !resendAudienceId) return
-  const [firstName, ...rest] = (name || '').split(' ').filter(Boolean)
-  try {
-    await resend.contacts.create({
-      email,
-      firstName: firstName || undefined,
-      lastName: rest.length ? rest.join(' ') : undefined,
-      audienceId: resendAudienceId,
-    })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    console.warn('sendEmailCampaign: Resend contact sync failed', message)
-  }
+const splitName = (name?: string) => {
+  const parts = (name || '').split(' ').filter(Boolean)
+  const [firstName, ...rest] = parts
+  return {firstName: firstName || undefined, lastName: rest.length ? rest.join(' ') : undefined}
 }
 
 export const handler: Handler = async (event) => {
@@ -229,7 +111,13 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    let customers: Array<{email: string; name?: string; _id: string}> = []
+    let customers: Array<{
+      email: string
+      name?: string
+      firstName?: string
+      lastName?: string
+      _id: string
+    }> = []
 
     if (isTest && campaign.testEmail) {
       customers = [{email: campaign.testEmail, name: 'Test User', _id: 'test'}]
@@ -244,7 +132,7 @@ export const handler: Handler = async (event) => {
         }
       }
 
-      customers = await sanity.fetch(`${query}{_id, email, name}`)
+      customers = await sanity.fetch(`${query}{_id, email, name, firstName, lastName}`)
     }
 
     if (customers.length === 0) {
@@ -261,8 +149,19 @@ export const handler: Handler = async (event) => {
     for (const customer of customers) {
       const to = (customer.email || '').trim()
       if (!to) continue
+      const fullName =
+        customer.name || [customer.firstName, customer.lastName].filter(Boolean).join(' ')
+      const {firstName, lastName} = splitName(fullName)
       const unsubscribeUrl = `${siteBase}/unsubscribe?email=${encodeURIComponent(to)}&id=${customer._id}`
-      const html = generateEmailHtml(campaign, unsubscribeUrl)
+      const html = renderCampaignHtml(
+        {
+          subject: campaign.subject,
+          content: campaign.content,
+          ctaButton: campaign.ctaButton,
+          trackingSlug: campaign.trackingSlug?.current || campaign.trackingSlug,
+        },
+        {unsubscribeUrl},
+      )
       const text = htmlToText(html)
 
       if (isTest) {
@@ -298,7 +197,12 @@ export const handler: Handler = async (event) => {
       })
 
       try {
-        await syncResendContact(to, customer.name)
+        await syncContact({
+          email: to,
+          firstName,
+          lastName,
+          unsubscribed: false,
+        })
         const result = await sendEmail({
           to,
           subject: campaign.subject,

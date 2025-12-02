@@ -1,6 +1,7 @@
 import React from 'react'
+import {Badge} from '@sanity/ui'
 
-export type DocumentBadgeTone = 'default' | 'primary' | 'success' | 'warning' | 'danger'
+export type DocumentBadgeTone = 'default' | 'primary' | 'positive' | 'caution' | 'critical'
 
 export interface DocumentBadgeProps {
   label: string
@@ -85,18 +86,16 @@ export const formatBadgeLabel = (value?: string | null): string | null => {
 export const resolveBadgeTone = (value?: string | null): DocumentBadgeTone => {
   const normalized = normalizeStatus(value)
   if (!normalized) return 'default'
-  if (DANGER_STATUSES.has(normalized)) return 'danger'
-  if (SUCCESS_STATUSES.has(normalized)) return 'success'
-  if (WARNING_STATUSES.has(normalized)) return 'warning'
+  if (DANGER_STATUSES.has(normalized)) return 'critical'
+  if (SUCCESS_STATUSES.has(normalized)) return 'positive'
+  if (WARNING_STATUSES.has(normalized)) return 'caution'
   return 'primary'
 }
 
 export function DocumentBadge({label, tone = 'default', title, className}: DocumentBadgeProps) {
-  const toneClass = tone ? `document-badge--${tone}` : ''
-  const composedClassName = ['document-badge', toneClass, className].filter(Boolean).join(' ')
   return (
-    <span className={composedClassName} title={title}>
+    <Badge tone={tone} mode="outline" title={title} className={className}>
       {label}
-    </span>
+    </Badge>
   )
 }

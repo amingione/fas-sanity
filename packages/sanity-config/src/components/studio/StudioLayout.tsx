@@ -1,6 +1,7 @@
 import {useEffect} from 'react'
 import type {LayoutProps} from 'sanity'
 import {StyleSheetManager} from 'styled-components'
+import {ThemeProvider, studioTheme} from '@sanity/ui'
 import PaneLimiter from './PaneLimiter'
 
 export default function StudioLayout(props: LayoutProps) {
@@ -42,11 +43,13 @@ export default function StudioLayout(props: LayoutProps) {
   }
 
   return (
-    <StyleSheetManager shouldForwardProp={shouldForwardProp}>
-      <>
-        <PaneLimiter maxPanes={2} />
-        {props.renderDefault(props)}
-      </>
-    </StyleSheetManager>
+    <ThemeProvider theme={studioTheme}>
+      <StyleSheetManager shouldForwardProp={shouldForwardProp}>
+        <>
+          <PaneLimiter maxPanes={2} />
+          {props.renderDefault(props)}
+        </>
+      </StyleSheetManager>
+    </ThemeProvider>
   )
 }

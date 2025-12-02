@@ -1,7 +1,7 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 // src/schemaTypes/documents/order.tsx
 import {defineField, defineType} from 'sanity'
-import {PackageIcon, DocumentPdfIcon, ResetIcon} from '@sanity/icons'
+import {PackageIcon, DocumentPdfIcon, ResetIcon, CheckmarkCircleIcon, CopyIcon, TrashIcon} from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
 import React from 'react'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
@@ -168,6 +168,17 @@ const orderSchema = defineType({
       // Enforce the formatted, canonical order number display
       readOnly: true,
       components: {input: OrderNumberInput},
+    },
+    {
+      name: 'slug',
+      type: 'slug',
+      title: 'Order Slug',
+      description: 'URL-friendly identifier',
+      group: 'overview',
+      options: {
+        source: 'orderNumber',
+        maxLength: 96,
+      },
     },
     {
       name: 'orderType',
@@ -468,6 +479,25 @@ const orderSchema = defineType({
     // Removed: Order-level FAQ does not belong here
 
     // ========== SHIPPING GROUP ==========
+    defineField({
+      name: 'shippingSelection',
+      type: 'object',
+      title: 'Selected Shipping Option',
+      description: 'Customer-selected shipping service at checkout',
+      group: 'shipping',
+      options: {collapsible: true, collapsed: true},
+      hidden: ({document}) => document?.orderType !== 'online',
+      fields: [
+        {name: 'service', type: 'string', title: 'Service Name', description: 'e.g., "Standard Shipping"'},
+        {name: 'serviceCode', type: 'string', title: 'Service Code', description: 'Carrier service identifier'},
+        {name: 'carrier', type: 'string', title: 'Carrier Name'},
+        {name: 'carrierId', type: 'string', title: 'Carrier ID', description: 'Stripe shipping rate ID'},
+        {name: 'amount', type: 'number', title: 'Shipping Amount'},
+        {name: 'currency', type: 'string', title: 'Currency', initialValue: 'USD'},
+        {name: 'deliveryDays', type: 'number', title: 'Estimated Delivery Days'},
+        {name: 'estimatedDeliveryDate', type: 'datetime', title: 'Estimated Delivery Date'},
+      ],
+    }),
     defineField({
       name: 'fulfillmentWorkflow',
       type: 'object',
@@ -855,8 +885,208 @@ const orderSchema = defineType({
       readOnly: true,
       hidden: ({document}) => document?.orderType !== 'online',
     },
+    {
+      name: 'shippingMetadata',
+      type: 'object',
+      title: 'Shipping Metadata',
+      description: 'Raw shipping data from Stripe',
+      group: 'shipping',
+      options: {
+        collapsible: true,
+        collapsed: true,
+      },
+      readOnly: true,
+      hidden: ({document}) => document?.orderType !== 'online',
+      fields: [
+        {
+          name: 'raw',
+          type: 'text',
+          title: 'Raw Metadata (JSON)',
+          description: 'Unparsed metadata payload from Stripe',
+          rows: 6,
+          readOnly: true,
+        },
+      ],
+    },
 
     // ========== PAYMENT GROUP ==========
+    defineField({
+      name: 'stripeCheckoutMode',
+      type: 'string',
+      title: 'Stripe Checkout Mode',
+      group: 'payment',
+      options: {
+        list: ['payment', 'subscription', 'setup'],
+      },
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeCheckoutStatus',
+      type: 'string',
+      title: 'Checkout Status',
+      group: 'payment',
+      options: {
+        list: ['open', 'complete', 'expired'],
+      },
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeSessionStatus',
+      type: 'string',
+      title: 'Session Status',
+      group: 'payment',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripePaymentIntentStatus',
+      type: 'string',
+      title: 'Payment Intent Status',
+      group: 'payment',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeSource',
+      type: 'string',
+      title: 'Stripe Source',
+      description: 'e.g., "checkout.session"',
+      group: 'payment',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      type: 'datetime',
+      title: 'Last Synced with Stripe',
+      group: 'payment',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'webhookNotified',
+      type: 'boolean',
+      title: 'Webhook Notification Sent',
+      group: 'payment',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'stripeSummary',
+      type: 'object',
+      title: 'Stripe Transaction Summary',
+      description: 'Complete Stripe checkout and payment details',
+      group: 'payment',
+      options: {
+        collapsible: true,
+        collapsed: true,
+      },
+      readOnly: true,
+      fields: [
+        {name: 'checkoutSessionId', type: 'string', title: 'Checkout Session ID'},
+        {name: 'checkoutStatus', type: 'string', title: 'Checkout Status'},
+        {name: 'checkoutExpiresAt', type: 'datetime', title: 'Checkout Expires At'},
+        {name: 'paymentIntentId', type: 'string', title: 'Payment Intent ID'},
+        {name: 'paymentIntentCreated', type: 'datetime', title: 'Payment Intent Created'},
+        {name: 'status', type: 'string', title: 'Payment Status'},
+        {name: 'failureMessage', type: 'string', title: 'Status Message'},
+        {name: 'lastEventType', type: 'string', title: 'Last Event Type'},
+        {name: 'lastEventCreated', type: 'datetime', title: 'Last Event Time'},
+        {name: 'updatedAt', type: 'datetime', title: 'Last Updated'},
+        {
+          name: 'amounts',
+          type: 'object',
+          title: 'Amounts',
+          fields: [
+            {name: 'subtotal', type: 'number', title: 'Subtotal'},
+            {name: 'shipping', type: 'number', title: 'Shipping'},
+            {name: 'tax', type: 'number', title: 'Tax'},
+            {name: 'total', type: 'number', title: 'Total'},
+            {name: 'captured', type: 'number', title: 'Captured'},
+            {name: 'refunded', type: 'number', title: 'Refunded'},
+            {name: 'currency', type: 'string', title: 'Currency'},
+          ],
+        },
+        {
+          name: 'customer',
+          type: 'object',
+          title: 'Customer',
+          fields: [
+            {name: 'name', type: 'string', title: 'Name'},
+            {name: 'email', type: 'string', title: 'Email'},
+            {name: 'phone', type: 'string', title: 'Phone'},
+          ],
+        },
+        {
+          name: 'billingAddress',
+          type: 'object',
+          title: 'Billing Address',
+          fields: [
+            {name: 'line1', type: 'string', title: 'Address Line 1'},
+            {name: 'city', type: 'string', title: 'City'},
+            {name: 'state', type: 'string', title: 'State'},
+            {name: 'postalCode', type: 'string', title: 'Postal Code'},
+            {name: 'country', type: 'string', title: 'Country'},
+          ],
+        },
+        {
+          name: 'shippingAddress',
+          type: 'object',
+          title: 'Shipping Address',
+          fields: [
+            {name: 'name', type: 'string', title: 'Name'},
+            {name: 'email', type: 'string', title: 'Email'},
+            {name: 'phone', type: 'string', title: 'Phone'},
+            {name: 'line1', type: 'string', title: 'Address Line 1'},
+            {name: 'city', type: 'string', title: 'City'},
+            {name: 'state', type: 'string', title: 'State'},
+            {name: 'postalCode', type: 'string', title: 'Postal Code'},
+            {name: 'country', type: 'string', title: 'Country'},
+          ],
+        },
+        {
+          name: 'paymentMethod',
+          type: 'object',
+          title: 'Payment Method',
+          fields: [
+            {name: 'type', type: 'string', title: 'Type'},
+            {name: 'brand', type: 'string', title: 'Brand'},
+            {name: 'last4', type: 'string', title: 'Last 4'},
+            {name: 'exp', type: 'string', title: 'Expiration'},
+            {name: 'wallet', type: 'string', title: 'Wallet'},
+            {name: 'riskLevel', type: 'string', title: 'Risk Level'},
+          ],
+        },
+        {
+          name: 'metadata',
+          type: 'array',
+          title: 'Metadata',
+          of: [
+            {
+              type: 'object',
+              title: 'Metadata Entry',
+              fields: [
+                {name: 'key', type: 'string', title: 'Key'},
+                {name: 'value', type: 'string', title: 'Value'},
+                {name: 'source', type: 'string', title: 'Source'},
+              ],
+            },
+          ],
+        },
+        {
+          name: 'attempts',
+          type: 'array',
+          title: 'Attempts',
+          of: [
+            {
+              type: 'object',
+              title: 'Attempt',
+              fields: [
+                {name: 'type', type: 'string', title: 'Type'},
+                {name: 'status', type: 'string', title: 'Status'},
+                {name: 'message', type: 'string', title: 'Message'},
+                {name: 'created', type: 'datetime', title: 'Created'},
+              ],
+            },
+          ],
+        },
+      ],
+    }),
     {
       name: 'paymentStatus',
       type: 'string',
@@ -1097,12 +1327,111 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
   return [
     ...prev,
 
+    // Fulfill Order (calls Netlify function)
+    (props) => {
+      const {id, draft, published} = props
+      const doc = draft || published
+      if (!doc) return null
+
+      return {
+        name: 'fulfillOrder',
+        label: 'Fulfill Order',
+        icon: CheckmarkCircleIcon,
+        tone: 'positive',
+        onHandle: async () => {
+          try {
+            const orderId = normalizeDocumentId(doc._id || id)
+            if (!orderId) {
+              alert('Publish the order before fulfilling.')
+              props.onComplete()
+              return
+            }
+            await callNetlifyFunction('fulfill-order', {json: {orderId, markOnly: true}})
+            alert('Order marked as fulfilled.')
+          } catch (error) {
+            console.error('Fulfill order failed', error)
+            alert('Unable to fulfill order.')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Duplicate Order
+    (props) => {
+      const {draft, published} = props
+      const source = draft || published
+      if (!source) return null
+
+      return {
+        name: 'duplicateOrder',
+        label: 'Duplicate Order',
+        icon: CopyIcon,
+        onHandle: async () => {
+          try {
+            const client = context.getClient({apiVersion: SANITY_API_VERSION})
+            const {_id, _rev, _updatedAt, _createdAt, _type, _seqNo, _version, orderNumber, ...rest} =
+              source as any
+            const payload: Record<string, any> = {
+              ...rest,
+              _type: 'order',
+              orderNumber: orderNumber ? `${orderNumber}-copy` : undefined,
+              status: rest?.status || 'draft',
+            }
+            await client.create(payload, {autoGenerateArrayKeys: true})
+            alert('Order duplicated.')
+          } catch (error) {
+            console.error('Duplicate order failed', error)
+            alert('Unable to duplicate order.')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Delete Order (draft + published)
+    (props) => {
+      const {id, draft, published} = props
+      const doc = draft || published
+      if (!doc) return null
+
+      return {
+        name: 'deleteOrder',
+        label: 'Delete Order',
+        icon: TrashIcon,
+        tone: 'critical',
+        onHandle: async () => {
+          const confirmDelete = confirm('Delete this order? This cannot be undone.')
+          if (!confirmDelete) {
+            props.onComplete()
+            return
+          }
+          try {
+            const client = context.getClient({apiVersion: SANITY_API_VERSION})
+            const targets = resolvePatchTargets(id)
+            const tx = client.transaction()
+            targets.forEach((targetId) => tx.delete(targetId))
+            await tx.commit({autoGenerateArrayKeys: true})
+            alert('Order deleted.')
+          } catch (error) {
+            console.error('Delete order failed', error)
+            alert('Unable to delete order.')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
     // Print Packing Slip
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
 
       return {
+        name: 'printPackingSlip',
         label: 'Print Packing Slip',
         icon: DocumentPdfIcon,
         tone: 'primary',
@@ -1188,12 +1517,61 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
       }
     },
 
+    // Cancel Order (Netlify cancelOrder function)
+    (props) => {
+      const {id, draft, published} = props
+      const doc = draft || published
+      if (!doc) return null
+
+      return {
+        name: 'cancelOrder',
+        label: 'Cancel Order',
+        icon: TrashIcon,
+        tone: 'critical',
+        onHandle: async () => {
+          const confirmed = confirm('Cancel this order? This cannot be undone.')
+          if (!confirmed) {
+            props.onComplete()
+            return
+          }
+          const reason = prompt('Reason for cancellation (optional):')?.trim() || undefined
+          try {
+            const orderId = normalizeDocumentId(doc._id || id)
+            if (!orderId) {
+              alert('Publish the order before cancelling.')
+              props.onComplete()
+              return
+            }
+            const response = await callNetlifyFunction('cancelOrder', {
+              json: {
+                orderId,
+                orderNumber: doc.orderNumber,
+                stripePaymentIntentId: (doc as any)?.paymentIntentId,
+                reason,
+              },
+            })
+            if (!response.ok) {
+              const message = await readResponseMessage(response)
+              throw new Error(message)
+            }
+            alert('Order cancelled.')
+          } catch (error) {
+            console.error('Cancel order failed', error)
+            alert((error as Error)?.message || 'Unable to cancel order.')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
     // Add Tracking
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
 
       return {
+        name: 'addTracking',
         label: 'Add Tracking',
         icon: PackageIcon,
         tone: 'primary',
@@ -1241,6 +1619,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
       const doc = draft || published
 
       return {
+        name: 'createShippingLabel',
         label: 'Create Label',
         icon: PackageIcon,
         tone: 'primary',

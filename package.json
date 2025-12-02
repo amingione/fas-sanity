@@ -36,7 +36,10 @@
     "enhance:vendors": "tsx scripts/enhance-existing-vendors.ts",
     "upload:merchant-feed": "tsx scripts/upload-google-merchant-sftp.ts",
     "sync:gmc-status": "tsx scripts/sync-gmc-status.ts",
-    "sync:ads-performance": "tsx scripts/sync-google-ads-performance.ts"
+    "sync:ads-performance": "tsx scripts/sync-google-ads-performance.ts",
+    "sync:resend": "tsx scripts/sync-resend-contacts.ts",
+    "seed:email-channel": "tsx scripts/ensure-email-marketing-channel.ts",
+    "migrate:email-marketing": "tsx scripts/backfill-email-marketing.ts"
   },
   "keywords": [
     "sanity"

@@ -1,0 +1,17 @@
+# Cursor AI Rules
+
+## UI Development
+Read and follow all rules in AI_GUIDELINES.md, specifically the Sanity UI Enforcement Policy.
+
+## Key Requirements
+- Use @sanity/ui components exclusively for all UI primitives
+- Use theme tokens for spacing, colors, and typography
+- Never introduce custom HTML/CSS for elements that exist in @sanity/ui
+- Propose refactors for non-compliant code before implementing
+- Follow the safety protocol for all UI changes
+
+## Before Every UI Change
+1. Check if @sanity/ui has a component for this use case
+2. Assess impact on dependent files
+3. Preserve all existing functionality
+4. For large refactors, propose before implementing

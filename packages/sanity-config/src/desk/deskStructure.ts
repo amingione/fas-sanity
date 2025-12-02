@@ -41,8 +41,8 @@ import {
   OrdersDocumentTable,
   ProductsDocumentTable,
   CustomersDocumentTable,
-  AbandonedOrdersDocumentTable,
   PaymentLinksDocumentTable,
+  VendorsDocumentTable,
 } from '../components/studio/documentTables'
 import {CogIcon} from '@sanity/icons'
 import TodayScheduleDashboard from '../components/studio/TodayScheduleDashboard'
@@ -55,7 +55,6 @@ import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenera
 import SalesAnalyticsDashboard from '../components/studio/SalesAnalyticsDashboard'
 import OperationsDashboard from '../components/studio/OperationsDashboard'
 import WholesaleDashboard from '../components/studio/WholesaleDashboard'
-import VendorDashboard from '../components/studio/VendorDashboard'
 import WholesalePricingCalculator from '../components/studio/WholesalePricingCalculator'
 import ProfitMarginAnalysis from '../components/studio/ProfitMarginAnalysis'
 import CustomerAnalyticsDashboard from '../components/studio/CustomerAnalyticsDashboard'
@@ -67,6 +66,7 @@ import FinancialReports from '../components/studio/FinancialReports'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../../shared/docTypes'
 
 const API_VERSION = '2024-10-01'
+const EMAIL_SUBSCRIBER_FILTER = '_type == "customer" && emailMarketing.subscribed == true'
 
 const startOfMonth = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
 const addMonths = (date: Date, offset: number) =>
@@ -142,7 +142,8 @@ const CustomersAllTableView: ComponentType = () =>
 const CustomersSubscribedTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {
     title: 'Subscribed to Email',
-    filter: '_type == "customer" && (emailOptIn == true || marketingOptIn == true)',
+    filter: EMAIL_SUBSCRIBER_FILTER,
+    orderings: [{field: 'emailMarketing.subscribedAt', direction: 'desc'}],
     emptyState: 'No subscribed customers',
     pageSize: 10,
     apiVersion: '2024-01-01',
@@ -181,6 +182,11 @@ const WholesaleOrdersTableView: ComponentType = () =>
     title: 'Wholesale Orders',
     pageSize: 10,
     filter: 'orderType == "wholesale"',
+  })
+
+const VendorsTableView: ComponentType = () =>
+  React.createElement(VendorsDocumentTable as any, {
+    title: 'Vendors',
   })
 
 const InStoreOrdersTableView: ComponentType = () =>
@@ -251,16 +257,10 @@ const ORDER_WORKFLOW_ITEMS: OrderWorkflowConfig[] = [
     filter: '_type == "order" && (status == "cancelled" || status == "refunded")',
   },
   {
-    id: 'expired-carts',
-    title: 'Expired Carts',
-    icon: TrashIcon,
-    filter: '_type == "order" && status == "expired"',
-  },
-  {
     id: 'all-orders',
     title: 'All Orders',
     icon: ClipboardIcon,
-    filter: '_type == "order"',
+    filter: '_type == "order" && lower(status) != "expired" && lower(paymentStatus) != "expired"',
   },
 ]
 
@@ -294,18 +294,49 @@ const createOrderWorkflowList = (S: any) => {
     )
 }
 
-const createExpiredCheckoutPane = (S: any) =>
+const createCheckoutSessionsPane = (S: any) =>
   S.listItem()
-    .id('expired-checkouts')
-    .title('Expired checkout sessions')
+    .id('checkout-sessions')
+    .title('Checkout Sessions')
     .icon(BasketIcon)
     .child(
-      documentTablePane(
-        S,
-        'abandoned-carts',
-        'Expired checkout sessions',
-        AbandonedOrdersDocumentTable as ComponentType,
-      ),
+      S.list()
+        .title('Checkout Sessions')
+        .items([
+          S.listItem()
+            .id('checkout-sessions-all')
+            .title('All Sessions')
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .title('All Checkout Sessions')
+                .filter('_type == "checkoutSession"')
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('checkout-sessions-expired')
+            .title('Expired Sessions')
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .title('Expired Checkout Sessions')
+                .filter('_type == "checkoutSession" && status == \"expired\"')
+                .defaultOrdering([
+                  {field: 'expiredAt', direction: 'desc'},
+                  {field: 'createdAt', direction: 'desc'},
+                ]),
+            ),
+          S.listItem()
+            .id('checkout-sessions-recovered')
+            .title('Recovered Sessions')
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .title('Recovered Sessions')
+                .filter('_type == "checkoutSession" && recovered == true')
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
+            ),
+        ]),
     )
 
 const createPaymentLinksPane = (S: any) =>
@@ -383,10 +414,10 @@ const createOrdersSection = (S: any) =>
                 'Wholesale Orders',
                 WholesaleOrdersTableView,
               ),
-            ),
+          ),
           S.divider(),
           createOrderWorkflowList(S),
-          createExpiredCheckoutPane(S),
+          createCheckoutSessionsPane(S),
           createPaymentLinksPane(S),
         ]),
     )
@@ -846,184 +877,7 @@ const createVendorsSubSection = (S: any) =>
     .id('wholesale-vendors')
     .title('Vendors')
     .icon(UserIcon)
-    .child(
-      S.list()
-        .title('Vendors')
-        .items([
-          S.listItem()
-            .id('vendors-all')
-            .title('All Vendors')
-            .icon(UserIcon)
-            .child(
-              S.documentTypeList('vendor')
-                .apiVersion(API_VERSION)
-                .title('All Vendors')
-                .defaultOrdering([{field: 'vendorNumber', direction: 'asc'}])
-                .child((documentId: string) =>
-                  S.document()
-                    .schemaType('vendor')
-                    .documentId(documentId)
-                    .views([
-                      S.view.form().title('Details'),
-                      S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                    ]),
-                ),
-            ),
-          S.listItem()
-            .id('vendors-active')
-            .title('Active')
-            .icon(CheckmarkCircleIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendor')
-                .title('Active Vendors')
-                .filter('_type == "vendor" && status == "active"')
-                .child((documentId: string) =>
-                  S.document()
-                    .schemaType('vendor')
-                    .documentId(documentId)
-                    .views([
-                      S.view.form().title('Details'),
-                      S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                    ]),
-                ),
-            ),
-          S.listItem()
-            .id('vendors-on-hold')
-            .title('On Hold')
-            .icon(PauseIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendor')
-                .title('Vendors on Hold')
-                .filter('_type == "vendor" && status == "on_hold"')
-                .child((documentId: string) =>
-                  S.document()
-                    .schemaType('vendor')
-                    .documentId(documentId)
-                    .views([
-                      S.view.form().title('Details'),
-                      S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                    ]),
-                ),
-            ),
-          S.listItem()
-            .id('vendors-needs-attention')
-            .title('Over Credit Limit')
-            .icon(WarningOutlineIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendor')
-                .title('Over Credit Limit')
-                .filter(
-                  '_type == "vendor" && defined(creditLimit) && creditLimit > 0 && currentBalance > creditLimit',
-                )
-                .defaultOrdering([{field: 'currentBalance', direction: 'desc'}])
-                .child((documentId: string) =>
-                  S.document()
-                    .schemaType('vendor')
-                    .documentId(documentId)
-                    .views([
-                      S.view.form().title('Details'),
-                      S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                    ]),
-                ),
-            ),
-          S.listItem()
-            .id('vendors-pricing-tiers')
-            .title('By Pricing Tier')
-            .icon(TagIcon)
-            .child(
-              S.list()
-                .title('Pricing Tiers')
-                .items([
-                  S.listItem()
-                    .id('vendors-standard')
-                    .title('Standard')
-                    .icon(TagIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendor')
-                        .title('Standard Tier')
-                        .filter('_type == "vendor" && pricingTier == "standard"')
-                        .child((documentId: string) =>
-                          S.document()
-                            .schemaType('vendor')
-                            .documentId(documentId)
-                            .views([
-                              S.view.form().title('Details'),
-                              S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                            ]),
-                        ),
-                    ),
-                  S.listItem()
-                    .id('vendors-preferred')
-                    .title('Preferred')
-                    .icon(TagIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendor')
-                        .title('Preferred Tier')
-                        .filter('_type == "vendor" && pricingTier == "preferred"')
-                        .child((documentId: string) =>
-                          S.document()
-                            .schemaType('vendor')
-                            .documentId(documentId)
-                            .views([
-                              S.view.form().title('Details'),
-                              S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                            ]),
-                        ),
-                    ),
-                  S.listItem()
-                    .id('vendors-platinum')
-                    .title('Platinum')
-                    .icon(TagIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendor')
-                        .title('Platinum Tier')
-                        .filter('_type == "vendor" && pricingTier == "platinum"')
-                        .child((documentId: string) =>
-                          S.document()
-                            .schemaType('vendor')
-                            .documentId(documentId)
-                            .views([
-                              S.view.form().title('Details'),
-                              S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                            ]),
-                        ),
-                    ),
-                  S.listItem()
-                    .id('vendors-custom-tier')
-                    .title('Custom Pricing')
-                    .icon(TagIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendor')
-                        .title('Custom Pricing')
-                        .filter('_type == "vendor" && pricingTier == "custom"')
-                        .child((documentId: string) =>
-                          S.document()
-                            .schemaType('vendor')
-                            .documentId(documentId)
-                            .views([
-                              S.view.form().title('Details'),
-                              S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                            ]),
-                        ),
-                    ),
-                ]),
-            ),
-        ]),
-    )
+    .child(documentTablePane(S, 'vendors', 'Vendors', VendorsTableView))
 
 const createWholesaleOrdersSubSection = (S: any) =>
   S.listItem()
@@ -1468,10 +1322,8 @@ const createMarketingSection = (S: any) =>
                         .apiVersion(API_VERSION)
                         .title('Email Subscribers')
                         .schemaType('customer')
-                        .filter(
-                          '_type == "customer" && (emailOptIn == true || marketingOptIn == true || emailMarketing.subscribed == true || communicationPreferences.marketingOptIn == true)',
-                        )
-                        .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+                        .filter(EMAIL_SUBSCRIBER_FILTER)
+                        .defaultOrdering([{field: 'emailMarketing.subscribedAt', direction: 'desc'}]),
                     ),
                 ]),
             ),
@@ -1899,6 +1751,19 @@ const buildReportsStructure = (S: any) =>
         ]),
     )
 
+const buildVendorApplicationsList = (S: any) => {
+  const baseList = S.documentTypeList('vendorApplication').apiVersion(API_VERSION)
+  return S.documentList()
+    .apiVersion(API_VERSION)
+    .schemaType('vendorApplication')
+    .title('Vendor Applications')
+    .filter('_type == "vendorApplication"')
+    .defaultOrdering([{field: 'submittedAt', direction: 'desc'}])
+    .initialValueTemplates(baseList.getInitialValueTemplates())
+    .menuItems(baseList.getMenuItems())
+    .canHandleIntent(baseList.getCanHandleIntent())
+}
+
 export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('F.A.S. Motorsports')
@@ -1960,60 +1825,7 @@ const createVendorApplicationsSubSection = (S: any) =>
     .id('vendor-applications')
     .title('Vendor Applications')
     .icon(ClipboardIcon)
-    .child(
-      S.list()
-        .title('Vendor Applications')
-        .items([
-          S.listItem()
-            .id('vendor-applications-pending')
-            .title('Pending Review')
-            .icon(ClockIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorApplication')
-                .title('Pending Review')
-                .filter('_type == "vendorApplication" && coalesce(status, "pending") == "pending"')
-                .defaultOrdering([{field: 'submittedAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('vendor-applications-approved')
-            .title('Approved')
-            .icon(CheckmarkCircleIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorApplication')
-                .title('Approved Applications')
-                .filter('_type == "vendorApplication" && status == "approved"')
-                .defaultOrdering([{field: 'submittedAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('vendor-applications-rejected')
-            .title('Rejected')
-            .icon(WarningOutlineIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorApplication')
-                .title('Rejected Applications')
-                .filter('_type == "vendorApplication" && status == "rejected"')
-                .defaultOrdering([{field: 'submittedAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('vendor-applications-all')
-            .title('All Applications')
-            .icon(DocumentIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorApplication')
-                .title('All Vendor Applications')
-                .filter('_type == "vendorApplication"')
-                .defaultOrdering([{field: 'submittedAt', direction: 'desc'}]),
-            ),
-        ]),
-    )
+    .child(buildVendorApplicationsList(S))
 const createVendorQuotesSubSection = (S: any) =>
   S.listItem()
     .id('vendor-quotes')

@@ -23,7 +23,11 @@ export default function SendCampaignButton(props: SendCampaignButtonProps) {
     setResult(null)
 
     try {
-      const response = await fetch('/.netlify/functions/sendEmailCampaign', {
+      const url = isTest
+        ? '/.netlify/functions/send-email-test'
+        : '/.netlify/functions/sendEmailCampaign'
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({campaignId, isTest}),
@@ -37,7 +41,7 @@ export default function SendCampaignButton(props: SendCampaignButtonProps) {
 
       setResult(
         isTest
-          ? `✅ Test email sent successfully!`
+          ? `✅ Test email sent${data?.message ? `: ${data.message}` : ''}`
           : `✅ Campaign sent to ${data.sent} recipients!`,
       )
     } catch (err: any) {
