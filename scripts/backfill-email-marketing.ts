@@ -27,18 +27,18 @@ type Customer = {
   emailMarketing?: EmailMarketing | null
 }
 
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`)
+function getEnv(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name]
+    if (value) return value
   }
-  return value
+  throw new Error(`Missing required environment variable ${names.join(' or ')}`)
 }
 
 function createSanityClient() {
-  const projectId = requireEnv('SANITY_STUDIO_PROJECT_ID')
-  const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
-  const token = requireEnv('SANITY_API_WRITE_TOKEN')
+  const projectId = getEnv('SANITY_STUDIO_PROJECT_ID', 'SANITY_PROJECT_ID')
+  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+  const token = getEnv('SANITY_API_WRITE_TOKEN', 'SANITY_API_TOKEN', 'SANITY_WRITE_TOKEN')
 
   return createClient({
     projectId,
@@ -47,14 +47,6 @@ function createSanityClient() {
     apiVersion: '2024-01-01',
     useCdn: false,
   })
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`)
-  }
-  return value
 }
 
 function asBoolean(value: boolean | null | undefined, fallback = false) {
