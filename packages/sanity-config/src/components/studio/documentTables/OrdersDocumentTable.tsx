@@ -10,10 +10,12 @@ import {
   Menu,
   MenuButton,
   MenuItem,
+  MenuDivider,
   Stack,
   Text,
   TextInput,
 } from '@sanity/ui'
+import {EllipsisVerticalIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../../utils/base64'
 import {getNetlifyFunctionBaseCandidates} from '../../../utils/netlifyBase'
@@ -130,6 +132,51 @@ export default function OrdersDocumentTable({
   })
   const [trackingNumber, setTrackingNumber] = useState('')
   const [trackingUrl, setTrackingUrl] = useState('')
+
+  const callNetlifyFunction = useCallback(
+    async (fnName: string, payload: Record<string, unknown>) => {
+      const attempted = new Set<string>()
+      const body = JSON.stringify(payload)
+      const bases = Array.from(
+        new Set([lastSuccessfulBase.current, ...netlifyBases].filter(Boolean) as string[]),
+      )
+      let lastErr: any
+
+      for (const base of bases) {
+        if (attempted.has(base)) continue
+        attempted.add(base)
+        try {
+          const res = await fetch(`${base}/.netlify/functions/${fnName}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body,
+          })
+          if (!res.ok) {
+            const message = await res.text().catch(() => '')
+            const error = new Error(message || `${fnName} request failed`) as any
+            error.status = res.status
+            lastErr = error
+            if (res.status === 404) continue
+            throw error
+          }
+          lastSuccessfulBase.current = base
+          try {
+            window.localStorage?.setItem('NLFY_BASE', base)
+          } catch {
+            // ignore storage failures
+          }
+          return res
+        } catch (err: any) {
+          lastErr = err
+          const status = err?.status || err?.response?.status
+          if (!(err instanceof TypeError) && status !== 404) break
+        }
+      }
+
+      throw lastErr || new Error(`${fnName} request failed`)
+    },
+    [netlifyBases],
+  )
 
   const handlePageItemsChange = useCallback((rows: OrderRow[]) => {
     setCurrentItems(rows)
@@ -268,20 +315,38 @@ export default function OrdersDocumentTable({
 
   const fulfillOrders = useCallback(
     async (ids: string[]) => {
+      const failures: string[] = []
       for (const id of ids) {
         try {
-          const base = lastSuccessfulBase.current || netlifyBases[0] || ''
-          await fetch(`${base}/.netlify/functions/fulfill-order`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({orderId: id}),
-          })
+          await callNetlifyFunction('fulfill-order', {orderId: id})
         } catch (err) {
           console.error('Fulfill failed for', id, err)
+          failures.push(id)
         }
       }
+      return failures
     },
-    [netlifyBases],
+    [callNetlifyFunction],
+  )
+
+  const cancelOrders = useCallback(
+    async (ids: string[], reason?: string) => {
+      const failures: string[] = []
+      const normalizedReason = reason?.trim() || undefined
+      for (const id of ids) {
+        try {
+          await callNetlifyFunction('cancelOrder', {
+            orderId: id,
+            reason: normalizedReason,
+          })
+        } catch (err) {
+          console.error('Cancel failed for', id, err)
+          failures.push(id)
+        }
+      }
+      return failures
+    },
+    [callNetlifyFunction],
   )
 
   const fetchPackingSlip = useCallback(
@@ -381,6 +446,60 @@ export default function OrdersDocumentTable({
     [client, currentItems, fetchPackingSlip, resolvePatchTargets],
   )
 
+  const handleBulkFulfill = useCallback(async () => {
+    if (!selectedCount) return
+    setBulkBusy(true)
+    try {
+      const failed = await fulfillOrders(selectedIdList)
+      setRefreshKey((key) => key + 1)
+      setSelectedIds(new Set())
+      if (failed.length) {
+        window.alert(`Fulfillment failed for ${failed.length} order(s). Check logs for details.`)
+      }
+    } finally {
+      setBulkBusy(false)
+    }
+  }, [fulfillOrders, selectedCount, selectedIdList])
+
+  const handleBulkPrint = useCallback(async () => {
+    if (!selectedCount) return
+    setBulkBusy(true)
+    try {
+      await printPackingSlips(selectedIdList)
+      setSelectedIds(new Set())
+      setRefreshKey((key) => key + 1)
+    } finally {
+      setBulkBusy(false)
+    }
+  }, [printPackingSlips, selectedCount, selectedIdList])
+
+  const handleBulkCancel = useCallback(async () => {
+    if (!selectedCount) return
+    const confirmed = window.confirm(
+      `Cancel ${selectedCount} order${selectedCount === 1 ? '' : 's'}? This cannot be undone.`,
+    )
+    if (!confirmed) return
+    const reason = window.prompt('Reason for cancellation (optional):') || undefined
+    setBulkBusy(true)
+    try {
+      const failed = await cancelOrders(selectedIdList, reason || undefined)
+      setRefreshKey((key) => key + 1)
+      setSelectedIds(new Set())
+      if (failed.length) {
+        window.alert(`Unable to cancel ${failed.length} order(s). Check logs for details.`)
+      } else {
+        window.alert('Orders cancelled.')
+      }
+    } finally {
+      setBulkBusy(false)
+    }
+  }, [cancelOrders, selectedCount, selectedIdList])
+
+  const handleBulkTracking = useCallback(() => {
+    if (!selectedCount) return
+    setTrackingDialog({open: true, targetIds: selectedIdList})
+  }, [selectedCount, selectedIdList])
+
   const headerActions = (
     <Flex align="center" gap={3} wrap="wrap">
       <TextInput
@@ -388,6 +507,72 @@ export default function OrdersDocumentTable({
         onChange={(e) => setSearchTerm(e.currentTarget.value)}
         placeholder="Search by order #, customer, email…"
         style={{width: '320px'}}
+      />
+      {selectedCount > 0 ? (
+        <Text size={1} muted>
+          {selectedCount} selected
+        </Text>
+      ) : null}
+      <MenuButton
+        id="orders-bulk-actions"
+        button={
+          <Button
+            icon={EllipsisVerticalIcon}
+            mode="ghost"
+            text="Actions"
+            disabled={bulkBusy}
+            aria-label="Order actions"
+          />
+        }
+        menu={
+          <Menu>
+            <MenuItem
+              text="Fulfill orders"
+              tone="positive"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={handleBulkFulfill}
+            />
+            <MenuItem
+              text="Print packing slips"
+              tone="primary"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={handleBulkPrint}
+            />
+            <MenuItem
+              text="Add tracking"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={handleBulkTracking}
+            />
+            <MenuItem
+              text="Cancel orders"
+              tone="critical"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={handleBulkCancel}
+            />
+            <MenuDivider />
+            <MenuItem
+              text="Duplicate orders"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={() => duplicateOrders(selectedIdList)}
+            />
+            <MenuItem
+              text="Delete orders"
+              tone="critical"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={() => deleteOrders(selectedIdList)}
+            />
+            {selectedCount > 0 ? (
+              <>
+                <MenuDivider />
+                <MenuItem
+                  text="Clear selection"
+                  disabled={bulkBusy}
+                  onClick={() => setSelectedIds(new Set())}
+                />
+              </>
+            ) : null}
+          </Menu>
+        }
       />
     </Flex>
   )
@@ -541,21 +726,30 @@ export default function OrdersDocumentTable({
                       />
                       <MenuItem
                         text="Create label"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.preventDefault()
-                          fulfillOrders([data._id])
+                          const failed = await fulfillOrders([data._id])
+                          if (failed.length === 0) {
+                            setRefreshKey((key) => key + 1)
+                          } else {
+                            window.alert('Unable to fulfill order. Check logs for details.')
+                          }
                         }}
                       />
                       <MenuItem
                         text="Mark as fulfilled"
                         onClick={async (e) => {
                           e.preventDefault()
-                          const base = lastSuccessfulBase.current || netlifyBases[0] || ''
-                          await fetch(`${base}/.netlify/functions/fulfill-order`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({orderId: data._id, markOnly: true}),
-                          })
+                          try {
+                            await callNetlifyFunction('fulfill-order', {
+                              orderId: data._id,
+                              markOnly: true,
+                            })
+                            setRefreshKey((key) => key + 1)
+                          } catch (err) {
+                            console.error('Mark fulfilled failed for', data._id, err)
+                            window.alert('Unable to mark order as fulfilled.')
+                          }
                         }}
                       />
                     </Menu>

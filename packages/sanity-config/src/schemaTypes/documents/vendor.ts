@@ -173,7 +173,12 @@ export default defineType({
       group: 'contact',
       options: {columns: 2},
       fields: [
-        defineField({name: 'name', title: 'Name', type: 'string', validation: (Rule) => Rule.required()}),
+        defineField({
+          name: 'name',
+          title: 'Name',
+          type: 'string',
+          validation: (Rule) => Rule.required(),
+        }),
         defineField({name: 'title', title: 'Title', type: 'string'}),
         defineField({
           name: 'email',
@@ -193,7 +198,12 @@ export default defineType({
       options: {columns: 2},
       fields: [
         defineField({name: 'name', title: 'Name', type: 'string'}),
-        defineField({name: 'email', title: 'Email', type: 'string', validation: (Rule) => Rule.email()}),
+        defineField({
+          name: 'email',
+          title: 'Email',
+          type: 'string',
+          validation: (Rule) => Rule.email(),
+        }),
         defineField({name: 'phone', title: 'Phone', type: 'string'}),
       ],
     }),
@@ -242,9 +252,9 @@ export default defineType({
       group: 'business',
       options: {
         list: [
-          {title: 'Standard (20% off retail)', value: 'standard'},
-          {title: 'Preferred (30% off retail)', value: 'preferred'},
-          {title: 'Platinum (40% off retail)', value: 'platinum'},
+          {title: 'Standard (10% off retail)', value: 'standard'},
+          {title: 'Preferred (12% off retail)', value: 'preferred'},
+          {title: 'Platinum (15% off retail)', value: 'platinum'},
           {title: 'Custom Pricing', value: 'custom'},
         ],
       },
