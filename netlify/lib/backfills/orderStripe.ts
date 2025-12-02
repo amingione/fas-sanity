@@ -1,5 +1,6 @@
-import {createClient, type SanityClient} from '@sanity/client'
 import type {Handler, HandlerEvent} from '@netlify/functions'
+import {createClient, type SanityClient} from '@sanity/client'
+import {requireSanityCredentials} from '../sanityEnv'
 
 export type StripeBackfillKind = 'checkout' | 'paymentIntent' | 'charge'
 
@@ -28,31 +29,8 @@ type OrderDoc = {
 }
 
 function createSanityClient(): SanityClient {
-  const projectId =
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
-    ''
-  const dataset =
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    process.env.NEXT_PUBLIC_SANITY_DATASET ||
-    'production'
-  const token = process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN
-
-  if (!projectId || !dataset || !token) {
-    throw new Error(
-      'Missing Sanity configuration (SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_DATASET / SANITY_API_TOKEN).',
-    )
-  }
-
-  return createClient({
-    projectId,
-    dataset,
-    apiVersion: '2024-04-10',
-    token,
-    useCdn: false,
-  })
+  const {projectId, dataset, token} = requireSanityCredentials()
+  return createClient({projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false})
 }
 
 async function importReprocessHandler(): Promise<Handler> {
