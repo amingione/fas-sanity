@@ -5,9 +5,13 @@
 [build.environment]
   NODE_VERSION = "20"
   MISE_DISABLE = "1"
+  NODE_OPTIONS = "--require ./scripts/aws-secrets-shim.cjs"
   # Allow specific environment variable names to pass secret scanning since
   # their values are required during builds but are not written to the public build output.
   SECRETS_SCAN_OMIT_KEYS = "CHECK_PRINTER_SANITY_TOKEN,CORS_ALLOW,CORS_ORIGIN"
+
+[[plugins]]
+package = "@netlify/plugin-secrets-manager"
 
 [context.production.environment]
   NODE_ENV = "production"
@@ -16,7 +20,11 @@
   directory = "netlify/functions"
   # Ensure certain deps are not bundled and are resolved from node_modules
   node_bundler = "esbuild"
+  included_files = ["scripts/aws-secrets-shim.cjs"]
   external_node_modules = ["get-stream"]
+
+[functions.environment]
+  NODE_OPTIONS = "--require ./scripts/aws-secrets-shim.cjs"
 
 [dev]
   command = "pnpm run dev"

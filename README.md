@@ -53,6 +53,10 @@ npx @sanity/cli init --template shopify
 
 Make sure to run the tagged release! (`@sanity/cli`)
 
+## Secrets
+
+- Build secrets that exceed Netlify's 4 KB env var limit are pulled from AWS Secrets Manager via `@netlify/plugin-secrets-manager`. See `docs/netlify-secrets-manager.md` for setup.
+
 ## Local Development
 
 ### Starting development server

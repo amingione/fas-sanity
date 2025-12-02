@@ -70,8 +70,8 @@
     "date-fns": "^3.6.0",
     "dotenv": "^16.6.1",
     "get-stream": "^5.2.0",
-    "googleapis": "^131.0.0",
     "google-ads-api": "^17.0.0",
+    "googleapis": "^131.0.0",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.1",
     "multiparty": "^4.2.3",
@@ -97,6 +97,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
+    "@netlify/plugin-secrets-manager": "^1.1.1",
     "@portabletext/types": "^2.0.2",
     "@sanity/eslint-config-studio": "^5.0.2",
     "@tailwindcss/vite": "^4.1.16",
