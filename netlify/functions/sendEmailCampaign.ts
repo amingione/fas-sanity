@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
+import {Resend} from 'resend'
 import {sendEmail} from '../../packages/sanity-config/src/utils/emailService'
 import {toHTML} from '@portabletext/to-html'
 
@@ -10,6 +11,9 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const resendAudienceId = process.env.RESEND_AUDIENCE_ID
 
 
 const SEGMENT_QUERIES: Record<string, string> = {
@@ -160,6 +164,22 @@ const updateEmailLogStatus = async (logId: string, patch: Record<string, any>) =
   await sanity.patch(logId).set(patch).commit({autoGenerateArrayKeys: true})
 }
 
+const syncResendContact = async (email: string, name?: string) => {
+  if (!resend || !resendAudienceId) return
+  const [firstName, ...rest] = (name || '').split(' ').filter(Boolean)
+  try {
+    await resend.contacts.create({
+      email,
+      firstName: firstName || undefined,
+      lastName: rest.length ? rest.join(' ') : undefined,
+      audienceId: resendAudienceId,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.warn('sendEmailCampaign: Resend contact sync failed', message)
+  }
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {statusCode: 405, body: 'Method Not Allowed'}
@@ -278,6 +298,7 @@ export const handler: Handler = async (event) => {
       })
 
       try {
+        await syncResendContact(to, customer.name)
         const result = await sendEmail({
           to,
           subject: campaign.subject,
