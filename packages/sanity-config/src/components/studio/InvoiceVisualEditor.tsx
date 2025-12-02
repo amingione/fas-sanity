@@ -29,6 +29,9 @@ type InvoiceLineItem = {
   quantity?: number
   unitPrice?: number
   lineTotal?: number
+  upgradesTotal?: number
+  metadata?: Array<{key?: string; value?: unknown}> | Record<string, unknown> | null
+  metadataEntries?: Array<{key?: string; value?: unknown}> | null
 }
 
 type ShipmentWeight = {

@@ -1946,13 +1946,19 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
   const email = checkoutSession.customer_details?.email || checkoutSession.customer_email || ''
   const name = checkoutSession.customer_details?.name || ''
 
-  let customer = await webhookSanityClient.fetch<{_id: string; name?: string} | null>(
-    `*[_type == "customer" && email == $email][0]{_id, name}`,
+  let customer = await webhookSanityClient.fetch<
+    {_id: string; name?: string; stripeCustomerId?: string | null} | null
+  >(
+    `*[_type == "customer" && email == $email][0]{_id, name, stripeCustomerId}`,
     {email},
   )
 
   if (!customer) {
-    customer = await webhookSanityClient.create({
+    customer = await webhookSanityClient.create<{
+      _id: string
+      name?: string
+      stripeCustomerId?: string | null
+    }>({
       _type: 'customer',
       email: email || undefined,
       name: name || (email ? email.split('@')[0] : 'Customer'),
@@ -2316,7 +2322,17 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     undefined
 
   const existingOrder = await webhookSanityClient.fetch<
-    | {_id: string; invoiceRef?: {_ref: string}; orderNumber?: string; cart?: any[]}
+    | {
+        _id: string
+        invoiceRef?: {_ref: string}
+        orderNumber?: string
+        cart?: any[]
+        fulfillment?: Record<string, unknown> | null
+        fulfillmentWorkflow?: {currentStage?: string | null} | null
+        trackingNumber?: string | null
+        trackingUrl?: string | null
+        shippingLabelUrl?: string | null
+      }
     | null
   >(
     `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
@@ -2326,7 +2342,6 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   )
 
   const orderNumber = existingOrder?.orderNumber || (await generateRandomOrderNumber())
-  const sessionMeta = (checkoutSession.metadata || {}) as Record<string, string>
   const nowIso = new Date().toISOString()
   const baseOrderPayload: any = {
     _type: 'order',

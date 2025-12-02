@@ -38,7 +38,8 @@ export type InvoiceLineItem = {
   upgrades?: Array<string | null> | string | null
   upgradesTotal?: number | null
   validationIssues?: Array<string | null> | string | null
-  metadata?: Array<Record<string, unknown>> | null
+  metadata?: Array<{key?: string | null; value?: unknown}> | Record<string, unknown> | null
+  metadataEntries?: Array<{key?: string | null; value?: unknown}> | null
   _key?: string | null
 }
 
@@ -54,8 +55,10 @@ export type OrderCartItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
+  upgradesTotal?: number | null
   validationIssues?: Array<string | null> | string | null
-  metadata?: Array<{key?: string | null; value?: unknown}> | null
+  metadata?: Array<{key?: string | null; value?: unknown}> | Record<string, unknown> | null
+  metadataEntries?: Array<{key?: string | null; value?: unknown}> | null
 }
 
 export type InvoiceLike = {
@@ -788,6 +791,12 @@ function drawInvoice({
 
   y = Math.min(billBottom, shipBottom, metaBottom) - 24
 
+  const discountLabel =
+    normalizeString((invoice as any)?.discountLabel) ||
+    normalizeString((invoice as any)?.orderRef?.discountLabel) ||
+    normalizeString((invoice as any)?.order?.discountLabel) ||
+    'Discount'
+
   const tableBottom = drawInvoiceTable({
     page,
     fonts,
@@ -804,6 +813,7 @@ function drawInvoice({
     altRowBg: tableAltBg,
     totalsHighlight,
     taxRate: Number(invoice.taxRate || 0),
+    discountLabel,
   })
 
   const footerLineY = Math.max(tableBottom - 30, margin + 60)
@@ -976,6 +986,7 @@ type TableOptions = {
   altRowBg: ReturnType<typeof rgb>
   totalsHighlight: ReturnType<typeof rgb>
   taxRate: number
+  discountLabel: string
 }
 
 type LineItemRow = {
@@ -1011,6 +1022,7 @@ function drawInvoiceTable({
   altRowBg,
   totalsHighlight,
   taxRate,
+  discountLabel,
 }: TableOptions): number {
   const tableWidth = right - left
   const headerHeight = 26
@@ -1178,12 +1190,6 @@ function drawInvoiceTable({
       thickness: 1,
     })
   }
-
-  const discountLabel =
-    normalizeString((invoice as any)?.discountLabel) ||
-    normalizeString((invoice as any)?.orderRef?.discountLabel) ||
-    normalizeString((invoice as any)?.order?.discountLabel) ||
-    'Discount'
 
   const totalsRows: Array<{label: string; value: string; bold?: boolean}> = [
     {label: 'Subtotal', value: money(totals.subtotal)},

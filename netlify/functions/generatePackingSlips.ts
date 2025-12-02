@@ -80,6 +80,67 @@ interface PackingItem {
   quantity: number
 }
 
+type PackingMetadataEntry = {key?: string | null; value?: unknown}
+
+type PackingCartItem = {
+  name?: string | null
+  productName?: string | null
+  sku?: string | null
+  quantity?: number | null
+  price?: number | null
+  lineTotal?: number | null
+  total?: number | null
+  optionSummary?: string | null
+  optionDetails?: string[] | null
+  upgrades?: string[] | null
+  upgradesTotal?: number | null
+  validationIssues?: string[] | null
+  productRef?: {_id?: string} | {_ref?: string} | null
+  product?: {_id?: string; title?: string | null; sku?: string | null} | null
+  metadata?: Array<PackingMetadataEntry> | Record<string, unknown> | null
+  metadataEntries?: Array<PackingMetadataEntry> | null
+}
+
+type PackingInvoice = {
+  _id?: string
+  _createdAt?: string
+  invoiceNumber?: string | null
+  orderNumber?: string | null
+  invoiceDate?: string | null
+  customerEmail?: string | null
+  customerNotes?: string | null
+  internalNotes?: string | null
+  billTo?: Record<string, unknown> | null
+  shipTo?: Record<string, unknown> | null
+  lineItems?: Array<
+    PackingCartItem & {
+      description?: string | null
+      kind?: string | null
+      product?: {_id?: string; title?: string | null; sku?: string | null} | null
+      unitPrice?: number | null
+    }
+  > | null
+  orderRef?: PackingOrder | null
+}
+
+type PackingOrder = {
+  _id?: string
+  orderNumber?: string | null
+  createdAt?: string | null
+  stripeSessionId?: string | null
+  customerEmail?: string | null
+  shippingAddress?: Record<string, unknown> | null
+  billingAddress?: Record<string, unknown> | null
+  cart?: PackingCartItem[] | null
+  notes?: string | null
+  invoiceRef?: {_ref?: string | null} | null
+  fulfillment?: Record<string, unknown> | null
+  fulfillmentWorkflow?: {currentStage?: string | null} | null
+  trackingNumber?: string | null
+  trackingUrl?: string | null
+  shippingLabelUrl?: string | null
+}
+
 const toNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value === 'string') {
@@ -294,11 +355,12 @@ const prepareItemPresentation = (source: {
   productSku?: unknown
   price?: unknown
   currency?: string
-  optionSummary?: unknown
-  optionDetails?: unknown
-  upgrades?: unknown
-  metadataEntries?: unknown
-  metadata?: unknown
+  optionSummary?: string | null | undefined
+  optionDetails?: string | string[] | null | undefined
+  upgrades?: string | string[] | null | undefined
+  upgradesTotal?: number | null | undefined
+  metadataEntries?: Array<PackingMetadataEntry> | Record<string, unknown> | null | undefined
+  metadata?: Array<PackingMetadataEntry> | Record<string, unknown> | null | undefined
 }): {title: string; details: string[]} => {
   const metadataEntries = normalizeMetadataEntries(
     (source.metadataEntries ?? source.metadata) as any,
@@ -671,11 +733,11 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   const cleanInvoiceId = invoiceId?.replace(/^drafts\./, '')
   const cleanOrderId = orderId?.replace(/^drafts\./, '')
 
-  let invoice: any = null
-  let order: any = null
+  let invoice: PackingInvoice | null = null
+  let order: PackingOrder | null = null
 
   if (cleanInvoiceId) {
-    invoice = await sanity.fetch(
+    invoice = await sanity.fetch<PackingInvoice | null>(
       `*[_type == "invoice" && _id == $id][0]{
         _id,
         _createdAt,
@@ -727,7 +789,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   }
 
   if (!order && cleanOrderId) {
-    order = await sanity.fetch(
+    order = await sanity.fetch<PackingOrder | null>(
       `*[_type == "order" && _id == $id][0]{
         _id,
         orderNumber,
@@ -758,7 +820,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
   }
 
   if (!invoice && order?.invoiceRef?._ref) {
-    invoice = await sanity.fetch(
+    invoice = await sanity.fetch<PackingInvoice | null>(
       `*[_type == "invoice" && _id == $id][0]{
         _id,
         _createdAt,
