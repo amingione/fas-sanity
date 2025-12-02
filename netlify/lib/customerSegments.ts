@@ -1,5 +1,5 @@
 const ORDER_TOTAL_EXPRESSION =
-  'coalesce(totalAmount, amountSubtotal + amountTax + amountShipping, amountSubtotal + amountTax, amountSubtotal, totalAmount, total, 0)'
+  'coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, amountSubtotal + amountTax - coalesce(amountDiscount, 0), amountSubtotal, totalAmount, total, 0)'
 
 export const CUSTOMER_METRICS_QUERY = `*[_type == "customer" && !(_id in path("drafts.**")) && (!defined($customerId) || _id == $customerId)][0...$limit]{
   _id,

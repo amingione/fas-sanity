@@ -100,6 +100,7 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
       _id,
       orderNumber,
       amountSubtotal,
+      amountDiscount,
       amountTax,
       amountShipping,
       shippingCarrier,
@@ -122,6 +123,7 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
         metadataEntries[]{key, value}
       }
     },
+    discountLabel,
     discountType,
     discountValue,
     taxRate,

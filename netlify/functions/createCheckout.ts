@@ -463,22 +463,48 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const billTo = invoice?.billTo || {}
-    const customerEmail = (billTo?.email || '').trim() || undefined
-    const customerName = (billTo?.name || '').trim() || undefined
+  const billTo = invoice?.billTo || {}
+  const customerEmail = (billTo?.email || '').trim() || undefined
+  const customerName = (billTo?.name || '').trim() || undefined
+  const emailOptInFlag =
+    typeof payload?.emailOptIn !== 'undefined'
+      ? Boolean(payload.emailOptIn)
+      : typeof payload?.optInEmail !== 'undefined'
+        ? Boolean(payload.optInEmail)
+        : undefined
+  const marketingOptInFlag =
+    typeof payload?.marketingOptIn !== 'undefined'
+      ? Boolean(payload.marketingOptIn)
+      : typeof payload?.marketingConsent !== 'undefined'
+        ? Boolean(payload.marketingConsent)
+        : emailOptInFlag
+  const textOptInFlag =
+    typeof payload?.textOptIn !== 'undefined'
+      ? Boolean(payload.textOptIn)
+      : typeof payload?.smsOptIn !== 'undefined'
+        ? Boolean(payload.smsOptIn)
+        : undefined
+  const userIdValue =
+    (payload?.userId || payload?.user_id || payload?.auth0UserId || payload?.authUserId || '')
+      .toString()
+      .trim() || undefined
 
-    const metadata: Stripe.MetadataParam = {
-      sanity_invoice_id: invoiceId,
-      sanity_invoice_number: String(invoice.invoiceNumber || ''),
-    }
+  const metadata: Stripe.MetadataParam = {
+    sanity_invoice_id: invoiceId,
+    sanity_invoice_number: String(invoice.invoiceNumber || ''),
+  }
     appendAttributionMetadata(metadata as Record<string, string>, utmParams)
-    if (customerName) metadata.bill_to_name = customerName
-    if (customerEmail) metadata.bill_to_email = customerEmail
-    if (invoice?.invoiceNumber) metadata.order_number = String(invoice.invoiceNumber)
-    const addressFields = {
-      line1: billTo?.address_line1 || undefined,
-      line2: billTo?.address_line2 || undefined,
-      city: billTo?.city_locality || undefined,
+  if (customerName) metadata.bill_to_name = customerName
+  if (customerEmail) metadata.bill_to_email = customerEmail
+  if (emailOptInFlag !== undefined) metadata.email_opt_in = String(emailOptInFlag)
+  if (marketingOptInFlag !== undefined) metadata.marketing_opt_in = String(marketingOptInFlag)
+  if (textOptInFlag !== undefined) metadata.text_opt_in = String(textOptInFlag)
+  if (userIdValue) metadata.user_id = userIdValue
+  if (invoice?.invoiceNumber) metadata.order_number = String(invoice.invoiceNumber)
+  const addressFields = {
+    line1: billTo?.address_line1 || undefined,
+    line2: billTo?.address_line2 || undefined,
+    city: billTo?.city_locality || undefined,
       state: billTo?.state_province || undefined,
       postal_code: billTo?.postal_code || undefined,
       country: (billTo?.country_code || '').toUpperCase() || undefined,

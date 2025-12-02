@@ -20,6 +20,7 @@ export interface OrderCartItem {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  upgradesTotal?: number
   productRef?: SanityReference
 }
 
@@ -39,6 +40,7 @@ export interface OrderDocument {
   _id?: string
   _type?: 'order'
   orderNumber?: string
+  orderType?: string
   status?: OrderStatus
   createdAt?: string
   fulfilledAt?: string
@@ -46,6 +48,8 @@ export interface OrderDocument {
   amountSubtotal?: number
   amountTax?: number
   amountDiscount?: number
+  discountLabel?: string
+  discountPercent?: number
   amountShipping?: number
   paymentStatus?: string
   paymentIntentId?: string

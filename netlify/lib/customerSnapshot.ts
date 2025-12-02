@@ -29,6 +29,7 @@ type UpdateCustomerArgs = {
   orderId?: string | null
   customerId?: string | null
   email?: string | null
+  userId?: string | null
   shippingAddress?: ShippingLike | null
   billingAddress?: ShippingLike | null
   stripeCustomerId?: string | null
@@ -36,6 +37,9 @@ type UpdateCustomerArgs = {
   customerName?: string | null
   metadata?: Record<string, unknown> | null
   defaultRoles?: string[]
+  emailOptIn?: boolean | null
+  marketingOptIn?: boolean | null
+  textOptIn?: boolean | null
 }
 
 function splitName(value?: string | null): {firstName?: string; lastName?: string} {
@@ -126,6 +130,7 @@ export async function updateCustomerProfileForOrder({
   orderId,
   customerId: initialCustomerId,
   email: rawEmail,
+  userId,
   shippingAddress: shippingFromOrder,
   billingAddress,
   stripeCustomerId,
@@ -133,9 +138,13 @@ export async function updateCustomerProfileForOrder({
   customerName,
   metadata,
   defaultRoles,
+  emailOptIn,
+  marketingOptIn,
+  textOptIn,
 }: UpdateCustomerArgs): Promise<string | null> {
   const email = (rawEmail || '').toLowerCase().trim()
   if (!initialCustomerId && !email) return null
+  const nowIso = new Date().toISOString()
 
   let customerId = initialCustomerId || null
   let customerDoc: any = null
@@ -178,6 +187,7 @@ export async function updateCustomerProfileForOrder({
     const payload: Record<string, any> = {
       _type: 'customer',
       email,
+      userId: userId || undefined,
       roles,
       firstName: nameParts.firstName || undefined,
       lastName: nameParts.lastName || undefined,
@@ -201,7 +211,10 @@ export async function updateCustomerProfileForOrder({
       stripeLastSyncedAt: stripeSyncTimestamp || undefined,
       ...(shippingFromOrder?.phone ? {phone: shippingFromOrder.phone} : {}),
       ...(metadataEntries ? {stripeMetadata: metadataEntries} : {}),
-      updatedAt: new Date().toISOString(),
+      emailOptIn: typeof emailOptIn === 'boolean' ? emailOptIn : false,
+      marketingOptIn: typeof marketingOptIn === 'boolean' ? marketingOptIn : false,
+      textOptIn: typeof textOptIn === 'boolean' ? textOptIn : false,
+      updatedAt: nowIso,
     }
     try {
       const created = await sanity.create(payload as any, {autoGenerateArrayKeys: true})
@@ -226,7 +239,7 @@ export async function updateCustomerProfileForOrder({
         orderNumber,
         status,
         "orderDate": coalesce(orderDate, createdAt, _createdAt),
-        "totalAmount": coalesce(totalAmount, amountSubtotal + amountTax + amountShipping, totalAmount, total)
+        "totalAmount": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
       },
       "orderCount": count(*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
@@ -236,7 +249,7 @@ export async function updateCustomerProfileForOrder({
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       ) && status != "cancelled"]{
-        "amount": coalesce(totalAmount, amountSubtotal + amountTax + amountShipping, totalAmount, total)
+        "amount": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
       },
       "quotes": *[_type == "quote" && (
         ($id != "" && (customer._ref == $id || customerRef._ref == $id)) ||
@@ -370,7 +383,7 @@ export async function updateCustomerProfileForOrder({
     lifetimeSpend: Number(lifetimeSpend.toFixed(2)),
     orders: dedupedOrders,
     quotes: quoteSummaries,
-    updatedAt: new Date().toISOString(),
+    updatedAt: nowIso,
   }
 
   if (shippingNormalized) patch.shippingAddress = shippingNormalized
@@ -382,6 +395,13 @@ export async function updateCustomerProfileForOrder({
   if (nameParts.firstName && !customerDoc?.firstName) patch.firstName = nameParts.firstName
   if (nameParts.lastName && !customerDoc?.lastName) patch.lastName = nameParts.lastName
   if (shippingFromOrder?.phone && !customerDoc?.phone) patch.phone = shippingFromOrder.phone
+  if (userId && !customerDoc?.userId) patch.userId = userId
+  if (typeof emailOptIn === 'boolean') patch.emailOptIn = emailOptIn
+  else if (typeof customerDoc?.emailOptIn === 'undefined') patch.emailOptIn = false
+  if (typeof marketingOptIn === 'boolean') patch.marketingOptIn = marketingOptIn
+  else if (typeof customerDoc?.marketingOptIn === 'undefined') patch.marketingOptIn = false
+  if (typeof textOptIn === 'boolean') patch.textOptIn = textOptIn
+  else if (typeof customerDoc?.textOptIn === 'undefined') patch.textOptIn = false
 
   const metadataEntries = mapStripeMetadata(metadata as Record<string, unknown> | null)
   if (metadataEntries) patch.stripeMetadata = metadataEntries

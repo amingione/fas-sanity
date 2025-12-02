@@ -136,7 +136,7 @@ const orderSchema = defineType({
   type: 'document',
   icon: PackageIcon,
   initialValue: () => ({
-    orderType: 'in-store',
+    orderType: 'online',
   }),
   groups: [
     {name: 'overview', title: 'Overview'},
@@ -444,6 +444,20 @@ const orderSchema = defineType({
       group: 'items',
       readOnly: true,
     },
+    defineField({
+      name: 'discountLabel',
+      type: 'string',
+      title: 'Discount Label',
+      group: 'items',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'discountPercent',
+      type: 'number',
+      title: 'Discount Percent',
+      group: 'items',
+      readOnly: true,
+    }),
     {
       name: 'amountShipping',
       type: 'number',
@@ -547,113 +561,6 @@ const orderSchema = defineType({
           ],
         },
         {
-          name: 'pickingDetails',
-          type: 'object',
-          title: 'Picking Details',
-          options: {collapsible: true, collapsed: true},
-          fields: [
-            {name: 'assignedTo', type: 'reference', title: 'Assigned Picker', to: [{type: 'user'}]},
-            {name: 'pickingStarted', type: 'datetime', title: 'Picking Started'},
-            {name: 'pickingCompleted', type: 'datetime', title: 'Picking Completed'},
-            {
-              name: 'pickList',
-              type: 'array',
-              title: 'Pick List',
-              of: [
-                defineField({
-                  type: 'object',
-                  fields: [
-                    {name: 'product', type: 'reference', to: [{type: 'product'}]},
-                    {name: 'sku', type: 'string', title: 'SKU'},
-                    {name: 'quantity', type: 'number', title: 'Quantity'},
-                    {name: 'location', type: 'string', title: 'Warehouse Location', description: 'Bin/shelf location'},
-                    {name: 'picked', type: 'boolean', title: 'Picked', initialValue: false},
-                    {name: 'pickedAt', type: 'datetime', title: 'Picked At'},
-                  ],
-                }),
-              ],
-            },
-            {name: 'pickingNotes', type: 'text', title: 'Picking Notes', rows: 3},
-          ],
-        },
-        {
-          name: 'packingDetails',
-          type: 'object',
-          title: 'Packing Details',
-          options: {collapsible: true, collapsed: true},
-          fields: [
-            {name: 'assignedTo', type: 'reference', title: 'Assigned Packer', to: [{type: 'user'}]},
-            {name: 'packingStarted', type: 'datetime', title: 'Packing Started'},
-            {name: 'packingCompleted', type: 'datetime', title: 'Packing Completed'},
-            {
-              name: 'packingStation',
-              type: 'string',
-              title: 'Packing Station',
-              description: 'Which station was used',
-            },
-            {
-              name: 'boxSize',
-              type: 'string',
-              title: 'Box Size',
-              options: {
-                list: [
-                  'Small (12x9x4)',
-                  'Medium (16x12x6)',
-                  'Large (20x16x8)',
-                  'Extra Large (24x20x12)',
-                  'Custom',
-                ],
-              },
-            },
-            {
-              name: 'packingMaterials',
-              type: 'array',
-              title: 'Packing Materials Used',
-              of: [
-                defineField({
-                  type: 'object',
-                  fields: [
-                    {
-                      name: 'material',
-                      type: 'string',
-                      title: 'Material',
-                      options: {
-                        list: [
-                          'Bubble wrap',
-                          'Packing peanuts',
-                          'Air pillows',
-                          'Foam inserts',
-                          'Paper fill',
-                          'Cardboard dividers',
-                        ],
-                      },
-                    },
-                    {name: 'quantity', type: 'number', title: 'Quantity'},
-                  ],
-                }),
-              ],
-            },
-            {
-              name: 'actualWeight',
-              type: 'number',
-              title: 'Actual Weight (lbs)',
-              description: 'Measured weight of packed box',
-            },
-            {
-              name: 'actualDimensions',
-              type: 'object',
-              title: 'Actual Dimensions',
-              fields: [
-                {name: 'length', type: 'number', title: 'Length (in)'},
-                {name: 'width', type: 'number', title: 'Width (in)'},
-                {name: 'height', type: 'number', title: 'Height (in)'},
-              ],
-            },
-            {name: 'qualityCheckPassed', type: 'boolean', title: 'Quality Check Passed'},
-            {name: 'packingNotes', type: 'text', title: 'Packing Notes', rows: 3},
-          ],
-        },
-        {
           name: 'holdDetails',
           type: 'object',
           title: 'Hold Details',
@@ -681,66 +588,6 @@ const orderSchema = defineType({
             {name: 'placedOnHoldBy', type: 'string', title: 'Placed on Hold By'},
             {name: 'expectedResolutionDate', type: 'date', title: 'Expected Resolution Date'},
             {name: 'customerNotified', type: 'boolean', title: 'Customer Notified', initialValue: false},
-          ],
-        },
-        {
-          name: 'sla',
-          type: 'object',
-          title: 'Service Level Agreement',
-          description: 'Fulfillment time targets',
-          fields: [
-            {name: 'targetShipDate', type: 'date', title: 'Target Ship Date', description: 'When this order should ship by'},
-            {name: 'targetDeliveryDate', type: 'date', title: 'Target Delivery Date', description: 'Promised delivery date to customer'},
-            {
-              name: 'priority',
-              type: 'string',
-              title: 'Priority',
-              options: {
-                list: [
-                  {title: '🔴 Urgent', value: 'urgent'},
-                  {title: '🟡 High', value: 'high'},
-                  {title: '🟢 Normal', value: 'normal'},
-                  {title: '⚪ Low', value: 'low'},
-                ],
-              },
-              initialValue: 'normal',
-            },
-            {
-              name: 'isLate',
-              type: 'boolean',
-              title: 'Behind Schedule',
-              description: 'Order is past target ship date',
-              readOnly: true,
-            },
-            {
-              name: 'daysUntilDue',
-              type: 'number',
-              title: 'Days Until Due',
-              description: 'Days remaining until target ship date',
-              readOnly: true,
-            },
-          ],
-        },
-        {
-          name: 'metrics',
-          type: 'object',
-          title: 'Fulfillment Metrics',
-          readOnly: true,
-          fields: [
-            {
-              name: 'totalFulfillmentTime',
-              type: 'number',
-              title: 'Total Fulfillment Time (hours)',
-              description: 'Time from order to shipment',
-            },
-            {name: 'pickingTime', type: 'number', title: 'Picking Time (minutes)'},
-            {name: 'packingTime', type: 'number', title: 'Packing Time (minutes)'},
-            {
-              name: 'timeInQueue',
-              type: 'number',
-              title: 'Time in Queue (hours)',
-              description: 'Time waiting before picking started',
-            },
           ],
         },
       ],

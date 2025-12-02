@@ -2,6 +2,7 @@ import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 import type {PDFFont, PDFImage, PDFPage} from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
+import {normalizeOptionSelections} from '@fas/sanity-config/utils/cartItemDetails'
 import {deriveOptionsFromMetadata} from './stripeCartItem'
 import {PrintSettings, darkenRgb, hexToRgb, lightenRgb} from './printSettings'
 
@@ -35,6 +36,7 @@ export type InvoiceLineItem = {
   optionSummary?: string | null
   optionDetails?: Array<string | null> | string | null
   upgrades?: Array<string | null> | string | null
+  upgradesTotal?: number | null
   validationIssues?: Array<string | null> | string | null
   metadata?: Array<Record<string, unknown>> | null
   _key?: string | null
@@ -63,6 +65,7 @@ export type InvoiceLike = {
   billTo?: InvoiceAddress | null
   shipTo?: InvoiceAddress | null
   lineItems?: InvoiceLineItem[] | null
+  discountLabel?: string | null
   discountType?: 'amount' | 'percent' | string | null
   discountValue?: number | null
   taxRate?: number | null
@@ -193,8 +196,13 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
   const discountValue = Number(doc?.discountValue || 0)
   const taxRate = Number(doc?.taxRate || 0)
   const shipping = extractShippingAmount(doc)
+  const providedSubtotal = (() => {
+    if (typeof (doc as any)?.subtotal === 'number') return (doc as any).subtotal
+    if (typeof (doc as any)?.amountSubtotal === 'number') return (doc as any).amountSubtotal
+    return undefined
+  })()
 
-  const subtotal = items.reduce((sum, li) => {
+  const computedSubtotal = items.reduce((sum, li) => {
     const qty = Number(li?.quantity ?? 1)
     const unit = Number(li?.unitPrice ?? li?.amount ?? li?.price ?? 0)
     const overrideCandidate =
@@ -207,6 +215,10 @@ export function computeInvoiceTotals(doc: InvoiceLike | null | undefined): Invoi
     const line = typeof override === 'number' ? override : qty * unit
     return sum + (Number.isFinite(line) ? line : 0)
   }, 0)
+  const subtotal =
+    typeof providedSubtotal === 'number' && Number.isFinite(providedSubtotal)
+      ? providedSubtotal
+      : computedSubtotal
 
   const discountAmt = discountType === 'percent' ? subtotal * (discountValue / 100) : discountValue
   const taxableBase = Math.max(0, subtotal - discountAmt)
@@ -368,15 +380,28 @@ function combineLineItems(
     toStringArray(cartItem?.upgrades),
     derived.upgrades,
   )
+  const upgradesTotal = coalesceNumber(
+    typeof (invoiceItem as any)?.upgradesTotal === 'number'
+      ? (invoiceItem as any)?.upgradesTotal
+      : undefined,
+    typeof cartItem?.upgradesTotal === 'number' ? cartItem.upgradesTotal : undefined,
+  )
+
+  const normalizedOptions = normalizeOptionSelections({
+    optionSummary,
+    optionDetails,
+    upgrades,
+  })
 
   const validationIssues = mergeUniqueStrings(
     toStringArray((invoiceItem as any)?.validationIssues),
     toStringArray(cartItem?.validationIssues),
   )
 
-  if (optionSummary) merged.optionSummary = optionSummary
-  if (optionDetails.length) merged.optionDetails = optionDetails
-  if (upgrades.length) merged.upgrades = upgrades
+  if (normalizedOptions.optionSummary) merged.optionSummary = normalizedOptions.optionSummary
+  if (normalizedOptions.optionDetails.length) merged.optionDetails = normalizedOptions.optionDetails
+  if (normalizedOptions.upgrades.length) merged.upgrades = normalizedOptions.upgrades
+  if (upgradesTotal !== undefined) merged.upgradesTotal = upgradesTotal
   if (validationIssues.length) merged.validationIssues = validationIssues
 
   if (!merged.sku) merged.sku = coalesceString(invoiceItem?.sku, cartItem?.sku)
@@ -1154,13 +1179,19 @@ function drawInvoiceTable({
     })
   }
 
+  const discountLabel =
+    normalizeString((invoice as any)?.discountLabel) ||
+    normalizeString((invoice as any)?.orderRef?.discountLabel) ||
+    normalizeString((invoice as any)?.order?.discountLabel) ||
+    'Discount'
+
   const totalsRows: Array<{label: string; value: string; bold?: boolean}> = [
     {label: 'Subtotal', value: money(totals.subtotal)},
   ]
 
   if (totals.discountAmt > 0) {
     totalsRows.push({
-      label: 'Discount',
+      label: discountLabel,
       value: `-${money(totals.discountAmt).replace('-', '').replace('$-', '$')}`,
     })
   }
@@ -1260,19 +1291,34 @@ const EXTRA_SKIP_KEYWORDS = [
 
 function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
   const itemName = resolveItemName(item, index)
-  const upgradesList = mergeUniqueStrings(
+  const rawUpgrades = mergeUniqueStrings(
     toStringArray((item as any)?.upgrades),
     toStringArray((item as any)?.upgradeOptions),
   )
+  const upgradesTotal =
+    typeof (item as any)?.upgradesTotal === 'number' && Number.isFinite((item as any)?.upgradesTotal)
+      ? Number((item as any)?.upgradesTotal)
+      : undefined
 
   const optionSummary = normalizeString((item as any)?.optionSummary)
+  const normalizedOptions = normalizeOptionSelections({
+    optionSummary,
+    optionDetails: toStringArray((item as any)?.optionDetails),
+    upgrades: rawUpgrades,
+  })
   const validationIssuesList = mergeUniqueStrings(toStringArray((item as any)?.validationIssues))
 
-  const optionDetails = mergeUniqueStrings(
-    toStringArray((item as any)?.optionDetails),
-    optionSummary ? [optionSummary] : [],
-    validationIssuesList.map((issue) => `⚠️ ${issue}`),
-  )
+  const displayOptions = mergeUniqueStrings([
+    ...normalizedOptions.optionDetails,
+    ...validationIssuesList.map((issue) => `⚠️ ${issue}`),
+  ])
+
+  const upgradesLabel =
+    normalizedOptions.upgrades.length === 0
+      ? ''
+      : normalizedOptions.upgrades.length === 1 && upgradesTotal !== undefined
+        ? `${normalizedOptions.upgrades[0]} (${money(upgradesTotal)})`
+        : normalizedOptions.upgrades.join(', ')
 
   const rawMetadataEntries = Array.isArray((item as any)?.metadataEntries)
     ? ((item as any)?.metadataEntries as Array<{key?: string | null; value?: unknown}>)
@@ -1280,7 +1326,13 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
       ? ((item as any)?.metadata as Array<{key?: string | null; value?: unknown}>)
       : undefined
 
-  const extrasList = collectMetadataExtras(rawMetadataEntries, [...upgradesList, ...optionDetails])
+  const extrasList = collectMetadataExtras(rawMetadataEntries, [
+    ...normalizedOptions.upgrades,
+    ...displayOptions,
+  ])
+  if (upgradesTotal !== undefined && normalizedOptions.upgrades.length !== 1) {
+    extrasList.push(`Upgrades Total: ${money(upgradesTotal)}`)
+  }
 
   const description = resolveDescription(item)
   const quantity = formatQuantity(item.quantity) || '—'
@@ -1296,8 +1348,8 @@ function resolveLineItemRow(item: InvoiceLineItem, index: number): LineItemRow {
 
   return {
     item: itemName,
-    upgrades: upgradesList.join(', ') || '—',
-    options: optionDetails.join(', ') || '—',
+    upgrades: upgradesLabel || '—',
+    options: displayOptions.join(', ') || '—',
     extras: extrasList.join(', ') || '—',
     description: description || '—',
     quantity,

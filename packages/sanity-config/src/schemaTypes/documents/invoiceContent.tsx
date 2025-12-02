@@ -431,6 +431,13 @@ export default defineType({
       fieldset: 'pricing',
     }),
     defineField({
+      name: 'discountLabel',
+      title: 'Discount Label',
+      type: 'string',
+      readOnly: true,
+      fieldset: 'pricing',
+    }),
+    defineField({
       name: 'discountType',
       title: 'Discount Type',
       type: 'string',

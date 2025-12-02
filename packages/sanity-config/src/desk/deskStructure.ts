@@ -133,7 +133,11 @@ const ProductsArchivedTableView: ComponentType = () =>
   })
 
 const CustomersAllTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {title: 'All customers', pageSize: 10})
+  React.createElement(CustomersDocumentTable as any, {
+    title: 'All Customers',
+    pageSize: 10,
+    showSegmentFilters: true,
+  })
 
 const CustomersSubscribedTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {
@@ -160,46 +164,6 @@ const CustomersRecentlyAddedTableView: ComponentType = () =>
       {field: '_updatedAt', direction: 'desc'},
     ],
     pageSize: 10,
-  })
-
-const CustomersVipTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'VIP customers',
-    pageSize: 10,
-    filter: 'segment == "vip"',
-    emptyState: 'No VIP customers yet',
-  })
-
-const CustomersRepeatTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'Repeat customers',
-    pageSize: 10,
-    filter: 'segment == "repeat"',
-    emptyState: 'No repeat customers yet',
-  })
-
-const CustomersNewTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'New customers',
-    pageSize: 10,
-    filter: 'segment == "new"',
-    emptyState: 'No new customers yet',
-  })
-
-const CustomersAtRiskTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'At-risk customers',
-    pageSize: 10,
-    filter: 'segment == "at_risk"',
-    emptyState: 'No at-risk customers',
-  })
-
-const CustomersInactiveTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'Inactive customers',
-    pageSize: 10,
-    filter: 'segment == "inactive"',
-    emptyState: 'No inactive customers recorded',
   })
 
 const OrdersListTableView: ComponentType = () =>
@@ -441,56 +405,6 @@ const createCustomersSection = (S: any) =>
             .title('All Customers')
             .icon(UserIcon)
             .child(documentTablePane(S, 'customers-all', 'All Customers', CustomersAllTableView)),
-          S.listItem()
-            .id('customers-vip')
-            .title('💎 VIP Customers')
-            .icon(() => '💎')
-            .child(
-              documentTablePane(S, 'customers-vip', 'VIP Customers', CustomersVipTableView),
-            ),
-          S.listItem()
-            .id('customers-repeat')
-            .title('🔁 Repeat Customers')
-            .icon(() => '🔁')
-            .child(
-              documentTablePane(
-                S,
-                'customers-repeat',
-                'Repeat Customers',
-                CustomersRepeatTableView,
-              ),
-            ),
-          S.listItem()
-            .id('customers-new')
-            .title('🆕 New Customers')
-            .icon(() => '🆕')
-            .child(
-              documentTablePane(S, 'customers-new', 'New Customers', CustomersNewTableView),
-            ),
-          S.listItem()
-            .id('customers-at-risk')
-            .title('⚠️ At Risk')
-            .icon(() => '⚠️')
-            .child(
-              documentTablePane(
-                S,
-                'customers-at-risk',
-                'At Risk Customers',
-                CustomersAtRiskTableView,
-              ),
-            ),
-          S.listItem()
-            .id('customers-inactive')
-            .title('😴 Inactive')
-            .icon(() => '😴')
-            .child(
-              documentTablePane(
-                S,
-                'customers-inactive',
-                'Inactive Customers',
-                CustomersInactiveTableView,
-              ),
-            ),
           S.listItem()
             .id('customers-subscribed')
             .title('Subscribed to Email')
@@ -936,17 +850,24 @@ const createVendorsSubSection = (S: any) =>
       S.list()
         .title('Vendors')
         .items([
-          S.documentTypeListItem('vendor')
+          S.listItem()
+            .id('vendors-all')
             .title('All Vendors')
             .icon(UserIcon)
-            .child((documentId: string) =>
-              S.document()
-                .schemaType('vendor')
-                .documentId(documentId)
-                .views([
-                  S.view.form().title('Details'),
-                  S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
-                ]),
+            .child(
+              S.documentTypeList('vendor')
+                .apiVersion(API_VERSION)
+                .title('All Vendors')
+                .defaultOrdering([{field: 'vendorNumber', direction: 'asc'}])
+                .child((documentId: string) =>
+                  S.document()
+                    .schemaType('vendor')
+                    .documentId(documentId)
+                    .views([
+                      S.view.form().title('Details'),
+                      S.view.component(VendorDashboard as ComponentType).title('Dashboard'),
+                    ]),
+                ),
             ),
           S.listItem()
             .id('vendors-active')

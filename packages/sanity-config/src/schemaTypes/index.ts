@@ -208,6 +208,13 @@ const objects = [
         description: 'Auto-incrementing serial number for MPN generation',
         initialValue: 636,
       },
+      {
+        name: 'nextVendorNumber',
+        type: 'number',
+        title: 'Next Vendor Number',
+        description: 'Auto-incrementing vendor number seed (e.g., 201 => VEN-201)',
+        initialValue: 201,
+      },
       {name: 'seo', type: 'seo', title: 'Global SEO'},
     ],
   },

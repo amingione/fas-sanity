@@ -9,6 +9,12 @@ export type NormalizedMetadataEntry = {
   value: string
 }
 
+export type NormalizedOptionPayload = {
+  optionSummary?: string
+  optionDetails: string[]
+  upgrades: string[]
+}
+
 const OPTION_KEYWORDS = [
   'option',
   'vehicle',
@@ -389,6 +395,178 @@ export const coerceStringArray = (input: unknown): string[] => {
 
 export const uniqueStrings = (values: string[]): string[] =>
   Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+
+const OPTION_PREFIX = /^option\s*\d*[:\-\s]*/i
+const UPGRADE_PREFIX = /^(?:upgrades?|upgrade option|add[\s-]?ons?|add[\s-]?on option)[:\-\s]*/i
+const UPGRADE_LABEL = /^(?:upgrades?|add[\s-]?ons?)$/i
+
+const normalizeOptionSegment = (raw: string, forceUpgrade = false): {value: string; isUpgrade: boolean} | null => {
+  let text = raw.replace(/^[•\-\s]+/, '').trim()
+  if (!text) return null
+
+  let isUpgrade = forceUpgrade
+
+  const stripPrefix = (pattern: RegExp) => {
+    const next = text.replace(pattern, '').trim()
+    if (next !== text) {
+      text = next
+      return true
+    }
+    return false
+  }
+
+  while (stripPrefix(OPTION_PREFIX)) {
+    // keep stripping option markers like "Option 1:"
+  }
+  while (stripPrefix(UPGRADE_PREFIX)) {
+    isUpgrade = true
+  }
+
+  const colonIndex = text.indexOf(':')
+  if (colonIndex > -1) {
+    const label = text.slice(0, colonIndex).trim()
+    if (UPGRADE_LABEL.test(label)) {
+      isUpgrade = true
+      text = text.slice(colonIndex + 1).trim()
+    }
+  }
+
+  if (!text) return null
+
+  return {value: text, isUpgrade}
+}
+
+const appendUnique = (list: string[], seen: Set<string>, value: string) => {
+  const key = value.toLowerCase()
+  if (seen.has(key)) return
+  seen.add(key)
+  list.push(value)
+}
+
+export const normalizeOptionSelections = (input: {
+  optionSummary?: string | string[] | null
+  optionDetails?: string | string[] | null
+  upgrades?: string | string[] | null
+}): NormalizedOptionPayload => {
+  const optionSegments = [
+    ...coerceStringArray(input.optionDetails),
+    ...coerceStringArray(input.optionSummary),
+  ]
+  const upgradeSegments = coerceStringArray(input.upgrades)
+
+  const options: string[] = []
+  const upgrades: string[] = []
+  const seenOptions = new Set<string>()
+  const seenUpgrades = new Set<string>()
+
+  for (const segment of optionSegments) {
+    const normalized = normalizeOptionSegment(segment)
+    if (!normalized) continue
+    if (normalized.isUpgrade) {
+      appendUnique(upgrades, seenUpgrades, normalized.value)
+    } else {
+      appendUnique(options, seenOptions, normalized.value)
+    }
+  }
+
+  for (const upgrade of upgradeSegments) {
+    const normalized = normalizeOptionSegment(upgrade, true) || {value: upgrade.trim(), isUpgrade: true}
+    if (!normalized.value) continue
+    appendUnique(upgrades, seenUpgrades, normalized.value)
+  }
+
+  const optionSummary = options.length ? options.join(', ') : undefined
+
+  return {
+    optionSummary,
+    optionDetails: options,
+    upgrades,
+  }
+}
+
+const BASE_PRICE_KEYS = ['base_price', 'base price', 'baseprice', 'base_price_display', 'base price display']
+const UPGRADE_TOTAL_KEYS = [
+  'upgrade_total',
+  'upgrades_total',
+  'upgrade total',
+  'upgrades total',
+  'upgrade_total_display',
+  'upgrades_total_display',
+]
+const OPTION_UPCHARGE_KEYS = ['option_upcharge', 'option upcharge', 'option_upcharge_display', 'option upcharge display']
+
+const normalizeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+const parseAmount = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.+-]/g, '')
+    if (!cleaned) return undefined
+    const parsed = Number.parseFloat(cleaned)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return undefined
+}
+
+const findAmountInMap = (map?: Record<string, string>, keys: string[] = []): number | undefined => {
+  if (!map) return undefined
+  const normalizedMap = Object.entries(map).reduce<Record<string, string>>((acc, [k, v]) => {
+    if (!k) return acc
+    acc[normalizeKey(k)] = v
+    return acc
+  }, {})
+  for (const key of keys) {
+    const value = normalizedMap[normalizeKey(key)]
+    const parsed = parseAmount(value)
+    if (parsed !== undefined) return parsed
+  }
+  return undefined
+}
+
+const entriesToMap = (entries?: NormalizedMetadataEntry[]) => {
+  if (!entries || !entries.length) return undefined
+  return entries.reduce<Record<string, string>>((acc, entry) => {
+    if (!entry?.key) return acc
+    acc[entry.key] = entry.value
+    return acc
+  }, {})
+}
+
+export const resolveUpgradeTotal = (input: {
+  metadataMap?: Record<string, string>
+  metadataEntries?: NormalizedMetadataEntry[]
+  price?: number
+  quantity?: number
+  lineTotal?: number
+  total?: number
+}): number | undefined => {
+  const metadataMap = input.metadataMap || entriesToMap(input.metadataEntries)
+  const qty = Math.max(1, Number.isFinite(input.quantity) ? Number(input.quantity) : 1)
+  const unitPrice = parseAmount(input.price)
+  const lineTotal = parseAmount(input.lineTotal)
+  const total = parseAmount(input.total)
+
+  const candidates: number[] = []
+
+  const basePrice = findAmountInMap(metadataMap, BASE_PRICE_KEYS)
+  const optionUpcharge = findAmountInMap(metadataMap, OPTION_UPCHARGE_KEYS)
+  const upgradeTotalMeta = findAmountInMap(metadataMap, UPGRADE_TOTAL_KEYS)
+
+  if (optionUpcharge !== undefined) candidates.push(optionUpcharge)
+  if (upgradeTotalMeta !== undefined) candidates.push(upgradeTotalMeta)
+
+  const derivedTotal = total ?? lineTotal
+  const effectiveUnit = basePrice ?? unitPrice
+  if (derivedTotal !== undefined && effectiveUnit !== undefined) {
+    const diff = derivedTotal - effectiveUnit * qty
+    if (diff > 0) candidates.push(diff)
+  }
+
+  if (!candidates.length) return undefined
+  const best = Math.max(...candidates.filter((v) => Number.isFinite(v) && v > 0))
+  if (!Number.isFinite(best) || best <= 0) return undefined
+  return Math.round(best * 100) / 100
+}
 
 export const deriveOptionsFromMetadata = (
   metadata: MetadataEntryInput | NormalizedMetadataEntry[],

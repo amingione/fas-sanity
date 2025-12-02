@@ -1,5 +1,9 @@
 import type {SanityClient} from '@sanity/client'
-import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
+import {
+  normalizeMetadataEntries,
+  normalizeOptionSelections,
+  resolveUpgradeTotal,
+} from '@fas/sanity-config/utils/cartItemDetails'
 import {
   validateCartSelections,
   type ProductCustomizationRequirement,
@@ -27,6 +31,7 @@ export type CartItem = {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
+  upgradesTotal?: number
   customizations?: string[]
   categories?: string[]
   productRef?: {_type: 'reference'; _ref: string}
@@ -43,6 +48,13 @@ export type CartProductSummary = {
   title?: string
   sku?: string
   slug?: {current?: string}
+  price?: number | null
+  salePrice?: number | null
+  compareAtPrice?: number | null
+  discountType?: string | null
+  discountValue?: number | null
+  discountPercent?: number | null
+  onSale?: boolean | null
   categories?: string[]
   shippingWeight?: number | null
   boxDimensions?: string | null
@@ -363,6 +375,13 @@ export async function fetchProductsForCart(
         title,
         sku,
         slug,
+        price,
+        salePrice,
+        compareAtPrice,
+        discountType,
+        discountValue,
+        discountPercent,
+        onSale,
         "categories": category[]->title,
         shippingWeight,
         boxDimensions,
@@ -439,6 +458,33 @@ export async function enrichCartItemsFromSanity(
     if (!item || typeof item !== 'object') return item
     const product = findProductForItem(item, products)
     if (!product) return item
+
+    const normalizedOptions = normalizeOptionSelections({
+      optionSummary: item.optionSummary,
+      optionDetails: item.optionDetails,
+      upgrades: item.upgrades,
+    })
+    item.optionSummary = normalizedOptions.optionSummary
+    item.optionDetails = normalizedOptions.optionDetails.length
+      ? normalizedOptions.optionDetails
+      : undefined
+    item.upgrades = normalizedOptions.upgrades.length ? normalizedOptions.upgrades : undefined
+    if (item.upgradesTotal === undefined) {
+      const map = ensureMetadataArray(item).reduce<Record<string, string>>((acc, entry) => {
+        acc[entry.key] = entry.value
+        return acc
+      }, {})
+      const derivedUpgradesTotal = resolveUpgradeTotal({
+        metadataMap: map,
+        price: item.price,
+        quantity: item.quantity,
+        lineTotal: item.lineTotal,
+        total: item.total,
+      })
+      if (derivedUpgradesTotal !== undefined) {
+        item.upgradesTotal = derivedUpgradesTotal
+      }
+    }
 
     if ((!item.sku || !item.sku.trim()) && product.sku) {
       item.sku = product.sku

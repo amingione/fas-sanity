@@ -25,6 +25,7 @@ import {
   coerceStringArray,
   deriveOptionsFromMetadata,
   normalizeMetadataEntries,
+  normalizeOptionSelections,
   remainingMetadataEntries,
   shouldDisplayMetadataSegment,
   uniqueStrings,
@@ -235,6 +236,10 @@ const CLOSED_PAYMENT_STATUSES = new Set([
 ])
 const OPEN_FULFILLMENT_STATUSES = new Set(['pending', 'processing', 'paid'])
 const OPEN_PAYMENT_STATUSES = new Set(['pending', 'processing'])
+const formatCurrency = (value?: number | null) =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(value)
+    : null
 
 function isCancelledStatus(value: string | null | undefined): boolean {
   if (!value) return false
@@ -1357,7 +1362,11 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
         const rawName = (item.name || item.sku || 'Item').toString()
         const displayName = rawName.split('•')[0]?.trim() || rawName
         const derived = deriveOptionsFromMetadata(metadataEntries)
-        const summary = item.optionSummary?.trim() || derived.optionSummary
+        const normalizedSelections = normalizeOptionSelections({
+          optionSummary: item.optionSummary?.trim() || derived.optionSummary,
+          optionDetails: [...coerceStringArray(item.optionDetails), ...derived.optionDetails],
+          upgrades: [...coerceStringArray(item.upgrades), ...derived.upgrades],
+        })
 
         const details: string[] = []
         const detailSeen = new Set<string>()
@@ -1386,19 +1395,7 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
           details.push(text)
         }
 
-        if (summary) {
-          summary
-            .split(',')
-            .map((part) => part.trim())
-            .filter(Boolean)
-            .forEach((part) => addDetail(part))
-        }
-
-        const optionDetails = uniqueStrings([
-          ...coerceStringArray(item.optionDetails),
-          ...derived.optionDetails,
-        ])
-        optionDetails.forEach((detail) => {
+        normalizedSelections.optionDetails.forEach((detail) => {
           detail
             .split(',')
             .map((part) => part.trim())
@@ -1413,6 +1410,21 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
             if (!normalizedIssue) return
             addDetail(`⚠️ ${normalizedIssue}`)
           })
+        }
+
+        const upgradesTotal =
+          typeof item.upgradesTotal === 'number' && Number.isFinite(item.upgradesTotal)
+            ? item.upgradesTotal
+            : undefined
+        if (normalizedSelections.upgrades.length) {
+          const upgradesLabel =
+            normalizedSelections.upgrades.length === 1 && upgradesTotal !== undefined
+              ? `${normalizedSelections.upgrades[0]} (${formatCurrency(upgradesTotal) || upgradesTotal})`
+              : normalizedSelections.upgrades.join(', ')
+          addDetail(`Upgrades: ${upgradesLabel}`)
+        }
+        if (upgradesTotal !== undefined && normalizedSelections.upgrades.length !== 1) {
+          addDetail(`Upgrades Total: ${formatCurrency(upgradesTotal) || upgradesTotal}`)
         }
 
         if (item.sku) addDetail(`SKU ${item.sku}`)

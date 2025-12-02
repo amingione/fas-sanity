@@ -63,6 +63,8 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     'packingSlipUrl',
     'fulfilledAt',
     'shippingAddress',
+    'discountLabel',
+    'discountPercent',
   ],
   sections: [
     {
@@ -77,6 +79,12 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
           type: 'string',
           prominent: true,
           readOnly: true,
+        },
+        {
+          _key: 'orderType',
+          fieldName: 'orderType',
+          label: 'Order Type',
+          type: 'string',
         },
         {
           _key: 'status',
@@ -138,6 +146,8 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
         {fieldName: 'amountSubtotal', label: 'Subtotal', type: 'number'},
         {fieldName: 'amountTax', label: 'Tax', type: 'number'},
         {fieldName: 'amountDiscount', label: 'Discounts', type: 'number'},
+        {fieldName: 'discountLabel', label: 'Discount Label', type: 'string'},
+        {fieldName: 'discountPercent', label: 'Discount %', type: 'number'},
         {fieldName: 'amountShipping', label: 'Shipping', type: 'number'},
         {fieldName: 'currency', label: 'Currency', type: 'string'},
         {fieldName: 'paymentStatus', label: 'Payment Status', type: 'string'},
