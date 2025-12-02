@@ -17,6 +17,13 @@ function formatVendorNumber(serialNumber: number): string {
   return `${VENDOR_PREFIX}${String(safeNumber).padStart(PAD_LENGTH, '0')}`
 }
 
+function parseVendorNumber(value?: string | null): number {
+  if (!value) return 0
+  const match = String(value).match(/(\d+)/)
+  const parsed = match ? parseInt(match[1], 10) : NaN
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export async function generateInitialVendorNumber(
   client: SanityClient | undefined,
 ): Promise<string> {
@@ -27,27 +34,33 @@ export async function generateInitialVendorNumber(
     {type: SETTINGS_TYPE},
   )
 
+  const highestExisting = await client.fetch<string | null>(
+    '*[_type == "vendor" && defined(vendorNumber)] | order(vendorNumber desc)[0].vendorNumber',
+  )
+
   const settingsId = settings?._id || SETTINGS_TYPE
   const startingValue =
     typeof settings?.nextVendorNumber === 'number' ? settings.nextVendorNumber : DEFAULT_START
+  const highestValue = parseVendorNumber(highestExisting)
+  const seedValue = Math.max(startingValue, highestValue + 1, DEFAULT_START)
 
   await client.createIfNotExists({
     _id: settingsId,
     _type: SETTINGS_TYPE,
     title: SETTINGS_TITLE,
-    [NEXT_VENDOR_FIELD]: startingValue,
+    [NEXT_VENDOR_FIELD]: seedValue,
   })
 
   const updatedSettings = await client
     .patch(settingsId)
-    .setIfMissing({[NEXT_VENDOR_FIELD]: startingValue})
+    .setIfMissing({[NEXT_VENDOR_FIELD]: seedValue})
     .inc({[NEXT_VENDOR_FIELD]: 1})
     .commit({autoGenerateArrayKeys: true})
 
   const nextValue =
     typeof updatedSettings?.nextVendorNumber === 'number'
       ? updatedSettings.nextVendorNumber
-      : startingValue + 1
+      : seedValue + 1
 
   const reservedNumber = nextValue - 1
   return formatVendorNumber(reservedNumber)

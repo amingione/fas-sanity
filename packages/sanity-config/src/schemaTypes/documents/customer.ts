@@ -204,18 +204,6 @@ export default defineType({
       group: 'profile',
     }),
     defineField({
-      name: 'socialMedia',
-      title: 'Social Profiles',
-      type: 'object',
-      group: 'profile',
-      options: {collapsible: true, collapsed: true},
-      fields: [
-        defineField({name: 'instagram', title: 'Instagram', type: 'string'}),
-        defineField({name: 'facebook', title: 'Facebook', type: 'string'}),
-        defineField({name: 'youtube', title: 'YouTube', type: 'string'}),
-      ],
-    }),
-    defineField({
       name: 'orders',
       title: 'Orders',
       type: 'array',
@@ -347,6 +335,7 @@ export default defineType({
               {title: 'Checkout', value: 'checkout'},
               {title: 'Newsletter Signup', value: 'newsletter'},
               {title: 'Manual', value: 'manual'},
+              {title: 'Backfill', value: 'backfill'},
             ],
           },
         }),
@@ -354,11 +343,12 @@ export default defineType({
           name: 'preferences',
           title: 'Email Preferences',
           type: 'object',
+          description: 'Granular email preferences (future use)',
           fields: [
             defineField({
-              name: 'productUpdates',
+              name: 'newProducts',
               type: 'boolean',
-              title: 'Product Updates & New Releases',
+              title: 'New Products',
               initialValue: true,
             }),
             defineField({
@@ -368,17 +358,10 @@ export default defineType({
               initialValue: true,
             }),
             defineField({
-              name: 'newsletter',
+              name: 'tips',
               type: 'boolean',
-              title: 'Monthly Newsletter',
+              title: 'Performance Tips',
               initialValue: true,
-            }),
-            defineField({
-              name: 'orderUpdates',
-              type: 'boolean',
-              title: 'Order & Shipping Updates',
-              initialValue: true,
-              readOnly: true,
             }),
           ],
         }),

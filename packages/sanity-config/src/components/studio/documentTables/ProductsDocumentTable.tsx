@@ -285,7 +285,7 @@ export default function ProductsDocumentTable({
             badges.push(<DocumentBadge key="featured" label="Featured" tone="primary" />)
           }
           if (data.onSale) {
-            badges.push(<DocumentBadge key="sale" label="On Sale" tone="warning" />)
+            badges.push(<DocumentBadge key="sale" label="On Sale" tone="caution" />)
           }
 
           return (

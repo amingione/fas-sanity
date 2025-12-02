@@ -1,0 +1,94 @@
+// ============================================
+// Email Campaign Queries
+// ============================================
+
+// 1. All subscribed customers
+*[_type == "customer" && emailMarketing.subscribed == true] {
+  _id,
+  email,
+  name,
+  firstName,
+  lastName,
+  emailMarketing,
+  segment,
+  lifetimeValue,
+  totalOrders
+} | order(emailMarketing.subscribedAt desc)
+
+// 2. Recently subscribed (last 30 days)
+*[
+  _type == "customer" 
+  && emailMarketing.subscribed == true
+  && emailMarketing.subscribedAt > now() - 60*60*24*30
+] | order(emailMarketing.subscribedAt desc)
+
+// 3. VIP subscribers
+*[
+  _type == "customer" 
+  && emailMarketing.subscribed == true
+  && segment == "vip"
+] {
+  _id,
+  email,
+  name,
+  lifetimeValue,
+  totalOrders
+} | order(lifetimeValue desc)
+
+// 4. New customer subscribers (first 30 days)
+*[
+  _type == "customer" 
+  && emailMarketing.subscribed == true
+  && segment == "new"
+] | order(_createdAt desc)
+
+// 5. At-risk subscribers (haven't ordered in 6+ months)
+*[
+  _type == "customer" 
+  && emailMarketing.subscribed == true
+  && segment == "at_risk"
+] {
+  _id,
+  email,
+  name,
+  lastOrderDate,
+  daysSinceLastOrder
+} | order(daysSinceLastOrder desc)
+
+// 6. Subscribers who prefer specific content
+*[
+  _type == "customer" 
+  && emailMarketing.subscribed == true
+  && emailMarketing.preferences.newProducts == true
+]
+
+// 7. Count subscribers by segment
+{
+  "total": count(*[_type == "customer" && emailMarketing.subscribed == true]),
+  "vip": count(*[_type == "customer" && emailMarketing.subscribed == true && segment == "vip"]),
+  "repeat": count(*[_type == "customer" && emailMarketing.subscribed == true && segment == "repeat"]),
+  "new": count(*[_type == "customer" && emailMarketing.subscribed == true && segment == "new"]),
+  "active": count(*[_type == "customer" && emailMarketing.subscribed == true && segment == "active"]),
+  "atRisk": count(*[_type == "customer" && emailMarketing.subscribed == true && segment == "at_risk"])
+}
+
+// 8. Subscription rate
+{
+  "totalCustomers": count(*[_type == "customer"]),
+  "subscribedCustomers": count(*[_type == "customer" && emailMarketing.subscribed == true]),
+  "subscriptionRate": count(*[_type == "customer" && emailMarketing.subscribed == true]) / count(*[_type == "customer"]) * 100
+}
+
+// 9. Recent unsubscribes
+*[
+  _type == "customer" 
+  && emailMarketing.subscribed == false
+  && defined(emailMarketing.unsubscribedAt)
+  && emailMarketing.unsubscribedAt > now() - 60*60*24*30
+] {
+  _id,
+  email,
+  name,
+  emailMarketing.unsubscribedAt,
+  segment
+} | order(emailMarketing.unsubscribedAt desc)

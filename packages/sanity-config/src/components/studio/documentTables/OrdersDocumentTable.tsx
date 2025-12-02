@@ -122,6 +122,8 @@ export default function OrdersDocumentTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentItems, setCurrentItems] = useState<OrderRow[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [bulkBusy, setBulkBusy] = useState(false)
   const [trackingDialog, setTrackingDialog] = useState<{open: boolean; targetIds: string[]}>({
     open: false,
     targetIds: [],
@@ -202,6 +204,67 @@ export default function OrdersDocumentTable({
     if (published && published !== id) set.add(published)
     return Array.from(set)
   }, [])
+
+  const deleteOrders = useCallback(
+    async (ids: string[]) => {
+      const targets = Array.from(new Set(ids.flatMap((id) => resolvePatchTargets(id))))
+      if (!targets.length) return
+      const confirmed = window.confirm(
+        `Delete ${targets.length} order${targets.length === 1 ? '' : 's'}? This cannot be undone.`,
+      )
+      if (!confirmed) return
+      setBulkBusy(true)
+      try {
+        const tx = client.transaction()
+        targets.forEach((id) => tx.delete(id))
+        await tx.commit({autoGenerateArrayKeys: true})
+        setSelectedIds(new Set())
+        setRefreshKey((key) => key + 1)
+      } catch (err) {
+        console.error('Failed to delete orders', err)
+        window.alert('Unable to delete selected orders. Please try again.')
+      } finally {
+        setBulkBusy(false)
+      }
+    },
+    [client, resolvePatchTargets],
+  )
+
+  const duplicateOrders = useCallback(
+    async (ids: string[]) => {
+      if (!ids.length) return
+      const confirmed = window.confirm(
+        `Duplicate ${ids.length} order${ids.length === 1 ? '' : 's'}?`,
+      )
+      if (!confirmed) return
+      setBulkBusy(true)
+      try {
+        const publishedIds = Array.from(new Set(ids.map((id) => id.replace(/^drafts\./, ''))))
+        const docs = await client.fetch<Array<Record<string, any>>>(
+          '*[_id in $ids]',
+          {ids: publishedIds},
+        )
+        const tx = client.transaction()
+        docs.forEach((doc) => {
+          if (!doc?._id || !doc._type) return
+          const {_id, _rev, _createdAt, _updatedAt, _seqNo, _version, ...rest} = doc as any
+          tx.create({
+            ...rest,
+            _type: 'order',
+          })
+        })
+        await tx.commit({autoGenerateArrayKeys: true})
+        setRefreshKey((key) => key + 1)
+        window.alert('Orders duplicated.')
+      } catch (err) {
+        console.error('Failed to duplicate orders', err)
+        window.alert('Unable to duplicate selected orders. Please try again.')
+      } finally {
+        setBulkBusy(false)
+      }
+    },
+    [client],
+  )
 
   const fulfillOrders = useCallback(
     async (ids: string[]) => {
@@ -324,58 +387,15 @@ export default function OrdersDocumentTable({
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.currentTarget.value)}
         placeholder="Search by order #, customer, email…"
-        style={{width: '280px'}}
+        style={{width: '320px'}}
       />
-      {selectedCount > 0 ? (
-        <>
-          <MenuButton
-            id="orders-bulk-fulfill-menu"
-            button={<Button text={`Fulfill (${selectedCount})`} tone="positive" />}
-            menu={
-              <Menu>
-                <MenuItem
-                  text="Add tracking…"
-                  onClick={() => setTrackingDialog({open: true, targetIds: selectedIdList})}
-                />
-                <MenuItem text="Create label" onClick={() => fulfillOrders(selectedIdList)} />
-                <MenuItem
-                  text="Mark as fulfilled"
-                  onClick={async () => {
-                    for (const id of selectedIdList) {
-                      const base = lastSuccessfulBase.current || netlifyBases[0] || ''
-                      await fetch(`${base}/.netlify/functions/fulfill-order`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({orderId: id, markOnly: true}),
-                      })
-                    }
-                  }}
-                />
-              </Menu>
-            }
-          />
-          <Button
-            text={`Print slips (${selectedCount})`}
-            tone="primary"
-            onClick={(e) => {
-              e.preventDefault()
-              printPackingSlips(selectedIdList)
-            }}
-          />
-          <Button
-            text="Clear selection"
-            tone="critical"
-            mode="bleed"
-            onClick={() => setSelectedIds(new Set())}
-          />
-        </>
-      ) : null}
     </Flex>
   )
 
   return (
     <>
       <PaginatedDocumentTable<OrderRowData>
+        key={refreshKey}
         title={title}
         documentType="order"
         projection={ORDER_PROJECTION}

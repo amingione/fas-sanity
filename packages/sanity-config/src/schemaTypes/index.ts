@@ -2,6 +2,7 @@ import product from './documents/product'
 import category from './documents/category'
 import order from './documents/order'
 import bill from './documents/bill'
+import checkoutSession from './documents/checkoutSession'
 import merchantFeed from './documents/merchantFeed'
 import shoppingCampaign from './documents/shoppingCampaign'
 import blogCategory from './documents/blog/blogCategory'
@@ -291,6 +292,7 @@ const documents = [
   vendorProduct,
   vendorQuote,
   bill,
+  checkoutSession,
   order,
   service,
   appointment,

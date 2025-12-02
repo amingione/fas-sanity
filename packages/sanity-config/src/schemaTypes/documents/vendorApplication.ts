@@ -1,4 +1,7 @@
+import React from 'react'
 import {defineField, defineType} from 'sanity'
+import {Badge} from '@sanity/ui'
+import {DocumentIcon} from '@sanity/icons'
 
 export default defineType({
   name: 'vendorApplication',
@@ -18,10 +21,10 @@ export default defineType({
       title: 'Status',
       options: {
         list: [
-          {title: '📝 Pending Review', value: 'pending'},
-          {title: '✅ Approved', value: 'approved'},
-          {title: '❌ Rejected', value: 'rejected'},
-          {title: '⏸️ On Hold', value: 'on_hold'},
+          {title: 'Pending Review', value: 'pending'},
+          {title: 'Approved', value: 'approved'},
+          {title: 'Rejected', value: 'rejected'},
+          {title: 'On Hold', value: 'on_hold'},
         ],
         layout: 'radio',
       },
@@ -233,24 +236,39 @@ export default defineType({
       submittedAt: 'submittedAt',
     },
     prepare({title, subtitle, status, submittedAt}) {
-      const icon =
-        (
-          {
-            pending: '📝',
-            approved: '✅',
-            rejected: '❌',
-            on_hold: '⏸️',
-          } as Record<string, string>
-        )[status ?? ''] || '📝'
-
       const date = submittedAt ? new Date(submittedAt) : null
       const dateLabel = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : null
       const subline = [subtitle, dateLabel].filter(Boolean).join(' • ')
 
+      const label = (() => {
+        switch (status) {
+          case 'approved':
+            return 'Approved'
+          case 'rejected':
+            return 'Rejected'
+          case 'on_hold':
+            return 'On hold'
+          default:
+            return 'Pending review'
+        }
+      })()
+
+      const tone: 'positive' | 'critical' | 'caution' | 'default' =
+        status === 'approved'
+          ? 'positive'
+          : status === 'rejected'
+            ? 'critical'
+            : status === 'on_hold'
+              ? 'default'
+              : 'caution'
+
       return {
-        title: `${icon} ${title || 'Vendor Application'}`,
+        title: title || 'Vendor Application',
         subtitle: subline || undefined,
+        media: () => React.createElement(Badge, {tone, mode: 'outline'}, label),
+        icon: DocumentIcon,
       }
     },
   },
+  __experimental_omnisearch_visibility: true,
 })

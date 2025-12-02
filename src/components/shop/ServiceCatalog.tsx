@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react'
+import {Box, Button, Card, Grid, Heading, Stack, Text} from '@sanity/ui'
 import type {CatalogProduct} from '../../lib/productQueries'
 import ProductTypeBadge from './ProductTypeBadge'
 
@@ -38,57 +39,96 @@ export function ServiceCatalog({
   onSelectService,
 }: ServiceCatalogProps) {
   if (!services || services.length === 0) {
-    return <div className={className}>{emptyState}</div>
+    return (
+      <Box className={className}>
+        {typeof emptyState === 'string' ? <Text>{emptyState}</Text> : emptyState}
+      </Box>
+    )
   }
 
   return (
-    <section className={className}>
-      {heading ? <header className="service-catalog__header">{heading}</header> : null}
-      <div className="service-catalog__grid">
+    <Stack space={5} className={className}>
+      {heading ? (
+        typeof heading === 'string' ? (
+          <Heading as="h2" size={3} weight="semibold">
+            {heading}
+          </Heading>
+        ) : (
+          heading
+        )
+      ) : null}
+
+      <Grid columns={[1, 2]} gap={4}>
         {services.map((service) => {
           const description = portableTextToPlain(service.shortDescription) || service.promotionTagline
           const price =
             typeof service.price === 'number'
               ? currencyFormatter.format(service.price)
               : undefined
+
           return (
-            <article
+            <Card
               key={service._id}
-              className="service-card"
+              padding={4}
+              radius={3}
+              shadow={1}
+              tone="default"
               data-product-type={service.productType || 'service'}
             >
-              <div className="service-card__badge">
+              <Stack space={4}>
                 <ProductTypeBadge productType="service" />
-              </div>
-              <h3 className="service-card__title">{service.title}</h3>
-              {price ? <p className="service-card__price">{price}</p> : null}
-              {description ? <p className="service-card__description">{description}</p> : null}
-              <dl className="service-card__details">
-                {service.serviceDuration ? (
-                  <>
-                    <dt>Duration</dt>
-                    <dd>{service.serviceDuration}</dd>
-                  </>
-                ) : null}
-                {service.serviceLocation ? (
-                  <>
-                    <dt>Location</dt>
-                    <dd>{service.serviceLocation}</dd>
-                  </>
-                ) : null}
-              </dl>
-              <button
-                type="button"
-                className="service-card__cta"
-                onClick={() => onSelectService?.(service)}
-              >
-                Request This Service
-              </button>
-            </article>
+
+                <Stack space={3}>
+                  <Heading as="h3" size={2} weight="medium">
+                    {service.title}
+                  </Heading>
+                  {price ? (
+                    <Text size={2} weight="semibold">
+                      {price}
+                    </Text>
+                  ) : null}
+                  {description ? (
+                    <Text size={1} muted>
+                      {description}
+                    </Text>
+                  ) : null}
+                </Stack>
+
+                {(service.serviceDuration || service.serviceLocation) && (
+                  <Stack space={2}>
+                    {service.serviceDuration ? (
+                      <Stack space={1}>
+                        <Text size={1} weight="medium">
+                          Duration
+                        </Text>
+                        <Text size={1}>{service.serviceDuration}</Text>
+                      </Stack>
+                    ) : null}
+                    {service.serviceLocation ? (
+                      <Stack space={1}>
+                        <Text size={1} weight="medium">
+                          Location
+                        </Text>
+                        <Text size={1}>{service.serviceLocation}</Text>
+                      </Stack>
+                    ) : null}
+                  </Stack>
+                )}
+
+                <Box>
+                  <Button
+                    text="Request This Service"
+                    tone="primary"
+                    mode="default"
+                    onClick={() => onSelectService?.(service)}
+                  />
+                </Box>
+              </Stack>
+            </Card>
           )
         })}
-      </div>
-    </section>
+      </Grid>
+    </Stack>
   )
 }
 

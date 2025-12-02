@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {syncContact} from '../lib/resend/contacts'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -33,6 +34,8 @@ export const handler: Handler = async (event) => {
 
   try {
     const {email, name} = JSON.parse(event.body || '{}')
+    const firstName = name?.split(' ')[0] || ''
+    const lastName = name?.split(' ').slice(1).join(' ') || ''
 
     if (!email || !email.includes('@')) {
       return {
@@ -75,8 +78,8 @@ export const handler: Handler = async (event) => {
         _type: 'customer',
         email: emailLower,
         name: name || '',
-        firstName: name?.split(' ')[0] || '',
-        lastName: name?.split(' ').slice(1).join(' ') || '',
+        firstName,
+        lastName,
         roles: ['customer'],
         customerType: 'retail',
         emailOptIn: true,
@@ -95,12 +98,21 @@ export const handler: Handler = async (event) => {
 
     // === EXISTING: ADD TO RESEND (keep your existing code) ===
     try {
-      await resend.contacts.create({
+      const syncResults = await syncContact({
         email: emailLower,
-        firstName: name?.split(' ')[0] || '',
-        lastName: name?.split(' ').slice(1).join(' ') || '',
-        audienceId: process.env.RESEND_AUDIENCE_ID!,
+        firstName,
+        lastName,
+        unsubscribed: false,
       })
+      if (!syncResults.general.success) {
+        console.warn('welcome-subscriber: General audience sync failed', syncResults.general.error)
+      }
+      if (!syncResults.subscribers.success) {
+        console.warn(
+          'welcome-subscriber: Subscribers audience sync failed',
+          syncResults.subscribers.error,
+        )
+      }
     } catch (resendError) {
       console.error('Resend audience error:', resendError)
       // Don't fail if already exists

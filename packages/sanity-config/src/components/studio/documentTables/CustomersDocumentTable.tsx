@@ -15,6 +15,8 @@ type CustomerRowData = {
   lifetimeSpend?: number | null
   emailOptIn?: boolean | null
   marketingOptIn?: boolean | null
+  emailMarketingSubscribed?: boolean | null
+  communicationMarketingOptIn?: boolean | null
   city?: string | null
   state?: string | null
   updatedAt?: string | null
@@ -28,6 +30,8 @@ const CUSTOMER_PROJECTION = `{
   lifetimeSpend,
   emailOptIn,
   marketingOptIn,
+  "emailMarketingSubscribed": coalesce(emailMarketing.subscribed, false),
+  "communicationMarketingOptIn": coalesce(communicationPreferences.marketingOptIn, false),
   "city": shippingAddress.city,
   "state": shippingAddress.state,
   "updatedAt": coalesce(updatedAt, _updatedAt, _createdAt)
@@ -43,6 +47,14 @@ const formatLocation = (data: CustomerRowData) => {
   const parts = [data.city, data.state].filter((value) => value && value.trim())
   return parts.length ? parts.join(', ') : '—'
 }
+
+const isMarketingSubscribed = (data: CustomerRowData) =>
+  Boolean(
+    data.emailOptIn ||
+      data.marketingOptIn ||
+      data.emailMarketingSubscribed ||
+      data.communicationMarketingOptIn,
+  )
 
 type SegmentFilterId = 'all' | 'vip' | 'repeat' | 'new' | 'at_risk' | 'inactive'
 
@@ -205,9 +217,7 @@ export default function CustomersDocumentTable({
         {
           key: 'marketing',
           header: 'Marketing Opt-In',
-          render: (data: CustomerRow) => (
-            <Text size={1}>{formatBoolean(Boolean(data.emailOptIn || data.marketingOptIn))}</Text>
-          ),
+          render: (data: CustomerRow) => <Text size={1}>{formatBoolean(isMarketingSubscribed(data))}</Text>,
         },
         {
           key: 'updated',
