@@ -1330,7 +1330,11 @@ function determineOrderType(metadata?: Record<string, string | undefined>): stri
 
 function ensureRequiredPaymentDetails(
   target: Record<string, any>,
-  details: {brand?: string | null | undefined; last4?: string | null | undefined; receiptUrl?: string | null | undefined},
+  details: {
+    brand?: string | null | undefined
+    last4?: string | null | undefined
+    receiptUrl?: string | null | undefined
+  },
   contextLabel: string,
 ) {
   const brand = (details.brand || '').toString().trim()
@@ -1346,7 +1350,9 @@ function ensureRequiredPaymentDetails(
     if (!brand) missing.push('cardBrand')
     if (!last4) missing.push('cardLast4')
     if (!receipt) missing.push('receiptUrl')
-    console.error(`stripeWebhook: missing payment details [${missing.join(', ')}] (${contextLabel})`)
+    console.error(
+      `stripeWebhook: missing payment details [${missing.join(', ')}] (${contextLabel})`,
+    )
   }
 }
 
@@ -1390,7 +1396,8 @@ function enforceCartRequirements(
     const referencedProduct = normalized.productRef?._ref
       ? productIndex.get(normalized.productRef._ref)
       : undefined
-    const matchedProduct = referencedProduct || findProductForItem(normalized, products) || undefined
+    const matchedProduct =
+      referencedProduct || findProductForItem(normalized, products) || undefined
 
     if (!normalized.productRef && matchedProduct?._id) {
       normalized.productRef = {_type: 'reference', _ref: matchedProduct._id}
@@ -1539,7 +1546,10 @@ function extractLabelsFromMetadata(
   const labels = new Set<string>()
   if (!source || typeof source !== 'object') return []
   for (const [rawKey, rawValue] of Object.entries(source)) {
-    const normalizedKey = rawKey.toString().toLowerCase().replace(/[^a-z0-9]/g, '')
+    const normalizedKey = rawKey
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
     if (!normalizedKey) continue
     if (keys.some((key) => normalizedKey === key.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
       const formatted = normalizeLabel(typeof rawValue === 'string' ? rawValue : String(rawValue))
@@ -1587,7 +1597,10 @@ function computeCartPricingSummary(cart: CartItem[], products: CartProductSummar
     if (Array.isArray(item.metadataEntries)) {
       for (const entry of item.metadataEntries) {
         const label = normalizeLabel(entry?.value as string)
-        const key = (entry?.key || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '')
+        const key = (entry?.key || '')
+          .toString()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
         if (label && DISCOUNT_LABEL_KEYS.includes(key)) labels.add(label)
       }
     }
@@ -1600,17 +1613,15 @@ function computeCartPricingSummary(cart: CartItem[], products: CartProductSummar
   }
 }
 
-function normalizeShippingMetadata(source?: Record<string, unknown> | null): Record<string, string> {
+function normalizeShippingMetadata(
+  source?: Record<string, unknown> | null,
+): Record<string, string> {
   const normalized: Record<string, string> = {}
   if (!source || typeof source !== 'object') return normalized
   for (const [key, value] of Object.entries(source)) {
     if (!key) continue
     const strValue =
-      value === null || value === undefined
-        ? ''
-        : typeof value === 'string'
-          ? value
-          : String(value)
+      value === null || value === undefined ? '' : typeof value === 'string' ? value : String(value)
     const trimmed = strValue.trim()
     if (trimmed) normalized[key] = trimmed
   }
@@ -1746,7 +1757,6 @@ async function handleShippingStatusSync(
     // ignore event append failures
   }
 }
-
 
 async function recordExpiredCart(
   session: Stripe.Checkout.Session,
@@ -1945,24 +1955,38 @@ const renderAddressText = (address?: any): string => {
 async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Session) {
   const email = checkoutSession.customer_details?.email || checkoutSession.customer_email || ''
   const name = checkoutSession.customer_details?.name || ''
+  const stripeCustomerId =
+    typeof checkoutSession.customer === 'string'
+      ? checkoutSession.customer
+      : checkoutSession.customer?.id || null
 
-  let customer = await webhookSanityClient.fetch<
-    {_id: string; name?: string; stripeCustomerId?: string | null} | null
-  >(
-    `*[_type == "customer" && email == $email][0]{_id, name, stripeCustomerId}`,
+  let customer = await webhookSanityClient.fetch<{
+    _id: string
+    name?: string
+    email?: string
+    stripeCustomerId?: string | null
+    customerType?: string | null
+    roles?: string[] | null
+  } | null>(
+    `*[_type == "customer" && email == $email][0]{_id, name, email, stripeCustomerId, customerType, roles}`,
     {email},
   )
 
   if (!customer) {
+    const newCustomerId = `customer.${randomUUID()}`
     customer = await webhookSanityClient.create<{
       _id: string
       name?: string
+      email?: string
       stripeCustomerId?: string | null
+      customerType?: string | null
+      roles?: string[] | null
     }>({
+      _id: newCustomerId,
       _type: 'customer',
       email: email || undefined,
       name: name || (email ? email.split('@')[0] : 'Customer'),
-      stripeCustomerId: checkoutSession.customer || null,
+      stripeCustomerId,
       customerType: 'retail',
       roles: ['customer'],
     })
@@ -2032,26 +2056,30 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
 async function strictFindProductForCartItem(item: Stripe.LineItem) {
   const sku = item.price?.metadata?.sku
   if (sku) {
-    const product = await webhookSanityClient.fetch<{_id: string; title?: string; sku?: string} | null>(
-      `*[_type == "product" && sku == $sku][0]{_id, title, sku}`,
-      {sku},
-    )
+    const product = await webhookSanityClient.fetch<{
+      _id: string
+      title?: string
+      sku?: string
+    } | null>(`*[_type == "product" && sku == $sku][0]{_id, title, sku}`, {sku})
     if (product) return product
   }
 
   const productId = item.price?.product
   if (productId) {
-    const product = await webhookSanityClient.fetch<{_id: string; title?: string; sku?: string} | null>(
-      `*[_type == "product" && _id match $id][0]{_id, title, sku}`,
-      {id: `*${productId}*`},
-    )
+    const product = await webhookSanityClient.fetch<{
+      _id: string
+      title?: string
+      sku?: string
+    } | null>(`*[_type == "product" && _id match $id][0]{_id, title, sku}`, {id: `*${productId}*`})
     if (product) return product
   }
 
   const searchName = (item.description || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-  const product = await webhookSanityClient.fetch<{_id: string; title?: string; sku?: string} | null>(
-    `*[_type == "product" && lower(title) match "*${searchName}*"][0]{_id, title, sku}`,
-  )
+  const product = await webhookSanityClient.fetch<{
+    _id: string
+    title?: string
+    sku?: string
+  } | null>(`*[_type == "product" && lower(title) match "*${searchName}*"][0]{_id, title, sku}`)
   if (!product) console.error(`❌ No product found for: ${item.description}`)
   return product
 }
@@ -2085,17 +2113,17 @@ async function strictBuildCartItems(lineItems: Stripe.ApiList<Stripe.LineItem>) 
 
   for (const item of lineItems.data) {
     const product = await strictFindProductForCartItem(item)
-    const metadata = (item.price?.metadata || item.metadata || {}) as Stripe.Metadata
+    const metadata = (item.price?.metadata || (item as any)?.metadata || {}) as Stripe.Metadata
     cart.push({
       _type: 'orderCartItem',
       _key: Math.random().toString(36).substr(2, 9),
-      name: item.description,
-      productRef: product ? {_type: 'reference', _ref: product._id} : null,
+      name: item.description ?? undefined,
+      productRef: product ? {_type: 'reference', _ref: product._id} : undefined,
       sku: product?.sku || metadata.sku || '',
       optionDetails: strictParseOptions(metadata),
       upgrades: strictParseUpgrades(metadata),
       price: item.price?.unit_amount ? item.price.unit_amount / 100 : undefined,
-      quantity: item.quantity,
+      quantity: item.quantity ?? undefined,
       total: item.amount_total ? item.amount_total / 100 : undefined,
     })
   }
@@ -2179,9 +2207,12 @@ async function strictCreateInvoice(
     totalAmount?: number
   } = {},
 ) {
-  const invoiceSubtotal = toCurrencyNumber(options.amountSubtotal) ?? toCurrencyNumber(order.amountSubtotal) ?? 0
-  const invoiceDiscount = toCurrencyNumber(options.amountDiscount) ?? toCurrencyNumber(order.amountDiscount) ?? 0
-  const invoiceTotal = toCurrencyNumber(options.totalAmount) ?? toCurrencyNumber(order.totalAmount) ?? 0
+  const invoiceSubtotal =
+    toCurrencyNumber(options.amountSubtotal) ?? toCurrencyNumber(order.amountSubtotal) ?? 0
+  const invoiceDiscount =
+    toCurrencyNumber(options.amountDiscount) ?? toCurrencyNumber(order.amountDiscount) ?? 0
+  const invoiceTotal =
+    toCurrencyNumber(options.totalAmount) ?? toCurrencyNumber(order.totalAmount) ?? 0
 
   const invoice = await webhookSanityClient.create({
     _type: 'invoice',
@@ -2233,16 +2264,20 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     upgrades: Array.isArray(item.upgrades) ? item.upgrades : [],
   }))
 
-  const stripeSubtotal = toCurrencyNumber(toMajorUnits((checkoutSession as any)?.amount_subtotal)) ?? 0
-  const amountTax = toCurrencyNumber(toMajorUnits((checkoutSession as any)?.total_details?.amount_tax)) ?? 0
+  const stripeSubtotal =
+    toCurrencyNumber(toMajorUnits((checkoutSession as any)?.amount_subtotal)) ?? 0
+  const amountTax =
+    toCurrencyNumber(toMajorUnits((checkoutSession as any)?.total_details?.amount_tax)) ?? 0
   const amountShippingRaw = Number.isFinite(
-    Number((checkoutSession as any)?.total_details?.amount_shipping || (checkoutSession as any)?.shipping_cost?.amount_total),
+    Number(
+      (checkoutSession as any)?.total_details?.amount_shipping ||
+        (checkoutSession as any)?.shipping_cost?.amount_total,
+    ),
   )
-    ?
-        Number(
-          (checkoutSession as any)?.total_details?.amount_shipping ||
-            (checkoutSession as any)?.shipping_cost?.amount_total,
-        ) / 100
+    ? Number(
+        (checkoutSession as any)?.total_details?.amount_shipping ||
+          (checkoutSession as any)?.shipping_cost?.amount_total,
+      ) / 100
     : undefined
 
   const shippingDetails = await resolveStripeShippingDetails({
@@ -2312,7 +2347,10 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         sessionMeta['promoOptIn'],
     ) ?? emailOptInValue
   const textOptInValue = parseBooleanFlag(
-    sessionMeta['text_opt_in'] || sessionMeta['textOptIn'] || sessionMeta['sms_opt_in'] || sessionMeta['smsOptIn'],
+    sessionMeta['text_opt_in'] ||
+      sessionMeta['textOptIn'] ||
+      sessionMeta['sms_opt_in'] ||
+      sessionMeta['smsOptIn'],
   )
   const userIdValue =
     sessionMeta['user_id'] ||
@@ -2321,20 +2359,17 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     sessionMeta['auth_user_id'] ||
     undefined
 
-  const existingOrder = await webhookSanityClient.fetch<
-    | {
-        _id: string
-        invoiceRef?: {_ref: string}
-        orderNumber?: string
-        cart?: any[]
-        fulfillment?: Record<string, unknown> | null
-        fulfillmentWorkflow?: {currentStage?: string | null} | null
-        trackingNumber?: string | null
-        trackingUrl?: string | null
-        shippingLabelUrl?: string | null
-      }
-    | null
-  >(
+  const existingOrder = await webhookSanityClient.fetch<{
+    _id: string
+    invoiceRef?: {_ref: string}
+    orderNumber?: string
+    cart?: any[]
+    fulfillment?: Record<string, unknown> | null
+    fulfillmentWorkflow?: {currentStage?: string | null} | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    shippingLabelUrl?: string | null
+  } | null>(
     `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
     {
       sid: checkoutSession.id,
@@ -6481,7 +6516,11 @@ export const handler: Handler = async (event) => {
             `payment_intent ${pi.id}`,
           )
           applyShippingMetrics(baseDoc, shippingMetrics)
-          applyShippingDetailsToDoc(baseDoc, shippingDetails, currency ? currency.toUpperCase() : undefined)
+          applyShippingDetailsToDoc(
+            baseDoc,
+            shippingDetails,
+            currency ? currency.toUpperCase() : undefined,
+          )
           baseDoc.stripeSummary = buildStripeSummary({
             paymentIntent: pi,
             eventType: webhookEvent.type,
@@ -6507,7 +6546,10 @@ export const handler: Handler = async (event) => {
               baseDoc.fulfillmentWorkflow = workflowProvided
             }
 
-            if (fulfillmentResult.topLevelFields?.trackingNumber && !existingOrder?.trackingNumber) {
+            if (
+              fulfillmentResult.topLevelFields?.trackingNumber &&
+              !existingOrder?.trackingNumber
+            ) {
               baseDoc.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
             }
             if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
