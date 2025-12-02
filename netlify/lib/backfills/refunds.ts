@@ -2,8 +2,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
-import Stripe from 'stripe'
 import {createClient, type SanityClient} from '@sanity/client'
+import Stripe from 'stripe'
+import {requireStripeSecretKey} from '../stripeEnv'
 
 export type RefundBackfillOptions = {
   limit?: number
@@ -47,10 +48,7 @@ let cachedSanity: SanityClient | null = null
 
 function getStripe(): Stripe {
   if (cachedStripe) return cachedStripe
-  const stripeSecret = process.env.STRIPE_SECRET_KEY
-  if (!stripeSecret) {
-    throw new Error('Missing STRIPE_SECRET_KEY in environment.')
-  }
+  const stripeSecret = requireStripeSecretKey()
   cachedStripe = new Stripe(stripeSecret, {
     apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
   })

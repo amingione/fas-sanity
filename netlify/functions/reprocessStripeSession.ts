@@ -10,6 +10,7 @@ import type {CartItem} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {buildStripeSummary} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
+import {resolveStripeSecretKey} from '../lib/stripeEnv'
 // CORS helper (same pattern used elsewhere)
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -134,7 +135,7 @@ async function resolveOrderNumber(options: {
   return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
 }
 
-const stripeKey = process.env.STRIPE_SECRET_KEY
+const stripeKey = resolveStripeSecretKey()
 const stripe = stripeKey
   ? new Stripe(stripeKey, {apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion']})
   : null

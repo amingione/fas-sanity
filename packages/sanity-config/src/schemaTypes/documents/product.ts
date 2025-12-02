@@ -10,8 +10,10 @@ import ShippingCalculatorPreview from '../../components/inputs/ShippingCalculato
 import ProductMarketingInsights from '../../components/studio/ProductMarketingInsights'
 import WholesalePricingControls from '../../components/inputs/WholesalePricingControls'
 import SalePricingInput from '../../components/inputs/SalePricingInput'
+import {generateInitialMpn} from '../../utils/generateProductCodes'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
+const PRODUCT_API_VERSION = '2024-10-01'
 
 type CanonicalFieldProps = StringFieldProps & {
   document?: any
@@ -1367,6 +1369,7 @@ const product = defineType({
       title: 'Brand / Manufacturer',
       type: 'string',
       description: 'Displayed in structured data and Google Merchant Center feeds.',
+      initialValue: 'FAS Motorsports',
       fieldset: 'merchant',
       group: 'advanced',
     }),
@@ -1395,6 +1398,17 @@ const product = defineType({
       title: 'MPN',
       type: 'string',
       description: 'Auto-generated on product creation.',
+      initialValue: async ({getClient}) => {
+        const client = getClient?.({apiVersion: PRODUCT_API_VERSION})
+        if (!client) return ''
+        try {
+          const result = await generateInitialMpn(client)
+          return result?.mpn || ''
+        } catch (error) {
+          console.warn('Failed to auto-generate initial MPN', error)
+          return ''
+        }
+      },
       readOnly: true,
       fieldset: 'merchant',
       group: 'advanced',
