@@ -1,7 +1,8 @@
 import crypto from 'node:crypto'
 import {createClient} from '@sanity/client'
+import {Resend} from 'resend'
 
-export type EmailProvider = 'sendgrid' | 'mailgun' | 'ses' | 'postmark'
+export type EmailProvider = 'sendgrid' | 'mailgun' | 'ses' | 'postmark' | 'resend'
 
 export type SendEmailOptions = {
   to: string
@@ -34,13 +35,20 @@ type EmailEventUpdate = {
   error?: string
 }
 
-const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || 'sendgrid').toLowerCase() as EmailProvider
+const SUPPORTED_PROVIDERS: EmailProvider[] = ['sendgrid', 'mailgun', 'ses', 'postmark', 'resend']
+const providerEnv = (process.env.EMAIL_PROVIDER || '').toLowerCase()
+const hasResendKey = Boolean(process.env.RESEND_API_KEY)
+const EMAIL_PROVIDER: EmailProvider =
+  (SUPPORTED_PROVIDERS.includes(providerEnv as EmailProvider)
+    ? (providerEnv as EmailProvider)
+    : undefined) || (hasResendKey ? 'resend' : 'sendgrid')
 const DEFAULT_FROM =
   process.env.EMAIL_FROM || process.env.RESEND_FROM || 'FAS Motorsports <info@fasmotorsports.com>'
 
 const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
 const SANITY_DATASET = process.env.SANITY_STUDIO_DATASET
 const SANITY_TOKEN = process.env.SANITY_API_TOKEN
+const RESEND_CLIENT = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 const emailLogClient =
   SANITY_PROJECT_ID && SANITY_DATASET && SANITY_TOKEN
@@ -246,6 +254,25 @@ const sendViaSes = async (options: SendEmailOptions): Promise<SendEmailResult> =
   return {provider: 'ses', id, status: 'sent'}
 }
 
+const sendViaResend = async (options: SendEmailOptions): Promise<SendEmailResult> => {
+  if (!RESEND_CLIENT) throw new Error('RESEND_API_KEY missing')
+  const response = await RESEND_CLIENT.emails.send({
+    from: sanitizeFrom(options.from),
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+    reply_to: options.replyTo,
+  })
+  const errorMessage =
+    (response as any)?.error?.message || (response as any)?.error || (response as any)?.message
+  if (errorMessage) {
+    throw new Error(`Resend API error: ${errorMessage}`)
+  }
+  const id = (response as any)?.data?.id || (response as any)?.id
+  return {provider: 'resend', id, status: 'sent'}
+}
+
 export async function sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
   const normalized: SendEmailOptions = {
     ...options,
@@ -260,6 +287,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       return sendViaPostmark(normalized)
     case 'ses':
       return sendViaSes(normalized)
+    case 'resend':
+      return sendViaResend(normalized)
     case 'sendgrid':
     default:
       return sendViaSendGrid(normalized)
