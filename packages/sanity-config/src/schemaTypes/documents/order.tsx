@@ -595,7 +595,12 @@ const orderSchema = defineType({
           type: 'object',
           title: 'Hold Details',
           description: 'Information when order is on hold',
-          hidden: ({document}) => document?.fulfillmentWorkflow?.currentStage !== 'on_hold',
+          hidden: ({document}) => {
+            const stage = (
+              document as {fulfillmentWorkflow?: {currentStage?: string}} | undefined
+            )?.fulfillmentWorkflow?.currentStage
+            return stage !== 'on_hold'
+          },
           fields: [
             {
               name: 'reason',
@@ -1373,7 +1378,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
             const client = context.getClient({apiVersion: SANITY_API_VERSION})
             const {_id, _rev, _updatedAt, _createdAt, _type, _seqNo, _version, orderNumber, ...rest} =
               source as any
-            const payload: Record<string, any> = {
+            const payload: {_type: 'order'} & Record<string, any> = {
               ...rest,
               _type: 'order',
               orderNumber: orderNumber ? `${orderNumber}-copy` : undefined,
