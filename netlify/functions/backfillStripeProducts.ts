@@ -1,4 +1,5 @@
 import type {Handler} from '@netlify/functions'
+import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
 import syncStripeCatalog from './syncStripeCatalog'
 
 function normalizeOrigin(value?: string | null): string {
@@ -105,12 +106,14 @@ export const handler: Handler = async (event, context) => {
         : undefined
 
   const secret = (process.env.STRIPE_SYNC_SECRET || '').trim()
-
-  if (!process.env.STRIPE_SECRET_KEY) {
+  const stripeSecret = resolveStripeSecretKey()
+  if (!stripeSecret) {
     return {
       statusCode: 500,
       headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Missing STRIPE_SECRET_KEY environment variable.'}),
+      body: JSON.stringify({
+        error: `Missing Stripe secret key (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')}).`,
+      }),
     }
   }
 

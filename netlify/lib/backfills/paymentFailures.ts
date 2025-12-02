@@ -1,10 +1,11 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import fs from 'node:fs'
 import path from 'node:path'
-import Stripe from 'stripe'
 import dotenv from 'dotenv'
 import {createClient, type SanityClient} from '@sanity/client'
 import {buildStripeSummary} from '../../lib/stripeSummary'
+import Stripe from 'stripe'
+import {requireStripeSecretKey} from '../stripeEnv'
 
 type CliLikeOptions = {
   dryRun?: boolean
@@ -89,10 +90,7 @@ function ensureEnvLoaded() {
 
 function getStripe(): Stripe {
   if (cachedStripe) return cachedStripe
-  const secret = process.env.STRIPE_SECRET_KEY
-  if (!secret) {
-    throw new Error('Missing STRIPE_SECRET_KEY in environment.')
-  }
+  const secret = requireStripeSecretKey()
   cachedStripe = new Stripe(secret, {
     apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
   })
