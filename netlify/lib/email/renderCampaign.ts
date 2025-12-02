@@ -122,7 +122,7 @@ export const renderCampaignHtml = (
 export const htmlToText = (html: string) =>
   html
     .replace(STYLE_TAG_REGEX, '')
-    .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, '')
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/<[^>]+>/g, '')
     .replace(/\\s{2,}/g, ' ')
     .trim()
