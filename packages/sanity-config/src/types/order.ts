@@ -20,8 +20,8 @@ export interface OrderCartItem {
   optionSummary?: string
   optionDetails?: string[]
   upgrades?: string[]
-  upgradesTotal?: number
-  productRef?: SanityReference
+  upgradesTotal?: number | null
+  productRef?: SanityReference | null
 }
 
 export interface ShippingAddress {
@@ -44,31 +44,33 @@ export interface OrderDocument {
   status?: OrderStatus
   createdAt?: string
   fulfilledAt?: string
-  totalAmount?: number
-  amountSubtotal?: number
-  amountTax?: number
-  amountDiscount?: number
-  discountLabel?: string
-  discountPercent?: number
-  amountShipping?: number
+  totalAmount?: number | null
+  amountSubtotal?: number | null
+  amountTax?: number | null
+  amountDiscount?: number | null
+  discountLabel?: string | null
+  discountPercent?: number | null
+  amountShipping?: number | null
   paymentStatus?: string
   paymentIntentId?: string
   stripeSessionId?: string
   cardBrand?: string
   cardLast4?: string
   receiptUrl?: string
-  invoiceRef?: SanityReference
+  invoiceRef?: SanityReference | null
   customerName?: string
   customerEmail?: string
-  customerRef?: SanityReference
-  cart?: OrderCartItem[]
+  customerRef?: SanityReference | null
+  cart?: OrderCartItem[] | null
   currency?: string
-  manualTrackingNumber?: string
-  trackingNumber?: string
-  trackingUrl?: string
-  shippingLabelUrl?: string
-  packingSlipUrl?: string
+  manualTrackingNumber?: string | null
+  trackingNumber?: string | null
+  trackingUrl?: string | null
+  shippingLabelUrl?: string | null
+  packingSlipUrl?: string | null
   shippingAddress?: ShippingAddress
+  fulfillment?: Record<string, any> | null
+  fulfillmentWorkflow?: {currentStage?: string | null; [key: string]: any} | null
 }
 
 export type OrderViewFieldType =
