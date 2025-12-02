@@ -7,6 +7,8 @@ import Stripe from 'stripe'
 import {mapStripeLineItem} from '../lib/stripeCartItem'
 import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
+import {requireSanityCredentials} from '../lib/sanityEnv'
+import {resolveStripeSecretKey} from '../lib/stripeEnv'
 
 type MetadataNormalizationResult = {
   changed: boolean
@@ -142,24 +144,18 @@ function makeCORS(origin?: string) {
   }
 }
 
-const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
-
-const SANITY_DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
-
-if (!SANITY_PROJECT_ID) {
-  throw new Error('Missing Sanity projectId for backfillOrders (set SANITY_STUDIO_PROJECT_ID).')
-}
+const {projectId: SANITY_PROJECT_ID, dataset: SANITY_DATASET, token: SANITY_TOKEN} =
+  requireSanityCredentials()
 
 const sanity = createClient({
   projectId: SANITY_PROJECT_ID,
   dataset: SANITY_DATASET,
   apiVersion: '2024-04-10',
-  token: process.env.SANITY_API_TOKEN as string,
+  token: SANITY_TOKEN,
   useCdn: false,
 })
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY
+const stripeSecret = resolveStripeSecretKey()
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null
 
 function toOrderCartItem(it: any) {
