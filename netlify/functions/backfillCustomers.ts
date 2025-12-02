@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
+import {requireSanityCredentials} from '../lib/sanityEnv'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -18,20 +19,14 @@ function makeCORS(origin?: string) {
   }
 }
 
-const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
-
-const SANITY_DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
-
-if (!SANITY_PROJECT_ID) {
-  throw new Error('Missing Sanity projectId for backfillCustomers (set SANITY_STUDIO_PROJECT_ID).')
-}
+const {projectId: SANITY_PROJECT_ID, dataset: SANITY_DATASET, token: SANITY_TOKEN} =
+  requireSanityCredentials()
 
 const sanity = createClient({
   projectId: SANITY_PROJECT_ID,
   dataset: SANITY_DATASET,
   apiVersion: '2024-04-10',
-  token: process.env.SANITY_API_TOKEN as string,
+  token: SANITY_TOKEN,
   useCdn: false,
 })
 

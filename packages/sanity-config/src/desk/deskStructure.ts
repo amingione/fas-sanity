@@ -1509,17 +1509,25 @@ const createMarketingSection = (S: any) =>
               S.list()
                 .title('Email Marketing')
                 .items([
-                  S.documentTypeListItem('emailCampaign')
+                  S.listItem()
+                    .id('email-campaigns')
                     .title('Campaigns')
                     .icon(EnvelopeIcon)
-                    .child((documentId: string) =>
-                      S.document()
-                        .schemaType('emailCampaign')
-                        .documentId(documentId)
-                        .views([
-                          S.view.form().title('Editor'),
-                          S.view.component(CampaignPerformance as ComponentType).title('Performance'),
-                        ]),
+                    .child(
+                      S.documentTypeList('emailCampaign')
+                        .apiVersion(API_VERSION)
+                        .title('Email Campaigns')
+                        .filter('_type == "emailCampaign"')
+                        .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                        .child((documentId: string) =>
+                          S.document()
+                            .schemaType('emailCampaign')
+                            .documentId(documentId)
+                            .views([
+                              S.view.form().title('Editor'),
+                              S.view.component(CampaignPerformance as ComponentType).title('Performance'),
+                            ]),
+                        ),
                     ),
                   S.documentTypeListItem('emailTemplate')
                     .title('Email Templates')
@@ -1533,12 +1541,16 @@ const createMarketingSection = (S: any) =>
                   S.listItem()
                     .title('Subscribers')
                     .icon(UserIcon)
-                    .schemaType('marketingOptIn')
+                    .schemaType('customer')
                     .child(
                       S.documentList()
                         .apiVersion(API_VERSION)
                         .title('Email Subscribers')
-                        .filter('_type == "marketingOptIn"'),
+                        .schemaType('customer')
+                        .filter(
+                          '_type == "customer" && (emailOptIn == true || marketingOptIn == true || emailMarketing.subscribed == true || communicationPreferences.marketingOptIn == true)',
+                        )
+                        .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
                     ),
                 ]),
             ),

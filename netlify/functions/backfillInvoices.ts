@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
+import {requireSanityCredentials} from '../lib/sanityEnv'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -18,11 +19,12 @@ function makeCORS(origin?: string) {
   }
 }
 
+const sanityCreds = requireSanityCredentials()
 const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
+  projectId: sanityCreds.projectId,
+  dataset: sanityCreds.dataset,
   apiVersion: '2024-04-10',
-  token: process.env.SANITY_API_TOKEN as string,
+  token: sanityCreds.token,
   useCdn: false,
 })
 

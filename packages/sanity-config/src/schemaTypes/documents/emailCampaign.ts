@@ -299,17 +299,29 @@ export default defineType({
       subject: 'subject',
       status: 'status',
       sentDate: 'sentDate',
+      scheduledSendDate: 'scheduledSendDate',
+      openRate: 'openRate',
+      clickRate: 'clickRate',
+      recipientCount: 'recipientCount',
     },
     prepare({
       title,
       subject,
       status,
       sentDate,
+      scheduledSendDate,
+      openRate,
+      clickRate,
+      recipientCount,
     }: {
       title?: string
       subject?: string
       status?: string
       sentDate?: string
+      scheduledSendDate?: string
+      openRate?: number
+      clickRate?: number
+      recipientCount?: number
     }) {
       const statusMap = {
         draft: '📝',
@@ -320,10 +332,37 @@ export default defineType({
       } as const
 
       const statusEmoji = statusMap[status as keyof typeof statusMap] || '📧'
+      const statusLabel =
+        status === 'sent'
+          ? 'Sent'
+          : status === 'scheduled'
+            ? 'Scheduled'
+            : status === 'sending'
+              ? 'Sending'
+              : status === 'paused'
+                ? 'Paused'
+                : 'Draft'
+      const sendInfo = sentDate
+        ? `Sent ${new Date(sentDate).toLocaleDateString()}`
+        : scheduledSendDate
+          ? `Scheduled ${new Date(scheduledSendDate).toLocaleDateString()}`
+          : undefined
+      const formatPercent = (value?: number) =>
+        typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : undefined
+      const openRateDisplay = formatPercent(openRate)
+      const clickRateDisplay = formatPercent(clickRate)
+      const metrics = [
+        openRateDisplay ? `${openRateDisplay} opens` : null,
+        clickRateDisplay ? `${clickRateDisplay} clicks` : null,
+        typeof recipientCount === 'number' ? `${recipientCount} recipients` : null,
+      ]
+        .filter(Boolean)
+        .join(' • ')
 
       return {
-        title: title,
-        subtitle: `${statusEmoji} ${subject}${sentDate ? ` • Sent ${new Date(sentDate).toLocaleDateString()}` : ''}`,
+        title: title || subject || 'Untitled campaign',
+        subtitle: `${statusEmoji} ${statusLabel}${sendInfo ? ` • ${sendInfo}` : ''}${subject ? ` • ${subject}` : ''}`,
+        description: metrics || undefined,
       }
     },
   },
