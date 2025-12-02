@@ -13,7 +13,7 @@ interface Vendor {
   }
   onboardedAt?: string
   _createdAt: string
-}*** End Patch
+}
 
 export default function VendorAdminDashboard() {
   const client = useClient({apiVersion: '2024-10-01'})
