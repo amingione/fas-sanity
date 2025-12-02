@@ -182,8 +182,16 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
       try {
         data = rawBody ? JSON.parse(rawBody) : {}
       } catch {
+        const snippet = rawBody ? rawBody.slice(0, 240) : '(empty body)'
+        const statusInfo = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
+        const hint =
+          response.status === 401
+            ? ' • Check BACKFILL_SECRET and auth.'
+            : response.status === 404
+              ? ' • Verify Netlify base URL.'
+              : ''
         throw new Error(
-          `Unexpected response from ${activeBase}. Ensure SANITY_STUDIO_NETLIFY_BASE points to Netlify.`,
+          `Unexpected response (${statusInfo}) from ${activeBase}${hint}. Body: ${snippet}`,
         )
       }
       if (!response.ok || data?.error) {
