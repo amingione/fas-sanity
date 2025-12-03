@@ -1,3 +1,6 @@
+import {useState} from 'react'
+import {useToast} from '@sanity/ui'
+import {CopyIcon, LaunchIcon} from '@sanity/icons'
 import type {
   DocumentActionComponent,
   DocumentActionProps,
@@ -17,6 +20,57 @@ type TagActionArray = DocumentActionComponent[] & {
 
 function isProduct(props: DocumentActionProps) {
   return props.type === 'product'
+}
+
+const isServiceProduct = (props: DocumentActionProps): boolean => {
+  if (!isProduct(props)) return false
+  const source = (props.draft || props.published) as ProductDocument | undefined
+  const productType = typeof source?.productType === 'string' ? source.productType.toLowerCase() : ''
+  return productType === 'service'
+}
+
+const buildDraftId = () => {
+  const suffix =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+  return `drafts.${suffix}`
+}
+
+const normalizeSlug = (value?: string | null) => {
+  if (!value) return ''
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+const buildCopySlug = (source?: ProductDocument | null) => {
+  const base =
+    normalizeSlug(source?.slug?.current) ||
+    normalizeSlug(source?.title || '') ||
+    'performance-package'
+  const suffix =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().slice(0, 6)
+      : Math.random().toString(36).slice(2, 8)
+  return `${base}-copy-${suffix}`.slice(0, 96)
+}
+
+const buildPreviewBaseUrl = () => {
+  const envSite =
+    (typeof process !== 'undefined' &&
+      (process.env.SANITY_STUDIO_SITE_URL || process.env.VITE_SITE_URL)) ||
+    ''
+  const isDev =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  const normalizedEnv = envSite.replace(/\/$/, '')
+  if (isDev) return 'http://localhost:3000'
+  if (normalizedEnv) return normalizedEnv
+  if (typeof window !== 'undefined') return window.location.origin.replace(/\/$/, '')
+  return 'https://fasmotorsports.com'
 }
 
 function toPublishedId(id: string) {
@@ -92,6 +146,121 @@ const createGenerateTagsAction =
     }
   }
 
+const createDuplicateServicePackageAction =
+  (context: DocumentActionsContext): DocumentActionComponent =>
+  (props) => {
+    if (!isServiceProduct(props)) return null
+    const toast = useToast()
+    const [busy, setBusy] = useState(false)
+    const client = context.getClient({apiVersion: API_VERSION})
+    const source = (props.draft || props.published) as ProductDocument | undefined
+    if (!source) return null
+
+    return {
+      label: 'Duplicate Package',
+      icon: CopyIcon,
+      disabled: busy,
+      onHandle: async () => {
+        setBusy(true)
+        try {
+          const {
+            _id,
+            _rev,
+            _createdAt,
+            _updatedAt,
+            sku,
+            mpn,
+            slug,
+            stripeProductId,
+            stripeDefaultPriceId,
+            stripePriceId,
+            stripeActive,
+            ...rest
+          } = source as any
+
+          const duplicateTitle = source.title ? `${source.title} (Copy)` : 'Performance Package Copy'
+          const draftId = buildDraftId()
+          const copySlug = buildCopySlug(source)
+          const payload: Record<string, unknown> = {
+            ...rest,
+            _id: draftId,
+            _type: 'product',
+            title: duplicateTitle,
+            status: 'draft',
+            productType: 'service',
+            slug: copySlug ? {_type: 'slug', current: copySlug} : undefined,
+            stripeProductId: undefined,
+            stripeDefaultPriceId: undefined,
+            stripePriceId: undefined,
+            stripeActive: false,
+            sku: undefined,
+            mpn: undefined,
+          }
+
+          const created = await client.create(payload)
+          const codes = await ensureProductCodes(created._id, client, {
+            log: (...args: unknown[]) => console.log('[duplicate-service-package]', ...args),
+          })
+          const canonicalId = toPublishedId(created._id)
+          if (typeof window !== 'undefined') {
+            const studioBase = window.location.origin.replace(/\/$/, '')
+            window.open(`${studioBase}/desk/product;${canonicalId}`, '_blank', 'noopener')
+          }
+          toast.push({
+            status: 'success',
+            title: 'Package duplicated',
+            description:
+              codes?.sku && codes.generated
+                ? `Created ${duplicateTitle} with SKU ${codes.sku}.`
+                : `Created ${duplicateTitle}.`,
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          toast.push({status: 'error', title: 'Duplicate failed', description: message})
+        } finally {
+          setBusy(false)
+          props.onComplete()
+        }
+      },
+    }
+  }
+
+const createPreviewServicePackageAction =
+  (_context: DocumentActionsContext): DocumentActionComponent =>
+  (props) => {
+    if (!isServiceProduct(props)) return null
+    const toast = useToast()
+    const source = (props.draft || props.published) as ProductDocument | undefined
+    const slug = source?.slug?.current
+    const title = source?.title || 'Performance Package'
+
+    return {
+      label: 'Preview on Site',
+      icon: LaunchIcon,
+      disabled: !slug,
+      title: slug ? undefined : 'Add a slug to preview this package',
+      onHandle: () => {
+        if (!slug) {
+          toast.push({
+            status: 'warning',
+            title: 'Missing slug',
+            description: 'Add a URL slug to preview this performance package.',
+          })
+          props.onComplete()
+          return
+        }
+
+        const baseUrl = buildPreviewBaseUrl()
+        const previewUrl = `${baseUrl}/products/${slug}`
+        if (typeof window !== 'undefined') {
+          window.open(previewUrl, '_blank', 'noopener')
+        }
+        toast.push({status: 'success', title: 'Opening preview', description: title})
+        props.onComplete()
+      },
+    }
+  }
+
 export function resolveProductDocumentActions(
   prev: DocumentActionComponent[],
   context: DocumentActionsContext
@@ -102,24 +271,27 @@ export function resolveProductDocumentActions(
   if (tagged[TAG_ACTIONS_FLAG]) return prev
 
   const generateTagsAction = createGenerateTagsAction(context)
+  const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
+  const previewServicePackageAction = createPreviewServicePackageAction(context)
 
   const enhancedList = prev.map((action) => {
     if (!action) return action
 
-      const wrapped: DocumentActionComponent = (props) => {
-        const original = action(props)
-        if (!original || !isProduct(props)) return original
-        const originalName = typeof (original as any)?.name === 'string' ? (original as any).name : null
-        if (originalName !== 'publish') return original
+    const wrapped: DocumentActionComponent = (props) => {
+      const original = action(props)
+      if (!original || !isProduct(props)) return original
+      const originalName =
+        typeof (original as any)?.name === 'string' ? (original as any).name : null
+      if (originalName !== 'publish') return original
 
-        return {
-          ...original,
-          label: 'Publish with Codes, Shipping, Sales & SEO Tags',
-          onHandle: async () => {
-            try {
-              await ensureCodesBeforePublish(context, props)
-              const result = original.onHandle?.()
-              await Promise.resolve(result)
+      return {
+        ...original,
+        label: 'Publish with Codes, Shipping, Sales & SEO Tags',
+        onHandle: async () => {
+          try {
+            await ensureCodesBeforePublish(context, props)
+            const result = original.onHandle?.()
+            await Promise.resolve(result)
             await refreshAndGenerateTags(context, props, {patchDraft: false})
           } finally {
             props.onComplete()
@@ -131,7 +303,12 @@ export function resolveProductDocumentActions(
     return Object.assign(wrapped, action)
   })
 
-  const enhanced: TagActionArray = [...enhancedList, generateTagsAction]
+  const enhanced: TagActionArray = [
+    ...enhancedList,
+    generateTagsAction,
+    duplicateServicePackageAction,
+    previewServicePackageAction,
+  ]
   Object.defineProperty(enhanced, TAG_ACTIONS_FLAG, {value: true})
 
   return enhanced

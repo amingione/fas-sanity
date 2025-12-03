@@ -8,6 +8,19 @@ declare global {
   }
 }
 
+// When bundled, propagate the compile-time env object onto globalThis/window so
+// the value is inspectable (e.g., in devtools) even if the HTML shim fails.
+if (typeof __SANITY_STUDIO_RUNTIME_ENV__ !== 'undefined') {
+  try {
+    const target = typeof globalThis !== 'undefined' ? globalThis : (window as any)
+    if (target && !target.__SANITY_STUDIO_RUNTIME_ENV__) {
+      target.__SANITY_STUDIO_RUNTIME_ENV__ = __SANITY_STUDIO_RUNTIME_ENV__
+    }
+  } catch {
+    // no-op
+  }
+}
+
 function runtimeEnv(): EnvMap | undefined {
   if (typeof __SANITY_STUDIO_RUNTIME_ENV__ !== 'undefined') {
     return __SANITY_STUDIO_RUNTIME_ENV__

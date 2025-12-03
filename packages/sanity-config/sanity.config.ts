@@ -1,5 +1,7 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
 import {defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
+import fs from 'fs'
+import {config as loadDotenv} from 'dotenv'
 import './src/styles/tailwind.css'
 import {studioTheme} from '@sanity/ui'
 // Desk Tool import is different across Sanity versions; support both named and default
@@ -31,11 +33,37 @@ import StudioLayout from './src/components/studio/StudioLayout'
 import {orderView} from './src/views/orderView'
 import CustomerDashboard from './src/components/studio/CustomerDashboard'
 import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
+import './src/runtimeEnvBootstrap'
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
 const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : ''
 const packageRoot = joinSegments(projectRoot, 'packages', 'sanity-config')
+
+const loadEnvFiles = () => {
+  if (!hasProcess) return
+  const mode = process.env.NODE_ENV || process.env.MODE || 'development'
+  const candidates = [
+    '.env',
+    '.env.local',
+    `.env.${mode}`,
+    `.env.${mode}.local`,
+    '.env.development',
+    '.env.development.local',
+  ].map((filename) => joinSegments(projectRoot, filename))
+
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) {
+        loadDotenv({path: file, override: false})
+      }
+    } catch {
+      // ignore individual load errors so a missing file doesn't break startup
+    }
+  }
+}
+
+loadEnvFiles()
 
 const aliasFromNodeModules = (specifier: string) =>
   hasProcess ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/')) : specifier

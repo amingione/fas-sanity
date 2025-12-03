@@ -116,6 +116,14 @@ const documentTablePane = (S: any, id: string, title: string, component: Compone
 const ProductsAllTableView: ComponentType = () =>
   React.createElement(ProductsDocumentTable as any, {title: 'All products', pageSize: 12})
 
+const PerformancePackagesTableView: ComponentType = () =>
+  React.createElement(ProductsDocumentTable as any, {
+    title: 'Performance Packages',
+    pageSize: 12,
+    baseFilter: 'productType == "service"',
+    initialSortId: 'titleAsc',
+  })
+
 const ProductsPausedTableView: ComponentType = () =>
   React.createElement(ProductsDocumentTable as any, {
     title: 'Paused',
@@ -359,6 +367,18 @@ const createProductsSection = (S: any) =>
             .id('products-all')
             .title('All Products')
             .child(documentTablePane(S, 'products-all', 'All products', ProductsAllTableView)),
+          S.listItem()
+            .id('performance-packages')
+            .title('Performance Packages')
+            .icon(RocketIcon)
+            .child(
+              documentTablePane(
+                S,
+                'performance-packages',
+                'Performance Packages',
+                PerformancePackagesTableView,
+              ),
+            ),
           S.listItem()
             .id('products-paused')
             .title('Paused')
