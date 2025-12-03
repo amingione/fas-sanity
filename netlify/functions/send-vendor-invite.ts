@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {triggerOnboardingCampaign} from '../lib/vendorOnboardingCampaign'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -295,6 +296,11 @@ const handler: Handler = async (event) => {
 
     if (vendorId) {
       await markInvited(vendorId, email, invitedAt, setupToken, setupTokenExpiry)
+      try {
+        await triggerOnboardingCampaign(vendorId, setupToken)
+      } catch (err) {
+        console.warn('[send-vendor-invite] onboarding campaign not triggered', err)
+      }
     }
 
     return {
