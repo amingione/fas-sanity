@@ -238,6 +238,59 @@ export default defineType({
       ],
     }),
     defineField({
+      name: 'shippingAddresses',
+      title: 'Shipping Addresses',
+      type: 'array',
+      group: 'contact',
+      of: [
+        defineField({
+          name: 'shippingAddress',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'label',
+              title: 'Address Label',
+              type: 'string',
+              description: 'e.g., Main Warehouse, Secondary Location',
+            }),
+            defineField({name: 'street', type: 'string', title: 'Street Address'}),
+            defineField({name: 'address2', type: 'string', title: 'Address Line 2'}),
+            defineField({name: 'city', type: 'string', title: 'City'}),
+            defineField({name: 'state', type: 'string', title: 'State'}),
+            defineField({name: 'zip', type: 'string', title: 'ZIP Code'}),
+            defineField({
+              name: 'country',
+              type: 'string',
+              title: 'Country',
+              initialValue: 'USA',
+            }),
+            defineField({
+              name: 'isDefault',
+              title: 'Default Address',
+              type: 'boolean',
+              initialValue: false,
+            }),
+          ],
+          preview: {
+            select: {
+              label: 'label',
+              street: 'street',
+              city: 'city',
+              state: 'state',
+            },
+            prepare({label, street, city, state}) {
+              const streetLine = street ? `${street}` : 'Address'
+              const cityLine = [city, state].filter(Boolean).join(', ')
+              return {
+                title: label || 'Address',
+                subtitle: cityLine ? `${streetLine}, ${cityLine}` : streetLine,
+              }
+            },
+          },
+        }),
+      ],
+    }),
+    defineField({
       name: 'paymentTerms',
       title: 'Payment Terms',
       type: 'string',
@@ -403,6 +456,20 @@ export default defineType({
           readOnly: true,
         }),
         defineField({
+          name: 'setupToken',
+          title: 'Setup Token',
+          type: 'string',
+          hidden: true,
+          description: 'One-time token for account setup',
+        }),
+        defineField({
+          name: 'setupTokenExpiry',
+          title: 'Setup Token Expiry',
+          type: 'datetime',
+          hidden: true,
+          description: 'When the setup token expires (24 hours)',
+        }),
+        defineField({
           name: 'permissions',
           title: 'Permissions',
           type: 'array',
@@ -421,6 +488,130 @@ export default defineType({
           type: 'reference',
           to: [{type: 'user'}],
           readOnly: true,
+        }),
+      ],
+    }),
+    defineField({
+      name: 'notificationPreferences',
+      title: 'Notification Preferences',
+      type: 'object',
+      group: 'portal',
+      fields: [
+        defineField({
+          name: 'emailOrders',
+          title: 'Email: Order Updates',
+          type: 'boolean',
+          initialValue: true,
+        }),
+        defineField({
+          name: 'emailInvoices',
+          title: 'Email: Invoice Updates',
+          type: 'boolean',
+          initialValue: true,
+        }),
+        defineField({
+          name: 'emailMessages',
+          title: 'Email: New Messages',
+          type: 'boolean',
+          initialValue: true,
+        }),
+        defineField({
+          name: 'emailPayments',
+          title: 'Email: Payment Updates',
+          type: 'boolean',
+          initialValue: true,
+        }),
+        defineField({
+          name: 'browserNotifications',
+          title: 'Browser Notifications',
+          type: 'boolean',
+          initialValue: false,
+        }),
+        defineField({
+          name: 'smsNotifications',
+          title: 'SMS Notifications',
+          type: 'boolean',
+          initialValue: false,
+        }),
+        defineField({
+          name: 'smsPhone',
+          title: 'SMS Phone Number',
+          type: 'string',
+          description: 'Phone number for SMS notifications',
+        }),
+      ],
+    }),
+    defineField({
+      name: 'savedPaymentMethods',
+      title: 'Saved Payment Methods',
+      type: 'array',
+      group: 'portal',
+      of: [
+        defineField({
+          name: 'paymentMethod',
+          type: 'object',
+          fields: [
+            defineField({
+              name: 'type',
+              title: 'Type',
+              type: 'string',
+              options: {
+                list: [
+                  {title: 'Credit Card', value: 'card'},
+                  {title: 'Bank Account', value: 'bank'},
+                ],
+              },
+            }),
+            defineField({
+              name: 'last4',
+              title: 'Last 4 Digits',
+              type: 'string',
+            }),
+            defineField({
+              name: 'brand',
+              title: 'Brand',
+              type: 'string',
+              description: 'e.g., Visa, Mastercard, Amex',
+            }),
+            defineField({
+              name: 'expiryMonth',
+              title: 'Expiry Month',
+              type: 'number',
+            }),
+            defineField({
+              name: 'expiryYear',
+              title: 'Expiry Year',
+              type: 'number',
+            }),
+            defineField({
+              name: 'isDefault',
+              title: 'Default Payment Method',
+              type: 'boolean',
+              initialValue: false,
+            }),
+            defineField({
+              name: 'stripePaymentMethodId',
+              title: 'Stripe Payment Method ID',
+              type: 'string',
+              description: 'Stripe payment method ID for processing',
+            }),
+          ],
+          preview: {
+            select: {
+              type: 'type',
+              brand: 'brand',
+              last4: 'last4',
+            },
+            prepare({type, brand, last4}) {
+              const label = brand || type || 'Payment Method'
+              const ending = last4 ? ` ending in ${last4}` : ''
+              const subtitle = type === 'card' ? 'Credit Card' : 'Bank Account'
+              return {
+                title: `${label}${ending}`,
+                subtitle,
+              }
+            },
+          },
         }),
       ],
     }),

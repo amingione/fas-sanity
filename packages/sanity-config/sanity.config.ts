@@ -35,6 +35,10 @@ import CustomerDashboard from './src/components/studio/CustomerDashboard'
 import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
 import './src/runtimeEnvBootstrap'
 
+declare const __SANITY_STUDIO_RUNTIME_ENV__:
+  | Record<string, string | undefined>
+  | undefined
+
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
 const projectRoot = hasProcess ? process.cwd().replace(/\\/g, '/') : ''

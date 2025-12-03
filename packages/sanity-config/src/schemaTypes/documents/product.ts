@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react'
 import {defineType, defineField, set} from 'sanity'
-import type {BooleanFieldProps, StringFieldProps} from 'sanity'
+import type {BooleanInputProps, BooleanSchemaType, StringInputProps, StringSchemaType} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 import ProductImageAltReferenceInput from '../../components/inputs/ProductImageAltReferenceInput'
 import ProductJsonLdPreview from '../../components/studio/ProductJsonLdPreview'
@@ -15,10 +15,7 @@ import {generateInitialMpn} from '../../utils/generateProductCodes'
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 const PRODUCT_API_VERSION = '2024-10-01'
 
-type CanonicalFieldProps = StringFieldProps & {
-  document?: any
-  onChange?: (patch: any) => void
-}
+type CanonicalFieldProps = StringInputProps<StringSchemaType> & {document?: any}
 
 const CanonicalUrlField: React.ComponentType<CanonicalFieldProps> = (props) => {
   const slug = props.document?.slug?.current
@@ -63,15 +60,9 @@ const SHIPPING_CLASS_VALUES = ['standard', 'oversized', 'fragile', 'hazmat', 'in
 const normalizeShippingClass = (value?: string | null) =>
   typeof value === 'string' ? value.toLowerCase().replace(/\s+/g, '_') : undefined
 
-type BooleanFieldWithDocument = BooleanFieldProps & {
-  document?: any
-  onChange?: (patch: any) => void
-}
+type BooleanFieldWithDocument = BooleanInputProps<BooleanSchemaType> & {document?: any}
 
-type StringFieldWithDocument = StringFieldProps & {
-  document?: any
-  onChange?: (patch: any) => void
-}
+type StringFieldWithDocument = StringInputProps<StringSchemaType> & {document?: any}
 
 type ShippingVisibilityContext = VisibilityContext & {parent?: Record<string, any>}
 
@@ -1449,7 +1440,7 @@ const product = defineType({
       type: 'url',
       description:
         'Auto-filled from the product slug; override only when a custom canonical is required.',
-      components: {field: CanonicalUrlField},
+      components: {input: CanonicalUrlField},
       fieldset: 'seo',
       group: 'seo',
     }),

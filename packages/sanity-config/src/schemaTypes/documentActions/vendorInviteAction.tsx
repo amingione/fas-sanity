@@ -165,8 +165,9 @@ export const sendVendorInviteAction: DocumentActionComponent = (props) => {
               <Checkbox
                 checked={resendConfirmed}
                 onChange={(event) => setResendConfirmed(event.currentTarget.checked)}
-                text="I want to resend this invite"
-              />
+              >
+                I want to resend this invite
+              </Checkbox>
             </Stack>
           </Card>
         )}

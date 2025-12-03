@@ -9,7 +9,6 @@ export default defineType({
       name: 'poNumber',
       title: 'PO Number',
       type: 'string',
-      description: 'Purchase order number (e.g., PO-2024-001)',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -25,24 +24,19 @@ export default defineType({
       type: 'string',
       options: {
         list: [
-          {title: 'Draft', value: 'draft'},
-          {title: 'Sent', value: 'sent'},
-          {title: 'Acknowledged', value: 'acknowledged'},
-          {title: 'In Production', value: 'in_production'},
+          {title: 'Pending', value: 'pending'},
+          {title: 'Approved', value: 'approved'},
           {title: 'Shipped', value: 'shipped'},
           {title: 'Received', value: 'received'},
-          {title: 'Completed', value: 'completed'},
           {title: 'Cancelled', value: 'cancelled'},
         ],
-        layout: 'dropdown',
       },
-      initialValue: 'draft',
-      validation: (Rule) => Rule.required(),
+      initialValue: 'pending',
     }),
     defineField({
       name: 'orderDate',
       title: 'Order Date',
-      type: 'date',
+      type: 'datetime',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -61,19 +55,14 @@ export default defineType({
       type: 'array',
       of: [
         defineField({
-          type: 'object',
           name: 'lineItem',
+          type: 'object',
           fields: [
             defineField({
               name: 'product',
               title: 'Product',
               type: 'reference',
               to: [{type: 'product'}],
-            }),
-            defineField({
-              name: 'description',
-              title: 'Description',
-              type: 'string',
             }),
             defineField({
               name: 'quantity',
@@ -93,26 +82,19 @@ export default defineType({
               type: 'number',
               readOnly: true,
             }),
-            defineField({
-              name: 'received',
-              title: 'Quantity Received',
-              type: 'number',
-              initialValue: 0,
-            }),
           ],
           preview: {
             select: {
-              product: 'product.title',
+              title: 'product.title',
               quantity: 'quantity',
-              unitPrice: 'unitPrice',
+              total: 'total',
             },
-            prepare(selection) {
-              const {product, quantity, unitPrice} = selection
+            prepare({title, quantity, total}) {
               const qty = typeof quantity === 'number' ? quantity : 0
-              const price = typeof unitPrice === 'number' ? unitPrice : 0
+              const lineTotal = typeof total === 'number' ? total : 0
               return {
-                title: product || 'Product',
-                subtitle: `Qty: ${qty} × $${price}`,
+                title: title || 'Product',
+                subtitle: `Qty: ${qty} | Total: $${lineTotal}`,
               }
             },
           },
@@ -132,7 +114,7 @@ export default defineType({
     }),
     defineField({
       name: 'shipping',
-      title: 'Shipping Cost',
+      title: 'Shipping',
       type: 'number',
     }),
     defineField({
@@ -142,39 +124,20 @@ export default defineType({
       readOnly: true,
     }),
     defineField({
-      name: 'shipTo',
-      title: 'Ship To Address',
+      name: 'shippingAddress',
+      title: 'Shipping Address',
       type: 'object',
       fields: [
+        defineField({name: 'street', type: 'string', title: 'Street'}),
+        defineField({name: 'address2', type: 'string', title: 'Address Line 2'}),
+        defineField({name: 'city', type: 'string', title: 'City'}),
+        defineField({name: 'state', type: 'string', title: 'State'}),
+        defineField({name: 'zip', type: 'string', title: 'ZIP Code'}),
         defineField({
-          name: 'name',
-          title: 'Name',
+          name: 'country',
           type: 'string',
-        }),
-        defineField({
-          name: 'address1',
-          title: 'Address Line 1',
-          type: 'string',
-        }),
-        defineField({
-          name: 'address2',
-          title: 'Address Line 2',
-          type: 'string',
-        }),
-        defineField({
-          name: 'city',
-          title: 'City',
-          type: 'string',
-        }),
-        defineField({
-          name: 'state',
-          title: 'State',
-          type: 'string',
-        }),
-        defineField({
-          name: 'zip',
-          title: 'ZIP Code',
-          type: 'string',
+          title: 'Country',
+          initialValue: 'USA',
         }),
       ],
     }),
@@ -184,52 +147,26 @@ export default defineType({
       type: 'string',
     }),
     defineField({
-      name: 'carrier',
-      title: 'Carrier',
-      type: 'string',
-    }),
-    defineField({
       name: 'notes',
       title: 'Notes',
       type: 'text',
       rows: 3,
     }),
     defineField({
-      name: 'internalNotes',
-      title: 'Internal Notes',
-      type: 'text',
-      rows: 3,
-      description: 'Not visible to vendor',
-    }),
-    defineField({
-      name: 'attachments',
-      title: 'Attachments',
+      name: 'statusHistory',
+      title: 'Status History',
       type: 'array',
       of: [
         defineField({
-          type: 'file',
-          name: 'attachment',
+          name: 'statusHistoryEntry',
+          type: 'object',
           fields: [
-            defineField({
-              name: 'title',
-              type: 'string',
-              title: 'Title',
-            }),
-            defineField({
-              name: 'description',
-              type: 'text',
-              title: 'Description',
-            }),
+            defineField({name: 'status', type: 'string', title: 'Status'}),
+            defineField({name: 'timestamp', type: 'datetime', title: 'Timestamp'}),
+            defineField({name: 'note', type: 'text', title: 'Note'}),
           ],
         }),
       ],
-    }),
-    defineField({
-      name: 'createdBy',
-      title: 'Created By',
-      type: 'reference',
-      to: [{type: 'user'}],
-      readOnly: true,
     }),
   ],
   preview: {
@@ -239,12 +176,11 @@ export default defineType({
       status: 'status',
       total: 'total',
     },
-    prepare(selection) {
-      const {title, vendor, status, total} = selection
+    prepare({title, vendor, status, total}) {
       const displayTotal = typeof total === 'number' ? total : 0
       return {
-        title,
-        subtitle: `${vendor || 'Vendor'} • ${status || 'Status'} • $${displayTotal}`,
+        title: title || 'New PO',
+        subtitle: `${vendor || 'Vendor'} | ${status || 'Status'} | $${displayTotal}`,
       }
     },
   },
