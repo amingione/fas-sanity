@@ -263,6 +263,7 @@ import emailCampaign from './documents/emailCampaign'
 import emailTemplate from './documents/emailTemplate'
 import emailAutomation from './documents/emailAutomation'
 import emailLog from './documents/emailLog'
+import vendorEmailLog from './documents/vendorEmailLog'
 import attribution from './documents/attribution'
 import marketingOptIn from './documents/marketingOptIn'
 import service from './documents/service'
@@ -301,6 +302,7 @@ const documents = [
   vendorReturn,
   vendorFeedback,
   vendorQuote,
+  vendorEmailLog,
   bill,
   checkoutSession,
   order,

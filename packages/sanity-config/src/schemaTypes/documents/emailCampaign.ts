@@ -16,6 +16,26 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'campaignType',
+      title: 'Campaign Type',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Vendor Onboarding', value: 'vendor_onboarding'},
+          {title: 'Newsletter', value: 'newsletter'},
+          {title: 'Announcement', value: 'announcement'},
+        ],
+      },
+      initialValue: 'newsletter',
+    }),
+    defineField({
+      name: 'active',
+      title: 'Active',
+      type: 'boolean',
+      initialValue: true,
+      description: 'Turn campaign on/off',
+    }),
+    defineField({
       name: 'trackingSlug',
       title: 'Tracking Slug',
       type: 'slug',
@@ -211,6 +231,77 @@ export default defineType({
       readOnly: true,
     }),
     defineField({
+      name: 'emails',
+      title: 'Emails (Sequenced)',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          name: 'email',
+          fields: [
+            defineField({
+              name: 'emailNumber',
+              title: 'Email Number',
+              type: 'number',
+              validation: (Rule) => Rule.required().min(1),
+            }),
+            defineField({
+              name: 'delayDays',
+              title: 'Send After (Days)',
+              type: 'number',
+              description: 'Days after trigger event (0 = immediately)',
+              validation: (Rule) => Rule.required().min(0),
+            }),
+            defineField({
+              name: 'subject',
+              title: 'Subject Line',
+              type: 'string',
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({
+              name: 'previewText',
+              title: 'Preview Text',
+              type: 'string',
+              description: 'Text shown in email preview',
+            }),
+            defineField({
+              name: 'htmlContent',
+              title: 'HTML Content',
+              type: 'text',
+              rows: 20,
+              description: 'Full HTML email template',
+            }),
+            defineField({
+              name: 'active',
+              title: 'Active',
+              type: 'boolean',
+              initialValue: true,
+            }),
+          ],
+          preview: {
+            select: {
+              number: 'emailNumber',
+              subject: 'subject',
+              delay: 'delayDays',
+            },
+            prepare({number, subject, delay}) {
+              return {
+                title: `Email ${number}: ${subject}`,
+                subtitle: `Send after ${delay} days`,
+              }
+            },
+          },
+        },
+      ],
+    }),
+    defineField({
+      name: 'createdAt',
+      title: 'Created At',
+      type: 'datetime',
+      initialValue: () => new Date().toISOString(),
+      readOnly: true,
+    }),
+    defineField({
       name: 'recipientCount',
       title: 'Recipients',
       type: 'number',
@@ -298,6 +389,8 @@ export default defineType({
       title: 'title',
       subject: 'subject',
       status: 'status',
+      campaignType: 'campaignType',
+      active: 'active',
       sentDate: 'sentDate',
       scheduledSendDate: 'scheduledSendDate',
       openRate: 'openRate',
@@ -313,10 +406,14 @@ export default defineType({
       openRate,
       clickRate,
       recipientCount,
+      campaignType,
+      active,
     }: {
       title?: string
       subject?: string
       status?: string
+      campaignType?: string
+      active?: boolean
       sentDate?: string
       scheduledSendDate?: string
       openRate?: number
@@ -359,9 +456,12 @@ export default defineType({
         .filter(Boolean)
         .join(' • ')
 
+      const typeLabel = campaignType ? ` • ${campaignType}` : ''
+      const activeLabel = active === false ? ' • Inactive' : ''
+
       return {
         title: title || subject || 'Untitled campaign',
-        subtitle: `${statusEmoji} ${statusLabel}${sendInfo ? ` • ${sendInfo}` : ''}${subject ? ` • ${subject}` : ''}`,
+        subtitle: `${statusEmoji} ${statusLabel}${sendInfo ? ` • ${sendInfo}` : ''}${subject ? ` • ${subject}` : ''}${typeLabel}${activeLabel}`,
         description: metrics || undefined,
       }
     },
