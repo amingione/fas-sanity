@@ -60,7 +60,7 @@ export const sendCampaignEmail = async (params: {
   const resolvedSetupLink =
     setupLink ||
     (vendor.portalAccess?.setupToken
-      ? `${SITE_URL.replace(/\\/$/, '')}/vendor-portal/setup?token=${vendor.portalAccess.setupToken}`
+      ? `${SITE_URL.replace(/\/$/, '')}/vendor-portal/setup?token=${vendor.portalAccess.setupToken}`
       : undefined)
 
   const htmlContent = replaceVariables(email.htmlContent || '', {
@@ -99,7 +99,7 @@ export const triggerOnboardingCampaign = async (vendorId: string, setupToken: st
   }
 
   const setupLink = SITE_URL
-    ? `${SITE_URL.replace(/\\/$/, '')}/vendor-portal/setup?token=${setupToken}`
+    ? `${SITE_URL.replace(/\/$/, '')}/vendor-portal/setup?token=${setupToken}`
     : undefined
 
   await sendCampaignEmail({
