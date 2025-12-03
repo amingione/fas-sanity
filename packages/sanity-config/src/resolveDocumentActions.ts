@@ -22,6 +22,7 @@ import {
   convertVendorQuoteAction,
   sendVendorQuoteEmailAction,
 } from './schemaTypes/documentActions/vendorQuoteActions'
+import {sendVendorInviteAction} from './schemaTypes/documentActions/vendorInviteAction'
 import {
   manageWorkOrderAction,
   startWorkOrderAction,
@@ -103,6 +104,9 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (['vehicleModel', 'filterTag', 'product'].includes(context.schemaType)) {
     list.push(forceDeleteUnlinkAction)
+  }
+  if (context.schemaType === 'vendor') {
+    list.push(sendVendorInviteAction)
   }
   return list
 }
