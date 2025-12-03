@@ -1,11 +1,7 @@
 import {useState} from 'react'
 import {useToast} from '@sanity/ui'
 import {CopyIcon, LaunchIcon} from '@sanity/icons'
-import type {
-  DocumentActionComponent,
-  DocumentActionProps,
-  DocumentActionsContext,
-} from 'sanity'
+import type {DocumentActionComponent, DocumentActionProps, DocumentActionsContext} from 'sanity'
 import {generateProductTags, type ProductDocument} from '../utils/generateProductTags'
 import {ensureProductCodes} from '../utils/generateProductCodes'
 import {ensureShippingConfig} from '../utils/ensureShippingConfig'
@@ -181,7 +177,7 @@ const createDuplicateServicePackageAction =
           const duplicateTitle = source.title ? `${source.title} (Copy)` : 'Performance Package Copy'
           const draftId = buildDraftId()
           const copySlug = buildCopySlug(source)
-          const payload: Record<string, unknown> = {
+          const payload: {_type: 'product'; _id: string} & Record<string, unknown> = {
             ...rest,
             _id: draftId,
             _type: 'product',

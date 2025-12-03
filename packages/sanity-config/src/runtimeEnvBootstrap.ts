@@ -18,17 +18,14 @@ const envFromDefine =
     ? pickAllowed(__SANITY_STUDIO_RUNTIME_ENV__)
     : undefined
 
-// import.meta.env is only populated if Vite envPrefix includes SANITY_STUDIO_/PUBLIC_/VITE_
-// (configured in sanity.config.ts).
-// eslint-disable-next-line no-undef
-const envFromImportMeta =
-  typeof import.meta !== 'undefined' && typeof (import.meta as any).env !== 'undefined'
-    ? pickAllowed((import.meta as any).env as EnvMap)
-    : undefined
+// For CJS build paths (schema deploy), avoid import.meta access to prevent warnings.
+// Pull from process.env instead; the Studio bundle will already inline allowed vars.
+const envFromProcess =
+  typeof process !== 'undefined' && process.env ? pickAllowed(process.env as EnvMap) : undefined
 
 const mergedEnv: EnvMap = {
   ...(envFromDefine || {}),
-  ...(envFromImportMeta || {}),
+  ...(envFromProcess || {}),
 }
 
 try {

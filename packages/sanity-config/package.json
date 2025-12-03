@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "sanity dev",
     "build": "sanity build",
-    "deploy": "sanity deploy",
+    "deploy": "sanity schema deploy --non-interactive --manifest-dir ./dist/static",
     "lint": "eslint --max-warnings=0 .",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },

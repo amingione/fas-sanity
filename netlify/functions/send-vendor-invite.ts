@@ -1,4 +1,5 @@
 import type {Handler} from '@netlify/functions'
+import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 
@@ -31,6 +32,12 @@ const DEFAULT_PORTAL_URL =
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
   process.env.PUBLIC_SITE_URL ||
+  ''
+const SITE_URL =
+  process.env.SANITY_STUDIO_SITE_URL ||
+  process.env.PUBLIC_SITE_URL ||
+  process.env.VENDOR_PORTAL_URL ||
+  process.env.PUBLIC_VENDOR_PORTAL_URL ||
   ''
 
 const sanity =
@@ -90,15 +97,15 @@ const renderTemplate = (body: string, variables: Record<string, string>): string
 const buildFallbackHtml = ({
   companyName,
   contactName,
-  portalUrl,
+  setupUrl,
 }: {
   companyName: string
   contactName?: string
-  portalUrl?: string
+  setupUrl?: string
 }) => {
   const greeting = contactName ? `Hi ${contactName},` : 'Hello,'
-  const portalCta = portalUrl
-    ? `<p style="margin:24px 0;"><a href="${portalUrl}" style="padding:12px 20px;background:#111827;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;">Open vendor portal</a></p>`
+  const portalCta = setupUrl
+    ? `<p style="margin:24px 0;"><a href="${setupUrl}" style="padding:12px 20px;background:#111827;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;">Set up your account</a></p>`
     : ''
 
   return `
@@ -107,6 +114,11 @@ const buildFallbackHtml = ({
         <p style="margin:0 0 16px;color:#0f172a;">${greeting}</p>
         <p style="margin:0 0 16px;color:#334155;">You're invited to set up portal access for <strong>${companyName}</strong> with FAS Motorsports. Use the link below to complete your account and start managing wholesale orders.</p>
         ${portalCta}
+        ${
+          setupUrl
+            ? `<p style="margin:0 0 16px;color:#64748b;font-size:14px;">If the button above doesn't work, copy and paste this link: <br/><a href="${setupUrl}" style="color:#2563eb;word-break:break-all;">${setupUrl}</a></p>`
+            : ''
+        }
         <p style="margin:0;color:#64748b;">If you weren't expecting this, you can safely ignore the message.</p>
       </div>
     </div>
@@ -133,7 +145,13 @@ const fetchVendor = async (id: string): Promise<VendorDoc | null> => {
   }
 }
 
-const markInvited = async (id: string, email: string, invitedAt: string) => {
+const markInvited = async (
+  id: string,
+  email: string,
+  invitedAt: string,
+  setupToken: string,
+  setupTokenExpiry: string,
+) => {
   if (!sanity || !id) return
   try {
     await sanity
@@ -142,6 +160,8 @@ const markInvited = async (id: string, email: string, invitedAt: string) => {
       .set({
         'portalAccess.email': email,
         'portalAccess.invitedAt': invitedAt,
+        'portalAccess.setupToken': setupToken,
+        'portalAccess.setupTokenExpiry': setupTokenExpiry,
       })
       .commit({autoGenerateArrayKeys: true})
   } catch (err) {
@@ -192,6 +212,8 @@ const handler: Handler = async (event) => {
     DEFAULT_PORTAL_URL ||
     ''
   const templateId: string = (payload.templateId || '').trim() || DEFAULT_TEMPLATE_ID
+  const siteUrlEnv = (process.env.SANITY_STUDIO_SITE_URL || payload.siteUrl || '').trim()
+  const setupBase = siteUrlEnv || portalUrl || SITE_URL || DEFAULT_PORTAL_URL || ''
 
   const shouldHydrateVendor = (!email || !companyName || !contactName || !vendorNumber) && vendorId
 
@@ -219,10 +241,18 @@ const handler: Handler = async (event) => {
 
   const template = await fetchTemplate(templateId)
 
+  // Generate secure setup token + expiry
+  const setupToken = crypto.randomBytes(32).toString('hex')
+  const setupTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const setupLink = setupBase
+    ? `${setupBase.replace(/\/$/, '')}/vendor-portal/setup?token=${setupToken}`
+    : ''
+
   const variables = {
     companyName: companyName || 'your team',
     contactName: contactName || '',
     vendorPortalUrl: portalUrl || '',
+    vendorPortalSetupUrl: setupLink,
     vendorNumber: vendorNumber || '',
     inviteEmail: email,
   }
@@ -232,11 +262,11 @@ const handler: Handler = async (event) => {
     `Vendor portal invite${companyName ? ` for ${companyName}` : ''}`
   const html =
     (template?.htmlBody && renderTemplate(template.htmlBody, variables)) ||
-    buildFallbackHtml({companyName: variables.companyName, contactName, portalUrl})
+    buildFallbackHtml({companyName: variables.companyName, contactName, setupUrl: setupLink})
   const text =
     (template?.textBody && renderTemplate(template.textBody, variables)) ||
     `${variables.companyName} has been invited to the FAS Motorsports vendor portal.${
-      portalUrl ? ` Portal: ${portalUrl}` : ''
+      setupLink ? ` Setup: ${setupLink}` : portalUrl ? ` Portal: ${portalUrl}` : ''
     }`
 
   const fromAddress =
@@ -264,13 +294,20 @@ const handler: Handler = async (event) => {
     }
 
     if (vendorId) {
-      await markInvited(vendorId, email, invitedAt)
+      await markInvited(vendorId, email, invitedAt, setupToken, setupTokenExpiry)
     }
 
     return {
       statusCode: 200,
       headers: JSON_HEADERS,
-      body: JSON.stringify({success: true, invitedAt, to: email, vendorId: vendorId || undefined}),
+      body: JSON.stringify({
+        success: true,
+        invitedAt,
+        to: email,
+        vendorId: vendorId || undefined,
+        setupLink,
+        setupTokenExpiry,
+      }),
     }
   } catch (error) {
     console.error('[send-vendor-invite] send failed', error)

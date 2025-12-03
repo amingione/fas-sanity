@@ -23,7 +23,7 @@ const normalizeName = (value?: unknown): string => {
 const ComputedOrderCustomerNameInput = (props: Props) => {
   const {value, onChange} = props
   const client = useClient({apiVersion: API_VERSION})
-  const doc = useFormValue([]) as SanityDocument
+  const doc = (useFormValue([]) || {}) as Record<string, any>
   const [refName, setRefName] = useState<string | undefined>()
   const [loadingRef, setLoadingRef] = useState<boolean>(false)
 

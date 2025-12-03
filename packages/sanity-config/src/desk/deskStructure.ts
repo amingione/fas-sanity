@@ -10,6 +10,7 @@ import {
   CreditCardIcon,
   DocumentIcon,
   EnvelopeIcon,
+  BellIcon,
   HomeIcon,
   BulbOutlineIcon,
   LinkIcon,
@@ -1230,6 +1231,112 @@ const createWholesaleManufacturingSection = (S: any) =>
         ]),
     )
 
+const createVendorPortalSection = (S: any) =>
+  S.listItem()
+    .id('vendor-portal')
+    .title('Vendor Portal')
+    .icon(UserIcon)
+    .child(
+      S.list()
+        .title('Vendor Portal')
+        .items([
+          S.listItem()
+            .id('vendor-portal-purchase-orders')
+            .title('Purchase Orders')
+            .icon(ClipboardIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('purchaseOrder')
+                .title('Purchase Orders')
+                .filter('_type == "purchaseOrder"')
+                .defaultOrdering([{field: 'orderDate', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('vendor-portal-messages')
+            .title('Messages')
+            .icon(EnvelopeIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('vendorMessage')
+                .title('Vendor Messages')
+                .filter('_type == "vendorMessage"')
+                .defaultOrdering([{field: 'lastReplyAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('vendor-portal-notifications')
+            .title('Notifications')
+            .icon(BellIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('vendorNotification')
+                .title('Notifications')
+                .filter('_type == "vendorNotification"')
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('vendor-portal-products')
+            .title('Vendor Products')
+            .icon(PackageIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('vendorProduct')
+                .title('Vendor Products')
+                .filter('_type == "vendorProduct"'),
+            ),
+          S.listItem()
+            .id('vendor-portal-documents')
+            .title('Documents')
+            .icon(DocumentIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('vendorDocument')
+                .title('Vendor Documents')
+                .filter('_type == "vendorDocument"')
+                .defaultOrdering([{field: 'uploadedAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('vendor-portal-returns')
+            .title('Returns (RMA)')
+            .icon(WarningOutlineIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('vendorReturn')
+                .title('Returns')
+                .filter('_type == "vendorReturn"')
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('vendor-portal-feedback')
+            .title('Feedback')
+            .icon(BarChartIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('vendorFeedback')
+                .title('Vendor Feedback')
+                .filter('_type == "vendorFeedback"')
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('vendor-portal-templates')
+            .title('Order Templates')
+            .icon(ClipboardIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('orderTemplate')
+                .title('Order Templates')
+                .filter('_type == "orderTemplate"'),
+            ),
+        ]),
+    )
+
 const MarketingAnalyticsPane: ComponentType = () =>
   React.createElement(ComingSoonPane as any, {
     title: 'Marketing Analytics',
@@ -1804,6 +1911,9 @@ export const deskStructure: StructureResolver = (S) =>
       createShippingSection(S),
       S.documentTypeListItem('invoice').title('Invoices').icon(ClipboardIcon),
       S.documentTypeListItem('quote').title('Quotes').icon(DocumentIcon),
+
+      S.divider().title('Vendor Portal'),
+      createVendorPortalSection(S),
 
       S.divider().title('F.A.S. In-Store'),
       createInStoreOperationsSection(S),

@@ -243,7 +243,12 @@ import vendor from './documents/vendor'
 import vendorApplication from './documents/vendorApplication'
 import purchaseOrder from './documents/purchaseOrder'
 import vendorMessage from './documents/vendorMessage'
+import vendorNotification from './documents/vendorNotification'
 import vendorProduct from './documents/vendorProduct'
+import vendorDocument from './documents/vendorDocument'
+import orderTemplate from './documents/orderTemplate'
+import vendorReturn from './documents/vendorReturn'
+import vendorFeedback from './documents/vendorFeedback'
 import vendorQuote from './documents/vendorQuote'
 import customer from './documents/customer'
 import shippingOption from './documents/shippingOption'
@@ -289,7 +294,12 @@ const documents = [
   vendor,
   purchaseOrder,
   vendorMessage,
+  vendorNotification,
   vendorProduct,
+  vendorDocument,
+  orderTemplate,
+  vendorReturn,
+  vendorFeedback,
   vendorQuote,
   bill,
   checkoutSession,

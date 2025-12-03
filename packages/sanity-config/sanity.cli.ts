@@ -21,9 +21,6 @@ const resolvedHostname =
 const resolvedPort =
   parsePort(process.env.SANITY_STUDIO_PORT) || parsePort(process.env.PORT) || 3333
 
-const defaultAppId = 'ps4wgpv9q82jyqj4k9x6uxol'
-const resolvedAppId = process.env.SANITY_STUDIO_APP_ID?.trim() || defaultAppId
-
 export default defineCliConfig({
   api: {
     projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -57,6 +54,5 @@ export default defineCliConfig({
      * the package manager.
      */
     autoUpdates: false,
-    appId: resolvedAppId,
   },
 })
