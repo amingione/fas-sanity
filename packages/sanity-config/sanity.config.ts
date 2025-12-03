@@ -108,6 +108,10 @@ const processEnvDefine = JSON.stringify({
   NODE_ENV: hasProcess ? process.env.NODE_ENV ?? 'production' : 'production',
   MODE: hasProcess ? process.env.MODE ?? process.env.NODE_ENV ?? 'production' : 'production',
 })
+if (hasProcess && (process.env.DEBUG_STUDIO_ENV || process.env.VERBOSE_STUDIO_ENV)) {
+  // Helpful when envs aren't appearing in the client bundle.
+  console.info('[sanity-config] studioRuntimeEnv keys:', Object.keys(studioRuntimeEnv))
+}
 const runtimeEnvInlineScript = `
   window.__SANITY_STUDIO_RUNTIME_ENV__ = Object.assign(
     {},
@@ -238,6 +242,7 @@ export default defineConfig({
     },
   },
   vite: {
+    envPrefix: ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_'],
     resolve: {
       // Ensure only a single instance of these packages end up in the bundle.
       // With pnpm, multiple peer variants can otherwise create duplicate contexts.
