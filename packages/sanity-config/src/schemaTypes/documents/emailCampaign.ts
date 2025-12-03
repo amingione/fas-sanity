@@ -237,7 +237,7 @@ export default defineType({
       of: [
         {
           type: 'object',
-          name: 'email',
+          name: 'campaignEmail',
           fields: [
             defineField({
               name: 'emailNumber',

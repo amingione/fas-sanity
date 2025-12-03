@@ -1334,6 +1334,100 @@ const createVendorPortalSection = (S: any) =>
                 .title('Order Templates')
                 .filter('_type == "orderTemplate"'),
             ),
+          S.listItem()
+            .id('vendor-portal-blog')
+            .title('Vendor Blog')
+            .icon(DocumentIcon)
+            .child(
+              S.list()
+                .title('Vendor Blog')
+                .items([
+                  S.listItem()
+                    .title('All Posts')
+                    .child(
+                      S.documentList()
+                        .apiVersion(API_VERSION)
+                        .schemaType('vendorPost')
+                        .title('All Posts')
+                        .filter('_type == "vendorPost"')
+                        .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
+                    ),
+                  S.listItem()
+                    .title('Drafts')
+                    .child(
+                      S.documentList()
+                        .apiVersion(API_VERSION)
+                        .schemaType('vendorPost')
+                        .title('Drafts')
+                        .filter('_type == "vendorPost" && !defined(publishedAt)'),
+                    ),
+                  S.listItem()
+                    .title('Published')
+                    .child(
+                      S.documentList()
+                        .apiVersion(API_VERSION)
+                        .schemaType('vendorPost')
+                        .title('Published')
+                        .filter('_type == "vendorPost" && defined(publishedAt)')
+                        .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
+                    ),
+                  S.listItem()
+                    .title('By Type')
+                    .child(
+                      S.list()
+                        .title('By Type')
+                        .items([
+                          S.listItem()
+                            .title('📢 Announcements')
+                            .child(
+                              S.documentList()
+                                .apiVersion(API_VERSION)
+                                .schemaType('vendorPost')
+                                .title('Announcements')
+                                .filter('_type == "vendorPost" && postType == "announcement"'),
+                            ),
+                          S.listItem()
+                            .title('🚨 Important Notices')
+                            .child(
+                              S.documentList()
+                                .apiVersion(API_VERSION)
+                                .schemaType('vendorPost')
+                                .title('Important Notices')
+                                .filter('_type == "vendorPost" && postType == "notice"'),
+                            ),
+                          S.listItem()
+                            .title('🆕 New Releases')
+                            .child(
+                              S.documentList()
+                                .apiVersion(API_VERSION)
+                                .schemaType('vendorPost')
+                                .title('New Releases')
+                                .filter('_type == "vendorPost" && postType == "release"'),
+                            ),
+                          S.listItem()
+                            .title('📋 Policy Updates')
+                            .child(
+                              S.documentList()
+                                .apiVersion(API_VERSION)
+                                .schemaType('vendorPost')
+                                .title('Policy Updates')
+                                .filter('_type == "vendorPost" && postType == "policy"'),
+                            ),
+                          S.listItem()
+                            .title('💡 Tips')
+                            .child(
+                              S.documentList()
+                                .apiVersion(API_VERSION)
+                                .schemaType('vendorPost')
+                                .title('Tips')
+                                .filter('_type == "vendorPost" && postType == "tip"'),
+                            ),
+                        ]),
+                    ),
+                  S.divider(),
+                  S.documentTypeListItem('vendorPostCategory').title('Categories'),
+                ]),
+            ),
         ]),
     )
 
