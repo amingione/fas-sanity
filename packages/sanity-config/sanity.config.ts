@@ -40,6 +40,8 @@ const packageRoot = joinSegments(projectRoot, 'packages', 'sanity-config')
 const aliasFromNodeModules = (specifier: string) =>
   hasProcess ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/')) : specifier
 
+const ALLOWED_STUDIO_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_']
+
 const workspaceModuleAliases = hasProcess
   ? {
       sanity: aliasFromNodeModules('sanity'),
@@ -51,20 +53,46 @@ const workspaceModuleAliases = hasProcess
   : {}
 
 const getEnv = (name: string) => (hasProcess ? process.env[name] : undefined)
-const collectStudioEnv = (): Record<string, string | undefined> => {
-  if (!hasProcess || !process?.env) return {}
-  const ALLOWED_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_']
-  return Object.fromEntries(
-    Object.entries(process.env).filter(([key]) =>
-      ALLOWED_PREFIXES.some((prefix) => key.startsWith(prefix)),
+const collectStudioEnv = (
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> =>
+  Object.fromEntries(
+    Object.entries(source || {}).filter(([key]) =>
+      ALLOWED_STUDIO_PREFIXES.some((prefix) => key.startsWith(prefix)),
     ),
   )
+
+const resolveEnvSource = (): Record<string, string | undefined> => {
+  if (typeof __SANITY_STUDIO_RUNTIME_ENV__ !== 'undefined') return __SANITY_STUDIO_RUNTIME_ENV__
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.__SANITY_STUDIO_RUNTIME_ENV__ !== 'undefined'
+  ) {
+    return window.__SANITY_STUDIO_RUNTIME_ENV__ as Record<string, string | undefined>
+  }
+  if (hasProcess && process?.env) return process.env
+  return {}
 }
-const studioRuntimeEnv = collectStudioEnv()
+const studioRuntimeEnv = collectStudioEnv(resolveEnvSource())
+const serializedStudioRuntimeEnv = JSON.stringify(studioRuntimeEnv)
+const processEnvDefine = JSON.stringify({
+  ...studioRuntimeEnv,
+  NODE_ENV: hasProcess ? process.env.NODE_ENV ?? 'production' : 'production',
+  MODE: hasProcess ? process.env.MODE ?? process.env.NODE_ENV ?? 'production' : 'production',
+})
+const runtimeEnvInlineScript = `
+  window.__SANITY_STUDIO_RUNTIME_ENV__ = Object.assign(
+    {},
+    window.__SANITY_STUDIO_RUNTIME_ENV__,
+    ${serializedStudioRuntimeEnv}
+  );
+`.trim()
+
+const readEnv = (name: string) => studioRuntimeEnv[name] ?? getEnv(name)
 
 const DEFAULT_API_VERSION = '2024-10-01'
 const SANITY_API_VERSION =
-  getEnv('SANITY_STUDIO_API_VERSION') || getEnv('SANITY_API_VERSION') || DEFAULT_API_VERSION
+  readEnv('SANITY_STUDIO_API_VERSION') || readEnv('SANITY_API_VERSION') || DEFAULT_API_VERSION
 
 const envFlag = (value?: string | null) => {
   if (!value) return undefined
@@ -79,7 +107,7 @@ const envFlag = (value?: string | null) => {
 
 const getEnvFlag = (...names: string[]) => {
   for (const name of names) {
-    const raw = getEnv(name)
+    const raw = readEnv(name)
     if (raw !== undefined) {
       const flag = envFlag(raw)
       if (flag !== undefined) return flag
@@ -105,15 +133,16 @@ const disableVisualEditingOverride = getEnvFlag(
 // Preview tool removed; all related URL/target resolvers deleted
 
 const visionEnabled = disableVisionOverride === true ? false : true
+// default disabled unless explicitly enabled
 const visualEditingEnabled =
-  disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true // default disabled unless explicitly enabled
+  disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true
 
 export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
 
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
-  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
+  projectId: readEnv('SANITY_STUDIO_PROJECT_ID') || readEnv('SANITY_PROJECT_ID') || 'r4og35qd',
+  dataset: readEnv('SANITY_STUDIO_DATASET') || readEnv('SANITY_DATASET') || 'production',
   /**
    * CORS origins must include:
    *   http://localhost:8888
@@ -141,7 +170,7 @@ export default defineConfig({
   apps: {
     canvas: {
       enabled: true,
-      fallbackStudioOrigin: process.env.SANITY_STUDIO_CANVAS_FALLBACK_ORIGIN || undefined,
+      fallbackStudioOrigin: readEnv('SANITY_STUDIO_CANVAS_FALLBACK_ORIGIN') || undefined,
     },
   },
 
@@ -239,6 +268,18 @@ export default defineConfig({
           return undefined
         },
       },
+      {
+        name: 'fas-runtime-env-inject',
+        transformIndexHtml: () => ({
+          tags: [
+            {
+              tag: 'script',
+              injectTo: 'head',
+              children: runtimeEnvInlineScript,
+            },
+          ],
+        }),
+      },
     ],
     build: {
       outDir: joinSegments(packageRoot, 'dist', 'studio'),
@@ -247,7 +288,8 @@ export default defineConfig({
       },
     },
     define: {
-      __SANITY_STUDIO_RUNTIME_ENV__: JSON.stringify(studioRuntimeEnv),
+      __SANITY_STUDIO_RUNTIME_ENV__: serializedStudioRuntimeEnv,
+      'process.env': processEnvDefine,
       PRESENTATION_ENABLE_VISUAL_EDITING: JSON.stringify(visualEditingEnabled),
       'process.env.SANITY_STUDIO_PRESENTATION_ENABLE_VISUAL_EDITING': JSON.stringify(
         visualEditingEnabled ? 'true' : 'false',

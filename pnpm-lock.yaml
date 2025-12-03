@@ -11,9 +11,6 @@ patchedDependencies:
   react-refractor@4.0.0:
     hash: 5d3e4be5f14b752f3292bb9994876b13ac96104cd884c3e6861a6dd561426752
     path: patches/react-refractor@4.0.0.patch
-  sanity@4.11.0:
-    hash: c595d14b2687acaf3b9494670de06ded8d9af5bea3d5ae8a8030f2611a2073e4
-    path: patches/sanity@4.11.0.patch
 
 importers:
 
