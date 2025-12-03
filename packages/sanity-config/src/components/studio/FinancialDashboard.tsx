@@ -28,12 +28,12 @@ type ProfitLossOverview = ProfitLossSnapshot & {
 }
 
 type RevenueChannels = {
-  onlineRevenue?: number
-  inStoreRevenue?: number
-  wholesaleRevenue?: number
-  onlineCogs?: number
-  inStoreCogs?: number
-  wholesaleCogs?: number
+  onlineRevenue: number
+  inStoreRevenue: number
+  wholesaleRevenue: number
+  onlineCogs: number
+  inStoreCogs: number
+  wholesaleCogs: number
 }
 
 type CashFlowSnapshot = {
@@ -454,7 +454,7 @@ const FinancialDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
                     <Text size={1} muted>
                       COGS {currency.format(row.cogs)}
                     </Text>
-                    <Text size={1} tone="positive">
+                    <Text size={1} style={{color: 'var(--card-positive-fg-color)'}}>
                       Margin {row.grossMargin.toFixed(1)}%
                     </Text>
                   </Stack>
@@ -465,9 +465,9 @@ const FinancialDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
 
           <Grid columns={[1, 2]} gap={4}>
             <Card padding={4} radius={3} shadow={1}>
-              <Heading size={2} marginBottom={3}>
-                Expense Breakdown
-              </Heading>
+              <Box marginBottom={3}>
+                <Heading size={2}>Expense Breakdown</Heading>
+              </Box>
               <Flex gap={4} wrap="wrap">
                 <Box
                   style={{
@@ -504,9 +504,9 @@ const FinancialDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
             </Card>
 
             <Card padding={4} radius={3} shadow={1}>
-              <Heading size={2} marginBottom={3}>
-                Cash Flow
-              </Heading>
+              <Box marginBottom={3}>
+                <Heading size={2}>Cash Flow</Heading>
+              </Box>
               <Grid columns={[1, 2]} gap={3}>
                 <MetricCard label="Cash In" value={cashFlow?.totalCashIn} />
                 <MetricCard label="Cash Out" value={cashFlow?.totalCashOut} muted />
@@ -525,9 +525,9 @@ const FinancialDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
           </Grid>
 
           <Card padding={4} radius={3} shadow={1}>
-            <Heading size={2} marginBottom={3}>
-              Performance Trends (12 months)
-            </Heading>
+            <Box marginBottom={3}>
+              <Heading size={2}>Performance Trends (12 months)</Heading>
+            </Box>
             <TrendChart data={trend} />
           </Card>
         </>
@@ -560,7 +560,11 @@ const MetricCard = ({
         <Text size={1} muted>
           {label}
         </Text>
-        <Text size={2} weight="semibold" tone={accent ? 'positive' : muted ? 'default' : undefined}>
+        <Text
+          size={2}
+          weight="semibold"
+          style={accent ? {color: 'var(--card-positive-fg-color)'} : undefined}
+        >
           {displayValue}
         </Text>
       </Stack>

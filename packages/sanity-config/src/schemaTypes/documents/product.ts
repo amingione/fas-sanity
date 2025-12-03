@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react'
 import {defineType, defineField, set} from 'sanity'
-import type {StringFieldProps} from 'sanity'
+import type {BooleanFieldProps, StringFieldProps} from 'sanity'
 import {googleProductCategories} from '../constants/googleProductCategories'
 import ProductImageAltReferenceInput from '../../components/inputs/ProductImageAltReferenceInput'
 import ProductJsonLdPreview from '../../components/studio/ProductJsonLdPreview'
@@ -57,6 +57,33 @@ const isServiceProduct = (context?: VisibilityContext): boolean =>
 const isBundleProduct = (context?: VisibilityContext): boolean =>
   resolveProductType(context) === 'bundle'
 
+const SHIPPING_CLASS_VALUES = ['standard', 'oversized', 'fragile', 'hazmat', 'install_only']
+
+const normalizeShippingClass = (value?: string | null) =>
+  typeof value === 'string' ? value.toLowerCase().replace(/\s+/g, '_') : undefined
+
+type BooleanFieldWithDocument = BooleanFieldProps & {
+  document?: any
+  onChange?: (patch: any) => void
+}
+
+type StringFieldWithDocument = StringFieldProps & {
+  document?: any
+  onChange?: (patch: any) => void
+}
+
+type ShippingVisibilityContext = VisibilityContext & {parent?: Record<string, any>}
+
+const shouldRequireShippingDetails = (context?: ShippingVisibilityContext): boolean => {
+  const requiresFromParent = (context?.parent as any)?.requiresShipping
+  if (typeof requiresFromParent === 'boolean') return requiresFromParent
+
+  const requiresFromDoc = (context?.document as any)?.shippingConfig?.requiresShipping
+  if (typeof requiresFromDoc === 'boolean') return requiresFromDoc
+
+  return resolveProductType(context) !== 'service'
+}
+
 const merchantFieldWarning = (Rule: any, message: string) =>
   Rule.custom((value: unknown, context: any) => {
     const doc = context?.document || {}
@@ -70,6 +97,37 @@ const merchantFieldWarning = (Rule: any, message: string) =>
     if (value) return true
     return message
   }).warning()
+
+const RequiresShippingField: React.ComponentType<BooleanFieldWithDocument> = (props) => {
+  const productType = resolveProductType({document: props.document})
+  const shouldDisableShipping = productType === 'service'
+  const onChange = props.onChange
+
+  useEffect(() => {
+    if (!onChange) return
+    if (!shouldDisableShipping) return
+    if (props.value === false) return
+    onChange(set(false))
+  }, [shouldDisableShipping, onChange, props.value])
+
+  return props.renderDefault(props)
+}
+
+const ShippingClassField: React.ComponentType<StringFieldWithDocument> = (props) => {
+  const normalized = normalizeShippingClass(props.value as string)
+  const onChange = props.onChange
+
+  useEffect(() => {
+    if (!onChange) return
+    if (!props.value) return
+    if (!normalized) return
+    if (!SHIPPING_CLASS_VALUES.includes(normalized)) return
+    if (normalized === props.value) return
+    onChange(set(normalized))
+  }, [normalized, onChange, props.value])
+
+  return props.renderDefault(props)
+}
 
 const product = defineType({
   name: 'product',
@@ -848,44 +906,131 @@ const product = defineType({
         collapsible: true,
         collapsed: false,
       },
+      initialValue: (context: VisibilityContext) => {
+        const service = resolveProductType(context) === 'service'
+        return {
+          requiresShipping: service ? false : true,
+          shippingClass: service ? 'install_only' : 'standard',
+          handlingTime: 1,
+          freeShippingEligible: true,
+          separateShipment: false,
+        }
+      },
       fields: [
         {
           name: 'requiresShipping',
           type: 'boolean',
           title: 'Requires Shipping',
           description: 'Disable for services, installations, or digital products',
-          initialValue: true,
+          initialValue: (context: VisibilityContext) =>
+            resolveProductType(context) === 'service' ? false : true,
+          components: {input: RequiresShippingField},
+          validation: (Rule) =>
+            Rule.required().custom((value, context: any) => {
+              const productType = resolveProductType(context as VisibilityContext)
+              if (productType === 'service' && value !== false) {
+                return 'Service products should be install-only with shipping turned off.'
+              }
+              if (typeof value !== 'boolean') {
+                return 'Specify whether this product requires shipping.'
+              }
+              return true
+            }),
         },
         {
           name: 'weight',
           type: 'number',
           title: 'Weight (lbs)',
           description: 'Product weight for shipping calculation',
-          validation: (Rule) => Rule.required().min(0).precision(2),
+          hidden: (context: ShippingVisibilityContext) =>
+            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+          validation: (Rule) =>
+            Rule.custom((value, context: any) => {
+              if (!shouldRequireShippingDetails(context as ShippingVisibilityContext)) return true
+              if (typeof value !== 'number') {
+                return 'Weight is required when shipping is enabled.'
+              }
+              if (value < 0) {
+                return 'Weight cannot be negative.'
+              }
+              return true
+            }).precision(2),
         },
         {
           name: 'dimensions',
           type: 'object',
           title: 'Package Dimensions',
           description: 'Typical box size for this product',
+          hidden: (context: ShippingVisibilityContext) =>
+            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+          validation: (Rule) =>
+            Rule.custom((value, context: any) => {
+              if (!shouldRequireShippingDetails(context as ShippingVisibilityContext)) return true
+              if (!value) return 'Dimensions are required when shipping is enabled.'
+              const {length, width, height} = value as Record<string, number>
+              if (
+                typeof length !== 'number' ||
+                typeof width !== 'number' ||
+                typeof height !== 'number'
+              ) {
+                return 'Enter length, width, and height in inches.'
+              }
+              if (length < 0 || width < 0 || height < 0) {
+                return 'Dimensions must be zero or greater.'
+              }
+              return true
+            }),
           fields: [
             {
               name: 'length',
               type: 'number',
               title: 'Length (inches)',
-              validation: (Rule) => Rule.required().min(0).precision(2),
+              hidden: (context: ShippingVisibilityContext) =>
+                !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+              validation: (Rule) =>
+                Rule.custom((value, context: any) => {
+                  if (!shouldRequireShippingDetails(context as ShippingVisibilityContext))
+                    return true
+                  if (typeof value !== 'number') {
+                    return 'Length is required when shipping is enabled.'
+                  }
+                  if (value < 0) return 'Length cannot be negative.'
+                  return true
+                }).precision(2),
             },
             {
               name: 'width',
               type: 'number',
               title: 'Width (inches)',
-              validation: (Rule) => Rule.required().min(0).precision(2),
+              hidden: (context: ShippingVisibilityContext) =>
+                !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+              validation: (Rule) =>
+                Rule.custom((value, context: any) => {
+                  if (!shouldRequireShippingDetails(context as ShippingVisibilityContext))
+                    return true
+                  if (typeof value !== 'number') {
+                    return 'Width is required when shipping is enabled.'
+                  }
+                  if (value < 0) return 'Width cannot be negative.'
+                  return true
+                }).precision(2),
             },
             {
               name: 'height',
               type: 'number',
               title: 'Height (inches)',
-              validation: (Rule) => Rule.required().min(0).precision(2),
+              hidden: (context: ShippingVisibilityContext) =>
+                !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+              validation: (Rule) =>
+                Rule.custom((value, context: any) => {
+                  if (!shouldRequireShippingDetails(context as ShippingVisibilityContext))
+                    return true
+                  if (typeof value !== 'number') {
+                    return 'Height is required when shipping is enabled.'
+                  }
+                  if (value < 0) return 'Height cannot be negative.'
+                  return true
+                }).precision(2),
             },
           ],
         },
@@ -894,6 +1039,8 @@ const product = defineType({
           type: 'string',
           title: 'Shipping Class',
           description: 'Special handling requirements',
+          initialValue: (context: VisibilityContext) =>
+            resolveProductType(context) === 'service' ? 'install_only' : 'standard',
           options: {
             list: [
               {title: 'Standard', value: 'standard'},
@@ -903,14 +1050,31 @@ const product = defineType({
               {title: 'Install Only (No Shipping)', value: 'install_only'},
             ],
           },
-          initialValue: 'standard',
+          components: {input: ShippingClassField},
+          validation: (Rule) =>
+            Rule.custom((value: unknown) => {
+              if (!value) return true
+              const normalized = normalizeShippingClass(
+                typeof value === 'string' ? value : String(value || ''),
+              )
+              if (normalized && SHIPPING_CLASS_VALUES.includes(normalized)) return true
+              return 'Select a valid shipping class.'
+            }),
         },
         {
           name: 'handlingTime',
           type: 'number',
           title: 'Handling Time (business days)',
           description: 'Days needed to prepare shipment after order',
-          validation: (Rule) => Rule.min(0).integer(),
+          hidden: (context: ShippingVisibilityContext) =>
+            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+          validation: (Rule) =>
+            Rule.custom((value, context: any) => {
+              if (!shouldRequireShippingDetails(context as ShippingVisibilityContext)) return true
+              if (typeof value !== 'number') return true
+              if (value < 0) return 'Handling time cannot be negative.'
+              return true
+            }).integer(),
           initialValue: 1,
         },
         {
@@ -918,6 +1082,8 @@ const product = defineType({
           type: 'boolean',
           title: 'Free Shipping Eligible',
           description: 'Can this product qualify for free shipping promotions?',
+          hidden: (context: ShippingVisibilityContext) =>
+            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
           initialValue: true,
         },
         {
@@ -925,6 +1091,8 @@ const product = defineType({
           type: 'boolean',
           title: 'Ships Separately',
           description: 'Must ship alone (oversized, hazmat, etc.)',
+          hidden: (context: ShippingVisibilityContext) =>
+            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
           initialValue: false,
         },
       ],

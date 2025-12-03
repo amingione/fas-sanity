@@ -34,6 +34,8 @@ export type CartItem = {
   upgradesTotal?: number
   customizations?: string[]
   categories?: string[]
+  selectedVariant?: string
+  addOns?: string[]
   productRef?: {_type: 'reference'; _ref: string}
   validationIssues?: string[]
   metadata?: {
@@ -48,6 +50,10 @@ export type CartProductSummary = {
   title?: string
   sku?: string
   slug?: {current?: string}
+  stripeProductId?: string | null
+  stripeDefaultPriceId?: string | null
+  stripePriceId?: string | null
+  stripePrices?: {priceId?: string | null}[] | null
   price?: number | null
   salePrice?: number | null
   compareAtPrice?: number | null
@@ -224,9 +230,29 @@ export function findProductForItem(
 ): CartProductSummary | null {
   if (!Array.isArray(products) || products.length === 0) return null
   const sku = item.sku?.trim().toLowerCase()
+  const stripePriceId = item.stripePriceId?.trim().toLowerCase()
+  const stripeProductId = item.stripeProductId?.trim().toLowerCase()
   if (sku) {
     const bySku = products.find((p) => (p.sku || '').toLowerCase() === sku)
     if (bySku) return bySku
+  }
+
+  if (stripePriceId) {
+    const byPriceId = products.find((p) => (p.stripePriceId || '').toLowerCase() === stripePriceId)
+    if (byPriceId) return byPriceId
+    const byPriceSnapshot = products.find((p) =>
+      (p.stripePrices || []).some(
+        (snap) => (snap?.priceId || '').toLowerCase() === stripePriceId,
+      ),
+    )
+    if (byPriceSnapshot) return byPriceSnapshot
+  }
+
+  if (stripeProductId) {
+    const byProductId = products.find(
+      (p) => (p.stripeProductId || '').toLowerCase() === stripeProductId,
+    )
+    if (byProductId) return byProductId
   }
 
   const slugCandidates = [item.productSlug, slugifyValue(item.productName), slugifyValue(item.name)]
@@ -276,6 +302,8 @@ function collectProductQueries(cart: CartItem[]) {
   const skus = new Set<string>()
   const titles = new Set<string>()
   const ids = new Set<string>()
+  const priceIds = new Set<string>()
+  const productIds = new Set<string>()
 
   cart.forEach((item) => {
     if (!item || typeof item !== 'object') return
@@ -288,6 +316,8 @@ function collectProductQueries(cart: CartItem[]) {
       if (slug) slugs.add(slug)
     })
     if (item.sku) skus.add(item.sku.trim())
+    if (item.stripePriceId) priceIds.add(item.stripePriceId.trim())
+    if (item.stripeProductId) productIds.add(item.stripeProductId.trim())
     if (item.productName) titles.add(item.productName.trim())
     if (item.name) titles.add(item.name.trim())
     if (item.id && looksLikeSanityId(item.id)) ids.add(item.id)
@@ -298,6 +328,8 @@ function collectProductQueries(cart: CartItem[]) {
     skus: Array.from(skus),
     titles: Array.from(titles),
     ids: Array.from(ids),
+    priceIds: Array.from(priceIds),
+    productIds: Array.from(productIds),
   }
 }
 
@@ -358,7 +390,9 @@ export async function fetchProductsForCart(
     lookup.slugs.length === 0 &&
     lookup.skus.length === 0 &&
     lookup.titles.length === 0 &&
-    lookup.ids.length === 0
+    lookup.ids.length === 0 &&
+    lookup.priceIds.length === 0 &&
+    lookup.productIds.length === 0
   ) {
     return []
   }
@@ -369,12 +403,22 @@ export async function fetchProductsForCart(
         slug.current in $slugs ||
         sku in $skus ||
         title in $titles ||
-        _id in $ids
+        _id in $ids ||
+        stripePriceId in $priceIds ||
+        stripeDefaultPriceId in $priceIds ||
+        stripeProductId in $productIds ||
+        stripePrices[].priceId in $priceIds
       )]{
         _id,
         title,
         sku,
         slug,
+        stripeProductId,
+        stripeDefaultPriceId,
+        stripePriceId,
+        stripePrices[]{
+          priceId
+        },
         price,
         salePrice,
         compareAtPrice,
@@ -486,8 +530,10 @@ export async function enrichCartItemsFromSanity(
       }
     }
 
-    if ((!item.sku || !item.sku.trim()) && product.sku) {
-      item.sku = product.sku
+    if (product.sku) {
+      if (!item.sku || item.sku.trim() !== product.sku) {
+        item.sku = product.sku
+      }
       appendMetadata(item, 'sanity_sku', product.sku, 'derived')
     }
 

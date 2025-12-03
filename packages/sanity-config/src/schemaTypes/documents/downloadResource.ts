@@ -8,6 +8,8 @@ const isFileFocusedType = (documentType?: string | null) =>
 const isContentFocusedType = (documentType?: string | null) =>
   documentType === 'reference' || documentType === 'guide'
 
+const toDocumentType = (value: unknown) => (typeof value === 'string' ? value : undefined)
+
 export default defineType({
   name: 'downloadResource',
   title: 'Download',
@@ -118,7 +120,7 @@ export default defineType({
           ],
         },
       ],
-      hidden: ({document}) => isFileFocusedType(document?.documentType),
+      hidden: ({document}) => isFileFocusedType(toDocumentType(document?.documentType)),
     }),
     defineField({
       name: 'category',
@@ -178,7 +180,7 @@ export default defineType({
         accept: 'application/pdf,.pdf,.zip',
       },
       description: 'Upload PDF or ZIP assets. Hidden for guides and reference entries.',
-      hidden: ({document}) => isContentFocusedType(document?.documentType),
+      hidden: ({document}) => isContentFocusedType(toDocumentType(document?.documentType)),
     }),
     defineField({
       name: 'slug',

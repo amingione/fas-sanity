@@ -14,6 +14,14 @@ type StatsListProps = {
 }
 
 export function StatsList({items, columns = 2}: StatsListProps) {
+  const toneColors: Record<NonNullable<StatsItem['tone']>, string> = {
+    default: 'inherit',
+    primary: 'var(--card-accent-fg-color)',
+    positive: 'var(--card-positive-fg-color)',
+    caution: 'var(--card-caution-fg-color)',
+    critical: 'var(--card-critical-fg-color)',
+  }
+
   return (
     <Card padding={4} radius={3} shadow={1}>
       <div
@@ -38,7 +46,11 @@ export function StatsList({items, columns = 2}: StatsListProps) {
             <Text size={1} muted>
               {item.label}
             </Text>
-            <Text size={3} weight="bold" tone={item.tone}>
+            <Text
+              size={3}
+              weight="bold"
+              style={item.tone ? {color: toneColors[item.tone]} : undefined}
+            >
               {item.value}
             </Text>
           </Stack>

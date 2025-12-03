@@ -213,6 +213,27 @@ export default defineType({
       name: 'recoveryEmailSentAt',
       type: 'datetime',
       title: 'Recovery Email Sent At',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'resendEmailId',
+      type: 'string',
+      title: 'Resend Email ID',
+      description: 'Email ID from Resend for tracking',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'emailError',
+      type: 'string',
+      title: 'Email Error',
+      description: 'Error message if email failed to send',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'emailErrorAt',
+      type: 'datetime',
+      title: 'Email Error At',
+      readOnly: true,
     }),
     defineField({
       name: 'recovered',

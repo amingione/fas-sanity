@@ -641,7 +641,6 @@ async function upsertOrder({
 
   const baseDoc: Record<string, any> & {_type: 'order'} = {
     _type: 'order',
-    stripeSource: 'checkout.session',
     stripeSessionId,
     orderNumber: normalizedOrderNumber,
     customerName,
@@ -650,11 +649,6 @@ async function upsertOrder({
     status: derivedOrderStatus,
     createdAt: new Date().toISOString(),
     paymentStatus,
-    stripeCheckoutStatus: sessionStatus || undefined,
-    stripeSessionStatus: sessionStatus || undefined,
-    stripeCheckoutMode: session.mode || undefined,
-    stripePaymentIntentStatus: paymentIntent?.status || undefined,
-    stripeLastSyncedAt: new Date().toISOString(),
     currency,
     amountSubtotal,
     amountTax,

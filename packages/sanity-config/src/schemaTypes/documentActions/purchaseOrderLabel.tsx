@@ -6,7 +6,16 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
   const {patch} = useDocumentOperation(id, type)
   const [isLoading, setIsLoading] = useState(false)
 
-  const doc = draft || published
+  const doc = (draft || published) as
+    | {
+        paymentStatus?: string
+        orderNumber?: string
+        shippingAddress?: unknown
+        cart?: unknown
+        selectedService?: unknown
+        fulfillment?: {labelUrl?: string}
+      }
+    | null
 
   if (type !== 'order' || doc?.paymentStatus !== 'paid') {
     return null

@@ -35,6 +35,7 @@ import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 type RawCartItem = {
   quantity?: number | null
+  upgradesTotal?: number | null
 }
 
 type RawShippingLog = {
@@ -1262,6 +1263,7 @@ type OrderPreviewDoc = {
     price?: number | null
     lineTotal?: number | null
     total?: number | null
+    upgradesTotal?: number | null
     optionSummary?: string | null
     optionDetails?: string[] | string | null
     upgrades?: string[] | string | null

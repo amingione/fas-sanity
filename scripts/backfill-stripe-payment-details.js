@@ -27,21 +27,42 @@ async function run() {
   for (const order of orders) {
     try {
       const paymentIntent = await stripe.paymentIntents.retrieve(order.paymentIntentId, {
-        expand: ['charges.data.payment_method_details'],
+        expand: ['charges.data.payment_method_details', 'latest_charge.payment_method_details', 'payment_method'],
       })
 
-      const charge = paymentIntent.charges.data[0]
-      if (charge) {
-        await client
-          .patch(order._id)
-          .set({
-            cardBrand: charge.payment_method_details?.card?.brand || '',
-            cardLast4: charge.payment_method_details?.card?.last4 || '',
-            receiptUrl: charge.receipt_url || '',
-          })
-          .commit()
-        console.log(`✅ ${order.orderNumber}`)
+      let charge = paymentIntent.charges?.data?.[0]
+      if (!charge && paymentIntent.latest_charge) {
+        const latestId = typeof paymentIntent.latest_charge === 'string' ? paymentIntent.latest_charge : paymentIntent.latest_charge.id
+        try {
+          charge = await stripe.charges.retrieve(latestId, {expand: ['payment_method_details']})
+        } catch (err) {
+          console.warn(`Unable to retrieve latest_charge for ${order.orderNumber}`, err.message || err)
+        }
       }
+
+      const cardBrand =
+        charge?.payment_method_details?.card?.brand ||
+        (paymentIntent.payment_method && typeof paymentIntent.payment_method === 'object'
+          ? paymentIntent.payment_method.card?.brand
+          : '') ||
+        ''
+      const cardLast4 =
+        charge?.payment_method_details?.card?.last4 ||
+        (paymentIntent.payment_method && typeof paymentIntent.payment_method === 'object'
+          ? paymentIntent.payment_method.card?.last4
+          : '') ||
+        ''
+      const receiptUrl = charge?.receipt_url || ''
+
+      await client
+        .patch(order._id)
+        .set({
+          cardBrand,
+          cardLast4,
+          receiptUrl,
+        })
+        .commit()
+      console.log(`✅ ${order.orderNumber}`)
 
       await new Promise((resolve) => setTimeout(resolve, 100))
     } catch (error) {

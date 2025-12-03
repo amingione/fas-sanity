@@ -98,7 +98,7 @@ const SalePricingInput: React.FC<NumberInputProps> = (props) => {
                 {savingsPercent !== undefined ? `(${savingsPercent}% off)` : ''}
               </Text>
               {computedSalePrice < 0 && (
-                <Text size={1} tone="critical">
+                <Text size={1} style={{color: 'var(--card-critical-fg-color)'}}>
                   Discount exceeds the base price and would create a negative sale price.
                 </Text>
               )}

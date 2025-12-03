@@ -3,7 +3,7 @@ import {Badge, Box, Button, Card, Flex, Stack, Text} from '@sanity/ui'
 import {IntentLink} from 'sanity/router'
 import {useMemo} from 'react'
 import type {OrderCartItem} from '../types/order'
-import {normalizeOptionSelections} from '../utils/cartItemDetails'
+import {deriveVariantAndAddOns} from '../utils/cartItemDetails'
 
 type OrderItemsListProps = {
   items?: OrderCartItem[] | null
@@ -11,11 +11,10 @@ type OrderItemsListProps = {
 }
 
 const getLineTotal = (item: OrderCartItem): number | undefined => {
+  if (typeof item.lineTotal === 'number') return item.lineTotal
   if (typeof item.total === 'number') return item.total
-  if (typeof item.price === 'number') {
-    const quantity = typeof item.quantity === 'number' ? item.quantity : 1
-    return item.price * quantity
-  }
+  const quantity = typeof item.quantity === 'number' ? item.quantity : 1
+  if (typeof item.price === 'number') return item.price * quantity
   return undefined
 }
 
@@ -43,18 +42,14 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
     <Stack space={3}>
         {items.map((item, index) => {
           const lineTotal = getLineTotal(item)
-          const normalized = normalizeOptionSelections({
-            optionSummary: item.optionSummary,
-            optionDetails: item.optionDetails,
-            upgrades: item.upgrades,
+          const {selectedVariant, addOns} = deriveVariantAndAddOns({
+            selectedVariant: (item as any)?.selectedVariant,
+            optionDetails: (item as any)?.optionDetails,
+            upgrades: (item as any)?.upgrades,
           })
-          const optionsText =
-            normalized.optionDetails.join(', ') || normalized.optionSummary || undefined
-          const upgradesText = normalized.upgrades.join(', ') || undefined
-          const upgradesTotal =
-            typeof item.upgradesTotal === 'number' && Number.isFinite(item.upgradesTotal)
-              ? item.upgradesTotal
-              : undefined
+          const optionsText = selectedVariant || undefined
+          const addOnsText = addOns.length ? addOns.join(', ') : undefined
+          const unitPrice = typeof item.price === 'number' ? item.price : undefined
           const key = item._key || `${item.sku || 'item'}-${index}`
           return (
             <Card key={key} padding={3} radius={2} border>
@@ -73,19 +68,14 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
                       Options: {optionsText}
                     </Text>
                   )}
-                  {upgradesText && (
+                  {addOnsText && (
                     <Text size={1} muted>
-                      Upgrades: {upgradesText}
+                      Add-ons: {addOnsText}
                     </Text>
                   )}
-                  {upgradesTotal !== undefined && (
-                    <Text size={1} muted>
-                      Upgrades Total: {formatter.format(upgradesTotal)}
-                    </Text>
-                  )}
-                {item.productRef?._ref && (
-                  <IntentLink
-                    intent="edit"
+              {item.productRef?._ref && (
+                <IntentLink
+                  intent="edit"
                     params={{id: item.productRef._ref, type: 'product'}}
                     style={{display: 'inline-flex', marginTop: 8}}
                   >
@@ -113,7 +103,7 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
                     Price
                   </Text>
                   <Text size={2} weight="medium">
-                    {typeof item.price === 'number' ? formatter.format(item.price) : '—'}
+                    {typeof unitPrice === 'number' ? formatter.format(unitPrice) : '—'}
                   </Text>
                 </Stack>
                 <Stack space={2} style={{minWidth: 120}}>

@@ -124,7 +124,7 @@ export function ChartCard({
           {actions}
         </Flex>
         {error ? (
-          <Text tone="critical">{error}</Text>
+          <Text style={{color: 'var(--card-critical-fg-color)'}}>{error}</Text>
         ) : isLoading ? (
           <Flex align="center" justify="center" style={{height}}>
             <Spinner muted />

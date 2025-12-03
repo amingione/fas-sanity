@@ -175,7 +175,14 @@ export default defineType({
       status: 'status',
     },
     prepare({category, amount, date, vendor, status}) {
-      const statusIcon = {pending: '⏳', paid: '✅', scheduled: '📅', cancelled: '❌'}[status] || ''
+      const statusIcons: Record<string, string> = {
+        pending: '⏳',
+        paid: '✅',
+        scheduled: '📅',
+        cancelled: '❌',
+      }
+      const statusIcon =
+        typeof status === 'string' ? statusIcons[status] ?? '' : ''
       const formattedAmount =
         typeof amount === 'number' ? `$${amount.toFixed(2)}` : amount ? `$${amount}` : '$0'
       const subtitle = date ? new Date(date).toLocaleDateString() : 'No date'

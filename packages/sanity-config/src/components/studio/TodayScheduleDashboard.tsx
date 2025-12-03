@@ -406,10 +406,10 @@ export default function TodayScheduleDashboard() {
                             text="Create Work Order"
                             mode="bleed"
                             onClick={() =>
-                              router.navigateIntent('create', {
-                                type: 'workOrder',
-                                templateParams: {appointmentId: appt._id},
-                              })
+                              router.navigateIntent('create', [
+                                {type: 'workOrder'},
+                                {appointmentId: appt._id},
+                              ])
                             }
                           />
                         )}

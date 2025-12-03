@@ -1,5 +1,6 @@
 import {defineType, defineField} from 'sanity'
 import CustomerDiscountsInput from '../../components/inputs/CustomerDiscountsInput'
+import ComputedCustomerNameInput from '../../components/inputs/ComputedCustomerNameInput'
 
 const CUSTOMER_GROUPS = [
   {name: 'profile', title: 'Profile', default: true},
@@ -39,12 +40,13 @@ export default defineType({
     }),
     defineField({
       name: 'name',
-      title: 'Legacy Full Name',
+      title: 'Name',
       type: 'string',
       readOnly: true,
-      description:
-        'Existing records may still use this legacy field. Use the action button or copy the value into First/Last Name below.',
-      hidden: ({document}) => !document?.name,
+      description: 'Auto-generated from first + last name and falls back to email.',
+      components: {input: ComputedCustomerNameInput as any},
+      validation: (Rule) =>
+        Rule.required().error('Name is required and is computed from first/last name or email.'),
       group: 'profile',
     }),
     defineField({name: 'firstName', title: 'First Name', type: 'string', group: 'profile'}),
@@ -488,7 +490,8 @@ export default defineType({
       marketingOptIn,
       segment,
     }) {
-      const name = [firstName, lastName].filter(Boolean).join(' ').trim()
+      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
+      const displayName = fullName || email || 'Unnamed Customer'
       const location = [city, state].filter(Boolean).join(', ')
       const orders = typeof orderCount === 'number' ? orderCount : 0
       const segmentLabelMap: Record<string, string> = {
@@ -523,8 +526,8 @@ export default defineType({
       ].filter(Boolean)
 
       return {
-        title: name || email || 'Unnamed Customer',
-        subtitle: parts.join(' • '),
+        title: displayName,
+        subtitle: parts.length ? [email, ...parts].filter(Boolean).join(' • ') : email || undefined,
         description: email || undefined,
       }
     },

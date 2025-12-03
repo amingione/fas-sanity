@@ -6,13 +6,24 @@ export const getShippingRatesAction: DocumentActionComponent = (props) => {
   const {patch} = useDocumentOperation(id, type)
   const [isLoading, setIsLoading] = useState(false)
 
-  const doc = draft || published
+  const doc = (draft || published) as
+    | {
+        shipTo?: unknown
+        lineItems?: unknown
+        shipping?: {
+          availableRates?: unknown[]
+          packageWeight?: number
+          packageDimensions?: unknown
+        }
+      }
+    | null
 
   if (type !== 'invoice' || !doc?.shipTo) {
     return null
   }
 
-  if (doc?.shipping?.availableRates?.length > 0) {
+  const availableRates = doc?.shipping?.availableRates
+  if (availableRates && availableRates.length > 0) {
     return null
   }
 

@@ -191,7 +191,7 @@ export function exportTaxSummaryCsv(expenses: ExpenseExportRow[], filename?: str
   )
 
   for (const [category, info] of Object.entries(grouped)) {
-    rows.push([category, info.total.toFixed(2), info.count])
+    rows.push([category, info.total.toFixed(2), String(info.count)])
   }
 
   downloadCsv(rows, safeName)

@@ -36,8 +36,24 @@ type OrderViewConfigResult = {
 const ORDER_VIEW_QUERY = `*[_id == $configId][0]{orderViewConfig}`
 
 const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
-  editableFields: ['status', 'manualTrackingNumber'],
-  hiddenFields: ['metadata', 'stripeMetadata', 'webhookData', 'rawPaymentData'],
+  editableFields: ['status', 'fulfillment.trackingNumber', 'fulfillment.status'],
+  hiddenFields: [
+    'metadata',
+    'stripeMetadata',
+    'webhookData',
+    'rawPaymentData',
+    'orderType',
+    'slug',
+    'customerRef',
+    'invoiceRef',
+    'paymentIntentId',
+    'stripeSessionId',
+    'currency',
+    'trackingNumber',
+    'trackingUrl',
+    'shippingLabelUrl',
+    'packingSlipUrl',
+  ],
   protectedFields: [
     'orderNumber',
     'createdAt',
@@ -47,7 +63,6 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     'totalAmount',
     'amountSubtotal',
     'amountTax',
-    'amountDiscount',
     'amountShipping',
     'paymentStatus',
     'paymentIntentId',
@@ -63,13 +78,11 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     'packingSlipUrl',
     'fulfilledAt',
     'shippingAddress',
-    'discountLabel',
-    'discountPercent',
   ],
   sections: [
     {
       _key: 'orderInfo',
-      title: 'Order Information',
+      title: 'Order Basics',
       collapsed: false,
       fields: [
         {
@@ -85,6 +98,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
           fieldName: 'orderType',
           label: 'Order Type',
           type: 'string',
+          hidden: true,
         },
         {
           _key: 'status',
@@ -101,12 +115,6 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
           label: 'Order Date',
           type: 'datetime',
         },
-        {
-          _key: 'fulfilledAt',
-          fieldName: 'fulfilledAt',
-          label: 'Fulfilled Date',
-          type: 'datetime',
-        },
       ],
     },
     {
@@ -116,12 +124,6 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
       fields: [
         {fieldName: 'customerName', label: 'Customer Name', type: 'string'},
         {fieldName: 'customerEmail', label: 'Email', type: 'string'},
-        {
-          fieldName: 'customerRef',
-          label: 'Customer Reference',
-          type: 'reference',
-          note: 'Do not modify - linked to customer record',
-        },
       ],
     },
     {
@@ -138,40 +140,25 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
       ],
     },
     {
-      _key: 'payment',
-      title: 'Payment Details',
-      collapsed: true,
+      _key: 'totals',
+      title: 'Totals',
+      collapsed: false,
       fields: [
         {fieldName: 'totalAmount', label: 'Total Amount', type: 'number', prominent: true},
         {fieldName: 'amountSubtotal', label: 'Subtotal', type: 'number'},
         {fieldName: 'amountTax', label: 'Tax', type: 'number'},
-        {fieldName: 'amountDiscount', label: 'Discounts', type: 'number'},
-        {fieldName: 'discountLabel', label: 'Discount Label', type: 'string'},
-        {fieldName: 'discountPercent', label: 'Discount %', type: 'number'},
         {fieldName: 'amountShipping', label: 'Shipping', type: 'number'},
-        {fieldName: 'currency', label: 'Currency', type: 'string'},
+      ],
+    },
+    {
+      _key: 'payment',
+      title: 'Payment Details',
+      collapsed: true,
+      fields: [
         {fieldName: 'paymentStatus', label: 'Payment Status', type: 'string'},
-        {
-          fieldName: 'paymentIntentId',
-          label: 'Payment Intent ID',
-          type: 'string',
-          note: 'Stripe Payment Intent - do not modify',
-        },
-        {
-          fieldName: 'stripeSessionId',
-          label: 'Stripe Session ID',
-          type: 'string',
-          note: 'Stripe Checkout Session - do not modify',
-        },
         {fieldName: 'cardBrand', label: 'Card Brand', type: 'string'},
         {fieldName: 'cardLast4', label: 'Card Last 4', type: 'string'},
         {fieldName: 'receiptUrl', label: 'Receipt URL', type: 'url'},
-        {
-          fieldName: 'invoiceRef',
-          label: 'Invoice Reference',
-          type: 'reference',
-          note: 'Do not modify - linked to invoice record',
-        },
       ],
     },
     {
@@ -180,16 +167,23 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
       collapsed: false,
       fields: [
         {
-          fieldName: 'manualTrackingNumber',
-          label: 'Tracking Number (Manual Entry)',
+          fieldName: 'fulfillment.status',
+          label: 'Fulfillment Status',
           type: 'string',
           editable: true,
-          note: 'Add tracking number to mark order as fulfilled',
+          options: ['unfulfilled', 'shipped', 'delivered'],
         },
-        {fieldName: 'trackingNumber', label: 'Tracking Number (Auto)', type: 'string'},
-        {fieldName: 'trackingUrl', label: 'Tracking URL', type: 'url'},
-        {fieldName: 'shippingLabelUrl', label: 'Shipping Label', type: 'url'},
-        {fieldName: 'packingSlipUrl', label: 'Packing Slip', type: 'url'},
+        {
+          fieldName: 'fulfillment.trackingNumber',
+          label: 'Tracking Number',
+          type: 'string',
+          editable: true,
+        },
+        {fieldName: 'fulfillment.trackingUrl', label: 'Tracking URL', type: 'url'},
+        {fieldName: 'fulfillment.carrier', label: 'Carrier', type: 'string'},
+        {fieldName: 'fulfillment.shippedAt', label: 'Shipped Date', type: 'datetime'},
+        {fieldName: 'fulfillment.deliveredAt', label: 'Delivered Date', type: 'datetime'},
+        {fieldName: 'fulfillment.fulfillmentNotes', label: 'Fulfillment Notes', type: 'string'},
       ],
     },
     {
@@ -220,7 +214,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     defaultCollapsedSections: ['payment', 'shipping'],
     hideComplexMetadata: true,
     preserveStripeSync: true,
-    prominentFields: ['orderNumber', 'status', 'totalAmount', 'manualTrackingNumber'],
+    prominentFields: ['orderNumber', 'status', 'totalAmount', 'fulfillment.trackingNumber'],
   },
 }
 
@@ -229,11 +223,13 @@ const SECTION_ICONS: Record<string, ComponentType> = {
   customer: UserIcon,
   items: BasketIcon,
   payment: BillIcon,
+  totals: BillIcon,
   fulfillment: PackageIcon,
   shipping: PinIcon,
 }
 
 const ORDER_STATUS_OPTIONS: OrderStatus[] = ['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded']
+const FULFILLMENT_STATUS_OPTIONS = ['unfulfilled', 'shipped', 'delivered']
 
 const STRIPE_SYNC_FIELDS = new Set([
   'paymentIntentId',
@@ -242,7 +238,6 @@ const STRIPE_SYNC_FIELDS = new Set([
   'totalAmount',
   'amountSubtotal',
   'amountTax',
-  'amountDiscount',
   'amountShipping',
   'cardBrand',
   'cardLast4',
@@ -253,6 +248,8 @@ const STRIPE_SYNC_FIELDS = new Set([
   'trackingUrl',
   'shippingLabelUrl',
   'packingSlipUrl',
+  'fulfillment.trackingNumber',
+  'fulfillment.trackingUrl',
 ])
 
 const REFERENCE_TARGETS: Record<string, string> = {
@@ -272,15 +269,24 @@ const OrderViewComponent = (props: any) => {
   const [loadingConfig, setLoadingConfig] = useState(true)
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const [statusDraft, setStatusDraft] = useState<OrderStatus | ''>(order.status ?? '')
-  const [manualTrackingDraft, setManualTrackingDraft] = useState(order.manualTrackingNumber ?? '')
+  const [fulfillmentStatusDraft, setFulfillmentStatusDraft] = useState<string>(
+    order.fulfillment?.status ?? '',
+  )
+  const [trackingDraft, setTrackingDraft] = useState(
+    order.fulfillment?.trackingNumber ?? order.trackingNumber ?? '',
+  )
 
   useEffect(() => {
     setStatusDraft(order.status ?? '')
   }, [order.status])
 
   useEffect(() => {
-    setManualTrackingDraft(order.manualTrackingNumber ?? '')
-  }, [order.manualTrackingNumber])
+    setFulfillmentStatusDraft(order.fulfillment?.status ?? '')
+  }, [order.fulfillment?.status])
+
+  useEffect(() => {
+    setTrackingDraft(order.fulfillment?.trackingNumber ?? order.trackingNumber ?? '')
+  }, [order.fulfillment?.trackingNumber, order.trackingNumber])
 
   useEffect(() => {
     let cancelled = false
@@ -351,6 +357,16 @@ const OrderViewComponent = (props: any) => {
     [config.protectedFields],
   )
 
+  const getFieldValue = useCallback(
+    (path: string) =>
+      path.split('.').reduce<any>((acc, key) => {
+        if (acc === null || acc === undefined) return undefined
+        if (typeof acc !== 'object') return undefined
+        return (acc as any)[key]
+      }, order),
+    [order],
+  )
+
   const toggleSection = useCallback((sectionKey: string) => {
     setCollapsedSections((prev) => ({...prev, [sectionKey]: !prev[sectionKey]}))
   }, [])
@@ -394,26 +410,56 @@ const OrderViewComponent = (props: any) => {
     [editableFields, order.status, patch, pushToast],
   )
 
-  const handleManualTrackingCommit = useCallback(() => {
-    if (!editableFields.has('manualTrackingNumber')) return
-    const trimmed = manualTrackingDraft.trim()
-    if (!trimmed && !order.manualTrackingNumber) return
-    if (trimmed === order.manualTrackingNumber) return
+  const handleFulfillmentStatusChange = useCallback(
+    (nextValue: string) => {
+      if (!editableFields.has('fulfillment.status')) return
+      const nextStatus = nextValue || ''
+      setFulfillmentStatusDraft(nextStatus)
+      const current = order.fulfillment?.status || ''
+      if (nextStatus === current) return
+      if (nextStatus) {
+        patch.execute([{set: {'fulfillment.status': nextStatus}}])
+      } else {
+        patch.execute([{unset: ['fulfillment.status']}])
+      }
+      pushToast({
+        status: 'success',
+        title: 'Fulfillment updated',
+        description: `Fulfillment status changed to ${nextStatus || 'unset'}`,
+      })
+    },
+    [editableFields, order.fulfillment?.status, patch, pushToast],
+  )
+
+  const handleTrackingCommit = useCallback(() => {
+    if (!editableFields.has('fulfillment.trackingNumber')) return
+    const trimmed = trackingDraft.trim()
+    const current = order.fulfillment?.trackingNumber || order.trackingNumber || ''
+    if (!trimmed && !current) return
+    if (trimmed === current) return
+
     if (trimmed) {
-      patch.execute([{set: {manualTrackingNumber: trimmed}}])
+      patch.execute([{set: {'fulfillment.trackingNumber': trimmed, trackingNumber: trimmed}}])
       pushToast({
         status: 'success',
         title: 'Tracking number saved',
-        description: 'Manual tracking number stored on the order',
+        description: 'Tracking number stored on the order',
       })
     } else {
-      patch.execute([{unset: ['manualTrackingNumber']}])
+      patch.execute([{unset: ['fulfillment.trackingNumber', 'trackingNumber']}])
       pushToast({
         status: 'warning',
         title: 'Tracking number cleared',
       })
     }
-  }, [editableFields, manualTrackingDraft, order.manualTrackingNumber, patch, pushToast])
+  }, [
+    editableFields,
+    order.fulfillment?.trackingNumber,
+    order.trackingNumber,
+    patch,
+    pushToast,
+    trackingDraft,
+  ])
 
   const renderSection = (section: OrderViewSection) => {
     const sectionKey = section._key || section.title
@@ -523,7 +569,7 @@ const OrderViewComponent = (props: any) => {
   }
 
   const renderUrlField = (field: OrderViewField) => {
-    const value = order[field.fieldName as keyof OrderDocument] as string | undefined
+    const value = getFieldValue(field.fieldName as string) as string | undefined
     return (
       <FormField key={field.fieldName} title={field.label} description={getFieldDescription(field)}>
         {value ? (
@@ -563,17 +609,37 @@ const OrderViewComponent = (props: any) => {
     </EditableFieldWrapper>
   )
 
-  const renderManualTrackingField = (field: OrderViewField) => (
+  const renderFulfillmentStatusField = (field: OrderViewField) => (
+    <EditableFieldWrapper
+      key={field.fieldName}
+      label={field.label}
+      description={getFieldDescription(field)}
+    >
+      <Select
+        value={fulfillmentStatusDraft}
+        onChange={(event) => handleFulfillmentStatusChange(event.currentTarget.value)}
+      >
+        <option value="">Select status</option>
+        {FULFILLMENT_STATUS_OPTIONS.map((statusOption) => (
+          <option key={statusOption} value={statusOption}>
+            {statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
+          </option>
+        ))}
+      </Select>
+    </EditableFieldWrapper>
+  )
+
+  const renderTrackingField = (field: OrderViewField) => (
     <Stack key={field.fieldName} space={3}>
       <EditableFieldWrapper label={field.label} description={getFieldDescription(field)}>
         <TextInput
-          value={manualTrackingDraft}
-          onChange={(event) => setManualTrackingDraft(event.currentTarget.value)}
-          onBlur={handleManualTrackingCommit}
+          value={trackingDraft}
+          onChange={(event) => setTrackingDraft(event.currentTarget.value)}
+          onBlur={handleTrackingCommit}
           placeholder="Enter tracking number"
         />
       </EditableFieldWrapper>
-      {order.manualTrackingNumber && (
+      {(order.fulfillment?.trackingNumber || order.trackingNumber) && (
         <Inline space={3} style={{alignItems: 'center'}}>
           <CheckmarkCircleIcon style={{color: 'var(--card-fg-color)', fontSize: 16}} />
           <Card paddingX={3} paddingY={2} radius={2} tone="positive" border>
@@ -585,8 +651,7 @@ const OrderViewComponent = (props: any) => {
   )
 
   const renderDefaultField = (field: OrderViewField) => {
-    const fieldName = field.fieldName as keyof OrderDocument
-    const value = order[fieldName]
+    const value = getFieldValue(field.fieldName as string)
     const title = field.label
 
     const descriptionContent = getFieldDescription(field)
@@ -632,8 +697,12 @@ const OrderViewComponent = (props: any) => {
       return renderStatusField(field)
     }
 
-    if (field.fieldName === 'manualTrackingNumber') {
-      return renderManualTrackingField(field)
+    if (field.fieldName === 'fulfillment.status') {
+      return renderFulfillmentStatusField(field)
+    }
+
+    if (field.fieldName === 'fulfillment.trackingNumber') {
+      return renderTrackingField(field)
     }
 
     if (field.type === 'reference') {

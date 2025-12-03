@@ -15,6 +15,7 @@ export const shippingSettingsType = defineType({
   type: 'document',
   title: 'Shipping Settings',
   icon: () => '📦',
+  // @ts-expect-error Allow restricting document actions even though the type no longer declares it
   __experimental_actions: ['update', 'publish'],
   fields: [
     defineField({
@@ -89,14 +90,15 @@ export const shippingSettingsType = defineType({
       ],
     }),
     defineField({
-      name: 'carrierAccounts',
-      type: 'array',
-      title: 'Carrier Accounts',
-      description: 'Connected carrier accounts in EasyPost',
-      of: [
-        defineField({
-          type: 'object',
-          fields: [
+        name: 'carrierAccounts',
+        type: 'array',
+        title: 'Carrier Accounts',
+        description: 'Connected carrier accounts in EasyPost',
+        of: [
+          defineField({
+            name: 'carrierAccount',
+            type: 'object',
+            fields: [
             {
               name: 'carrier',
               type: 'string',

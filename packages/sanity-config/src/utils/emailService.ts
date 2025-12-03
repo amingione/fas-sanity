@@ -256,13 +256,14 @@ const sendViaSes = async (options: SendEmailOptions): Promise<SendEmailResult> =
 
 const sendViaResend = async (options: SendEmailOptions): Promise<SendEmailResult> => {
   if (!RESEND_CLIENT) throw new Error('RESEND_API_KEY missing')
+  // @ts-expect-error Resend types require a React email payload, but we supply raw HTML/text
   const response = await RESEND_CLIENT.emails.send({
     from: sanitizeFrom(options.from),
     to: options.to,
     subject: options.subject,
     html: options.html,
     text: options.text,
-    reply_to: options.replyTo,
+    replyTo: options.replyTo,
   })
   const errorMessage =
     (response as any)?.error?.message || (response as any)?.error || (response as any)?.message

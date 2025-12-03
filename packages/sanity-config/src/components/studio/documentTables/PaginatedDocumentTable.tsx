@@ -39,21 +39,21 @@ type RowResult<TData extends Record<string, unknown>> = TData & {
 
 function normalizeProjection(projection: string) {
   const trimmed = projection.trim()
-  const body =
-    trimmed.startsWith('{') && trimmed.endsWith('}') ? trimmed.slice(1, -1).trim() : trimmed
+  const hasBraces = trimmed.startsWith('{') && trimmed.endsWith('}')
+  const body = hasBraces ? trimmed.slice(1, -1).trim() : trimmed
 
-  const entries = body
-    ? body
-        .split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-    : []
+  // Append required fields without splitting on commas (which can appear inside GROQ functions).
+  const needsId = !/\b_id\b/.test(body)
+  const needsType = !/\b_type\b/.test(body)
 
-  const fields = new Set(entries)
-  fields.add('_id')
-  fields.add('_type')
+  const suffixParts: string[] = []
+  if (needsId) suffixParts.push('_id')
+  if (needsType) suffixParts.push('_type')
 
-  return `{${Array.from(fields).join(', ')}}`
+  const suffix = suffixParts.length ? `${body ? ', ' : ''}${suffixParts.join(', ')}` : ''
+  const normalizedBody = `${body}${suffix}`
+
+  return hasBraces ? `{${normalizedBody}}` : `{${normalizedBody}}`
 }
 
 function buildOrderingClause(orderings?: Array<{field: string; direction: 'asc' | 'desc'}>) {

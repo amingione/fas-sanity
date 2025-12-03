@@ -6,17 +6,30 @@ export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
   const {patch} = useDocumentOperation(id, type)
   const [isLoading, setIsLoading] = useState(false)
 
-  const doc = draft || published
+  const doc = (draft || published) as
+    | {
+        status?: string
+        shipping?: {
+          easypostRateId?: string
+          easypostShipmentId?: string
+          labelUrl?: string
+          fulfillmentStatus?: string
+          shippingMethod?: string
+        }
+      }
+    | null
 
   if (type !== 'invoice' || doc?.status !== 'paid') {
     return null
   }
 
-  if (!doc?.shipping?.easypostRateId) {
+  const shipping = doc?.shipping
+
+  if (!shipping?.easypostRateId) {
     return null
   }
 
-  if (doc?.shipping?.labelUrl) {
+  if (shipping?.labelUrl) {
     return null
   }
 
@@ -38,8 +51,8 @@ export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             invoiceId: id,
-            shipmentId: doc.shipping.easypostShipmentId,
-            rateId: doc.shipping.easypostRateId,
+            shipmentId: shipping.easypostShipmentId,
+            rateId: shipping.easypostRateId,
           }),
         })
 

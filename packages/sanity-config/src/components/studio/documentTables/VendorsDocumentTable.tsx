@@ -191,7 +191,7 @@ export default function VendorsDocumentTable({title = 'Vendors'}: {title?: strin
           key: 'credit',
           header: 'Credit',
           render: (row: VendorRow) => (
-            <Stack space={1} align="flex-start">
+            <Stack space={1}>
               <Text size={1}>{formatCredit(row)}</Text>
               <Text size={0} muted>
                 {isOverCreditLimit(row) ? 'Over limit' : 'Within limit'}

@@ -5,6 +5,7 @@ export const searchSettingsType = defineType({
   type: 'document',
   title: 'Search Configuration',
   icon: () => '🔍',
+  // @ts-expect-error Allow restricting document actions even though the type no longer declares it
   __experimental_actions: ['update', 'publish'],
   fields: [
     defineField({
@@ -225,6 +226,7 @@ export const searchSettingsType = defineType({
           description: 'Predefined price ranges for filtering',
           of: [
             defineField({
+              name: 'priceRange',
               type: 'object',
               fields: [
                 {name: 'label', type: 'string', title: 'Label', placeholder: 'e.g., "Under $100"'},
@@ -244,6 +246,7 @@ export const searchSettingsType = defineType({
           description: 'Additional filters based on product attributes',
           of: [
             defineField({
+              name: 'customFilter',
               type: 'object',
               fields: [
                 {name: 'label', type: 'string', title: 'Filter Label', placeholder: 'e.g., "Vehicle Type"'},
@@ -294,6 +297,7 @@ export const searchSettingsType = defineType({
           description: 'Which sort options to show to customers',
           of: [
             defineField({
+              name: 'sortOption',
               type: 'string',
               options: {
                 list: [

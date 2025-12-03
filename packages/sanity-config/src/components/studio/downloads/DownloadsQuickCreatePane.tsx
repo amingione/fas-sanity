@@ -104,7 +104,7 @@ export default function DownloadsQuickCreatePane() {
             <Card key={preset.id} padding={3} radius={3} border>
               <Flex align="center" justify="space-between" gap={4}>
                 <Stack space={2} flex={1}>
-                  <Inline space={2} align="center">
+                  <Inline space={2}>
                     <DocumentTextIcon />
                     <Text weight="medium">{preset.title}</Text>
                   </Inline>

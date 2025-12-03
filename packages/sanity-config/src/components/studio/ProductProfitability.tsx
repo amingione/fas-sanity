@@ -1,5 +1,4 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
-import {useClient} from 'sanity'
 import {
   Box,
   Button,
@@ -14,51 +13,68 @@ import {
 } from '@sanity/ui'
 import {DownloadIcon, RefreshIcon, SearchIcon} from '@sanity/icons'
 import {exportRevenueReportCsv, type RevenueExportRow} from '../../utils/financeExports'
-
-const API_VERSION = '2024-10-01'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 type ProfitabilityRow = {
-  _id: string
-  title?: string
-  price?: number
-  sku?: string
-  unitsSold?: number
-  revenue?: number
-  cogs?: number
+  id: string
+  title?: string | null
+  price?: number | null
+  sku?: string | null
+  manufacturingCost?: number | null
+  unitsSold: number
+  revenue: number
+  cogs: number
 }
 
-const PRODUCT_PROFIT_QUERY = `
-*[_type == "product"]{
-  _id,
-  title,
-  sku,
-  price,
-  "unitsSold": coalesce(sum(*[_type == "order" && status == "paid" && references(^._id)].cart[productRef._ref == ^._id].(coalesce(quantity, 0))), 0),
-  "revenue": coalesce(sum(*[_type == "order" && status == "paid" && references(^._id)].cart[productRef._ref == ^._id].(coalesce(total, lineTotal, price * coalesce(quantity, 1)))), 0),
-  "cogs": coalesce(sum(*[_type == "inventoryTransaction" && type == "sold" && product._ref == ^._id].(coalesce(quantity, 0) * coalesce(unitCost, 0))), 0)
-} | order(_updatedAt desc)[0...500]
-`
+type MetricsPayload = {
+  products?: ProfitabilityRow[]
+  totals?: {unitsSold: number; revenue: number; cogs: number}
+  updatedAt?: string
+}
 
 const currency = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'})
+const REFRESH_INTERVAL_MS = 30000
 
 const ProductProfitability = () => {
-  const client = useClient({apiVersion: API_VERSION})
   const [rows, setRows] = useState<ProfitabilityRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true)
+  const fetchRows = useCallback(async (options?: {silent?: boolean}) => {
+    const silent = options?.silent
+    if (silent) setRefreshing(true)
+    else setLoading(true)
+    setError(null)
     try {
-      const data = await client.fetch<ProfitabilityRow[]>(PRODUCT_PROFIT_QUERY)
-      setRows(data || [])
+      const base = resolveNetlifyBase()
+      const response = await fetch(`${base}/.netlify/functions/productMetrics`)
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '')
+        throw new Error(detail || `Request failed (${response.status})`)
+      }
+      const payload = (await response.json()) as MetricsPayload
+      setRows(Array.isArray(payload.products) ? payload.products : [])
+      setLastUpdated(payload.updatedAt || new Date().toISOString())
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load product metrics'
+      setError(message)
     } finally {
-      setLoading(false)
+      if (silent) setRefreshing(false)
+      else setLoading(false)
     }
-  }, [client])
+  }, [])
 
   useEffect(() => {
     fetchRows()
+  }, [fetchRows])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const intervalId = window.setInterval(() => fetchRows({silent: true}), REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(intervalId)
   }, [fetchRows])
 
   const enhancedRows = useMemo(() => {
@@ -78,19 +94,19 @@ const ProductProfitability = () => {
       (row) =>
         row.title?.toLowerCase().includes(needle) ||
         row.sku?.toLowerCase().includes(needle) ||
-        row._id.toLowerCase().includes(needle),
+        row.id.toLowerCase().includes(needle),
     )
   }, [enhancedRows, filter])
 
   const totalGrossProfit = useMemo(
-    () => filteredRows.reduce((sum, row: any) => sum + (row.grossProfit || 0), 0),
+    () => filteredRows.reduce((sum, row) => sum + (row.grossProfit || 0), 0),
     [filteredRows],
   )
 
   const revenueExportRows = useMemo<RevenueExportRow[]>(
     () =>
       filteredRows.map((row) => ({
-        label: row.title || row.sku || row._id,
+        label: row.title || row.sku || row.id,
         channel: 'product',
         revenue: row.revenue || 0,
         cogs: row.cogs || 0,
@@ -107,29 +123,62 @@ const ProductProfitability = () => {
     exportRevenueReportCsv(revenueExportRows, 'product-profitability.csv')
   }
 
+  const updatedLabel = useMemo(() => {
+    if (!lastUpdated) return ''
+    const parsed = Date.parse(lastUpdated)
+    if (Number.isFinite(parsed)) {
+      return new Date(parsed).toLocaleTimeString()
+    }
+    return lastUpdated
+  }, [lastUpdated])
+
   return (
     <Stack space={4} padding={4}>
-      <Flex align="center" justify="space-between">
-        <Heading size={3}>📈 Product Profitability</Heading>
-        <Flex gap={2}>
-          <Button icon={RefreshIcon} mode="ghost" text="Refresh" onClick={fetchRows} disabled={loading} />
-          <Button
-            icon={DownloadIcon}
-            text="Export CSV"
-            onClick={handleExport}
-            disabled={!revenueExportRows.length}
-          />
+      <Stack space={2}>
+        <Flex align="center" justify="space-between">
+          <Heading size={3}>📈 Product Profitability</Heading>
+          <Flex gap={2} align="center">
+            <Button
+              icon={RefreshIcon}
+              mode="ghost"
+              text={refreshing ? 'Refreshing…' : 'Refresh'}
+              onClick={() => fetchRows({silent: false})}
+              disabled={loading || refreshing}
+            />
+            <Button
+              icon={DownloadIcon}
+              text="Export CSV"
+              onClick={handleExport}
+              disabled={!revenueExportRows.length}
+            />
+          </Flex>
         </Flex>
-      </Flex>
+        <Flex justify="space-between" align="center">
+          <Text size={1} muted>
+            Auto-refreshes every {Math.round(REFRESH_INTERVAL_MS / 1000)}s
+            {updatedLabel ? ` • Updated ${updatedLabel}` : ''}
+          </Text>
+          {error && (
+            <Text size={1} style={{color: 'var(--card-critical-fg-color)'}}>
+              {error}
+            </Text>
+          )}
+        </Flex>
+      </Stack>
       <Card padding={3} radius={3} shadow={1}>
         <Flex gap={2} align="center">
           <SearchIcon />
           <TextInput
-            flex={1}
+            style={{flex: 1}}
             placeholder="Search products by name or SKU"
             value={filter}
             onChange={(event) => setFilter(event.currentTarget.value)}
           />
+          {refreshing && !loading && (
+            <Text size={1} muted>
+              Refreshing…
+            </Text>
+          )}
         </Flex>
       </Card>
 
@@ -154,9 +203,9 @@ const ProductProfitability = () => {
               <Text size={1}>Margin</Text>
             </Grid>
             <Stack>
-              {filteredRows.map((row: any) => (
+              {filteredRows.map((row) => (
                 <Grid
-                  key={row._id}
+                  key={row.id}
                   columns={6}
                   padding={3}
                   gap={3}
@@ -178,7 +227,7 @@ const ProductProfitability = () => {
               {!filteredRows.length && (
                 <Box padding={4}>
                   <Text size={1} muted>
-                    No products match this filter.
+                    {error ? 'Unable to load product metrics.' : 'No products match this filter.'}
                   </Text>
                 </Box>
               )}
