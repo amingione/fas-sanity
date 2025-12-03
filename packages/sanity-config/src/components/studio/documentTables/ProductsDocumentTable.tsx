@@ -60,6 +60,7 @@ type ProductsDocumentTableProps = {
   title?: string
   baseFilter?: string
   initialStatusFilter?: StatusFilterId
+  initialSortId?: string
   pageSize?: number
 }
 
@@ -102,6 +103,14 @@ const SORT_OPTIONS: SortOption[] = [
     title: 'Status (A → Z)',
     orderings: [
       {field: 'status', direction: 'asc'},
+      {field: 'coalesce(_updatedAt, _createdAt)', direction: 'desc'},
+    ],
+  },
+  {
+    id: 'titleAsc',
+    title: 'Title (A → Z)',
+    orderings: [
+      {field: 'title', direction: 'asc'},
       {field: 'coalesce(_updatedAt, _createdAt)', direction: 'desc'},
     ],
   },
@@ -152,14 +161,25 @@ export default function ProductsDocumentTable({
   title = 'Products',
   baseFilter,
   initialStatusFilter = 'all',
+  initialSortId,
   pageSize = 8,
 }: ProductsDocumentTableProps = {}) {
   const [statusFilterId, setStatusFilterId] = useState<StatusFilterId>(initialStatusFilter)
-  const [sortId, setSortId] = useState<string>(SORT_OPTIONS[0]?.id ?? 'updatedDesc')
+  const [sortId, setSortId] = useState<string>(() => {
+    const fallback = SORT_OPTIONS[0]?.id ?? 'updatedDesc'
+    if (!initialSortId) return fallback
+    return SORT_OPTIONS.some((option) => option.id === initialSortId) ? initialSortId : fallback
+  })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentItems, setCurrentItems] = useState<ProductRow[]>([])
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    if (!initialSortId) return
+    if (!SORT_OPTIONS.some((option) => option.id === initialSortId)) return
+    setSortId((prev) => (prev === initialSortId ? prev : initialSortId))
+  }, [initialSortId])
 
   const activeStatus = useMemo(() => {
     return STATUS_FILTERS.find((option) => option.id === statusFilterId) ?? STATUS_FILTERS[0]
