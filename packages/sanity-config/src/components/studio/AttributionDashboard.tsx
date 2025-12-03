@@ -118,7 +118,7 @@ const FunnelStep = ({label, value, max}: {label: string; value: number; max: num
         <Text size={1}>{label}</Text>
         <Badge tone="primary">{value}</Badge>
       </Flex>
-      <Box
+      <Card
         padding={1}
         radius={3}
         style={{
@@ -134,7 +134,7 @@ const FunnelStep = ({label, value, max}: {label: string; value: number; max: num
             borderRadius: 4,
           }}
         />
-      </Box>
+      </Card>
     </Stack>
   )
 }

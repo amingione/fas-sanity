@@ -224,9 +224,16 @@ const AccountsReceivable = () => {
                   <Text>Invoice Date: {row.invoiceDate || 'n/a'}</Text>
                   <Text>Due: {row.dueDate || 'n/a'}</Text>
                 </Stack>
-                <Stack flex={1} align="flex-end">
+                <Stack flex={1} style={{textAlign: 'right', justifyItems: 'end'}}>
                   <Text weight="semibold">{currency.format(row.amount)}</Text>
-                  <Text size={1} tone={row.derivedStatus === 'overdue' ? 'critical' : 'default'}>
+                  <Text
+                    size={1}
+                    style={
+                      row.derivedStatus === 'overdue'
+                        ? {color: 'var(--card-critical-fg-color)'}
+                        : undefined
+                    }
+                  >
                     {row.derivedStatus === 'overdue'
                       ? `${row.daysOverdue} days overdue`
                       : row.derivedStatus}

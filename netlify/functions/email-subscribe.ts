@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {syncContact} from '../lib/resend/contacts'
+import {computeCustomerName, splitFullName} from '../../shared/customerName'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -34,8 +35,7 @@ export const handler: Handler = async (event) => {
 
   try {
     const {email, name, source} = JSON.parse(event.body || '{}')
-    const firstName = name?.split(' ')[0] || ''
-    const lastName = name?.split(' ').slice(1).join(' ') || ''
+    const nameParts = splitFullName(name)
 
     if (!email || !email.includes('@')) {
       return {
@@ -46,6 +46,14 @@ export const handler: Handler = async (event) => {
     }
 
     const emailLower = email.toLowerCase().trim()
+    const computedName = computeCustomerName({
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      email: emailLower,
+      fallbackName: name,
+    })
+    const firstName = nameParts.firstName || ''
+    const lastName = nameParts.lastName || ''
 
     // Check if customer exists
     const existingCustomer = await sanityClient.fetch(
@@ -57,16 +65,21 @@ export const handler: Handler = async (event) => {
 
     if (existingCustomer) {
       // Update existing customer
+      const patch: Record<string, any> = {
+        emailOptIn: true,
+        marketingOptIn: true,
+        'emailMarketing.subscribed': true,
+        'emailMarketing.subscribedAt': new Date().toISOString(),
+        'emailMarketing.source': source || 'popup_modal',
+        'emailMarketing.status': 'subscribed',
+      }
+      if (computedName && existingCustomer?.name !== computedName) patch.name = computedName
+      if (nameParts.firstName && !existingCustomer?.firstName) patch.firstName = nameParts.firstName
+      if (nameParts.lastName && !existingCustomer?.lastName) patch.lastName = nameParts.lastName
+
       await sanityClient
         .patch(existingCustomer._id)
-        .set({
-          emailOptIn: true,
-          marketingOptIn: true,
-          'emailMarketing.subscribed': true,
-          'emailMarketing.subscribedAt': new Date().toISOString(),
-          'emailMarketing.source': source || 'popup_modal',
-          'emailMarketing.status': 'subscribed',
-        })
+        .set(patch)
         .commit()
 
       customerId = existingCustomer._id
@@ -75,9 +88,9 @@ export const handler: Handler = async (event) => {
       const newCustomer = await sanityClient.create({
         _type: 'customer',
         email: emailLower,
-        name: name || '',
-        firstName,
-        lastName,
+        name: computedName || emailLower,
+        firstName: nameParts.firstName || undefined,
+        lastName: nameParts.lastName || undefined,
         roles: ['customer'],
         customerType: 'retail',
         emailOptIn: true,

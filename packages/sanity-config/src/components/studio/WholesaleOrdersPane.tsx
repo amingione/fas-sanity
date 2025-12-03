@@ -136,12 +136,12 @@ export default function WholesaleOrdersPane() {
         <Card padding={3} radius={3} border>
           <Stack space={3}>
             <Flex paddingY={2} paddingX={3} style={{fontWeight: 600}}>
-              <Text flex={1}>Order</Text>
-              <Text flex={1}>Vendor</Text>
-              <Text flex={1}>Pricing Tier</Text>
-              <Text flex={1}>Quantity</Text>
-              <Text flex={1}>Workflow Status</Text>
-              <Text flex={1}>Total</Text>
+              <Text style={{flex: 1}}>Order</Text>
+              <Text style={{flex: 1}}>Vendor</Text>
+              <Text style={{flex: 1}}>Pricing Tier</Text>
+              <Text style={{flex: 1}}>Quantity</Text>
+              <Text style={{flex: 1}}>Workflow Status</Text>
+              <Text style={{flex: 1}}>Total</Text>
             </Flex>
             <Stack space={2}>
               {filtered.length === 0 ? (
@@ -174,7 +174,7 @@ export default function WholesaleOrdersPane() {
                           </Text>
                         )}
                       </Stack>
-                      <Text flex={1}>{resolveQuantity(order)}</Text>
+                      <Text style={{flex: 1}}>{resolveQuantity(order)}</Text>
                       <Stack flex={1} space={1}>
                         <Select
                           value={order.wholesaleWorkflowStatus || 'requested'}
@@ -188,7 +188,7 @@ export default function WholesaleOrdersPane() {
                           ))}
                         </Select>
                       </Stack>
-                      <Text flex={1} weight="medium">
+                      <Text style={{flex: 1}} weight="medium">
                         {formatCurrency(order.totalAmount, order.currency)}
                       </Text>
                     </Flex>

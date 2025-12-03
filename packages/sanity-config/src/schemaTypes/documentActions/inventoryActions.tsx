@@ -14,6 +14,7 @@ import {
 } from '@sanity/ui'
 import {useClient, useCurrentUser} from 'sanity'
 import type {DocumentActionComponent} from 'sanity'
+import type {DocumentStub} from '../../types/sanity'
 import {
   applyInventoryChanges,
   fetchInventoryById,
@@ -25,6 +26,8 @@ import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../../../shared/docTypes'
 
 const API_VERSION = '2024-10-01'
+const resolveCurrentUserLabel = (user: ReturnType<typeof useCurrentUser>) =>
+  user?.name || user?.email || user?.id || 'system'
 
 type InventoryDoc = {
   _id: string
@@ -109,8 +112,7 @@ export const adjustInventoryAction: DocumentActionComponent = (props) => {
         quantityBefore: snapshot.quantityOnHand,
         quantityAfter: updated.quantityOnHand,
         notes: notes || undefined,
-        createdBy:
-          currentUser?.user?.displayName || currentUser?.user?.name || currentUser?.user?.id,
+        createdBy: resolveCurrentUserLabel(currentUser),
       })
       toast.push({status: 'success', title: 'Inventory updated'})
       setOpen(false)
@@ -253,8 +255,7 @@ export const reserveInventoryAction: DocumentActionComponent = (props) => {
         ],
         referenceDocId: referenceDetails?.id,
         referenceLabel: referenceDetails?.label,
-        createdBy:
-          currentUser?.user?.displayName || currentUser?.user?.name || currentUser?.user?.id,
+        createdBy: resolveCurrentUserLabel(currentUser),
       })
       if (reservation.reserved.length) {
         toast.push({
@@ -395,7 +396,7 @@ export const createManufacturingOrderAction: DocumentActionComponent = (props) =
         typeName: 'manufacturingOrder',
         fieldName: 'moNumber',
       })
-      const payload: Record<string, any> = {
+      const payload: DocumentStub<Record<string, any>> = {
         _type: 'manufacturingOrder',
         moNumber,
         product: {_type: 'reference', _ref: doc!.product!._ref!},
@@ -406,8 +407,7 @@ export const createManufacturingOrderAction: DocumentActionComponent = (props) =
         status: 'queued',
         scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : undefined,
         assignedTo: assignedTo || undefined,
-        createdBy:
-          currentUser?.user?.displayName || currentUser?.user?.name || currentUser?.user?.id,
+        createdBy: resolveCurrentUserLabel(currentUser),
         reason: defaultReason,
       }
       const created = await client.create(payload, {autoGenerateArrayKeys: true})
@@ -541,8 +541,7 @@ export const completeManufacturingOrderAction: DocumentActionComponent = (props)
         quantity,
         referenceDocId: doc._id,
         referenceLabel: doc.moNumber,
-        createdBy:
-          currentUser?.user?.displayName || currentUser?.user?.name || currentUser?.user?.id,
+        createdBy: resolveCurrentUserLabel(currentUser),
       })
       const newCompleted = Number(doc.quantityCompleted || 0) + quantity
       await client

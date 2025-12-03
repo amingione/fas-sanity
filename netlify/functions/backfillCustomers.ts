@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {requireSanityCredentials} from '../lib/sanityEnv'
+import {computeCustomerName, splitFullName} from '../../shared/customerName'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -99,7 +100,7 @@ export const handler: Handler = async (event) => {
         const nameUpdates = deriveNamePatch(d)
         if (Object.keys(nameUpdates).length > 0) {
           Object.assign(setOps, nameUpdates)
-          namesHydrated++
+          if (typeof nameUpdates.name !== 'undefined') namesHydrated++
         }
 
         if (d.userId && typeof d.userId === 'string' && d.userId.startsWith('auth0|')) {
@@ -181,20 +182,6 @@ function normalizeName(value?: unknown): string | undefined {
   return trimmed
 }
 
-function splitName(full?: string) {
-  const normalized = normalizeName(full)
-  if (!normalized) return {first: undefined, last: undefined}
-  const parts = normalized.split(' ')
-  if (parts.length === 1) {
-    return {first: parts[0], last: undefined}
-  }
-  const [first, ...rest] = parts
-  return {
-    first,
-    last: rest.join(' ').trim() || undefined,
-  }
-}
-
 function looksLikeEmail(value?: string): boolean {
   if (!value) return false
   return value.includes('@')
@@ -207,24 +194,27 @@ function deriveNamePatch(doc: any): Record<string, string | null> {
   const currentFirst = normalizeName(rawFirst)
   const currentLast = normalizeName(rawLast)
 
-  const fallback =
+  const fallbackName =
     normalizeName(doc?.name) ||
     normalizeName(doc?.shippingName) ||
     normalizeName(doc?.billingName)
+
+  const parsedFallback = fallbackName ? splitFullName(fallbackName) : {}
 
   const needsFirst = !currentFirst
   const needsLast = !currentLast
 
   if (needsFirst || needsLast) {
-    const {first, last} = splitName(fallback)
+    const first = parsedFallback.firstName
+    const last = parsedFallback.lastName
     if (needsFirst && first) {
       patch.firstName = first
     }
     if (needsLast && last) {
       patch.lastName = last
     }
-    if (needsFirst && !patch.firstName && fallback) {
-      patch.firstName = fallback
+    if (needsFirst && !patch.firstName && fallbackName) {
+      patch.firstName = fallbackName
     }
   }
 
@@ -233,6 +223,17 @@ function deriveNamePatch(doc: any): Record<string, string | null> {
   }
   if (needsLast && !patch.lastName && looksLikeEmail(rawLast)) {
     patch.lastName = null
+  }
+
+  const computedName = computeCustomerName({
+    firstName: patch.firstName ?? currentFirst,
+    lastName: patch.lastName ?? currentLast,
+    email: doc?.email,
+    fallbackName,
+  })
+
+  if (computedName && doc?.name !== computedName) {
+    patch.name = computedName
   }
 
   return patch

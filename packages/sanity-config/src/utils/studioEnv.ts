@@ -1,5 +1,13 @@
 type EnvMap = Record<string, string | undefined>
 
+declare const __SANITY_STUDIO_RUNTIME_ENV__: EnvMap | undefined
+
+declare global {
+  interface Window {
+    __SANITY_STUDIO_RUNTIME_ENV__?: EnvMap
+  }
+}
+
 function runtimeEnv(): EnvMap | undefined {
   if (typeof __SANITY_STUDIO_RUNTIME_ENV__ !== 'undefined') {
     return __SANITY_STUDIO_RUNTIME_ENV__

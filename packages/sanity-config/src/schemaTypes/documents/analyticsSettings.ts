@@ -5,6 +5,7 @@ export const analyticsSettingsType = defineType({
   type: 'document',
   title: 'Analytics Settings',
   icon: () => '📊',
+  // @ts-expect-error Allow restricting document actions even though the type no longer declares it
   __experimental_actions: ['update', 'publish'],
   fields: [
     defineField({

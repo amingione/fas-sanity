@@ -93,7 +93,7 @@ const StatCard = ({
 }: {
   label: string
   value: string
-  tone?: 'default' | 'low' | 'critical' | 'caution' | 'positive'
+  tone?: 'default' | 'neutral' | 'critical' | 'caution' | 'positive' | 'transparent'
 }) => (
   <Card padding={4} radius={3} shadow={1} tone={tone}>
     <Stack space={2}>
@@ -192,7 +192,7 @@ const InventoryDashboard = () => {
             <StatCard
               label="Overstocked"
               value={String(stockOverview?.overstocked ?? 0)}
-              tone="low"
+              tone="neutral"
             />
           </Grid>
         </Stack>

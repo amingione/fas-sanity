@@ -47,7 +47,10 @@ export default function VendorQuotePricingWatcher() {
       new Set(
         items
           .map((item) => item?.product?._ref)
-          .filter((id: string | undefined): id is string => Boolean(id) && !productCache[id]),
+          .filter((id: string | undefined): id is string => {
+            if (!id) return false
+            return !productCache[id]
+          }),
       ),
     )
     if (!ids.length) return

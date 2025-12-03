@@ -3,6 +3,7 @@ import type {DocumentActionComponent} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {useClient} from 'sanity'
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -306,13 +307,12 @@ const createIntentAction =
     const doc = (props.draft || props.published) as CustomerDocument | null
     const router = useRouter()
     if (!doc) return null
+    const baseParams = {type: schemaType}
+    const jsonParams = initialValueBuilder ? {initialValue: initialValueBuilder(doc)} : null
     return {
       label,
       onHandle: () => {
-        router?.navigateIntent?.(intent, {
-          type: schemaType,
-          initialValue: initialValueBuilder ? initialValueBuilder(doc) : undefined,
-        })
+        router?.navigateIntent?.(intent, jsonParams ? [baseParams, jsonParams] : baseParams)
         props.onComplete()
       },
     }

@@ -311,7 +311,7 @@ const CustomerAnalyticsDashboard = () => {
                             {metrics.count}
                           </Text>
                         </Stack>
-                        <Stack space={1} align="flex-end">
+                        <Stack space={1} style={{textAlign: 'right', justifyItems: 'end'}}>
                           <Text size={1} muted>
                             Lifetime value
                           </Text>
@@ -337,7 +337,7 @@ const CustomerAnalyticsDashboard = () => {
                       Showing up to 50 customers, sorted by most recent activity.
                     </Text>
                   </Stack>
-                  <Stack space={1} align={['flex-start', 'flex-end']}>
+                  <Stack space={1} style={{textAlign: 'right', justifyItems: 'end'}}>
                     <Text size={1} muted>
                       Customers
                     </Text>
@@ -367,7 +367,7 @@ const CustomerAnalyticsDashboard = () => {
                               {customer.email || 'No email on file'}
                             </Text>
                           </Stack>
-                          <Stack space={1} align="flex-end">
+                          <Stack space={1} style={{textAlign: 'right', justifyItems: 'end'}}>
                             <Text weight="semibold">
                               {formatCurrency(customer.lifetimeValue ?? 0)}
                             </Text>
@@ -415,7 +415,7 @@ const CustomerAnalyticsDashboard = () => {
                             {customer.totalOrders || 0} orders
                           </Text>
                         </Stack>
-                        <Stack space={1} align="flex-end">
+                        <Stack space={1} style={{textAlign: 'right', justifyItems: 'end'}}>
                           <Text weight="semibold">{formatCurrency(customer.lifetimeValue)}</Text>
                         </Stack>
                       </Flex>

@@ -17,6 +17,7 @@ import {
 } from '@sanity/ui'
 import {useClient} from 'sanity'
 import type {DocumentActionComponent} from 'sanity'
+import type {DocumentStub} from '../../types/sanity'
 import {useRouter} from 'sanity/router'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 import {consumeInventoryForItems} from '../../../../../shared/inventory'
@@ -240,7 +241,7 @@ export const startWorkOrderAction: DocumentActionComponent = (props) => {
         fieldName: 'workOrderNumber',
       })
       const startedAt = new Date().toISOString()
-      const payload: Record<string, any> = {
+      const payload: DocumentStub<Record<string, any>> = {
         _type: 'workOrder',
         workOrderNumber,
         status: 'in_progress',
@@ -707,7 +708,7 @@ export const manageWorkOrderAction: DocumentActionComponent = (props) => {
         throw new Error('Add labor, parts, or charges before generating an invoice')
       }
 
-      const invoicePayload: Record<string, any> = {
+      const invoicePayload: DocumentStub<Record<string, any>> = {
         _type: 'invoice',
         invoiceNumber,
         title: `Work Order ${detail.workOrderNumber || ''}`.trim(),

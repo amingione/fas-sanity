@@ -86,6 +86,18 @@ type RawOrder = {
   totalAmount?: number | null
   createdAt?: string | null
   _createdAt?: string | null
+  customerRef?:
+    | {
+        _id?: string
+        name?: string | null
+        firstName?: string | null
+        lastName?: string | null
+        companyName?: string | null
+        email?: string | null
+      }
+    | null
+  customerEmail?: string | null
+  customerName?: string | null
   cart?: Array<{
     _key: string
     name?: string | null

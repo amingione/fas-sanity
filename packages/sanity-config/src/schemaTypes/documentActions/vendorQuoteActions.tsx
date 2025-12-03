@@ -1,6 +1,7 @@
 import {useState} from 'react'
 import {Box, Button, Flex, Stack, Text, useToast} from '@sanity/ui'
 import type {DocumentActionComponent} from 'sanity'
+import type {DocumentStub} from '../../types/sanity'
 import {useClient} from 'sanity'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 import {calculateVendorItemSubtotal} from '../../../../../shared/vendorPricing'
@@ -39,6 +40,16 @@ const computeDueDate = (paymentTerms?: string) => {
   const date = new Date()
   date.setDate(date.getDate() + days)
   return date.toISOString().slice(0, 10)
+}
+
+type CalculatedOrderItem = {
+  source: any
+  order: any
+  invoice: any
+  unitPrice: number
+  subtotal: number
+  quantity: number
+  _key: string
 }
 
 const buildOrderCartItem = (item: any, unitPrice: number, subtotal: number) => {
@@ -159,7 +170,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       const items = Array.isArray(quote.items) ? quote.items : []
       if (!items.length) throw new Error('Add at least one item to the quote')
 
-      const orderItems = items.map((item: any) => {
+      const orderItems: CalculatedOrderItem[] = items.map((item: any) => {
         const {unitPrice, subtotal, quantity} = calculateVendorItemSubtotal(
           {
             product: item.product,
@@ -188,8 +199,9 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       const total = Number.isFinite(Number(quote.total)) ? Number(quote.total) : subtotal + shipping + tax
 
       const nowIso = new Date().toISOString()
-      const orderDoc = {
+      const orderDoc: DocumentStub<Record<string, any>> = {
         _type: 'order',
+        orderNumber: quote.quoteNumber || undefined,
         orderType: 'wholesale',
         status: 'pending',
         currency: 'USD',
@@ -221,7 +233,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       })
       const billTo = toBillAddress(vendor.businessAddress)
       const shipTo = toBillAddress(vendor.shippingAddress || vendor.businessAddress)
-      const invoiceDoc: Record<string, any> = {
+      const invoiceDoc: DocumentStub<Record<string, any>> = {
         _type: 'invoice',
         title: `Wholesale order ${quote.quoteNumber || ''}`,
         invoiceNumber,

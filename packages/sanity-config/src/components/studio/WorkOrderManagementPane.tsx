@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
+import type {DocumentStub} from '../../types/sanity'
 import {useToast, Box, Button, Card, Flex, Grid, Heading, Select, Spinner, Stack, Text} from '@sanity/ui'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 
@@ -144,7 +145,7 @@ export default function WorkOrderManagementPane() {
         typeName: 'workOrder',
         fieldName: 'workOrderNumber',
       })
-      const payload: Record<string, any> = {
+      const payload: DocumentStub<Record<string, any>> = {
         _type: 'workOrder',
         workOrderNumber,
         status: 'not_started',

@@ -50,6 +50,7 @@
     "@operationnation/sanity-plugin-schema-markup": "^2.0.0",
     "@portabletext/react": "^4.0.3",
     "@portabletext/to-html": "^3.0.0",
+    "@react-email/render": "^1.4.0",
     "@sanity/asset-utils": "latest",
     "@sanity/assist": "^5.0.0",
     "@sanity/cli": "^4.11.0",

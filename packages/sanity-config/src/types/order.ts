@@ -15,13 +15,21 @@ export interface OrderCartItem {
   productName?: string
   sku?: string
   quantity?: number
-  price?: number
-  total?: number
-  optionSummary?: string
+  price?: number | null
+  total?: number | null
+  lineTotal?: number | null
+  selectedVariant?: string | null
+  addOns?: string[]
   optionDetails?: string[]
+  optionSummary?: string | null
   upgrades?: string[]
   upgradesTotal?: number | null
+  image?: string
+  productUrl?: string
   productRef?: SanityReference | null
+  productSlug?: string | null
+  metadata?: Record<string, unknown> | null
+  metadataEntries?: Array<{key?: string | null; value?: string | null}> | null
 }
 
 export interface ShippingAddress {
@@ -48,8 +56,6 @@ export interface OrderDocument {
   amountSubtotal?: number | null
   amountTax?: number | null
   amountDiscount?: number | null
-  discountLabel?: string | null
-  discountPercent?: number | null
   amountShipping?: number | null
   paymentStatus?: string
   paymentIntentId?: string
@@ -69,8 +75,15 @@ export interface OrderDocument {
   shippingLabelUrl?: string | null
   packingSlipUrl?: string | null
   shippingAddress?: ShippingAddress
-  fulfillment?: Record<string, any> | null
-  fulfillmentWorkflow?: {currentStage?: string | null; [key: string]: any} | null
+  fulfillment?: {
+    status?: string | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    carrier?: string | null
+    shippedAt?: string | null
+    deliveredAt?: string | null
+    fulfillmentNotes?: string | null
+  } | null
 }
 
 export type OrderViewFieldType =

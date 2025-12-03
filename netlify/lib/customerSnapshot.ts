@@ -2,6 +2,7 @@
 import type {SanityClient} from '@sanity/client'
 import {mapStripeMetadata} from './stripeMetadata'
 import {filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED} from './orderFilters'
+import {computeCustomerName, splitFullName} from '../../shared/customerName'
 
 type ShippingLike = {
   name?: string | null
@@ -40,19 +41,6 @@ type UpdateCustomerArgs = {
   emailOptIn?: boolean | null
   marketingOptIn?: boolean | null
   textOptIn?: boolean | null
-}
-
-function splitName(value?: string | null): {firstName?: string; lastName?: string} {
-  if (!value) return {}
-  const trimmed = value.trim()
-  if (!trimmed) return {}
-  const parts = trimmed.split(/\s+/)
-  const firstName = parts.shift()
-  const lastName = parts.length ? parts.join(' ') : undefined
-  return {
-    firstName: firstName || undefined,
-    lastName: lastName || undefined,
-  }
 }
 
 function normalizeShippingAddress(address: ShippingLike | null | undefined) {
@@ -151,13 +139,13 @@ export async function updateCustomerProfileForOrder({
 
   if (customerId) {
     customerDoc = await sanity.fetch(
-      `*[_type == "customer" && _id == $id][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}`,
+      `*[_type == "customer" && _id == $id][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email, name}`,
       {id: customerId},
     )
   }
   if (!customerDoc && email) {
     customerDoc = await sanity.fetch(
-      `*[_type == "customer" && email == $email][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email}`,
+      `*[_type == "customer" && email == $email][0]{_id, addresses, shippingAddress, address, stripeCustomerId, firstName, lastName, email, name}`,
       {email},
     )
   }
@@ -181,7 +169,13 @@ export async function updateCustomerProfileForOrder({
 
   // Create a customer document if none exists but we have an email.
   if (!customerId && email) {
-    const nameParts = splitName(shippingFromOrder?.name || customerName || '')
+    const nameParts = splitFullName(shippingFromOrder?.name || customerName || '')
+    const computedName = computeCustomerName({
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      email,
+      fallbackName: shippingFromOrder?.name || customerName,
+    })
     const metadataEntries = mapStripeMetadata(metadata as Record<string, unknown> | null)
     const roles = Array.isArray(defaultRoles) && defaultRoles.length ? defaultRoles : ['customer']
     const payload: Record<string, any> = {
@@ -189,6 +183,7 @@ export async function updateCustomerProfileForOrder({
       email,
       userId: userId || undefined,
       roles,
+      name: computedName || email || undefined,
       firstName: nameParts.firstName || undefined,
       lastName: nameParts.lastName || undefined,
       shippingAddress: shippingNormalized,
@@ -375,7 +370,7 @@ export async function updateCustomerProfileForOrder({
 
   const addressesArray = Array.from(addressesSet.values()).slice(0, 10)
 
-  const nameParts = splitName(shippingFromOrder?.name || customerName || '')
+  const nameParts = splitFullName(shippingFromOrder?.name || customerName || '')
 
   const patch: Record<string, any> = {
     orderCount: typeof stats?.orderCount === 'number' ? stats.orderCount : dedupedOrders.length,
@@ -394,6 +389,13 @@ export async function updateCustomerProfileForOrder({
   if (legacyShippingString) patch.address = legacyShippingString
   if (nameParts.firstName && !customerDoc?.firstName) patch.firstName = nameParts.firstName
   if (nameParts.lastName && !customerDoc?.lastName) patch.lastName = nameParts.lastName
+  const computedName = computeCustomerName({
+    firstName: patch.firstName ?? customerDoc?.firstName ?? nameParts.firstName,
+    lastName: patch.lastName ?? customerDoc?.lastName ?? nameParts.lastName,
+    email,
+    fallbackName: shippingFromOrder?.name || customerName,
+  })
+  if (computedName && customerDoc?.name !== computedName) patch.name = computedName
   if (shippingFromOrder?.phone && !customerDoc?.phone) patch.phone = shippingFromOrder.phone
   if (userId && !customerDoc?.userId) patch.userId = userId
   if (typeof emailOptIn === 'boolean') patch.emailOptIn = emailOptIn

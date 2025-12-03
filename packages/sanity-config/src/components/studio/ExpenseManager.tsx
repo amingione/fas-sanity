@@ -1,5 +1,6 @@
-import {ChangeEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useClient} from 'sanity'
+import type {DocumentStub} from '../../types/sanity'
 import {
   Box,
   Button,
@@ -160,7 +161,7 @@ const ExpenseManager = () => {
 
   const handleInput =
     (field: keyof typeof form) =>
-    (event: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLTextAreaElement>) => {
+    (event: FormEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const value = event.currentTarget.value
       if (field === 'category') setCategoryLocked(true)
       setForm((prev) => ({...prev, [field]: value}))
@@ -224,7 +225,7 @@ const ExpenseManager = () => {
         typeName: 'expense',
         fieldName: 'expenseNumber',
       })
-      const doc: Record<string, unknown> = {
+      const doc: DocumentStub<Record<string, unknown>> = {
         _type: 'expense',
         expenseNumber,
         date: form.date,
@@ -310,9 +311,9 @@ const ExpenseManager = () => {
       </Flex>
 
       <Card padding={4} radius={3} shadow={1}>
-        <Heading size={2} marginBottom={3}>
-          Quick Add Expense
-        </Heading>
+        <Box marginBottom={3}>
+          <Heading size={2}>Quick Add Expense</Heading>
+        </Box>
         <Grid columns={[1, 2]} gap={4}>
           <Stack space={3}>
             <Text size={1} muted>
@@ -450,9 +451,9 @@ const ExpenseManager = () => {
       </Card>
 
       <Card padding={4} radius={3} shadow={1}>
-        <Heading size={2} marginBottom={3}>
-          Recent Expenses
-        </Heading>
+        <Box marginBottom={3}>
+          <Heading size={2}>Recent Expenses</Heading>
+        </Box>
         <Stack space={2}>
           {recentExpenses.map((expense) => (
             <Flex

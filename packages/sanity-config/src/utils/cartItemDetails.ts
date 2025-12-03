@@ -15,6 +15,11 @@ export type NormalizedOptionPayload = {
   upgrades: string[]
 }
 
+export type DerivedCartChoices = {
+  selectedVariant?: string
+  addOns: string[]
+}
+
 const OPTION_KEYWORDS = [
   'option',
   'vehicle',
@@ -481,6 +486,68 @@ export const normalizeOptionSelections = (input: {
     optionSummary,
     optionDetails: options,
     upgrades,
+  }
+}
+
+export const deriveVariantAndAddOns = (input: {
+  selectedVariant?: string | null
+  optionDetails?: unknown
+  upgrades?: unknown
+}): DerivedCartChoices => {
+  const details = coerceStringArray(input.optionDetails)
+  const upgrades = coerceStringArray(input.upgrades)
+  let selectedVariant: string | undefined
+  for (const detail of details) {
+    const lower = detail.toLowerCase()
+    if (lower.includes('upgrade')) continue
+    const colonIndex = detail.indexOf(':')
+    if (colonIndex > -1) {
+      const value = detail.slice(colonIndex + 1).trim()
+      if (value) {
+        selectedVariant = value
+        break
+      }
+    }
+    const trimmed = detail.trim()
+    if (trimmed) {
+      selectedVariant = trimmed
+      break
+    }
+  }
+  if (!selectedVariant && typeof input.selectedVariant === 'string') {
+    selectedVariant = input.selectedVariant.trim() || undefined
+  }
+
+  const addOns = upgrades
+    .map((upgrade) => upgrade.replace(/^upgrade\s*:\s*/i, '').trim())
+    .filter(Boolean)
+
+  return {
+    selectedVariant,
+    addOns,
+  }
+}
+
+export const normalizeCartItemChoices = (input: {
+  selectedOption?: string | null
+  addOns?: unknown
+  optionSummary?: string | string[] | null
+  optionDetails?: string | string[] | null
+  upgrades?: string | string[] | null
+}): {selectedOption?: string; addOns: string[]} => {
+  const {selectedVariant, addOns} = deriveVariantAndAddOns({
+    selectedVariant: input.selectedOption || undefined,
+    optionDetails: input.optionDetails,
+    upgrades: input.upgrades,
+  })
+  const explicitAddOns = uniqueStrings([
+    ...addOns,
+    ...coerceStringArray(input.addOns),
+  ])
+
+  return {
+    selectedOption: selectedVariant,
+    addOns: explicitAddOns,
   }
 }
 

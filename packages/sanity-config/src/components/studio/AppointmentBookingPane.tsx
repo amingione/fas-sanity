@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
+import type {DocumentStub} from '../../types/sanity'
 import {useRouter} from 'sanity/router'
 import {
   Box,
@@ -165,7 +166,7 @@ export default function AppointmentBookingPane() {
         typeName: 'appointment',
         fieldName: 'appointmentNumber',
       })
-      const doc: Record<string, any> = {
+      const doc: DocumentStub<Record<string, any>> = {
         _type: 'appointment',
         appointmentNumber,
         scheduledDate: new Date(form.scheduledDate).toISOString(),
