@@ -46,6 +46,7 @@ const resolveProductType = (context?: VisibilityContext): string => {
   return docType || 'physical'
 }
 
+const LEGACY_SHIPPING_CLASS_VALUES = ['Standard', 'Oversized', 'Freight', 'Install Only']
 const isPhysicalOrBundle = (context?: VisibilityContext): boolean => {
   const type = resolveProductType(context)
   return type === 'physical' || type === 'bundle'
@@ -125,6 +126,50 @@ const ShippingClassField: React.ComponentType<StringFieldWithDocument> = (props)
     if (normalized === props.value) return
     onChange(set(normalized))
   }, [normalized, onChange, props.value])
+
+  return props.renderDefault(props)
+}
+
+const LegacyShippingClassField: React.ComponentType<StringFieldWithDocument> = (props) => {
+  const raw = typeof props.value === 'string' ? props.value : ''
+  const normalized = normalizeShippingClass(raw)
+  const onChange = props.onChange
+  const productType = resolveProductType({document: props.document})
+  const canonical =
+    normalized === 'standard'
+      ? 'Standard'
+      : normalized === 'oversized'
+        ? 'Oversized'
+        : normalized === 'freight'
+          ? 'Freight'
+          : normalized === 'install_only'
+            ? 'Install Only'
+            : ''
+
+  useEffect(() => {
+    if (!onChange) return
+
+    // Services should default to install-only to avoid invalid option values
+    if (productType === 'service') {
+      if (raw !== 'Install Only') onChange(set('Install Only'))
+      return
+    }
+
+    const canonical =
+      normalized === 'standard'
+        ? 'Standard'
+        : normalized === 'oversized'
+          ? 'Oversized'
+          : normalized === 'freight'
+            ? 'Freight'
+            : normalized === 'install_only'
+              ? 'Install Only'
+              : ''
+
+    if (canonical && canonical !== raw) {
+      onChange(set(canonical))
+    }
+  }, [canonical, normalized, onChange, productType, raw])
 
   return props.renderDefault(props)
 }
@@ -1112,9 +1157,7 @@ const product = defineType({
             (typeof doc?.shippingClass === 'string' &&
               doc.shippingClass.toLowerCase() === 'freight') ||
             doc?.shippingProfile === 'freight'
-          if (type === 'service') {
-            return value ? warn('Services do not need shipping info') : true
-          }
+          if (type === 'service') return true
           if (type === 'physical' || type === 'bundle') {
             if (typeof value !== 'number' || value <= 0) {
               return warn('Provide the shipping weight so rates stay accurate.')
@@ -1139,9 +1182,7 @@ const product = defineType({
           const doc = context.document as any
           const type = (doc?.productType as string) || 'physical'
           const warn = (message: string) => ({level: 'warning', message})
-          if (type === 'service') {
-            return value ? warn('Services do not need shipping info') : true
-          }
+          if (type === 'service') return true
           if (type === 'physical' || type === 'bundle') {
             if (
               !value ||
@@ -1175,18 +1216,18 @@ const product = defineType({
           {title: 'Standard', value: 'Standard'},
           {title: 'Oversized', value: 'Oversized'},
           {title: 'Freight', value: 'Freight'},
+          {title: 'Install Only (No Shipping)', value: 'Install Only'},
         ],
       },
       description: 'Guides which label template, packing materials, and Stripe metadata to use.',
       hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
+      components: {input: LegacyShippingClassField},
       validation: (Rule) =>
         Rule.custom((value, context) => {
           const doc = context.document as any
           const type = (doc?.productType as string) || 'physical'
           const warn = (message: string) => ({level: 'warning', message})
-          if (type === 'service') {
-            return value ? warn('Services do not need shipping info') : true
-          }
+          if (type === 'service') return true
           if (type === 'physical' || type === 'bundle') {
             return value
               ? true

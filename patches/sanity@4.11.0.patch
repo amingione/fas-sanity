@@ -1,57 +1,12 @@
 *** Begin Patch
 *** Update File: lib/index.js
 @@
--function preventWheel(event) {
--  if (event.currentTarget && document.activeElement === event.currentTarget) {
--    if (event.cancelable) {
--      event.preventDefault();
--    }
--    const scrollContainer = getScrollableParent(event.currentTarget);
-+function preventWheel(event) {
-+  const element = event.currentTarget;
-+  if (element && document.activeElement === element) {
-+    if (typeof element.blur == "function") {
-+      element.blur();
-+    }
-+    if (event.cancelable) {
-+      event.preventDefault();
-+    }
-+    const scrollContainer = getScrollableParent(element);
-@@
--    return element.addEventListener("wheel", preventWheel), () => {
-+    return element.addEventListener("wheel", preventWheel, { passive: true }), () => {
-*** End Patch
-*** Update File: lib/index.mjs
-@@
--function preventWheel(event) {
--  if (event.currentTarget && document.activeElement === event.currentTarget) {
--    if (event.cancelable) {
--      event.preventDefault();
--    }
--    const scrollContainer = getScrollableParent(event.currentTarget);
-+function preventWheel(event) {
-+  const element = event.currentTarget;
-+  if (element && document.activeElement === element) {
-+    if (typeof element.blur == "function") {
-+      element.blur();
-+    }
-+    if (event.cancelable) {
-+      event.preventDefault();
-+    }
-+    const scrollContainer = getScrollableParent(element);
-@@
--    return element.addEventListener("wheel", preventWheel), () => {
-+    return element.addEventListener("wheel", preventWheel, { passive: true }), () => {
-*** End Patch
-*** Begin Patch
-*** Update File: lib/index.js
-@@
 -      }, index) => /* @__PURE__ */ jsxRuntime.jsxs(Item, { id: id2, sortable: isSortable, disableTransition: this.state.disableTransition, children: [
-+      }, index) => /* @__PURE__ */ jsxRuntime.jsxs(Item, { id: id2, sortable: isSortable, ...(isSortable ? {disableTransition: this.state.disableTransition} : {}), children: [
++      }, index) => /* @__PURE__ */ jsxRuntime.jsxs(Item, { id: id2, sortable: isSortable, children: [
 *** End Patch
 *** Begin Patch
 *** Update File: lib/index.mjs
 @@
 -      }, index) => /* @__PURE__ */ jsxs(Item, { id: id2, sortable: isSortable, disableTransition: this.state.disableTransition, children: [
-+      }, index) => /* @__PURE__ */ jsxs(Item, { id: id2, sortable: isSortable, ...(isSortable ? {disableTransition: this.state.disableTransition} : {}), children: [
++      }, index) => /* @__PURE__ */ jsxs(Item, { id: id2, sortable: isSortable, children: [
 *** End Patch
