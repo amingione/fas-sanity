@@ -35,6 +35,26 @@ const sanity =
     : null
 
 const JSON_HEADERS = {'Content-Type': 'application/json'}
+type ShippingLabelsClient = {create: (params: any) => Promise<any>}
+
+const getShippingLabelsClient = (stripeClient: Stripe): ShippingLabelsClient => {
+  // Prefer the official SDK surface if present.
+  const shippingLabels = (stripeClient as any)?.shipping?.labels
+  if (shippingLabels?.create) return shippingLabels
+
+  // Shipping is not yet exposed in stripe-node; fall back to a lightweight custom resource.
+  const StripeResource = (stripeClient as any).StripeResource || (Stripe as any).StripeResource
+  if (!StripeResource || typeof StripeResource.extend !== 'function') {
+    throw new Error('Stripe shipping labels API not available in SDK')
+  }
+
+  const ShippingLabels = StripeResource.extend({
+    path: 'shipping/labels',
+    create: StripeResource.method({method: 'POST'}),
+  })
+
+  return new ShippingLabels(stripeClient)
+}
 
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return {statusCode: 204, headers: JSON_HEADERS}
@@ -130,7 +150,8 @@ const handler: Handler = async (event) => {
 
     let label: Stripe.ShippingV2.ShippingLabel
     try {
-      label = await (stripe as any).shipping.labels.create(labelParams)
+      const shippingLabels = getShippingLabelsClient(stripe as any)
+      label = await shippingLabels.create(labelParams)
     } catch (err: any) {
       console.error('[create-parcelcraft-label] stripe label create failed', err)
       return {
