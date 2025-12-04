@@ -22,6 +22,7 @@ export type CartItem = {
   description?: string
   image?: string
   productUrl?: string
+  lineItem?: string
   stripeProductId?: string
   stripePriceId?: string
   quantity?: number
