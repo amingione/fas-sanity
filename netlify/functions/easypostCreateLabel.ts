@@ -167,6 +167,7 @@ export async function createEasyPostLabel(
     reference: reference || orderId || invoiceId,
     options: {
       label_format: 'PDF',
+      label_size: '4x6',
       invoice_number: order?.orderNumber || orderId || invoiceId,
       print_custom_1: order
         ? `Order ${order.orderNumber || orderId?.slice(-6)}`
@@ -219,8 +220,15 @@ export async function createEasyPostLabel(
   const rateAmount = Number.parseFloat(selectedRate?.rate || '')
   const amount = Number.isFinite(rateAmount) ? Number(rateAmount.toFixed(2)) : undefined
 
+  const resolvedCarrier =
+    selectedRate?.carrier ||
+    tracker?.carrier ||
+    updatedShipment?.selected_rate?.carrier ||
+    shipment?.selected_rate?.carrier ||
+    undefined
+
   const shippingStatus: Record<string, any> = {
-    carrier: selectedRate?.carrier || tracker?.carrier || undefined,
+    carrier: resolvedCarrier,
     service: selectedRate?.service || undefined,
     labelUrl,
     trackingCode,
