@@ -6562,6 +6562,7 @@ export const handler: Handler = async (event) => {
             meta['checkout_session_id'] ||
             meta['checkoutSessionId'] ||
             meta['stripe_checkout_session_id'] ||
+            meta['session_id'] ||
             ''
           )
             .toString()
