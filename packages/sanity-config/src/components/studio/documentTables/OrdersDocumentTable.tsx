@@ -1,5 +1,6 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {PDFDocument} from 'pdf-lib'
 import {
   Box,
   Button,
@@ -14,6 +15,7 @@ import {
   Stack,
   Text,
   TextInput,
+  useToast,
 } from '@sanity/ui'
 import {EllipsisVerticalIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
@@ -38,6 +40,7 @@ type OrderRowData = {
   amountRefunded?: number | null
   currency?: string | null
   createdAt?: string | null
+  shippingLabelUrl?: string | null
 }
 
 const ORDER_PROJECTION = `{
@@ -50,6 +53,7 @@ const ORDER_PROJECTION = `{
   customerName,
   customerEmail,
   "shippingName": shippingAddress.name,
+  shippingLabelUrl,
   totalAmount,
   amountRefunded,
   currency,
@@ -130,6 +134,7 @@ export default function OrdersDocumentTable({
     open: false,
     targetIds: [],
   })
+  const toast = useToast()
   const [trackingNumber, setTrackingNumber] = useState('')
   const [trackingUrl, setTrackingUrl] = useState('')
 
@@ -287,10 +292,9 @@ export default function OrdersDocumentTable({
       setBulkBusy(true)
       try {
         const publishedIds = Array.from(new Set(ids.map((id) => id.replace(/^drafts\./, ''))))
-        const docs = await client.fetch<Array<Record<string, any>>>(
-          '*[_id in $ids]',
-          {ids: publishedIds},
-        )
+        const docs = await client.fetch<Array<Record<string, any>>>('*[_id in $ids]', {
+          ids: publishedIds,
+        })
         const tx = client.transaction()
         docs.forEach((doc) => {
           if (!doc?._id || !doc._type) return
@@ -392,7 +396,10 @@ export default function OrdersDocumentTable({
 
   const printPackingSlips = useCallback(
     async (ids: string[]) => {
+      if (!ids.length) return
+      toast.push({status: 'info', title: 'Generating packing slips…', duration: 5000})
       const labelLookup = new Map(currentItems.map((row) => [row._id, resolveOrderNumber(row)]))
+      const buffers: Array<{id: string; arrayBuffer: ArrayBuffer}> = []
       for (const id of ids) {
         try {
           const res = await fetchPackingSlip({orderId: id})
@@ -406,6 +413,7 @@ export default function OrdersDocumentTable({
           }
 
           const blob = new Blob([arrayBuffer], {type: 'application/pdf'})
+          buffers.push({id, arrayBuffer})
           const labelCandidate = labelLookup.get(id) || id.replace(/^drafts\./, '') || id
           const filenameSegment = sanitizeFilenameSegment(labelCandidate)
           const filename = `packing-slip-${filenameSegment}.pdf`
@@ -433,17 +441,171 @@ export default function OrdersDocumentTable({
           }
 
           const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = filename
-          a.click()
+          // Do not auto-download per-order; we'll merge below. Revoke immediately.
           window.URL.revokeObjectURL(url)
         } catch (err) {
           console.error('Packing slip failed for', id, err)
         }
       }
+
+      if (buffers.length) {
+        try {
+          const merged = await PDFDocument.create()
+          for (const {arrayBuffer} of buffers) {
+            const doc = await PDFDocument.load(arrayBuffer)
+            const pages = await merged.copyPages(doc, doc.getPageIndices())
+            pages.forEach((p) => merged.addPage(p))
+          }
+          const mergedBytes = await merged.save()
+          const blob = new Blob([new Uint8Array(mergedBytes)], {type: 'application/pdf'})
+          const filename = `packing-slips-${buffers.length}.pdf`
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = filename
+          a.click()
+          window.URL.revokeObjectURL(url)
+          toast.push({
+            status: 'success',
+            title: `Packing slips ready (${buffers.length})`,
+            duration: 5000,
+          })
+        } catch (mergeErr) {
+          console.error('Failed to merge packing slips', mergeErr)
+          toast.push({
+            status: 'error',
+            title: 'Unable to merge packing slips',
+            description: 'See console/logs for details.',
+            duration: 7000,
+          })
+        }
+      }
     },
-    [client, currentItems, fetchPackingSlip, resolvePatchTargets],
+    [client, currentItems, fetchPackingSlip, resolvePatchTargets, toast],
+  )
+
+  const mergePdfBuffers = useCallback(async (buffers: ArrayBuffer[]): Promise<Blob> => {
+    const merged = await PDFDocument.create()
+    for (const buf of buffers) {
+      const doc = await PDFDocument.load(buf)
+      const pages = await merged.copyPages(doc, doc.getPageIndices())
+      pages.forEach((p) => merged.addPage(p))
+    }
+    const mergedBytes = await merged.save()
+    return new Blob([new Uint8Array(mergedBytes)], {type: 'application/pdf'})
+  }, [])
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const convertImageToPdfBuffer = useCallback(async (buf: ArrayBuffer, mime: string) => {
+    const doc = await PDFDocument.create()
+    if (mime.includes('png')) {
+      const png = await doc.embedPng(buf)
+      const page = doc.addPage([png.width, png.height])
+      page.drawImage(png, {x: 0, y: 0, width: png.width, height: png.height})
+    } else if (mime.includes('jpg') || mime.includes('jpeg')) {
+      const jpg = await doc.embedJpg(buf)
+      const page = doc.addPage([jpg.width, jpg.height])
+      page.drawImage(jpg, {x: 0, y: 0, width: jpg.width, height: jpg.height})
+    }
+    return doc.save()
+  }, [])
+
+  const fetchLabelPdf = useCallback(
+    async (url: string): Promise<ArrayBuffer | null> => {
+      try {
+        const res = await fetch(url, {mode: 'cors'})
+        if (!res.ok) return null
+        const contentType = (res.headers.get('content-type') || '').toLowerCase()
+        const buf = await res.arrayBuffer()
+        if (contentType.includes('application/pdf')) {
+          return buf
+        }
+        if (contentType.includes('image/png') || contentType.includes('image/jpeg')) {
+          try {
+            const uint8Array = await convertImageToPdfBuffer(buf, contentType)
+            return uint8Array.buffer as ArrayBuffer
+          } catch (imgErr) {
+            console.warn('Label image to PDF conversion failed', url, imgErr)
+            return null
+          }
+        }
+        return null
+      } catch (err) {
+        console.warn('Label fetch failed', url, err)
+        return null
+      }
+    },
+    [convertImageToPdfBuffer],
+  )
+
+  const printShippingLabels = useCallback(
+    async (ids: string[]) => {
+      if (!ids.length) return
+      toast.push({status: 'info', title: 'Preparing shipping labels…', duration: 5000})
+      const labelUrls = currentItems
+        .filter((row) => ids.includes(row._id))
+        .map((row) => row.shippingLabelUrl?.trim())
+        .filter((url): url is string => Boolean(url))
+
+      if (!labelUrls.length) {
+        toast.push({
+          status: 'warning',
+          title: 'No labels found',
+          description: 'Selected orders do not have shipping labels.',
+          duration: 5000,
+        })
+        return
+      }
+
+      const buffers: ArrayBuffer[] = []
+      for (const url of labelUrls) {
+        const buf = await fetchLabelPdf(url)
+        if (buf) buffers.push(buf)
+      }
+
+      if (!buffers.length) {
+        toast.push({
+          status: 'error',
+          title: 'Unable to download labels',
+          description: 'Check label URLs or connectivity.',
+          duration: 7000,
+        })
+        return
+      }
+
+      if (buffers.length === 1) {
+        downloadBlob(new Blob([buffers[0]], {type: 'application/pdf'}), 'shipping-label.pdf')
+        toast.push({status: 'success', title: 'Shipping label ready', duration: 4000})
+        return
+      }
+
+      try {
+        const mergedBlob = await mergePdfBuffers(buffers)
+        downloadBlob(mergedBlob, `shipping-labels-${buffers.length}.pdf`)
+        toast.push({
+          status: 'success',
+          title: `Shipping labels ready (${buffers.length})`,
+          duration: 5000,
+        })
+      } catch (err) {
+        console.error('Failed to merge shipping labels', err)
+        toast.push({
+          status: 'error',
+          title: 'Unable to merge labels',
+          description: 'See console/logs for details.',
+          duration: 7000,
+        })
+      }
+    },
+    [currentItems, fetchLabelPdf, mergePdfBuffers, toast],
   )
 
   const handleBulkFulfill = useCallback(async () => {
@@ -537,6 +699,11 @@ export default function OrdersDocumentTable({
               tone="primary"
               disabled={selectedCount === 0 || bulkBusy}
               onClick={handleBulkPrint}
+            />
+            <MenuItem
+              text="Print shipping labels"
+              disabled={selectedCount === 0 || bulkBusy}
+              onClick={() => printShippingLabels(selectedIdList)}
             />
             <MenuItem
               text="Add tracking"

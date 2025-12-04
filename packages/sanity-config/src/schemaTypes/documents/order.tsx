@@ -623,7 +623,29 @@ const orderSchema = defineType({
       title: 'Shipping Label',
       group: 'fulfillment',
       readOnly: true,
-      hidden: true,
+    }),
+    defineField({
+      name: 'labelCreatedAt',
+      type: 'datetime',
+      title: 'Label Created At',
+      group: 'fulfillment',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'labelCost',
+      type: 'number',
+      title: 'Label Cost',
+      description: 'Cost charged for the label',
+      group: 'fulfillment',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'labelPurchasedFrom',
+      type: 'string',
+      title: 'Label Purchased From',
+      description: 'Carrier or provider used to buy the label',
+      group: 'fulfillment',
+      readOnly: true,
     }),
     defineField({
       name: 'packingSlipUrl',
@@ -840,6 +862,21 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
     return prev
   }
 
+  const getStateFlags = (doc: any) => {
+    if (!doc || typeof doc !== 'object') {
+      return {tracking: undefined, labelUrl: undefined, isFulfilled: false}
+    }
+    const tracking = asOptionalString(doc.trackingNumber) || asOptionalString(doc.manualTrackingNumber)
+    const labelUrl = asOptionalString(doc.shippingLabelUrl)
+    const fulfillmentStatus = asOptionalString(doc?.fulfillment?.status)?.toLowerCase()
+    const isFulfilled =
+      fulfillmentStatus === 'fulfilled' ||
+      fulfillmentStatus === 'shipped' ||
+      doc?.status === 'fulfilled' ||
+      doc?.status === 'shipped'
+    return {tracking, labelUrl, isFulfilled}
+  }
+
   return [
     ...prev,
 
@@ -847,6 +884,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
+       const stateFlags = getStateFlags(doc)
       if (!doc) return null
 
       return {
@@ -854,6 +892,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         label: 'Fulfill Order',
         icon: CheckmarkCircleIcon,
         tone: 'positive',
+        disabled: stateFlags.isFulfilled,
         onHandle: async () => {
           try {
             const orderId = normalizeDocumentId(doc._id || id)
@@ -1090,21 +1129,22 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
       }
     },
 
-    // Add Tracking
+    // Add/Edit Tracking
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
+      const stateFlags = getStateFlags(doc)
 
       return {
         name: 'addTracking',
-        label: 'Add Tracking',
+        label: stateFlags.tracking ? 'Edit Tracking' : 'Add Tracking',
         icon: PackageIcon,
         tone: 'primary',
         disabled: !doc || doc?.status === 'cancelled',
         onHandle: async () => {
           if (!doc) return
 
-          const trackingNumber = prompt('Enter tracking number:')
+          const trackingNumber = prompt('Enter tracking number:', stateFlags.tracking || '')
           const normalized = trackingNumber?.trim()
           if (!normalized) return
 
@@ -1140,19 +1180,26 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
       }
     },
 
-    // Create Shipping Label
+    // View/Print or Create Shipping Label
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
+      const stateFlags = getStateFlags(doc)
+      const hasLabel = Boolean(stateFlags.labelUrl)
 
       return {
         name: 'createShippingLabel',
-        label: 'Create Label',
+        label: hasLabel ? 'View/Print Label' : 'Create Label',
         icon: PackageIcon,
-        tone: 'primary',
+        tone: hasLabel ? 'default' : 'primary',
         disabled: !doc || !doc?.shippingAddress || doc?.status === 'cancelled',
         onHandle: async () => {
           if (!doc) return
+          if (hasLabel && stateFlags.labelUrl) {
+            openExternalUrl(stateFlags.labelUrl)
+            props.onComplete()
+            return
+          }
 
           const orderId = normalizeDocumentId(doc._id || id)
           if (!orderId) {
@@ -1230,24 +1277,27 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
       }
     },
 
-    // Mark as Fulfilled
+    // Mark as Fulfilled / Unfulfilled
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
+      const stateFlags = getStateFlags(doc)
 
       return {
-        label: 'Mark Fulfilled',
+        label: stateFlags.isFulfilled ? 'Mark Unfulfilled' : 'Mark Fulfilled',
         icon: PackageIcon,
-        tone: 'positive',
-        disabled:
-          !doc ||
-          doc?.status === 'fulfilled' ||
-          doc?.status === 'shipped' ||
-          doc?.status === 'cancelled',
+        tone: stateFlags.isFulfilled ? 'caution' : 'positive',
+        disabled: !doc || doc?.status === 'cancelled',
         onHandle: async () => {
           if (!doc) return
 
-          if (!confirmAction('Mark this order as fulfilled?')) {
+          if (
+            !confirmAction(
+              stateFlags.isFulfilled
+                ? 'Mark this order as unfulfilled?'
+                : 'Mark this order as fulfilled?',
+            )
+          ) {
             return
           }
 
@@ -1259,37 +1309,21 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
           }
 
           try {
-            const response = await callNetlifyFunction('fulfill-order', {
-              json: {orderId, markOnly: true},
-            })
-
-            let payload: any = null
-            try {
-              payload = await response.clone().json()
-            } catch {
-              payload = null
-            }
-
-            if (!response.ok || (payload && payload.success === false)) {
-              const message =
-                (payload && (payload.message || payload.error)) ||
-                (await readResponseMessage(response))
-              throw new Error(message)
-            }
-
-            const fulfilledAt = payload?.fulfilledAt || new Date().toISOString()
-            const updates = {
-              status: 'fulfilled',
-              fulfilledAt,
-              'fulfillment.status': 'delivered',
-              'fulfillment.deliveredAt': fulfilledAt,
-            }
-
+            const nextStatus = stateFlags.isFulfilled ? 'unfulfilled' : 'fulfilled'
             const client = context.getClient({apiVersion: SANITY_API_VERSION})
             const patchTargets = resolvePatchTargets(id)
             for (const targetId of patchTargets) {
               try {
-                await client.patch(targetId).set(updates).commit({autoGenerateArrayKeys: true})
+                await client
+                  .patch(targetId)
+                  .set({
+                    status: nextStatus,
+                    fulfilledAt: nextStatus === 'fulfilled' ? new Date().toISOString() : undefined,
+                    'fulfillment.status': nextStatus === 'fulfilled' ? 'delivered' : 'unfulfilled',
+                    'fulfillment.deliveredAt':
+                      nextStatus === 'fulfilled' ? new Date().toISOString() : undefined,
+                  })
+                  .commit({autoGenerateArrayKeys: true})
               } catch (patchErr: any) {
                 if (patchErr?.statusCode !== 404) {
                   throw patchErr
@@ -1297,7 +1331,11 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               }
             }
 
-            alert('Order marked as fulfilled.')
+            alert(
+              nextStatus === 'fulfilled'
+                ? 'Order marked as fulfilled.'
+                : 'Order marked as unfulfilled.',
+            )
           } catch (error) {
             console.error('Error marking as fulfilled:', error)
             alert((error as Error)?.message || 'Error updating order')

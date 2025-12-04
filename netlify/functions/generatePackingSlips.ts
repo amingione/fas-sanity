@@ -1025,7 +1025,8 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  let payload: {invoiceId?: string; orderId?: string} = {}
+  let payload: {invoiceId?: string; orderId?: string; orderIds?: string[]; ids?: string | string[]} =
+    {}
   try {
     payload = JSON.parse(event.body || '{}')
   } catch {
@@ -1036,15 +1037,86 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  if (!payload.invoiceId && !payload.orderId) {
-    return {
-      statusCode: 400,
-      headers: {...headers, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Provide invoiceId or orderId'}),
-    }
-  }
-
   try {
+    const rawOrderIds =
+      (Array.isArray(payload.orderIds) ? payload.orderIds : undefined) ||
+      (Array.isArray(payload.ids) ? payload.ids : undefined) ||
+      (typeof payload.ids === 'string'
+        ? payload.ids
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean)
+        : undefined)
+
+    const batchOrderIds = Array.isArray(rawOrderIds)
+      ? Array.from(new Set(rawOrderIds.map((id) => (id ? String(id).trim() : '')).filter(Boolean)))
+      : []
+
+    // Batch mode: merge multiple packing slips into one PDF
+    if (batchOrderIds.length > 0) {
+      const printSettings = await fetchPrintSettings(sanity)
+      const pdfs: Array<{bytes: Uint8Array; orderNumber: string}> = []
+
+      for (const oid of batchOrderIds) {
+        const data = await fetchPackingData(undefined, oid)
+        if (!data) continue
+        const bytes = await buildPdf(data, printSettings)
+        pdfs.push({bytes, orderNumber: data.orderNumber})
+      }
+
+      if (!pdfs.length) {
+        return {
+          statusCode: 404,
+          headers: {...headers, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'No packing slips found for the requested orders'}),
+        }
+      }
+
+      if (pdfs.length === 1) {
+        const base64Single = Buffer.from(pdfs[0].bytes).toString('base64')
+        const safeName = pdfs[0].orderNumber.replace(/[^a-z0-9_-]/gi, '') || 'order'
+        return {
+          statusCode: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="packing-slip-${safeName}.pdf"`,
+          },
+          body: base64Single,
+          isBase64Encoded: true,
+        }
+      }
+
+      const merged = await PDFDocument.create()
+      for (const pdf of pdfs) {
+        const doc = await PDFDocument.load(pdf.bytes)
+        const copied = await merged.copyPages(doc, doc.getPageIndices())
+        copied.forEach((page) => merged.addPage(page))
+      }
+      const mergedBytes = await merged.save({useObjectStreams: false})
+      const base64Merged = Buffer.from(mergedBytes).toString('base64')
+
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="packing-slips-${batchOrderIds.length}.pdf"`,
+        },
+        body: base64Merged,
+        isBase64Encoded: true,
+      }
+    }
+
+    // Single slip mode (invoiceId or orderId)
+    if (!payload.invoiceId && !payload.orderId) {
+      return {
+        statusCode: 400,
+        headers: {...headers, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Provide invoiceId or orderId'}),
+      }
+    }
+
     // Fetch print settings and packing data in parallel
     const [printSettings, packingData] = await Promise.all([
       fetchPrintSettings(sanity),
