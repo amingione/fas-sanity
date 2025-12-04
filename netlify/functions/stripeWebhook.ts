@@ -51,7 +51,10 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
     if (!label) return undefined
     // If it contains multiple colons, keep the last meaningful segment
     if (/:/.test(label)) {
-      const parts = label.split(':').map((p) => p.trim()).filter(Boolean)
+      const parts = label
+        .split(':')
+        .map((p) => p.trim())
+        .filter(Boolean)
       if (parts.length > 1) {
         label = parts[parts.length - 1]
       }
@@ -80,7 +83,7 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
       item.optionDetails
         ?.find((opt: string) => !opt.toLowerCase().includes('upgrade'))
         ?.split(':')
-        .pop(),
+        .pop() || '',
     )
 
   const rawUpgrades =
@@ -1534,7 +1537,8 @@ function enforceCartRequirements(
     normalized.upgrades = normalizeRequiredStringArray(normalized.upgrades)
 
     const hasVariantMetadata =
-      normalized.optionDetails.some((opt) => !/upgrade/i.test(opt)) || Boolean(normalized.selectedVariant)
+      normalized.optionDetails.some((opt) => !/upgrade/i.test(opt)) ||
+      Boolean(normalized.selectedVariant)
     if (!normalized.selectedVariant && hasVariantMetadata) {
       normalized.selectedVariant =
         normalized.optionDetails
@@ -2054,7 +2058,9 @@ function simplifyCartForCheckoutSession(cart: CartItem[]): Array<Record<string, 
       productSlug: (item as any)?.productSlug,
       image: typeof (item as any)?.image === 'string' ? (item as any).image : undefined,
       productUrl: (item as any)?.productUrl,
-      optionDetails: Array.isArray((item as any)?.optionDetails) ? (item as any).optionDetails : undefined,
+      optionDetails: Array.isArray((item as any)?.optionDetails)
+        ? (item as any).optionDetails
+        : undefined,
       upgrades: Array.isArray((item as any)?.upgrades) ? (item as any).upgrades : undefined,
       price: typeof (item as any)?.price === 'number' ? (item as any).price : undefined,
       quantity: typeof (item as any)?.quantity === 'number' ? (item as any).quantity : undefined,
@@ -2176,9 +2182,7 @@ const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
 const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
 const resendClient = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 const RESEND_ABANDONED_AUDIENCE =
-  process.env.RESEND_AUDIENCE_ABANDONED_CART ||
-  process.env.RESEND_AUDIENCE_ABANDONED_CART_ID ||
-  ''
+  process.env.RESEND_AUDIENCE_ABANDONED_CART || process.env.RESEND_AUDIENCE_ABANDONED_CART_ID || ''
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -2294,7 +2298,10 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     if (resolvedName && resolvedName !== customer.name) patch.name = resolvedName
     if (Object.keys(patch).length > 0) {
       try {
-        await webhookSanityClient.patch(customer._id).set(patch).commit({autoGenerateArrayKeys: true})
+        await webhookSanityClient
+          .patch(customer._id)
+          .set(patch)
+          .commit({autoGenerateArrayKeys: true})
         customer = {...customer, ...patch}
       } catch (err) {
         console.warn('stripeWebhook: failed to refresh customer name parts', err)
