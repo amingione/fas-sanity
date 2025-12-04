@@ -58,16 +58,30 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
     }
     label = label.replace(/^option\s*\d*\s*:?\s*/i, '').trim()
     label = label.replace(/^(upgrade|add[-\s]?on)s?\s*:?\s*/i, '').trim()
+    label = label
+      .replace(/\s*[-–—]?\s*\$?\s*\d[\d,]*(?:\.\d+)?(?:\s*(?:usd|dollars))?$/i, '')
+      .replace(/\s*\(\s*\$?\s*\d[\d,]*(?:\.\d+)?\s*\)\s*$/i, '')
+      .trim()
     if (!label) return undefined
     return label
   }
 
+  const parseNumericValue = (value?: string | null): number | undefined => {
+    if (!value) return undefined
+    const match = value.match(/-?\$?\s*([\d,]+(?:\.\d+)?)/)
+    if (!match?.[1]) return undefined
+    const parsed = Number.parseFloat(match[1].replace(/,/g, ''))
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
   const selectedVariant =
-    item.optionDetails
-      ?.find((opt: string) => !opt.toLowerCase().includes('upgrade'))
-      ?.split(':')
-      .pop()
-      ?.trim() || undefined
+    normalizeAddOnLabel((item as any).selectedVariant) ||
+    normalizeAddOnLabel(
+      item.optionDetails
+        ?.find((opt: string) => !opt.toLowerCase().includes('upgrade'))
+        ?.split(':')
+        .pop(),
+    )
 
   const rawUpgrades =
     (Array.isArray(item.upgrades) && item.upgrades.length
@@ -76,9 +90,13 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
         ? item.optionDetails.filter((opt) => typeof opt === 'string' && /upgrade/i.test(opt))
         : []) || []
 
+  const upgradeCosts = rawUpgrades
+    .map((upgrade) => parseNumericValue(upgrade))
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+
   const cleanAddOns = Array.from(
     new Set(
-      rawUpgrades
+      [...rawUpgrades, ...(Array.isArray(item.addOns) ? item.addOns : [])]
         .map((upgrade: string) => normalizeAddOnLabel(upgrade))
         .filter((v): v is string => Boolean(v)),
     ),
@@ -92,7 +110,12 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
       : typeof item.total === 'number' && Number.isFinite(item.total)
         ? Math.max(0, item.total - unitPrice * quantity)
         : undefined
-  const upgradesTotal = typeof derivedUpgradeTotal === 'number' ? derivedUpgradeTotal : 0
+  const upgradesTotal =
+    typeof derivedUpgradeTotal === 'number'
+      ? derivedUpgradeTotal
+      : upgradeCosts.length
+        ? upgradeCosts.reduce((a, b) => a + b, 0)
+        : 0
   const lineTotal =
     typeof item.total === 'number' && Number.isFinite(item.total)
       ? item.total
@@ -108,6 +131,7 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
     sku: item.sku,
     image: (item as any).image,
     productUrl: (item as any).productUrl,
+    lineItem: (item as any).lineItem || undefined,
     quantity,
     price: unitPrice,
     total: lineTotal,
@@ -1496,12 +1520,34 @@ function enforceCartRequirements(
       normalized.sku = matchedProduct.sku
     }
 
+    if (!normalized.lineItem && typeof (item as any)?.lineItem === 'string') {
+      normalized.lineItem = (item as any).lineItem
+    }
+
+    if (Array.isArray(normalized.addOns)) {
+      normalized.addOns = normalized.addOns
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter((entry) => Boolean(entry))
+    }
+
     normalized.optionDetails = normalizeRequiredStringArray(normalized.optionDetails)
     normalized.upgrades = normalizeRequiredStringArray(normalized.upgrades)
+
+    const hasVariantMetadata =
+      normalized.optionDetails.some((opt) => !/upgrade/i.test(opt)) || Boolean(normalized.selectedVariant)
+    if (!normalized.selectedVariant && hasVariantMetadata) {
+      normalized.selectedVariant =
+        normalized.optionDetails
+          .find((opt) => !/upgrade/i.test(opt))
+          ?.split(':')
+          .pop()
+          ?.trim() || normalized.selectedVariant
+    }
 
     const missing: string[] = []
     if (!normalized.productRef?._ref) missing.push('productRef')
     if (!normalized.sku) missing.push('sku')
+    if (!normalized.lineItem) missing.push('lineItem')
 
     if (missing.length) {
       const validationIssues = uniqueStrings([
