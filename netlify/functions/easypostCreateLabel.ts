@@ -198,7 +198,11 @@ export async function createEasyPostLabel(
     throw new Error('Failed to determine lowest EasyPost rate')
   }
 
-  await (client as any).Shipment.buy(shipment.id, lowestRate.id)
+  await (client as any).Shipment.buy(shipment.id, {
+    rate: {id: lowestRate.id},
+    label_format: 'PDF',
+    label_size: '4x6',
+  })
   const updatedShipment: any = await client.Shipment.retrieve(shipment.id)
 
   const tracker = updatedShipment.tracker || null
@@ -277,6 +281,14 @@ export async function createEasyPostLabel(
         easyPostShipmentId: shipment.id,
         easyPostTrackerId: tracker?.id,
         selectedService: Object.keys(selectedService).length ? selectedService : undefined,
+        labelCreatedAt: shippingStatus.lastEventAt,
+        labelCost: amount,
+        labelPurchasedFrom: resolvedCarrier || 'EasyPost',
+        'fulfillment.status': 'label_created',
+        'fulfillment.carrier': resolvedCarrier,
+        'fulfillment.trackingNumber': trackingCode,
+        'fulfillment.trackingUrl': trackingUrl,
+        'fulfillment.shippedAt': shippingStatus.lastEventAt,
       }).filter(([, value]) => value !== undefined),
     )
 
@@ -303,6 +315,34 @@ export async function createEasyPostLabel(
     }
   }
 
+  // Create a shippingLabel document for desk/bulk printing if we have a label URL.
+  if (labelUrl) {
+    try {
+      const labelDocId = `shippingLabel-${shipment.id}`
+      await sanity.createOrReplace(
+        {
+          _id: labelDocId,
+          _type: 'shippingLabel',
+          name: order?.orderNumber || orderId || invoiceId || labelDocId,
+          orderRef: orderId ? {_type: 'reference', _ref: orderId} : undefined,
+          orderNumber: order?.orderNumber || undefined,
+          trackingNumber: trackingCode,
+          trackingUrl,
+          carrier: resolvedCarrier,
+          labelUrl,
+          labelCost: amount,
+          labelCreatedAt: shippingStatus.lastEventAt,
+          provider: 'easypost',
+          shipmentId: shipment.id,
+          trackerId: tracker?.id,
+        },
+        {autoGenerateArrayKeys: true},
+      )
+    } catch (err) {
+      console.warn('Failed to create shippingLabel document', err)
+    }
+  }
+
   return {
     provider: 'easypost',
     shipmentId: shipment.id,
@@ -313,6 +353,9 @@ export async function createEasyPostLabel(
     rate: amount,
     currency: selectedRate?.currency || undefined,
     status: shippingStatus.status,
+    carrier: resolvedCarrier,
+    labelCreatedAt: shippingStatus.lastEventAt,
+    labelCost: amount,
   }
 }
 
