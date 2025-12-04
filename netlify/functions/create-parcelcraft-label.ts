@@ -28,7 +28,9 @@ const shipFrom = {
   },
 }
 
-const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: '2023-10-16'}) : null
+// Use a newer Stripe API version for Shipping Labels; override via env if needed.
+const stripeApiVersion = process.env.STRIPE_SHIPPING_API_VERSION || '2024-12-18'
+const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: stripeApiVersion as any}) : null
 const sanity =
   sanityProjectId && sanityDataset && sanityToken
     ? createClient({projectId: sanityProjectId, dataset: sanityDataset, token: sanityToken, apiVersion: '2024-10-01', useCdn: false})
@@ -153,6 +155,18 @@ const handler: Handler = async (event) => {
       const shippingLabels = getShippingLabelsClient(stripe as any)
       label = await shippingLabels.create(labelParams)
     } catch (err: any) {
+      const message = err?.message || ''
+      if (message.includes('Unrecognized request URL') || err?.statusCode === 404) {
+        console.error('[create-parcelcraft-label] shipping labels API unavailable', {apiVersion: stripeApiVersion, err})
+        return {
+          statusCode: 502,
+          headers: JSON_HEADERS,
+          body: JSON.stringify({
+            error:
+              'Stripe Shipping Labels API is not available for this account/API version. Open Parcelcraft in the Stripe Dashboard to create the label.',
+          }),
+        }
+      }
       console.error('[create-parcelcraft-label] stripe label create failed', err)
       return {
         statusCode: 502,
