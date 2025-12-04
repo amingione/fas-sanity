@@ -11,7 +11,6 @@ import {
 } from './schemaTypes/documentActions/refundStripeAction'
 import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
 import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
-import {createParcelcraftLabelAction} from './schemaTypes/documentActions/createParcelcraftLabelAction'
 import {purchaseOrderLabelAction} from './schemaTypes/documentActions/purchaseOrderLabel'
 import {orderActions} from './schemaTypes/documents/order'
 import {
@@ -61,7 +60,6 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'order') {
     list.push(purchaseOrderLabelAction)
-    list.push(createParcelcraftLabelAction)
     return orderActions(list, context)
   }
   if (context.schemaType === 'vendorApplication') {
