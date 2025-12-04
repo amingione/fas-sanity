@@ -31,6 +31,9 @@ const shipFrom = {
 // Use a newer Stripe API version for Shipping Labels; override via env if needed.
 const stripeApiVersion = process.env.STRIPE_SHIPPING_API_VERSION || '2024-12-18'
 const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: stripeApiVersion as any}) : null
+const shippingLabelsEnabled =
+  process.env.ENABLE_STRIPE_SHIPPING_LABELS === 'true' ||
+  process.env.STRIPE_SHIPPING_API_ENABLED === 'true'
 const sanity =
   sanityProjectId && sanityDataset && sanityToken
     ? createClient({projectId: sanityProjectId, dataset: sanityDataset, token: sanityToken, apiVersion: '2024-10-01', useCdn: false})
@@ -66,6 +69,16 @@ const handler: Handler = async (event) => {
 
   if (!stripe || !sanity) {
     return {statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({error: 'Server not configured'})}
+  }
+  if (!shippingLabelsEnabled) {
+    return {
+      statusCode: 501,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        error:
+          'Stripe Shipping Labels API is disabled for this site. Open Parcelcraft in the Stripe Dashboard to create the label.',
+      }),
+    }
   }
 
   let payload: any = {}
