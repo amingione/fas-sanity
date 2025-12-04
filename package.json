@@ -97,7 +97,8 @@
     "slug": "^8.2.2",
     "ssh2-sftp-client": "^10.0.1",
     "stripe": "^18.0.0",
-    "styled-components": "^6.1.19"
+    "styled-components": "^6.1.19",
+    "twilio": "^5.10.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",
