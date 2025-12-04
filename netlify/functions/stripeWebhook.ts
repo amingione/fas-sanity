@@ -1760,6 +1760,7 @@ async function handleShippingStatusSync(
     (payload as any)?.tracking?.number ||
     metadata.tracking_number ||
     metadata.trackingNumber
+  // Legacy Parcelcraft metadata values are still parsed for historical orders.
   const trackingUrl =
     (payload as any)?.tracking_url ||
     (payload as any)?.tracking?.url ||

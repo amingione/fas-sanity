@@ -26,6 +26,7 @@ const parseNumber = (value?: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
+// Legacy Parcelcraft keys kept for historical orders alongside EasyPost/Stripe shipping metadata.
 const FULFILLMENT_TRACKING_KEYS = [
   'tracking_number',
   'trackingNumber',

@@ -2,7 +2,6 @@
 import React, {useCallback, useMemo, useState} from 'react'
 import {Button, Flex, Text, useToast} from '@sanity/ui'
 import {useFormValue} from 'sanity'
-import {readStudioEnv} from '../../utils/studioEnv'
 import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 const getFnBase = (): string => resolveNetlifyBase()
@@ -33,16 +32,6 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
   const [localLabelUrl, setLocalLabelUrl] = useState<string | undefined>(labelUrl)
   const [localTrackingUrl, setLocalTrackingUrl] = useState<string | undefined>(trackingUrl)
   const [isLoading, setIsLoading] = useState(false)
-
-  const provider = useMemo(
-    () => (readStudioEnv('SHIPPING_PROVIDER') || 'easypost').toLowerCase(),
-    [],
-  )
-  const isEasyPost = provider === 'easypost'
-  const providerPortalUrl =
-    provider === 'parcelcraft'
-      ? 'https://dashboard.stripe.com/apps/parcelcraft-shipping'
-      : 'https://dashboard.stripe.com/apps'
 
   const handleCreateLabel = useCallback(async () => {
     if (isLoading) return
@@ -127,19 +116,9 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
 
   return (
     <Flex direction="column" gap={3} padding={4}>
-      {!isEasyPost && (
-        <Text size={1} muted>
-          {provider === 'parcelcraft'
-            ? 'Parcelcraft manages label creation in the Stripe Dashboard. Use the button below to launch the app when you need a shipping label.'
-            : `Shipping provider set to ${provider || 'stripe'}. EasyPost automation is disabled.`}
-        </Text>
-      )}
-
       {!resolvedLabelUrl && !resolvedTrackingUrl && (
         <Text size={1} muted>
-          {isEasyPost
-            ? 'No shipping label yet. Create one to generate tracking automatically.'
-            : 'No shipping label recorded yet. Create a label in Stripe/Parcelcraft to populate tracking info here.'}
+          No shipping label yet. Create one to generate tracking automatically.
         </Text>
       )}
 
@@ -169,23 +148,12 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
         <Text size={1}>Tracking number: {resolvedTrackingNumber}</Text>
       )}
 
-      {isEasyPost ? (
-        <Button
-          text={isLoading ? 'Creating EasyPost label…' : '📦 Create EasyPost Label'}
-          tone="default"
-          onClick={handleCreateLabel}
-          disabled={isLoading}
-        />
-      ) : (
-        <Button
-          text={provider === 'parcelcraft' ? 'Open Parcelcraft in Stripe' : 'Open Stripe Dashboard'}
-          tone="primary"
-          as="a"
-          href={providerPortalUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        />
-      )}
+      <Button
+        text={isLoading ? 'Creating EasyPost label…' : '📦 Create EasyPost Label'}
+        tone="default"
+        onClick={handleCreateLabel}
+        disabled={isLoading}
+      />
     </Flex>
   )
 }
