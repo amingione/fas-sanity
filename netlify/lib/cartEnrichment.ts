@@ -68,6 +68,14 @@ export type CartProductSummary = {
   boxDimensions?: string | null
   shipsAlone?: boolean | null
   shippingClass?: string | null
+  shippingConfig?: {
+    weight?: number | null
+    dimensions?: {length?: number | null; width?: number | null; height?: number | null} | null
+    shippingClass?: string | null
+    handlingTime?: number | null
+    separateShipment?: boolean | null
+    requiresShipping?: boolean | null
+  } | null
   productType?: string | null
   coreRequired?: boolean | null
   promotionTagline?: string | null
@@ -364,6 +372,25 @@ function resolveQuantity(value: unknown): number {
   return Math.max(1, Math.round(num))
 }
 
+function resolveShippingWeight(product: CartProductSummary): number | null {
+  const configWeight = toPositiveNumber(product.shippingConfig?.weight)
+  if (configWeight !== null) return configWeight
+  return toPositiveNumber(product.shippingWeight)
+}
+
+function resolveShippingDimensions(
+  product: CartProductSummary,
+): {length: number; width: number; height: number} | null {
+  const dims = product.shippingConfig?.dimensions
+  const length = toPositiveNumber(dims?.length)
+  const width = toPositiveNumber(dims?.width)
+  const height = toPositiveNumber(dims?.height)
+  if (length && width && height) {
+    return {length, width, height}
+  }
+  return parseBoxDimensions(product.boxDimensions)
+}
+
 function resolveDefaultDimensions(): {length: number; width: number; height: number} {
   const fallback = {length: 12, width: 9, height: 4}
   const length = toPositiveNumber(process.env.DEFAULT_PACKAGE_LENGTH_IN) ?? fallback.length
@@ -433,6 +460,18 @@ export async function fetchProductsForCart(
         boxDimensions,
         shipsAlone,
         shippingClass,
+        shippingConfig{
+          weight,
+          dimensions{
+            length,
+            width,
+            height
+          },
+          shippingClass,
+          handlingTime,
+          separateShipment,
+          requiresShipping
+        },
         productType,
         coreRequired,
         promotionTagline,
@@ -695,18 +734,24 @@ export function computeShippingMetrics(
       continue
     }
 
-    const shippingClass = String(product.shippingClass || '').toLowerCase()
+    const shippingClass = String(
+      product.shippingConfig?.shippingClass || product.shippingClass || '',
+    ).toLowerCase()
+    const requiresShipping = product.shippingConfig?.requiresShipping
+    if (requiresShipping === false) {
+      continue
+    }
     if (shippingClass.includes('install')) {
       continue
     }
 
     const quantity = resolveQuantity(item.quantity)
-    const weight = toPositiveNumber(product.shippingWeight)
+    const weight = resolveShippingWeight(product)
     if (weight) {
       totalWeight += weight * quantity
     }
 
-    const dims = parseBoxDimensions(product.boxDimensions)
+    const dims = resolveShippingDimensions(product)
     if (dims) {
       hasDimensionData = true
       maxLength = Math.max(maxLength, dims.length)

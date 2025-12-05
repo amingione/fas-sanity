@@ -1,5 +1,6 @@
 import {useState} from 'react'
 import {type DocumentActionComponent, useDocumentOperation} from 'sanity'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
   const {id, type, draft, published} = props
@@ -46,7 +47,9 @@ export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
       setIsLoading(true)
 
       try {
-        const response = await fetch('/api/easypost/purchase-label', {
+        const base = resolveNetlifyBase()
+        const endpoint = `${base.replace(/\/$/, '')}/.netlify/functions/easypostCreateLabel`
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
@@ -56,7 +59,21 @@ export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
           }),
         })
 
-        const {trackingNumber, trackingUrl, labelUrl, carrier, service} = await response.json()
+        const text = await response.text()
+        let data: any = {}
+        try {
+          data = text ? JSON.parse(text) : {}
+        } catch {
+          data = {raw: text}
+        }
+        if (!response.ok) {
+          const message =
+            (data && (data.error || data.message)) ||
+            `${response.status} ${response.statusText || 'Request failed'}`
+          throw new Error(message)
+        }
+
+        const {trackingNumber, trackingUrl, labelUrl, carrier, service} = data
 
         patch.execute([
           {

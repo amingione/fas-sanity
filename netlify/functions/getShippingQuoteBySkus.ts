@@ -172,6 +172,17 @@ export const handler: Handler = async (event) => {
         productType,
         shippingWeight,
         boxDimensions,
+        shippingConfig{
+          weight,
+          dimensions{
+            length,
+            width,
+            height
+          },
+          shippingClass,
+          requiresShipping,
+          separateShipment
+        },
         shipsAlone,
         shippingClass,
         coreRequired,
@@ -256,15 +267,38 @@ export const handler: Handler = async (event) => {
         continue
       }
 
-      if ((prod?.productType || '').toLowerCase() === 'service') {
+      const shippingConfig = prod?.shippingConfig || {}
+      const requiresShipping = shippingConfig.requiresShipping
+      const shippingClass = (
+        shippingConfig.shippingClass || prod?.shippingClass || ''
+      ).toString()
+      if (requiresShipping === false || (prod?.productType || '').toLowerCase() === 'service') {
         if (!installOnlyItems.includes(identifier)) installOnlyItems.push(identifier)
         continue
       }
 
-      const weight = Number(prod?.shippingWeight || 0)
-      const dims = parseDims(prod?.boxDimensions || '') || null
-      const shipsAlone = Boolean(prod?.shipsAlone)
-      const shippingClass = (prod?.shippingClass || '').toString()
+      const rawWeight = shippingConfig.weight ?? prod?.shippingWeight
+      const weight = Number(rawWeight ?? 0)
+      const configDims = shippingConfig?.dimensions
+      const dims =
+        (configDims &&
+          typeof configDims.length === 'number' &&
+          typeof configDims.width === 'number' &&
+          typeof configDims.height === 'number'
+            ? {
+                length: Number(configDims.length),
+                width: Number(configDims.width),
+                height: Number(configDims.height),
+                unit: 'inch' as const,
+              }
+            : null) ||
+        parseDims(prod?.boxDimensions || '') ||
+        null
+      const shipsAlone = Boolean(
+        shippingConfig.separateShipment !== undefined
+          ? shippingConfig.separateShipment
+          : prod?.shipsAlone,
+      )
       const installOnly = isInstallOnlyClass(shippingClass)
 
       if (installOnly) {

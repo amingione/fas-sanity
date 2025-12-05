@@ -41,15 +41,60 @@ const sanitizeNumber = (value: unknown): number | undefined => {
   return undefined
 }
 
+const formatDimensions = (dims?: {
+  length?: number | null
+  width?: number | null
+  height?: number | null
+}): string | undefined => {
+  if (!dims) return undefined
+  const {length, width, height} = dims
+  if (
+    typeof length !== 'number' ||
+    typeof width !== 'number' ||
+    typeof height !== 'number' ||
+    !Number.isFinite(length) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height)
+  ) {
+    return undefined
+  }
+  return [length, width, height].map((v) => Number(v.toFixed(2))).join('x')
+}
+
 const buildMetadata = (product: any): Record<string, string | undefined> => {
-  const weight = sanitizeNumber(product.shippingWeight)
-  const handling = sanitizeNumber(product.handlingTime)
+  const requiresShipping = product?.shippingConfig?.requiresShipping
+  const weight = sanitizeNumber(
+    product?.shippingConfig?.weight !== undefined
+      ? product.shippingConfig.weight
+      : product.shippingWeight,
+  )
+  const handling = sanitizeNumber(
+    product?.shippingConfig?.handlingTime ?? product.handlingTime,
+  )
+  const dimensionsLabel =
+    formatDimensions(product?.shippingConfig?.dimensions) || product.boxDimensions || undefined
+  const shippingClass = product?.shippingConfig?.shippingClass || product.shippingClass
+  const shipsAlone =
+    product?.shippingConfig?.separateShipment !== undefined
+      ? product.shippingConfig.separateShipment
+      : product.shipsAlone
+
+  if (requiresShipping === false || (product?.productType || '').toLowerCase() === 'service') {
+    return {
+      shipping_weight: undefined,
+      shipping_dimensions: undefined,
+      shipping_class: shippingClass || undefined,
+      handling_time: handling !== undefined ? String(handling) : undefined,
+      ships_alone: shipsAlone ? 'true' : undefined,
+    }
+  }
+
   return {
     shipping_weight: weight !== undefined ? String(weight) : undefined,
-    shipping_dimensions: product.boxDimensions || undefined,
-    shipping_class: product.shippingClass || undefined,
+    shipping_dimensions: dimensionsLabel,
+    shipping_class: shippingClass || undefined,
     handling_time: handling !== undefined ? String(handling) : undefined,
-    ships_alone: product.shipsAlone ? 'true' : undefined,
+    ships_alone: shipsAlone ? 'true' : undefined,
   }
 }
 
@@ -85,14 +130,26 @@ async function syncProduct(productId: string) {
       boxDimensions,
       handlingTime,
       shippingClass,
-      shipsAlone
+      shipsAlone,
+      shippingConfig{
+        weight,
+        dimensions{
+          length,
+          width,
+          height
+        },
+        shippingClass,
+        handlingTime,
+        requiresShipping,
+        separateShipment
+      }
     }`,
     {id: productId},
   )
   if (!product?.stripeProductId) {
     return {skipped: true, reason: 'Missing stripeProductId'}
   }
-  if (product.productType === 'service') {
+  if (product.productType === 'service' || product?.shippingConfig?.requiresShipping === false) {
     await updateStripeMetadata(product.stripeProductId, {
       shipping_weight: undefined,
       shipping_dimensions: undefined,

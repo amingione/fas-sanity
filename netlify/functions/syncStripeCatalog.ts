@@ -64,6 +64,14 @@ type SanityProduct = {
   shippingWeight?: number | string | null
   boxDimensions?: string | null
   shippingClass?: string | null
+  shippingConfig?: {
+    weight?: number | string | null
+    dimensions?: {length?: number | null; width?: number | null; height?: number | null} | null
+    shippingClass?: string | null
+    handlingTime?: number | string | null
+    requiresShipping?: boolean | null
+    separateShipment?: boolean | null
+  } | null
   handlingTime?: number | string | null
   shipsAlone?: boolean | null
   stripeProductId?: string
@@ -218,15 +226,42 @@ function parseBoxDimensionsString(value?: string | null): ShippingDimensions | n
   }
 }
 
+function normalizeDimensionValue(value?: number | string | null): number | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Number(value.toFixed(2))
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Number(parsed.toFixed(2))
+    }
+  }
+  return null
+}
+
+function resolveConfigDimensions(product: SanityProduct): ShippingDimensions | null {
+  const dims = product.shippingConfig?.dimensions
+  const length = normalizeDimensionValue(dims?.length)
+  const width = normalizeDimensionValue(dims?.width)
+  const height = normalizeDimensionValue(dims?.height)
+  if (length && width && height) {
+    return {length, width, height}
+  }
+  return null
+}
+
 function formatDimensionLabel(value: number): string {
   const rounded = Number(value.toFixed(2))
   return Number.isInteger(rounded) ? String(Math.trunc(rounded)) : rounded.toString()
 }
 
 function resolveShippingDetails(product: SanityProduct): ShippingDetails {
-  const weightLbs = toPositiveNumber(product.shippingWeight)
+  if (product.shippingConfig?.requiresShipping === false) {
+    return {weightLbs: null, weightOz: null, dimensions: null, dimensionsLabel: undefined}
+  }
+  const weightLbs = toPositiveNumber(product.shippingConfig?.weight) ?? toPositiveNumber(product.shippingWeight)
   const weightOz = weightLbs !== null ? Number((weightLbs * 16).toFixed(2)) : null
-  const dimensions = parseBoxDimensionsString(product.boxDimensions)
+  const dimensions = resolveConfigDimensions(product) || parseBoxDimensionsString(product.boxDimensions)
   const dimensionsLabel = dimensions
     ? [dimensions.length, dimensions.width, dimensions.height].map(formatDimensionLabel).join('x')
     : typeof product.boxDimensions === 'string'
@@ -270,6 +305,15 @@ function buildMetadata(
   normalizedId: string,
   shipping: ShippingDetails,
 ): Record<string, string> {
+  const shippingClass = product.shippingConfig?.shippingClass || product.shippingClass
+  const handlingTime = toNonNegativeNumber(
+    product.shippingConfig?.handlingTime ?? product.handlingTime,
+  )
+  const shipsAlone =
+    product.shippingConfig?.separateShipment !== undefined
+      ? product.shippingConfig?.separateShipment
+      : product.shipsAlone
+
   return filterMetadata({
     sanity_product_id: normalizedId,
     sanity_slug: product.slug,
@@ -286,9 +330,9 @@ function buildMetadata(
     shipping_weight:
       typeof shipping.weightLbs === 'number' ? shipping.weightLbs.toString() : undefined,
     shipping_dimensions: shipping.dimensionsLabel,
-    shipping_class: product.shippingClass,
-    handling_time: toNonNegativeNumber(product.handlingTime)?.toString(),
-    ships_alone: product.shipsAlone ? 'true' : undefined,
+    shipping_class: shippingClass,
+    handling_time: handlingTime !== null ? handlingTime.toString() : undefined,
+    ships_alone: shipsAlone ? 'true' : undefined,
   })
 }
 
@@ -436,7 +480,11 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
   const metadata = buildMetadata(product, normalizedId, shippingDetails)
   const packageDimensions = buildPackageDimensions(shippingDetails)
   const shippable =
-    shippingDetails.weightOz !== null || shippingDetails.dimensions ? true : undefined
+    product.shippingConfig?.requiresShipping === false
+      ? false
+      : shippingDetails.weightOz !== null || shippingDetails.dimensions
+        ? true
+        : undefined
   const description = selectDescription(product)
   const active = determineActive(product)
   const imageArray = product.primaryImage ? [product.primaryImage] : undefined
@@ -666,6 +714,18 @@ export const handler: Handler = async (event) => {
         boxDimensions,
         shippingClass,
         handlingTime,
+        shippingConfig{
+          weight,
+          dimensions{
+            length,
+            width,
+            height
+          },
+          shippingClass,
+          handlingTime,
+          requiresShipping,
+          separateShipment
+        },
         shipsAlone,
         coreRequired,
         promotionTagline,
@@ -695,6 +755,18 @@ export const handler: Handler = async (event) => {
         boxDimensions,
         shippingClass,
         handlingTime,
+        shippingConfig{
+          weight,
+          dimensions{
+            length,
+            width,
+            height
+          },
+          shippingClass,
+          handlingTime,
+          requiresShipping,
+          separateShipment
+        },
         shipsAlone,
         coreRequired,
         promotionTagline,
@@ -724,6 +796,18 @@ export const handler: Handler = async (event) => {
         boxDimensions,
         shippingClass,
         handlingTime,
+        shippingConfig{
+          weight,
+          dimensions{
+            length,
+            width,
+            height
+          },
+          shippingClass,
+          handlingTime,
+          requiresShipping,
+          separateShipment
+        },
         shipsAlone,
         coreRequired,
         promotionTagline,
