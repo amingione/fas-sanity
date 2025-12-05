@@ -6,11 +6,12 @@ import {DEFAULT_VENDOR_DISCOUNTS} from '../../../../../shared/vendorPricing'
 const API_VERSION = '2024-10-01'
 const WORKFLOW_OPTIONS = [
   {value: 'all', label: 'All workflows'},
-  {value: 'requested', label: 'Requested'},
-  {value: 'awaiting_po', label: 'Awaiting PO'},
-  {value: 'in_production', label: 'In production'},
-  {value: 'ready_to_ship', label: 'Ready to ship'},
-  {value: 'delivered', label: 'Delivered'},
+  {value: 'pending', label: 'Pending review'},
+  {value: 'approved', label: 'Approved - awaiting payment'},
+  {value: 'paid', label: 'Paid - ready to fulfill'},
+  {value: 'partial', label: 'Partially fulfilled'},
+  {value: 'fulfilled', label: 'Fulfilled'},
+  {value: 'cancelled', label: 'Cancelled'},
 ]
 
 type WholesaleOrder = {
@@ -70,14 +71,23 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
   const filtered = useMemo(() => {
     return orders.filter((order) => {
       if (workflowFilter === 'all') return true
-      return order.wholesaleWorkflowStatus === workflowFilter
+      return (
+        order.wholesaleWorkflowStatus === workflowFilter ||
+        order.wholesaleDetails?.workflowStatus === workflowFilter
+      )
     })
   }, [orders, workflowFilter])
 
   const updateWorkflow = async (id: string, status: string) => {
     setUpdatingId(id)
     try {
-      await client.patch(id).set({wholesaleWorkflowStatus: status}).commit()
+      await client
+        .patch(id)
+        .set({
+          wholesaleWorkflowStatus: status,
+          'wholesaleDetails.workflowStatus': status,
+        })
+        .commit()
       toast.push({status: 'success', title: 'Workflow updated'})
       await loadOrders()
     } catch (error) {
@@ -177,7 +187,7 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
                       <Text style={{flex: 1}}>{resolveQuantity(order)}</Text>
                       <Stack flex={1} space={1}>
                         <Select
-                          value={order.wholesaleWorkflowStatus || 'requested'}
+                          value={order.wholesaleWorkflowStatus || order.wholesaleDetails?.workflowStatus || 'pending'}
                           disabled={updatingId === order._id}
                           onChange={(event) => updateWorkflow(order._id, event.currentTarget.value)}
                         >

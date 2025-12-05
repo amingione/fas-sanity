@@ -9,6 +9,32 @@ export type SanityReference = {
   _ref: string
 }
 
+export interface OrderAddress {
+  name?: string
+  phone?: string
+  email?: string
+  addressLine1?: string
+  addressLine2?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  country?: string
+}
+
+export interface ShipmentWeight {
+  value?: number
+  unit?: string
+}
+
+export interface PackageDimensions {
+  length?: number
+  width?: number
+  height?: number
+  weight?: number
+  weightUnit?: string
+  dimensionUnit?: string
+}
+
 export interface OrderCartItem {
   _key?: string
   name?: string
@@ -74,7 +100,11 @@ export interface OrderDocument {
   trackingUrl?: string | null
   shippingLabelUrl?: string | null
   packingSlipUrl?: string | null
-  shippingAddress?: ShippingAddress
+  shippingAddress?: OrderAddress
+  billingAddress?: OrderAddress
+  weight?: ShipmentWeight | null
+  dimensions?: PackageDimensions | null
+  packageDimensions?: PackageDimensions | null
   fulfillment?: {
     status?: string | null
     trackingNumber?: string | null
