@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react'
+import React, {forwardRef, useEffect, useState} from 'react'
 import {Box, Card, Flex, Grid, Heading, Spinner, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 
@@ -27,7 +27,7 @@ const calcMargin = (retail?: number | null, cost?: number | null) => {
   return `${pct.toFixed(1)}%`
 }
 
-const WholesalePricingCalculator = () => {
+const WholesalePricingCalculator = forwardRef<HTMLDivElement>((_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,7 +56,7 @@ const WholesalePricingCalculator = () => {
   }
 
   return (
-    <Box padding={4} style={{overflowY: 'auto'}}>
+    <Box ref={ref} padding={4} style={{overflowY: 'auto'}}>
       <Stack space={4}>
         <Heading as="h2" size={3}>
           Wholesale Pricing Calculator
@@ -98,6 +98,8 @@ const WholesalePricingCalculator = () => {
       </Stack>
     </Box>
   )
-}
+})
+
+WholesalePricingCalculator.displayName = 'WholesalePricingCalculator'
 
 export default WholesalePricingCalculator

@@ -47,7 +47,7 @@ const CUSTOMER_ANALYTICS_QUERY = `{
   "segmentTotals": {
     "activeSubscribers": {
       "count": count(*[_type == "customer" && !(_id in path("drafts.**")) && emailMarketing.subscribed == true]),
-      "lifetimeValue": sum(
+      "lifetimeValue": math::sum(
         *[_type == "customer" && !(_id in path("drafts.**")) && emailMarketing.subscribed == true].lifetimeValue
       )
     },
@@ -55,7 +55,7 @@ const CUSTOMER_ANALYTICS_QUERY = `{
       "count": count(
         *[_type == "customer" && !(_id in path("drafts.**")) && count(*[_type == "order" && !(_id in path("drafts.**")) && customerRef._ref == ^._id && status == "expired"]) > 0]
       ),
-      "lifetimeValue": sum(
+      "lifetimeValue": math::sum(
         *[_type == "customer" && !(_id in path("drafts.**")) && count(*[_type == "order" && !(_id in path("drafts.**")) && customerRef._ref == ^._id && status == "expired"]) > 0]
           .lifetimeValue
       )
@@ -64,7 +64,7 @@ const CUSTOMER_ANALYTICS_QUERY = `{
       "count": count(
         *[_type == "customer" && !(_id in path("drafts.**")) && count(*[_type == "order" && !(_id in path("drafts.**")) && customerRef._ref == ^._id]) > 0]
       ),
-      "lifetimeValue": sum(
+      "lifetimeValue": math::sum(
         *[_type == "customer" && !(_id in path("drafts.**")) && count(*[_type == "order" && !(_id in path("drafts.**")) && customerRef._ref == ^._id]) > 0]
           .lifetimeValue
       )
@@ -118,7 +118,7 @@ const CUSTOMER_ANALYTICS_QUERY = `{
     "repeatCustomers": count(*[_type == "customer" && !(_id in path("drafts.**")) && totalOrders > 1]),
     "avgDaysBetweenOrders": select(
       count(*[_type == "customer" && !(_id in path("drafts.**")) && totalOrders > 1]) > 0 =>
-        sum(
+        math::sum(
           *[_type == "customer" && !(_id in path("drafts.**")) && totalOrders > 1]
             .((lastOrderDate - firstOrderDate) / (totalOrders - 1))
         ) / count(*[_type == "customer" && !(_id in path("drafts.**")) && totalOrders > 1])

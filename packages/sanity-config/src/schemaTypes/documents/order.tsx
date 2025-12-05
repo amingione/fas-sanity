@@ -394,7 +394,7 @@ const orderSchema = defineType({
       name: 'customerRef',
       type: 'reference',
       title: 'Customer Reference',
-      to: [{type: 'customer'}],
+      to: [{type: 'customer'}, {type: 'vendor'}],
       group: 'customer',
       readOnly: true,
       hidden: true,
@@ -1255,9 +1255,14 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
                 try {
                   await client.patch(targetId).set(updates).commit({autoGenerateArrayKeys: true})
                 } catch (patchErr: any) {
-                  if (patchErr?.statusCode !== 404) {
-                    throw patchErr
+                  const msg = (patchErr?.message || '').toString().toLowerCase()
+                  const isReadOnly = msg.includes('read-only') || patchErr?.statusCode === 403
+                  if (patchErr?.statusCode === 404) continue
+                  if (isReadOnly) {
+                    console.warn('Skipping local patch on read-only document', {targetId, patchErr})
+                    continue
                   }
+                  throw patchErr
                 }
               }
             }

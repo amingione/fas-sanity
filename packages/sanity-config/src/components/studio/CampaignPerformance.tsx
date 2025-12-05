@@ -74,7 +74,7 @@ const CAMPAIGN_PERFORMANCE_QUERY = `*[_type == "emailCampaign" && _id == $id][0]
     clickEvents
   },
   "attributionRevenue": coalesce(
-    sum(*[_type == "attribution" && utmCampaign == coalesce(^.trackingSlug.current, ^.title)].orderValue),
+    math::sum(*[_type == "attribution" && utmCampaign == coalesce(^.trackingSlug.current, ^.title)].orderValue),
     0
   ),
   "attributedOrders": count(*[_type == "attribution" && utmCampaign == coalesce(^.trackingSlug.current, ^.title)])

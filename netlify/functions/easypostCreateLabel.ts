@@ -17,6 +17,37 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 }
 
+function formatEasyPostError(err: any): {statusCode: number; message: string} {
+  const ep = err?.body?.error
+  const baseMessage =
+    (ep && (ep.message || ep.code)) ||
+    err?.message ||
+    'EasyPost label generation failed'
+
+  if (ep && Array.isArray(ep.errors) && ep.errors.length) {
+    const details = ep.errors
+      .map((e: any) => {
+        const field = e?.field || e?.field_name
+        const msg = e?.message || e?.reason
+        return field && msg ? `${field}: ${msg}` : field || msg
+      })
+      .filter(Boolean)
+      .join('; ')
+    const message = details ? `${baseMessage} (${details})` : baseMessage
+    return {statusCode: 400, message}
+  }
+
+  if (
+    typeof baseMessage === 'string' &&
+    (/missing required/i.test(baseMessage) ||
+      /incomplete shipping address/i.test(baseMessage))
+  ) {
+    return {statusCode: 400, message: baseMessage}
+  }
+
+  return {statusCode: 500, message: baseMessage}
+}
+
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
@@ -59,8 +90,10 @@ type EasyPostAddress = {
 
 function toEasyPostAddress(order: OrderDoc): EasyPostAddress {
   const addr = order?.shippingAddress || {}
+  const fallbackName =
+    (addr?.name || order.customerName || '').toString().trim() || 'Customer'
   return {
-    name: addr?.name || order.customerName || undefined,
+    name: fallbackName,
     street1: addr?.addressLine1 || '',
     street2: addr?.addressLine2 || undefined,
     city: addr?.city || '',
@@ -74,6 +107,7 @@ function toEasyPostAddress(order: OrderDoc): EasyPostAddress {
 
 function assertAddress(address: EasyPostAddress) {
   const missing: string[] = []
+  if (!address.name) missing.push('name')
   if (!address.street1) missing.push('addressLine1')
   if (!address.city) missing.push('city')
   if (!address.state) missing.push('state')
@@ -387,7 +421,7 @@ export const handler: Handler = async (event) => {
   const invoiceId = (payload.invoiceId || payload.invoice_id || '').toString().trim()
   const shipTo = payload.ship_to
     ? {
-        name: payload.ship_to?.name,
+        name: payload.ship_to?.name || 'Recipient',
         street1: payload.ship_to?.street1 || payload.ship_to?.address_line1,
         street2: payload.ship_to?.street2 || payload.ship_to?.address_line2,
         city: payload.ship_to?.city || payload.ship_to?.city_locality,
@@ -444,11 +478,13 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify(result),
     }
   } catch (err: any) {
-    console.error('easypostCreateLabel error', err)
+    const {statusCode, message} = formatEasyPostError(err)
+    const detail = (err?.body as any)?.error || err?.message || err
+    console.error('easypostCreateLabel error', detail)
     return {
-      statusCode: 500,
+      statusCode,
       headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: err?.message || 'EasyPost label generation failed'}),
+      body: JSON.stringify({error: message || 'EasyPost label generation failed'}),
     }
   }
 }

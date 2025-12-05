@@ -84,18 +84,18 @@ const PURCHASE_TYPES = ['purchase', 'purchased', 'restock', 'received', 'stock_i
 
 const FINANCE_QUERY = `
 {
-  "grossRevenue": coalesce(sum(*[_type == "order" && status == "paid" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
-  "returns": coalesce(sum(*[_type == "order" && status == "refunded" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
-  "revenueOnline": coalesce(sum(*[_type == "order" && status == "paid" && orderType == "online" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
-  "revenueInStore": coalesce(sum(*[_type == "order" && status == "paid" && orderType == "in-store" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
-  "revenueWholesale": coalesce(sum(*[_type == "order" && status == "paid" && orderType == "wholesale" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
+  "grossRevenue": coalesce(math::sum(*[_type == "order" && status == "paid" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
+  "returns": coalesce(math::sum(*[_type == "order" && status == "refunded" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
+  "revenueOnline": coalesce(math::sum(*[_type == "order" && status == "paid" && orderType == "online" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
+  "revenueInStore": coalesce(math::sum(*[_type == "order" && status == "paid" && orderType == "in-store" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
+  "revenueWholesale": coalesce(math::sum(*[_type == "order" && status == "paid" && orderType == "wholesale" && _createdAt >= $start && _createdAt < $end].totalAmount), 0),
   "ordersPaid": count(*[_type == "order" && status == "paid" && _createdAt >= $start && _createdAt < $end]),
-  "cogs": coalesce(sum(*[_type == "inventoryTransaction" && type == "sold" && transactionDate >= $start && transactionDate < $end].(coalesce(quantity, 0) * coalesce(unitCost, 0))), 0),
-  "inventoryPurchases": coalesce(sum(*[_type == "inventoryTransaction" && type in $purchaseTypes && transactionDate >= $start && transactionDate < $end].(coalesce(quantity, 0) * coalesce(unitCost, 0))), 0),
+  "cogs": coalesce(math::sum(*[_type == "inventoryTransaction" && type == "sold" && transactionDate >= $start && transactionDate < $end].(coalesce(quantity, 0) * coalesce(unitCost, 0))), 0),
+  "inventoryPurchases": coalesce(math::sum(*[_type == "inventoryTransaction" && type in $purchaseTypes && transactionDate >= $start && transactionDate < $end].(coalesce(quantity, 0) * coalesce(unitCost, 0))), 0),
   "expenseDetails": *[_type == "expense" && date >= $start && date < $end]{category, amount},
-  "cashForExpenses": coalesce(sum(*[_type == "expense" && status == "paid" && defined(coalesce(paidDate, date)) && coalesce(paidDate, date) >= $start && coalesce(paidDate, date) < $end].amount), 0),
-  "accountsReceivable": coalesce(sum(*[_type == "invoice" && status != "paid" && orderRef->orderType == "wholesale"].(coalesce(total, amountSubtotal + amountTax + coalesce(amountShipping, shippingAmount, 0)))), 0),
-  "accountsPayable": coalesce(sum(*[_type == "bill" && paid != true].amount), 0)
+  "cashForExpenses": coalesce(math::sum(*[_type == "expense" && status == "paid" && defined(coalesce(paidDate, date)) && coalesce(paidDate, date) >= $start && coalesce(paidDate, date) < $end].amount), 0),
+  "accountsReceivable": coalesce(math::sum(*[_type == "invoice" && status != "paid" && orderRef->orderType == "wholesale"].(coalesce(total, amountSubtotal + amountTax + coalesce(amountShipping, shippingAmount, 0)))), 0),
+  "accountsPayable": coalesce(math::sum(*[_type == "bill" && paid != true].amount), 0)
 }
 `
 
