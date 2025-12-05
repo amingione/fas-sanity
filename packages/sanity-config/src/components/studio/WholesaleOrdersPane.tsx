@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {Box, Card, Flex, Heading, Select, Spinner, Stack, Text, useToast} from '@sanity/ui'
 import {DEFAULT_VENDOR_DISCOUNTS} from '../../../../../shared/vendorPricing'
@@ -29,7 +29,7 @@ type WholesaleOrder = {
   cart?: Array<{quantity?: number | null} | null>
 }
 
-export default function WholesaleOrdersPane() {
+const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const toast = useToast()
   const [orders, setOrders] = useState<WholesaleOrder[]>([])
@@ -112,14 +112,14 @@ export default function WholesaleOrdersPane() {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" height="fill">
+      <Flex ref={ref} align="center" justify="center" height="fill">
         <Spinner muted />
       </Flex>
     )
   }
 
   return (
-    <Box padding={4}>
+    <Box ref={ref} padding={4}>
       <Stack space={4}>
         <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
           <Heading as="h2" size={3}>
@@ -201,4 +201,8 @@ export default function WholesaleOrdersPane() {
       </Stack>
     </Box>
   )
-}
+})
+
+WholesaleOrdersPane.displayName = 'WholesaleOrdersPane'
+
+export default WholesaleOrdersPane
