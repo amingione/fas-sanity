@@ -289,6 +289,64 @@ async function handleShipment(shipment: any) {
   await sanity.patch(order._id).setIfMissing({}).set(setOps).commit({autoGenerateArrayKeys: true})
 }
 
+async function handleRefund(refund: any) {
+  const refundId = refund?.id
+  const shipmentId = refund?.shipment_id || refund?.shipment
+  const trackingCode = extractTrackingNumber({shipment: refund}) || refund?.tracking_code
+  if (!refundId && !shipmentId && !trackingCode) {
+    console.warn('easypostWebhook refund missing identifiers')
+    return
+  }
+
+  const order = await sanity.fetch<{_id: string; fulfillment?: any; shippingLog?: any[]}>(
+    `*[_type == "order" && (
+      easyPostShipmentId == $shipmentId ||
+      trackingNumber == $trackingCode ||
+      easyPostTrackerId == $trackerId
+    )][0]{_id, fulfillment, shippingLog}`,
+    {
+      shipmentId: shipmentId || null,
+      trackingCode: trackingCode || null,
+      trackerId: refund?.tracker_id || null,
+    },
+  )
+
+  if (!order?._id) {
+    console.warn('easypostWebhook unable to locate order for refund', {
+      refundId,
+      shipmentId,
+      trackingCode,
+    })
+    return
+  }
+
+  const nowIso = new Date().toISOString()
+  const patchSet: Record<string, any> = Object.fromEntries(
+    Object.entries({
+      'fulfillment.labelRefunded': true,
+      'fulfillment.labelRefundedAt': nowIso,
+      'fulfillment.refundId': refundId,
+      'fulfillment.status': order?.fulfillment?.status || 'unfulfilled',
+    }).filter(([, value]) => value !== undefined),
+  )
+
+  const logEntry = {
+    _type: 'shippingLogEntry',
+    status: refund?.status || 'refunded',
+    message: `EasyPost refund ${refund?.status || ''}`.trim(),
+    labelUrl: undefined,
+    trackingUrl: undefined,
+    trackingNumber: trackingCode || undefined,
+    weight: undefined,
+    createdAt: nowIso,
+  }
+
+  const patch = sanity.patch(order._id).setIfMissing({})
+  if (Object.keys(patchSet).length) patch.set(patchSet)
+  patch.setIfMissing({shippingLog: []}).append('shippingLog', [logEntry])
+  await patch.commit({autoGenerateArrayKeys: true})
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return {statusCode: 204, headers: CORS_HEADERS, body: ''}
@@ -303,10 +361,13 @@ export const handler: Handler = async (event) => {
   }
 
   if (SHIPPING_PROVIDER !== 'easypost') {
+    console.warn('easypostWebhook received event but shipping provider is disabled', {
+      SHIPPING_PROVIDER,
+    })
     return {
-      statusCode: 409,
+      statusCode: 200,
       headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'EasyPost integration disabled'}),
+      body: JSON.stringify({ok: true, ignored: true, reason: 'EasyPost integration disabled'}),
     }
   }
 
@@ -350,6 +411,8 @@ export const handler: Handler = async (event) => {
       await handleTracker(result)
     } else if (result?.object === 'Shipment') {
       await handleShipment(result)
+    } else if (result?.object === 'Refund') {
+      await handleRefund(result)
     }
   } catch (err) {
     console.error('easypostWebhook processing error', err)
