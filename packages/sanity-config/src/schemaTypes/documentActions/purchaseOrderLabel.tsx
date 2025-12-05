@@ -1,5 +1,6 @@
 import {useState} from 'react'
 import {type DocumentActionComponent, useDocumentOperation} from 'sanity'
+import {resolveNetlifyBase} from '../../utils/netlifyBase'
 
 export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
   const {id, type, draft, published} = props
@@ -38,7 +39,9 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
       setIsLoading(true)
 
       try {
-        const response = await fetch('/api/easypost/purchase-order-label', {
+        const base = resolveNetlifyBase()
+        const endpoint = `${base.replace(/\/$/, '')}/.netlify/functions/easypostCreateLabel`
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
