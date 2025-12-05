@@ -280,6 +280,8 @@ import user from './documents/user'
 import {analyticsSettingsType} from './documents/analyticsSettings'
 import {searchSettingsType} from './documents/searchSettings'
 import {searchQueryType} from './documents/searchQuery'
+import customerMessage from './documents/customerMessage'
+import quoteRequest from './documents/quoteRequest'
 
 const documents = [
   collectionType,
@@ -375,4 +377,6 @@ export const schemaTypes = [
   ...documents,
   buildQuote,
   printSettings,
+  customerMessage,
+  quoteRequest,
 ]
