@@ -145,12 +145,12 @@ const createGenerateTagsAction =
 const createDuplicateServicePackageAction =
   (context: DocumentActionsContext): DocumentActionComponent =>
   (props) => {
-    if (!isServiceProduct(props)) return null
     const toast = useToast()
     const [busy, setBusy] = useState(false)
     const client = context.getClient({apiVersion: API_VERSION})
     const source = (props.draft || props.published) as ProductDocument | undefined
-    if (!source) return null
+
+    if (!isServiceProduct(props) || !source) return null
 
     return {
       label: 'Duplicate Package',
@@ -224,11 +224,12 @@ const createDuplicateServicePackageAction =
 const createPreviewServicePackageAction =
   (_context: DocumentActionsContext): DocumentActionComponent =>
   (props) => {
-    if (!isServiceProduct(props)) return null
     const toast = useToast()
     const source = (props.draft || props.published) as ProductDocument | undefined
     const slug = source?.slug?.current
     const title = source?.title || 'Performance Package'
+
+    if (!isServiceProduct(props)) return null
 
     return {
       label: 'Preview on Site',

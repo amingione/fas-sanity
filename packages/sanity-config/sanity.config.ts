@@ -1,11 +1,11 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import {defineConfig, type PluginOptions, type StudioTheme} from 'sanity'
+import {defineConfig, type PluginOptions, type StudioTheme, type SchemaTypeDefinition} from 'sanity'
 import fs from 'fs'
 import {config as loadDotenv} from 'dotenv'
 import './src/styles/tailwind.css'
-import {studioTheme} from '@sanity/ui'
+import {studioTheme, Card, Text, Stack} from '@sanity/ui'
+import React from 'react'
 // Desk Tool import is different across Sanity versions; support both named and default
-// @ts-ignore
 import * as _desk from 'sanity/desk'
 type DeskToolFactory = (opts?: unknown) => PluginOptions
 type DeskModule = {
@@ -19,9 +19,9 @@ const deskTool: DeskToolFactory =
     : deskModule.deskTool || deskModule.default || (_desk as unknown as DeskToolFactory)
 import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
+import {dashboardTool} from '@sanity/dashboard'
 import {media} from 'sanity-plugin-media'
 // Removed presentation/preview tool
-import {schemaMarkup} from '@operationnation/sanity-plugin-schema-markup'
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
 import {deskStructureBuilderTool} from './src/plugins/deskStructureBuilder'
@@ -34,10 +34,13 @@ import {orderView} from './src/views/orderView'
 import CustomerDashboard from './src/components/studio/CustomerDashboard'
 import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
 import './src/runtimeEnvBootstrap'
+import {documentListWidget} from 'sanity-plugin-dashboard-widget-document-list'
+import {OrderFulfillmentWidget} from './src/plugins/orderFulfillmentWidget'
+import {AppointmentCalendarWidget} from './src/plugins/appointmentCalendarWidget'
+import StripeAnalyticsWidget from './src/components/StripeAnalyticsWidget'
+import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
 
-declare const __SANITY_STUDIO_RUNTIME_ENV__:
-  | Record<string, string | undefined>
-  | undefined
+declare const __SANITY_STUDIO_RUNTIME_ENV__: Record<string, string | undefined> | undefined
 
 const hasProcess = typeof process !== 'undefined' && typeof process.cwd === 'function'
 const joinSegments = (...segments: string[]) => segments.filter(Boolean).join('/')
@@ -109,8 +112,8 @@ const studioRuntimeEnv = collectStudioEnv(resolveEnvSource())
 const serializedStudioRuntimeEnv = JSON.stringify(studioRuntimeEnv)
 const processEnvDefine = JSON.stringify({
   ...studioRuntimeEnv,
-  NODE_ENV: hasProcess ? process.env.NODE_ENV ?? 'production' : 'production',
-  MODE: hasProcess ? process.env.MODE ?? process.env.NODE_ENV ?? 'production' : 'production',
+  NODE_ENV: hasProcess ? (process.env.NODE_ENV ?? 'production') : 'production',
+  MODE: hasProcess ? (process.env.MODE ?? process.env.NODE_ENV ?? 'production') : 'production',
 })
 if (hasProcess && (process.env.DEBUG_STUDIO_ENV || process.env.VERBOSE_STUDIO_ENV)) {
   // Helpful when envs aren't appearing in the client bundle.
@@ -153,6 +156,44 @@ const getEnvFlag = (...names: string[]) => {
 }
 
 const resolvedTheme: StudioTheme = studioTheme
+const analyticsIframeUrl = readEnv('SANITY_STUDIO_ANALYTICS_IFRAME_URL')
+
+const IframeWidget = ({title, url}: {title: string; url?: string | null}) =>
+  React.createElement(
+    Card,
+    {padding: 0, radius: 3, shadow: 1, tone: 'transparent', style: {minHeight: 360}},
+    url
+      ? React.createElement('iframe', {
+          title,
+          src: url,
+          style: {border: 0, width: '100%', height: '100%', minHeight: 360},
+          loading: 'lazy',
+        })
+      : React.createElement(
+          Card,
+          {padding: 4, radius: 3, tone: 'caution', style: {height: '100%'}},
+          React.createElement(
+            Text,
+            {size: 2},
+            `Set ${title} iframe URL via SANITY_STUDIO_${title.toUpperCase().replace(/\s+/g, '_')}_URL`,
+          ),
+        ),
+  )
+const TeamNotesWidget = () =>
+  React.createElement(
+    Card,
+    {padding: 4, radius: 3, shadow: 1, tone: 'transparent'},
+    React.createElement(
+      Stack,
+      {space: 3},
+      React.createElement(Text, {size: 2, weight: 'semibold'}, 'Team Notes'),
+      React.createElement(
+        Text,
+        {size: 1},
+        'Use the Notes document type or your preferred channel to share updates. You can swap this widget for any notes solution later.',
+      ),
+    ),
+  )
 
 const disableVisionOverride = getEnvFlag(
   'SANITY_STUDIO_DISABLE_VISION',
@@ -198,7 +239,74 @@ export default defineConfig({
     deskStructureBuilderTool(),
     media(),
     codeInput(),
-    schemaMarkup(),
+    dashboardTool({
+      widgets: [
+        documentListWidget({
+          title: 'Recent Orders',
+          query: '*[_type == "order"] | order(_createdAt desc) [0...8]',
+          layout: {width: 'small', height: 'small'},
+        }),
+        documentListWidget({
+          title: 'Pending Orders',
+          query:
+            '*[_type == "order" && status in ["NEW", "Need Fullfillment"]] | order(_createdAt desc) [0...8]',
+          layout: {width: 'small', height: 'small'},
+        }),
+        documentListWidget({
+          title: 'Upcoming Appointments',
+          query:
+            '*[_type == "appointment" && scheduledDate > now()] | order(scheduledDate asc) [0...8]',
+          layout: {width: 'small', height: 'small'},
+        }),
+        documentListWidget({
+          title: 'Active Work Orders',
+          query:
+            '*[_type == "workOrder" && status in ["in-progress", "pending"]] | order(_createdAt desc) [0...8]',
+          layout: {width: 'small', height: 'small'},
+        }),
+        documentListWidget({
+          title: 'Unpaid Invoices',
+          query: '*[_type == "invoice" && status != "paid"] | order(dueDate asc) [0...8]',
+          layout: {width: 'small', height: 'small'},
+        }),
+        documentListWidget({
+          title: 'New Customers',
+          query: '*[_type == "customer"] | order(_createdAt desc) [0...6]',
+          layout: {width: 'small', height: 'small'},
+        }),
+        {
+          name: 'revenue-metrics',
+          component: RevenueMetricsWidget,
+          layout: {width: 'medium', height: 'large'},
+        },
+        {
+          name: 'order-fulfillment',
+          component: OrderFulfillmentWidget,
+          layout: {width: 'large', height: 'large'},
+        },
+        {
+          name: 'appointment-calendar',
+          component: AppointmentCalendarWidget,
+          layout: {width: 'full', height: 'large'},
+        },
+        {
+          name: 'stripe-analytics',
+          layout: {width: 'full', height: 'large'},
+          component: StripeAnalyticsWidget,
+        },
+        {
+          name: 'team-notes',
+          layout: {width: 'medium'},
+          component: TeamNotesWidget,
+        },
+        {
+          name: 'analytics-iframe',
+          layout: {width: 'full', height: 'large'},
+          component: () =>
+            React.createElement(IframeWidget, {title: 'Analytics', url: analyticsIframeUrl}),
+        },
+      ],
+    }),
     // preview/presentation tool removed
     ...(visionEnabled ? [visionTool()] : []),
   ],
@@ -237,7 +345,7 @@ export default defineConfig({
   },
 
   schema: {
-    types: schemaTypes,
+    types: schemaTypes as unknown as SchemaTypeDefinition[],
   },
   theme: resolvedTheme,
   studio: {

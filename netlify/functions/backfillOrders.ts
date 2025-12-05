@@ -287,11 +287,25 @@ function cartNeedsEnrichment(cart: any[]): boolean {
   return cart.some((item) => {
     if (!item || typeof item !== 'object') return true
     const hasProductPointer = Boolean(
-      item.sku || item.productSlug || item.stripeProductId || item.stripePriceId,
+      item.sku ||
+        item.productSlug ||
+        item.stripeProductId ||
+        item.stripePriceId ||
+        item.productRef,
     )
     const hasMetadata =
       (Array.isArray(item.metadata) && item.metadata.length > 0) || hasMetadataSummary(item)
-    return !hasProductPointer || !hasMetadata
+    const expectsVariant =
+      Boolean(typeof item.optionSummary === 'string' && item.optionSummary.trim()) ||
+      (Array.isArray(item.optionDetails) && item.optionDetails.length > 0)
+    const missingVariant =
+      expectsVariant &&
+      !(typeof item.selectedVariant === 'string' && item.selectedVariant.trim().length > 0)
+    const hasUpgrades =
+      Array.isArray(item.upgrades) && item.upgrades.some((entry) => typeof entry === 'string')
+    const missingAddOns = hasUpgrades && (!Array.isArray(item.addOns) || item.addOns.length === 0)
+    const missingProductRef = !item.productRef
+    return !hasProductPointer || !hasMetadata || missingVariant || missingAddOns || missingProductRef
   })
 }
 
@@ -526,11 +540,11 @@ export const handler: Handler = async (event) => {
             }
           }
 
-          if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
-            setOps.cart = enrichedCart
-            if (!metadataBackfilledForOrder) {
-              const originalHasMetadata = originalCart.some((item: unknown) =>
-                hasMetadataSummary(item),
+      if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
+        setOps.cart = enrichedCart
+        if (!metadataBackfilledForOrder) {
+          const originalHasMetadata = originalCart.some((item: unknown) =>
+            hasMetadataSummary(item),
               )
               const updatedHasMetadata = enrichedCart.some((item: unknown) =>
                 hasMetadataSummary(item),
@@ -539,6 +553,25 @@ export const handler: Handler = async (event) => {
                 metadataBackfilledForOrder = true
               }
             }
+          }
+        }
+
+        if (stripe && (!doc.cardBrand || !doc.cardLast4) && doc.paymentIntentId) {
+          try {
+            const pi = await stripe.paymentIntents.retrieve(doc.paymentIntentId, {
+              expand: ['latest_charge'],
+            })
+            const charge =
+              pi.latest_charge && typeof pi.latest_charge === 'object'
+                ? (pi.latest_charge as Stripe.Charge)
+                : null
+            const pm = charge?.payment_method_details?.card
+            const brand = pm?.brand || (charge?.payment_method_details as any)?.type
+            const last4 = pm?.last4
+            if (brand && !setOps.cardBrand) setOps.cardBrand = brand
+            if (last4 && !setOps.cardLast4) setOps.cardLast4 = last4
+          } catch (err) {
+            console.warn('backfillOrders: failed to fetch card details', err)
           }
         }
 
@@ -556,19 +589,28 @@ export const handler: Handler = async (event) => {
           }
         }
 
-        if (!doc.orderNumber) {
-          const slugCurrent = typeof doc.slug === 'string' ? doc.slug : doc?.slug?.current
-          const candidates = [slugCurrent, doc.stripeSessionId, doc._id]
-          setOps.orderNumber = await generateUniqueOrderNumber(candidates)
+        const slugCurrent = typeof doc.slug === 'string' ? doc.slug : doc?.slug?.current
+        const orderNumberCandidates = [
+          doc.orderNumber,
+          slugCurrent,
+          doc.stripeSessionId,
+          doc._id,
+        ]
+        const normalizedOrderNumber = orderNumberCandidates
+          .map((candidate) => sanitizeOrderNumber(candidate))
+          .find((candidate): candidate is string => Boolean(candidate))
+
+        if (!doc.orderNumber && normalizedOrderNumber) {
+          setOps.orderNumber = await generateUniqueOrderNumber([normalizedOrderNumber])
+        } else if (
+          doc.orderNumber &&
+          normalizedOrderNumber &&
+          normalizedOrderNumber !== doc.orderNumber
+        ) {
+          setOps.orderNumber = await generateUniqueOrderNumber([normalizedOrderNumber])
         }
 
-        const slugSource = (
-          setOps.orderNumber ||
-          doc.orderNumber ||
-          doc.stripeSessionId ||
-          doc._id ||
-          ''
-        ).toString()
+        const slugSource = (setOps.orderNumber || doc.orderNumber || doc.stripeSessionId || doc._id || '').toString()
         const desiredSlug = createOrderSlug(slugSource, doc._id)
         const currentSlug = (() => {
           if (!doc?.slug) return ''

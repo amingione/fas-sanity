@@ -298,7 +298,7 @@ export async function sumInventoryTransactions(filters: TransactionSumFilters): 
     clauses.push('type == $type')
     params.type = type
   }
-  const query = `coalesce(sum(*[${clauses.join(' && ')}].quantity), 0)`
+  const query = `coalesce(math::sum(*[${clauses.join(' && ')}].quantity), 0)`
   return toNumber(await client.fetch(query, params))
 }
 

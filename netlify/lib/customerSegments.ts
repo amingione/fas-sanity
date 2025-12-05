@@ -3,7 +3,7 @@ const ORDER_TOTAL_EXPRESSION =
 
 export const CUSTOMER_METRICS_QUERY = `*[_type == "customer" && !(_id in path("drafts.**")) && (!defined($customerId) || _id == $customerId)][0...$limit]{
   _id,
-  "lifetimeValue": coalesce(sum(*[_type == "order" && status == "paid" && customerRef._ref == ^._id].${ORDER_TOTAL_EXPRESSION}), 0),
+  "lifetimeValue": coalesce(math::sum(*[_type == "order" && status == "paid" && customerRef._ref == ^._id].${ORDER_TOTAL_EXPRESSION}), 0),
   "totalOrders": count(*[_type == "order" && customerRef._ref == ^._id]),
   "lastOrderDate": *[_type == "order" && customerRef._ref == ^._id] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) desc)[0]{
     "ts": coalesce(orderDate, createdAt, _createdAt)

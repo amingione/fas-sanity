@@ -2,6 +2,7 @@ import type {SanityClient} from '@sanity/client'
 import {
   normalizeMetadataEntries,
   normalizeOptionSelections,
+  normalizeCartItemChoices,
   resolveUpgradeTotal,
 } from '@fas/sanity-config/utils/cartItemDetails'
 import {
@@ -502,13 +503,57 @@ export async function enrichCartItemsFromSanity(
   return cart.map((item) => {
     if (!item || typeof item !== 'object') return item
     const product = findProductForItem(item, products)
-    if (!product) return item
+    const metadataEntries = ensureMetadataArray(item)
+    const metadataMap = metadataEntries.reduce<Record<string, string>>((acc, entry) => {
+      if (entry.key && entry.value) acc[entry.key] = entry.value
+      return acc
+    }, {})
+    if (!product) {
+      const metaProductId =
+        metadataMap.sanity_product_id ||
+        metadataMap.sanity_product_id_actual ||
+        metadataMap.sanity_product_ref
+      if (!item.productRef && metaProductId) {
+        item.productRef = {_type: 'reference', _ref: metaProductId}
+      }
+      if (!item.sku && metadataMap.sanity_sku) {
+        item.sku = metadataMap.sanity_sku
+      }
+      // Even without a product, derive variant/add-ons/lineTotal
+    }
+    if (!product) {
+      const choices = normalizeCartItemChoices({
+        selectedOption: item.selectedVariant,
+        addOns: item.addOns,
+        optionSummary: item.optionSummary,
+        optionDetails: item.optionDetails,
+        upgrades: item.upgrades,
+      })
+      if (!item.selectedVariant && choices.selectedOption) {
+        item.selectedVariant = choices.selectedOption
+      }
+      if ((!item.addOns || !item.addOns.length) && choices.addOns.length) {
+        item.addOns = choices.addOns
+      }
+      if (item.lineTotal === undefined || item.lineTotal === null) {
+        const qty = resolveQuantity(item.quantity)
+        const base = typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : 0
+        const upg =
+          typeof item.upgradesTotal === 'number' && Number.isFinite(item.upgradesTotal)
+            ? item.upgradesTotal
+            : 0
+        const total = qty * base + upg
+        item.lineTotal = total
+      }
+      return item
+    }
 
     const normalizedOptions = normalizeOptionSelections({
       optionSummary: item.optionSummary,
       optionDetails: item.optionDetails,
       upgrades: item.upgrades,
     })
+    const upgrades = normalizedOptions.upgrades
     item.optionSummary = normalizedOptions.optionSummary
     item.optionDetails = normalizedOptions.optionDetails.length
       ? normalizedOptions.optionDetails
@@ -536,6 +581,8 @@ export async function enrichCartItemsFromSanity(
         item.sku = product.sku
       }
       appendMetadata(item, 'sanity_sku', product.sku, 'derived')
+    } else if (!item.sku && metadataMap.sanity_sku) {
+      item.sku = metadataMap.sanity_sku
     }
 
     const productSlug = product.slug?.current
@@ -591,6 +638,31 @@ export async function enrichCartItemsFromSanity(
       }
     } else if (item.validationIssues?.length) {
       delete item.validationIssues
+    }
+
+    const choices = normalizeCartItemChoices({
+      selectedOption: item.selectedVariant,
+      addOns: item.addOns,
+      optionSummary,
+      optionDetails,
+      upgrades,
+    })
+    if (!item.selectedVariant && choices.selectedOption) {
+      item.selectedVariant = choices.selectedOption
+    }
+    if ((!item.addOns || !item.addOns.length) && choices.addOns.length) {
+      item.addOns = choices.addOns
+    }
+
+    if (item.lineTotal === undefined || item.lineTotal === null) {
+      const qty = resolveQuantity(item.quantity)
+      const base = typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : 0
+      const upg =
+        typeof item.upgradesTotal === 'number' && Number.isFinite(item.upgradesTotal)
+          ? item.upgradesTotal
+          : 0
+      const total = qty * base + upg
+      item.lineTotal = total
     }
 
     syncMetadataSummary(item)

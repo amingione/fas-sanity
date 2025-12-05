@@ -1,6 +1,6 @@
-import {useEffect, useMemo, useState} from 'react'
+import {forwardRef, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
-import {Card, Flex, Grid, Heading, Spinner, Stack, Text} from '@sanity/ui'
+import {Box, Card, Flex, Grid, Heading, Spinner, Stack, Text} from '@sanity/ui'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../../../shared/docTypes'
 
 const API_VERSION = '2024-10-01'
@@ -62,9 +62,9 @@ const DASHBOARD_QUERY = `{
     "completedToday": count(*[_type == "manufacturingOrder" && status == "completed" && actualCompletion >= $today])
   },
   "inventoryValue": {
-    "totalValue": sum(*[_type == "${INVENTORY_DOCUMENT_TYPE}"].totalValue),
-    "avgCost": avg(*[_type == "${INVENTORY_DOCUMENT_TYPE}"].unitCost),
-    "avgTurnover": avg(*[_type == "${INVENTORY_DOCUMENT_TYPE}"].turnoverRate)
+    "totalValue": math::sum(*[_type == "${INVENTORY_DOCUMENT_TYPE}"].totalValue),
+    "avgCost": math::avg(*[_type == "${INVENTORY_DOCUMENT_TYPE}"].unitCost),
+    "avgTurnover": math::avg(*[_type == "${INVENTORY_DOCUMENT_TYPE}"].turnoverRate)
   },
   "valueByCategory": *[_type == "${INVENTORY_DOCUMENT_TYPE}"]{
     "category": coalesce(product->category->title, "Uncategorized"),
@@ -105,7 +105,7 @@ const StatCard = ({
   </Card>
 )
 
-const InventoryDashboard = () => {
+const InventoryDashboard = forwardRef<HTMLDivElement>(function InventoryDashboard(_props, ref) {
   const client = useClient({apiVersion: API_VERSION})
   const [data, setData] = useState<DashboardQueryResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -149,161 +149,167 @@ const InventoryDashboard = () => {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" padding={6}>
-        <Spinner />
-      </Flex>
+      <Box ref={ref}>
+        <Flex align="center" justify="center" padding={6}>
+          <Spinner />
+        </Flex>
+      </Box>
     )
   }
 
   if (error) {
     return (
-      <Card padding={5} tone="critical" radius={3}>
-        <Stack space={3}>
-          <Heading size={2}>Inventory Dashboard</Heading>
-          <Text>{error}</Text>
-        </Stack>
-      </Card>
+      <Box ref={ref}>
+        <Card padding={5} tone="critical" radius={3}>
+          <Stack space={3}>
+            <Heading size={2}>Inventory Dashboard</Heading>
+            <Text>{error}</Text>
+          </Stack>
+        </Card>
+      </Box>
     )
   }
 
-  if (!data) return null
+  if (!data) return <Box ref={ref} />
 
   const {stockOverview, lowStock, manufacturingQueue, inventoryValue} = data
 
   return (
-    <Stack space={4} padding={4}>
-      <Heading size={3}>Inventory Dashboard</Heading>
+    <Box ref={ref}>
+      <Stack space={4} padding={4}>
+        <Heading size={3}>Inventory Dashboard</Heading>
 
-      <Card padding={4} radius={3} shadow={1}>
-        <Stack space={3}>
-          <Text weight="semibold">Stock Overview</Text>
-          <Grid columns={[1, 2, 4]} gap={3}>
-            <StatCard label="In Stock" value={String(stockOverview?.inStock ?? 0)} tone="default" />
-            <StatCard
-              label="Low Stock"
-              value={String(stockOverview?.lowStock ?? 0)}
-              tone="caution"
-            />
-            <StatCard
-              label="Out of Stock"
-              value={String(stockOverview?.outOfStock ?? 0)}
-              tone="critical"
-            />
-            <StatCard
-              label="Overstocked"
-              value={String(stockOverview?.overstocked ?? 0)}
-              tone="neutral"
-            />
-          </Grid>
-        </Stack>
-      </Card>
+        <Card padding={4} radius={3} shadow={1}>
+          <Stack space={3}>
+            <Text weight="semibold">Stock Overview</Text>
+            <Grid columns={[1, 2, 4]} gap={3}>
+              <StatCard label="In Stock" value={String(stockOverview?.inStock ?? 0)} tone="default" />
+              <StatCard
+                label="Low Stock"
+                value={String(stockOverview?.lowStock ?? 0)}
+                tone="caution"
+              />
+              <StatCard
+                label="Out of Stock"
+                value={String(stockOverview?.outOfStock ?? 0)}
+                tone="critical"
+              />
+              <StatCard
+                label="Overstocked"
+                value={String(stockOverview?.overstocked ?? 0)}
+                tone="neutral"
+              />
+            </Grid>
+          </Stack>
+        </Card>
 
-      <Card padding={4} radius={3} shadow={1}>
-        <Stack space={3}>
-          <Text weight="semibold">Low Stock Alerts</Text>
-          {lowStock?.length ? (
-            <Stack space={2}>
-              {lowStock.slice(0, 10).map((item, index) => (
-                <Card key={`${item.product?.title || index}-${item.product?.sku || index}`} padding={3} radius={2} border>
-                  <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
-                    <Stack space={1}>
-                      <Text weight="semibold">{item.product?.title || 'Product'}</Text>
-                      {item.product?.sku && (
-                        <Text size={1} muted>
-                          SKU: {item.product.sku}
+        <Card padding={4} radius={3} shadow={1}>
+          <Stack space={3}>
+            <Text weight="semibold">Low Stock Alerts</Text>
+            {lowStock?.length ? (
+              <Stack space={2}>
+                {lowStock.slice(0, 10).map((item, index) => (
+                  <Card key={`${item.product?.title || index}-${item.product?.sku || index}`} padding={3} radius={2} border>
+                    <Flex justify="space-between" align="center" wrap="wrap" gap={3}>
+                      <Stack space={1}>
+                        <Text weight="semibold">{item.product?.title || 'Product'}</Text>
+                        {item.product?.sku && (
+                          <Text size={1} muted>
+                            SKU: {item.product.sku}
+                          </Text>
+                        )}
+                      </Stack>
+                      <Flex gap={4} align="center">
+                        <Text size={1}>
+                          Available:{' '}
+                          <strong>{Number(item.quantityAvailable ?? 0).toFixed(0)}</strong>
                         </Text>
-                      )}
-                    </Stack>
-                    <Flex gap={4} align="center">
-                      <Text size={1}>
-                        Available:{' '}
-                        <strong>{Number(item.quantityAvailable ?? 0).toFixed(0)}</strong>
-                      </Text>
-                      <Text size={1}>
-                        Reorder:{' '}
-                        <strong>{Number(item.reorderPoint ?? 0).toFixed(0)}</strong>
-                      </Text>
-                      <Text size={1}>
-                        In Production:{' '}
-                        <strong>{Number(item.quantityInProduction ?? 0).toFixed(0)}</strong>
-                      </Text>
+                        <Text size={1}>
+                          Reorder:{' '}
+                          <strong>{Number(item.reorderPoint ?? 0).toFixed(0)}</strong>
+                        </Text>
+                        <Text size={1}>
+                          In Production:{' '}
+                          <strong>{Number(item.quantityInProduction ?? 0).toFixed(0)}</strong>
+                        </Text>
+                      </Flex>
                     </Flex>
-                  </Flex>
-                </Card>
-              ))}
-            </Stack>
-          ) : (
-            <Text size={1} muted>
-              No products below their reorder point.
-            </Text>
-          )}
-        </Stack>
-      </Card>
+                  </Card>
+                ))}
+              </Stack>
+            ) : (
+              <Text size={1} muted>
+                No products below their reorder point.
+              </Text>
+            )}
+          </Stack>
+        </Card>
 
-      <Card padding={4} radius={3} shadow={1}>
-        <Stack space={3}>
-          <Text weight="semibold">Manufacturing Queue</Text>
-          <Grid columns={[1, 3]} gap={3}>
-            <StatCard label="Urgent" value={String(manufacturingQueue?.urgent ?? 0)} tone="critical" />
-            <StatCard
-              label="In Production"
-              value={String(manufacturingQueue?.inProduction ?? 0)}
-              tone="default"
-            />
-            <StatCard
-              label="Completed Today"
-              value={String(manufacturingQueue?.completedToday ?? 0)}
-              tone="positive"
-            />
-          </Grid>
-        </Stack>
-      </Card>
+        <Card padding={4} radius={3} shadow={1}>
+          <Stack space={3}>
+            <Text weight="semibold">Manufacturing Queue</Text>
+            <Grid columns={[1, 3]} gap={3}>
+              <StatCard label="Urgent" value={String(manufacturingQueue?.urgent ?? 0)} tone="critical" />
+              <StatCard
+                label="In Production"
+                value={String(manufacturingQueue?.inProduction ?? 0)}
+                tone="default"
+              />
+              <StatCard
+                label="Completed Today"
+                value={String(manufacturingQueue?.completedToday ?? 0)}
+                tone="positive"
+              />
+            </Grid>
+          </Stack>
+        </Card>
 
-      <Card padding={4} radius={3} shadow={1}>
-        <Stack space={3}>
-          <Text weight="semibold">Inventory Value & Turnover</Text>
-          <Grid columns={[1, 2]} gap={4}>
-            <Stack space={2}>
-              <Text size={1} muted>
-                Total On-Hand Value
-              </Text>
-              <Heading size={2}>
-                {currencyFormatter.format(Math.max(0, inventoryValue?.totalValue || 0))}
-              </Heading>
-              <Text size={1} muted>
-                Avg Unit Cost: {currencyFormatter.format(Math.max(0, inventoryValue?.avgCost || 0))}
-              </Text>
-              <Text size={1} muted>
-                Avg Turnover (yr): {numberFormatter.format(Math.max(0, inventoryValue?.avgTurnover || 0))}
-              </Text>
-            </Stack>
-            <Stack space={2}>
-              <Text size={1} muted>
-                Value by Category
-              </Text>
-              {categoryBreakdown.length ? (
-                <Stack space={1}>
-                  {categoryBreakdown.slice(0, 6).map((entry) => (
-                    <Flex key={entry.label} justify="space-between">
-                      <Text size={1}>{entry.label}</Text>
-                      <Text size={1} weight="semibold">
-                        {currencyFormatter.format(entry.value)}
-                      </Text>
-                    </Flex>
-                  ))}
-                </Stack>
-              ) : (
+        <Card padding={4} radius={3} shadow={1}>
+          <Stack space={3}>
+            <Text weight="semibold">Inventory Value & Turnover</Text>
+            <Grid columns={[1, 2]} gap={4}>
+              <Stack space={2}>
                 <Text size={1} muted>
-                  Not enough data yet.
+                  Total On-Hand Value
                 </Text>
-              )}
-            </Stack>
-          </Grid>
-        </Stack>
-      </Card>
-    </Stack>
+                <Heading size={2}>
+                  {currencyFormatter.format(Math.max(0, inventoryValue?.totalValue || 0))}
+                </Heading>
+                <Text size={1} muted>
+                  Avg Unit Cost: {currencyFormatter.format(Math.max(0, inventoryValue?.avgCost || 0))}
+                </Text>
+                <Text size={1} muted>
+                  Avg Turnover (yr): {numberFormatter.format(Math.max(0, inventoryValue?.avgTurnover || 0))}
+                </Text>
+              </Stack>
+              <Stack space={2}>
+                <Text size={1} muted>
+                  Value by Category
+                </Text>
+                {categoryBreakdown.length ? (
+                  <Stack space={1}>
+                    {categoryBreakdown.slice(0, 6).map((entry) => (
+                      <Flex key={entry.label} justify="space-between">
+                        <Text size={1}>{entry.label}</Text>
+                        <Text size={1} weight="semibold">
+                          {currencyFormatter.format(entry.value)}
+                        </Text>
+                      </Flex>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Text size={1} muted>
+                    Not enough data yet.
+                  </Text>
+                )}
+              </Stack>
+            </Grid>
+          </Stack>
+        </Card>
+      </Stack>
+    </Box>
   )
-}
+})
 
 function toPositive(value: number): number {
   const parsed = Number(value)
