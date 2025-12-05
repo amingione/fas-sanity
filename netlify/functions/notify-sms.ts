@@ -31,7 +31,7 @@ export const handler: Handler = async (event) => {
     let messageText = ''
 
     // ============================
-    // ORDER ALERT
+    // ORDER ALERT (UPDATED)
     // ============================
     if (docType === 'order') {
       const customer =
@@ -40,13 +40,65 @@ export const handler: Handler = async (event) => {
         webhook.customer?.name ||
         'New Customer'
 
-      const total = webhook.total || webhook.amount || webhook.orderTotal || 'N/A'
+      const total = webhook.totalAmount || webhook.total || webhook.amount || webhook.orderTotal || 'N/A'
+      const orderType = webhook.orderType || 'online'
+      const orderNumber = webhook.orderNumber || id
 
-      messageText = `
-FAS MOTORS: NEW ORDER
+      // DISTINGUISH WHOLESALE VS REGULAR ORDERS
+      if (orderType === 'wholesale') {
+        const vendorName = webhook.wholesaleDetails?.vendorName || customer
+        const itemCount = webhook.cart?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+        const poNumber = webhook.wholesaleDetails?.poNumber
+        const poLine = poNumber ? `\nPO: ${poNumber}` : ''
+
+        messageText = `
+🛒 FAS MOTORS: NEW WHOLESALE ORDER
+Order: ${orderNumber}
+Vendor: ${vendorName}${poLine}
+Items: ${itemCount}
+Total: $${total}
+Open: ${studioUrl}
+`.trim()
+      } else {
+        // REGULAR RETAIL ORDER
+        messageText = `
+🛍️ FAS MOTORS: NEW ORDER
+Order: ${orderNumber}
 Customer: ${customer}
 Total: $${total}
-Order ID: ${id}
+Open: ${studioUrl}
+`.trim()
+      }
+    }
+
+    // ============================
+    // APPOINTMENT REMINDER (NEW)
+    // ============================
+    if (docType === 'appointment') {
+      const customer = webhook.customer?.name || 'Unknown Customer'
+      const appointmentNumber = webhook.appointmentNumber || id
+      const scheduledDate = webhook.scheduledDate
+        ? new Date(webhook.scheduledDate).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+        : 'TBD'
+
+      const service = webhook.service?.title || 'Service'
+      const vehicle =
+        webhook.vehicle?.make && webhook.vehicle?.model
+          ? `${webhook.vehicle.year || ''} ${webhook.vehicle.make} ${webhook.vehicle.model}`.trim()
+          : 'Vehicle'
+
+      messageText = `
+📅 FAS MOTORS: NEW APPOINTMENT
+Appt #: ${appointmentNumber}
+Customer: ${customer}
+Vehicle: ${vehicle}
+Service: ${service}
+Scheduled: ${scheduledDate}
 Open: ${studioUrl}
 `.trim()
     }
@@ -61,7 +113,7 @@ Open: ${studioUrl}
       const preview = webhook.body?.substring(0, 80) + (webhook.body?.length > 80 ? '...' : '')
 
       messageText = `
-FAS MOTORS: NEW INBOUND MESSAGE
+💬 FAS MOTORS: NEW INBOUND MESSAGE
 From: ${customer}
 Preview: ${preview}
 Message ID: ${id}
@@ -79,7 +131,7 @@ Open: ${studioUrl}
       const amount = webhook.total || webhook.subtotal || 'N/A'
 
       messageText = `
-FAS MOTORS: NEW QUOTE REQUEST
+💰 FAS MOTORS: NEW QUOTE REQUEST
 Quote #: ${quoteNum}
 Customer: ${customer}
 Total: $${amount}
@@ -102,7 +154,7 @@ Open: ${studioUrl}
       const categoryText = category ? `\nCategory: ${category}` : ''
 
       messageText = `
-FAS MOTORS: NEW VENDOR MESSAGE ${priorityEmoji}
+📧 FAS MOTORS: NEW VENDOR MESSAGE ${priorityEmoji}
 From: ${vendor}
 Subject: ${subject}
 Priority: ${priority.toUpperCase()}${categoryText}
