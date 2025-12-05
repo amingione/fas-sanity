@@ -278,6 +278,11 @@ export async function createEasyPostLabel(
   }
 
   if (orderId) {
+    const rateId =
+      (selectedRate as any)?.id ||
+      (updatedShipment?.selected_rate as any)?.id ||
+      (shipment?.selected_rate as any)?.id
+
     const logEntry = {
       _type: 'shippingLogEntry',
       status: 'label_created',
@@ -323,6 +328,8 @@ export async function createEasyPostLabel(
         'fulfillment.trackingNumber': trackingCode,
         'fulfillment.trackingUrl': trackingUrl,
         'fulfillment.shippedAt': shippingStatus.lastEventAt,
+        ...(rateId ? {'fulfillment.easypostRateId': rateId} : {}),
+        ...(shippingStatus.service ? {'fulfillment.service': shippingStatus.service} : {}),
       }).filter(([, value]) => value !== undefined),
     )
 

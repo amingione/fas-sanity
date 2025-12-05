@@ -910,66 +910,102 @@ const createWholesaleOrdersSubSection = (S: any) =>
         .title('Wholesale Orders')
         .items([
           S.listItem()
-            .id('wholesale-orders-all')
-            .title('All Wholesale Orders')
+            .id('wholesale-orders-overview')
+            .title('Overview')
             .icon(CaseIcon)
             .child(
               S.component()
-                .id('wholesale-orders-all-pane')
+                .id('wholesale-orders-overview-pane')
                 .title('Wholesale Orders Overview')
                 .component(WholesaleOrdersPane as ComponentType),
             ),
           S.listItem()
             .id('wholesale-orders-pending')
-            .title('Pending')
+            .title('Pending Review')
             .icon(ClockIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
                 .title('Pending Wholesale Orders')
-                .filter('_type == "order" && orderType == "wholesale" && status == "pending"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "pending"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
           S.listItem()
-            .id('wholesale-orders-production')
-            .title('In Production')
-            .icon(ActivityIcon)
+            .id('wholesale-orders-approved')
+            .title('Approved - Awaiting Payment')
+            .icon(CheckmarkCircleIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
-                .title('In Production')
+                .title('Approved Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && wholesaleWorkflowStatus == "in_production"',
+                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "approved"',
                 )
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
           S.listItem()
-            .id('wholesale-orders-ready')
-            .title('Ready to Ship')
+            .id('wholesale-orders-paid')
+            .title('Paid - Ready to Fulfill')
+            .icon(CreditCardIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('order')
+                .title('Paid Wholesale Orders')
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "paid"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
+            ),
+          S.listItem()
+            .id('wholesale-orders-partial')
+            .title('Partially Fulfilled')
             .icon(PackageIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
-                .title('Ready to Ship')
+                .title('Partially Fulfilled Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && wholesaleWorkflowStatus == "ready_to_ship"',
+                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "partial"',
                 )
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
           S.listItem()
-            .id('wholesale-orders-shipped')
-            .title('Shipped')
+            .id('wholesale-orders-fulfilled')
+            .title('Fulfilled')
             .icon(RocketIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
-                .title('Shipped Wholesale Orders')
-                .filter('_type == "order" && orderType == "wholesale" && status == "shipped"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
+                .title('Fulfilled Wholesale Orders')
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "fulfilled"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
+            ),
+          S.listItem()
+            .id('wholesale-orders-all')
+            .title('All Wholesale Orders')
+            .icon(ClipboardIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('order')
+                .title('All Wholesale Orders')
+                .filter('_type == "order" && orderType == "wholesale"')
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
         ]),
     )

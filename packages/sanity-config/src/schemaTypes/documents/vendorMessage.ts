@@ -19,6 +19,11 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'message',
+      title: 'Message',
+      type: 'text',
+    }),
+    defineField({
       name: 'status',
       title: 'Status',
       type: 'string',
@@ -63,7 +68,7 @@ export default defineType({
       name: 'relatedOrder',
       title: 'Related Order',
       type: 'reference',
-      to: [{type: 'purchaseOrder'}],
+      to: [{type: 'order'}, {type: 'purchaseOrder'}],
     }),
     defineField({
       name: 'relatedInvoice',

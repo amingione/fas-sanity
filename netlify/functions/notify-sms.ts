@@ -47,7 +47,11 @@ export const handler: Handler = async (event) => {
       // DISTINGUISH WHOLESALE VS REGULAR ORDERS
       if (orderType === 'wholesale') {
         const vendorName = webhook.wholesaleDetails?.vendorName || customer
-        const itemCount = webhook.cart?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+        const itemCount =
+          webhook.cart?.reduce(
+            (sum: number, item: {quantity?: number}) => sum + (item.quantity || 0),
+            0,
+          ) || 0
         const poNumber = webhook.wholesaleDetails?.poNumber
         const poLine = poNumber ? `\nPO: ${poNumber}` : ''
 

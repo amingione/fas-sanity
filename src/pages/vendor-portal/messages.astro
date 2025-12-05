@@ -1,0 +1,278 @@
+---
+import {createClient} from '@sanity/client'
+import Layout from '../../layouts/Layout.astro'
+
+export const prerender = false
+
+const projectId =
+  import.meta.env.SANITY_STUDIO_PROJECT_ID ||
+  import.meta.env.SANITY_PROJECT_ID ||
+  import.meta.env.PUBLIC_SANITY_PROJECT_ID ||
+  ''
+const dataset =
+  import.meta.env.SANITY_STUDIO_DATASET ||
+  import.meta.env.SANITY_DATASET ||
+  import.meta.env.PUBLIC_SANITY_DATASET ||
+  'production'
+const token =
+  import.meta.env.SANITY_API_TOKEN ||
+  import.meta.env.SANITY_READ_TOKEN ||
+  import.meta.env.SANITY_WRITE_TOKEN ||
+  ''
+
+const vendorId = Astro.url.searchParams.get('vendorId')
+const apiVersion = '2024-10-01'
+
+let messages:
+  | Array<{
+      _id: string
+      subject?: string
+      message?: string
+      status?: string
+      priority?: string
+      category?: string
+      _createdAt?: string
+      orderNumber?: string
+      orderId?: string
+    }>
+  | null = null
+let loadError: string | null = null
+
+if (!vendorId) {
+  loadError = 'Add ?vendorId=VEN... to view vendor messages.'
+} else if (!projectId) {
+  loadError = 'Sanity project ID is not configured.'
+} else {
+  try {
+    const client = createClient({
+      projectId,
+      dataset,
+      apiVersion,
+      token: token || undefined,
+      useCdn: false,
+    })
+
+    messages =
+      (await client.fetch(
+        `*[_type == "vendorMessage" && vendor._ref == $vendorId] | order(_createdAt desc){
+          _id,
+          subject,
+          message,
+          status,
+          priority,
+          category,
+          _createdAt,
+          "orderNumber": relatedOrder->orderNumber,
+          "orderId": relatedOrder->_id
+        }`,
+        {vendorId},
+      )) || []
+  } catch (err) {
+    loadError = err instanceof Error ? err.message : 'Unable to load messages.'
+  }
+}
+---
+
+<Layout title="Vendor Messages">
+  <main>
+    <section class="page">
+      <header class="header">
+        <div>
+          <p class="eyebrow">Vendor Portal</p>
+          <h1>Messages</h1>
+          <p class="subhead">
+            Conversations and updates tied to your wholesale orders. Use a vendor portal session or
+            append <code>?vendorId=</code> to preview a vendor’s inbox.
+          </p>
+        </div>
+      </header>
+
+      {loadError && <div class="card warning">{loadError}</div>}
+
+      {!loadError && messages?.length === 0 && <div class="card muted">No messages yet.</div>}
+
+      {!loadError && messages && messages.length > 0 && (
+        <div class="grid">
+          {messages.map((msg) => (
+            <article class="card message" data-priority={msg.priority || 'normal'}>
+              <div class="row">
+                <div>
+                  <p class="eyebrow">{msg.category || 'order'}</p>
+                  <h3>{msg.subject || 'New message'}</h3>
+                </div>
+                <span class="badge">{msg.priority || 'normal'}</span>
+              </div>
+              {msg.message && <p class="body">{msg.message}</p>}
+              {msg.orderNumber && (
+                <a class="link" href={`/vendor-portal/orders/${msg.orderId || ''}`}>
+                  View Order {msg.orderNumber}
+                </a>
+              )}
+              <div class="meta">
+                <span>
+                  {msg._createdAt
+                    ? new Date(msg._createdAt).toLocaleString()
+                    : 'Timestamp unavailable'}
+                </span>
+                <span>{msg.status || 'open'}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  </main>
+</Layout>
+
+<style>
+  :global(body) {
+    background: #0f172a;
+    color: #0b1221;
+  }
+
+  main {
+    min-height: 100vh;
+    padding: 48px 24px 64px;
+    background: radial-gradient(circle at 20% 20%, #1e293b 0, transparent 25%),
+      radial-gradient(circle at 80% 0%, #0ea5e9 0, transparent 20%),
+      linear-gradient(180deg, #0f172a 0%, #0b1221 100%);
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.2);
+  }
+
+  .header h1 {
+    margin: 6px 0;
+    font-size: 32px;
+    color: #0b1221;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0ea5e9;
+    margin: 0;
+  }
+
+  .subhead {
+    margin: 0;
+    color: #475569;
+    max-width: 720px;
+    line-height: 1.5;
+  }
+
+  .card {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 16px 18px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .card.warning {
+    border-color: #f97316;
+    background: #fff7ed;
+    color: #9a3412;
+  }
+
+  .card.muted {
+    color: #64748b;
+  }
+
+  .grid {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .message h3 {
+    margin: 6px 0;
+  }
+
+  .message .body {
+    margin: 8px 0 12px;
+    color: #334155;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #e2e8f0;
+    color: #0b1221;
+  }
+
+  .message[data-priority='high'] .badge,
+  .message[data-priority='urgent'] .badge {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .message[data-priority='low'] .badge {
+    background: #ecfeff;
+    color: #0e7490;
+  }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  .link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #0ea5e9;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  code {
+    background: #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  @media (max-width: 720px) {
+    main {
+      padding: 24px 12px 48px;
+    }
+    .page {
+      padding: 20px;
+    }
+    .row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .meta {
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
+</style>

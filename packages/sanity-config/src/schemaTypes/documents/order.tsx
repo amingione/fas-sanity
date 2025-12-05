@@ -8,6 +8,7 @@ import {
   CheckmarkCircleIcon,
   CopyIcon,
   TrashIcon,
+  EnvelopeIcon,
 } from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
 import React from 'react'
@@ -191,9 +192,16 @@ const orderSchema = defineType({
   initialValue: async (_, context) => {
     const baseDoc = (context as any)?.document || {}
     const orderType = await deriveOrderType(baseDoc, (context as any)?.getClient)
+    const workflowDefaults =
+      orderType === 'wholesale'
+        ? {
+            wholesaleWorkflowStatus: 'pending',
+          }
+        : {}
     return {
       orderType,
       currency: 'USD',
+      ...workflowDefaults,
     }
   },
   groups: [
@@ -262,6 +270,26 @@ const orderSchema = defineType({
       },
     }),
     defineField({
+      name: 'wholesaleWorkflowStatus',
+      title: 'Wholesale Workflow Status',
+      type: 'string',
+      description: 'Internal workflow for wholesale orders',
+      group: 'basics',
+      hidden: ({document}) => document?.orderType !== 'wholesale',
+      options: {
+        list: [
+          {title: 'Pending Review', value: 'pending'},
+          {title: 'Approved - Awaiting Payment', value: 'approved'},
+          {title: 'Paid - Ready to Fulfill', value: 'paid'},
+          {title: 'Partially Fulfilled', value: 'partial'},
+          {title: 'Fulfilled', value: 'fulfilled'},
+          {title: 'Cancelled', value: 'cancelled'},
+        ],
+        layout: 'dropdown',
+      },
+      initialValue: 'pending',
+    }),
+    defineField({
       name: 'wholesaleDetails',
       title: 'Wholesale Details',
       type: 'object',
@@ -276,6 +304,17 @@ const orderSchema = defineType({
           to: [{type: 'vendor'}],
         },
         {
+          name: 'vendorId',
+          title: 'Vendor ID',
+          type: 'string',
+          description: 'External vendor ID (optional)',
+        },
+        {
+          name: 'vendorName',
+          title: 'Vendor Name',
+          type: 'string',
+        },
+        {
           name: 'pricingTier',
           title: 'Pricing Tier',
           type: 'string',
@@ -286,6 +325,11 @@ const orderSchema = defineType({
               {title: 'Platinum', value: 'platinum'},
             ],
           },
+        },
+        {
+          name: 'poNumber',
+          title: 'PO Number',
+          type: 'string',
         },
         {
           name: 'bulkQuantity',
@@ -304,18 +348,98 @@ const orderSchema = defineType({
           type: 'string',
           options: {
             list: [
-              {title: 'Net 30', value: 'net_30'},
-              {title: 'Net 60', value: 'net_60'},
-              {title: 'Due on Receipt', value: 'due_on_receipt'},
+              {title: 'Immediate Payment', value: 'immediate'},
+              {title: 'Net 30', value: 'net30'},
+              {title: 'Net 60', value: 'net60'},
+              {title: 'Net 90', value: 'net90'},
+              {title: 'Upon Receipt', value: 'upon_receipt'},
+              // legacy values kept for backwards compatibility
+              {title: 'Net 30 (legacy)', value: 'net_30'},
+              {title: 'Net 60 (legacy)', value: 'net_60'},
+              {title: 'Due on Receipt (legacy)', value: 'due_on_receipt'},
             ],
-            layout: 'radio',
           },
+          initialValue: 'immediate',
         },
         {
           name: 'bulkUnitPrice',
           title: 'Bulk Unit Price',
           type: 'number',
           validation: (Rule) => Rule.min(0),
+        },
+        {
+          name: 'workflowStatus',
+          title: 'Workflow Status',
+          type: 'string',
+          options: {
+            list: [
+              {title: 'Pending Review', value: 'pending'},
+              {title: 'Approved - Awaiting Payment', value: 'approved'},
+              {title: 'Paid - Ready to Fulfill', value: 'paid'},
+              {title: 'Partially Fulfilled', value: 'partial'},
+              {title: 'Fulfilled', value: 'fulfilled'},
+              {title: 'Cancelled', value: 'cancelled'},
+            ],
+          },
+          initialValue: 'pending',
+        },
+        {
+          name: 'paymentLinkId',
+          title: 'Payment Link ID',
+          type: 'string',
+          description: 'Stripe payment link for this order',
+        },
+        {
+          name: 'approvedAt',
+          title: 'Approved At',
+          type: 'datetime',
+        },
+        {
+          name: 'approvedBy',
+          title: 'Approved By',
+          type: 'string',
+        },
+        {
+          name: 'paidAt',
+          title: 'Paid At',
+          type: 'datetime',
+        },
+        {
+          name: 'dueDate',
+          title: 'Payment Due Date',
+          type: 'date',
+          description: 'For net terms orders',
+        },
+        {
+          name: 'partialFulfillment',
+          title: 'Partial Fulfillment',
+          type: 'object',
+          fields: [
+            {
+              name: 'enabled',
+              title: 'Split Order',
+              type: 'boolean',
+            },
+            {
+              name: 'fulfilledItems',
+              title: 'Fulfilled Items',
+              type: 'array',
+              of: [{type: 'string'}],
+              description: 'SKUs of items already shipped',
+            },
+            {
+              name: 'pendingItems',
+              title: 'Pending Items',
+              type: 'array',
+              of: [{type: 'string'}],
+              description: 'SKUs of items still waiting (preorder/backorder)',
+            },
+            {
+              name: 'notes',
+              title: 'Partial Fulfillment Notes',
+              type: 'text',
+            },
+          ],
         },
         {
           name: 'notes',
@@ -511,6 +635,15 @@ const orderSchema = defineType({
       readOnly: true,
       hidden: true,
     }),
+    defineField({
+      name: 'stripeSummary',
+      type: 'stripeOrderSummary',
+      title: 'Stripe Summary',
+      description: 'Stripe checkout/payment snapshot',
+      group: 'payment',
+      readOnly: true,
+      options: {collapsible: true, collapsed: true},
+    }),
 
     // Fulfillment
     defineField({
@@ -537,6 +670,77 @@ const orderSchema = defineType({
             layout: 'dropdown',
           },
           initialValue: 'unfulfilled',
+        },
+        {
+          name: 'shippingAddress',
+          type: 'shippingAddress',
+          title: 'Shipping Address',
+          options: {collapsible: true, collapsed: false},
+        },
+        {
+          name: 'packageDimensions',
+          type: 'object',
+          title: 'Package Dimensions & Weight',
+          options: {collapsible: true, collapsed: true},
+          fields: [
+            {
+              name: 'weightDisplay',
+              type: 'string',
+              title: 'Weight',
+              readOnly: true,
+              description: 'Auto-filled from Stripe or product data (e.g., 8 lb)',
+            },
+            {
+              name: 'dimensionsDisplay',
+              type: 'string',
+              title: 'Dimensions',
+              readOnly: true,
+              description: 'Auto-filled from product data (e.g., 10 x 8 x 2 in)',
+            },
+            {name: 'length', type: 'number', title: 'Length (inches)'},
+            {name: 'width', type: 'number', title: 'Width (inches)'},
+            {name: 'height', type: 'number', title: 'Height (inches)'},
+            {name: 'weight', type: 'number', title: 'Weight'},
+            {
+              name: 'weightUnit',
+              type: 'string',
+              title: 'Weight Unit',
+              options: {
+                list: [
+                  {title: 'Pounds (lbs)', value: 'lbs'},
+                  {title: 'Ounces (oz)', value: 'oz'},
+                  {title: 'Kilograms (kg)', value: 'kg'},
+                ],
+              },
+              hidden: true,
+            },
+            {
+              name: 'dimensionUnit',
+              type: 'string',
+              title: 'Dimension Unit',
+              options: {
+                list: [
+                  {title: 'Inches (in)', value: 'in'},
+                  {title: 'Centimeters (cm)', value: 'cm'},
+                ],
+              },
+              hidden: true,
+            },
+          ],
+        },
+        {
+          name: 'easypostRateId',
+          type: 'string',
+          title: 'EasyPost Rate ID',
+          description: 'Selected shipping rate ID from EasyPost/Stripe',
+          readOnly: true,
+        },
+        {
+          name: 'service',
+          type: 'string',
+          title: 'Shipping Service',
+          description: 'Service level (e.g., Priority, Ground)',
+          readOnly: true,
         },
         {
           name: 'trackingNumber',
@@ -577,19 +781,33 @@ const orderSchema = defineType({
     }),
     defineField({
       name: 'shippingAddress',
-      type: 'object',
+      type: 'shippingAddress',
       title: 'Shipping Address',
       group: 'fulfillment',
-      hidden: ({document}) => document?.orderType !== 'online',
+      hidden: undefined,
+      options: {
+        collapsible: true,
+        collapsed: false,
+      },
+    }),
+    defineField({
+      name: 'billingAddress',
+      type: 'object',
+      title: 'Billing Address',
+      group: 'customer',
+      options: {
+        collapsible: true,
+        collapsed: true,
+      },
       fields: [
-        {name: 'name', type: 'string', title: 'Recipient Name'},
+        {name: 'name', type: 'string', title: 'Billing Name'},
         {name: 'phone', type: 'string', title: 'Phone'},
         {name: 'email', type: 'string', title: 'Email'},
         {name: 'addressLine1', type: 'string', title: 'Address Line 1'},
         {name: 'addressLine2', type: 'string', title: 'Address Line 2'},
         {name: 'city', type: 'string', title: 'City'},
-        {name: 'state', type: 'string', title: 'State'},
-        {name: 'postalCode', type: 'string', title: 'ZIP Code'},
+        {name: 'state', type: 'string', title: 'State / Province'},
+        {name: 'postalCode', type: 'string', title: 'Postal Code'},
         {name: 'country', type: 'string', title: 'Country'},
       ],
     }),
@@ -866,7 +1084,8 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
     if (!doc || typeof doc !== 'object') {
       return {tracking: undefined, labelUrl: undefined, isFulfilled: false}
     }
-    const tracking = asOptionalString(doc.trackingNumber) || asOptionalString(doc.manualTrackingNumber)
+    const tracking =
+      asOptionalString(doc.trackingNumber) || asOptionalString(doc.manualTrackingNumber)
     const labelUrl = asOptionalString(doc.shippingLabelUrl)
     const fulfillmentStatus = asOptionalString(doc?.fulfillment?.status)?.toLowerCase()
     const isFulfilled =
@@ -880,11 +1099,141 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
   return [
     ...prev,
 
+    // Message vendor (creates vendorMessage linked to order)
+    (props) => {
+      const {id, draft, published} = props
+      const doc = draft || published
+      const anyDoc = doc as any
+      if (!anyDoc || anyDoc.orderType !== 'wholesale') return null
+
+      const vendorRef = anyDoc.wholesaleDetails?.vendor?._ref || anyDoc.customerRef?._ref
+      const orderId = normalizeDocumentId(anyDoc?._id || id)
+      const subject = `Regarding Order ${anyDoc.orderNumber || orderId || 'wholesale'}`
+
+      return {
+        name: 'messageVendor',
+        label: 'Message Vendor',
+        icon: EnvelopeIcon,
+        tone: 'primary',
+        disabled: !vendorRef || !orderId,
+        title: vendorRef ? undefined : 'Add a vendor to this order first',
+        onHandle: async () => {
+          if (!vendorRef || !orderId) {
+            props.onComplete()
+            return
+          }
+
+          try {
+            const client = context.getClient({apiVersion: SANITY_API_VERSION})
+            const message = await client.create(
+              {
+                _type: 'vendorMessage',
+                vendor: {_type: 'reference', _ref: vendorRef},
+                subject,
+                status: 'open',
+                priority: 'normal',
+                category: 'order',
+                relatedOrder: {_type: 'reference', _ref: orderId},
+              },
+              {autoGenerateArrayKeys: true},
+            )
+
+            if (typeof window !== 'undefined' && message?._id) {
+              window.location.hash = `#/desk/vendorMessage;${message._id}`
+            }
+          } catch (error) {
+            console.error('messageVendor failed', error)
+            alert('Unable to create vendor message.')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Approve wholesale order (generate payment link or set terms)
+    (props) => {
+      const {id, draft, published} = props
+      const doc = draft || published
+      const anyDoc = doc as any
+      if (!anyDoc || anyDoc.orderType !== 'wholesale') return null
+
+      const workflow =
+        anyDoc.wholesaleDetails?.workflowStatus || anyDoc.wholesaleWorkflowStatus || 'pending'
+
+      return {
+        name: 'approveWholesaleOrder',
+        label: 'Approve Order',
+        icon: CheckmarkCircleIcon,
+        tone: 'positive',
+        disabled: workflow !== 'pending',
+        onHandle: async () => {
+          if (!anyDoc) {
+            alert('Document not found.')
+            props.onComplete()
+            return
+          }
+          const orderId = normalizeDocumentId(anyDoc?._id || id)
+          if (!orderId) {
+            alert('Publish the order before approving.')
+            props.onComplete()
+            return
+          }
+
+          try {
+            const response = await callNetlifyFunction('create-wholesale-payment-link', {
+              json: {orderId},
+            })
+            const payload = await response
+              .clone()
+              .json()
+              .catch(() => null as any)
+
+            if (!response.ok || !payload?.success) {
+              const message =
+                (payload && (payload.error || payload.message)) ||
+                (await readResponseMessage(response))
+              throw new Error(message || 'Unable to approve order.')
+            }
+
+            const client = context.getClient({apiVersion: SANITY_API_VERSION})
+            const patch = client.patch(orderId).set({
+              wholesaleWorkflowStatus: payload.workflowStatus || 'approved',
+              'wholesaleDetails.workflowStatus': payload.workflowStatus || 'approved',
+              'wholesaleDetails.approvedAt': new Date().toISOString(),
+            })
+
+            if (payload.paymentLinkId) {
+              patch.set({'wholesaleDetails.paymentLinkId': payload.paymentLinkId})
+            }
+            if (payload.paymentLinkUrl) {
+              patch.set({'wholesaleDetails.paymentLinkUrl': payload.paymentLinkUrl})
+            }
+            if (payload.dueDate) {
+              patch.set({'wholesaleDetails.dueDate': payload.dueDate})
+            }
+
+            await patch.commit({autoGenerateArrayKeys: true})
+            alert(
+              payload.paymentLinkUrl
+                ? 'Order approved and payment link generated.'
+                : 'Order approved.',
+            )
+          } catch (error) {
+            console.error('approveWholesaleOrder failed', error)
+            alert((error as Error)?.message || 'Unable to approve order.')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
     // Fulfill Order (calls Netlify function)
     (props) => {
       const {id, draft, published} = props
       const doc = draft || published
-       const stateFlags = getStateFlags(doc)
+      const stateFlags = getStateFlags(doc)
       if (!doc) return null
 
       return {
@@ -894,6 +1243,10 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         tone: 'positive',
         disabled: stateFlags.isFulfilled,
         onHandle: async () => {
+          if (!doc) {
+            props.onComplete()
+            return
+          }
           try {
             const orderId = normalizeDocumentId(doc._id || id)
             if (!orderId) {
@@ -1142,11 +1495,17 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         tone: 'primary',
         disabled: !doc || doc?.status === 'cancelled',
         onHandle: async () => {
-          if (!doc) return
+          if (!doc) {
+            props.onComplete()
+            return
+          }
 
           const trackingNumber = prompt('Enter tracking number:', stateFlags.tracking || '')
           const normalized = trackingNumber?.trim()
-          if (!normalized) return
+          if (!normalized) {
+            props.onComplete()
+            return
+          }
 
           const client = context.getClient({apiVersion: SANITY_API_VERSION})
           const patchTargets = resolvePatchTargets(id)
@@ -1194,7 +1553,10 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         tone: hasLabel ? 'default' : 'primary',
         disabled: !doc || !doc?.shippingAddress || doc?.status === 'cancelled',
         onHandle: async () => {
-          if (!doc) return
+          if (!doc) {
+            props.onComplete()
+            return
+          }
           if (hasLabel && stateFlags.labelUrl) {
             openExternalUrl(stateFlags.labelUrl)
             props.onComplete()

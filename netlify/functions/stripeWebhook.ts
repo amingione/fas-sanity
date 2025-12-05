@@ -404,6 +404,84 @@ function applyShippingMetrics(
   if (metrics.dimensions) target.dimensions = metrics.dimensions
 }
 
+function applyPackageDimensions(
+  target: Record<string, any>,
+  metrics: ComputedShippingMetrics | null | undefined,
+  weightOverride?: number,
+) {
+  if (!metrics) return
+  const existing = (target.fulfillment as any)?.packageDimensions || {}
+  const length = metrics.dimensions?.length || existing.length
+  const width = metrics.dimensions?.width || existing.width
+  const height = metrics.dimensions?.height || existing.height
+  const weight = weightOverride ?? metrics.weight?.value ?? existing.weight
+  const unit = existing.weightUnit || 'lb'
+  const weightLabel =
+    weight !== undefined && Number.isFinite(weight) ? `${Number(weight.toFixed(2))} ${unit}` : existing.weightDisplay
+  const dimensionsLabel =
+    length || width || height
+      ? [length, width, height]
+          .map((v) => (Number.isFinite(v as number) ? Number((v as number).toFixed(2)) : ''))
+          .filter((v) => v !== '')
+          .join(' x ') + (length || width || height ? ' in' : '')
+      : existing.dimensionsDisplay
+  if (length === undefined && width === undefined && height === undefined && weight === undefined) {
+    return
+  }
+
+  const next = {
+    ...existing,
+    ...(length !== undefined ? {length} : {}),
+    ...(width !== undefined ? {width} : {}),
+    ...(height !== undefined ? {height} : {}),
+    ...(weight !== undefined ? {weight} : {}),
+    weightUnit: unit,
+    dimensionUnit: 'in',
+    ...(weightLabel ? {weightDisplay: weightLabel} : {}),
+    ...(dimensionsLabel ? {dimensionsDisplay: dimensionsLabel} : {}),
+  }
+
+  if (!target.fulfillment) target.fulfillment = {status: 'unfulfilled'}
+  if (typeof target.fulfillment !== 'object') return
+  ;(target.fulfillment as any).packageDimensions = next
+}
+
+const parsePounds = (value?: string | number | null): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return Number(value)
+  if (typeof value !== 'string') return undefined
+  const match = value.match(/([\d.]+)/)
+  if (!match?.[1]) return undefined
+  const parsed = Number.parseFloat(match[1])
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function resolveShippingWeightLbs(
+  session?: Stripe.Checkout.Session | null,
+  meta?: Record<string, string>,
+): number | undefined {
+  const metaSource = meta || ((session?.metadata || {}) as Record<string, string>)
+  const candidates: Array<string | number | null | undefined> = [
+    (session as any)?.shipping_total_weight_lbs,
+    metaSource['shipping_total_weight_lbs'],
+    metaSource['shipping_total_weight'],
+    metaSource['shipping_weight_lbs'],
+    metaSource['shipping_weight'],
+    (session as any)?.shipping_summary,
+  ]
+  for (const candidate of candidates) {
+    const parsed = parsePounds(candidate as any)
+    if (parsed !== undefined) return parsed
+    if (typeof candidate === 'string' && candidate) {
+      const summaryMatch = candidate.match(/total\s*=\s*([\d.]+)\s*lb/i)
+      if (summaryMatch?.[1]) {
+        const summaryParsed = Number.parseFloat(summaryMatch[1])
+        if (Number.isFinite(summaryParsed)) return summaryParsed
+      }
+    }
+  }
+  return undefined
+}
+
 type StripeContactInfo = {
   name?: string | null
   email?: string | null
@@ -2666,6 +2744,47 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
 
   const customer = await strictFindOrCreateCustomer(checkoutSession)
   const paymentDetails = await strictGetPaymentDetails(paymentIntentId)
+  if (!paymentDetails.paymentIntent) {
+    try {
+      const fallbackPi = await fetchPaymentIntentResource(paymentIntentId)
+      if (fallbackPi) {
+        paymentDetails.paymentIntent = fallbackPi
+        const fallbackCharge =
+          paymentDetails.charge ||
+          (fallbackPi.latest_charge as Stripe.Charge | null | undefined) ||
+          ((fallbackPi as any).charges?.data?.[0] as Stripe.Charge | null | undefined) ||
+          null
+        if (fallbackCharge) {
+          paymentDetails.charge = fallbackCharge
+          const cardDetails = fallbackCharge.payment_method_details?.card
+          if (!paymentDetails.cardBrand && cardDetails?.brand) {
+            paymentDetails.cardBrand = cardDetails.brand
+          }
+          if (!paymentDetails.cardLast4 && cardDetails?.last4) {
+            paymentDetails.cardLast4 = cardDetails.last4
+          }
+          if (!paymentDetails.receiptUrl && fallbackCharge.receipt_url) {
+            paymentDetails.receiptUrl = fallbackCharge.receipt_url
+          }
+          if (!paymentDetails.billingAddress && fallbackCharge.billing_details?.address) {
+            paymentDetails.billingAddress = {
+              name: fallbackCharge.billing_details.name || undefined,
+              addressLine1: fallbackCharge.billing_details.address?.line1 || undefined,
+              addressLine2: fallbackCharge.billing_details.address?.line2 || undefined,
+              city: fallbackCharge.billing_details.address?.city || undefined,
+              state: fallbackCharge.billing_details.address?.state || undefined,
+              postalCode: fallbackCharge.billing_details.address?.postal_code || undefined,
+              country: fallbackCharge.billing_details.address?.country || undefined,
+              phone: fallbackCharge.billing_details.phone || undefined,
+              email: fallbackCharge.billing_details.email || undefined,
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: unable to backfill payment intent for checkout session', err)
+    }
+  }
   const sessionMeta = (checkoutSession.metadata || {}) as Record<string, string>
   const {items: cartItems, products: cartProducts} = await buildCartFromSessionLineItems(
     checkoutSession.id,
@@ -2677,6 +2796,17 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     optionDetails: Array.isArray(item.optionDetails) ? item.optionDetails : [],
     upgrades: Array.isArray(item.upgrades) ? item.upgrades : [],
   }))
+
+  const shippingMetrics = computeShippingMetrics(normalizedCart, cartProducts)
+  const sessionWeight =
+    resolveShippingWeightLbs(checkoutSession, sessionMeta) ||
+    resolveShippingWeightLbs(undefined, paymentDetails.paymentIntent?.metadata as any)
+  if (
+    sessionWeight !== undefined &&
+    (!shippingMetrics.weight || !shippingMetrics.weight.value || shippingMetrics.weight.value <= 0)
+  ) {
+    shippingMetrics.weight = {_type: 'shipmentWeight', value: sessionWeight, unit: 'pound'}
+  }
 
   const stripeSubtotal =
     toCurrencyNumber(toMajorUnits((checkoutSession as any)?.amount_subtotal)) ?? 0
@@ -2777,6 +2907,13 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     .toString()
     .trim()
   const shippingAddress = extractShippingAddressFromSession(checkoutSession, customerEmail)
+  const billingAddress =
+    paymentDetails.billingAddress ||
+    normalizeStripeContactAddress(checkoutSession.customer_details?.address || null, {
+      name: checkoutSession.customer_details?.name || customer?.name || undefined,
+      email: checkoutSession.customer_details?.email || customerEmail || undefined,
+      phone: checkoutSession.customer_details?.phone || undefined,
+    })
   console.log('stripeWebhook: checkout shipping details', (checkoutSession as any).shipping_details)
   console.log('stripeWebhook: checkout customer address', checkoutSession.customer_details?.address)
   console.log('stripeWebhook: extracted checkout shipping address', shippingAddress)
@@ -2821,11 +2958,14 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     amountShipping: resolvedShippingAmount ?? 0,
     currency: currencyUpper || currencyLower || 'USD',
     ...(shippingAddress ? {shippingAddress} : {}),
+    ...(billingAddress ? {billingAddress} : {}),
   }
 
   ensureRequiredPaymentDetails(baseOrderPayload, paymentDetails, 'checkout.session')
 
   applyShippingDetailsToDoc(baseOrderPayload, shippingDetails, currencyUpper)
+  applyShippingMetrics(baseOrderPayload, shippingMetrics)
+  applyPackageDimensions(baseOrderPayload, shippingMetrics, sessionWeight)
 
   baseOrderPayload.stripeSummary = buildStripeSummary({
     session: checkoutSession,
@@ -2905,7 +3045,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         customerId: (order as any)?.customerRef?._ref || customer?._id || undefined,
         email: order.customerEmail,
         shippingAddress: (baseOrderPayload as any)?.shippingAddress,
-        billingAddress: paymentDetails?.billingAddress,
+        billingAddress,
         stripeCustomerId: customer?.stripeCustomerId || undefined,
         stripeSyncTimestamp: nowIso,
         customerName: order.customerName,
@@ -6865,6 +7005,15 @@ export const handler: Handler = async (event) => {
           })
 
           const shippingMetrics = computeShippingMetrics(cart, cartProducts)
+          const metaWeight = resolveShippingWeightLbs(undefined, meta)
+          if (
+            metaWeight !== undefined &&
+            (!shippingMetrics.weight ||
+              !shippingMetrics.weight.value ||
+              shippingMetrics.weight.value <= 0)
+          ) {
+            shippingMetrics.weight = {_type: 'shipmentWeight', value: metaWeight, unit: 'pound'}
+          }
 
           const existingOrderId =
             (await findOrderDocumentIdForEvent({
@@ -6941,6 +7090,7 @@ export const handler: Handler = async (event) => {
             `payment_intent ${pi.id}`,
           )
           applyShippingMetrics(baseDoc, shippingMetrics)
+          applyPackageDimensions(baseDoc, shippingMetrics, metaWeight)
           applyShippingDetailsToDoc(
             baseDoc,
             shippingDetails,
