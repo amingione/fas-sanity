@@ -37,15 +37,47 @@ const sanitizeNumber = (value) => {
   return undefined
 }
 
+const formatDimensions = (dims) => {
+  if (!dims) return undefined
+  const {length, width, height} = dims
+  if (
+    typeof length !== 'number' ||
+    typeof width !== 'number' ||
+    typeof height !== 'number' ||
+    !Number.isFinite(length) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height)
+  ) {
+    return undefined
+  }
+  return [length, width, height].map((v) => Number(v.toFixed(2))).join('x')
+}
+
 const normalizeMetadata = (product) => {
-  const weight = sanitizeNumber(product.shippingWeight)
-  const handling = sanitizeNumber(product.handlingTime)
+  const requiresShipping = product?.shippingConfig?.requiresShipping
+  const weight = sanitizeNumber(
+    product?.shippingConfig?.weight !== undefined
+      ? product.shippingConfig.weight
+      : product.shippingWeight,
+  )
+  const handling = sanitizeNumber(
+    product?.shippingConfig?.handlingTime ?? product.handlingTime,
+  )
+  const dimensions =
+    formatDimensions(product?.shippingConfig?.dimensions) || product.boxDimensions || undefined
+  const shippingClass = product?.shippingConfig?.shippingClass || product.shippingClass
+  const shipsAlone =
+    product?.shippingConfig?.separateShipment !== undefined
+      ? product.shippingConfig.separateShipment
+      : product.shipsAlone
+
   return {
-    shipping_weight: weight !== undefined ? String(weight) : undefined,
-    shipping_dimensions: product.boxDimensions || undefined,
-    shipping_class: product.shippingClass || undefined,
+    shipping_weight:
+      requiresShipping === false ? undefined : weight !== undefined ? String(weight) : undefined,
+    shipping_dimensions: requiresShipping === false ? undefined : dimensions,
+    shipping_class: shippingClass || undefined,
     handling_time: handling !== undefined ? String(handling) : undefined,
-    ships_alone: product.shipsAlone ? 'true' : undefined,
+    ships_alone: shipsAlone ? 'true' : undefined,
   }
 }
 
@@ -85,7 +117,19 @@ async function run() {
       boxDimensions,
       handlingTime,
       shippingClass,
-      shipsAlone
+      shipsAlone,
+      shippingConfig{
+        weight,
+        dimensions{
+          length,
+          width,
+          height
+        },
+        shippingClass,
+        handlingTime,
+        requiresShipping,
+        separateShipment
+      }
     }`,
   )
 
