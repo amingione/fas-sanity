@@ -1,4 +1,5 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
+/* eslint-disable typescript/no-unused-vars */
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'

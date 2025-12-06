@@ -56,7 +56,7 @@ export const StepConfirm: React.FC<StepConfirmProps> = ({state}) => {
 
       <Card tone="caution" padding={3}>
         <Text size={1}>
-          Warning: Clicking "Finish" will purchase this label and charge your EasyPost account.
+          Warning: Clicking &quot;Finish&quot; will purchase this label and charge your EasyPost account.
         </Text>
       </Card>
     </Stack>

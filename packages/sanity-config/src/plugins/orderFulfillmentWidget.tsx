@@ -1,5 +1,5 @@
 import {Card, Stack, Box, Text, Flex, Badge, Button, Select} from '@sanity/ui'
-import {useEffect, useState} from 'react'
+import {useCallback, useEffect, useState} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 
@@ -40,7 +40,7 @@ export function OrderFulfillmentWidget() {
   const [filterType, setFilterType] = useState<string>('all')
   const [updating, setUpdating] = useState<string | null>(null)
 
-  const fetchOrders = () => {
+  const fetchOrders = useCallback(() => {
     const typeFilter = filterType !== 'all' ? `&& orderType == "${filterType}"` : ''
 
     // Show paid and fulfilled orders (orders that need action)
@@ -66,11 +66,11 @@ export function OrderFulfillmentWidget() {
       setOrders(grouped)
       setLoading(false)
     })
-  }
+  }, [client, filterType])
 
   useEffect(() => {
     fetchOrders()
-  }, [client, filterType])
+  }, [fetchOrders])
 
   const getHoursInStatus = (order: Order) => {
     const updated = new Date(order._updatedAt).getTime()

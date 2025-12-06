@@ -158,6 +158,45 @@ function buildTrackingUrl(payload: any, carrier?: string, trackingCode?: string 
 const cleanUndefined = (value: Record<string, any>) =>
   Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined))
 
+const mapAddress = (addr?: Record<string, any> | null) => {
+  if (!addr || typeof addr !== 'object') return undefined
+  const mapped = cleanUndefined({
+    name: addr.name,
+    street1: addr.street1 || addr.address1,
+    street2: addr.street2 || addr.address2,
+    city: addr.city,
+    state: addr.state,
+    zip: addr.zip,
+    country: addr.country,
+    phone: addr.phone,
+    email: addr.email,
+  })
+  return Object.keys(mapped).length ? mapped : undefined
+}
+
+const mapParcel = (parcel?: Record<string, any> | null) => {
+  if (!parcel || typeof parcel !== 'object') return undefined
+  const mapped = cleanUndefined({
+    length: parcel.length,
+    width: parcel.width,
+    height: parcel.height,
+    weight: parcel.weight,
+  })
+  return Object.keys(mapped).length ? mapped : undefined
+}
+
+const mapRate = (rate?: Record<string, any> | null) => {
+  if (!rate || typeof rate !== 'object') return undefined
+  const mapped = cleanUndefined({
+    carrier: rate.carrier,
+    service: rate.service,
+    rate: rate.rate,
+    currency: rate.currency,
+    deliveryDays: rate.delivery_days,
+  })
+  return Object.keys(mapped).length ? mapped : undefined
+}
+
 async function fetchShipmentFromEasyPost(shipmentId: string) {
   if (!shipmentId) return null
   if (!easyPost) {
@@ -187,6 +226,11 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
   const orderRef = extractOrderIdFromShipment(shipment)
 
   const doc = cleanUndefined({
+    title:
+      shipment.reference ||
+      shipment.tracking_code ||
+      shipment.id ||
+      (shipment.options?.reference as string | undefined),
     easypostId: shipment.id,
     mode: shipment.mode,
     reference: shipment.reference || shipment.options?.reference,
@@ -196,24 +240,73 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
       shipment.trackingCode ||
       undefined,
     status: shipment.status,
-    toAddress: shipment.to_address,
-    fromAddress: shipment.from_address,
-    parcel: shipment.parcel,
-    selectedRate: shipment.selected_rate,
-    rates: shipment.rates,
-    postageLabel: shipment.postage_label,
-    tracker: shipment.tracker,
+    carrier:
+      shipment.selected_rate?.carrier ||
+      shipment.tracker?.carrier ||
+      shipment.carrier ||
+      shipment?.rates?.[0]?.carrier,
+    service:
+      shipment.selected_rate?.service ||
+      shipment.tracker?.service ||
+      shipment.service ||
+      shipment?.rates?.[0]?.service,
+    rate: shipment.selected_rate?.rate ? Number.parseFloat(shipment.selected_rate.rate) : undefined,
+    currency: shipment.selected_rate?.currency,
+    transitDays: shipment.selected_rate?.delivery_days,
+    recipient: shipment.to_address?.name,
+    labelUrl:
+      shipment?.postage_label?.label_url ||
+      shipment?.postage_label?.label_pdf_url ||
+      shipment?.label_url,
+    toAddress: mapAddress(shipment.to_address),
+    fromAddress: mapAddress(shipment.from_address),
+    parcel: mapParcel(shipment.parcel),
+    selectedRate: mapRate(shipment.selected_rate),
+    rates: Array.isArray(shipment.rates)
+      ? shipment.rates
+          .map((rate: any) => mapRate(rate))
+          .filter((rate: any) => Boolean(rate))
+      : undefined,
+    postageLabel: shipment.postage_label
+      ? cleanUndefined({
+          labelUrl: shipment.postage_label.label_url,
+          labelPdfUrl: shipment.postage_label.label_pdf_url,
+        })
+      : undefined,
+    tracker: shipment.tracker
+      ? cleanUndefined({
+          id: shipment.tracker.id,
+          status: shipment.tracker.status,
+          carrier: shipment.tracker.carrier,
+          public_url: shipment.tracker.public_url,
+          tracking_code: shipment.tracker.tracking_code,
+        })
+      : undefined,
     trackingDetails,
-    forms: shipment.forms,
-    customsInfo: shipment.customs_info,
-    insurance: shipment.insurance,
+    forms: Array.isArray(shipment.forms)
+      ? shipment.forms.map((form: any) =>
+          cleanUndefined({form_type: form?.form_type, form_url: form?.form_url}),
+        )
+      : undefined,
+    customsInfo: shipment.customs_info
+      ? cleanUndefined({
+          id: shipment.customs_info.id,
+          contents_type: shipment.customs_info.contents_type,
+        })
+      : undefined,
+    insurance: shipment.insurance
+      ? cleanUndefined({amount: shipment.insurance.amount, provider: shipment.insurance.provider})
+      : undefined,
     createdAt: shipment.created_at,
     updatedAt: shipment.updated_at,
     batchId: shipment.batch_id,
     batchStatus: shipment.batch_status,
     batchMessage: shipment.batch_message,
-    scanForm: shipment.scan_form,
+    scanForm: shipment.scan_form
+      ? cleanUndefined({id: shipment.scan_form.id, form_url: shipment.scan_form.form_url})
+      : undefined,
     rawWebhookData: rawPayload ? JSON.stringify(rawPayload, null, 2) : undefined,
+    details: JSON.stringify(shipment, null, 2),
     order: orderRef ? {_type: 'reference', _ref: orderRef} : undefined,
   })
 

@@ -1,14 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {Card, Spinner, Stack, Text, TextInput} from '@sanity/ui'
-import {
-  SanityDocument,
-  StringInputProps,
-  StringSchemaType,
-  set,
-  unset,
-  useClient,
-  useFormValue,
-} from 'sanity'
+import {StringInputProps, StringSchemaType, set, unset, useClient, useFormValue} from 'sanity'
 import {computeCustomerName, splitFullName} from '../../../../../shared/customerName'
 
 type Props = StringInputProps<StringSchemaType>

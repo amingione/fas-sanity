@@ -72,8 +72,6 @@ const formatCurrency = (value?: number | null) => {
   return new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(value)
 }
 
-const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`
-
 const SOURCE_LABELS: Record<string, string> = {
   google: 'Google',
   facebook: 'Facebook',

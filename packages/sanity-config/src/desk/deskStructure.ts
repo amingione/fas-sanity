@@ -18,7 +18,6 @@ import {
   PresentationIcon,
   RocketIcon,
   TagIcon,
-  TrashIcon,
   TrolleyIcon,
   UserIcon,
   WarningOutlineIcon,
@@ -299,7 +298,7 @@ const createCheckoutSessionsPane = (S: any) =>
               S.documentList()
                 .apiVersion(API_VERSION)
                 .title('Expired Checkout Sessions')
-                .filter('_type == "checkoutSession" && status == \"expired\"')
+                .filter('_type == "checkoutSession" && status == "expired"')
                 .defaultOrdering([
                   {field: 'expiredAt', direction: 'desc'},
                   {field: 'createdAt', direction: 'desc'},

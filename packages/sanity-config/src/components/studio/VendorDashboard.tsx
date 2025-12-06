@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 import {Box, Button, Card, Flex, Grid, Heading, Stack, Text, useToast} from '@sanity/ui'
 import {useClient} from 'sanity'
 import type {ComponentType} from 'react'

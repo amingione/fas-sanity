@@ -71,7 +71,7 @@ const SalePricingInput: React.FC<NumberInputProps> = (props) => {
     if (patches.length > 0) {
       onChange(PatchEvent.from(patches))
     }
-  }, [computedSalePrice, onChange, onSale, value])
+  }, [computedSalePrice, onChange, onSale, readOnly, value])
 
   return (
     <Stack space={3}>
@@ -83,7 +83,7 @@ const SalePricingInput: React.FC<NumberInputProps> = (props) => {
           </Text>
           {!onSale && (
             <Text size={1} muted>
-              Toggle "On Sale?" to enable sale pricing.
+              Toggle &quot;On Sale?&quot; to enable sale pricing.
             </Text>
           )}
           {onSale && (price === undefined || !discountType || discountValue === undefined) && (

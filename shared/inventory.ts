@@ -4,8 +4,6 @@ import {generateReferenceCode} from './referenceCodes'
 
 type SanityInventoryClient = Pick<SanityClient, 'fetch' | 'create' | 'patch'>
 
-const API_VERSION = '2024-10-01'
-
 export type InventoryCartItem = {
   productRef?: {_ref?: string | null} | null
   quantity?: number | null

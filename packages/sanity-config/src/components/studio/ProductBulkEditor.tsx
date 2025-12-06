@@ -1667,7 +1667,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       setSelection(null)
       setActiveCell(null)
     }
-  }, [viewMode, filteredProducts, sheetRows.length, activeSpreadsheetColumns])
+  }, [viewMode, filteredProducts, sheetRows, sheetRows.length, activeSpreadsheetColumns])
 
   const updateProductField = (id: string, field: keyof EditableProduct, value: any) => {
     setProducts((prev) =>

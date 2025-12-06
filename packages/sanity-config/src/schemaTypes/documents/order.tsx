@@ -836,6 +836,22 @@ const orderSchema = defineType({
       hidden: true,
     }),
     defineField({
+      name: 'easyPostShipmentId',
+      type: 'string',
+      title: 'EasyPost Shipment ID',
+      group: 'fulfillment',
+      hidden: true,
+      readOnly: false,
+    }),
+    defineField({
+      name: 'easyPostTrackerId',
+      type: 'string',
+      title: 'EasyPost Tracker ID',
+      group: 'fulfillment',
+      hidden: true,
+      readOnly: false,
+    }),
+    defineField({
       name: 'shippingLabelUrl',
       type: 'url',
       title: 'Shipping Label',
@@ -1320,7 +1336,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         icon: TrashIcon,
         tone: 'critical',
         onHandle: async () => {
-          const confirmDelete = confirm('Delete this order? This cannot be undone.')
+          const confirmDelete = window.confirm('Delete this order? This cannot be undone.')
           if (!confirmDelete) {
             props.onComplete()
             return
@@ -1446,7 +1462,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         icon: TrashIcon,
         tone: 'critical',
         onHandle: async () => {
-          const confirmed = confirm('Cancel this order? This cannot be undone.')
+          const confirmed = window.confirm('Cancel this order? This cannot be undone.')
           if (!confirmed) {
             props.onComplete()
             return

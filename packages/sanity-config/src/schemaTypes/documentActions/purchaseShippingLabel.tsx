@@ -40,7 +40,7 @@ export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
     disabled: isLoading,
     tone: 'primary',
     onHandle: async () => {
-      if (!confirm('Purchase shipping label for this invoice?')) {
+      if (!window.confirm('Purchase shipping label for this invoice?')) {
         return
       }
 

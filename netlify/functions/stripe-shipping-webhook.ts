@@ -229,11 +229,11 @@ const handler: Handler = async (event) => {
     object?.metadata?.stripe_session_id ||
     object?.metadata?.checkoutSessionId
   const customerEmail =
-    object?.shipping?.name ||
-    object?.shipping?.address?.name ||
     object?.customer_details?.email ||
     object?.metadata?.email ||
-    object?.to_address?.email
+    object?.to_address?.email ||
+    object?.shipping?.email ||
+    object?.receipt_email
 
   let orderId = await findOrderId({
     paymentIntentId,

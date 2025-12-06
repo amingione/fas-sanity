@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react'
-import {Card, Stack, Flex, Box, Text, Badge, Spinner} from '@sanity/ui'
+import {Card, Stack, Flex, Text, Badge, Spinner} from '@sanity/ui'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 

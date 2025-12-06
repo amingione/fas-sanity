@@ -20,9 +20,7 @@ const CORS_HEADERS = {
 function formatEasyPostError(err: any): {statusCode: number; message: string} {
   const ep = err?.body?.error
   const baseMessage =
-    (ep && (ep.message || ep.code)) ||
-    err?.message ||
-    'EasyPost label generation failed'
+    (ep && (ep.message || ep.code)) || err?.message || 'EasyPost label generation failed'
 
   if (ep && Array.isArray(ep.errors) && ep.errors.length) {
     const details = ep.errors
@@ -39,8 +37,7 @@ function formatEasyPostError(err: any): {statusCode: number; message: string} {
 
   if (
     typeof baseMessage === 'string' &&
-    (/missing required/i.test(baseMessage) ||
-      /incomplete shipping address/i.test(baseMessage))
+    (/missing required/i.test(baseMessage) || /incomplete shipping address/i.test(baseMessage))
   ) {
     return {statusCode: 400, message: baseMessage}
   }
@@ -90,8 +87,7 @@ type EasyPostAddress = {
 
 function toEasyPostAddress(order: OrderDoc): EasyPostAddress {
   const addr = order?.shippingAddress || {}
-  const fallbackName =
-    (addr?.name || order.customerName || '').toString().trim() || 'Customer'
+  const fallbackName = (addr?.name || order.customerName || '').toString().trim() || 'Customer'
   return {
     name: fallbackName,
     street1: addr?.addressLine1 || '',
@@ -182,6 +178,10 @@ async function createWizardLabel(payload: {
       zip: process.env.SENDER_ZIP || fromDefaults.zip,
       country: process.env.SENDER_COUNTRY || fromDefaults.country || 'US',
     },
+    options: {
+      label_format: 'PDF',
+      label_size: '4x6',
+    },
     parcel: {
       weight: weightValue,
       length: parcel.length,
@@ -190,11 +190,7 @@ async function createWizardLabel(payload: {
     },
   } as any)
 
-  await (epClient as any).Shipment.buy(shipment.id, {
-    rate: {id: selectedRate.id},
-    label_format: 'PDF',
-    label_size: '4x6',
-  })
+  await (epClient as any).Shipment.buy(shipment.id, selectedRate.id)
   const updatedShipment: any = await epClient.Shipment.retrieve(shipment.id)
 
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
@@ -248,6 +244,9 @@ export type EasyPostLabelResult = {
   rate?: number
   currency?: string
   status?: string
+  carrier?: string
+  labelCreatedAt?: string
+  labelCost?: number
 }
 
 async function fetchOrder(orderId: string): Promise<OrderDoc | null> {
@@ -341,11 +340,7 @@ export async function createEasyPostLabel(
     throw new Error('Failed to determine lowest EasyPost rate')
   }
 
-  await (client as any).Shipment.buy(shipment.id, {
-    rate: {id: lowestRate.id},
-    label_format: 'PDF',
-    label_size: '4x6',
-  })
+  await (client as any).Shipment.buy(shipment.id, lowestRate.id)
   const updatedShipment: any = await client.Shipment.retrieve(shipment.id)
 
   const tracker = updatedShipment.tracker || null

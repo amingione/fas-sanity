@@ -1,5 +1,5 @@
 import {Card, Stack, Box, Text, Flex, Badge, Select, Grid, Button} from '@sanity/ui'
-import {useEffect, useState} from 'react'
+import {useCallback, useEffect, useState} from 'react'
 import {useClient} from 'sanity'
 
 interface RevenueData {
@@ -55,7 +55,7 @@ export function RevenueMetricsWidget() {
   const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month'>('today')
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  const fetchRevenueData = async () => {
+  const fetchRevenueData = useCallback(async () => {
     const now = new Date()
 
     // Date calculations
@@ -315,14 +315,14 @@ export function RevenueMetricsWidget() {
       paymentMethods: calculatePaymentMethods(result.monthOrders),
     })
     setLoading(false)
-  }
+  }, [client])
 
   useEffect(() => {
     fetchRevenueData()
     // Refresh every 5 minutes
     const interval = setInterval(fetchRevenueData, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [client])
+  }, [fetchRevenueData])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

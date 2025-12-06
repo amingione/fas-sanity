@@ -17,7 +17,7 @@ function sanitizePattern(raw) {
     // If it's already a valid regex string, keep it.
     new RegExp(trimmed)
     return trimmed
-  } catch (_) {
+  } catch {
     // Escape regex chars, then restore wildcards
     const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*')
     const normalized = escaped.startsWith('^') ? escaped : `^${escaped}`
