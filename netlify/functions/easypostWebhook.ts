@@ -1,4 +1,5 @@
 import type {Handler} from '@netlify/functions'
+import EasyPost from '@easypost/api'
 import {createHmac, timingSafeEqual} from 'crypto'
 import {createClient} from '@sanity/client'
 
@@ -12,6 +13,8 @@ const CORS_HEADERS = {
 
 const SHIPPING_PROVIDER = (process.env.SHIPPING_PROVIDER || 'easypost').toLowerCase()
 const WEBHOOK_SECRET = (process.env.EASYPOST_WEBHOOK_SECRET || '').trim()
+const EASYPOST_API_KEY =
+  process.env.EASYPOST_API_KEY || process.env.EASYPOST_PROD_API_KEY || process.env.EASYPOST_TEST_API_KEY || ''
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -20,6 +23,8 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
+
+const easyPost = EASYPOST_API_KEY ? new EasyPost(EASYPOST_API_KEY) : null
 
 function getHeader(headers: Record<string, any> | undefined, key: string): string | undefined {
   if (!headers) return undefined
@@ -150,7 +155,86 @@ function buildTrackingUrl(payload: any, carrier?: string, trackingCode?: string 
   return null
 }
 
-async function handleTracker(tracker: any) {
+const cleanUndefined = (value: Record<string, any>) =>
+  Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined))
+
+async function fetchShipmentFromEasyPost(shipmentId: string) {
+  if (!shipmentId) return null
+  if (!easyPost) {
+    console.warn('easypostWebhook missing EASYPOST_API_KEY, cannot fetch shipment', {shipmentId})
+    return null
+  }
+  try {
+    const shipment = await easyPost.Shipment.retrieve(shipmentId)
+    return JSON.parse(JSON.stringify(shipment))
+  } catch (err) {
+    console.error('easypostWebhook failed to retrieve shipment from EasyPost', {shipmentId, err})
+    return null
+  }
+}
+
+async function upsertShipmentDocument(shipment: any, rawPayload: any) {
+  if (!shipment?.id) return null
+  const trackingDetails = Array.isArray(shipment.tracking_details)
+    ? shipment.tracking_details.map((detail: any) => ({
+        message: detail?.message,
+        status: detail?.status,
+        datetime: detail?.datetime,
+        trackingLocation: detail?.tracking_location,
+      }))
+    : undefined
+
+  const orderRef = extractOrderIdFromShipment(shipment)
+
+  const doc = cleanUndefined({
+    easypostId: shipment.id,
+    mode: shipment.mode,
+    reference: shipment.reference || shipment.options?.reference,
+    trackingCode:
+      shipment.tracking_code ||
+      shipment.tracker?.tracking_code ||
+      shipment.trackingCode ||
+      undefined,
+    status: shipment.status,
+    toAddress: shipment.to_address,
+    fromAddress: shipment.from_address,
+    parcel: shipment.parcel,
+    selectedRate: shipment.selected_rate,
+    rates: shipment.rates,
+    postageLabel: shipment.postage_label,
+    tracker: shipment.tracker,
+    trackingDetails,
+    forms: shipment.forms,
+    customsInfo: shipment.customs_info,
+    insurance: shipment.insurance,
+    createdAt: shipment.created_at,
+    updatedAt: shipment.updated_at,
+    batchId: shipment.batch_id,
+    batchStatus: shipment.batch_status,
+    batchMessage: shipment.batch_message,
+    scanForm: shipment.scan_form,
+    rawWebhookData: rawPayload ? JSON.stringify(rawPayload, null, 2) : undefined,
+    order: orderRef ? {_type: 'reference', _ref: orderRef} : undefined,
+  })
+
+  const existingId = await sanity.fetch<string | null>(
+    `*[_type == "shipment" && easypostId == $id][0]._id`,
+    {id: shipment.id},
+  )
+
+  if (existingId) {
+    await sanity.patch(existingId).set(doc).commit({autoGenerateArrayKeys: true})
+    return existingId
+  }
+
+  const created = await sanity.create({
+    _type: 'shipment',
+    ...doc,
+  })
+  return created._id
+}
+
+async function handleTracker(tracker: any, rawPayload?: any) {
   const trackerId = tracker?.id
   const trackingCode = tracker?.tracking_code
   const shipmentId = tracker?.shipment_id
@@ -158,6 +242,15 @@ async function handleTracker(tracker: any) {
   if (!trackerId && !trackingCode && !shipmentId) {
     console.warn('easypostWebhook tracker missing identifiers')
     return
+  }
+
+  if (shipmentId) {
+    const shipment = await fetchShipmentFromEasyPost(shipmentId)
+    if (shipment) {
+      await handleShipment(shipment, rawPayload || tracker)
+    }
+  } else if (tracker?.shipment) {
+    await handleShipment(tracker.shipment, rawPayload || tracker)
   }
 
   const order = await sanity.fetch<{_id: string; trackingNumber?: string; trackingUrl?: string; status?: string}>(
@@ -225,26 +318,35 @@ async function handleTracker(tracker: any) {
   await patch.commit({autoGenerateArrayKeys: true})
 }
 
-async function handleShipment(shipment: any) {
+async function handleShipment(shipment: any, rawPayload?: any) {
   const shipmentId = shipment?.id
   if (!shipmentId) {
     console.warn('easypostWebhook shipment missing id')
     return
   }
 
-  const trackingNumber = extractTrackingNumber({shipment})
-  const labelUrl = extractLabelUrl({shipment})
-  const carrier =
-    shipment?.selected_rate?.carrier ||
-    shipment?.tracker?.carrier ||
-    shipment?.rates?.[0]?.carrier ||
-    shipment?.carrier ||
-    undefined
-  const trackingUrl = buildTrackingUrl({shipment}, carrier, trackingNumber)
+  let shipmentData = shipment
+  if ((!shipmentData?.to_address || !shipmentData?.rates) && easyPost) {
+    const fetched = await fetchShipmentFromEasyPost(shipmentId)
+    if (fetched) shipmentData = fetched
+  }
 
-  const orderIdCandidate = extractOrderIdFromShipment(shipment)
+  await upsertShipmentDocument(shipmentData, rawPayload)
+
+  const trackingNumber = extractTrackingNumber({shipment: shipmentData})
+  const labelUrl = extractLabelUrl({shipment: shipmentData})
+  const carrier =
+    shipmentData?.selected_rate?.carrier ||
+    shipmentData?.tracker?.carrier ||
+    shipmentData?.rates?.[0]?.carrier ||
+    shipmentData?.carrier ||
+    undefined
+  const trackingUrl = buildTrackingUrl({shipment: shipmentData}, carrier, trackingNumber)
+
+  const orderIdCandidate = extractOrderIdFromShipment(shipmentData)
   const order = await sanity.fetch<{
     _id: string
+    easyPostShipmentId?: string
     shippingLabelUrl?: string
     trackingNumber?: string
     trackingUrl?: string
@@ -271,6 +373,9 @@ async function handleShipment(shipment: any) {
   }
 
   const setOps: Record<string, any> = {}
+  if (!order?.easyPostShipmentId) {
+    setOps.easyPostShipmentId = shipmentId
+  }
   if (labelUrl && !order.shippingLabelUrl) {
     setOps.shippingLabelUrl = labelUrl
   }
@@ -408,9 +513,9 @@ export const handler: Handler = async (event) => {
   try {
     const result = payload.result || {}
     if (result?.object === 'Tracker') {
-      await handleTracker(result)
+      await handleTracker(result, payload)
     } else if (result?.object === 'Shipment') {
-      await handleShipment(result)
+      await handleShipment(result, payload)
     } else if (result?.object === 'Refund') {
       await handleRefund(result)
     }

@@ -12,6 +12,7 @@ import {
 import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
 import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
 import {purchaseOrderLabelAction} from './schemaTypes/documentActions/purchaseOrderLabel'
+import {createEasyPostLabelAction} from './schemaTypes/documentActions/createEasyPostLabelAction'
 import {orderActions} from './schemaTypes/documents/order'
 import {
   approveVendorApplicationAction,
@@ -60,6 +61,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'order') {
     list.push(purchaseOrderLabelAction)
+    list.push(createEasyPostLabelAction)
     return orderActions(list, context)
   }
   if (context.schemaType === 'vendorApplication') {

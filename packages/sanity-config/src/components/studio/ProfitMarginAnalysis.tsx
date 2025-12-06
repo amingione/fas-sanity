@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react'
+import {forwardRef, useEffect, useMemo, useState} from 'react'
 import {Box, Card, Flex, Grid, Heading, Spinner, Stack, Text} from '@sanity/ui'
 import {useClient} from 'sanity'
 
@@ -17,7 +17,7 @@ const calcMarginPct = (retail?: number | null, cost?: number | null) => {
   return ((retail - cost) / retail) * 100
 }
 
-const ProfitMarginAnalysis = () => {
+const ProfitMarginAnalysis = forwardRef<HTMLDivElement, Record<string, unknown>>((_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,14 +73,14 @@ const ProfitMarginAnalysis = () => {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" style={{height: '100%'}}>
+      <Flex ref={ref} align="center" justify="center" style={{height: '100%'}}>
         <Spinner muted />
       </Flex>
     )
   }
 
   return (
-    <Box padding={4} style={{overflowY: 'auto'}}>
+    <Box ref={ref} padding={4} style={{overflowY: 'auto'}}>
       <Stack space={4}>
         <Heading as="h2" size={3}>
           Profit Margin Analysis
@@ -125,6 +125,8 @@ const ProfitMarginAnalysis = () => {
       </Stack>
     </Box>
   )
-}
+})
+
+ProfitMarginAnalysis.displayName = 'ProfitMarginAnalysis'
 
 export default ProfitMarginAnalysis

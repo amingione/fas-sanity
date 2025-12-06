@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react'
+import {forwardRef, useEffect, useMemo, useRef, useState} from 'react'
 import {useClient} from 'sanity'
 import {Box, Card, Flex, Grid, Heading, Spinner, Stack, Text} from '@sanity/ui'
 import {format} from 'date-fns'
@@ -151,7 +151,8 @@ const formatDate = (value?: string | null) => {
   return Number.isNaN(parsed.getTime()) ? '—' : format(parsed, 'MMM d, yyyy')
 }
 
-const CustomerAnalyticsDashboard = () => {
+const CustomerAnalyticsDashboard = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const [data, setData] = useState<AnalyticsResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -252,7 +253,7 @@ const CustomerAnalyticsDashboard = () => {
       : 0
 
   return (
-    <Box padding={[4, 5, 6]} style={{maxWidth: 1400, margin: '0 auto'}}>
+    <Box ref={ref} padding={[4, 5, 6]} style={{maxWidth: 1400, margin: '0 auto'}}>
       <Stack space={6}>
         <Stack space={3}>
           <Heading size={3}>Customer Analytics</Heading>
@@ -537,6 +538,9 @@ const CustomerAnalyticsDashboard = () => {
       </Stack>
     </Box>
   )
-}
+  },
+)
+
+CustomerAnalyticsDashboard.displayName = 'CustomerAnalyticsDashboard'
 
 export default CustomerAnalyticsDashboard

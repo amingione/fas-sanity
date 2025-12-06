@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import type {DocumentStub} from '../../types/sanity'
 import {useRouter} from 'sanity/router'
@@ -49,7 +49,8 @@ const defaultFormState: BookingFormState = {
   customerNotes: '',
 }
 
-export default function AppointmentBookingPane() {
+const AppointmentBookingPane = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const router = useRouter()
   const toast = useToast()
@@ -199,14 +200,14 @@ export default function AppointmentBookingPane() {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" height="fill">
+      <Flex ref={ref} align="center" justify="center" height="fill">
         <Spinner muted />
       </Flex>
     )
   }
 
   return (
-    <Box padding={4}>
+    <Box ref={ref} padding={4}>
       <Stack space={4}>
         <Heading as="h2" size={3}>
           Appointment Booking
@@ -369,4 +370,8 @@ export default function AppointmentBookingPane() {
       </Stack>
     </Box>
   )
-}
+})
+
+AppointmentBookingPane.displayName = 'AppointmentBookingPane'
+
+export default AppointmentBookingPane

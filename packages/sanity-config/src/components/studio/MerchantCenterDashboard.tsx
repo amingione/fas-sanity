@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {Badge, Box, Button, Card, Flex, Grid, Spinner, Stack, Text} from '@sanity/ui'
 import {WarningOutlineIcon} from '@sanity/icons'
 import {useRouter} from 'sanity/router'
@@ -64,7 +64,8 @@ const StatCard = ({
   )
 }
 
-export function MerchantCenterDashboard() {
+export const MerchantCenterDashboard = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const router = useRouter()
   const [products, setProducts] = useState<MerchantCenterProduct[] | null>(null)
@@ -120,7 +121,7 @@ export function MerchantCenterDashboard() {
   }
 
   return (
-    <Stack space={4}>
+    <Stack ref={ref} space={4}>
       <Flex align="center" justify="space-between">
         <Stack space={3}>
           <Text size={3} weight="semibold">
@@ -228,6 +229,9 @@ export function MerchantCenterDashboard() {
       )}
     </Stack>
   )
-}
+  },
+)
+
+MerchantCenterDashboard.displayName = 'MerchantCenterDashboard'
 
 export default MerchantCenterDashboard

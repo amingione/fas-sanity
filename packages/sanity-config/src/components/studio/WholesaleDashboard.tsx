@@ -455,4 +455,6 @@ export const WholesaleDashboard = forwardRef<HTMLDivElement>(function WholesaleD
   )
 })
 
+WholesaleDashboard.displayName = 'WholesaleDashboard'
+
 export default WholesaleDashboard

@@ -118,6 +118,115 @@ function assertAddress(address: EasyPostAddress) {
   }
 }
 
+type WizardRate = {
+  id?: string
+  carrier?: string
+  service?: string
+  rate?: string
+  delivery_days?: number | null
+}
+
+type WizardAddress = {
+  street1?: string
+  street2?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  country?: string
+}
+
+type WizardParcel = {
+  weight?: number
+  length?: number
+  width?: number
+  height?: number
+}
+
+async function createWizardLabel(payload: {
+  address?: WizardAddress
+  parcel?: WizardParcel
+  selectedRate?: WizardRate
+}) {
+  const address = payload.address || {}
+  const parcel = payload.parcel || {}
+  const selectedRate = payload.selectedRate
+
+  const missingAddress = ['street1', 'city', 'state', 'postalCode', 'country'].filter(
+    (key) => !(address as any)?.[key],
+  )
+  if (missingAddress.length) {
+    throw new Error(`Missing address fields: ${missingAddress.join(', ')}`)
+  }
+  if (!selectedRate?.id) {
+    throw new Error('Missing selected rate id')
+  }
+
+  const epClient = getEasyPostClient()
+  const fromDefaults = getEasyPostFromAddress()
+  const weightValue = typeof parcel.weight === 'number' && parcel.weight > 0 ? parcel.weight : 1
+
+  const shipment = await epClient.Shipment.create({
+    to_address: {
+      street1: address.street1,
+      street2: address.street2 || undefined,
+      city: address.city,
+      state: address.state,
+      zip: address.postalCode,
+      country: address.country,
+    },
+    from_address: {
+      street1: process.env.SENDER_STREET1 || fromDefaults.street1,
+      street2: process.env.SENDER_STREET2 || fromDefaults.street2,
+      city: process.env.SENDER_CITY || fromDefaults.city,
+      state: process.env.SENDER_STATE || fromDefaults.state,
+      zip: process.env.SENDER_ZIP || fromDefaults.zip,
+      country: process.env.SENDER_COUNTRY || fromDefaults.country || 'US',
+    },
+    parcel: {
+      weight: weightValue,
+      length: parcel.length,
+      width: parcel.width,
+      height: parcel.height,
+    },
+  } as any)
+
+  await (epClient as any).Shipment.buy(shipment.id, {
+    rate: {id: selectedRate.id},
+    label_format: 'PDF',
+    label_size: '4x6',
+  })
+  const updatedShipment: any = await epClient.Shipment.retrieve(shipment.id)
+
+  const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
+  const labelUrl = postageLabel?.label_url || postageLabel?.label_pdf_url || undefined
+  const trackingCode = updatedShipment.tracking_code || undefined
+  const rateAmount = Number.parseFloat(selectedRate.rate ?? '')
+  const numericRate = Number.isFinite(rateAmount) ? Number(rateAmount.toFixed(2)) : undefined
+  const transitDays =
+    typeof selectedRate.delivery_days === 'number' ? selectedRate.delivery_days : undefined
+
+  await sanity.create({
+    _type: 'shipment',
+    easypostId: updatedShipment?.id || shipment.id,
+    createdAt: new Date().toISOString(),
+    status: updatedShipment?.status,
+    trackingCode,
+    carrier: selectedRate.carrier,
+    service: selectedRate.service,
+    rate: numericRate,
+    transitDays,
+    recipient: `${address.street1}, ${address.city}`,
+    labelUrl,
+    details: JSON.stringify(updatedShipment || shipment),
+  })
+
+  return {
+    success: true,
+    labelUrl,
+    trackingCode,
+  }
+}
+
 export type CreateEasyPostLabelOptions = {
   orderId?: string
   invoiceId?: string
@@ -421,6 +530,29 @@ export const handler: Handler = async (event) => {
       statusCode: 400,
       headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
       body: JSON.stringify({error: 'Invalid JSON payload'}),
+    }
+  }
+
+  if (payload.address && payload.parcel && payload.selectedRate) {
+    try {
+      const result = await createWizardLabel({
+        address: payload.address,
+        parcel: payload.parcel,
+        selectedRate: payload.selectedRate,
+      })
+      return {
+        statusCode: 200,
+        headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+        body: JSON.stringify(result),
+      }
+    } catch (err: any) {
+      const message = err?.message || 'EasyPost label generation failed'
+      console.error('easypostCreateLabel wizard error', err)
+      return {
+        statusCode: 400,
+        headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({message}),
+      }
     }
   }
 

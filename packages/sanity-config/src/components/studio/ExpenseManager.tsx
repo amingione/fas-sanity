@@ -1,4 +1,13 @@
-import {ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {
+  ChangeEvent,
+  FormEvent,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {useClient} from 'sanity'
 import type {DocumentStub} from '../../types/sanity'
 import {
@@ -92,7 +101,7 @@ const suggestCategory = (vendorName: string, description: string) => {
 
 const todayString = () => new Date().toISOString().slice(0, 10)
 
-const ExpenseManager = () => {
+const ExpenseManager = forwardRef<HTMLDivElement, Record<string, unknown>>((_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const toast = useToast()
   const [vendors, setVendors] = useState<VendorOption[]>([])
@@ -289,7 +298,7 @@ const ExpenseManager = () => {
   }, [suggestedCategory])
 
   return (
-    <Stack space={4} padding={4}>
+    <Stack ref={ref} space={4} padding={4}>
       <Flex align="center" justify="space-between">
         <Heading size={3}>💸 Expense Manager</Heading>
         <Flex gap={2}>
@@ -496,6 +505,8 @@ const ExpenseManager = () => {
       </Card>
     </Stack>
   )
-}
+})
+
+ExpenseManager.displayName = 'ExpenseManager'
 
 export default ExpenseManager

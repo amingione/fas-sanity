@@ -187,22 +187,27 @@ export default deskStructure`
         </Inline>
 
         {output && (
-          <Card padding={3} radius={2} shadow={1} tone="transparent">
+          <Stack space={3}>
             <Text size={1} muted>
               Copy into <Code>deskStructure.ts</Code>
             </Text>
-            <Code
-              size={1}
-              style={{
-                display: 'block',
-                whiteSpace: 'pre',
-                lineHeight: 1.6,
-                letterSpacing: '0.015em',
-              }}
-            >
-              {output}
-            </Code>
-          </Card>
+            <Card padding={3} radius={2} tone="default" border>
+              <Code
+                size={1}
+                style={{
+                  display: 'block',
+                  whiteSpace: 'pre',
+                  lineHeight: 1.6,
+                  letterSpacing: '0.015em',
+                  fontFamily: 'monospace',
+                  overflow: 'auto',
+                  maxHeight: '500px',
+                }}
+              >
+                {output}
+              </Code>
+            </Card>
+          </Stack>
         )}
       </Stack>
     </Card>

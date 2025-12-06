@@ -533,4 +533,6 @@ export const OperationsDashboard = forwardRef<HTMLDivElement>(function Operation
   )
 })
 
+OperationsDashboard.displayName = 'OperationsDashboard'
+
 export default OperationsDashboard

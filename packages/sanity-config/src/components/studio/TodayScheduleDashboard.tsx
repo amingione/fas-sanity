@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {
@@ -103,7 +103,8 @@ const formatDateTime = (value?: string) => {
   }
 }
 
-export default function TodayScheduleDashboard() {
+const TodayScheduleDashboard = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const router = useRouter()
   const toast = useToast()
@@ -245,14 +246,14 @@ export default function TodayScheduleDashboard() {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" height="fill">
+      <Flex ref={ref} align="center" justify="center" height="fill">
         <Spinner muted />
       </Flex>
     )
   }
 
   return (
-    <Box padding={4}>
+    <Box ref={ref} padding={4}>
       <Stack space={5}>
         <Flex justify="space-between" align="center">
           <Heading as="h2" size={3}>
@@ -451,4 +452,9 @@ export default function TodayScheduleDashboard() {
       </Stack>
     </Box>
   )
-}
+  },
+)
+
+TodayScheduleDashboard.displayName = 'TodayScheduleDashboard'
+
+export default TodayScheduleDashboard

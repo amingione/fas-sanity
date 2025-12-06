@@ -311,6 +311,8 @@ const InventoryDashboard = forwardRef<HTMLDivElement>(function InventoryDashboar
   )
 })
 
+InventoryDashboard.displayName = 'InventoryDashboard'
+
 function toPositive(value: number): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 0

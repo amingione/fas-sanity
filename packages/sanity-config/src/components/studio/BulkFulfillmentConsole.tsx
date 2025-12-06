@@ -265,4 +265,6 @@ const BulkFulfillmentConsole = forwardRef<HTMLDivElement, Record<string, never>>
   },
 )
 
+BulkFulfillmentConsole.displayName = 'BulkFulfillmentConsole'
+
 export default BulkFulfillmentConsole
