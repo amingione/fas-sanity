@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {
   Box,
   Button,
@@ -35,7 +35,8 @@ type MetricsPayload = {
 const currency = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'})
 const REFRESH_INTERVAL_MS = 30000
 
-const ProductProfitability = () => {
+const ProductProfitability = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const [rows, setRows] = useState<ProfitabilityRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -133,7 +134,7 @@ const ProductProfitability = () => {
   }, [lastUpdated])
 
   return (
-    <Stack space={4} padding={4}>
+    <Stack ref={ref} space={4} padding={4}>
       <Stack space={2}>
         <Flex align="center" justify="space-between">
           <Heading size={3}>📈 Product Profitability</Heading>
@@ -237,6 +238,8 @@ const ProductProfitability = () => {
       </Card>
     </Stack>
   )
-}
+})
+
+ProductProfitability.displayName = 'ProductProfitability'
 
 export default ProductProfitability

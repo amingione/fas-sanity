@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {
   Badge,
@@ -39,7 +39,7 @@ const formatDayLabel = (value: string) => {
   }).format(date)
 }
 
-export default function AppointmentCalendarPane() {
+const AppointmentCalendarPane = forwardRef<HTMLDivElement, Record<string, unknown>>((_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [range, setRange] = useState('14')
@@ -100,14 +100,14 @@ export default function AppointmentCalendarPane() {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" height="fill">
+      <Flex ref={ref} align="center" justify="center" height="fill">
         <Spinner muted />
       </Flex>
     )
   }
 
   return (
-    <Box padding={4}>
+    <Box ref={ref} padding={4}>
       <Stack space={4}>
         <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
           <Heading as="h2" size={3}>
@@ -173,4 +173,8 @@ export default function AppointmentCalendarPane() {
       </Stack>
     </Box>
   )
-}
+})
+
+AppointmentCalendarPane.displayName = 'AppointmentCalendarPane'
+
+export default AppointmentCalendarPane

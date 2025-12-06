@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react'
+import {forwardRef, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {
   Badge,
@@ -111,7 +111,7 @@ const StatCard = ({
   </Card>
 )
 
-export default function CampaignPerformance(props: CampaignPerformanceProps) {
+const CampaignPerformance = forwardRef<HTMLDivElement, CampaignPerformanceProps>((props, ref) => {
   const campaignId = (props.documentId || '').replace(/^drafts\./, '')
   const client = useClient({apiVersion: '2024-10-01'})
   const [data, setData] = useState<CampaignPerformanceResult | null>(null)
@@ -174,7 +174,7 @@ export default function CampaignPerformance(props: CampaignPerformanceProps) {
 
   if (!campaignId) {
     return (
-      <Card padding={4}>
+      <Card ref={ref} padding={4}>
         <Text>Select a campaign to view performance details.</Text>
       </Card>
     )
@@ -182,7 +182,7 @@ export default function CampaignPerformance(props: CampaignPerformanceProps) {
 
   if (loading && !data) {
     return (
-      <Card padding={4}>
+      <Card ref={ref} padding={4}>
         <Flex gap={3} align="center">
           <Spinner />
           <Text>Loading campaign performance…</Text>
@@ -193,7 +193,7 @@ export default function CampaignPerformance(props: CampaignPerformanceProps) {
 
   if (error) {
     return (
-      <Card padding={4} tone="critical" radius={2} border>
+      <Card ref={ref} padding={4} tone="critical" radius={2} border>
         <Stack space={3}>
           <Text weight="semibold">Unable to load performance data</Text>
           <Text size={1}>{error}</Text>
@@ -205,14 +205,14 @@ export default function CampaignPerformance(props: CampaignPerformanceProps) {
 
   if (!data) {
     return (
-      <Card padding={4}>
+      <Card ref={ref} padding={4}>
         <Text>No performance data available yet.</Text>
       </Card>
     )
   }
 
   return (
-    <Box padding={4} style={{minHeight: '100%', overflowY: 'auto'}}>
+    <Box ref={ref} padding={4} style={{minHeight: '100%', overflowY: 'auto'}}>
       <Stack space={4}>
         <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
           <div>
@@ -370,4 +370,8 @@ export default function CampaignPerformance(props: CampaignPerformanceProps) {
       </Stack>
     </Box>
   )
-}
+})
+
+CampaignPerformance.displayName = 'CampaignPerformance'
+
+export default CampaignPerformance

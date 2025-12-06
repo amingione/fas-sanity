@@ -995,4 +995,6 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
   )
 })
 
+AdminTools.displayName = 'AdminTools'
+
 export default AdminTools

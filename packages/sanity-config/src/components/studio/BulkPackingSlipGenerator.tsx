@@ -17,7 +17,8 @@ type FileMeta = {
   pages: number
 }
 
-export default function BulkPackingSlipGenerator() {
+const BulkPackingSlipGenerator = React.forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: '2024-04-10'})
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [status, setStatus] = useState<Record<string, string>>({})
@@ -115,7 +116,7 @@ export default function BulkPackingSlipGenerator() {
   }
 
   return (
-    <Card padding={4}>
+    <Card ref={ref} padding={4}>
       <img
         src="/media/New Red FAS Logo.png"
         alt="FAS Logo"
@@ -165,4 +166,9 @@ export default function BulkPackingSlipGenerator() {
       </Stack>
     </Card>
   )
-}
+  },
+)
+
+BulkPackingSlipGenerator.displayName = 'BulkPackingSlipGenerator'
+
+export default BulkPackingSlipGenerator

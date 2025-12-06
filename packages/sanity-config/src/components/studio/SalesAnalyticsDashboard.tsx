@@ -640,4 +640,6 @@ export const SalesAnalyticsDashboard = forwardRef<HTMLDivElement>(function Sales
   )
 })
 
+SalesAnalyticsDashboard.displayName = 'SalesAnalyticsDashboard'
+
 export default SalesAnalyticsDashboard

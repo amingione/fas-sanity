@@ -4,7 +4,7 @@ import {useClient} from 'sanity'
 import {Button, Heading, Text, Select, Flex, Box} from '@sanity/ui'
 import jsPDF from 'jspdf'
 
-export default function FinancialReports() {
+const FinancialReports = React.forwardRef<HTMLDivElement, Record<string, unknown>>((_props, ref) => {
   const client = useClient({apiVersion: '2024-04-10'})
   const [reportType, setReportType] = useState('orders')
   const [from, setFrom] = useState('')
@@ -103,7 +103,7 @@ export default function FinancialReports() {
   }
 
   return (
-    <Box marginTop={6} padding={4}>
+    <Box ref={ref} marginTop={6} padding={4}>
       <Box paddingBottom={6} style={{textAlign: 'center'}}>
         <Heading as="h2" size={2}>
           📩 Download Financial Reports
@@ -235,4 +235,8 @@ export default function FinancialReports() {
       </Box>
     </Box>
   )
-}
+})
+
+FinancialReports.displayName = 'FinancialReports'
+
+export default FinancialReports

@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {
   Box,
@@ -81,7 +81,7 @@ const currency = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'U
 
 type StatusTab = 'all' | 'current' | 'overdue' | 'paid'
 
-const AccountsReceivable = () => {
+const AccountsReceivable = forwardRef<HTMLDivElement, Record<string, unknown>>((_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -154,7 +154,7 @@ const AccountsReceivable = () => {
   }
 
   return (
-    <Stack space={4} padding={4}>
+    <Stack ref={ref} space={4} padding={4}>
       <Flex align="center" justify="space-between">
         <Heading size={3}>🏦 Accounts Receivable</Heading>
         <Flex gap={2}>
@@ -253,7 +253,9 @@ const AccountsReceivable = () => {
       </Card>
     </Stack>
   )
-}
+})
+
+AccountsReceivable.displayName = 'AccountsReceivable'
 
 const StatusCard = ({
   label,

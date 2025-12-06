@@ -572,4 +572,6 @@ const MetricCard = ({
   )
 };
 
+FinancialDashboard.displayName = 'FinancialDashboard'
+
 export default FinancialDashboard

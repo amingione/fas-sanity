@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import type {DocumentStub} from '../../types/sanity'
 import {useToast, Box, Button, Card, Flex, Grid, Heading, Select, Spinner, Stack, Text} from '@sanity/ui'
@@ -47,7 +47,8 @@ const formatAppointmentSummary = (appt: Appointment) => {
   return `${appt.appointmentNumber ?? 'Appointment'} • ${when}`
 }
 
-export default function WorkOrderManagementPane() {
+const WorkOrderManagementPane = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: API_VERSION})
   const toast = useToast()
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
@@ -171,14 +172,14 @@ export default function WorkOrderManagementPane() {
 
   if (loading) {
     return (
-      <Flex align="center" justify="center" height="fill">
+      <Flex ref={ref} align="center" justify="center" height="fill">
         <Spinner muted />
       </Flex>
     )
   }
 
   return (
-    <Box padding={4}>
+    <Box ref={ref} padding={4}>
       <Stack space={5}>
         <Heading as="h2" size={3}>
           Work Order Management
@@ -285,4 +286,9 @@ export default function WorkOrderManagementPane() {
       </Stack>
     </Box>
   )
-}
+  },
+)
+
+WorkOrderManagementPane.displayName = 'WorkOrderManagementPane'
+
+export default WorkOrderManagementPane

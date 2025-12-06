@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {Box, Button, Card, Code, Flex, Inline, Label, Spinner, Stack, Text} from '@sanity/ui'
 import {RefreshIcon, CopyIcon, WarningOutlineIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
@@ -86,7 +86,8 @@ const buildXml = (items: MerchantCenterProduct[]): string => {
   ].join('')
 }
 
-export function MerchantFeedPreview() {
+export const MerchantFeedPreview = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const [products, setProducts] = useState<MerchantCenterProduct[] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -151,7 +152,7 @@ export function MerchantFeedPreview() {
   }, [xmlPreview])
 
   return (
-    <Stack space={5}>
+    <Stack ref={ref} space={5}>
       <Flex align="center" justify="space-between">
         <Stack space={5}>
           <Text size={3} weight="semibold">
@@ -252,6 +253,9 @@ export function MerchantFeedPreview() {
       )}
     </Stack>
   )
-}
+  },
+)
+
+MerchantFeedPreview.displayName = 'MerchantFeedPreview'
 
 export default MerchantFeedPreview

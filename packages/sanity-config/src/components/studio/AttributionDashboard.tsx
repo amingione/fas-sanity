@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {
   Badge,
@@ -139,7 +139,8 @@ const FunnelStep = ({label, value, max}: {label: string; value: number; max: num
   )
 }
 
-export default function AttributionDashboard() {
+const AttributionDashboard = forwardRef<HTMLDivElement, Record<string, unknown>>(
+  (_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})
   const [rangeDays, setRangeDays] = useState(30)
   const [data, setData] = useState<DashboardQueryResult | null>(null)
@@ -290,7 +291,7 @@ export default function AttributionDashboard() {
   }, [data])
 
   return (
-    <Stack space={4}>
+    <Stack ref={ref} space={4}>
       <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
         <Stack space={2}>
           <Heading as="h2" size={3}>
@@ -491,4 +492,8 @@ export default function AttributionDashboard() {
       )}
     </Stack>
   )
-}
+})
+
+AttributionDashboard.displayName = 'AttributionDashboard'
+
+export default AttributionDashboard

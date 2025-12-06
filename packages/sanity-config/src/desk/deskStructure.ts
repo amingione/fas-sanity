@@ -53,6 +53,9 @@ import WorkOrderManagementPane from '../components/studio/WorkOrderManagementPan
 import WholesaleOrdersPane from '../components/studio/WholesaleOrdersPane'
 import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
 import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenerator'
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard'
+import ShipmentsPanel from '../components/shipments/ShipmentsPanel'
+import PickupsPanel from '../components/pickups/PickupsPanel'
 import SalesAnalyticsDashboard from '../components/studio/SalesAnalyticsDashboard'
 import OperationsDashboard from '../components/studio/OperationsDashboard'
 import WholesaleDashboard from '../components/studio/WholesaleDashboard'
@@ -113,33 +116,6 @@ const documentTablePane = (S: any, id: string, title: string, component: Compone
         .title(title)
         .id(`${id}-table`),
     ])
-
-const ProductsAllTableView: ComponentType = () =>
-  React.createElement(ProductsDocumentTable as any, {title: 'All products', pageSize: 12})
-
-const PerformancePackagesTableView: ComponentType = () =>
-  React.createElement(ProductsDocumentTable as any, {
-    title: 'Performance Packages',
-    pageSize: 12,
-    baseFilter: 'productType == "service"',
-    initialSortId: 'titleAsc',
-  })
-
-const ProductsPausedTableView: ComponentType = () =>
-  React.createElement(ProductsDocumentTable as any, {
-    title: 'Paused',
-    pageSize: 12,
-    baseFilter: 'status == "paused"',
-    initialStatusFilter: 'paused',
-  })
-
-const ProductsArchivedTableView: ComponentType = () =>
-  React.createElement(ProductsDocumentTable as any, {
-    title: 'Archived',
-    pageSize: 12,
-    baseFilter: 'status == "archived"',
-    initialStatusFilter: 'archived',
-  })
 
 const CustomersAllTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {
@@ -203,13 +179,6 @@ const InStoreOrdersTableView: ComponentType = () =>
     title: 'In-Store Orders',
     pageSize: 10,
     filter: 'orderType == "in-store"',
-  })
-
-const WholesalePricingTableView: ComponentType = () =>
-  React.createElement(ProductsDocumentTable as any, {
-    title: 'Wholesale Pricing',
-    pageSize: 10,
-    baseFilter: 'coalesce(availableForWholesale, false) == true',
   })
 
 type OrderWorkflowConfig = {
@@ -355,6 +324,10 @@ const createPaymentLinksPane = (S: any) =>
     .icon(LinkIcon)
     .child(documentTablePane(S, 'payment-links', 'Payment links', PaymentLinksDocumentTable as any))
 
+const productDefaultOrdering = [{field: '_updatedAt', direction: 'desc' as const}]
+const canHandleProductIntent = (intentName: string, params?: {type?: string}) =>
+  intentName === 'edit' && params?.type === 'product'
+
 const createProductsSection = (S: any) =>
   S.listItem()
     .id('products')
@@ -367,28 +340,46 @@ const createProductsSection = (S: any) =>
           S.listItem()
             .id('products-all')
             .title('All Products')
-            .child(documentTablePane(S, 'products-all', 'All products', ProductsAllTableView)),
+            .child(documentTablePane(S, 'products-all', 'All products', ProductsDocumentTable)),
           S.listItem()
             .id('performance-packages')
             .title('Performance Packages')
             .icon(RocketIcon)
             .child(
-              documentTablePane(
-                S,
-                'performance-packages',
-                'Performance Packages',
-                PerformancePackagesTableView,
-              ),
+              S.documentList()
+                .id('performance-packages-list')
+                .schemaType('product')
+                .apiVersion(API_VERSION)
+                .title('Performance Packages')
+                .filter('_type == "product" && productType == "service"')
+                .defaultOrdering(productDefaultOrdering)
+                .canHandleIntent(canHandleProductIntent),
             ),
           S.listItem()
             .id('products-paused')
             .title('Paused')
-            .child(documentTablePane(S, 'products-paused', 'Paused', ProductsPausedTableView)),
+            .child(
+              S.documentList()
+                .id('products-paused-list')
+                .schemaType('product')
+                .apiVersion(API_VERSION)
+                .title('Paused Products')
+                .filter('_type == "product" && status == "paused"')
+                .defaultOrdering(productDefaultOrdering)
+                .canHandleIntent(canHandleProductIntent),
+            ),
           S.listItem()
             .id('products-archived')
             .title('Archived')
             .child(
-              documentTablePane(S, 'products-archived', 'Archived', ProductsArchivedTableView),
+              S.documentList()
+                .id('products-archived-list')
+                .schemaType('product')
+                .apiVersion(API_VERSION)
+                .title('Archived Products')
+                .filter('_type == "product" && status == "archived"')
+                .defaultOrdering(productDefaultOrdering)
+                .canHandleIntent(canHandleProductIntent),
             ),
           S.divider(),
           S.documentTypeListItem('category').title('Categories'),
@@ -517,6 +508,55 @@ const createShippingSection = (S: any) =>
         .title('Shipping')
         .items([
           S.listItem()
+            .id('shipping-analytics')
+            .title('Analytics')
+            .child(
+              S.component()
+                .id('shipping-analytics-pane')
+                .title('Analytics')
+                .component(AnalyticsDashboard as ComponentType),
+            ),
+          S.listItem()
+            .id('shipments')
+            .title('Shipments')
+            .child(
+              S.component()
+                .id('shipments-panel')
+                .title('Shipments')
+                .component(ShipmentsPanel as ComponentType),
+            ),
+          S.divider(),
+          S.listItem()
+            .id('shipping-settings')
+            .title('Shipping Settings')
+            .child(
+              S.list()
+                .title('Shipping Settings')
+                .items([
+                  S.listItem()
+                    .id('saved-packages')
+                    .title('Saved Packages')
+                    .schemaType('savedPackage')
+                    .child(S.documentTypeList('savedPackage').title('Saved Packages')),
+                  S.listItem()
+                    .id('sender-addresses')
+                    .title('Sender Addresses')
+                    .schemaType('senderAddress')
+                    .child(S.documentTypeList('senderAddress').title('Sender Addresses')),
+                ]),
+            ),
+          S.divider(),
+          S.listItem()
+            .id('pickups')
+            .title('Pickups')
+            .child(
+              S.component()
+                .id('pickups-panel')
+                .title('Pickups')
+                .component(PickupsPanel as ComponentType),
+            ),
+          S.divider(),
+          S.listItem()
             .id('shipping-fulfillment')
             .title('Bulk Fulfillment Console')
             .icon(TrolleyIcon)
@@ -537,6 +577,9 @@ const createShippingSection = (S: any) =>
                 .component(BulkPackingSlipGenerator as ComponentType),
             ),
           S.divider(),
+          S.documentTypeListItem('shipment').title('Shipments (Records)').icon(DocumentIcon),
+          S.documentTypeListItem('pickup').title('Pickups (Records)').icon(DocumentIcon),
+          S.documentTypeListItem('schedulePickup').title('Schedule Pickup').icon(CalendarIcon),
           S.documentTypeListItem('shippingLabel').title('Shipping Labels').icon(DocumentIcon),
           S.documentTypeListItem('freightQuote').title('Freight Quotes').icon(CaseIcon),
           S.documentTypeListItem('shippingOption').title('Shipping Options').icon(TagIcon),
@@ -883,12 +926,7 @@ const createInStoreSalesSection = (S: any) =>
               S.component()
                 .id('sales-reports-pane')
                 .title('Sales Reports')
-                .component(() =>
-                  React.createElement(ComingSoonPane as any, {
-                    title: 'Sales Reports',
-                    description: 'Detailed reporting dashboard coming soon.',
-                  }),
-                ),
+                .component(SalesReportsPane as ComponentType),
             ),
         ]),
     )
@@ -1024,12 +1062,14 @@ const createPricingManagementSubSection = (S: any) =>
             .title('Wholesale Pricing by Product')
             .icon(CreditCardIcon)
             .child(
-              documentTablePane(
-                S,
-                'wholesale-pricing-products-pane',
-                'Wholesale Pricing',
-                WholesalePricingTableView,
-              ),
+              S.documentList()
+                .id('wholesale-pricing-products-list')
+                .schemaType('product')
+                .apiVersion(API_VERSION)
+                .title('Wholesale Pricing')
+                .filter('_type == "product" && coalesce(availableForWholesale, false) == true')
+                .defaultOrdering(productDefaultOrdering)
+                .canHandleIntent(canHandleProductIntent),
             ),
           S.listItem()
             .id('wholesale-pricing-calculator')
@@ -1047,13 +1087,15 @@ const createPricingManagementSubSection = (S: any) =>
             .icon(WarningOutlineIcon)
             .child(
               S.documentList()
+                .id('wholesale-pricing-missing-list')
                 .apiVersion(API_VERSION)
                 .schemaType('product')
                 .title('Missing Wholesale Pricing')
                 .filter(
                   '_type == "product" && productType != "service" && (!defined(wholesalePriceStandard) && !defined(wholesalePricePreferred) && !defined(wholesalePricePlatinum))',
                 )
-                .defaultOrdering([{field: 'title', direction: 'asc'}]),
+                .defaultOrdering([{field: 'title', direction: 'asc'}])
+                .canHandleIntent(canHandleProductIntent),
             ),
           S.listItem()
             .id('wholesale-pricing-margins')
@@ -1467,29 +1509,53 @@ const createVendorPortalSection = (S: any) =>
         ]),
     )
 
-const MarketingAnalyticsPane: ComponentType = () =>
+const SalesReportsPane: ComponentType = React.forwardRef<HTMLDivElement>((_props, ref) =>
   React.createElement(ComingSoonPane as any, {
-    title: 'Marketing Analytics',
-    description: 'Integrated campaign ROI reporting is coming soon.',
-    actions: [
-      {
+    ref,
+    options: {
+      title: 'Sales Reports',
+      description: 'Detailed reporting dashboard coming soon.',
+    },
+  }),
+)
+SalesReportsPane.displayName = 'SalesReportsPane'
+
+const MarketingAnalyticsPane: ComponentType = React.forwardRef<HTMLDivElement>((_props, ref) =>
+  React.createElement(ComingSoonPane as any, {
+    ref,
+    options: {
+      title: 'Marketing Analytics',
+      description: 'Integrated campaign ROI reporting is coming soon.',
+      secondaryAction: {
         label: 'View sales dashboard',
         href: '#',
       },
-    ],
-  })
+    },
+  }),
+)
+MarketingAnalyticsPane.displayName = 'MarketingAnalyticsPane'
 
-const CustomerAnalyticsPane: ComponentType = () =>
+const CustomerAnalyticsPane: ComponentType = React.forwardRef<HTMLDivElement>((_props, ref) =>
   React.createElement(ComingSoonPane as any, {
-    title: 'Customer Analytics',
-    description: 'Behavior, segments, and retention insights are coming soon.',
-  })
+    ref,
+    options: {
+      title: 'Customer Analytics',
+      description: 'Behavior, segments, and retention insights are coming soon.',
+    },
+  }),
+)
+CustomerAnalyticsPane.displayName = 'CustomerAnalyticsPane'
 
-const ProductPerformancePane: ComponentType = () =>
+const ProductPerformancePane: ComponentType = React.forwardRef<HTMLDivElement>((_props, ref) =>
   React.createElement(ComingSoonPane as any, {
-    title: 'Product Performance',
-    description: 'Detailed SKU velocity dashboards arrive in a future release.',
-  })
+    ref,
+    options: {
+      title: 'Product Performance',
+      description: 'Detailed SKU velocity dashboards arrive in a future release.',
+    },
+  }),
+)
+ProductPerformancePane.displayName = 'ProductPerformancePane'
 
 const createSalesChannelsList = (S: any) =>
   S.listItem()
