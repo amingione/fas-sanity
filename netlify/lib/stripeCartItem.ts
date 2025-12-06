@@ -389,6 +389,10 @@ export function mapStripeLineItem(
       'item_sku',
       'variant_sku',
       'inventory_sku',
+      'sanity_product_id',
+      'sanityProductId',
+      'sanity_sku',
+      'sanitySku',
     ]) ||
     toStringValue(productObj?.metadata?.sku) ||
     toStringValue(productObj?.sku) ||
@@ -542,9 +546,19 @@ export function mapStripeLineItem(
       : undefined
 
   const selectedVariantCandidate =
-    normalizeChoiceLabel(metadata.map.variant) ||
-    normalizeChoiceLabel(metadata.map.variant_name) ||
-    normalizeChoiceLabel(metadata.map.selected_variant) ||
+    normalizeChoiceLabel(
+      getMetadataValue(
+        'variant',
+        'variant_name',
+        'selected_variant',
+        'option_platform',
+        'option_platform_label',
+        'option_vehicle',
+        'option_vehicle_label',
+        'option2_value',
+        'option2value',
+      ),
+    ) ||
     normalizeChoiceLabel(metadata.map.model) ||
     normalizeChoiceLabel(metadata.map.trim) ||
     normalizeChoiceLabel(derivedOptions.optionDetails.find((opt) => !/upgrade/i.test(opt))) ||
@@ -553,7 +567,18 @@ export function mapStripeLineItem(
 
   const derivedAddOns = uniqueStrings(
     normalizeDetails(
-      ...[metadata.map.addons, metadata.map.add_ons, metadata.map.addOn, metadata.map.add_on].filter(Boolean),
+      ...[
+        metadata.map.addons,
+        metadata.map.add_ons,
+        metadata.map.addOn,
+        metadata.map.add_on,
+        metadata.map.addon_1,
+        metadata.map.addon1,
+        metadata.map.addon_2,
+        metadata.map.addon2,
+        metadata.map.addon_3,
+        metadata.map.addon3,
+      ].filter(Boolean),
     ),
   )
 
@@ -568,6 +593,7 @@ export function mapStripeLineItem(
       ? price * quantityValue + (upgradesTotal ?? 0)
       : undefined
   const resolvedTotal = computedTotal ?? derivedTotal ?? derivedLineTotal
+  const resolvedLineTotal = derivedLineTotal ?? resolvedTotal ?? 0
 
   return {
     id: productId,
@@ -589,8 +615,8 @@ export function mapStripeLineItem(
     price,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,
     categories,
-    lineTotal: derivedLineTotal ?? resolvedTotal,
-    total: resolvedTotal,
+    lineTotal: resolvedLineTotal,
+    total: resolvedTotal ?? resolvedLineTotal,
     selectedVariant: normalizeChoiceLabel(selectedVariantCandidate),
     addOns: addOns.length ? addOns : undefined,
     metadata: metadataObject,

@@ -1,5 +1,6 @@
 import {Badge, Card, Flex, Stack, Text} from '@sanity/ui'
 import {ChevronDownIcon, ChevronUpIcon} from '@sanity/icons'
+import {isValidElement} from 'react'
 import type {ComponentType, ReactNode} from 'react'
 
 type OrderSectionProps = {
@@ -13,15 +14,16 @@ type OrderSectionProps = {
 
 const renderIcon = (icon?: ComponentType | ReactNode) => {
   if (!icon) return null
-  if (typeof icon === 'function') {
-    const IconComponent = icon as ComponentType
-    return (
-      <span style={{display: 'inline-flex', fontSize: 16}}>
-        <IconComponent />
-      </span>
-    )
+  if (isValidElement(icon) || typeof icon === 'string' || typeof icon === 'number') {
+    return icon
   }
-  return icon
+
+  const IconComponent = icon as ComponentType
+  return (
+    <span style={{display: 'inline-flex', fontSize: 16}}>
+      <IconComponent />
+    </span>
+  )
 }
 
 function OrderSection({title, icon, fieldCount, isCollapsed, onToggle, children}: OrderSectionProps) {

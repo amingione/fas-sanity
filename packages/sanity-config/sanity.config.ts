@@ -214,6 +214,116 @@ const visionEnabled = disableVisionOverride === true ? false : true
 const visualEditingEnabled =
   disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true
 
+const defaultDocumentNode = (S: any, {schemaType}: {schemaType: string}) => {
+  if (schemaType === 'order') {
+    return S.document().views([
+      S.view.form(),
+      S.view.component(orderView as any).title('Order Management').id('order-management-view'),
+    ])
+  }
+
+  if (schemaType === 'customer') {
+    return S.document().views([
+      S.view.form(),
+      S.view.component(CustomerDashboard as any).title('Customer Dashboard').id('customer-dashboard'),
+    ])
+  }
+
+  if (schemaType === 'vehicle') {
+    return S.document().views([
+      S.view.form(),
+      S.view.component(VehicleServiceHistory as any)
+        .title('Vehicle Service History')
+        .id('vehicle-history'),
+    ])
+  }
+
+  return S.document()
+}
+
+const configuredPlugins = [
+  deskTool({
+    name: 'desk',
+    title: 'Content',
+    structure: deskStructure,
+    defaultDocumentNode,
+  }),
+  deskStructureBuilderTool(),
+  media(),
+  codeInput(),
+  dashboardTool({
+    widgets: [
+      documentListWidget({
+        title: 'Recent Orders',
+        query: '*[_type == "order"] | order(_createdAt desc) [0...8]',
+        layout: {width: 'small', height: 'small'},
+      }),
+      documentListWidget({
+        title: 'Pending Orders',
+        query:
+          '*[_type == "order" && status in ["NEW", "Need Fullfillment"]] | order(_createdAt desc) [0...8]',
+        layout: {width: 'small', height: 'small'},
+      }),
+      documentListWidget({
+        title: 'Upcoming Appointments',
+        query:
+          '*[_type == "appointment" && scheduledDate > now()] | order(scheduledDate asc) [0...8]',
+        layout: {width: 'small', height: 'small'},
+      }),
+      documentListWidget({
+        title: 'Active Work Orders',
+        query:
+          '*[_type == "workOrder" && status in ["in-progress", "pending"]] | order(_createdAt desc) [0...8]',
+        layout: {width: 'small', height: 'small'},
+      }),
+      documentListWidget({
+        title: 'Unpaid Invoices',
+        query: '*[_type == "invoice" && status != "paid"] | order(dueDate asc) [0...8]',
+        layout: {width: 'small', height: 'small'},
+      }),
+      documentListWidget({
+        title: 'New Customers',
+        query: '*[_type == "customer"] | order(_createdAt desc) [0...6]',
+        layout: {width: 'small', height: 'small'},
+      }),
+      {
+        name: 'revenue-metrics',
+        component: RevenueMetricsWidget,
+        layout: {width: 'medium', height: 'large'},
+      },
+      {
+        name: 'order-fulfillment',
+        component: OrderFulfillmentWidget,
+        layout: {width: 'large', height: 'large'},
+      },
+      {
+        name: 'appointment-calendar',
+        component: AppointmentCalendarWidget,
+        layout: {width: 'full', height: 'large'},
+      },
+      {
+        name: 'stripe-analytics',
+        layout: {width: 'full', height: 'large'},
+        component: StripeAnalyticsWidget,
+      },
+      {
+        name: 'team-notes',
+        layout: {width: 'medium'},
+        component: TeamNotesWidget,
+      },
+      {
+        name: 'analytics-iframe',
+        layout: {width: 'full', height: 'large'},
+        component: () =>
+          React.createElement(IframeWidget, {title: 'Analytics', url: analyticsIframeUrl}),
+      },
+    ],
+  }),
+  // preview/presentation tool removed
+  ...(visionEnabled ? [visionTool()] : []),
+  // Cast through unknown to sidestep pnpm's dual sanity peer variants during type-checking.
+] as unknown as PluginOptions[]
+
 export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
@@ -230,86 +340,7 @@ export default defineConfig({
     useCdn: false,
   },
 
-  plugins: [
-    deskTool({
-      name: 'desk',
-      title: 'Content',
-      structure: deskStructure,
-    }),
-    deskStructureBuilderTool(),
-    media(),
-    codeInput(),
-    dashboardTool({
-      widgets: [
-        documentListWidget({
-          title: 'Recent Orders',
-          query: '*[_type == "order"] | order(_createdAt desc) [0...8]',
-          layout: {width: 'small', height: 'small'},
-        }),
-        documentListWidget({
-          title: 'Pending Orders',
-          query:
-            '*[_type == "order" && status in ["NEW", "Need Fullfillment"]] | order(_createdAt desc) [0...8]',
-          layout: {width: 'small', height: 'small'},
-        }),
-        documentListWidget({
-          title: 'Upcoming Appointments',
-          query:
-            '*[_type == "appointment" && scheduledDate > now()] | order(scheduledDate asc) [0...8]',
-          layout: {width: 'small', height: 'small'},
-        }),
-        documentListWidget({
-          title: 'Active Work Orders',
-          query:
-            '*[_type == "workOrder" && status in ["in-progress", "pending"]] | order(_createdAt desc) [0...8]',
-          layout: {width: 'small', height: 'small'},
-        }),
-        documentListWidget({
-          title: 'Unpaid Invoices',
-          query: '*[_type == "invoice" && status != "paid"] | order(dueDate asc) [0...8]',
-          layout: {width: 'small', height: 'small'},
-        }),
-        documentListWidget({
-          title: 'New Customers',
-          query: '*[_type == "customer"] | order(_createdAt desc) [0...6]',
-          layout: {width: 'small', height: 'small'},
-        }),
-        {
-          name: 'revenue-metrics',
-          component: RevenueMetricsWidget,
-          layout: {width: 'medium', height: 'large'},
-        },
-        {
-          name: 'order-fulfillment',
-          component: OrderFulfillmentWidget,
-          layout: {width: 'large', height: 'large'},
-        },
-        {
-          name: 'appointment-calendar',
-          component: AppointmentCalendarWidget,
-          layout: {width: 'full', height: 'large'},
-        },
-        {
-          name: 'stripe-analytics',
-          layout: {width: 'full', height: 'large'},
-          component: StripeAnalyticsWidget,
-        },
-        {
-          name: 'team-notes',
-          layout: {width: 'medium'},
-          component: TeamNotesWidget,
-        },
-        {
-          name: 'analytics-iframe',
-          layout: {width: 'full', height: 'large'},
-          component: () =>
-            React.createElement(IframeWidget, {title: 'Analytics', url: analyticsIframeUrl}),
-        },
-      ],
-    }),
-    // preview/presentation tool removed
-    ...(visionEnabled ? [visionTool()] : []),
-  ],
+  plugins: configuredPlugins,
 
   apps: {
     canvas: {
@@ -325,23 +356,6 @@ export default defineConfig({
         context,
       ),
     badges: resolveDocumentBadges,
-    views: [
-      {
-        id: 'order-management-view',
-        title: 'Order Management',
-        component: orderView,
-      },
-      {
-        id: 'customer-dashboard',
-        title: 'Customer Dashboard',
-        component: CustomerDashboard,
-      },
-      {
-        id: 'vehicle-history',
-        title: 'Vehicle Service History',
-        component: VehicleServiceHistory,
-      },
-    ],
   },
 
   schema: {
