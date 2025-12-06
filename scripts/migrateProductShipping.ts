@@ -26,6 +26,17 @@ type CliOptions = {
   dryRun: boolean
 }
 
+type NormalizedShippingConfig = {
+  weight: number | null
+  dimensions: {length: number; width: number; height: number} | null
+  shippingClass: string
+  handlingTime: number
+  requiresShipping: boolean
+  freeShippingEligible: boolean
+  separateShipment: boolean
+  callForShippingQuote: boolean
+}
+
 const parseNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value === 'string') {
@@ -95,6 +106,30 @@ function parseCliOptions(): CliOptions {
     }
   }
   return opts
+}
+
+function variantIds(id: string): string[] {
+  const baseId = id.startsWith('drafts.') ? id.slice(7) : id
+  return Array.from(new Set([baseId, `drafts.${baseId}`]))
+}
+
+async function patchShippingConfig(docId: string, shippingConfig: NormalizedShippingConfig) {
+  let patched = 0
+  for (const targetId of variantIds(docId)) {
+    try {
+      await client
+        .patch(targetId)
+        .set({shippingConfig})
+        .commit({autoGenerateArrayKeys: true})
+      patched += 1
+    } catch (err: any) {
+      if (err?.response?.statusCode === 404) continue
+      throw err
+    }
+  }
+  if (patched === 0) {
+    throw new Error(`No draft or published document found for ${docId}`)
+  }
 }
 
 async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRun = false) {
@@ -196,7 +231,7 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
           : product.shipsAlone ?? false
       const callForShippingQuote = existing.callForShippingQuote === true
 
-      const shippingConfig = {
+      const shippingConfig: NormalizedShippingConfig = {
         weight,
         dimensions,
         shippingClass,
@@ -210,10 +245,7 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
       if (dryRun) {
         console.log(`[dry-run] Would update ${product._id} with`, shippingConfig)
       } else {
-        await client
-          .patch(product._id)
-          .set({shippingConfig})
-          .commit({autoGenerateArrayKeys: true})
+        await patchShippingConfig(product._id, shippingConfig)
         console.log(`Updated ${product._id}`)
       }
 
