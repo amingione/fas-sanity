@@ -94,9 +94,7 @@ function resolveOrderNumber(data: OrderRowData & {_id: string}) {
   const sessionFormatted = formatOrderNumber(data.stripeSessionId)
   if (sessionFormatted) return sessionFormatted
 
-  const trimmedId = data._id.replace(/^drafts\./, '')
-  const randomFallback = trimmedId.slice(-6).toUpperCase()
-  return randomFallback ? `#${randomFallback}` : '—'
+  return '—'
 }
 
 function sanitizeFilenameSegment(value: string): string {
@@ -414,7 +412,7 @@ export default function OrdersDocumentTable({
 
           const blob = new Blob([arrayBuffer], {type: 'application/pdf'})
           buffers.push({id, arrayBuffer})
-          const labelCandidate = labelLookup.get(id) || id.replace(/^drafts\./, '') || id
+          const labelCandidate = labelLookup.get(id) || 'order'
           const filenameSegment = sanitizeFilenameSegment(labelCandidate)
           const filename = `packing-slip-${filenameSegment}.pdf`
 

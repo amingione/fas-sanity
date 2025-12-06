@@ -60,6 +60,33 @@ const SHIPPING_CLASS_VALUES = ['standard', 'oversized', 'fragile', 'hazmat', 'in
 const normalizeShippingClass = (value?: string | null) =>
   typeof value === 'string' ? value.toLowerCase().replace(/\s+/g, '_') : undefined
 
+const parseShippingDimensions = (value?: string | null) => {
+  if (!value || typeof value !== 'string') return null
+  const match = value.match(
+    /(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/,
+  )
+  if (!match) return null
+  const [, rawLength, rawWidth, rawHeight] = match
+  const length = Number.parseFloat(rawLength)
+  const width = Number.parseFloat(rawWidth)
+  const height = Number.parseFloat(rawHeight)
+  if (!Number.isFinite(length) || !Number.isFinite(width) || !Number.isFinite(height)) return null
+  return {
+    length,
+    width,
+    height,
+  }
+}
+
+const normalizeShippingNumber = (value?: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
 type BooleanFieldWithDocument = BooleanInputProps<BooleanSchemaType> & {document?: any}
 
 type StringFieldWithDocument = StringInputProps<StringSchemaType> & {document?: any}
@@ -939,14 +966,65 @@ const product = defineType({
         collapsible: true,
         collapsed: false,
       },
-      initialValue: (context: VisibilityContext) => {
+      initialValue: async (context: VisibilityContext & {document?: any}) => {
+        const doc = (context as any)?.document || {}
         const service = resolveProductType(context) === 'service'
+        const legacyWeight = normalizeShippingNumber(doc?.shippingWeight)
+        const legacyDimensions = parseShippingDimensions(doc?.boxDimensions)
+        const legacyClass = normalizeShippingClass(doc?.shippingClass) || undefined
+
+        const requiresShipping =
+          doc?.shippingConfig?.requiresShipping !== undefined
+            ? doc.shippingConfig.requiresShipping
+            : service
+              ? false
+              : true
+
+        const weight =
+          doc?.shippingConfig?.weight !== undefined && doc.shippingConfig.weight !== null
+            ? normalizeShippingNumber(doc.shippingConfig.weight)
+            : legacyWeight
+
+        const dimensions =
+          doc?.shippingConfig?.dimensions ||
+          (legacyDimensions
+            ? {
+                length: legacyDimensions.length,
+                width: legacyDimensions.width,
+                height: legacyDimensions.height,
+              }
+            : null)
+
+        const shippingClass =
+          normalizeShippingClass(doc?.shippingConfig?.shippingClass) ||
+          legacyClass ||
+          (service ? 'install_only' : 'standard')
+
+        const handlingTime =
+          normalizeShippingNumber(doc?.shippingConfig?.handlingTime) ??
+          normalizeShippingNumber(doc?.handlingTime) ??
+          2
+
+        const separateShipment =
+          typeof doc?.shippingConfig?.separateShipment === 'boolean'
+            ? doc.shippingConfig.separateShipment
+            : typeof doc?.shipsAlone === 'boolean'
+              ? doc.shipsAlone
+              : false
+
+        const freeShippingEligible =
+          typeof doc?.shippingConfig?.freeShippingEligible === 'boolean'
+            ? doc.shippingConfig.freeShippingEligible
+            : true
+
         return {
-          requiresShipping: service ? false : true,
-          shippingClass: service ? 'install_only' : 'standard',
-          handlingTime: 1,
-          freeShippingEligible: true,
-          separateShipment: false,
+          requiresShipping,
+          shippingClass,
+          handlingTime,
+          freeShippingEligible,
+          separateShipment,
+          weight: weight ?? null,
+          dimensions: dimensions || null,
         }
       },
       fields: [

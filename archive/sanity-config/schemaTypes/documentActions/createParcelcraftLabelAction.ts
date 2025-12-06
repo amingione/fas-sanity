@@ -23,17 +23,15 @@ export const createParcelcraftLabelAction: DocumentActionComponent = (props) => 
     label: 'Create Shipping Label',
     tone: 'positive',
     onHandle: async () => {
-      const orderId = (order?._id || id || '').replace(/^drafts\./, '')
-      if (!orderId) {
+      const orderNumber = (order?._id || id || '').replace(/^drafts\./, '')
+      if (!orderNumber) {
         alert('Order must be published before creating a label.')
         onComplete()
         return
       }
 
       const weightInput =
-        typeof window !== 'undefined'
-          ? window.prompt('Package weight (oz)', '16') || ''
-          : '16'
+        typeof window !== 'undefined' ? window.prompt('Package weight (oz)', '16') || '' : '16'
       const weightOz = Number(weightInput) || 16
       const dimsInput =
         typeof window !== 'undefined'
@@ -51,7 +49,7 @@ export const createParcelcraftLabelAction: DocumentActionComponent = (props) => 
         const res = await fetch(`${base}/.netlify/functions/create-parcelcraft-label`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({orderId, weightOz, dimensions}),
+          body: JSON.stringify({orderId: orderNumber, weightOz, dimensions}),
         })
         const result = await res.json().catch(() => ({}))
         if (!res.ok || result?.error) {

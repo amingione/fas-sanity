@@ -72,7 +72,8 @@ import {INVENTORY_DOCUMENT_TYPE} from '../../../../shared/docTypes'
 const API_VERSION = '2024-10-01'
 const EMAIL_SUBSCRIBER_FILTER = '_type == "customer" && emailMarketing.subscribed == true'
 
-const startOfMonth = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+const startOfMonth = (date: Date) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
 const addMonths = (date: Date, offset: number) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + offset, 1))
 const formatPeriod = (date: Date) =>
@@ -339,33 +340,17 @@ const createProductsSection = (S: any) =>
         .items([
           S.listItem()
             .id('products-all')
-            .title('All Products')
+            .title('Product Table')
             .child(documentTablePane(S, 'products-all', 'All products', ProductsDocumentTable)),
           S.listItem()
-            .id('products-paused')
-            .title('Paused')
+            .id('products-documents')
+            .title('All Products')
+            .schemaType('product')
             .child(
-              S.documentList()
-                .id('products-paused-list')
-                .schemaType('product')
+              S.documentTypeList('product')
                 .apiVersion(API_VERSION)
-                .title('Paused Products')
-                .filter('_type == "product" && status == "paused"')
-                .defaultOrdering(productDefaultOrdering)
-                .canHandleIntent(canHandleProductIntent),
-            ),
-          S.listItem()
-            .id('products-archived')
-            .title('Archived')
-            .child(
-              S.documentList()
-                .id('products-archived-list')
-                .schemaType('product')
-                .apiVersion(API_VERSION)
-                .title('Archived Products')
-                .filter('_type == "product" && status == "archived"')
-                .defaultOrdering(productDefaultOrdering)
-                .canHandleIntent(canHandleProductIntent),
+                .title('All Products')
+                .defaultOrdering(productDefaultOrdering),
             ),
           S.divider(),
           S.documentTypeListItem('category').title('Categories'),
@@ -412,7 +397,7 @@ const createOrdersSection = (S: any) =>
                 'Wholesale Orders',
                 WholesaleOrdersTableView,
               ),
-          ),
+            ),
           S.divider(),
           createOrderWorkflowList(S),
           createCheckoutSessionsPane(S),
@@ -826,20 +811,20 @@ const createVehicleDirectory = (S: any) =>
 const createInStoreOperationsSection = (S: any) =>
   S.listItem()
     .id('in-store-operations')
-    .title('Operations')
+    .title('Services & Scheduling')
     .icon(WrenchIcon)
     .child(
       S.list()
-        .title('In-Store Operations')
+        .title('Services & Scheduling')
         .items([
           S.listItem()
             .id('operations-dashboard')
-            .title('Operations Dashboard')
+            .title('Scheduling Dashboard')
             .icon(BarChartIcon)
             .child(
               S.component()
                 .id('operations-dashboard-pane')
-                .title('Operations Dashboard')
+                .title('Scheduling Dashboard')
                 .component(OperationsDashboard as ComponentType),
             ),
           S.listItem()
@@ -856,64 +841,6 @@ const createInStoreOperationsSection = (S: any) =>
           createWorkOrdersSection(S),
           createServicesSection(S),
           createVehicleDirectory(S),
-        ]),
-    )
-
-const createInStoreSalesSection = (S: any) =>
-  S.listItem()
-    .id('in-store-sales')
-    .title('Sales')
-    .icon(CreditCardIcon)
-    .child(
-      S.list()
-        .title('Sales')
-        .items([
-          S.listItem()
-            .id('in-store-invoices')
-            .title('Invoices')
-            .icon(ClipboardIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('invoice')
-                .title('In-Store Invoices')
-                .filter('_type == "invoice" && orderRef->orderType == "in-store"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('in-store-quotes')
-            .title('Quotes')
-            .icon(DocumentIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('quote')
-                .title('In-Store Quotes')
-                .filter('_type == "quote" && quoteType == "in-store"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('in-store-orders')
-            .title('In-Store Orders')
-            .icon(TrolleyIcon)
-            .child(
-              documentTablePane(
-                S,
-                'in-store-orders-pane',
-                'In-Store Orders',
-                InStoreOrdersTableView,
-              ),
-            ),
-          S.listItem()
-            .id('sales-reports')
-            .title('Sales Reports')
-            .icon(BarChartIcon)
-            .child(
-              S.component()
-                .id('sales-reports-pane')
-                .title('Sales Reports')
-                .component(SalesReportsPane as ComponentType),
-            ),
         ]),
     )
 
@@ -1270,11 +1197,11 @@ const createInventorySubSection = (S: any) =>
 const createWholesaleManufacturingSection = (S: any) =>
   S.listItem()
     .id('wholesale-manufacturing')
-    .title('Wholesale & Manufacturing')
+    .title('Vendors')
     .icon(PackageIcon)
     .child(
       S.list()
-        .title('Wholesale & Manufacturing')
+        .title('Vendors')
         .items([
           S.listItem()
             .id('wholesale-dashboard')
@@ -1298,11 +1225,11 @@ const createWholesaleManufacturingSection = (S: any) =>
 const createVendorPortalSection = (S: any) =>
   S.listItem()
     .id('vendor-portal')
-    .title('Vendor Portal')
+    .title('Vendors')
     .icon(UserIcon)
     .child(
       S.list()
-        .title('Vendor Portal')
+        .title('Vendors')
         .items([
           S.listItem()
             .id('vendor-portal-purchase-orders')
@@ -1492,6 +1419,8 @@ const createVendorPortalSection = (S: any) =>
                   S.documentTypeListItem('vendorPostCategory').title('Categories'),
                 ]),
             ),
+          S.divider(),
+          createWholesaleManufacturingSection(S),
         ]),
     )
 
@@ -1609,19 +1538,17 @@ const createMarketingSection = (S: any) =>
                             .documentId(documentId)
                             .views([
                               S.view.form().title('Editor'),
-                              S.view.component(CampaignPerformance as ComponentType).title('Performance'),
+                              S.view
+                                .component(CampaignPerformance as ComponentType)
+                                .title('Performance'),
                             ]),
                         ),
                     ),
                   S.documentTypeListItem('emailTemplate')
                     .title('Email Templates')
                     .icon(EnvelopeIcon),
-                  S.documentTypeListItem('emailAutomation')
-                    .title('Automations')
-                    .icon(BoltIcon),
-                  S.documentTypeListItem('emailLog')
-                    .title('Email Logs')
-                    .icon(ClockIcon),
+                  S.documentTypeListItem('emailAutomation').title('Automations').icon(BoltIcon),
+                  S.documentTypeListItem('emailLog').title('Email Logs').icon(ClockIcon),
                   S.listItem()
                     .title('Subscribers')
                     .icon(UserIcon)
@@ -1632,7 +1559,9 @@ const createMarketingSection = (S: any) =>
                         .title('Email Subscribers')
                         .schemaType('customer')
                         .filter(EMAIL_SUBSCRIBER_FILTER)
-                        .defaultOrdering([{field: 'emailMarketing.subscribedAt', direction: 'desc'}]),
+                        .defaultOrdering([
+                          {field: 'emailMarketing.subscribedAt', direction: 'desc'},
+                        ]),
                     ),
                 ]),
             ),
@@ -2097,10 +2026,8 @@ export const deskStructure: StructureResolver = (S) =>
       S.divider().title('Vendor Portal'),
       createVendorPortalSection(S),
 
-      S.divider().title('F.A.S. In-Store'),
+      S.divider().title('F.A.S. Service Dept.'),
       createInStoreOperationsSection(S),
-      createInStoreSalesSection(S),
-      createWholesaleManufacturingSection(S),
 
       S.divider().title('F.A.S. Resources'),
       createBlogSection(S),

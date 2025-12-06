@@ -305,14 +305,57 @@ function buildMetadata(
   normalizedId: string,
   shipping: ShippingDetails,
 ): Record<string, string> {
-  const shippingClass = product.shippingConfig?.shippingClass || product.shippingClass
-  const handlingTime = toNonNegativeNumber(
-    product.shippingConfig?.handlingTime ?? product.handlingTime,
-  )
+  const normalizeShippingClassValue = (value?: string | null) => {
+    if (!value) return undefined
+    const normalized = value.toString().trim().toLowerCase().replace(/\s+/g, '_')
+    return normalized || undefined
+  }
+
+  const shippingConfig = product.shippingConfig || {}
+  const weight =
+    toPositiveNumber(shippingConfig.weight) ??
+    toPositiveNumber(product.shippingWeight) ??
+    shipping.weightLbs
+  const dimensions = shippingConfig.dimensions || shipping.dimensions
+  const normalizedDimensions =
+    dimensions && dimensions.length && dimensions.width && dimensions.height
+      ? {
+          length: Number(dimensions.length),
+          width: Number(dimensions.width),
+          height: Number(dimensions.height),
+        }
+      : null
+  const dimensionsLabel = normalizedDimensions
+    ? [normalizedDimensions.length, normalizedDimensions.width, normalizedDimensions.height]
+        .map(formatDimensionLabel)
+        .join('x')
+    : shipping.dimensionsLabel
+
+  const shippingClass =
+    normalizeShippingClassValue(shippingConfig.shippingClass) ||
+    normalizeShippingClassValue(product.shippingClass) ||
+    'standard'
+  const handlingTime =
+    toNonNegativeNumber(shippingConfig.handlingTime) ??
+    toNonNegativeNumber(product.handlingTime) ??
+    2
   const shipsAlone =
-    product.shippingConfig?.separateShipment !== undefined
-      ? product.shippingConfig?.separateShipment
+    typeof shippingConfig.separateShipment === 'boolean'
+      ? shippingConfig.separateShipment
       : product.shipsAlone
+  const requiresShipping =
+    shippingConfig.requiresShipping !== undefined
+      ? shippingConfig.requiresShipping !== false
+      : true
+
+  const productImage =
+    (product as any)?.primaryImage ||
+    (Array.isArray((product as any)?.images) ? (product as any)?.images?.[0]?.asset?.url : null)
+
+  const productUrl =
+    product.slug && typeof product.slug === 'string'
+      ? `https://fasmotorsports.com/shop/${product.slug}`
+      : undefined
 
   return filterMetadata({
     sanity_product_id: normalizedId,
@@ -322,17 +365,17 @@ function buildMetadata(
     sanity_dataset: SANITY_DATASET,
     sanity_title: product.title,
     sanity_availability: product.availability,
-    shipping_weight_lbs:
-      typeof shipping.weightLbs === 'number' ? shipping.weightLbs.toString() : undefined,
-    shipping_weight_oz:
-      typeof shipping.weightOz === 'number' ? shipping.weightOz.toString() : undefined,
-    shipping_box_dimensions: shipping.dimensionsLabel,
-    shipping_weight:
-      typeof shipping.weightLbs === 'number' ? shipping.weightLbs.toString() : undefined,
-    shipping_dimensions: shipping.dimensionsLabel,
+    shipping_weight_lbs: typeof weight === 'number' ? weight.toString() : undefined,
+    shipping_weight_oz: typeof weight === 'number' ? (weight * 16).toFixed(2) : undefined,
+    shipping_box_dimensions: dimensionsLabel,
+    shipping_weight: typeof weight === 'number' ? weight.toString() : undefined,
+    shipping_dimensions: dimensionsLabel,
     shipping_class: shippingClass,
     handling_time: handlingTime !== null ? handlingTime.toString() : undefined,
     ships_alone: shipsAlone ? 'true' : undefined,
+    requires_shipping: requiresShipping ? 'true' : 'false',
+    product_image: productImage || undefined,
+    product_url: productUrl,
   })
 }
 
@@ -406,10 +449,16 @@ async function ensureStripePrice(
   stripeProductId: string,
   priceInfo: PriceInfo,
   metadata: Record<string, string>,
+  currentDefaultPriceId?: string,
 ): Promise<EnsurePriceResult> {
   if (!stripe) {
     throw new Error('Stripe not configured')
   }
+
+  const priceMetadata = filterMetadata({
+    ...metadata,
+    sanity_price_source: priceInfo.source,
+  })
 
   const prices = await stripe.prices.list({product: stripeProductId, limit: 100})
 
@@ -435,13 +484,26 @@ async function ensureStripePrice(
       currency: priceInfo.currency,
       unit_amount: priceInfo.amount,
       nickname: priceInfo.nickname,
-      metadata: {
-        ...metadata,
-        sanity_price_source: priceInfo.source,
-      },
+      metadata: priceMetadata,
       tax_behavior: product.taxBehavior === 'exempt' ? 'exclusive' : 'exclusive',
     })
     created = true
+  }
+
+  if (existing) {
+    const existingMeta = filterMetadata(existing.metadata || {})
+    const metaChanged =
+      Object.keys(priceMetadata).length !== Object.keys(existingMeta).length ||
+      Object.keys(priceMetadata).some((key) => existingMeta[key] !== priceMetadata[key])
+    const nicknameChanged =
+      priceInfo.nickname && priceInfo.nickname !== (existing.nickname || undefined)
+
+    if (metaChanged || nicknameChanged) {
+      existing = await stripe.prices.update(existing.id, {
+        metadata: priceMetadata,
+        ...(nicknameChanged ? {nickname: priceInfo.nickname} : {}),
+      })
+    }
   }
 
   const deactivated: string[] = []
@@ -449,6 +511,7 @@ async function ensureStripePrice(
     if (price.id === existing.id) continue
     if (price.type !== 'one_time') continue
     if (!price.active) continue
+    if (currentDefaultPriceId && price.id === currentDefaultPriceId) continue
     if (price.unit_amount === existing.unit_amount && price.currency === existing.currency) continue
     await stripe.prices.update(price.id, {active: false})
     deactivated.push(price.id)
@@ -550,7 +613,18 @@ async function syncProduct(product: SanityProduct): Promise<SyncOutcome> {
     stripeProduct = await stripe.products.retrieve(stripeProductId, {expand: ['default_price']})
   }
 
-  const priceResult = await ensureStripePrice(product, stripeProductId, priceInfo, metadata)
+  const currentDefaultPriceId =
+    typeof stripeProduct.default_price === 'string'
+      ? stripeProduct.default_price
+      : stripeProduct.default_price?.id
+
+  const priceResult = await ensureStripePrice(
+    product,
+    stripeProductId,
+    priceInfo,
+    metadata,
+    currentDefaultPriceId,
+  )
   const defaultPriceId = priceResult.price.id
 
   const currentDefault = stripeProduct.default_price

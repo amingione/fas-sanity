@@ -134,9 +134,7 @@ export default function OrderShippingActions() {
         }
 
         const blob = new Blob([arrayBuffer], {type: 'application/pdf'})
-        const filenameBase =
-          (orderNumber || orderId || stripeSessionId || doc?._id || 'order').replace(/[^a-z0-9_-]/gi, '') ||
-          'order'
+        const filenameBase = (orderNumber || 'order').replace(/[^a-z0-9_-]/gi, '') || 'order'
         const filename = `packing-slip-${filenameBase}.pdf`
 
         const asset = await client.assets.upload('file', blob, {

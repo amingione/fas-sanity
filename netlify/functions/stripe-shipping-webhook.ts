@@ -16,7 +16,7 @@ const sanityToken =
   process.env.SANITY_ACCESS_TOKEN ||
   ''
 
-const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: '2023-10-16'}) : null
+const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: '2025-08-27.basil'}) : null
 
 const sanity =
   sanityProjectId && sanityDataset && sanityToken
@@ -109,10 +109,9 @@ const findOrderId = async ({
   if (!sanity) return null
 
   if (orderIdCandidate) {
-    const exists = await sanity.fetch<string | null>(
-      '*[_type == "order" && _id == $id][0]._id',
-      {id: orderIdCandidate.replace(/^drafts\./, '')},
-    )
+    const exists = await sanity.fetch<string | null>('*[_type == "order" && _id == $id][0]._id', {
+      id: orderIdCandidate.replace(/^drafts\./, ''),
+    })
     if (exists) return exists
   }
 
@@ -146,14 +145,17 @@ const findOrderId = async ({
 
 const patchOrderFulfillment = async (orderId: string, update: FulfillmentUpdate) => {
   if (!sanity) return
-  const patch = sanity.patch(orderId).setIfMissing({fulfillment: {status: 'unfulfilled'}}).set({
-    'fulfillment.status': update.status || 'shipped',
-    'fulfillment.trackingNumber': update.trackingNumber,
-    'fulfillment.trackingUrl': update.trackingUrl,
-    'fulfillment.carrier': update.carrier,
-    'fulfillment.shippedAt': update.shippedAt || new Date().toISOString(),
-    'shippingCarrier': update.carrier,
-  })
+  const patch = sanity
+    .patch(orderId)
+    .setIfMissing({fulfillment: {status: 'unfulfilled'}})
+    .set({
+      'fulfillment.status': update.status || 'shipped',
+      'fulfillment.trackingNumber': update.trackingNumber,
+      'fulfillment.trackingUrl': update.trackingUrl,
+      'fulfillment.carrier': update.carrier,
+      'fulfillment.shippedAt': update.shippedAt || new Date().toISOString(),
+      shippingCarrier: update.carrier,
+    })
 
   if (update.labelUrl) {
     patch.set({'shippingMetadata.labelUrl': update.labelUrl})
@@ -179,16 +181,28 @@ const handler: Handler = async (event) => {
     return {statusCode: 204, headers: JSON_HEADERS}
   }
   if (event.httpMethod !== 'POST') {
-    return {statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({error: 'Method not allowed'})}
+    return {
+      statusCode: 405,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Method not allowed'}),
+    }
   }
   if (!stripe || !webhookSecret) {
     console.error('[stripe-shipping-webhook] missing stripe key or webhook secret')
-    return {statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({error: 'Server not configured'})}
+    return {
+      statusCode: 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Server not configured'}),
+    }
   }
 
   const sig = event.headers['stripe-signature'] || event.headers['Stripe-Signature']
   if (!sig) {
-    return {statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({error: 'Missing signature'})}
+    return {
+      statusCode: 400,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Missing signature'}),
+    }
   }
 
   let stripeEvent: Stripe.Event
@@ -196,7 +210,11 @@ const handler: Handler = async (event) => {
     stripeEvent = stripe.webhooks.constructEvent(event.body || '', sig, webhookSecret)
   } catch (err: any) {
     console.error('[stripe-shipping-webhook] invalid signature', err?.message)
-    return {statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({error: 'Invalid signature'})}
+    return {
+      statusCode: 400,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Invalid signature'}),
+    }
   }
 
   const object: any = stripeEvent.data?.object || {}
@@ -233,12 +251,20 @@ const handler: Handler = async (event) => {
       customerEmail,
     })
     // Do not fail the webhook; acknowledge to Stripe.
-    return {statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify({received: true, unmatched: true})}
+    return {
+      statusCode: 200,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({received: true, unmatched: true}),
+    }
   }
 
   const ok = await patchOrderFulfillment(orderId, labelData)
   if (!ok) {
-    return {statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({error: 'Failed to update order'})}
+    return {
+      statusCode: 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Failed to update order'}),
+    }
   }
 
   return {statusCode: 200, headers: JSON_HEADERS, body: JSON.stringify({received: true, orderId})}

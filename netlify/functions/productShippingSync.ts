@@ -119,6 +119,17 @@ async function updateStripeMetadata(
   await stripe.products.update(stripeProductId, {metadata: merged})
 }
 
+async function updateStripePriceMetadata(
+  stripeProductId: string,
+  metadata: Record<string, string | undefined>,
+) {
+  const prices = await stripe.prices.list({product: stripeProductId, limit: 100, active: true})
+  for (const price of prices.data) {
+    const priceMetadata = mergeMetadata(price.metadata || {}, metadata)
+    await stripe.prices.update(price.id, {metadata: priceMetadata})
+  }
+}
+
 async function syncProduct(productId: string) {
   const product = await sanity.fetch(
     `*[_type == "product" && _id==$id][0]{
@@ -150,18 +161,21 @@ async function syncProduct(productId: string) {
     return {skipped: true, reason: 'Missing stripeProductId'}
   }
   if (product.productType === 'service' || product?.shippingConfig?.requiresShipping === false) {
-    await updateStripeMetadata(product.stripeProductId, {
+    const clearedMetadata = {
       shipping_weight: undefined,
       shipping_dimensions: undefined,
       shipping_class: undefined,
       handling_time: undefined,
       ships_alone: undefined,
-    })
+    }
+    await updateStripeMetadata(product.stripeProductId, clearedMetadata)
+    await updateStripePriceMetadata(product.stripeProductId, clearedMetadata)
     await sanity.patch(product._id).set({stripeLastSyncedAt: new Date().toISOString()}).commit()
     return {updated: true}
   }
   const metadata = buildMetadata(product)
   await updateStripeMetadata(product.stripeProductId, metadata)
+  await updateStripePriceMetadata(product.stripeProductId, metadata)
   await sanity.patch(product._id).set({stripeLastSyncedAt: new Date().toISOString()}).commit()
   return {updated: true, metadata}
 }
