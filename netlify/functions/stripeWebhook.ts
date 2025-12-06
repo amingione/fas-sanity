@@ -1652,14 +1652,19 @@ function enforceCartRequirements(
 async function buildCartFromSessionLineItems(
   sessionId: string,
   metadata: Record<string, string>,
+  options?: {lineItems?: Stripe.LineItem[] | null},
 ): Promise<{items: CartItem[]; products: CartProductSummary[]}> {
   if (!stripe) return {items: [], products: []}
   try {
-    const items = await stripe.checkout.sessions.listLineItems(sessionId, {
-      limit: 100,
-      expand: ['data.price.product'],
-    })
-    let cartItems = (items?.data || []).map((li: Stripe.LineItem) => ({
+    const listResponse =
+      options?.lineItems && Array.isArray(options.lineItems)
+        ? {data: options.lineItems}
+        : await stripe.checkout.sessions.listLineItems(sessionId, {
+            limit: 100,
+            expand: ['data.price', 'data.price.product'],
+          })
+    const lineItems = (listResponse?.data || []) as Stripe.LineItem[]
+    let cartItems = lineItems.map((li: Stripe.LineItem) => ({
       _type: 'orderCartItem',
       _key: randomUUID(),
       ...mapStripeLineItem(li, {sessionMetadata: metadata}),
@@ -2426,7 +2431,10 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
         'payment_method',
       ],
     })
-    const charge = paymentIntent.charges.data?.[0]
+    const expandedCharges = (
+      paymentIntent as Stripe.PaymentIntent & {charges?: Stripe.ApiList<Stripe.Charge> | null}
+    ).charges
+    const charge = expandedCharges?.data?.[0]
     const latestCharge = paymentIntent.latest_charge as Stripe.Charge | null | undefined
     if (charge) {
       if (charge.payment_method_details?.card) {
@@ -2479,12 +2487,18 @@ function extractShippingAddressFromSession(
   fallbackEmail?: string | null,
 ): Record<string, string | undefined> | undefined {
   try {
-    const shippingDetails = (session as any)?.shipping_details as
-      | {address?: Stripe.Address | null; name?: string | null; phone?: string | null}
-      | null
-      | undefined
+    const shippingDetails =
+      ((session as any)?.shipping_details as
+        | {address?: Stripe.Address | null; name?: string | null; phone?: string | null}
+        | null
+        | undefined) ||
+      ((session as any)?.shipping as
+        | {address?: Stripe.Address | null; name?: string | null; phone?: string | null}
+        | null
+        | undefined)
     const customerDetails = session.customer_details
-    const address = shippingDetails?.address || customerDetails?.address || undefined
+    const address =
+      shippingDetails?.address || customerDetails?.address || (session as any)?.shipping?.address || undefined
     const name = shippingDetails?.name || customerDetails?.name || undefined
     const phone = shippingDetails?.phone || customerDetails?.phone || undefined
     const email =
@@ -2718,32 +2732,93 @@ async function strictCreateInvoice(
 }
 
 async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session) {
-  const paymentStatusValue = (checkoutSession.payment_status || '').toString().toLowerCase()
+  let expandedSession: Stripe.Checkout.Session | null = null
+  try {
+    expandedSession = await stripe.checkout.sessions.retrieve(checkoutSession.id, {
+      expand: [
+        'line_items',
+        'line_items.data.price',
+        'line_items.data.price.product',
+        'payment_intent',
+        'customer',
+      ],
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to expand checkout session', err)
+  }
+
+  const session = expandedSession || checkoutSession
+  const paymentStatusValue = (session.payment_status || '').toString().toLowerCase()
   const isPaid =
     paymentStatusValue === 'paid' ||
     paymentStatusValue === 'succeeded' ||
     paymentStatusValue === 'complete'
   if (!isPaid) {
     console.warn('stripeWebhook: skipping checkout order creation (payment not paid)', {
-      sessionId: checkoutSession.id,
-      payment_status: checkoutSession.payment_status,
+      sessionId: session.id,
+      payment_status: session.payment_status,
     })
     return
   }
 
   const paymentIntentId =
-    typeof checkoutSession.payment_intent === 'string'
-      ? checkoutSession.payment_intent
-      : (checkoutSession.payment_intent as Stripe.PaymentIntent | null | undefined)?.id
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent as Stripe.PaymentIntent | null | undefined)?.id
   if (!paymentIntentId) {
     console.warn('stripeWebhook: skipping checkout order creation (missing payment_intent)', {
-      sessionId: checkoutSession.id,
+      sessionId: session.id,
     })
     return
   }
 
-  const customer = await strictFindOrCreateCustomer(checkoutSession)
+  const customer = await strictFindOrCreateCustomer(session)
   const paymentDetails = await strictGetPaymentDetails(paymentIntentId)
+  const sessionPaymentIntent =
+    typeof session.payment_intent === 'object' && session.payment_intent
+      ? (session.payment_intent as Stripe.PaymentIntent)
+      : null
+  const sessionCharge =
+    (sessionPaymentIntent?.latest_charge as Stripe.Charge | null | undefined) ||
+    (
+      sessionPaymentIntent as Stripe.PaymentIntent & {
+        charges?: Stripe.ApiList<Stripe.Charge> | null
+      }
+    )?.charges?.data?.[0] ||
+    null
+
+  if (!paymentDetails.paymentIntent && sessionPaymentIntent) {
+    paymentDetails.paymentIntent = sessionPaymentIntent
+  }
+  if (!paymentDetails.charge && sessionCharge) {
+    paymentDetails.charge = sessionCharge
+  }
+  if (sessionCharge) {
+    const cardDetails = sessionCharge.payment_method_details?.card
+    if (!paymentDetails.cardBrand && cardDetails?.brand) {
+      paymentDetails.cardBrand = cardDetails.brand
+    }
+    if (!paymentDetails.cardLast4 && cardDetails?.last4) {
+      paymentDetails.cardLast4 = cardDetails.last4
+    }
+    if (!paymentDetails.receiptUrl && sessionCharge.receipt_url) {
+      paymentDetails.receiptUrl = sessionCharge.receipt_url
+    }
+    if (!paymentDetails.billingAddress && sessionCharge.billing_details?.address) {
+      paymentDetails.billingAddress = {
+        name: sessionCharge.billing_details.name || undefined,
+        addressLine1: sessionCharge.billing_details.address?.line1 || undefined,
+        addressLine2: sessionCharge.billing_details.address?.line2 || undefined,
+        city: sessionCharge.billing_details.address?.city || undefined,
+        state: sessionCharge.billing_details.address?.state || undefined,
+        postalCode: sessionCharge.billing_details.address?.postal_code || undefined,
+        country: sessionCharge.billing_details.address?.country || undefined,
+        phone: sessionCharge.billing_details.phone || undefined,
+        email: sessionCharge.billing_details.email || undefined,
+      }
+    }
+  }
+
   if (!paymentDetails.paymentIntent) {
     try {
       const fallbackPi = await fetchPaymentIntentResource(paymentIntentId)
@@ -2785,10 +2860,12 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       console.warn('stripeWebhook: unable to backfill payment intent for checkout session', err)
     }
   }
-  const sessionMeta = (checkoutSession.metadata || {}) as Record<string, string>
+  const sessionMeta = (session.metadata || {}) as Record<string, string>
+  const expandedLineItems = expandedSession?.line_items?.data as Stripe.LineItem[] | undefined
   const {items: cartItems, products: cartProducts} = await buildCartFromSessionLineItems(
-    checkoutSession.id,
+    session.id,
     sessionMeta,
+    {lineItems: expandedLineItems},
   )
 
   const normalizedCart = cartItems.map((item) => ({
@@ -2799,7 +2876,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
 
   const shippingMetrics = computeShippingMetrics(normalizedCart, cartProducts)
   const sessionWeight =
-    resolveShippingWeightLbs(checkoutSession, sessionMeta) ||
+    resolveShippingWeightLbs(session, sessionMeta) ||
     resolveShippingWeightLbs(undefined, paymentDetails.paymentIntent?.metadata as any)
   if (
     sessionWeight !== undefined &&
@@ -2808,37 +2885,33 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     shippingMetrics.weight = {_type: 'shipmentWeight', value: sessionWeight, unit: 'pound'}
   }
 
-  const stripeSubtotal =
-    toCurrencyNumber(toMajorUnits((checkoutSession as any)?.amount_subtotal)) ?? 0
-  const amountTax =
-    toCurrencyNumber(toMajorUnits((checkoutSession as any)?.total_details?.amount_tax)) ?? 0
+  const stripeSubtotal = toCurrencyNumber(toMajorUnits((session as any)?.amount_subtotal)) ?? 0
+  const amountTax = toCurrencyNumber(toMajorUnits((session as any)?.total_details?.amount_tax)) ?? 0
   const amountShippingRaw = Number.isFinite(
     Number(
-      (checkoutSession as any)?.total_details?.amount_shipping ||
-        (checkoutSession as any)?.shipping_cost?.amount_total,
+      (session as any)?.total_details?.amount_shipping || (session as any)?.shipping_cost?.amount_total,
     ),
   )
     ? Number(
-        (checkoutSession as any)?.total_details?.amount_shipping ||
-          (checkoutSession as any)?.shipping_cost?.amount_total,
+        (session as any)?.total_details?.amount_shipping || (session as any)?.shipping_cost?.amount_total,
       ) / 100
     : undefined
 
   const shippingDetails = await resolveStripeShippingDetails({
     metadata: sessionMeta,
-    session: checkoutSession,
+    session,
     fallbackAmount: amountShippingRaw,
     stripe,
   })
-  const currencyUpper = (checkoutSession.currency || '').toString().toUpperCase() || undefined
-  const currencyLower = (checkoutSession.currency || '').toString().toLowerCase() || undefined
+  const currencyUpper = (session.currency || '').toString().toUpperCase() || undefined
+  const currencyLower = (session.currency || '').toString().toLowerCase() || undefined
 
   const resolvedShippingAmount =
     shippingDetails.amount !== undefined ? shippingDetails.amount : amountShippingRaw
 
   const cartPricing = computeCartPricingSummary(normalizedCart, cartProducts)
   const stripeDiscountAmount =
-    toCurrencyNumber(toMajorUnits((checkoutSession as any)?.total_details?.amount_discount)) ?? 0
+    toCurrencyNumber(toMajorUnits((session as any)?.total_details?.amount_discount)) ?? 0
   const amountSubtotal =
     toCurrencyNumber(cartPricing.subtotal || stripeSubtotal) ??
     toCurrencyNumber(stripeSubtotal) ??
@@ -2850,7 +2923,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   const computedTotal =
     amountSubtotal - amountDiscount + (amountTax || 0) + (resolvedShippingAmount || 0)
   const totalAmount =
-    toCurrencyNumber(toMajorUnits(checkoutSession.amount_total ?? undefined)) ??
+    toCurrencyNumber(toMajorUnits(session.amount_total ?? undefined)) ??
     toCurrencyNumber(computedTotal) ??
     0
 
@@ -2893,51 +2966,54 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   } | null>(
     `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment}`,
     {
-      sid: checkoutSession.id,
+      sid: session.id,
     },
   )
 
   const orderNumber = existingOrder?.orderNumber || (await generateRandomOrderNumber())
   const nowIso = new Date().toISOString()
-  const customerEmail = (
-    checkoutSession.customer_details?.email ||
-    checkoutSession.customer_email ||
-    ''
-  )
+  const customerEmail = (session.customer_details?.email || session.customer_email || '')
     .toString()
     .trim()
-  const shippingAddress = extractShippingAddressFromSession(checkoutSession, customerEmail)
+  const shippingAddress = extractShippingAddressFromSession(session, customerEmail)
   const billingAddress =
     paymentDetails.billingAddress ||
-    normalizeStripeContactAddress(checkoutSession.customer_details?.address || null, {
-      name: checkoutSession.customer_details?.name || customer?.name || undefined,
-      email: checkoutSession.customer_details?.email || customerEmail || undefined,
-      phone: checkoutSession.customer_details?.phone || undefined,
+    (sessionCharge?.billing_details?.address
+      ? normalizeStripeContactAddress(sessionCharge.billing_details.address, {
+          name: sessionCharge.billing_details.name || customer?.name || undefined,
+          email: sessionCharge.billing_details.email || customerEmail || undefined,
+          phone: sessionCharge.billing_details.phone || undefined,
+        })
+      : undefined) ||
+    normalizeStripeContactAddress(session.customer_details?.address || null, {
+      name: session.customer_details?.name || customer?.name || undefined,
+      email: session.customer_details?.email || customerEmail || undefined,
+      phone: session.customer_details?.phone || undefined,
     })
-  console.log('stripeWebhook: checkout shipping details', (checkoutSession as any).shipping_details)
-  console.log('stripeWebhook: checkout customer address', checkoutSession.customer_details?.address)
+  console.log('stripeWebhook: checkout shipping details', (session as any).shipping_details)
+  console.log('stripeWebhook: checkout customer address', session.customer_details?.address)
   console.log('stripeWebhook: extracted checkout shipping address', shippingAddress)
   if (!shippingAddress) {
     console.warn('stripeWebhook: skipping checkout order creation (missing shipping address)', {
-      sessionId: checkoutSession.id,
+      sessionId: session.id,
     })
     return
   }
   const customerName =
     customer?.name ||
     shippingAddress?.name ||
-    checkoutSession.customer_details?.name ||
-    (checkoutSession as any)?.shipping_details?.name ||
+    session.customer_details?.name ||
+    (session as any)?.shipping_details?.name ||
     'Customer'
 
   const baseOrderPayload: any = {
     _type: 'order',
-    stripeSessionId: checkoutSession.id,
+    stripeSessionId: session.id,
     orderNumber,
-    orderType: strictDetermineOrderType(checkoutSession),
+    orderType: strictDetermineOrderType(session),
     status: 'paid',
     createdAt: nowIso,
-    paymentStatus: checkoutSession.payment_status || 'paid',
+    paymentStatus: session.payment_status || 'paid',
     customerName,
     customerEmail: customerEmail || '',
     customerRef: customer?._id
@@ -2968,11 +3044,11 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   applyPackageDimensions(baseOrderPayload, shippingMetrics, sessionWeight)
 
   baseOrderPayload.stripeSummary = buildStripeSummary({
-    session: checkoutSession,
+    session,
     paymentIntent: paymentDetails.paymentIntent || undefined,
     charge: paymentDetails.charge || undefined,
     eventType: 'checkout.session.completed',
-    eventCreated: checkoutSession.created,
+    eventCreated: session.created,
   })
 
   const fulfillmentResult = deriveFulfillmentFromMetadata(
@@ -3008,6 +3084,22 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     } else {
       baseOrderPayload.fulfillment = {status: 'unfulfilled', shippingAddress}
     }
+  }
+
+  if (baseOrderPayload.fulfillment) {
+    const fulfillmentWithDefaults = baseOrderPayload.fulfillment as Record<string, any>
+    if (!fulfillmentWithDefaults.status) {
+      fulfillmentWithDefaults.status = 'unfulfilled'
+    }
+    if (!fulfillmentWithDefaults.packageDimensions) {
+      fulfillmentWithDefaults.packageDimensions = {
+        weight: sessionWeight ?? null,
+        length: null,
+        width: null,
+        height: null,
+      }
+    }
+    baseOrderPayload.fulfillment = fulfillmentWithDefaults
   }
 
   const order = existingOrder

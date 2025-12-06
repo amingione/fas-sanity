@@ -6,7 +6,7 @@ export const optionType = defineField({
   name: 'option',
   type: 'object',
   icon: SunIcon,
-  readOnly: true,
+  readOnly: false,
   fields: [
     defineField({
       name: 'name',

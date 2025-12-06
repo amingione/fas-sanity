@@ -10,7 +10,19 @@ import {
   UserIcon,
   WarningOutlineIcon,
 } from '@sanity/icons'
-import {Box, Button, Card, Flex, Inline, Select, Spinner, Stack, Text, TextInput, useToast} from '@sanity/ui'
+import {
+  Box,
+  Button,
+  Card,
+  Flex,
+  Inline,
+  Select,
+  Spinner,
+  Stack,
+  Text,
+  TextInput,
+  useToast,
+} from '@sanity/ui'
 import type {ComponentType} from 'react'
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
 import {FormField, useClient, useDocumentOperation} from 'sanity'
@@ -91,7 +103,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
           label: 'Order Number',
           type: 'string',
           prominent: true,
-          readOnly: true,
+          readOnly: false,
         },
         {
           _key: 'orderType',
@@ -228,7 +240,13 @@ const SECTION_ICONS: Record<string, ComponentType> = {
   shipping: PinIcon,
 }
 
-const ORDER_STATUS_OPTIONS: OrderStatus[] = ['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded']
+const ORDER_STATUS_OPTIONS: OrderStatus[] = [
+  'paid',
+  'fulfilled',
+  'shipped',
+  'cancelled',
+  'refunded',
+]
 const FULFILLMENT_STATUS_OPTIONS = ['unfulfilled', 'shipped', 'delivered']
 
 const STRIPE_SYNC_FIELDS = new Set([
@@ -463,7 +481,9 @@ const OrderViewComponent = (props: any) => {
 
   const renderSection = (section: OrderViewSection) => {
     const sectionKey = section._key || section.title
-    const visibleFields = section.fields.filter((field) => !hiddenFields.has(field.fieldName as string))
+    const visibleFields = section.fields.filter(
+      (field) => !hiddenFields.has(field.fieldName as string),
+    )
     if (!visibleFields.length) return null
 
     const IconComponent = SECTION_ICONS[sectionKey] || DocumentIcon
@@ -530,7 +550,8 @@ const OrderViewComponent = (props: any) => {
                 {formatAddressLabel(fieldName)}
               </Text>
               <Text size={2}>
-                {(value as ShippingAddress | undefined)?.[fieldName as keyof ShippingAddress] || '—'}
+                {(value as ShippingAddress | undefined)?.[fieldName as keyof ShippingAddress] ||
+                  '—'}
               </Text>
             </Flex>
           ))}
@@ -598,7 +619,10 @@ const OrderViewComponent = (props: any) => {
       label={field.label}
       description={getFieldDescription(field)}
     >
-      <Select value={statusDraft} onChange={(event) => handleStatusChange(event.currentTarget.value)}>
+      <Select
+        value={statusDraft}
+        onChange={(event) => handleStatusChange(event.currentTarget.value)}
+      >
         <option value="">Select status</option>
         {ORDER_STATUS_OPTIONS.map((statusOption) => (
           <option key={statusOption} value={statusOption}>

@@ -5,9 +5,9 @@ export const orderCartItemMetaType = defineType({
   title: 'Metadata Entry',
   type: 'object',
   fields: [
-    defineField({name: 'key', type: 'string', title: 'Key', readOnly: true}),
-    defineField({name: 'value', type: 'string', title: 'Value', readOnly: true}),
-    defineField({name: 'source', type: 'string', title: 'Source', readOnly: true}),
+    defineField({name: 'key', type: 'string', title: 'Key', readOnly: false}),
+    defineField({name: 'value', type: 'string', title: 'Value', readOnly: false}),
+    defineField({name: 'source', type: 'string', title: 'Source', readOnly: false}),
   ],
   preview: {
     select: {title: 'key', subtitle: 'value'},

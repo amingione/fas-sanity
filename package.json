@@ -97,7 +97,7 @@
     "sanity-plugin-media": "^4.0.0",
     "slug": "^8.2.2",
     "ssh2-sftp-client": "^10.0.1",
-    "stripe": "^18.0.0",
+    "stripe": "^18.5.0",
     "styled-components": "^6.1.19",
     "twilio": "^5.10.7"
   },
