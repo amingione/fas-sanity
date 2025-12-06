@@ -417,7 +417,9 @@ function applyPackageDimensions(
   const weight = weightOverride ?? metrics.weight?.value ?? existing.weight
   const unit = existing.weightUnit || 'lb'
   const weightLabel =
-    weight !== undefined && Number.isFinite(weight) ? `${Number(weight.toFixed(2))} ${unit}` : existing.weightDisplay
+    weight !== undefined && Number.isFinite(weight)
+      ? `${Number(weight.toFixed(2))} ${unit}`
+      : existing.weightDisplay
   const dimensionsLabel =
     length || width || height
       ? [length, width, height]
@@ -1868,7 +1870,7 @@ function validateOrderData(order: any): string[] {
     issues.push('Cart is empty')
   }
 
-  cart.forEach((item, index) => {
+  cart.forEach((item: CartItem, index: number) => {
     if (!item) return
     if (!item.sku) issues.push(`cart[${index}] missing sku`)
     if (!item.productRef?._ref) issues.push(`cart[${index}] missing productRef`)
@@ -2562,7 +2564,10 @@ function extractShippingAddressFromSession(
         | undefined)
     const customerDetails = session.customer_details
     const address =
-      shippingDetails?.address || customerDetails?.address || (session as any)?.shipping?.address || undefined
+      shippingDetails?.address ||
+      customerDetails?.address ||
+      (session as any)?.shipping?.address ||
+      undefined
     const name = shippingDetails?.name || customerDetails?.name || undefined
     const phone = shippingDetails?.phone || customerDetails?.phone || undefined
     const email =
@@ -2602,9 +2607,7 @@ function extractShippingAddressFromSession(
 async function strictFindProductForCartItem(item: Stripe.LineItem) {
   const metadata = item.price?.metadata || {}
   const stripeProductId =
-    typeof item.price?.product === 'string'
-      ? item.price.product
-      : item.price?.product?.id
+    typeof item.price?.product === 'string' ? item.price.product : item.price?.product?.id
 
   // Strategy 1: SKU from metadata
   if (metadata.sku) {
@@ -3011,11 +3014,13 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   const amountTax = toCurrencyNumber(toMajorUnits((session as any)?.total_details?.amount_tax)) ?? 0
   const amountShippingRaw = Number.isFinite(
     Number(
-      (session as any)?.total_details?.amount_shipping || (session as any)?.shipping_cost?.amount_total,
+      (session as any)?.total_details?.amount_shipping ||
+        (session as any)?.shipping_cost?.amount_total,
     ),
   )
     ? Number(
-        (session as any)?.total_details?.amount_shipping || (session as any)?.shipping_cost?.amount_total,
+        (session as any)?.total_details?.amount_shipping ||
+          (session as any)?.shipping_cost?.amount_total,
       ) / 100
     : undefined
 
