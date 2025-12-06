@@ -5,6 +5,7 @@ import {
   resolveWeight,
   type DimensionsInput,
   type WeightInput,
+  easypostRequest,
 } from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
 
@@ -149,20 +150,51 @@ export const handler: Handler = async (event) => {
       },
     } as any)
 
+    // Attempt SmartRate for richer delivery predictions
+    let smartRates: any[] = []
+    try {
+      const smartRateResponse = await easypostRequest('GET', `/shipments/${shipment.id}/smartrate`)
+      if (Array.isArray((smartRateResponse as any)?.result)) {
+        smartRates = (smartRateResponse as any).result
+      } else if (Array.isArray(smartRateResponse as any)) {
+        smartRates = smartRateResponse as any[]
+      }
+    } catch (err) {
+      console.warn('SmartRate failed, falling back to basic rates', err)
+    }
+
     const rates = Array.isArray(shipment?.rates) ? shipment.rates : []
-    const formatted = rates.map((rate: any) => ({
-      carrierId: rate?.carrier_account_id || '',
-      carrierCode: rate?.carrier || '',
-      carrier: rate?.carrier_display_name || rate?.carrier || '',
-      service: rate?.service || '',
-      serviceCode: rate?.service_code || '',
-      amount: Number.isFinite(Number.parseFloat(rate?.rate)) ? Number.parseFloat(rate.rate) : 0,
-      currency: rate?.currency || 'USD',
-      deliveryDays: typeof rate?.delivery_days === 'number' ? rate.delivery_days : null,
-      estimatedDeliveryDate: rate?.delivery_date
-        ? new Date(rate.delivery_date).toISOString()
-        : null,
-    }))
+    const formatted = rates.map((rate: any) => {
+      const parsedAmount = Number.parseFloat(rate?.rate)
+      const smartData = smartRates.find(
+        (sr) => sr?.carrier === rate?.carrier && sr?.service === rate?.service,
+      )
+      const deliveryDate = rate?.delivery_date ? new Date(rate.delivery_date).toISOString() : null
+      const smartDeliveryDate = smartData?.delivery_date
+        ? new Date(smartData.delivery_date).toISOString()
+        : null
+
+      return {
+        carrierId: rate?.carrier_account_id || '',
+        carrierCode: rate?.carrier || '',
+        carrier: rate?.carrier_display_name || rate?.carrier || '',
+        service: rate?.service || '',
+        serviceCode: rate?.service_code || '',
+        amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
+        currency: rate?.currency || 'USD',
+        deliveryDays: typeof rate?.delivery_days === 'number' ? rate.delivery_days : null,
+        estimatedDeliveryDate: deliveryDate,
+
+        // SmartRate enhancements
+        timeInTransit: smartData?.time_in_transit || null,
+        deliveryDateConfidence:
+          typeof smartData?.delivery_date_confidence === 'number'
+            ? smartData.delivery_date_confidence
+            : null,
+        deliveryDateGuaranteed: Boolean(smartData?.delivery_date_guaranteed),
+        accurateDeliveryDate: smartDeliveryDate || deliveryDate,
+      }
+    })
 
     return {
       statusCode: 200,

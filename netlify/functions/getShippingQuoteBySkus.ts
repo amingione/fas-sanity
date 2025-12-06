@@ -1,7 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {getEasyPostFromAddress} from '../lib/ship-from'
-import {getEasyPostClient} from '../lib/easypostClient'
+import {easypostRequest, getEasyPostClient} from '../lib/easypostClient'
 
 // CORS helper (uses CORS_ALLOW like other functions)
 const DEFAULT_ORIGINS = (
@@ -30,6 +30,25 @@ const sanity = createClient({
   useCdn: false,
 })
 
+const FREIGHT_WEIGHT_THRESHOLD_LBS = 150
+
+type NormalizedRate = {
+  rateId?: string
+  carrierId?: string
+  carrierCode?: string
+  carrier?: string
+  service?: string
+  serviceCode?: string
+  amount: number
+  currency?: string
+  deliveryDays: number | null
+  estimatedDeliveryDate: string | null
+  accurateDeliveryDate?: string | null
+  timeInTransit?: Record<string, any> | null
+  deliveryConfidence?: number | null
+  deliveryDateGuaranteed?: boolean
+}
+
 function parseDims(
   s?: string,
 ): {length: number; width: number; height: number; unit: 'inch'} | null {
@@ -42,6 +61,44 @@ function parseDims(
 
 const isInstallOnlyClass = (value?: string) =>
   typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
+
+function selectBestRate(
+  rates: NormalizedRate[],
+  options?: {maxDays?: number; preferredCarrier?: string; confidenceThreshold?: number},
+) {
+  const opts = {
+    maxDays: options?.maxDays ?? 5,
+    preferredCarrier: options?.preferredCarrier,
+    confidenceThreshold: options?.confidenceThreshold ?? 75,
+  }
+
+  if (!Array.isArray(rates) || rates.length === 0) return null
+
+  const eligible = rates.filter((rate) => {
+    const days =
+      typeof rate?.timeInTransit?.percentile_75 === 'number'
+        ? rate.timeInTransit.percentile_75
+        : typeof rate?.deliveryDays === 'number'
+          ? rate.deliveryDays
+          : 999
+    const confidence =
+      typeof rate?.deliveryConfidence === 'number' ? rate.deliveryConfidence : 100
+    return days <= opts.maxDays && confidence >= opts.confidenceThreshold
+  })
+
+  if (eligible.length === 0) {
+    return [...rates].sort((a, b) => a.amount - b.amount)[0] || null
+  }
+
+  if (opts.preferredCarrier) {
+    const preferred = eligible.find((r) =>
+      (r.carrier || '').toLowerCase().includes(opts.preferredCarrier!.toLowerCase()),
+    )
+    if (preferred) return preferred
+  }
+
+  return [...eligible].sort((a, b) => a.amount - b.amount)[0] || null
+}
 
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
@@ -325,8 +382,8 @@ export const handler: Handler = async (event) => {
       const totalPieceWeight = weight * qty
 
       const exceedsCarrierLimits =
-        weight > 150 ||
-        totalPieceWeight > 150 ||
+        weight >= FREIGHT_WEIGHT_THRESHOLD_LBS ||
+        totalPieceWeight >= FREIGHT_WEIGHT_THRESHOLD_LBS ||
         anyDim > 108 ||
         combinedDims > 165
 
@@ -450,10 +507,31 @@ export const handler: Handler = async (event) => {
       },
     } as any)
 
+    // Fetch SmartRates for accurate delivery predictions
+    let smartRates: any[] = []
+    try {
+      const smartRateResponse = await easypostRequest('GET', `/shipments/${shipment.id}/smartrate`)
+      if (Array.isArray((smartRateResponse as any)?.result)) {
+        smartRates = (smartRateResponse as any).result
+      } else if (Array.isArray(smartRateResponse as any)) {
+        smartRates = smartRateResponse as any[]
+      }
+    } catch (err) {
+      console.warn('SmartRate unavailable, using basic rates', err)
+    }
+
     const ratesArr: any[] = Array.isArray(shipment?.rates) ? shipment.rates : []
     const rates = ratesArr
       .map((rate: any) => {
+        const smartData = smartRates.find(
+          (sr) => sr?.carrier === rate?.carrier && sr?.service === rate?.service,
+        )
+        const smartDeliveryDate = smartData?.delivery_date
+          ? new Date(smartData.delivery_date).toISOString()
+          : null
+        const smartPercentile = smartData?.time_in_transit?.percentile_75
         const amount = Number.parseFloat(rate?.rate || '0')
+        const deliveryDate = rate?.delivery_date ? new Date(rate.delivery_date).toISOString() : null
         return {
           rateId: rate?.id,
           carrierId: rate?.carrier_account_id || '',
@@ -463,16 +541,26 @@ export const handler: Handler = async (event) => {
           serviceCode: rate?.service_code || '',
           amount: Number.isFinite(amount) ? amount : 0,
           currency: rate?.currency || 'USD',
-          deliveryDays: typeof rate?.delivery_days === 'number' ? rate.delivery_days : null,
-          estimatedDeliveryDate: rate?.delivery_date
-            ? new Date(rate.delivery_date).toISOString()
-            : null,
+          deliveryDays:
+            typeof smartPercentile === 'number'
+              ? smartPercentile
+              : typeof rate?.delivery_days === 'number'
+                ? rate.delivery_days
+                : null,
+          estimatedDeliveryDate: smartDeliveryDate || deliveryDate,
+          accurateDeliveryDate: smartDeliveryDate || deliveryDate,
+          timeInTransit: smartData?.time_in_transit || null,
+          deliveryConfidence:
+            typeof smartData?.delivery_date_confidence === 'number'
+              ? smartData.delivery_date_confidence
+              : null,
+          deliveryDateGuaranteed: Boolean(smartData?.delivery_date_guaranteed),
         }
       })
       .filter((rate) => Number.isFinite(rate.amount) && rate.amount > 0)
       .sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0))
 
-    const bestRate = rates[0] || null
+    const bestRate = selectBestRate(rates) || rates[0] || null
 
     const carrierId = bestRate?.carrierId || null
     const serviceCode = bestRate?.serviceCode || null

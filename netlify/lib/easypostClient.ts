@@ -1,6 +1,8 @@
 import EasyPost from '@easypost/api'
 
 const EASYPOST_API_KEY = (process.env.EASYPOST_API_KEY || '').trim()
+const EASYPOST_API_BASE = process.env.EASYPOST_API_BASE || 'https://api.easypost.com'
+const EASYPOST_API_VERSION = process.env.EASYPOST_API_VERSION || 'v2'
 
 type EasyPostClient = InstanceType<typeof EasyPost>
 
@@ -18,6 +20,48 @@ export function getEasyPostClient(): EasyPostClient {
 
 export const MIN_OUNCES = 1
 export const MIN_DIMENSION_INCHES = 1
+
+function buildAuthHeader() {
+  if (!EASYPOST_API_KEY) throw new Error('Missing EASYPOST_API_KEY')
+  const token = Buffer.from(`${EASYPOST_API_KEY}:`).toString('base64')
+  return `Basic ${token}`
+}
+
+export async function easypostRequest<T = any>(
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  if (!EASYPOST_API_KEY) throw new Error('Missing EASYPOST_API_KEY')
+  const url = `${EASYPOST_API_BASE}/${EASYPOST_API_VERSION}${path.startsWith('/') ? path : `/${path}`}`
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: buildAuthHeader(),
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  if (!res.ok) {
+    let errorBody: any
+    try {
+      errorBody = await res.json()
+    } catch {
+      try {
+        errorBody = {message: await res.text()}
+      } catch {
+        errorBody = null
+      }
+    }
+    const message = errorBody?.error?.message || errorBody?.message || res.statusText
+    const type = errorBody?.error?.type
+    throw new Error(`EasyPost ${res.status} ${type ? `[${type}]` : ''}: ${message}`)
+  }
+
+  return res.json() as Promise<T>
+}
 
 export type WeightInput = {value?: number; unit?: string} | number | string | null | undefined
 

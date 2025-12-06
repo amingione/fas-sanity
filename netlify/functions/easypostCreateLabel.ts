@@ -3,6 +3,7 @@ import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {getEasyPostFromAddress} from '../lib/ship-from'
 import {
+  easypostRequest,
   getEasyPostClient,
   resolveDimensions,
   resolveWeight,
@@ -129,7 +130,16 @@ type OrderDoc = {
   customerEmail?: string
   customerName?: string
   orderNumber?: string
-  cart?: any[]
+  cart?: Array<{
+    quantity?: number
+    name?: string
+    sku?: string
+    productRef?: {_ref?: string}
+    shippingWeight?: number
+    weight?: any
+    shippingDimensions?: any
+    dimensions?: any
+  }>
 }
 
 type EasyPostAddress = {
@@ -293,6 +303,8 @@ async function createWizardLabel(payload: {
 export type CreateEasyPostLabelOptions = {
   orderId?: string
   invoiceId?: string
+  rateId?: string
+  selectedRate?: {id?: string}
   shipTo?: EasyPostAddress
   shipFrom?: EasyPostAddress
   weightOverride?: WeightInput
@@ -302,16 +314,21 @@ export type CreateEasyPostLabelOptions = {
 }
 
 export type EasyPostLabelResult = {
+  success: boolean
   provider: 'easypost'
   shipmentId: string
   trackerId?: string
   labelUrl?: string
+  packingSlipUrl?: string
+  qrCodeUrl?: string
   trackingNumber?: string
   trackingUrl?: string
+  cost?: number
   rate?: number
   currency?: string
   status?: string
   carrier?: string
+  service?: string
   labelCreatedAt?: string
   labelCost?: number
 }
@@ -325,6 +342,9 @@ async function fetchOrder(orderId: string): Promise<OrderDoc | null> {
       dimensions,
       cart[]{
         quantity,
+        name,
+        sku,
+        productRef{_ref},
         shippingWeight,
         weight,
         shippingDimensions,
@@ -344,6 +364,8 @@ export async function createEasyPostLabel(
   const {
     orderId,
     invoiceId,
+    rateId,
+    selectedRate,
     shipTo,
     shipFrom,
     weightOverride,
@@ -418,25 +440,34 @@ export async function createEasyPostLabel(
     .filter((entry) => Number.isFinite(entry.amount) && entry.amount > 0)
     .sort((a, b) => a.amount - b.amount)
 
-  const selectedRate = sortedRates[0]?.raw
+  const preferredRateId =
+    rateId ||
+    selectedRate?.id ||
+    (packageDetails as any)?.rateId ||
+    (packageDetails as any)?.selectedRateId
 
-  if (!selectedRate?.id) {
+  const selectedRateEntry = preferredRateId
+    ? sortedRates.find((rate) => rate.raw?.id === preferredRateId) || sortedRates[0]
+    : sortedRates[0]
+  const chosenRate = selectedRateEntry?.raw
+
+  if (!chosenRate?.id) {
     throw new Error('Failed to determine lowest EasyPost rate')
   }
 
   console.log('easypostCreateLabel selected rate', {
-    id: selectedRate.id,
-    carrier: selectedRate.carrier,
-    service: selectedRate.service,
-    rate: selectedRate.rate,
+    id: chosenRate.id,
+    carrier: chosenRate.carrier,
+    service: chosenRate.service,
+    rate: chosenRate.rate,
   })
 
   let updatedShipment: any
   try {
     if (typeof (shipment as any).buy === 'function') {
-      updatedShipment = await (shipment as any).buy({rate: selectedRate.id})
+      updatedShipment = await (shipment as any).buy({rate: chosenRate.id})
     } else {
-      updatedShipment = await (client as any).Shipment.buy(shipment.id, selectedRate.id)
+      updatedShipment = await (client as any).Shipment.buy(shipment.id, chosenRate.id)
     }
   } catch (err) {
     console.error('EasyPost buy failed', err)
@@ -447,8 +478,51 @@ export async function createEasyPostLabel(
     updatedShipment = await client.Shipment.retrieve(shipment.id)
   }
 
+  let packingSlipUrl: string | undefined
+  let qrCodeUrl: string | undefined
+
+  // Attempt to generate EasyPost forms (packing slip + optional label QR code)
+  try {
+    const lineItems =
+      order?.cart?.map((item) => ({
+        product: {
+          title: item?.name || item?.sku || 'Product',
+          barcode: item?.sku || undefined,
+        },
+        units: Number.isFinite(Number(item?.quantity)) ? Number(item?.quantity) : 1,
+      })) || []
+
+    const payload = {
+      form: {
+        type: 'return_packing_slip',
+        barcode: order?.orderNumber || shipment.id,
+        ...(lineItems.length ? {line_items: lineItems} : {}),
+      },
+    }
+
+    const formData: any = await easypostRequest('POST', `/shipments/${shipment.id}/forms`, payload)
+    packingSlipUrl = formData?.form_url || undefined
+    if (packingSlipUrl) {
+      console.log('EasyPost packing slip created', {shipmentId: shipment.id, packingSlipUrl})
+    }
+
+    try {
+      const qrPayload = {form: {type: 'label_qr_code'}}
+      const qrData: any = await easypostRequest(
+        'POST',
+        `/shipments/${shipment.id}/forms`,
+        qrPayload,
+      )
+      qrCodeUrl = qrData?.form_url || undefined
+    } catch (err) {
+      console.warn('EasyPost label_qr_code form failed (non-blocking)', err)
+    }
+  } catch (err) {
+    console.warn('EasyPost packing slip form failed (non-blocking)', err)
+  }
+
   const tracker = updatedShipment.tracker || null
-  const appliedRate = updatedShipment.selected_rate || selectedRate
+  const appliedRate = updatedShipment.selected_rate || chosenRate
 
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
 
@@ -491,11 +565,11 @@ export async function createEasyPostLabel(
       (updatedShipment?.selected_rate as any)?.id ||
       (shipment?.selected_rate as any)?.id
 
-    const logEntry = {
-      _type: 'shippingLogEntry',
-      status: 'label_created',
-      message: `Label generated via EasyPost (${shippingStatus.carrier || 'carrier'} – ${shippingStatus.service || 'service'})`,
-      labelUrl,
+  const logEntry = {
+    _type: 'shippingLogEntry',
+    status: 'label_created',
+    message: `Label generated via EasyPost (${shippingStatus.carrier || 'carrier'} – ${shippingStatus.service || 'service'})`,
+    labelUrl,
       trackingNumber: trackingCode,
       trackingUrl,
       weight: Number.isFinite(pounds) ? Number(pounds.toFixed(2)) : undefined,
@@ -538,6 +612,8 @@ export async function createEasyPostLabel(
         'fulfillment.shippedAt': shippingStatus.lastEventAt,
         ...(rateId ? {'fulfillment.easypostRateId': rateId} : {}),
         ...(shippingStatus.service ? {'fulfillment.service': shippingStatus.service} : {}),
+        packingSlipUrl: packingSlipUrl || undefined,
+        qrCodeUrl: qrCodeUrl || undefined,
       }).filter(([, value]) => value !== undefined),
     )
 
@@ -579,6 +655,8 @@ export async function createEasyPostLabel(
           trackingUrl,
           carrier: resolvedCarrier,
           labelUrl,
+          packingSlipUrl,
+          qrCodeUrl,
           labelCost: amount,
           labelCreatedAt: shippingStatus.lastEventAt,
           provider: 'easypost',
@@ -593,16 +671,21 @@ export async function createEasyPostLabel(
   }
 
   return {
+    success: true,
     provider: 'easypost',
     shipmentId: shipment.id,
     trackerId: tracker?.id,
     labelUrl,
+    packingSlipUrl,
+    qrCodeUrl,
     trackingNumber: trackingCode,
     trackingUrl,
+    cost: amount,
     rate: amount,
     currency: appliedRate?.currency || undefined,
     status: shippingStatus.status,
     carrier: resolvedCarrier,
+    service: appliedRate?.service || undefined,
     labelCreatedAt: shippingStatus.lastEventAt,
     labelCost: amount,
   }
@@ -708,6 +791,13 @@ export const handler: Handler = async (event) => {
       dimensionsOverride: payload.dimensions,
       packageDetails: payload.package_details,
       reference: payload.reference,
+      rateId:
+        payload.rateId ||
+        payload.rate_id ||
+        payload.selectedRateId ||
+        payload.selected_rate_id ||
+        payload.selectedRate?.id,
+      selectedRate: payload.selectedRate,
     })
 
     return {
