@@ -709,7 +709,7 @@ const orderSchema = defineType({
       type: 'string',
       title: 'EasyPost Shipment ID',
       group: 'fulfillment',
-      hidden: true,
+      description: 'Shipment id returned by EasyPost after label purchase',
       readOnly: false,
     }),
     defineField({
@@ -717,7 +717,7 @@ const orderSchema = defineType({
       type: 'string',
       title: 'EasyPost Tracker ID',
       group: 'fulfillment',
-      hidden: true,
+      description: 'Tracker id returned by EasyPost after label purchase',
       readOnly: false,
     }),
     defineField({
@@ -754,6 +754,15 @@ const orderSchema = defineType({
       name: 'packingSlipUrl',
       type: 'url',
       title: 'Packing Slip',
+      group: 'fulfillment',
+      readOnly: false,
+      hidden: true,
+    }),
+    defineField({
+      name: 'qrCodeUrl',
+      type: 'url',
+      title: 'QR Code (Label)',
+      description: 'Optional QR code form URL from EasyPost for warehouse scanning',
       group: 'fulfillment',
       readOnly: false,
       hidden: true,

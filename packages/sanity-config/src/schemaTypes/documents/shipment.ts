@@ -218,8 +218,10 @@ export default defineType({
         {
           type: 'object',
           fields: [
-            {name: 'form_type', type: 'string'},
-            {name: 'form_url', type: 'url'},
+            {name: 'formId', type: 'string', title: 'Form ID'},
+            {name: 'formType', type: 'string', title: 'Type'},
+            {name: 'formUrl', type: 'url', title: 'URL'},
+            {name: 'createdAt', type: 'datetime', title: 'Created At'},
           ],
         },
       ],

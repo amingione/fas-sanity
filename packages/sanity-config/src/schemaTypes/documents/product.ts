@@ -55,6 +55,7 @@ const isBundleProduct = (context?: VisibilityContext): boolean =>
   resolveProductType(context) === 'bundle'
 
 const SHIPPING_CLASS_VALUES = ['standard', 'oversized', 'fragile', 'hazmat', 'install_only']
+const FREIGHT_WEIGHT_THRESHOLD_LBS = 150
 
 const normalizeShippingClass = (value?: string | null) =>
   typeof value === 'string' ? value.toLowerCase().replace(/\s+/g, '_') : undefined
@@ -1254,17 +1255,15 @@ const product = defineType({
           const freightSelected =
             (typeof doc?.shippingClass === 'string' &&
               doc.shippingClass.toLowerCase() === 'freight') ||
+            normalizeShippingClass(doc?.shippingConfig?.shippingClass) === 'freight' ||
             doc?.shippingProfile === 'freight'
           if (type === 'service') return true
           if (type === 'physical' || type === 'bundle') {
             if (typeof value !== 'number' || value <= 0) {
               return warn('Provide the shipping weight so rates stay accurate.')
             }
-            if (value > 150 && !freightSelected) {
-              return warn('⚠️ Over 150 lbs — requires freight shipping.')
-            }
-            if (value > 70 && value <= 150 && !freightSelected) {
-              return warn('ℹ️ Heavy item — may incur carrier oversize fees but can ship ground.')
+            if (value >= FREIGHT_WEIGHT_THRESHOLD_LBS && !freightSelected) {
+              return warn('⚠️ 150 lbs or more — set freight shipping.')
             }
           }
           return true

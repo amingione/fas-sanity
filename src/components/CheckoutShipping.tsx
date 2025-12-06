@@ -30,11 +30,15 @@ export type ShippingRate = {
   service: string
   amount: number
   deliveryDays: number | null
+  accurateDeliveryDate?: string | null
+  deliveryConfidence?: number | null
   carrierId?: string
   carrierCode?: string
   serviceCode?: string
   currency?: string
   estimatedDeliveryDate?: string | null
+  timeInTransit?: Record<string, any> | null
+  deliveryDateGuaranteed?: boolean
 }
 
 export type CheckoutShippingProps = {
@@ -138,13 +142,17 @@ export function CheckoutShipping({
         }
 
         const fetchedRates: ShippingRate[] = Array.isArray(data?.rates) ? data.rates : []
+        const bestRateFromApi: ShippingRate | null =
+          data?.bestRate && typeof data.bestRate === 'object' ? data.bestRate : null
         setRates(fetchedRates)
         onRatesLoaded?.(fetchedRates)
 
         if (fetchedRates.length > 0) {
-          const cheapest = fetchedRates[0]
-          setSelectedRate(cheapest)
-          onRateSelected(cheapest)
+          const preselected =
+            fetchedRates.find((r) => r.rateId && r.rateId === bestRateFromApi?.rateId) ||
+            fetchedRates[0]
+          setSelectedRate(preselected)
+          onRateSelected(preselected)
         }
       } catch (err) {
         console.error('Shipping rate error:', err)
@@ -173,6 +181,12 @@ export function CheckoutShipping({
           {rates.map((rate) => {
             const key = rate.rateId || `${rate.carrier}-${rate.service}-${rate.amount}`
             const label = `${rate.carrier} ${rate.service}`.trim() || 'Shipping'
+            const accurateDate = rate.accurateDeliveryDate || rate.estimatedDeliveryDate
+            const confidence =
+              typeof rate.deliveryConfidence === 'number'
+                ? Math.round(rate.deliveryConfidence)
+                : null
+
             return (
               <label key={key}>
                 <input
@@ -185,7 +199,15 @@ export function CheckoutShipping({
                   }}
                 />
                 {label} - ${rate.amount.toFixed(2)}
-                {rate.deliveryDays ? ` (${rate.deliveryDays} days)` : ''}
+                {accurateDate && (
+                  <div className="delivery-estimate">
+                    Delivers by {new Date(accurateDate).toLocaleDateString()}
+                    {confidence !== null && <span> ({confidence}% confidence)</span>}
+                  </div>
+                )}
+                {!accurateDate && rate.deliveryDays && (
+                  <div className="delivery-estimate">{rate.deliveryDays} business days</div>
+                )}
               </label>
             )
           })}

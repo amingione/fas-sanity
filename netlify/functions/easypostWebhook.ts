@@ -230,7 +230,8 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
       shipment.reference ||
       shipment.tracking_code ||
       shipment.id ||
-      (shipment.options?.reference as string | undefined),
+      (shipment.options?.reference as string | undefined) ||
+      `Shipment to ${shipment.to_address?.name || 'customer'}`,
     easypostId: shipment.id,
     mode: shipment.mode,
     reference: shipment.reference || shipment.options?.reference,
@@ -284,9 +285,16 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
       : undefined,
     trackingDetails,
     forms: Array.isArray(shipment.forms)
-      ? shipment.forms.map((form: any) =>
-          cleanUndefined({form_type: form?.form_type, form_url: form?.form_url}),
-        )
+      ? shipment.forms
+          .map((form: any) =>
+            cleanUndefined({
+              formId: form?.id,
+              formType: form?.form_type,
+              formUrl: form?.form_url,
+              createdAt: form?.created_at,
+            }),
+          )
+          .filter((f: any) => Object.keys(f).length)
       : undefined,
     customsInfo: shipment.customs_info
       ? cleanUndefined({
@@ -317,6 +325,7 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
 
   if (existingId) {
     await sanity.patch(existingId).set(doc).commit({autoGenerateArrayKeys: true})
+    console.log('easypostWebhook shipment updated', existingId)
     return existingId
   }
 
@@ -324,6 +333,7 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
     _type: 'shipment',
     ...doc,
   })
+  console.log('easypostWebhook shipment created', created._id)
   return created._id
 }
 
@@ -346,8 +356,15 @@ async function handleTracker(tracker: any, rawPayload?: any) {
     await handleShipment(tracker.shipment, rawPayload || tracker)
   }
 
-  const order = await sanity.fetch<{_id: string; trackingNumber?: string; trackingUrl?: string; status?: string}>(
-    `*[_type == "order" && (easyPostTrackerId == $trackerId || easyPostShipmentId == $shipmentId || trackingNumber == $trackingCode)][0]{ _id, trackingNumber, trackingUrl, status }`,
+  const order = await sanity.fetch<{
+    _id: string
+    trackingNumber?: string
+    trackingUrl?: string
+    status?: string
+    easyPostTrackerId?: string
+    easyPostShipmentId?: string
+  }>(
+    `*[_type == "order" && (easyPostTrackerId == $trackerId || easyPostShipmentId == $shipmentId || trackingNumber == $trackingCode)][0]{ _id, trackingNumber, trackingUrl, status, easyPostTrackerId, easyPostShipmentId }`,
     {
       trackerId: trackerId || null,
       shipmentId: shipmentId || null,
@@ -388,6 +405,12 @@ async function handleTracker(tracker: any, rawPayload?: any) {
   }
   if (trackingCode && !order.trackingNumber) {
     patchSet.trackingNumber = trackingCode
+  }
+  if (trackerId && !order.easyPostTrackerId) {
+    patchSet.easyPostTrackerId = trackerId
+  }
+  if (shipmentId && !order.easyPostShipmentId) {
+    patchSet.easyPostShipmentId = shipmentId
   }
   if (trackingCode && order.status !== 'fulfilled') {
     patchSet.status = 'fulfilled'
@@ -468,6 +491,9 @@ async function handleShipment(shipment: any, rawPayload?: any) {
   const setOps: Record<string, any> = {}
   if (!order?.easyPostShipmentId) {
     setOps.easyPostShipmentId = shipmentId
+  }
+  if (!order?.easyPostTrackerId && shipmentData?.tracker?.id) {
+    setOps.easyPostTrackerId = shipmentData.tracker.id
   }
   if (labelUrl && !order.shippingLabelUrl) {
     setOps.shippingLabelUrl = labelUrl
@@ -558,7 +584,10 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  if (SHIPPING_PROVIDER !== 'easypost') {
+  const providerEnabled =
+    SHIPPING_PROVIDER === 'easypost' || SHIPPING_PROVIDER === 'parcelcraft' // allow legacy value
+
+  if (!providerEnabled) {
     console.warn('easypostWebhook received event but shipping provider is disabled', {
       SHIPPING_PROVIDER,
     })
@@ -567,6 +596,10 @@ export const handler: Handler = async (event) => {
       headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
       body: JSON.stringify({ok: true, ignored: true, reason: 'EasyPost integration disabled'}),
     }
+  }
+
+  if (SHIPPING_PROVIDER === 'parcelcraft') {
+    console.warn('easypostWebhook: SHIPPING_PROVIDER=parcelcraft (legacy) — proceed as EasyPost')
   }
 
   const incomingBody = event.body || ''

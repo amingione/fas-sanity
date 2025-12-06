@@ -50,8 +50,6 @@ import AppointmentCalendarPane from '../components/studio/AppointmentCalendarPan
 import AppointmentBookingPane from '../components/studio/AppointmentBookingPane'
 import WorkOrderManagementPane from '../components/studio/WorkOrderManagementPane'
 import WholesaleOrdersPane from '../components/studio/WholesaleOrdersPane'
-import BulkFulfillmentConsole from '../components/studio/BulkFulfillmentConsole'
-import BulkPackingSlipGenerator from '../components/studio/BulkPackingSlipGenerator'
 import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard'
 import ShipmentsPanel from '../components/shipments/ShipmentsPanel'
 import PickupsPanel from '../components/pickups/PickupsPanel'
@@ -524,27 +522,6 @@ const createShippingSection = (S: any) =>
                 .id('pickups-panel')
                 .title('Pickups')
                 .component(PickupsPanel as ComponentType),
-            ),
-          S.divider(),
-          S.listItem()
-            .id('shipping-fulfillment')
-            .title('Bulk Fulfillment Console')
-            .icon(TrolleyIcon)
-            .child(
-              S.component()
-                .id('bulk-fulfillment-pane')
-                .title('Bulk Fulfillment Console')
-                .component(BulkFulfillmentConsole as ComponentType),
-            ),
-          S.listItem()
-            .id('shipping-packing-slips')
-            .title('Bulk Packing Slips')
-            .icon(PackageIcon)
-            .child(
-              S.component()
-                .id('bulk-packing-slips-pane')
-                .title('Bulk Packing Slip Generator')
-                .component(BulkPackingSlipGenerator as ComponentType),
             ),
           S.divider(),
           S.documentTypeListItem('shipment').title('Shipments (Records)').icon(DocumentIcon),
