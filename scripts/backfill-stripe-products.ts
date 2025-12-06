@@ -132,7 +132,9 @@ async function main() {
       `Sync complete`,
       `mode=${payload.mode || options.mode}`,
       `processed=${processed}`,
-      results.length ? `success=${results.filter((r) => r.status === 'synced').length}` : null,
+      results.length
+        ? `success=${results.filter((r) => r.status && r.status !== 'error').length}`
+        : null,
       errors.length ? `errors=${errors.length}` : null,
     ]
       .filter(Boolean)

@@ -34,5 +34,9 @@
     "*.ts",
     "*.tsx"
   ],
-  "exclude": ["node_modules", "packages/sanity-config/src/schemaTypes/objects/buildQuote.ts"]
+  "exclude": [
+    "node_modules",
+    "archive",
+    "packages/sanity-config/src/schemaTypes/objects/buildQuote.ts"
+  ]
 }

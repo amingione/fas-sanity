@@ -6,6 +6,7 @@ import {generateProductTags, type ProductDocument} from '../utils/generateProduc
 import {ensureProductCodes} from '../utils/generateProductCodes'
 import {ensureShippingConfig} from '../utils/ensureShippingConfig'
 import {ensureSalePricing} from '../utils/ensureSalePricing'
+import {getNetlifyFunctionBaseCandidates} from '../utils/netlifyBase'
 
 const API_VERSION = '2024-10-01'
 const TAG_ACTIONS_FLAG = Symbol.for('fas.productTagsApplied')
@@ -258,6 +259,57 @@ const createPreviewServicePackageAction =
     }
   }
 
+const createSyncStripeAction =
+  (_context: DocumentActionsContext): DocumentActionComponent =>
+  (props) => {
+    const toast = useToast()
+    const bases = getNetlifyFunctionBaseCandidates()
+
+    if (!isProduct(props)) return null
+
+    return {
+      label: 'Sync to Stripe',
+      icon: LaunchIcon,
+      tone: 'primary',
+      onHandle: async () => {
+        const targetId = props.draft?._id || props.published?._id || props.id
+        if (!targetId) {
+          toast.push({status: 'warning', title: 'Missing product id'})
+          props.onComplete()
+          return
+        }
+
+        let lastError: string | null = null
+        for (const base of bases) {
+          try {
+            const response = await fetch(`${base}/.netlify/functions/syncStripeCatalog`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({mode: 'ids', ids: [targetId]}),
+            })
+            if (response.ok) {
+              toast.push({status: 'success', title: 'Stripe sync triggered'})
+              props.onComplete()
+              return
+            }
+            const message = await response.text()
+            lastError = message || response.statusText
+          } catch (error) {
+            lastError =
+              error instanceof Error ? error.message : typeof error === 'string' ? error : 'Error'
+          }
+        }
+
+        toast.push({
+          status: 'warning',
+          title: 'Unable to trigger Stripe sync',
+          description: lastError || 'No Netlify base responded',
+        })
+        props.onComplete()
+      },
+    }
+  }
+
 export function resolveProductDocumentActions(
   prev: DocumentActionComponent[],
   context: DocumentActionsContext
@@ -270,6 +322,7 @@ export function resolveProductDocumentActions(
   const generateTagsAction = createGenerateTagsAction(context)
   const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
   const previewServicePackageAction = createPreviewServicePackageAction(context)
+  const syncStripeAction = createSyncStripeAction(context)
 
   const enhancedList = prev.map((action) => {
     if (!action) return action
@@ -305,6 +358,7 @@ export function resolveProductDocumentActions(
     generateTagsAction,
     duplicateServicePackageAction,
     previewServicePackageAction,
+    syncStripeAction,
   ]
   Object.defineProperty(enhanced, TAG_ACTIONS_FLAG, {value: true})
 

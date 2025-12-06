@@ -1684,6 +1684,28 @@ async function buildCartFromSessionLineItems(
     if (!productSummaries.length && cartItems.length) {
       productSummaries = await fetchProductsForCart(cartItems, sanity)
     }
+    if (lineItems.length) {
+      cartItems = await Promise.all(
+        cartItems.map(async (item, index) => {
+          const sourceLineItem = lineItems[index]
+          if (!sourceLineItem) return item
+          if (item.productRef?._ref && item.sku && item.image) return item
+          const product = await strictFindProductForCartItem(sourceLineItem)
+          if (!product) return item
+          const nextItem = {...item}
+          if (!nextItem.productRef && product._id) {
+            nextItem.productRef = {_type: 'reference', _ref: product._id}
+          }
+          if (!nextItem.sku && product.sku) {
+            nextItem.sku = product.sku
+          }
+          if (!nextItem.image && (product as any)?.primaryImage) {
+            nextItem.image = (product as any).primaryImage
+          }
+          return nextItem
+        }),
+      )
+    }
     const normalizedCart = enforceCartRequirements(cartItems, productSummaries, {
       source: 'checkout.session',
       sessionId,
@@ -1836,6 +1858,48 @@ function computeCartPricingSummary(cart: CartItem[], products: CartProductSummar
     saleDiscount: toCurrencyNumber(saleDiscount) ?? 0,
     labels: Array.from(labels),
   }
+}
+
+function validateOrderData(order: any): string[] {
+  const issues: string[] = []
+  const cart = Array.isArray(order?.cart) ? order.cart : []
+
+  if (!cart.length) {
+    issues.push('Cart is empty')
+  }
+
+  cart.forEach((item, index) => {
+    if (!item) return
+    if (!item.sku) issues.push(`cart[${index}] missing sku`)
+    if (!item.productRef?._ref) issues.push(`cart[${index}] missing productRef`)
+    if (Array.isArray(item.optionDetails) && item.optionDetails.length && !item.selectedVariant) {
+      issues.push(`cart[${index}] missing selectedVariant`)
+    }
+    if (!item.image && !(item as any)?.productImage) {
+      issues.push(`cart[${index}] missing image`)
+    }
+    if (item.total === undefined || item.total === null) {
+      issues.push(`cart[${index}] missing total`)
+    }
+  })
+
+  if (!order?.stripeSummary) issues.push('Missing stripeSummary')
+  if (!order?.cardBrand) issues.push('Missing card brand')
+  if (!order?.cardLast4) issues.push('Missing card last4')
+  if (!order?.receiptUrl) issues.push('Missing receiptUrl')
+
+  const pkg = order?.fulfillment?.packageDimensions
+  if (pkg) {
+    if (pkg.weight === undefined && !pkg.weightDisplay) {
+      issues.push('Missing package weight')
+    }
+    const hasDims = pkg.length && pkg.width && pkg.height
+    if (!hasDims && !pkg.dimensionsDisplay) {
+      issues.push('Missing package dimensions')
+    }
+  }
+
+  return issues
 }
 
 function normalizeShippingMetadata(
@@ -2536,34 +2600,92 @@ function extractShippingAddressFromSession(
 }
 
 async function strictFindProductForCartItem(item: Stripe.LineItem) {
-  const sku = item.price?.metadata?.sku
-  if (sku) {
-    const product = await webhookSanityClient.fetch<{
-      _id: string
-      title?: string
-      sku?: string
-    } | null>(`*[_type == "product" && sku == $sku][0]{_id, title, sku}`, {sku})
+  const metadata = item.price?.metadata || {}
+  const stripeProductId =
+    typeof item.price?.product === 'string'
+      ? item.price.product
+      : item.price?.product?.id
+
+  // Strategy 1: SKU from metadata
+  if (metadata.sku) {
+    const product = await webhookSanityClient.fetch(
+      `*[_type == "product" && sku == $sku][0]{
+        _id,
+        title,
+        sku,
+        shippingConfig,
+        shippingWeight,
+        boxDimensions,
+        "primaryImage": images[0].asset->url,
+        options
+      }`,
+      {sku: metadata.sku},
+    )
     if (product) return product
   }
 
-  const productId = item.price?.product
-  if (productId) {
-    const product = await webhookSanityClient.fetch<{
-      _id: string
-      title?: string
-      sku?: string
-    } | null>(`*[_type == "product" && _id match $id][0]{_id, title, sku}`, {id: `*${productId}*`})
+  // Strategy 2: sanity_product_id from metadata
+  if ((metadata as any)?.sanity_product_id) {
+    const product = await webhookSanityClient.fetch(
+      `*[_type == "product" && _id match $id][0]{
+        _id,
+        title,
+        sku,
+        shippingConfig,
+        shippingWeight,
+        boxDimensions,
+        "primaryImage": images[0].asset->url,
+        options
+      }`,
+      {id: `*${(metadata as any).sanity_product_id}*`},
+    )
     if (product) return product
   }
 
+  // Strategy 3: Stripe product ID
+  if (stripeProductId) {
+    const product = await webhookSanityClient.fetch(
+      `*[_type == "product" && stripeProductId == $id][0]{
+        _id,
+        title,
+        sku,
+        shippingConfig,
+        shippingWeight,
+        boxDimensions,
+        "primaryImage": images[0].asset->url,
+        options
+      }`,
+      {id: stripeProductId},
+    )
+    if (product) return product
+  }
+
+  // Strategy 4: Name search (last resort)
   const searchName = (item.description || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-  const product = await webhookSanityClient.fetch<{
-    _id: string
-    title?: string
-    sku?: string
-  } | null>(`*[_type == "product" && lower(title) match "*${searchName}*"][0]{_id, title, sku}`)
-  if (!product) console.error(`❌ No product found for: ${item.description}`)
-  return product
+  if (searchName) {
+    const product = await webhookSanityClient.fetch(
+      `*[_type == "product" && lower(title) match "*${searchName}*"][0]{
+        _id,
+        title,
+        sku,
+        shippingConfig,
+        shippingWeight,
+        boxDimensions,
+        "primaryImage": images[0].asset->url,
+        options
+      }`,
+    )
+    if (product) return product
+  }
+
+  console.error('❌ No product found for line item:', {
+    description: item.description,
+    priceId: item.price?.id,
+    stripeProductId,
+    metadata,
+  })
+
+  return null
 }
 
 function strictParseOptions(metadata?: Stripe.Metadata | null): string[] {
@@ -3100,6 +3222,14 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       }
     }
     baseOrderPayload.fulfillment = fulfillmentWithDefaults
+  }
+
+  const validationIssues = validateOrderData(baseOrderPayload)
+  if (validationIssues.length) {
+    console.warn('stripeWebhook: order validation issues', {
+      sessionId: session.id,
+      issues: validationIssues,
+    })
   }
 
   const order = existingOrder

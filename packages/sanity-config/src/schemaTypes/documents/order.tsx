@@ -1395,7 +1395,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
             try {
               const asset = await client.assets.upload('file', pdfBlob, {
-                filename: `packing-slip-${filenameSafe(orderNumberValue || orderId || undefined)}.pdf`,
+                filename: `packing-slip-${filenameSafe(orderNumberValue || 'order')}.pdf`,
                 contentType: 'application/pdf',
               })
               if ((asset as any)?.url) {

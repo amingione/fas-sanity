@@ -20,7 +20,7 @@ export default function PrintPackingSlipButton(props: ExtendedStringInputProps) 
   const orderId = props?.document?.orderRef?._ref?.replace('drafts.', '')
   const orderNumber =
     typeof props?.document?.orderNumber === 'string' ? props.document.orderNumber : ''
-  const downloadLabel = (orderNumber || orderId || 'order').replace(/[^a-z0-9_-]/gi, '') || 'order'
+  const downloadLabel = (orderNumber || 'order').replace(/[^a-z0-9_-]/gi, '') || 'order'
 
   if (!orderId) {
     return <Button text="No Order Linked" tone="critical" disabled />

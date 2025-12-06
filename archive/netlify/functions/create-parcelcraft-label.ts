@@ -36,7 +36,13 @@ const shippingLabelsEnabled =
   process.env.STRIPE_SHIPPING_API_ENABLED === 'true'
 const sanity =
   sanityProjectId && sanityDataset && sanityToken
-    ? createClient({projectId: sanityProjectId, dataset: sanityDataset, token: sanityToken, apiVersion: '2024-10-01', useCdn: false})
+    ? createClient({
+        projectId: sanityProjectId,
+        dataset: sanityDataset,
+        token: sanityToken,
+        apiVersion: '2024-10-01',
+        useCdn: false,
+      })
     : null
 
 const JSON_HEADERS = {'Content-Type': 'application/json'}
@@ -64,11 +70,19 @@ const getShippingLabelsClient = (stripeClient: Stripe): ShippingLabelsClient => 
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return {statusCode: 204, headers: JSON_HEADERS}
   if (event.httpMethod !== 'POST') {
-    return {statusCode: 405, headers: JSON_HEADERS, body: JSON.stringify({error: 'Method not allowed'})}
+    return {
+      statusCode: 405,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Method not allowed'}),
+    }
   }
 
   if (!stripe || !sanity) {
-    return {statusCode: 500, headers: JSON_HEADERS, body: JSON.stringify({error: 'Server not configured'})}
+    return {
+      statusCode: 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'Server not configured'}),
+    }
   }
   if (!shippingLabelsEnabled) {
     return {
@@ -88,13 +102,17 @@ const handler: Handler = async (event) => {
     return {statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({error: 'Invalid JSON'})}
   }
 
-  const orderId = (payload.orderId || '').replace(/^drafts\./, '')
+  const orderNumber = (payload.orderNumber || '').replace(/^drafts\./, '')
   const serviceCode = payload.serviceCode || payload.shippingServiceCode || payload.shippingRateId
   const packageWeightOz = Number(payload.weightOz || payload.weight_oz || payload.weight || 16)
   const dimensions = payload.dimensions || payload.package || {}
 
-  if (!orderId) {
-    return {statusCode: 400, headers: JSON_HEADERS, body: JSON.stringify({error: 'orderId required'})}
+  if (!orderNumber) {
+    return {
+      statusCode: 400,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({error: 'orderNumber required'}),
+    }
   }
 
   try {
@@ -108,11 +126,15 @@ const handler: Handler = async (event) => {
         fulfillment,
         shippingMetadata
       }`,
-      {id: orderId},
+      {id: orderNumber},
     )
 
     if (!order) {
-      return {statusCode: 404, headers: JSON_HEADERS, body: JSON.stringify({error: 'Order not found'})}
+      return {
+        statusCode: 404,
+        headers: JSON_HEADERS,
+        body: JSON.stringify({error: 'Order not found'}),
+      }
     }
 
     const addr = order.shippingAddress || {}
@@ -124,7 +146,7 @@ const handler: Handler = async (event) => {
       }
     }
 
-    const shipTo: Stripe.ShippingV2.ShippingAddressCreateParams = {
+    const shipTo: any = {
       name: addr.name || addr.fullName || addr.contactName || 'Recipient',
       phone: addr.phone || undefined,
       address: {
@@ -137,7 +159,7 @@ const handler: Handler = async (event) => {
       },
     }
 
-    const packageParams: Stripe.ShippingV2.ShippingLabelCreateParams.Package = {
+    const packageParams: any = {
       weight: {
         unit: 'ounce',
         value: Number.isFinite(packageWeightOz) && packageWeightOz > 0 ? packageWeightOz : 16,
@@ -150,27 +172,30 @@ const handler: Handler = async (event) => {
       },
     }
 
-    const labelParams: Stripe.ShippingV2.ShippingLabelCreateParams = {
+    const labelParams: any = {
       carrier: 'parcelcraft',
       service: serviceCode || undefined,
       ship_from: shipFrom as any,
       ship_to: shipTo,
       packages: [packageParams],
       metadata: {
-        orderId,
+        orderNumber,
         payment_intent: order.paymentIntentId || '',
         stripe_session_id: order.stripeSessionId || '',
       },
     }
 
-    let label: Stripe.ShippingV2.ShippingLabel
+    let label: any
     try {
       const shippingLabels = getShippingLabelsClient(stripe as any)
       label = await shippingLabels.create(labelParams)
     } catch (err: any) {
       const message = err?.message || ''
       if (message.includes('Unrecognized request URL') || err?.statusCode === 404) {
-        console.error('[create-parcelcraft-label] shipping labels API unavailable', {apiVersion: stripeApiVersion, err})
+        console.error('[create-parcelcraft-label] shipping labels API unavailable', {
+          apiVersion: stripeApiVersion,
+          err,
+        })
         return {
           statusCode: 502,
           headers: JSON_HEADERS,
@@ -199,10 +224,12 @@ const handler: Handler = async (event) => {
       (label as any)?.labelUrl ||
       (label as any)?.files?.label_pdf ||
       undefined
-    const shippedAt = label?.created ? new Date(label.created * 1000).toISOString() : new Date().toISOString()
+    const shippedAt = label?.created
+      ? new Date(label.created * 1000).toISOString()
+      : new Date().toISOString()
 
     await sanity
-      .patch(orderId)
+      .patch(orderNumber)
       .setIfMissing({fulfillment: {status: 'unfulfilled'}})
       .set({
         'fulfillment.status': 'shipped',
@@ -210,7 +237,7 @@ const handler: Handler = async (event) => {
         'fulfillment.trackingUrl': trackingUrl || null,
         'fulfillment.carrier': carrier || 'Parcelcraft',
         'fulfillment.shippedAt': shippedAt,
-        'shippingCarrier': carrier || 'Parcelcraft',
+        shippingCarrier: carrier || 'Parcelcraft',
       })
       .set({'shippingMetadata.labelUrl': labelUrl || null})
       .commit({autoGenerateArrayKeys: true})
@@ -224,7 +251,7 @@ const handler: Handler = async (event) => {
         carrier,
         labelUrl,
         shippedAt,
-        orderId,
+        orderNumber,
         labelId: (label as any)?.id,
       }),
     }

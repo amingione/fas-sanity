@@ -206,11 +206,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
       }
       const blob = new Blob([buffer], {type: 'application/pdf'})
 
-      const orderRefForFile =
-        formatOrderNumber(order.orderNumber) ||
-        order._id?.replace(/^drafts\./, '') ||
-        order._id ||
-        'order'
+      const orderRefForFile = formatOrderNumber(order.orderNumber) || 'order'
       const filenameSafe = orderRefForFile.replace(/[^a-z0-9_-]/gi, '') || 'order'
 
       const asset = await client.assets.upload('file', blob, {
@@ -271,11 +267,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
   }
 
   const shippingLog = Array.isArray(order.shippingLog) ? order.shippingLog : []
-  const orderRefLabel =
-    formatOrderNumber(order.orderNumber) ||
-    (order._id ? order._id.replace(/^drafts\./, '') : '') ||
-    order._id ||
-    'Unknown'
+  const orderRefLabel = formatOrderNumber(order.orderNumber) || 'Not assigned'
 
   return (
     <Stack space={4} padding={4}>
