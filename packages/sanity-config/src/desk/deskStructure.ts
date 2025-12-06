@@ -342,20 +342,6 @@ const createProductsSection = (S: any) =>
             .title('All Products')
             .child(documentTablePane(S, 'products-all', 'All products', ProductsDocumentTable)),
           S.listItem()
-            .id('performance-packages')
-            .title('Performance Packages')
-            .icon(RocketIcon)
-            .child(
-              S.documentList()
-                .id('performance-packages-list')
-                .schemaType('product')
-                .apiVersion(API_VERSION)
-                .title('Performance Packages')
-                .filter('_type == "product" && productType == "service"')
-                .defaultOrdering(productDefaultOrdering)
-                .canHandleIntent(canHandleProductIntent),
-            ),
-          S.listItem()
             .id('products-paused')
             .title('Paused')
             .child(
