@@ -71,6 +71,7 @@ type SanityProduct = {
     handlingTime?: number | string | null
     requiresShipping?: boolean | null
     separateShipment?: boolean | null
+    callForShippingQuote?: boolean | null
   } | null
   handlingTime?: number | string | null
   shipsAlone?: boolean | null

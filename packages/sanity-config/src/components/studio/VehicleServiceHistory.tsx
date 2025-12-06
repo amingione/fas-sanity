@@ -117,7 +117,7 @@ const VehicleServiceHistory = (props: any) => {
     }
   }, [client, vehicleId])
 
-  const workOrders = data?.workOrders || []
+  const workOrders = useMemo(() => data?.workOrders || [], [data?.workOrders])
   const totalServiceCost = useMemo(
     () => workOrders.reduce((sum, order) => sum + calculateWorkOrderCost(order), 0),
     [workOrders],

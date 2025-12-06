@@ -1,5 +1,5 @@
 import {Card, Stack, Box, Text, Flex, Badge, Button, Select} from '@sanity/ui'
-import {useEffect, useState} from 'react'
+import {useCallback, useEffect, useState} from 'react'
 import {useClient} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {AddIcon} from '@sanity/icons'
@@ -44,7 +44,8 @@ export function AppointmentCalendarWidget() {
   const [viewMode, setViewMode] = useState<'today' | 'week'>('today')
   const [selectedDate, setSelectedDate] = useState(new Date())
 
-  const fetchAppointments = () => {
+  const fetchAppointments = useCallback(() => {
+    if (!client) return
     const startOfDay = new Date(selectedDate)
     startOfDay.setHours(0, 0, 0, 0)
 
@@ -76,11 +77,11 @@ export function AppointmentCalendarWidget() {
       setAppointments(result)
       setLoading(false)
     })
-  }
+  }, [client, selectedDate, viewMode])
 
   useEffect(() => {
     fetchAppointments()
-  }, [client, viewMode, selectedDate])
+  }, [fetchAppointments])
 
   const getStatusColor = (status: string): BadgeTone => {
     const colors: {[key: string]: BadgeTone} = {

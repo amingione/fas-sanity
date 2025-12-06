@@ -277,7 +277,10 @@ const REFERENCE_TARGETS: Record<string, string> = {
 
 const OrderViewComponent = (props: any) => {
   const {documentId, schemaType, document} = props
-  const order = (document?.displayed || {}) as OrderDocument
+  const order = useMemo(
+    () => (document?.displayed || {}) as OrderDocument,
+    [document?.displayed],
+  )
   const client = useClient({apiVersion: '2024-10-01'})
   const schemaTypeName = schemaType?.name || 'order'
   const {patch} = useDocumentOperation(documentId, schemaTypeName)

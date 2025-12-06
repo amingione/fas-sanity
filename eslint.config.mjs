@@ -22,7 +22,9 @@ export default [
   ...studio,
   {
     files: [
-      'scripts/**/*.{js,ts}',
+      'scripts/**/*.{js,ts,cjs}',
+      '*.cjs',
+      '*.js',
       'netlify/**/*.{js,ts}',
       'shared/**/*.{js,ts,tsx}',
       'packages/sanity-config/src/**/*.{js,ts,tsx}',
@@ -33,12 +35,14 @@ export default [
     ],
     languageOptions: {
       globals: nodeGlobals,
+      sourceType: 'module',
     },
   },
   {
-    files: ['scripts/**/*.js'],
-    languageOptions: {
-      sourceType: 'commonjs',
+    files: ['packages/sanity-config/src/schemaTypes/documentActions/**/*.{ts,tsx,js,jsx}'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
 ]

@@ -126,6 +126,7 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
         requiresShipping?: boolean | null
         separateShipment?: boolean | null
         freeShippingEligible?: boolean | null
+        callForShippingQuote?: boolean | null
       } | null
     }> = await client.fetch(
       `*[_type == "product" && (
@@ -155,7 +156,8 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
           handlingTime,
           requiresShipping,
           separateShipment,
-          freeShippingEligible
+          freeShippingEligible,
+          callForShippingQuote
         }
       }`,
       {limit: effectiveLimit},
@@ -192,6 +194,7 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
         existing.separateShipment !== undefined
           ? existing.separateShipment
           : product.shipsAlone ?? false
+      const callForShippingQuote = existing.callForShippingQuote === true
 
       const shippingConfig = {
         weight,
@@ -201,6 +204,7 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
         requiresShipping,
         freeShippingEligible,
         separateShipment,
+        callForShippingQuote,
       }
 
       if (dryRun) {

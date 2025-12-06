@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {useCallback, useState} from 'react'
 import type {DocumentActionComponent} from 'sanity'
 import {useRouter} from 'sanity/router'
 import {useClient} from 'sanity'

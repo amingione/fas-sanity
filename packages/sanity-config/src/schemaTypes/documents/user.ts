@@ -128,7 +128,7 @@ export default defineType({
       status: 'status',
     },
     prepare(selection) {
-      const {title, subtitle, media, role, status} = selection
+      const {title, media, role, status} = selection
       return {
         title: title,
         subtitle: `${role || 'User'} • ${status || 'active'}`,

@@ -9,7 +9,8 @@ const sanitizeNumber = (value?: number | null) =>
 export default function VendorQuotePricingWatcher() {
   const documentId = (useFormValue(['_id']) as string) || ''
   const vendorRef = useFormValue(['vendor']) as {_ref?: string} | undefined
-  const items = (useFormValue(['items']) as any[]) || []
+  const rawItems = useFormValue(['items']) as any[] | undefined
+  const items = useMemo(() => rawItems || [], [rawItems])
   const shipping = useFormValue(['shipping']) as number | undefined
   const tax = useFormValue(['tax']) as number | undefined
   const explicitTier = (useFormValue(['pricingTier']) as string) || ''

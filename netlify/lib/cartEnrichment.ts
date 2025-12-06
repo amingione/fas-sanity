@@ -75,6 +75,7 @@ export type CartProductSummary = {
     handlingTime?: number | null
     separateShipment?: boolean | null
     requiresShipping?: boolean | null
+    callForShippingQuote?: boolean | null
   } | null
   productType?: string | null
   coreRequired?: boolean | null

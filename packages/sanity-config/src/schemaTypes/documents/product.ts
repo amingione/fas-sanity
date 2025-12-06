@@ -43,7 +43,6 @@ const resolveProductType = (context?: VisibilityContext): string => {
   return docType || 'physical'
 }
 
-const LEGACY_SHIPPING_CLASS_VALUES = ['Standard', 'Oversized', 'Freight', 'Install Only']
 const isPhysicalOrBundle = (context?: VisibilityContext): boolean => {
   const type = resolveProductType(context)
   return type === 'physical' || type === 'bundle'
@@ -101,6 +100,14 @@ const shouldRequireShippingDetails = (context?: ShippingVisibilityContext): bool
   if (typeof requiresFromDoc === 'boolean') return requiresFromDoc
 
   return resolveProductType(context) !== 'service'
+}
+
+const isCallForShippingQuote = (context?: ShippingVisibilityContext): boolean => {
+  const quoteFromParent = (context?.parent as any)?.callForShippingQuote
+  if (typeof quoteFromParent === 'boolean') return quoteFromParent
+
+  const quoteFromDoc = (context?.document as any)?.shippingConfig?.callForShippingQuote
+  return quoteFromDoc === true
 }
 
 const merchantFieldWarning = (Rule: any, message: string) =>
@@ -1017,12 +1024,18 @@ const product = defineType({
             ? doc.shippingConfig.freeShippingEligible
             : true
 
+        const callForShippingQuote =
+          typeof doc?.shippingConfig?.callForShippingQuote === 'boolean'
+            ? doc.shippingConfig.callForShippingQuote
+            : false
+
         return {
           requiresShipping,
           shippingClass,
           handlingTime,
           freeShippingEligible,
           separateShipment,
+          callForShippingQuote,
           weight: weight ?? null,
           dimensions: dimensions || null,
         }
@@ -1049,6 +1062,15 @@ const product = defineType({
             }),
         },
         {
+          name: 'callForShippingQuote',
+          type: 'boolean',
+          title: 'Call for Shipping Quote',
+          description: "Don't charge shipping upfront; collect a manual quote instead.",
+          hidden: (context: ShippingVisibilityContext) =>
+            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
+          initialValue: false,
+        },
+        {
           name: 'weight',
           type: 'number',
           title: 'Weight (lbs)',
@@ -1057,8 +1079,10 @@ const product = defineType({
             !shouldRequireShippingDetails(context as ShippingVisibilityContext),
           validation: (Rule) =>
             Rule.custom((value, context: any) => {
+              const shippingQuote = isCallForShippingQuote(context as ShippingVisibilityContext)
               if (!shouldRequireShippingDetails(context as ShippingVisibilityContext)) return true
               if (typeof value !== 'number') {
+                if (shippingQuote) return true
                 return 'Weight is required when shipping is enabled.'
               }
               if (value < 0) {
@@ -1076,14 +1100,16 @@ const product = defineType({
             !shouldRequireShippingDetails(context as ShippingVisibilityContext),
           validation: (Rule) =>
             Rule.custom((value, context: any) => {
+              const shippingQuote = isCallForShippingQuote(context as ShippingVisibilityContext)
               if (!shouldRequireShippingDetails(context as ShippingVisibilityContext)) return true
-              if (!value) return 'Dimensions are required when shipping is enabled.'
+              if (!value) return shippingQuote ? true : 'Dimensions are required when shipping is enabled.'
               const {length, width, height} = value as Record<string, number>
               if (
                 typeof length !== 'number' ||
                 typeof width !== 'number' ||
                 typeof height !== 'number'
               ) {
+                if (shippingQuote) return true
                 return 'Enter length, width, and height in inches.'
               }
               if (length < 0 || width < 0 || height < 0) {
@@ -1100,9 +1126,11 @@ const product = defineType({
                 !shouldRequireShippingDetails(context as ShippingVisibilityContext),
               validation: (Rule) =>
                 Rule.custom((value, context: any) => {
+                  const shippingQuote = isCallForShippingQuote(context as ShippingVisibilityContext)
                   if (!shouldRequireShippingDetails(context as ShippingVisibilityContext))
                     return true
                   if (typeof value !== 'number') {
+                    if (shippingQuote) return true
                     return 'Length is required when shipping is enabled.'
                   }
                   if (value < 0) return 'Length cannot be negative.'
@@ -1117,9 +1145,11 @@ const product = defineType({
                 !shouldRequireShippingDetails(context as ShippingVisibilityContext),
               validation: (Rule) =>
                 Rule.custom((value, context: any) => {
+                  const shippingQuote = isCallForShippingQuote(context as ShippingVisibilityContext)
                   if (!shouldRequireShippingDetails(context as ShippingVisibilityContext))
                     return true
                   if (typeof value !== 'number') {
+                    if (shippingQuote) return true
                     return 'Width is required when shipping is enabled.'
                   }
                   if (value < 0) return 'Width cannot be negative.'
@@ -1134,9 +1164,11 @@ const product = defineType({
                 !shouldRequireShippingDetails(context as ShippingVisibilityContext),
               validation: (Rule) =>
                 Rule.custom((value, context: any) => {
+                  const shippingQuote = isCallForShippingQuote(context as ShippingVisibilityContext)
                   if (!shouldRequireShippingDetails(context as ShippingVisibilityContext))
                     return true
                   if (typeof value !== 'number') {
+                    if (shippingQuote) return true
                     return 'Height is required when shipping is enabled.'
                   }
                   if (value < 0) return 'Height cannot be negative.'

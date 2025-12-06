@@ -30,7 +30,6 @@ export const orderCartItemType = defineType({
         addOns,
         upgrades,
         upgradesTotal,
-        image,
       } = selection as {
         title?: unknown
         quantity?: unknown
@@ -42,7 +41,6 @@ export const orderCartItemType = defineType({
         addOns?: unknown
         upgrades?: unknown
         upgradesTotal?: unknown
-        image?: unknown
       }
 
       let cleanVariant = typeof variant === 'string' && variant.trim() ? variant.trim() : undefined

@@ -181,11 +181,11 @@ export const HomeDashboard = forwardRef<HTMLDivElement>(function HomeDashboard(_
   const [error, setError] = useState<string | null>(null)
   const [refreshIndex, setRefreshIndex] = useState(0)
 
-  const ordersToday = data?.ordersToday ?? []
-  const periodOrders = data?.periodOrders ?? []
-  const previousOrders = data?.previousOrders ?? []
-
   const metrics = useMemo(() => {
+    const ordersToday = data?.ordersToday ?? []
+    const periodOrders = data?.periodOrders ?? []
+    const previousOrders = data?.previousOrders ?? []
+
     const ordersByTypeToday = {online: 0, inStore: 0, wholesale: 0}
     let revenueToday = 0
     ordersToday.forEach((order) => {
@@ -225,7 +225,7 @@ export const HomeDashboard = forwardRef<HTMLDivElement>(function HomeDashboard(_
       previousOrdersCount: previousOrders.length,
       revenueByChannel,
     }
-  }, [ordersToday, periodOrders, previousOrders])
+  }, [data])
 
   const fetchData = useCallback(async () => {
     setLoading(true)

@@ -509,6 +509,7 @@ const pickupBadges: DocumentBadgeComponent[] = [pickupStatusBadge, pickupTimeBad
   BADGE ORDERING SYSTEM
 ------------------------- */
 
+// eslint-disable-next-line typescript/no-unused-vars
 const BADGE_ORDER: Record<string, number> = {
   Delivered: 1,
   'In Transit': 2,
@@ -563,18 +564,6 @@ const BADGE_ORDER: Record<string, number> = {
   'Wholesale Missing': 104,
   'Stripe Synced': 105,
   'Stripe Missing': 106,
-}
-
-const getBadgeRank = (label: string): number => {
-  if (BADGE_ORDER[label]) return BADGE_ORDER[label]
-
-  if (label.startsWith('$')) return BADGE_ORDER['$']
-  if (label.endsWith('lb')) return BADGE_ORDER['lb']
-  if (label.startsWith('Insured')) return BADGE_ORDER['Insured']
-  if (/^[A-Z]{2,3}$/.test(label)) return BADGE_ORDER['Country']
-  if (/^\d+d$/.test(label)) return BADGE_ORDER['1d']
-
-  return 999
 }
 
 /* -------------------------

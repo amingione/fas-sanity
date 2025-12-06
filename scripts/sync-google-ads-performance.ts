@@ -98,7 +98,7 @@ async function fetchAdsPerformance(): Promise<Map<string, Aggregated>> {
     map.set(sku, existing)
   })
 
-  for (const [sku, metrics] of map) {
+  for (const [, metrics] of map) {
     const ctr = metrics.impressions > 0 ? (metrics.clicks / metrics.impressions) * 100 : 0
     const roas = metrics.adSpend > 0 ? metrics.revenue / metrics.adSpend : 0
     metrics.ctr = Number(ctr.toFixed(2))

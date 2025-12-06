@@ -35,7 +35,6 @@ export default function OrderShippingActions() {
   const orderId = ((doc?._id || '') as string).replace(/^drafts\./, '')
   const orderNumber = typeof doc?.orderNumber === 'string' ? doc.orderNumber : ''
   const invoiceId = ((doc?.invoiceRef?._ref || '') as string).replace(/^drafts\./, '')
-  const stripeSessionId = typeof doc?.stripeSessionId === 'string' ? doc.stripeSessionId : ''
   const autoAttemptedRef = useRef(false)
   const patchTargets = useMemo(() => resolvePatchTargets(doc?._id), [doc?._id])
 
@@ -175,14 +174,12 @@ export default function OrderShippingActions() {
     },
     [
       client,
-      doc?._id,
       fetchPackingSlip,
       invoiceId,
       isGenerating,
       orderNumber,
       orderId,
       patchTargets,
-      stripeSessionId,
     ],
   )
 

@@ -16,7 +16,7 @@ for (const script of scripts) {
   try {
     execSync(`node scripts/${script}`, { stdio: 'inherit' })
   } catch (error) {
-    console.error(`Failed: ${script}`)
+    console.error(`Failed: ${script}`, error)
   }
 }
 

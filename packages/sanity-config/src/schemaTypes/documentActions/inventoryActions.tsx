@@ -1,17 +1,5 @@
 import {useMemo, useState} from 'react'
-import {
-  Box,
-  Button,
-  Card,
-  Flex,
-  Grid,
-  Select,
-  Stack,
-  Text,
-  TextArea,
-  TextInput,
-  useToast,
-} from '@sanity/ui'
+import {Button, Flex, Grid, Select, Stack, Text, TextArea, TextInput, useToast} from '@sanity/ui'
 import {useClient, useCurrentUser} from 'sanity'
 import type {DocumentActionComponent} from 'sanity'
 import type {DocumentStub} from '../../types/sanity'

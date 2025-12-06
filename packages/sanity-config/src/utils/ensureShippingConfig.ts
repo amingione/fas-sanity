@@ -14,6 +14,7 @@ type ShippingConfig = {
   handlingTime?: number
   freeShippingEligible?: boolean
   separateShipment?: boolean
+  callForShippingQuote?: boolean
 }
 
 type ProductForShipping = {
@@ -72,7 +73,8 @@ function shippingConfigChanged(prev: ShippingConfig | null | undefined, next: Sh
     dimsChanged ||
     (prev?.shippingClass ?? null) !== (next.shippingClass ?? null) ||
     (prev?.handlingTime ?? null) !== (next.handlingTime ?? null) ||
-    (prev?.separateShipment ?? null) !== (next.separateShipment ?? null)
+    (prev?.separateShipment ?? null) !== (next.separateShipment ?? null) ||
+    (prev?.callForShippingQuote ?? null) !== (next.callForShippingQuote ?? null)
   )
 }
 
