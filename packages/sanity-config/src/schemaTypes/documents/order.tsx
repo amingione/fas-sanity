@@ -11,145 +11,14 @@ import {
   EnvelopeIcon,
 } from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
-import React from 'react'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import {formatOrderNumber} from '../../utils/orderNumber'
 import OrderNumberInput from '../../components/inputs/OrderNumberInput'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
-import {deriveVariantAndAddOns} from '../../utils/cartItemDetails'
 import ComputedOrderCustomerNameInput from '../../components/inputs/ComputedOrderCustomerNameInput'
+import FulfillmentOverview from '../../components/FulfillmentOverview'
 
 const SANITY_API_VERSION = '2024-10-01'
-
-// ============================================================================
-// CUSTOM FULFILLMENT OVERVIEW COMPONENT
-// ============================================================================
-
-const FulfillmentOverview = (props: any) => {
-  const {value} = props
-
-  if (!value) return null
-
-  const formatDate = (date?: string) => {
-    if (!date) return 'N/A'
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
-
-  const customerName = value.customerName || value.shippingAddress?.name || 'Unknown Customer'
-
-  return (
-    <div style={{padding: '24px', backgroundColor: '#ffffff'}}>
-      {/* Customer Name */}
-      <div style={{marginBottom: '24px'}}>
-        <div
-          style={{
-            fontSize: '13px',
-            color: '#6b7280',
-            fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: '8px',
-          }}
-        >
-          Customer
-        </div>
-        <div style={{fontSize: '24px', fontWeight: '700', color: '#111827'}}>{customerName}</div>
-        {value.customerEmail && (
-          <div style={{fontSize: '14px', color: '#6b7280', marginTop: '4px'}}>
-            {value.customerEmail}
-          </div>
-        )}
-      </div>
-
-      {/* Ordered Items */}
-      <div style={{marginBottom: '24px'}}>
-        <div
-          style={{
-            fontSize: '13px',
-            color: '#6b7280',
-            fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: '12px',
-          }}
-        >
-          Ordered Items
-        </div>
-        {value.cart?.map((item: any, index: number) => {
-          const {selectedVariant, addOns} = deriveVariantAndAddOns({
-            selectedVariant: item.selectedVariant,
-            optionDetails: item.optionDetails,
-            upgrades: item.upgrades,
-          })
-          const optionText =
-            [selectedVariant, ...addOns.map((addon: string) => `Add-on: ${addon}`)]
-              .map((entry) => (entry || '').trim())
-              .filter(Boolean)
-              .join(' • ') || item.optionSummary
-
-          return (
-            <div
-              key={index}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                padding: '12px 0',
-                borderBottom: index < value.cart.length - 1 ? '1px solid #f3f4f6' : 'none',
-              }}
-            >
-              <div style={{flex: 1}}>
-                <div style={{fontSize: '15px', fontWeight: '600', color: '#111827'}}>
-                  {item.name || item.productName || 'Product'}
-                </div>
-                {item.sku && (
-                  <div style={{fontSize: '13px', color: '#6b7280', marginTop: '2px'}}>
-                    SKU: {item.sku}
-                  </div>
-                )}
-                {optionText && (
-                  <div style={{fontSize: '13px', color: '#6b7280', marginTop: '2px'}}>
-                    {optionText}
-                  </div>
-                )}
-              </div>
-              <div style={{textAlign: 'right', marginLeft: '16px'}}>
-                <div style={{fontSize: '15px', fontWeight: '600', color: '#111827'}}>
-                  Qty: {item.quantity || 1}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Order Date */}
-      <div>
-        <div
-          style={{
-            fontSize: '13px',
-            color: '#6b7280',
-            fontWeight: '600',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: '8px',
-          }}
-        >
-          Order Date
-        </div>
-        <div style={{fontSize: '16px', fontWeight: '600', color: '#111827'}}>
-          {formatDate(value.createdAt)}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const deriveOrderType = async (
   document: any,
@@ -1587,16 +1456,13 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
           }
 
           try {
-            const response = await callNetlifyFunction('easypostCreateLabel', {
-              json: {orderId},
+            const response = await fetch('/.netlify/functions/easypostCreateLabel', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({orderId}),
             })
 
-            let payload: any = null
-            try {
-              payload = await response.clone().json()
-            } catch {
-              payload = null
-            }
+            const payload = await response.clone().json().catch(() => null as any)
 
             if (!response.ok || (payload && payload.error)) {
               const message =
@@ -1613,6 +1479,18 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               typeof payload?.trackingNumber === 'string'
                 ? payload.trackingNumber.trim()
                 : undefined
+            const shipmentId =
+              typeof payload?.shipmentId === 'string' ? payload.shipmentId.trim() : undefined
+            const trackerId =
+              typeof payload?.trackerId === 'string' ? payload.trackerId.trim() : undefined
+            const carrier = typeof payload?.carrier === 'string' ? payload.carrier.trim() : undefined
+            const service = typeof payload?.service === 'string' ? payload.service.trim() : undefined
+            const labelCreatedAt =
+              typeof payload?.labelCreatedAt === 'string' ? payload.labelCreatedAt : undefined
+            const labelCost =
+              typeof payload?.rate === 'number' && Number.isFinite(payload.rate)
+                ? Number(payload.rate)
+                : undefined
 
             const updates: Record<string, any> = {}
             if (labelUrl) updates.shippingLabelUrl = labelUrl
@@ -1625,6 +1503,12 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               updates['fulfillment.trackingNumber'] = trackingNumber
               updates['fulfillment.status'] = 'shipped'
             }
+            if (shipmentId) updates.easyPostShipmentId = shipmentId
+            if (trackerId) updates.easyPostTrackerId = trackerId
+            if (carrier) updates['fulfillment.carrier'] = carrier
+            if (service) updates['fulfillment.service'] = service
+            if (labelCreatedAt) updates.labelCreatedAt = labelCreatedAt
+            if (labelCost !== undefined) updates.labelCost = labelCost
 
             if (Object.keys(updates).length > 0) {
               const client = context.getClient({apiVersion: SANITY_API_VERSION})
@@ -1649,7 +1533,11 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               openExternalUrl(labelUrl || trackingUrl)
             }
 
-            alert('Shipping label created via EasyPost.')
+            alert(
+              trackingNumber
+                ? `Label created! Tracking: ${trackingNumber}`
+                : 'Shipping label created via EasyPost.',
+            )
           } catch (error) {
             console.error('Error creating shipping label:', error)
             alert((error as Error)?.message || 'Failed to create shipping label')

@@ -309,10 +309,28 @@ export const handler: Handler = async (event) => {
 
       shippableCount += 1
 
-      if (/^freight$/i.test(shippingClass)) freightRequired = true
-      const anyDim = dims ? Math.max(dims.length, dims.width, dims.height) : 0
+      const isExplicitFreight = /^freight$/i.test(shippingClass)
+      const dimSource =
+        dims ||
+        (defaultDims && {
+          length: defaultDims.length,
+          width: defaultDims.width,
+          height: defaultDims.height,
+        })
+
+      const anyDim = dimSource ? Math.max(dimSource.length, dimSource.width, dimSource.height) : 0
+      const combinedDims = dimSource
+        ? dimSource.length + dimSource.width + dimSource.height
+        : 0
       const totalPieceWeight = weight * qty
-      if (weight >= 70 || anyDim >= 60 || totalPieceWeight >= 150) freightRequired = true
+
+      const exceedsCarrierLimits =
+        weight > 150 ||
+        totalPieceWeight > 150 ||
+        anyDim > 108 ||
+        combinedDims > 165
+
+      if (isExplicitFreight || exceedsCarrierLimits) freightRequired = true
 
       if (weight > 0) {
         if (shipsAlone) {

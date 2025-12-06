@@ -1260,8 +1260,11 @@ const product = defineType({
             if (typeof value !== 'number' || value <= 0) {
               return warn('Provide the shipping weight so rates stay accurate.')
             }
-            if (value > 50 && !freightSelected) {
-              return warn('⚠️ Heavy item - may require freight shipping')
+            if (value > 150 && !freightSelected) {
+              return warn('⚠️ Over 150 lbs — requires freight shipping.')
+            }
+            if (value > 70 && value <= 150 && !freightSelected) {
+              return warn('ℹ️ Heavy item — may incur carrier oversize fees but can ship ground.')
             }
           }
           return true
