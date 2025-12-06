@@ -45,6 +45,64 @@ function formatEasyPostError(err: any): {statusCode: number; message: string} {
   return {statusCode: 500, message: baseMessage}
 }
 
+function calculatePackageDetails(cart: any[] = []) {
+  let totalWeight = 0
+  let maxLength = 12
+  let maxWidth = 12
+  let maxHeight = 8
+
+  const clamp = (value: number, fallback: number) =>
+    Number.isFinite(value) && value > 0 ? value : fallback
+
+  for (const item of cart) {
+    const qty = Math.max(1, Number(item?.quantity || 1))
+    const weightSource = item?.shippingWeight ?? item?.weight ?? 0
+    const normalizedWeight =
+      weightSource && typeof weightSource === 'object'
+        ? Number(
+            (weightSource as any)?.value ??
+              (weightSource as any)?.amount ??
+              (weightSource as any)?.weight ??
+              0,
+          )
+        : Number(weightSource)
+
+    if (Number.isFinite(normalizedWeight) && normalizedWeight > 0) {
+      totalWeight += normalizedWeight * qty
+    }
+
+    const dimsSource = item?.shippingDimensions || item?.dimensions
+    if (typeof dimsSource === 'string') {
+      const match = dimsSource.match(/(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)/i)
+      if (match) {
+        const [, L, W, H] = match
+        maxLength = Math.max(maxLength, Number(L))
+        maxWidth = Math.max(maxWidth, Number(W))
+        maxHeight = Math.max(maxHeight, Number(H))
+      }
+    } else if (dimsSource && typeof dimsSource === 'object') {
+      const len = Number((dimsSource as any)?.length)
+      const wid = Number((dimsSource as any)?.width)
+      const ht = Number((dimsSource as any)?.height)
+      if (Number.isFinite(len) && len > 0) maxLength = Math.max(maxLength, len)
+      if (Number.isFinite(wid) && wid > 0) maxWidth = Math.max(maxWidth, wid)
+      if (Number.isFinite(ht) && ht > 0) maxHeight = Math.max(maxHeight, ht)
+    }
+  }
+
+  const fallbackWeight = Number(process.env.DEFAULT_PACKAGE_WEIGHT_LBS || 5) || 1
+  const weight = clamp(totalWeight, fallbackWeight)
+
+  return {
+    weight,
+    dimensions: {
+      length: clamp(maxLength, 12),
+      width: clamp(maxWidth, 12),
+      height: clamp(maxHeight, 8),
+    },
+  }
+}
+
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
@@ -71,6 +129,7 @@ type OrderDoc = {
   customerEmail?: string
   customerName?: string
   orderNumber?: string
+  cart?: any[]
 }
 
 type EasyPostAddress = {
@@ -190,8 +249,16 @@ async function createWizardLabel(payload: {
     },
   } as any)
 
-  await (epClient as any).Shipment.buy(shipment.id, selectedRate.id)
-  const updatedShipment: any = await epClient.Shipment.retrieve(shipment.id)
+  let updatedShipment: any
+  if (typeof (shipment as any).buy === 'function') {
+    updatedShipment = await (shipment as any).buy({rate: selectedRate.id})
+  } else {
+    updatedShipment = await (epClient as any).Shipment.buy(shipment.id, selectedRate.id)
+  }
+
+  if (!updatedShipment?.id) {
+    updatedShipment = await epClient.Shipment.retrieve(shipment.id)
+  }
 
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
   const labelUrl = postageLabel?.label_url || postageLabel?.label_pdf_url || undefined
@@ -256,6 +323,13 @@ async function fetchOrder(orderId: string): Promise<OrderDoc | null> {
       shippingAddress,
       weight,
       dimensions,
+      cart[]{
+        quantity,
+        shippingWeight,
+        weight,
+        shippingDimensions,
+        dimensions
+      },
       customerEmail,
       customerName,
       orderNumber
@@ -295,11 +369,18 @@ export async function createEasyPostLabel(
 
   const fromAddress = shipFrom || defaultFrom
 
-  const weightInput = packageDetails?.weight ?? weightOverride ?? order?.weight
-  const dimensionsInput = packageDetails?.dimensions ?? dimensionsOverride ?? order?.dimensions
+  const packageFromCart = order?.cart ? calculatePackageDetails(order.cart) : null
 
-  const {ounces, pounds} = resolveWeight(weightInput, order?.weight)
-  const dimensions = resolveDimensions(dimensionsInput, order?.dimensions)
+  const weightInput =
+    packageDetails?.weight ?? weightOverride ?? order?.weight ?? packageFromCart?.weight
+  const dimensionsInput =
+    packageDetails?.dimensions ?? dimensionsOverride ?? order?.dimensions ?? packageFromCart?.dimensions
+
+  const {ounces, pounds} = resolveWeight(weightInput, order?.weight ?? packageFromCart?.weight)
+  const dimensions = resolveDimensions(
+    dimensionsInput,
+    order?.dimensions ?? packageFromCart?.dimensions,
+  )
 
   const client = getEasyPostClient()
 
@@ -329,22 +410,45 @@ export async function createEasyPostLabel(
   if (!rates.length) {
     throw new Error('No EasyPost rates available for shipment')
   }
-  const lowestRate = rates
+  const sortedRates = rates
     .map((rate: any) => ({
       raw: rate,
-      amount: Number.parseFloat(rate?.rate || '0') || Number.MAX_VALUE,
+      amount: Number.parseFloat(rate?.rate ?? ''),
     }))
-    .sort((a, b) => a.amount - b.amount)[0]?.raw
+    .filter((entry) => Number.isFinite(entry.amount) && entry.amount > 0)
+    .sort((a, b) => a.amount - b.amount)
 
-  if (!lowestRate || !lowestRate.id) {
+  const selectedRate = sortedRates[0]?.raw
+
+  if (!selectedRate?.id) {
     throw new Error('Failed to determine lowest EasyPost rate')
   }
 
-  await (client as any).Shipment.buy(shipment.id, lowestRate.id)
-  const updatedShipment: any = await client.Shipment.retrieve(shipment.id)
+  console.log('easypostCreateLabel selected rate', {
+    id: selectedRate.id,
+    carrier: selectedRate.carrier,
+    service: selectedRate.service,
+    rate: selectedRate.rate,
+  })
+
+  let updatedShipment: any
+  try {
+    if (typeof (shipment as any).buy === 'function') {
+      updatedShipment = await (shipment as any).buy({rate: selectedRate.id})
+    } else {
+      updatedShipment = await (client as any).Shipment.buy(shipment.id, selectedRate.id)
+    }
+  } catch (err) {
+    console.error('EasyPost buy failed', err)
+    throw err
+  }
+
+  if (!updatedShipment?.id) {
+    updatedShipment = await client.Shipment.retrieve(shipment.id)
+  }
 
   const tracker = updatedShipment.tracker || null
-  const selectedRate = updatedShipment.selected_rate || lowestRate
+  const appliedRate = updatedShipment.selected_rate || selectedRate
 
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
 
@@ -359,11 +463,11 @@ export async function createEasyPostLabel(
   const lastEventAt =
     latestDetail?.datetime || tracker?.updated_at || tracker?.created_at || new Date().toISOString()
 
-  const rateAmount = Number.parseFloat(selectedRate?.rate || '')
+  const rateAmount = Number.parseFloat(appliedRate?.rate || '')
   const amount = Number.isFinite(rateAmount) ? Number(rateAmount.toFixed(2)) : undefined
 
   const resolvedCarrier =
-    selectedRate?.carrier ||
+    appliedRate?.carrier ||
     tracker?.carrier ||
     updatedShipment?.selected_rate?.carrier ||
     shipment?.selected_rate?.carrier ||
@@ -371,19 +475,19 @@ export async function createEasyPostLabel(
 
   const shippingStatus: Record<string, any> = {
     carrier: resolvedCarrier,
-    service: selectedRate?.service || undefined,
+    service: appliedRate?.service || undefined,
     labelUrl,
     trackingCode,
     trackingUrl,
     status: tracker?.status || 'label_created',
     cost: amount,
-    currency: selectedRate?.currency || undefined,
+    currency: appliedRate?.currency || undefined,
     lastEventAt: lastEventAt ? new Date(lastEventAt).toISOString() : new Date().toISOString(),
   }
 
   if (orderId) {
     const rateId =
-      (selectedRate as any)?.id ||
+      (appliedRate as any)?.id ||
       (updatedShipment?.selected_rate as any)?.id ||
       (shipment?.selected_rate as any)?.id
 
@@ -400,14 +504,14 @@ export async function createEasyPostLabel(
 
     const selectedService = Object.fromEntries(
       Object.entries({
-        carrierId: selectedRate?.carrier_account_id || undefined,
+        carrierId: appliedRate?.carrier_account_id || undefined,
         carrier: shippingStatus.carrier,
-        service: selectedRate?.service || undefined,
-        serviceCode: selectedRate?.service || undefined,
+        service: appliedRate?.service || undefined,
+        serviceCode: appliedRate?.service_code || appliedRate?.service || undefined,
         amount,
-        currency: selectedRate?.currency || undefined,
+        currency: appliedRate?.currency || undefined,
         deliveryDays:
-          typeof selectedRate?.delivery_days === 'number' ? selectedRate.delivery_days : undefined,
+          typeof appliedRate?.delivery_days === 'number' ? appliedRate.delivery_days : undefined,
         estimatedDeliveryDate: tracker?.est_delivery_date
           ? new Date(tracker.est_delivery_date).toISOString()
           : undefined,
@@ -496,7 +600,7 @@ export async function createEasyPostLabel(
     trackingNumber: trackingCode,
     trackingUrl,
     rate: amount,
-    currency: selectedRate?.currency || undefined,
+    currency: appliedRate?.currency || undefined,
     status: shippingStatus.status,
     carrier: resolvedCarrier,
     labelCreatedAt: shippingStatus.lastEventAt,
