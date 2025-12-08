@@ -131,6 +131,69 @@ export default defineType({
       group: 'stripe',
     }),
     defineField({
+      name: 'productSkus',
+      title: 'Product SKUs',
+      type: 'array',
+      description: 'SKUs from Stripe product sync webhooks in PREFIX-CODE-FAS format',
+      of: [{type: 'string'}],
+      validation: (Rule) =>
+        Rule.custom((skus) => {
+          if (!skus) return true
+          const skuPattern = /^[A-Z0-9]+-[A-Z0-9]+-FAS$/
+          const invalidSkus = (skus as string[]).filter((sku) => !skuPattern.test(sku))
+          if (invalidSkus.length > 0) {
+            return `Invalid SKU format: ${invalidSkus.join(', ')}. Expected format: PREFIX-CODE-FAS`
+          }
+          return true
+        }),
+      group: 'stripe',
+    }),
+    defineField({
+      name: 'lineItemsDetailed',
+      title: 'Line Items (Detailed)',
+      type: 'array',
+      description: 'Structured product line items from Stripe with normalized SKUs',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            {
+              name: 'productName',
+              title: 'Product Name',
+              type: 'string',
+            },
+            {
+              name: 'sku',
+              title: 'SKU',
+              type: 'string',
+              description: 'Normalized SKU in PREFIX-CODE-FAS format',
+              validation: (Rule) =>
+                Rule.regex(/^[A-Z0-9]+-[A-Z0-9]+-FAS$/, {
+                  name: 'SKU Format',
+                  invert: false,
+                }).error('SKU must follow PREFIX-CODE-FAS format (e.g., PR-RM6S-FAS)'),
+            },
+            {
+              name: 'quantity',
+              title: 'Quantity',
+              type: 'number',
+            },
+            {
+              name: 'unitPrice',
+              title: 'Unit Price',
+              type: 'number',
+            },
+            {
+              name: 'totalPrice',
+              title: 'Total Price',
+              type: 'number',
+            },
+          ],
+        },
+      ],
+      group: 'stripe',
+    }),
+    defineField({
       name: 'orderNumber',
       title: 'Order Number',
       type: 'string',
