@@ -28,13 +28,6 @@ export default defineType({
       group: 'content',
     }),
     defineField({
-      name: 'description',
-      title: 'Description',
-      type: 'text',
-      rows: 3,
-      group: 'content',
-    }),
-    defineField({
       name: 'documentType',
       title: 'Document Type',
       type: 'string',
@@ -52,10 +45,31 @@ export default defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
+      name: 'description',
+      title: 'Description',
+      type: 'text',
+      rows: 3,
+      description:
+        'Brief 2-3 sentence summary. Full content goes in the Content field below.',
+      group: 'content',
+      validation: (Rule) =>
+        Rule.custom((description) => {
+          if (!description || description.trim().length === 0) {
+            return 'Description is required'
+          }
+
+          if (description.length > 500) {
+            return 'Description should be brief (under 500 characters). Move detailed content to the Content field.'
+          }
+
+          return true
+        }),
+    }),
+    defineField({
       name: 'content',
       title: 'Content',
       type: 'array',
-      description: 'Rich text editor for reference docs and guides.',
+      description: 'Full document content with rich formatting',
       group: 'content',
       of: [
         {
@@ -65,36 +79,28 @@ export default defineType({
             {title: 'H1', value: 'h1'},
             {title: 'H2', value: 'h2'},
             {title: 'H3', value: 'h3'},
+            {title: 'H4', value: 'h4'},
             {title: 'Quote', value: 'blockquote'},
           ],
           lists: [
             {title: 'Bullet', value: 'bullet'},
             {title: 'Numbered', value: 'number'},
-            {title: 'Checklist', value: 'checklist'},
           ],
           marks: {
             decorators: [
               {title: 'Strong', value: 'strong'},
               {title: 'Emphasis', value: 'em'},
-              {title: 'Underline', value: 'underline'},
               {title: 'Code', value: 'code'},
             ],
             annotations: [
               {
                 name: 'link',
-                title: 'Link',
                 type: 'object',
+                title: 'URL',
                 fields: [
                   {
                     name: 'href',
-                    title: 'URL',
                     type: 'url',
-                  },
-                  {
-                    name: 'openInNewTab',
-                    title: 'Open in new tab',
-                    type: 'boolean',
-                    initialValue: true,
                   },
                 ],
               },
@@ -102,24 +108,51 @@ export default defineType({
           },
         },
         {
+          type: 'code',
+          title: 'Code Block',
+          options: {
+            language: 'javascript',
+            languageAlternatives: [
+              {title: 'JavaScript', value: 'javascript'},
+              {title: 'TypeScript', value: 'typescript'},
+              {title: 'JSON', value: 'json'},
+              {title: 'GROQ', value: 'groq'},
+              {title: 'HTML', value: 'html'},
+              {title: 'CSS', value: 'css'},
+              {title: 'Shell', value: 'sh'},
+            ],
+            withFilename: true,
+          },
+        },
+        {
           type: 'image',
+          title: 'Image',
           options: {hotspot: true},
           fields: [
             {
               name: 'alt',
-              title: 'Alt text',
               type: 'string',
-              validation: (Rule) => Rule.max(120),
+              title: 'Alternative text',
+              description: 'Important for SEO and accessibility',
             },
             {
               name: 'caption',
               title: 'Caption',
               type: 'string',
-              validation: (Rule) => Rule.max(200),
             },
           ],
         },
       ],
+      validation: (Rule) =>
+        Rule.custom((content, context) => {
+          const docType = context.document?.documentType
+
+          if (docType === 'guide' && (!content || content.length === 0)) {
+            return 'Content is required for guide documents'
+          }
+
+          return true
+        }),
       hidden: ({document}) => isFileFocusedType(toDocumentType(document?.documentType)),
     }),
     defineField({
@@ -153,15 +186,14 @@ export default defineType({
       initialValue: 'internal',
     }),
     defineField({
-      name: 'isTemplate',
-      title: 'Template',
-      type: 'boolean',
-      group: 'content',
-      description: 'Enable duplication workflow for reusable document templates.',
-      initialValue: false,
-      components: {
-        input: TemplateFlagInput,
+      name: 'tags',
+      title: 'Tags',
+      type: 'array',
+      of: [{type: 'string'}],
+      options: {
+        layout: 'tags',
       },
+      group: 'metadata',
     }),
     defineField({
       name: 'version',
@@ -169,6 +201,16 @@ export default defineType({
       type: 'string',
       group: 'metadata',
       description: 'e.g., v1.0, v2.1',
+    }),
+    defineField({
+      name: 'slug',
+      title: 'Slug',
+      type: 'slug',
+      options: {
+        source: 'title',
+        maxLength: 96,
+      },
+      group: 'metadata',
     }),
     defineField({
       name: 'file',
@@ -183,24 +225,15 @@ export default defineType({
       hidden: ({document}) => isContentFocusedType(toDocumentType(document?.documentType)),
     }),
     defineField({
-      name: 'slug',
-      title: 'Slug',
-      type: 'slug',
-      options: {
-        source: 'title',
-        maxLength: 96,
+      name: 'isTemplate',
+      title: 'Template',
+      type: 'boolean',
+      group: 'content',
+      description: 'Enable duplication workflow for reusable document templates.',
+      initialValue: false,
+      components: {
+        input: TemplateFlagInput,
       },
-      group: 'metadata',
-    }),
-    defineField({
-      name: 'tags',
-      title: 'Tags',
-      type: 'array',
-      of: [{type: 'string'}],
-      options: {
-        layout: 'tags',
-      },
-      group: 'metadata',
     }),
     defineField({
       name: 'relatedDocuments',
