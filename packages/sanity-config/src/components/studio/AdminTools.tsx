@@ -117,6 +117,88 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
     return Math.floor(parsed)
   }
 
+  async function performBackfillRequest(
+    functionName: string,
+    {
+      dryRun,
+      body = {},
+      query = {},
+      includeDryRunQuery = false,
+    }: {
+      dryRun?: boolean
+      body?: Record<string, any>
+      query?: Record<string, string | undefined>
+      includeDryRunQuery?: boolean
+    },
+  ): Promise<BackfillResponse> {
+    const params = new URLSearchParams()
+    Object.entries(query).forEach(([name, value]) => {
+      if (value !== undefined && value !== null && value !== '') params.set(name, value)
+    })
+    if (includeDryRunQuery && dryRun) {
+      params.set('dryRun', 'true')
+    }
+
+    const payload: Record<string, any> = {...body}
+    if (!includeDryRunQuery && typeof dryRun === 'boolean') {
+      payload.dryRun = dryRun
+    }
+
+    const path = `/.netlify/functions/${functionName}${params.toString() ? `?${params.toString()}` : ''}`
+    const headers: Record<string, string> = {'Content-Type': 'application/json'}
+    if (secret) headers.Authorization = `Bearer ${secret.trim()}`
+
+    const attempts = Array.from(
+      new Set([lastSuccessfulBase.current, ...netlifyBases, DEFAULT_BASE]),
+    ).filter((candidate): candidate is string => Boolean(candidate))
+    let lastError: any = null
+
+    for (const candidate of attempts) {
+      const normalized = candidate.replace(/\/$/, '')
+      try {
+        const response = await fetch(`${normalized}${path}`, {
+          method: 'POST',
+          headers,
+          body: Object.keys(payload).length ? JSON.stringify(payload) : undefined,
+        })
+        lastSuccessfulBase.current = normalized
+        setActiveBase(normalized)
+        try {
+          window.localStorage?.setItem('NLFY_BASE', normalized)
+        } catch {
+          // ignore storage errors
+        }
+        const rawBody = await response.text()
+        let data: BackfillResponse = {}
+        try {
+          data = rawBody ? JSON.parse(rawBody) : {}
+        } catch {
+          const snippet = rawBody ? rawBody.slice(0, 240) : '(empty body)'
+          const statusInfo = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
+          const hint =
+            response.status === 401
+              ? ' • Check BACKFILL_SECRET and auth.'
+              : response.status === 404
+                ? ' • Verify Netlify base URL.'
+                : ''
+          throw new Error(
+            `Unexpected response (${statusInfo}) from ${normalized}${hint}. Body: ${snippet}`,
+          )
+        }
+
+        if (!response.ok || data?.error) {
+          throw new Error(data?.error || `HTTP ${response.status}`)
+        }
+
+        return data
+      } catch (err) {
+        lastError = err
+      }
+    }
+
+    throw lastError || new Error('All Netlify bases failed')
+  }
+
   async function invokeBackfill(
     key: string,
     functionName: string,
@@ -132,73 +214,13 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
     setBusyKey(key)
     updateMessage(key, '')
     try {
-      const params = new URLSearchParams()
-      Object.entries(query).forEach(([name, value]) => {
-        if (value !== undefined && value !== null && value !== '') params.set(name, value)
+      const data = await performBackfillRequest(functionName, {
+        dryRun,
+        body,
+        query,
+        includeDryRunQuery,
       })
-      if (includeDryRunQuery && dryRun) {
-        params.set('dryRun', 'true')
-      }
-
-      const payload: Record<string, any> = {...body}
-      if (!includeDryRunQuery && typeof dryRun === 'boolean') {
-        payload.dryRun = dryRun
-      }
-
-      const path = `/.netlify/functions/${functionName}${params.toString() ? `?${params.toString()}` : ''}`
-      const headers: Record<string, string> = {'Content-Type': 'application/json'}
-      if (secret) headers.Authorization = `Bearer ${secret.trim()}`
-      const performRequest = async (): Promise<Response> => {
-        const attempts = Array.from(
-          new Set([lastSuccessfulBase.current, ...netlifyBases, DEFAULT_BASE]),
-        ).filter((candidate): candidate is string => Boolean(candidate))
-        let lastError: any = null
-        for (const candidate of attempts) {
-          const normalized = candidate.replace(/\/$/, '')
-          try {
-            const response = await fetch(`${normalized}${path}`, {
-              method: 'POST',
-              headers,
-              body: Object.keys(payload).length ? JSON.stringify(payload) : undefined,
-            })
-            lastSuccessfulBase.current = normalized
-            setActiveBase(normalized)
-            try {
-              window.localStorage?.setItem('NLFY_BASE', normalized)
-            } catch {
-              // ignore storage errors
-            }
-            return response
-          } catch (err) {
-            lastError = err
-          }
-        }
-        throw lastError || new Error('All Netlify bases failed')
-      }
-
-      const response = await performRequest()
-      const rawBody = await response.text()
-      let data: BackfillResponse = {}
-      try {
-        data = rawBody ? JSON.parse(rawBody) : {}
-      } catch {
-        const snippet = rawBody ? rawBody.slice(0, 240) : '(empty body)'
-        const statusInfo = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
-        const hint =
-          response.status === 401
-            ? ' • Check BACKFILL_SECRET and auth.'
-            : response.status === 404
-              ? ' • Verify Netlify base URL.'
-              : ''
-        throw new Error(
-          `Unexpected response (${statusInfo}) from ${activeBase}${hint}. Body: ${snippet}`,
-        )
-      }
-      if (!response.ok || data?.error) {
-        updateMessage(key, `Error: ${data?.error || response.status}`)
-      } else {
-        updateMessage(key, formatSuccessMessage(key, data))
-      }
+      updateMessage(key, formatSuccessMessage(key, data))
       try {
         if (secret) window.localStorage?.setItem('BACKFILL_SECRET', secret.trim())
       } catch (err) {
@@ -206,6 +228,37 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
       }
     } catch (err: any) {
       updateMessage(key, `Error: ${err?.message || String(err)}`)
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  async function runStripeBatches() {
+    if (busyKey) return
+    const limitNumber = parseLimit(stripeLimit) || 25
+    const maxBatches = 10
+    const id = stripeId.trim() || undefined
+    setBusyKey('orderStripe')
+    updateMessage('orderStripe', '')
+
+    const lines: string[] = []
+    try {
+      for (let batch = 0; batch < maxBatches; batch += 1) {
+        const data = await performBackfillRequest('backfillOrderStripe', {
+          dryRun: stripeDryRun,
+          body: {kind: stripeKind, limit: limitNumber, id},
+        })
+        lines.push(`Batch ${batch + 1}: ${formatSuccessMessage('orderStripe', data)}`)
+
+        const processed = Number(data?.processed || 0)
+        const succeeded = Number(data?.succeeded || 0)
+        if (id) break
+        if (processed === 0 || succeeded === 0) break
+        if (processed < limitNumber) break
+      }
+      updateMessage('orderStripe', lines.join('\n'))
+    } catch (err: any) {
+      updateMessage('orderStripe', `Error: ${err?.message || String(err)}`)
     } finally {
       setBusyKey(null)
     }
@@ -740,16 +793,26 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             style={inputStyle}
           />
         </label>
-        {renderActionButton('orderStripe', 'Run Stripe Sync', () => {
-          invokeBackfill('orderStripe', 'backfillOrderStripe', {
-            dryRun: stripeDryRun,
-            body: {
-              kind: stripeKind,
-              limit: parseLimit(stripeLimit),
-              id: stripeId.trim() || undefined,
+        <div style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
+          {renderActionButton('orderStripe', 'Run Stripe Sync', () => {
+            invokeBackfill('orderStripe', 'backfillOrderStripe', {
+              dryRun: stripeDryRun,
+              body: {
+                kind: stripeKind,
+                limit: parseLimit(stripeLimit),
+                id: stripeId.trim() || undefined,
+              },
+            })
+          })}
+          {renderActionButton(
+            'orderStripe',
+            'Run Batches (auto)',
+            () => {
+              runStripeBatches()
             },
-          })
-        })}
+            'default',
+          )}
+        </div>
         {renderMessage('orderStripe')}
       </section>
 

@@ -165,6 +165,22 @@ export const orderCartItemType = defineType({
       title: 'Upgrades',
       of: [{type: 'string'}],
       readOnly: false,
+      components: {
+        item: (props: any) => {
+          const value = typeof props?.value === 'string' ? props.value : undefined
+          if (!value) return props.renderDefault(props)
+
+          const match = value.match(/^(.+?)[\s:]+\$?([\d.,]+)/)
+          if (match) {
+            const [, name, price] = match
+            const amount = Number.parseFloat(price.replace(/,/g, ''))
+            const formatted = Number.isFinite(amount) ? amount.toFixed(2) : price
+            return `${name.trim()}: $${formatted}`
+          }
+
+          return props.renderDefault(props)
+        },
+      },
     }),
 
     // Hidden but kept
@@ -191,7 +207,7 @@ export const orderCartItemType = defineType({
       of: [{type: 'string'}],
       readOnly: false,
       hidden: true,
-      description: 'Raw upgrade data from Stripe - used for add-ons display',
+      description: 'Raw upgrade data from Stripe - used for upgrades display',
     }),
     defineField({
       name: 'upgradesTotal',

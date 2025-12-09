@@ -3,7 +3,7 @@ import {Badge, Box, Button, Card, Flex, Stack, Text} from '@sanity/ui'
 import {IntentLink} from 'sanity/router'
 import {useMemo} from 'react'
 import type {OrderCartItem} from '../types/order'
-import {deriveVariantAndAddOns} from '../utils/cartItemDetails'
+import {deriveVariantAndAddOns, sanitizeCartItemName} from '../utils/cartItemDetails'
 
 type OrderItemsListProps = {
   items?: OrderCartItem[] | null
@@ -40,42 +40,48 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
 
   return (
     <Stack space={3}>
-        {items.map((item, index) => {
-          const lineTotal = getLineTotal(item)
-          const {selectedVariant, addOns} = deriveVariantAndAddOns({
-            selectedVariant: (item as any)?.selectedVariant,
-            optionDetails: (item as any)?.optionDetails,
-            upgrades: (item as any)?.upgrades,
-          })
-          const optionsText = selectedVariant || undefined
-          const addOnsText = addOns.length ? addOns.join(', ') : undefined
-          const unitPrice = typeof item.price === 'number' ? item.price : undefined
-          const key = item._key || `${item.sku || 'item'}-${index}`
-          return (
-            <Card key={key} padding={3} radius={2} border>
-              <Flex gap={4} wrap="wrap">
-                <Box flex={2} style={{minWidth: 200}}>
-                  <Text size={3} weight="semibold">
-                    {item.name || item.productName || 'Product'}
+      {items.map((item, index) => {
+        const lineTotal = getLineTotal(item)
+        const {selectedVariant, addOns} = deriveVariantAndAddOns({
+          selectedVariant: (item as any)?.selectedVariant,
+          optionDetails: (item as any)?.optionDetails,
+          upgrades: (item as any)?.upgrades,
+        })
+        const optionsText = selectedVariant || undefined
+        const addOnsText = addOns.length ? addOns.join(', ') : undefined
+        const unitPrice = typeof item.price === 'number' ? item.price : undefined
+        const key = item._key || `${item.sku || 'item'}-${index}`
+        const displayName =
+          sanitizeCartItemName(item.name) ||
+          sanitizeCartItemName(item.productName) ||
+          item.name ||
+          item.productName ||
+          'Product'
+        return (
+          <Card key={key} padding={3} radius={2} border>
+            <Flex gap={4} wrap="wrap">
+              <Box flex={2} style={{minWidth: 200}}>
+                <Text size={3} weight="semibold">
+                  {displayName}
+                </Text>
+                {item.sku && (
+                  <Text size={1} muted>
+                    SKU: {item.sku}
                   </Text>
-                  {item.sku && (
-                    <Text size={1} muted>
-                      SKU: {item.sku}
-                    </Text>
-                  )}
-                  {optionsText && (
-                    <Text size={1} muted>
-                      Options: {optionsText}
-                    </Text>
-                  )}
-                  {addOnsText && (
-                    <Text size={1} muted>
-                      Add-ons: {addOnsText}
-                    </Text>
-                  )}
-              {item.productRef?._ref && (
-                <IntentLink
-                  intent="edit"
+                )}
+                {optionsText && (
+                  <Text size={1} muted>
+                    Options: {optionsText}
+                  </Text>
+                )}
+                {addOnsText && (
+                  <Text size={1} muted>
+                    Upgrades: {addOnsText}
+                  </Text>
+                )}
+                {item.productRef?._ref && (
+                  <IntentLink
+                    intent="edit"
                     params={{id: item.productRef._ref, type: 'product'}}
                     style={{display: 'inline-flex', marginTop: 8}}
                   >

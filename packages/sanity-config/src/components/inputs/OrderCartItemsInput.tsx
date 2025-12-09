@@ -4,6 +4,7 @@ import {
   coerceStringArray,
   deriveOptionsFromMetadata,
   normalizeMetadataEntries,
+  sanitizeCartItemName,
   type NormalizedMetadataEntry,
   uniqueStrings,
 } from '../../utils/cartItemDetails'
@@ -214,6 +215,21 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
       _type: 'orderCartItem',
     }
 
+    if (typeof normalizedItem.name === 'string') {
+      const cleaned = sanitizeCartItemName(normalizedItem.name)
+      if (cleaned && cleaned !== normalizedItem.name) {
+        normalizedItem.name = cleaned
+        changed = true
+      }
+    }
+    if (typeof normalizedItem.productName === 'string') {
+      const cleaned = sanitizeCartItemName(normalizedItem.productName)
+      if (cleaned && cleaned !== normalizedItem.productName) {
+        normalizedItem.productName = cleaned
+        changed = true
+      }
+    }
+
     if (typeof record._key !== 'string' || !record._key) {
       normalizedItem._key = generateKey()
       changed = true
@@ -389,7 +405,9 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   const productName = toStringValue(
     consume(source, ['productName', 'product_name', 'stripe_product_name']),
   )
-  const name = toStringValue(consume(source, ['name', 'display_name'])) || productName || id
+  const name = sanitizeCartItemName(
+    toStringValue(consume(source, ['name', 'display_name'])) || productName || id,
+  )
   const productUrl = toStringValue(
     consume(source, ['productUrl', 'product_url', 'url', 'product_path']),
   )

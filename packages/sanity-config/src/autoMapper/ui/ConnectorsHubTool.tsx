@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react'
-import {Badge, Card, Flex, Grid, Heading, Stack, Text, Button} from '@sanity/ui'
+import {Badge, Card, Flex, Grid, Heading, Stack, Text, Button, TextInput} from '@sanity/ui'
 import {PlugIcon, DownloadIcon} from '@sanity/icons'
 
 type Connector = {

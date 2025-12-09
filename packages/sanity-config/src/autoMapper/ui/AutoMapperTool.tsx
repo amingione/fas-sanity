@@ -78,7 +78,7 @@ const Stepper = ({step}: {step: Step}) => {
         const completed = index < step
         const tone = active ? 'primary' : completed ? 'positive' : 'default'
         return (
-          <Badge key={label} tone={tone} padding={3} fontSize={1}>
+          <Badge key={`step-${index}-${label}`} tone={tone} padding={3} fontSize={1}>
             {index + 1}. {label}
           </Badge>
         )
@@ -235,6 +235,12 @@ export function AutoMapperTool() {
           existingMappings: selectedMappings,
         }),
       })
+
+      if (response.status === 404) {
+        setAiError('AI suggestions endpoint not found (Phase 2/3 feature disabled)')
+        setAiLoading(false)
+        return
+      }
 
       if (!response.ok) {
         throw new Error(`AI request failed: ${response.status}`)
@@ -464,7 +470,7 @@ export function AutoMapperTool() {
             {activeSuggestions.map((entry) => {
               const targetPath = selectedMappings[entry.source.name] || ''
               return (
-                <Card key={entry.source.name} padding={3} radius={2} shadow={1} tone="transparent">
+                <Card key={`src-${entry.source.name}`} padding={3} radius={2} shadow={1} tone="transparent">
                   <Flex justify="space-between" align="center" gap={3} wrap="wrap">
                     <Stack space={2} style={{minWidth: 200}}>
                       <Text weight="semibold">{entry.source.name}</Text>
@@ -480,7 +486,7 @@ export function AutoMapperTool() {
                       >
                         <option value="">Unmapped</option>
                         {entry.suggestions.map((candidate) => (
-                          <option key={candidate.target.path} value={candidate.target.path}>
+                          <option key={`cand-${entry.source.name}-${candidate.target.path}`} value={candidate.target.path}>
                             {candidate.target.path} ({candidate.target.type})
                           </option>
                         ))}
@@ -527,7 +533,7 @@ export function AutoMapperTool() {
             {activeSuggestions.map((entry) => {
               const targetPath = selectedMappings[entry.source.name]
               return (
-                <Flex key={entry.source.name} justify="space-between" align="center">
+                <Flex key={`review-${entry.source.name}`} justify="space-between" align="center">
                   <Text weight="semibold">{entry.source.name}</Text>
                   {targetPath ? (
                     <Text size={1} muted>

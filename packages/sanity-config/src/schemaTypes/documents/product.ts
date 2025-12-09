@@ -55,16 +55,13 @@ const isBundleProduct = (context?: VisibilityContext): boolean =>
   resolveProductType(context) === 'bundle'
 
 const SHIPPING_CLASS_VALUES = ['standard', 'oversized', 'fragile', 'hazmat', 'install_only']
-const FREIGHT_WEIGHT_THRESHOLD_LBS = 150
 
 const normalizeShippingClass = (value?: string | null) =>
   typeof value === 'string' ? value.toLowerCase().replace(/\s+/g, '_') : undefined
 
 const parseShippingDimensions = (value?: string | null) => {
   if (!value || typeof value !== 'string') return null
-  const match = value.match(
-    /(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/,
-  )
+  const match = value.match(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)/)
   if (!match) return null
   const [, rawLength, rawWidth, rawHeight] = match
   const length = Number.parseFloat(rawLength)
@@ -100,7 +97,17 @@ const shouldRequireShippingDetails = (context?: ShippingVisibilityContext): bool
   const requiresFromDoc = (context?.document as any)?.shippingConfig?.requiresShipping
   if (typeof requiresFromDoc === 'boolean') return requiresFromDoc
 
-  return resolveProductType(context) !== 'service'
+  const productType = resolveProductType(context)
+  const deliveryModel =
+    (context?.parent as any)?.serviceDeliveryModel ||
+    (context?.document as any)?.serviceDeliveryModel
+
+  if (productType === 'service') {
+    if (deliveryModel === 'mail-in-service' || deliveryModel === 'hybrid') return true
+    return false
+  }
+
+  return productType !== 'service'
 }
 
 const isCallForShippingQuote = (context?: ShippingVisibilityContext): boolean => {
@@ -127,7 +134,9 @@ const merchantFieldWarning = (Rule: any, message: string) =>
 
 const RequiresShippingField: React.ComponentType<BooleanFieldWithDocument> = (props) => {
   const productType = resolveProductType({document: props.document})
-  const shouldDisableShipping = productType === 'service'
+  const deliveryModel = props.document?.serviceDeliveryModel
+  const shouldDisableShipping =
+    productType === 'service' && deliveryModel !== 'mail-in-service' && deliveryModel !== 'hybrid'
   const onChange = props.onChange
 
   useEffect(() => {
@@ -152,50 +161,6 @@ const ShippingClassField: React.ComponentType<StringFieldWithDocument> = (props)
     if (normalized === props.value) return
     onChange(set(normalized))
   }, [normalized, onChange, props.value])
-
-  return props.renderDefault(props)
-}
-
-const LegacyShippingClassField: React.ComponentType<StringFieldWithDocument> = (props) => {
-  const raw = typeof props.value === 'string' ? props.value : ''
-  const normalized = normalizeShippingClass(raw)
-  const onChange = props.onChange
-  const productType = resolveProductType({document: props.document})
-  const canonical =
-    normalized === 'standard'
-      ? 'Standard'
-      : normalized === 'oversized'
-        ? 'Oversized'
-        : normalized === 'freight'
-          ? 'Freight'
-          : normalized === 'install_only'
-            ? 'Install Only'
-            : ''
-
-  useEffect(() => {
-    if (!onChange) return
-
-    // Services should default to install-only to avoid invalid option values
-    if (productType === 'service') {
-      if (raw !== 'Install Only') onChange(set('Install Only'))
-      return
-    }
-
-    const canonical =
-      normalized === 'standard'
-        ? 'Standard'
-        : normalized === 'oversized'
-          ? 'Oversized'
-          : normalized === 'freight'
-            ? 'Freight'
-            : normalized === 'install_only'
-              ? 'Install Only'
-              : ''
-
-    if (canonical && canonical !== raw) {
-      onChange(set(canonical))
-    }
-  }, [canonical, normalized, onChange, productType, raw])
 
   return props.renderDefault(props)
 }
@@ -840,7 +805,7 @@ const product = defineType({
     }),
     defineField({
       name: 'addOns',
-      title: 'Add-Ons',
+      title: 'Upgrades',
       type: 'array',
       of: [{type: 'addOn'}],
       description: 'Upsell extras the customer may choose in addition to required product options.',
@@ -902,6 +867,92 @@ const product = defineType({
       hidden: ({document, parent}) => !isServiceProduct({document, parent}),
       fieldset: 'serviceDetails',
       group: 'service',
+    }),
+    defineField({
+      name: 'serviceDeliveryModel',
+      title: 'Service Delivery Model',
+      type: 'string',
+      description: 'Choose how this service is delivered.',
+      hidden: ({document, parent}) => resolveProductType({document, parent}) !== 'service',
+      initialValue: 'install-only',
+      options: {
+        list: [
+          {title: '📬 Mail-In Service', value: 'mail-in-service'},
+          {title: '🔧 Install-Only', value: 'install-only'},
+          {title: '📦 Hybrid', value: 'hybrid'},
+        ],
+      },
+      validation: (Rule) =>
+        Rule.custom((value, context: any) => {
+          const productType = resolveProductType(context as VisibilityContext)
+          if (productType !== 'service') return true
+          if (!value) return 'Select how this service is delivered'
+          return true
+        }),
+      fieldset: 'serviceDetails',
+      group: 'service',
+    }),
+    defineField({
+      name: 'mailInServiceDetails',
+      title: 'Mail-In Service Details',
+      type: 'object',
+      description: 'Only visible when the delivery model is mail-in.',
+      hidden: ({document}) => document?.serviceDeliveryModel !== 'mail-in-service',
+      validation: (Rule) =>
+        Rule.custom((value, context: any) => {
+          const deliveryModel = (context.document as any)?.serviceDeliveryModel
+          if (deliveryModel !== 'mail-in-service') return true
+          if (!value) return 'Provide mail-in service details'
+          if (!value.turnaroundTime) return 'Turnaround time is required for mail-in services'
+          return true
+        }),
+      fieldset: 'serviceDetails',
+      group: 'service',
+      fields: [
+        defineField({
+          name: 'turnaroundTime',
+          title: 'Turnaround Time',
+          type: 'string',
+          description: 'E.g., 3-5 business days, 7-10 business days.',
+          validation: (Rule) =>
+            Rule.custom((value, context: any) => {
+              const deliveryModel = (context.document as any)?.serviceDeliveryModel
+              if (deliveryModel !== 'mail-in-service') return true
+              return value ? true : 'Required for mail-in services'
+            }),
+        }),
+        defineField({
+          name: 'returnShippingIncluded',
+          title: 'Return Shipping Included',
+          type: 'boolean',
+          initialValue: true,
+        }),
+        defineField({
+          name: 'shippingInstructions',
+          title: 'Customer Shipping Instructions',
+          type: 'text',
+          rows: 4,
+          description: 'Packaging and shipping guidance for the customer.',
+        }),
+        defineField({
+          name: 'componentWeight',
+          title: 'Component Weight (lbs)',
+          type: 'number',
+          description: 'Weight of the component the customer ships to FAS.',
+        }),
+        defineField({
+          name: 'recommendedPackaging',
+          title: 'Recommended Packaging',
+          type: 'text',
+          rows: 3,
+        }),
+        defineField({
+          name: 'insuranceValue',
+          title: 'Recommended Insurance Value',
+          type: 'number',
+          description: 'Suggested declared value for customer shipping.',
+        }),
+      ],
     }),
     defineField({
       name: 'bundleComponents',
@@ -977,6 +1028,10 @@ const product = defineType({
       initialValue: async (context: VisibilityContext & {document?: any}) => {
         const doc = (context as any)?.document || {}
         const service = resolveProductType(context) === 'service'
+        const deliveryModel = doc?.serviceDeliveryModel
+        const mailInOrHybrid =
+          service && (deliveryModel === 'mail-in-service' || deliveryModel === 'hybrid')
+        const installOnly = service && deliveryModel === 'install-only'
         const legacyWeight = normalizeShippingNumber(doc?.shippingWeight)
         const legacyDimensions = parseShippingDimensions(doc?.boxDimensions)
         const legacyClass = normalizeShippingClass(doc?.shippingClass) || undefined
@@ -984,9 +1039,13 @@ const product = defineType({
         const requiresShipping =
           doc?.shippingConfig?.requiresShipping !== undefined
             ? doc.shippingConfig.requiresShipping
-            : service
+            : installOnly
               ? false
-              : true
+              : service
+                ? mailInOrHybrid
+                  ? true
+                  : false
+                : true
 
         const weight =
           doc?.shippingConfig?.weight !== undefined && doc.shippingConfig.weight !== null
@@ -1006,7 +1065,7 @@ const product = defineType({
         const shippingClass =
           normalizeShippingClass(doc?.shippingConfig?.shippingClass) ||
           legacyClass ||
-          (service ? 'install_only' : 'standard')
+          (installOnly ? 'install_only' : 'standard')
 
         const handlingTime =
           normalizeShippingNumber(doc?.shippingConfig?.handlingTime) ??
@@ -1047,14 +1106,30 @@ const product = defineType({
           type: 'boolean',
           title: 'Requires Shipping',
           description: 'Disable for services, installations, or digital products',
-          initialValue: (context: VisibilityContext) =>
-            resolveProductType(context) === 'service' ? false : true,
+          initialValue: (context: VisibilityContext) => {
+            const productType = resolveProductType(context)
+            if (productType !== 'service') return true
+            const deliveryModel =
+              (context as any)?.document?.serviceDeliveryModel ||
+              (context as any)?.parent?.serviceDeliveryModel
+            if (deliveryModel === 'mail-in-service' || deliveryModel === 'hybrid') return true
+            return false
+          },
           components: {input: RequiresShippingField},
           validation: (Rule) =>
             Rule.required().custom((value, context: any) => {
               const productType = resolveProductType(context as VisibilityContext)
-              if (productType === 'service' && value !== false) {
-                return 'Service products should be install-only with shipping turned off.'
+              const deliveryModel = (context.document as any)?.serviceDeliveryModel
+              if (productType === 'service') {
+                if (deliveryModel === 'install-only' && value !== false) {
+                  return 'Install-only services should have shipping disabled.'
+                }
+                if (
+                  (deliveryModel === 'mail-in-service' || deliveryModel === 'hybrid') &&
+                  value !== true
+                ) {
+                  return 'Shipping should be enabled for mail-in or hybrid services.'
+                }
               }
               if (typeof value !== 'boolean') {
                 return 'Specify whether this product requires shipping.'
@@ -1103,7 +1178,8 @@ const product = defineType({
             Rule.custom((value, context: any) => {
               const shippingQuote = isCallForShippingQuote(context as ShippingVisibilityContext)
               if (!shouldRequireShippingDetails(context as ShippingVisibilityContext)) return true
-              if (!value) return shippingQuote ? true : 'Dimensions are required when shipping is enabled.'
+              if (!value)
+                return shippingQuote ? true : 'Dimensions are required when shipping is enabled.'
               const {length, width, height} = value as Record<string, number>
               if (
                 typeof length !== 'number' ||
@@ -1242,112 +1318,6 @@ const product = defineType({
       ],
     }),
     defineField({
-      name: 'shippingWeight',
-      title: 'Weight (lbs)',
-      type: 'number',
-      description: 'Actual shipping weight in pounds. Used to calculate shipping costs.',
-      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
-      validation: (Rule) =>
-        Rule.custom((value, context) => {
-          const doc = context.document as any
-          const type = (doc?.productType as string) || 'physical'
-          const warn = (message: string) => ({level: 'warning', message})
-          const freightSelected =
-            (typeof doc?.shippingClass === 'string' &&
-              doc.shippingClass.toLowerCase() === 'freight') ||
-            normalizeShippingClass(doc?.shippingConfig?.shippingClass) === 'freight' ||
-            doc?.shippingProfile === 'freight'
-          if (type === 'service') return true
-          if (type === 'physical' || type === 'bundle') {
-            if (typeof value !== 'number' || value <= 0) {
-              return warn('Provide the shipping weight so rates stay accurate.')
-            }
-            if (value >= FREIGHT_WEIGHT_THRESHOLD_LBS && !freightSelected) {
-              return warn('⚠️ 150 lbs or more — set freight shipping.')
-            }
-          }
-          return true
-        }),
-      fieldset: 'shippingDetails',
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'boxDimensions',
-      title: 'Box Dimensions (L×W×H in inches)',
-      type: 'string',
-      description: 'Format example: 18x12x10. Helps detect oversize surcharges.',
-      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
-      validation: (Rule) =>
-        Rule.custom((value, context) => {
-          const doc = context.document as any
-          const type = (doc?.productType as string) || 'physical'
-          const warn = (message: string) => ({level: 'warning', message})
-          if (type === 'service') return true
-          if (type === 'physical' || type === 'bundle') {
-            if (
-              !value ||
-              !/^\s*\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?\s*[xX]\s*\d+(?:\.\d+)?\s*$/.test(value)
-            ) {
-              return warn('Enter dimensions using LxWxH inches so we can quote shipping.')
-            }
-          }
-          return true
-        }),
-      fieldset: 'shippingDetails',
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'handlingTime',
-      title: 'Handling Time (Days)',
-      type: 'number',
-      description: 'Business days needed to prep and hand off the shipment. Default is 2.',
-      initialValue: 2,
-      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
-      validation: (Rule) => Rule.min(0),
-      fieldset: 'shippingDetails',
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'shippingClass',
-      title: 'Shipping Class',
-      type: 'string',
-      options: {
-        list: [
-          {title: 'Standard', value: 'Standard'},
-          {title: 'Oversized', value: 'Oversized'},
-          {title: 'Freight', value: 'Freight'},
-          {title: 'Install Only (No Shipping)', value: 'Install Only'},
-        ],
-      },
-      description: 'Guides which label template, packing materials, and Stripe metadata to use.',
-      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
-      components: {input: LegacyShippingClassField},
-      validation: (Rule) =>
-        Rule.custom((value, context) => {
-          const doc = context.document as any
-          const type = (doc?.productType as string) || 'physical'
-          const warn = (message: string) => ({level: 'warning', message})
-          if (type === 'service') return true
-          if (type === 'physical' || type === 'bundle') {
-            return value
-              ? true
-              : warn('Select a shipping class so fulfillment knows how to pack it.')
-          }
-          return true
-        }),
-      fieldset: 'shippingDetails',
-      group: 'shipping',
-    }),
-    defineField({
-      name: 'shipsAlone',
-      title: 'Ships Separately',
-      type: 'boolean',
-      description: 'Enable when the item cannot ship with other products.',
-      hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
-      fieldset: 'shippingDetails',
-      group: 'shipping',
-    }),
-    defineField({
       name: 'shippingPreview',
       title: 'Shipping Cost Preview',
       type: 'object',
@@ -1383,18 +1353,6 @@ const product = defineType({
       hidden: ({document, parent}) => !isPhysicalOrBundle({document, parent}),
       fieldset: 'shippingDetails',
       group: 'shipping',
-    }),
-    defineField({
-      name: 'installOnly',
-      title: 'Install Only (Legacy)',
-      type: 'boolean',
-      description:
-        'Automatically enabled when Product Type is “Service”. Keeps legacy workflows intact.',
-      readOnly: true,
-      hidden: ({document, parent}) => resolveProductType({document, parent}) !== 'service',
-      fieldset: 'shippingDetails',
-      group: 'shipping',
-      initialValue: false,
     }),
     defineField({
       name: 'trackInventory',

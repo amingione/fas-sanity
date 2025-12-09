@@ -4,24 +4,24 @@ Use this guide to help merchandisers move quickly without missing critical detai
 
 ## Required Fields & Why They Matter
 
-| Field | Why it matters |
-| --- | --- |
-| **Title** | Shown everywhere (site, invoices, search). Keep it under 100 chars and include platform. |
-| **Slug** | Controls the product URL and canonical tag. Let it auto-generate from the title. |
-| **Status** | `Active` items appear on the storefront and merchant feeds. Use `Draft`/`Paused` to stage work. |
-| **Product Type** | Tells the system whether to show shipping fields, service scheduling inputs, or bundle composition. Also powers storefront filtering and badges. |
-| **Images** | First image becomes the hero card. Upload 3–5 angles so the storefront carousel looks complete. |
-| **Short Description** | Two-sentence hook used on collection cards and checkout. Mention platforms + outcome. |
-| **Full Description** | Long-form content for SEO + customers. Include install tips, FAQs, kit contents. |
-| **Categories** | Controls where the product appears on the storefront and the service catalog. |
-| **Price** | Base USD price sent to Stripe, Google Merchant, and quotes. |
-| **Shipping Weight + Box Dimensions** (physical/bundle) | Used to calculate shipping rates, packing slips, and freight flags. Missing values stop the shipping calculator. |
+| Field                                                  | Why it matters                                                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Title**                                              | Shown everywhere (site, invoices, search). Keep it under 100 chars and include platform.                                                         |
+| **Slug**                                               | Controls the product URL and canonical tag. Let it auto-generate from the title.                                                                 |
+| **Status**                                             | `Active` items appear on the storefront and merchant feeds. Use `Draft`/`Paused` to stage work.                                                  |
+| **Product Type**                                       | Tells the system whether to show shipping fields, service scheduling inputs, or bundle composition. Also powers storefront filtering and badges. |
+| **Images**                                             | First image becomes the hero card. Upload 3–5 angles so the storefront carousel looks complete.                                                  |
+| **Short Description**                                  | Two-sentence hook used on collection cards and checkout. Mention platforms + outcome.                                                            |
+| **Full Description**                                   | Long-form content for SEO + customers. Include install tips, FAQs, kit contents.                                                                 |
+| **Categories**                                         | Controls where the product appears on the storefront and the service catalog.                                                                    |
+| **Price**                                              | Base USD price sent to Stripe, Google Merchant, and quotes.                                                                                      |
+| **Shipping Weight + Box Dimensions** (physical/bundle) | Used to calculate shipping rates, packing slips, and freight flags. Missing values stop the shipping calculator.                                 |
 
 ## Fieldset Quick Reference
 
 - **Basic Info** – Everything needed to launch a product in under 5 minutes: title, slug, product type, images, descriptions, price, categories, highlights.
 - **Product Details** – Key features, specs, kit contents, FAQs, and supporting media.
-- **Options & Variants** – Only visible for physical/bundle products. Choose “Requires options” if the customer must pick size/color/platform. Add-ons and customizations live here too.
+- **Options & Variants** – Only visible for physical/bundle products. Choose “Requires options” if the customer must pick size/color/platform. Upgrades and customizations live here too.
 - **Service Details** – Appears when `Product Type = Service`. Capture duration, location, deliverables, and scheduling notes rather than shipping data.
 - **Bundle Components** – Appears when `Product Type = Bundle`. Reference each included product, quantity, and special notes.
 - **Shipping & Fulfillment** – Weight, box size, handling time, shipping class, ships-alone flag, and a live shipping-cost preview. Hidden for services.
@@ -36,7 +36,7 @@ Use this guide to help merchandisers move quickly without missing critical detai
 1. **Set the Product Type first.** This unlocks the right fieldsets (Shipping vs Service vs Bundle).
 2. **Fill the Basic Info block** (Title, Slug, Status, Price, Categories, Images, Short/Full descriptions).
 3. **Complete Product Details** – at least 3 key features + kit contents if applicable.
-4. **Add Variants or Add-Ons** if customers must choose options before checkout.
+4. **Add Variants or Upgrades** if customers must choose options before checkout.
 5. **Provide Shipping data** (weight, box dimensions, handling time, shipping class). Watch the shipping preview for warnings like “Heavy item – may require freight.”
 6. **Inventory** – leave tracking enabled unless this is made-to-order. Enter the on-hand quantity.
 7. **Compatibility or Service details** depending on product type.
@@ -46,13 +46,13 @@ Use this guide to help merchandisers move quickly without missing critical detai
 
 ## Service vs Product Guidelines
 
-| Scenario | Choose **Service** when… | Choose **Physical** when… | Choose **Bundle** when… |
-| --- | --- | --- | --- |
-| Offer type | Labor, installation, tuning, inspections | Item ships to customer | Multiple physical items sold together |
-| Shipping fields | Hidden (service catalog uses scheduling inputs) | Required | Required |
-| Badges | ⚙️ “In-shop service” badge appears automatically | 📦 Standard product badge | 📦+ Bundle badge |
-| Storefront | Services appear in the Service Catalog and are removed from product-grid queries | Included in main catalog | Included in main catalog + bundle callouts |
-| Stripe metadata | Clears shipping metadata so services never charge shipping | Weight/dimensions/class sync to Stripe metadata | Same as physical |
+| Scenario        | Choose **Service** when…                                                         | Choose **Physical** when…                       | Choose **Bundle** when…                    |
+| --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------ |
+| Offer type      | Labor, installation, tuning, inspections                                         | Item ships to customer                          | Multiple physical items sold together      |
+| Shipping fields | Hidden (service catalog uses scheduling inputs)                                  | Required                                        | Required                                   |
+| Badges          | ⚙️ “In-shop service” badge appears automatically                                 | 📦 Standard product badge                       | 📦+ Bundle badge                           |
+| Storefront      | Services appear in the Service Catalog and are removed from product-grid queries | Included in main catalog                        | Included in main catalog + bundle callouts |
+| Stripe metadata | Clears shipping metadata so services never charge shipping                       | Weight/dimensions/class sync to Stripe metadata | Same as physical                           |
 
 ### Service Creation Tips
 

@@ -252,9 +252,7 @@ export function findProductForItem(
     const byPriceId = products.find((p) => (p.stripePriceId || '').toLowerCase() === stripePriceId)
     if (byPriceId) return byPriceId
     const byPriceSnapshot = products.find((p) =>
-      (p.stripePrices || []).some(
-        (snap) => (snap?.priceId || '').toLowerCase() === stripePriceId,
-      ),
+      (p.stripePrices || []).some((snap) => (snap?.priceId || '').toLowerCase() === stripePriceId),
     )
     if (byPriceSnapshot) return byPriceSnapshot
   }
@@ -559,7 +557,7 @@ export async function enrichCartItemsFromSanity(
       if (!item.sku && metadataMap.sanity_sku) {
         item.sku = metadataMap.sanity_sku
       }
-      // Even without a product, derive variant/add-ons/lineTotal
+      // Even without a product, derive variant/upgrades/lineTotal
     }
     if (!product) {
       const choices = normalizeCartItemChoices({

@@ -29,6 +29,7 @@ const sanity = createClient({
 })
 
 const ORDER_NUMBER_PREFIX = 'FAS'
+const INVOICE_PREFIX = 'INV'
 
 function sanitizeOrderNumber(value?: string | null): string | undefined {
   if (!value) return undefined
@@ -36,6 +37,25 @@ function sanitizeOrderNumber(value?: string | null): string | undefined {
   if (!trimmed) return undefined
   if (/^FAS-\d{6}$/.test(trimmed)) return trimmed
   const digits = trimmed.replace(/\D/g, '')
+  if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+function normalizeInvoiceNumber(value?: string | null): string | undefined {
+  if (!value) return undefined
+  const digits = value.toString().replace(/\D/g, '')
+  if (digits.length >= 6) return `${INVOICE_PREFIX}-${digits.slice(-6)}`
+  return undefined
+}
+
+function invoiceNumberFromOrder(value?: string | null): string | undefined {
+  const orderNumber = sanitizeOrderNumber(value)
+  if (!orderNumber) return undefined
+  return `${INVOICE_PREFIX}-${orderNumber.replace(/\D/g, '').slice(-6)}`
+}
+
+function orderNumberFromInvoice(value?: string | null): string | undefined {
+  const digits = value ? value.toString().replace(/\D/g, '') : ''
   if (digits.length >= 6) return `${ORDER_NUMBER_PREFIX}-${digits.slice(-6)}`
   return undefined
 }
@@ -52,30 +72,33 @@ function candidateFromSessionId(id?: string | null): string | undefined {
 }
 
 async function generateUniqueInvoiceNumber(
+  preferredOrderNumber?: string | null,
   existingCandidates: Array<string | null | undefined> = [],
 ): Promise<string> {
-  for (const candidate of existingCandidates) {
-    const sanitized = sanitizeOrderNumber(candidate)
+  const candidates = [preferredOrderNumber, ...existingCandidates]
+
+  for (const candidate of candidates) {
+    const sanitized = invoiceNumberFromOrder(candidate) || normalizeInvoiceNumber(candidate)
     if (!sanitized) continue
     const exists = await sanity.fetch<number>(
-      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      'count(*[_type == "invoice" && invoiceNumber == $num])',
       {num: sanitized},
     )
     if (!Number(exists)) return sanitized
   }
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const randomCandidate = `${ORDER_NUMBER_PREFIX}-${Math.floor(Math.random() * 1_000_000)
+    const randomCandidate = `${INVOICE_PREFIX}-${Math.floor(Math.random() * 1_000_000)
       .toString()
       .padStart(6, '0')}`
     const exists = await sanity.fetch<number>(
-      'count(*[_type == "order" && orderNumber == $num]) + count(*[_type == "invoice" && (orderNumber == $num || invoiceNumber == $num)])',
+      'count(*[_type == "invoice" && invoiceNumber == $num])',
       {num: randomCandidate},
     )
     if (!Number(exists)) return randomCandidate
   }
 
-  return `${ORDER_NUMBER_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
+  return `${INVOICE_PREFIX}-${String(Math.floor(Date.now() % 1_000_000)).padStart(6, '0')}`
 }
 
 function pickString(...values: Array<any>): string | undefined {
@@ -207,6 +230,7 @@ export const handler: Handler = async (event) => {
   let changed = 0
   let migratedCustomer = 0
   let migratedOrder = 0
+  let ordersLinked = 0
   let itemsFixed = 0
   let legacyConverted = 0
   let billToFilled = 0
@@ -247,12 +271,18 @@ export const handler: Handler = async (event) => {
         const setOps: Record<string, any> = {}
         const unsetOps: string[] = []
 
-        const orderRefId = d?.orderRef?._ref || d?.order?._ref
+        let orderRefId = d?.orderRef?._ref || d?.order?._ref
         let orderDoc: any = null
-        if (orderRefId) {
+        const inferredOrderNumber =
+          sanitizeOrderNumber(d.orderNumber) ||
+          sanitizeOrderNumber(orderNumberFromInvoice(d.invoiceNumber)) ||
+          sanitizeOrderNumber(candidateFromSessionId(d.stripeSessionId))
+
+        if (!orderRefId && inferredOrderNumber) {
           try {
             orderDoc = await sanity.fetch(
-              `*[_type == "order" && _id == $id][0]{
+              `*[_type == "order" && orderNumber == $num][0]{
+                _id,
                 orderNumber,
                 cart,
                 shippingAddress,
@@ -262,7 +292,33 @@ export const handler: Handler = async (event) => {
                 amountTax,
                 createdAt,
                 stripeSessionId,
-                totalAmount
+                totalAmount,
+                invoiceRef
+              }`,
+              {num: inferredOrderNumber},
+            )
+            orderRefId = orderDoc?._id || orderRefId
+          } catch {
+            orderDoc = null
+          }
+        }
+
+        if (!orderDoc && orderRefId) {
+          try {
+            orderDoc = await sanity.fetch(
+              `*[_type == "order" && _id == $id][0]{
+                _id,
+                orderNumber,
+                cart,
+                shippingAddress,
+                customerName,
+                customerEmail,
+                amountSubtotal,
+                amountTax,
+                createdAt,
+                stripeSessionId,
+                totalAmount,
+                invoiceRef
               }`,
               {id: orderRefId},
             )
@@ -276,9 +332,16 @@ export const handler: Handler = async (event) => {
           unsetOps.push('customer')
         } else if (d.customer) unsetOps.push('customer')
 
-        if (!d.orderRef && d.order?._ref) {
-          setOps.orderRef = {_type: 'reference', _ref: d.order._ref}
+        if (orderDoc?._id && (!d.orderRef || d.orderRef._ref !== orderDoc._id)) {
+          setOps.orderRef = {_type: 'reference', _ref: orderDoc._id}
+          orderRefId = orderDoc._id
           unsetOps.push('order')
+          migratedOrder++
+        } else if (!orderRefId && d.order?._ref) {
+          setOps.orderRef = {_type: 'reference', _ref: d.order._ref}
+          orderRefId = d.order._ref
+          unsetOps.push('order')
+          migratedOrder++
         } else if (d.order) unsetOps.push('order')
 
         if (Array.isArray(d.lineItems)) {
@@ -340,30 +403,32 @@ export const handler: Handler = async (event) => {
           }
         }
 
+        const desiredOrderNumber =
+          sanitizeOrderNumber(orderDoc?.orderNumber) ||
+          inferredOrderNumber ||
+          sanitizeOrderNumber(candidateFromSessionId(orderDoc?.stripeSessionId))
+
         const invoiceCandidates: Array<string | null | undefined> = [
           d.invoiceNumber,
           d.orderNumber,
           orderDoc?.orderNumber,
+          desiredOrderNumber,
+          orderNumberFromInvoice(d.invoiceNumber),
           candidateFromSessionId(d.stripeSessionId),
           candidateFromSessionId(orderDoc?.stripeSessionId),
           orderRefId,
           d._id,
         ]
-        const desiredInvoiceNumber = await generateUniqueInvoiceNumber(invoiceCandidates)
+        const desiredInvoiceNumber = await generateUniqueInvoiceNumber(
+          desiredOrderNumber,
+          invoiceCandidates,
+        )
         if (desiredInvoiceNumber && desiredInvoiceNumber !== d.invoiceNumber) {
           setOps.invoiceNumber = desiredInvoiceNumber
         }
 
-        const desiredOrderNumberFromOrder = sanitizeOrderNumber(orderDoc?.orderNumber)
-        if (desiredOrderNumberFromOrder && desiredOrderNumberFromOrder !== d.orderNumber) {
-          setOps.orderNumber = desiredOrderNumberFromOrder
-        } else if (
-          !desiredOrderNumberFromOrder &&
-          setOps.invoiceNumber &&
-          d.orderNumber !== setOps.invoiceNumber &&
-          orderRefId
-        ) {
-          setOps.orderNumber = setOps.invoiceNumber
+        if (desiredOrderNumber && desiredOrderNumber !== d.orderNumber) {
+          setOps.orderNumber = desiredOrderNumber
         }
 
         const fallbackEmail = pickString(d.customerEmail, orderDoc?.customerEmail)
@@ -428,8 +493,7 @@ export const handler: Handler = async (event) => {
             setOps.orderNumber ||
               d.orderNumber ||
               orderDoc?.orderNumber ||
-              setOps.invoiceNumber ||
-              d.invoiceNumber,
+              inferredOrderNumber,
           ) || ''
         const nameForTitle = pickString(
           d?.billTo?.name,
@@ -446,20 +510,31 @@ export const handler: Handler = async (event) => {
           titleUpdated++
         }
 
-        if (Object.keys(setOps).length || unsetOps.length) {
+        const shouldLinkOrder =
+          orderDoc?._id && (!orderDoc.invoiceRef?._ref || orderDoc.invoiceRef._ref !== d._id)
+
+        if (Object.keys(setOps).length || unsetOps.length || shouldLinkOrder) {
           changed++
           if (!dryRun) {
             try {
-              await sanity
-                .patch(d._id)
-                .set(setOps)
-                .unset(unsetOps)
-                .commit({autoGenerateArrayKeys: true})
+              const tx = sanity.transaction()
+              if (Object.keys(setOps).length || unsetOps.length) {
+                tx.patch(d._id, {set: setOps, unset: unsetOps})
+              }
+              if (shouldLinkOrder && orderDoc?._id) {
+                tx.patch(orderDoc._id, {
+                  set: {
+                    invoiceRef: {_type: 'reference', _ref: d._id},
+                  },
+                })
+              }
+              await tx.commit({autoGenerateArrayKeys: true})
             } catch {}
           }
           if (setOps.customerRef) migratedCustomer++
           if (setOps.orderRef) migratedOrder++
           if (setOps.lineItems) itemsFixed++
+          if (shouldLinkOrder) ordersLinked++
         }
         cursor = d._id
         if (limit && total >= limit) {
@@ -493,6 +568,7 @@ export const handler: Handler = async (event) => {
       taxRateUpdated,
       titleUpdated,
       datesUpdated,
+      ordersLinked,
       limit,
     }),
   }

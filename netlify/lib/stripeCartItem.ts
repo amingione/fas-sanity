@@ -150,6 +150,17 @@ const normalizeChoiceLabel = (value?: string | null): string | undefined => {
   return label || undefined
 }
 
+const formatUpgradeLabel = (value?: string | null): string | undefined => {
+  if (!value) return undefined
+  let label = value.trim()
+  if (!label) return undefined
+  label = label.replace(/^option\s*\d*\s*:?\s*/i, '').trim()
+  label = label.replace(/^(variant|model|trim)\s*:?\s*/i, '').trim()
+  label = label.replace(/^(upgrade|add[-\s]?on)s?\s*:?\s*/i, '').trim()
+  label = label.replace(/\s{2,}/g, ' ')
+  return label || undefined
+}
+
 const parseNumericValue = (value?: string | null): number | undefined => {
   if (!value) return undefined
   const match = value.match(/-?\$?\s*([\d,]+(?:\.\d+)?)/)
@@ -395,7 +406,7 @@ export function mapStripeLineItem(
       'sanitySku',
     ]) ||
     toStringValue(productObj?.metadata?.sku) ||
-    toStringValue(productObj?.sku) ||
+    toStringValue((productObj as any)?.sku) ||
     undefined
 
   const productSlug =
@@ -477,8 +488,7 @@ export function mapStripeLineItem(
     metadata.map.upgrade_details,
   )
   const cleanUpgrades = upgradesCandidates
-    .map((entry) => stripTrailingAmount(entry))
-    .map((entry) => normalizeChoiceLabel(entry) || entry)
+    .map((entry) => formatUpgradeLabel(entry) || entry)
     .filter(Boolean)
   const normalizedOptions = normalizeOptionSelections({
     optionSummary: summary,
@@ -529,13 +539,15 @@ export function mapStripeLineItem(
   const parsedUpgradeAmounts = (upgrades || [])
     .map((entry) => parseNumericValue(entry))
     .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
-  const upgradesTotal = resolveUpgradeTotal({
-    metadataMap: metadata.map,
-    price,
-    quantity: quantityValue,
-    lineTotal: derivedLineTotal,
-    total: derivedTotal,
-  }) ?? (parsedUpgradeAmounts.length ? parsedUpgradeAmounts.reduce((a, b) => a + b, 0) : undefined)
+  const upgradesTotal =
+    resolveUpgradeTotal({
+      metadataMap: metadata.map,
+      price,
+      quantity: quantityValue,
+      lineTotal: derivedLineTotal,
+      total: derivedTotal,
+    }) ??
+    (parsedUpgradeAmounts.length ? parsedUpgradeAmounts.reduce((a, b) => a + b, 0) : undefined)
 
   const metadataObject =
     normalizedOptions.optionSummary || (metadataUpgrades && metadataUpgrades.length)
@@ -584,7 +596,7 @@ export function mapStripeLineItem(
 
   const addOns = uniqueStrings(
     [...(derivedAddOns || []), ...normalizeDetails(normalizedOptions.upgrades)]
-      .map((entry) => normalizeChoiceLabel(entry))
+      .map((entry) => formatUpgradeLabel(entry) || entry)
       .filter((entry): entry is string => Boolean(entry)),
   )
 
