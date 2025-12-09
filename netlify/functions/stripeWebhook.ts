@@ -44,6 +44,7 @@ import {
   applyShippingDetailsToDoc,
   deriveFulfillmentFromMetadata,
 } from '../lib/fulfillmentFromMetadata'
+import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
 
 function cleanCartItemForStorage(item: CartItem): CartItem {
   const normalizeAddOnLabel = (value: string): string | undefined => {
@@ -2327,7 +2328,12 @@ async function addToAbandonedCartAudience(email?: string | null, customerName?: 
   }
 }
 
-const stripeKey = process.env.STRIPE_SECRET_KEY
+const stripeKey = resolveStripeSecretKey()
+if (!stripeKey) {
+  console.error(
+    `stripeWebhook: missing Stripe secret (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')})`,
+  )
+}
 const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
 const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
 const resendClient = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null

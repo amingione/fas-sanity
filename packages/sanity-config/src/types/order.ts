@@ -9,6 +9,11 @@ export type SanityReference = {
   _ref: string
 }
 
+export interface FileAsset {
+  _type?: 'file'
+  asset?: SanityReference | null
+}
+
 export interface OrderAddress {
   name?: string
   phone?: string
@@ -70,6 +75,17 @@ export interface ShippingAddress {
   email?: string
 }
 
+export interface SelectedService {
+  carrier?: string | null
+  carrierId?: string | null
+  service?: string | null
+  serviceCode?: string | null
+  amount?: number | null
+  currency?: string | null
+  deliveryDays?: number | null
+  estimatedDeliveryDate?: string | null
+}
+
 export interface OrderDocument {
   _id?: string
   _type?: 'order'
@@ -85,6 +101,7 @@ export interface OrderDocument {
   amountShipping?: number | null
   paymentStatus?: string
   paymentIntentId?: string
+  chargeId?: string | null
   stripeSessionId?: string
   cardBrand?: string
   cardLast4?: string
@@ -93,11 +110,13 @@ export interface OrderDocument {
   customerName?: string
   customerEmail?: string
   customerRef?: SanityReference | null
+  customer?: SanityReference | null
   cart?: OrderCartItem[] | null
   currency?: string
   manualTrackingNumber?: string | null
   trackingNumber?: string | null
   trackingUrl?: string | null
+  shippingLabelFile?: FileAsset | null
   shippingLabelUrl?: string | null
   packingSlipUrl?: string | null
   shippingAddress?: OrderAddress
@@ -114,6 +133,28 @@ export interface OrderDocument {
     deliveredAt?: string | null
     fulfillmentNotes?: string | null
   } | null
+  fulfillmentWorkflow?:
+    | {
+        currentStage?: string | null
+        stages?: Array<{
+          _key?: string
+          stage?: string | null
+          timestamp?: string | null
+          completedBy?: string | null
+          notes?: string | null
+        }>
+      }
+    | null
+  selectedService?: SelectedService | null
+  selectedShippingAmount?: number | null
+  selectedShippingCurrency?: string | null
+  shippingCarrier?: string | null
+  shippingDeliveryDays?: number | null
+  shippingEstimatedDeliveryDate?: string | null
+  shippingServiceCode?: string | null
+  shippingServiceName?: string | null
+  webhookNotified?: boolean | null
+  confirmationEmailSent?: boolean | null
 }
 
 export type OrderViewFieldType =

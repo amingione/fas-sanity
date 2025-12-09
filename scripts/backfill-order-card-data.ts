@@ -35,6 +35,7 @@ type OrderDoc = {
 type CliOptions = {
   limit?: number
   dryRun: boolean
+  id?: string
 }
 
 const PAYMENT_INTENT_EXPAND_FIELDS: string[] = [
@@ -55,10 +56,20 @@ for (const filename of ENV_FILES) {
 function parseCliOptions(argv: string[]): CliOptions {
   let limit: number | undefined
   let dryRun = false
+  let id: string | undefined
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
     if (arg === '--dry-run' || arg === '--dryRun') {
       dryRun = true
+      continue
+    }
+    if (arg === '--id') {
+      const value = argv[i + 1]
+      if (!value || value.startsWith('--')) {
+        throw new Error('Missing value for --id')
+      }
+      id = value.trim()
+      i += 1
       continue
     }
     if (arg === '--limit') {
@@ -75,7 +86,7 @@ function parseCliOptions(argv: string[]): CliOptions {
       continue
     }
   }
-  return {limit, dryRun}
+  return {limit, dryRun, id}
 }
 
 function createSanityClient() {
@@ -165,12 +176,49 @@ async function findCustomerId(
   return null
 }
 
-const ORDER_QUERY = `*[_type == "order" && (defined(paymentIntentId) || defined(stripeSessionId)) && (
+const idVariants = (id?: string): string[] => {
+  if (!id) return []
+  const clean = id.trim()
+  if (!clean) return []
+  const variants = new Set<string>([clean])
+  if (clean.startsWith('drafts.')) variants.add(clean.replace('drafts.', ''))
+  else variants.add(`drafts.${clean}`)
+  return Array.from(variants)
+}
+
+const ORDER_QUERY_BASE = `*[_type == "order" && (defined(paymentIntentId) || defined(stripeSessionId)) && (
   !defined(cardBrand) || cardBrand == "" ||
   !defined(cardLast4) || cardLast4 == "" ||
   !defined(receiptUrl) || receiptUrl == "" ||
   !defined(stripeCustomerId) || stripeCustomerId == ""
 )] | order(_createdAt asc)[0...$limit]{
+  _id,
+  orderNumber,
+  paymentIntentId,
+  stripeSessionId,
+  cardBrand,
+  cardLast4,
+  receiptUrl,
+  stripeCustomerId,
+  customerEmail,
+  customerRef,
+  billingAddress
+}`
+const ORDER_QUERY_WITH_ID = `*[
+  _type == "order" &&
+  (
+    _id in $ids ||
+    stripeSessionId == $lookup ||
+    paymentIntentId == $lookup
+  ) &&
+  (defined(paymentIntentId) || defined(stripeSessionId)) &&
+  (
+    !defined(cardBrand) || cardBrand == "" ||
+    !defined(cardLast4) || cardLast4 == "" ||
+    !defined(receiptUrl) || receiptUrl == "" ||
+    !defined(stripeCustomerId) || stripeCustomerId == ""
+  )
+][0...$limit]{
   _id,
   orderNumber,
   paymentIntentId,
@@ -342,8 +390,11 @@ async function processOrder(
     if (dryRun) {
       console.log(`[dry-run] Would patch order ${describeOrder(order)}`, orderPatch)
     } else {
-      await sanity.patch(order._id).set(orderPatch).commit({autoGenerateArrayKeys: true})
-      console.log(`Updated order ${describeOrder(order)}`)
+      const targets = idVariants(order._id)
+      for (const targetId of targets) {
+        await sanity.patch(targetId).set(orderPatch).commit({autoGenerateArrayKeys: true})
+      }
+      console.log(`Updated order ${describeOrder(order)} on ${targets.join(', ')}`)
     }
   } else {
     console.log(`No order patch required for ${describeOrder(order)}`)
@@ -371,7 +422,12 @@ async function main() {
   let totalProcessed = 0
 
   while (true) {
-    const orders = await sanity.fetch<OrderDoc[]>(ORDER_QUERY, {limit: batchSize})
+    const orders = await sanity.fetch<OrderDoc[]>(
+      options.id ? ORDER_QUERY_WITH_ID : ORDER_QUERY_BASE,
+      options.id
+        ? {ids: idVariants(options.id), lookup: options.id.trim(), limit: batchSize}
+        : {limit: batchSize},
+    )
     if (!orders.length) {
       if (batchNumber === 0) {
         console.log('No orders require Stripe card data backfill.')
@@ -408,6 +464,9 @@ async function main() {
       console.warn('No orders in this batch could be processed; stopping to avoid infinite loop.')
       break
     }
+
+    // If targeting a single id, stop after the first batch.
+    if (options.id) break
   }
 
   console.log(

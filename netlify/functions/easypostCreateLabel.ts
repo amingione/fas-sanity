@@ -170,6 +170,62 @@ function toEasyPostAddress(order: OrderDoc): EasyPostAddress {
   }
 }
 
+type UploadedLabelAsset = {
+  assetId: string
+  assetUrl?: string | null
+}
+
+function sanitizeFilenameBase(value?: string | null) {
+  const normalized = (value || '').toString().trim()
+  const slug = normalized
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+  return slug || 'label'
+}
+
+async function persistLabelPdf({
+  labelUrl,
+  order,
+  orderId,
+  invoiceId,
+}: {
+  labelUrl?: string
+  order?: OrderDoc | null
+  orderId?: string | null
+  invoiceId?: string | null
+}): Promise<UploadedLabelAsset | null> {
+  const sourceUrl = (labelUrl || '').trim()
+  if (!sourceUrl) return null
+
+  try {
+    const response = await fetch(sourceUrl)
+    if (!response.ok) {
+      throw new Error(`Label fetch failed (HTTP ${response.status})`)
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer())
+    const filenameBase = sanitizeFilenameBase(
+      order?.orderNumber || orderId || invoiceId || 'shipping-label',
+    )
+    const asset = await sanity.assets.upload('file', buffer, {
+      filename: `shipping-label-${filenameBase}.pdf`,
+      contentType: 'application/pdf',
+    })
+    const assetId = (asset as any)?._id || (asset as any)?.document?._id
+    const assetUrl = (asset as any)?.url || (asset as any)?.document?.url
+
+    if (!assetId) {
+      return null
+    }
+
+    return {assetId, assetUrl}
+  } catch (err) {
+    console.warn('Unable to persist shipping label PDF', err)
+    return null
+  }
+}
+
 function assertAddress(address: EasyPostAddress) {
   const missing: string[] = []
   if (!address.name) missing.push('name')
@@ -319,6 +375,9 @@ export type EasyPostLabelResult = {
   shipmentId: string
   trackerId?: string
   labelUrl?: string
+  labelAssetUrl?: string
+  labelAssetId?: string
+  providerLabelUrl?: string
   packingSlipUrl?: string
   qrCodeUrl?: string
   trackingNumber?: string
@@ -526,9 +585,22 @@ export async function createEasyPostLabel(
 
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
 
-  const labelUrl = postageLabel?.label_url || postageLabel?.label_pdf_url || undefined
+  const rawLabelUrl = postageLabel?.label_url || postageLabel?.label_pdf_url || undefined
+  const labelAsset =
+    rawLabelUrl && orderId
+      ? await persistLabelPdf({
+          labelUrl: rawLabelUrl,
+          order,
+          orderId: orderId || null,
+          invoiceId: invoiceId || null,
+        })
+      : null
+  const labelUrl = labelAsset?.assetUrl || rawLabelUrl
   const trackingCode = updatedShipment.tracking_code || tracker?.tracking_code || undefined
   const trackingUrl = tracker?.public_url || undefined
+  const labelFileField = labelAsset?.assetId
+    ? {_type: 'file', asset: {_type: 'reference', _ref: labelAsset.assetId}}
+    : undefined
 
   const latestDetail =
     Array.isArray(tracker?.tracking_details) && tracker.tracking_details.length
@@ -595,6 +667,7 @@ export async function createEasyPostLabel(
     const patchSet = Object.fromEntries(
       Object.entries({
         shippingLabelUrl: labelUrl,
+        shippingLabelFile: labelFileField,
         trackingNumber: trackingCode,
         trackingUrl,
         shippingCarrier: shippingStatus.carrier,
@@ -676,6 +749,9 @@ export async function createEasyPostLabel(
     shipmentId: shipment.id,
     trackerId: tracker?.id,
     labelUrl,
+    labelAssetUrl: labelAsset?.assetUrl || undefined,
+    labelAssetId: labelAsset?.assetId || undefined,
+    providerLabelUrl: rawLabelUrl,
     packingSlipUrl,
     qrCodeUrl,
     trackingNumber: trackingCode,

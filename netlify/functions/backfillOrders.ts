@@ -65,8 +65,9 @@ function normalizeCartItemMetadataField(item: Record<string, any>): MetadataNorm
   const summaryChanged = rawSummary !== normalizedMetadata.option_summary
   const upgradesChanged =
     JSON.stringify(rawUpgradesArray) !== JSON.stringify(normalizedMetadata.upgrades ?? [])
-  const extraKeysChanged =
-    Object.keys(metadataObject).some((key) => key !== 'option_summary' && key !== 'upgrades')
+  const extraKeysChanged = Object.keys(metadataObject).some(
+    (key) => key !== 'option_summary' && key !== 'upgrades',
+  )
 
   if (summaryChanged || upgradesChanged || extraKeysChanged) {
     item.metadata = normalizedMetadata
@@ -144,8 +145,11 @@ function makeCORS(origin?: string) {
   }
 }
 
-const {projectId: SANITY_PROJECT_ID, dataset: SANITY_DATASET, token: SANITY_TOKEN} =
-  requireSanityCredentials()
+const {
+  projectId: SANITY_PROJECT_ID,
+  dataset: SANITY_DATASET,
+  token: SANITY_TOKEN,
+} = requireSanityCredentials()
 
 const sanity = createClient({
   projectId: SANITY_PROJECT_ID,
@@ -247,7 +251,10 @@ function cloneCart(arr: any[]): any[] {
   })
 }
 
-function normalizeCartItems(existing: any[], next: any[]): {items: any[]; metadataUpdated: boolean} {
+function normalizeCartItems(
+  existing: any[],
+  next: any[],
+): {items: any[]; metadataUpdated: boolean} {
   let metadataUpdated = false
   const items = next.map((item, index) => {
     const candidate = item && typeof item === 'object' ? {...item} : {_type: 'orderCartItem'}
@@ -287,11 +294,7 @@ function cartNeedsEnrichment(cart: any[]): boolean {
   return cart.some((item) => {
     if (!item || typeof item !== 'object') return true
     const hasProductPointer = Boolean(
-      item.sku ||
-        item.productSlug ||
-        item.stripeProductId ||
-        item.stripePriceId ||
-        item.productRef,
+      item.sku || item.productSlug || item.stripeProductId || item.stripePriceId || item.productRef,
     )
     const hasMetadata =
       (Array.isArray(item.metadata) && item.metadata.length > 0) || hasMetadataSummary(item)
@@ -302,10 +305,12 @@ function cartNeedsEnrichment(cart: any[]): boolean {
       expectsVariant &&
       !(typeof item.selectedVariant === 'string' && item.selectedVariant.trim().length > 0)
     const hasUpgrades =
-      Array.isArray(item.upgrades) && item.upgrades.some((entry) => typeof entry === 'string')
+      Array.isArray(item.upgrades) && item.upgrades.some((entry: any) => typeof entry === 'string')
     const missingAddOns = hasUpgrades && (!Array.isArray(item.addOns) || item.addOns.length === 0)
     const missingProductRef = !item.productRef
-    return !hasProductPointer || !hasMetadata || missingVariant || missingAddOns || missingProductRef
+    return (
+      !hasProductPointer || !hasMetadata || missingVariant || missingAddOns || missingProductRef
+    )
   })
 }
 
@@ -502,9 +507,7 @@ export const handler: Handler = async (event) => {
             const originalHasMetadata = originalCart.some((item: unknown) =>
               hasMetadataSummary(item),
             )
-            const updatedHasMetadata = fixedCart.some((item: unknown) =>
-              hasMetadataSummary(item),
-            )
+            const updatedHasMetadata = fixedCart.some((item: unknown) => hasMetadataSummary(item))
             if (updatedHasMetadata && !originalHasMetadata) {
               metadataBackfilledForOrder = true
             }
@@ -524,8 +527,7 @@ export const handler: Handler = async (event) => {
             if (Array.isArray(stripeCart) && stripeCart.length > 0) {
               const normalized = normalizeCartItems(workingCart, stripeCart)
               enrichedCart = normalized.items
-              metadataBackfilledForOrder =
-                metadataBackfilledForOrder || normalized.metadataUpdated
+              metadataBackfilledForOrder = metadataBackfilledForOrder || normalized.metadataUpdated
             }
           }
 
@@ -535,16 +537,15 @@ export const handler: Handler = async (event) => {
             if (hasCartChanged(workingCart, fallback)) {
               const normalized = normalizeCartItems(workingCart, fallback)
               enrichedCart = normalized.items
-              metadataBackfilledForOrder =
-                metadataBackfilledForOrder || normalized.metadataUpdated
+              metadataBackfilledForOrder = metadataBackfilledForOrder || normalized.metadataUpdated
             }
           }
 
-      if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
-        setOps.cart = enrichedCart
-        if (!metadataBackfilledForOrder) {
-          const originalHasMetadata = originalCart.some((item: unknown) =>
-            hasMetadataSummary(item),
+          if (enrichedCart && hasCartChanged(workingCart, enrichedCart)) {
+            setOps.cart = enrichedCart
+            if (!metadataBackfilledForOrder) {
+              const originalHasMetadata = originalCart.some((item: unknown) =>
+                hasMetadataSummary(item),
               )
               const updatedHasMetadata = enrichedCart.some((item: unknown) =>
                 hasMetadataSummary(item),
@@ -575,10 +576,8 @@ export const handler: Handler = async (event) => {
           }
         }
 
-        const rawCustomerName =
-          typeof doc.customerName === 'string' ? doc.customerName.trim() : ''
-        const hasValidCustomerName =
-          rawCustomerName.length > 0 && !looksLikeEmail(rawCustomerName)
+        const rawCustomerName = typeof doc.customerName === 'string' ? doc.customerName.trim() : ''
+        const hasValidCustomerName = rawCustomerName.length > 0 && !looksLikeEmail(rawCustomerName)
 
         if (!hasValidCustomerName) {
           const derivedName = deriveCustomerName(doc)
@@ -590,12 +589,7 @@ export const handler: Handler = async (event) => {
         }
 
         const slugCurrent = typeof doc.slug === 'string' ? doc.slug : doc?.slug?.current
-        const orderNumberCandidates = [
-          doc.orderNumber,
-          slugCurrent,
-          doc.stripeSessionId,
-          doc._id,
-        ]
+        const orderNumberCandidates = [doc.orderNumber, slugCurrent, doc.stripeSessionId, doc._id]
         const normalizedOrderNumber = orderNumberCandidates
           .map((candidate) => sanitizeOrderNumber(candidate))
           .find((candidate): candidate is string => Boolean(candidate))
@@ -610,7 +604,13 @@ export const handler: Handler = async (event) => {
           setOps.orderNumber = await generateUniqueOrderNumber([normalizedOrderNumber])
         }
 
-        const slugSource = (setOps.orderNumber || doc.orderNumber || doc.stripeSessionId || doc._id || '').toString()
+        const slugSource = (
+          setOps.orderNumber ||
+          doc.orderNumber ||
+          doc.stripeSessionId ||
+          doc._id ||
+          ''
+        ).toString()
         const desiredSlug = createOrderSlug(slugSource, doc._id)
         const currentSlug = (() => {
           if (!doc?.slug) return ''
@@ -632,7 +632,11 @@ export const handler: Handler = async (event) => {
                 .unset(unsetOps)
                 .commit({autoGenerateArrayKeys: true})
               if (metadataBackfilledForOrder) {
-                console.log('Backfilled order:', doc._id, setOps.orderNumber || doc.orderNumber || '')
+                console.log(
+                  'Backfilled order:',
+                  doc._id,
+                  setOps.orderNumber || doc.orderNumber || '',
+                )
               }
             } catch (err) {
               console.warn('backfillOrders: failed to patch order', doc._id, err)
