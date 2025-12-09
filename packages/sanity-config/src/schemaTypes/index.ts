@@ -272,6 +272,9 @@ import emailLog from './documents/emailLog'
 import vendorEmailLog from './documents/vendorEmailLog'
 import vendorPost from './documents/vendorPost'
 import vendorPostCategory from './documents/vendorPostCategory'
+import integrationPack from './documents/integrationPack'
+import connectorInstall from './documents/connectorInstall'
+import workspace from './documents/workspace'
 import attribution from './documents/attribution'
 import marketingOptIn from './documents/marketingOptIn'
 import service from './documents/service'
@@ -315,6 +318,9 @@ const documents = [
   vendorPost,
   vendorPostCategory,
   vendorEmailLog,
+  integrationPack,
+  connectorInstall,
+  workspace,
   bill,
   checkoutSession,
   order,

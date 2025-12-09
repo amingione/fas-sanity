@@ -994,14 +994,14 @@ const product = defineType({
             : legacyWeight
 
         const dimensions =
-          doc?.shippingConfig?.dimensions ||
+          doc?.shippingConfig?.dimensions ??
           (legacyDimensions
             ? {
                 length: legacyDimensions.length,
                 width: legacyDimensions.width,
                 height: legacyDimensions.height,
               }
-            : null)
+            : undefined)
 
         const shippingClass =
           normalizeShippingClass(doc?.shippingConfig?.shippingClass) ||
@@ -1037,8 +1037,8 @@ const product = defineType({
           freeShippingEligible,
           separateShipment,
           callForShippingQuote,
-          weight: weight ?? null,
-          dimensions: dimensions || null,
+          weight: weight ?? undefined,
+          dimensions,
         }
       },
       fields: [

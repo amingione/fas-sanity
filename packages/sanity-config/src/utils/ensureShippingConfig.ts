@@ -55,6 +55,17 @@ function parseDimensions(value?: string | null): Dimensions | undefined {
   return {length, width, height}
 }
 
+function normalizeDimensionsValue(value?: unknown): Dimensions | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const length = toNumber((value as any).length)
+  const width = toNumber((value as any).width)
+  const height = toNumber((value as any).height)
+  if (typeof length === 'number' && typeof width === 'number' && typeof height === 'number') {
+    return {length, width, height}
+  }
+  return undefined
+}
+
 function normalizedProductType(type?: string | null) {
   return (type || '').toLowerCase()
 }
@@ -105,29 +116,45 @@ export async function ensureShippingConfig(
     return {updated: false, skippedReason: 'missing product'}
   }
 
-  const existing = product.shippingConfig || {}
+  const existing =
+    product.shippingConfig && typeof product.shippingConfig === 'object'
+      ? product.shippingConfig
+      : {}
+  const existingDimensions = normalizeDimensionsValue(existing.dimensions)
+  const hasInvalidDimensions =
+    Object.prototype.hasOwnProperty.call(existing, 'dimensions') &&
+    existing.dimensions !== undefined &&
+    !existingDimensions
 
   const requiresShipping =
     existing.requiresShipping ??
     (normalizedProductType(product.productType) === 'service' ? false : true)
   const weight = existing.weight ?? toNumber(product.shippingWeight)
-  const dimensions = existing.dimensions ?? parseDimensions(product.boxDimensions)
+  const dimensions = existingDimensions ?? parseDimensions(product.boxDimensions)
   const shippingClass =
     existing.shippingClass ?? (typeof product.shippingClass === 'string' ? product.shippingClass : undefined)
   const handlingTime = existing.handlingTime ?? toNumber(product.handlingTime)
   const separateShipment =
     existing.separateShipment ??
     (typeof product.shipsAlone === 'boolean' ? product.shipsAlone : undefined)
+  const freeShippingEligible =
+    typeof existing.freeShippingEligible === 'boolean' ? existing.freeShippingEligible : undefined
+  const callForShippingQuote =
+    typeof existing.callForShippingQuote === 'boolean' ? existing.callForShippingQuote : undefined
 
-  const nextConfig: ShippingConfig = {...existing}
+  const nextConfig: ShippingConfig = {}
   if (requiresShipping !== undefined) nextConfig.requiresShipping = requiresShipping
   if (typeof weight === 'number') nextConfig.weight = weight
   if (dimensions) nextConfig.dimensions = dimensions
   if (typeof shippingClass === 'string' && shippingClass) nextConfig.shippingClass = shippingClass
   if (typeof handlingTime === 'number') nextConfig.handlingTime = handlingTime
   if (typeof separateShipment === 'boolean') nextConfig.separateShipment = separateShipment
+  if (typeof freeShippingEligible === 'boolean') nextConfig.freeShippingEligible = freeShippingEligible
+  if (typeof callForShippingQuote === 'boolean') nextConfig.callForShippingQuote = callForShippingQuote
 
-  const shouldUpdate = shippingConfigChanged(product.shippingConfig, nextConfig)
+  const invalidShippingConfig = product.shippingConfig === null
+  const shouldUpdate =
+    invalidShippingConfig || hasInvalidDimensions || shippingConfigChanged(product.shippingConfig, nextConfig)
 
   const shouldMirrorWeight =
     typeof weight === 'number' &&

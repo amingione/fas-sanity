@@ -392,6 +392,16 @@ const orderSchema = defineType({
       readOnly: false,
       hidden: true,
     }),
+    defineField({
+      name: 'customer',
+      type: 'reference',
+      title: 'Customer',
+      to: [{type: 'customer'}],
+      group: 'customer',
+      readOnly: false,
+      description: 'Legacy customer reference retained for backwards compatibility.',
+      hidden: true,
+    }),
 
     // Items
     defineField({
@@ -479,6 +489,14 @@ const orderSchema = defineType({
       hidden: true,
     }),
     defineField({
+      name: 'chargeId',
+      type: 'string',
+      title: 'Charge ID',
+      group: 'payment',
+      readOnly: false,
+      hidden: true,
+    }),
+    defineField({
       name: 'stripeSessionId',
       type: 'string',
       title: 'Stripe Session ID',
@@ -512,6 +530,24 @@ const orderSchema = defineType({
       group: 'payment',
       readOnly: false,
       options: {collapsible: true, collapsed: true},
+    }),
+    defineField({
+      name: 'webhookNotified',
+      type: 'boolean',
+      title: 'Webhook Notified',
+      description: 'Set when a Stripe webhook successfully processed this order.',
+      group: 'payment',
+      readOnly: false,
+      hidden: true,
+    }),
+    defineField({
+      name: 'confirmationEmailSent',
+      type: 'boolean',
+      title: 'Confirmation Email Sent',
+      description: 'Set when the customer confirmation email was sent.',
+      group: 'payment',
+      readOnly: false,
+      hidden: true,
     }),
 
     // Fulfillment
@@ -721,9 +757,95 @@ const orderSchema = defineType({
       readOnly: false,
     }),
     defineField({
+      name: 'selectedService',
+      type: 'object',
+      title: 'Selected Shipping Service',
+      description: 'Original service choice from checkout (Stripe/EasyPost).',
+      group: 'fulfillment',
+      options: {collapsible: true, collapsed: true},
+      fields: [
+        {name: 'carrier', type: 'string', title: 'Carrier'},
+        {name: 'carrierId', type: 'string', title: 'Carrier ID'},
+        {name: 'service', type: 'string', title: 'Service'},
+        {name: 'serviceCode', type: 'string', title: 'Service Code'},
+        {name: 'amount', type: 'number', title: 'Amount'},
+        {name: 'currency', type: 'string', title: 'Currency'},
+        {name: 'deliveryDays', type: 'number', title: 'Est. Delivery Days'},
+        {name: 'estimatedDeliveryDate', type: 'datetime', title: 'Est. Delivery Date'},
+      ],
+    }),
+    defineField({
+      name: 'selectedShippingAmount',
+      type: 'number',
+      title: 'Selected Shipping Amount',
+      description: 'Shipping amount captured at checkout.',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'selectedShippingCurrency',
+      type: 'string',
+      title: 'Selected Shipping Currency',
+      description: 'Currency for selected shipping amount.',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'shippingCarrier',
+      type: 'string',
+      title: 'Shipping Carrier',
+      description: 'Carrier reported by Stripe/EasyPost.',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'shippingDeliveryDays',
+      type: 'number',
+      title: 'Estimated Delivery Days',
+      description: 'Quoted delivery days from the selected rate.',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'shippingEstimatedDeliveryDate',
+      type: 'datetime',
+      title: 'Estimated Delivery Date',
+      description: 'Quoted delivery date from the selected rate.',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'shippingServiceCode',
+      type: 'string',
+      title: 'Shipping Service Code',
+      description: 'Service code from Stripe/EasyPost (e.g., rate id).',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'shippingServiceName',
+      type: 'string',
+      title: 'Shipping Service Name',
+      description: 'Human-friendly service name from the selected rate.',
+      group: 'fulfillment',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'shippingLabelFile',
+      type: 'file',
+      title: 'Shipping Label',
+      description: 'Saved PDF of the shipping label for quick reference.',
+      group: 'fulfillment',
+      options: {
+        storeOriginalFilename: true,
+        accept: 'application/pdf',
+      },
+    }),
+    defineField({
       name: 'shippingLabelUrl',
       type: 'url',
-      title: 'Shipping Label',
+      title: 'Shipping Label URL',
+      description: 'Link to the saved label PDF (auto-set when a label is created).',
       group: 'fulfillment',
       readOnly: false,
     }),
@@ -774,6 +896,33 @@ const orderSchema = defineType({
       group: 'fulfillment',
       readOnly: false,
       hidden: true,
+    }),
+    defineField({
+      name: 'fulfillmentWorkflow',
+      type: 'object',
+      title: 'Fulfillment Workflow',
+      description: 'Tracking for label creation and shipping stages.',
+      group: 'fulfillment',
+      options: {collapsible: true, collapsed: true},
+      fields: [
+        {name: 'currentStage', type: 'string', title: 'Current Stage'},
+        {
+          name: 'stages',
+          type: 'array',
+          title: 'Stages',
+          of: [
+            {
+              type: 'object',
+              fields: [
+                {name: 'stage', type: 'string', title: 'Stage'},
+                {name: 'timestamp', type: 'datetime', title: 'Timestamp'},
+                {name: 'completedBy', type: 'string', title: 'Completed By'},
+                {name: 'notes', type: 'text', title: 'Notes', rows: 2},
+              ],
+            },
+          ],
+        },
+      ],
     }),
     defineField({
       name: 'shippingMetadata',
@@ -1480,8 +1629,17 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               throw new Error(message)
             }
 
+            const labelAssetUrl =
+              typeof payload?.labelAssetUrl === 'string' ? payload.labelAssetUrl.trim() : undefined
+            const labelAssetId =
+              typeof payload?.labelAssetId === 'string' ? payload.labelAssetId.trim() : undefined
+            const providerLabelUrl =
+              typeof payload?.providerLabelUrl === 'string'
+                ? payload.providerLabelUrl.trim()
+                : undefined
             const labelUrl =
-              typeof payload?.labelUrl === 'string' ? payload.labelUrl.trim() : undefined
+              labelAssetUrl ||
+              (typeof payload?.labelUrl === 'string' ? payload.labelUrl.trim() : undefined)
             const trackingUrl =
               typeof payload?.trackingUrl === 'string' ? payload.trackingUrl.trim() : undefined
             const trackingNumber =
@@ -1502,7 +1660,14 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
                 : undefined
 
             const updates: Record<string, any> = {}
-            if (labelUrl) updates.shippingLabelUrl = labelUrl
+            const resolvedLabelUrl = labelUrl || providerLabelUrl
+            if (resolvedLabelUrl) updates.shippingLabelUrl = resolvedLabelUrl
+            if (labelAssetId) {
+              updates.shippingLabelFile = {
+                _type: 'file',
+                asset: {_type: 'reference', _ref: labelAssetId},
+              }
+            }
             if (trackingUrl) {
               updates.trackingUrl = trackingUrl
               updates['fulfillment.trackingUrl'] = trackingUrl
@@ -1538,8 +1703,8 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               }
             }
 
-            if (labelUrl || trackingUrl) {
-              openExternalUrl(labelUrl || trackingUrl)
+            if (resolvedLabelUrl || trackingUrl) {
+              openExternalUrl(resolvedLabelUrl || trackingUrl)
             }
 
             alert(

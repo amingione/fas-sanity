@@ -62,12 +62,13 @@ type CustomerDashboardResponse = {
 const API_VERSION = '2024-10-01'
 const ORDER_TOTAL_EXPR =
   'coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total, 0)'
+const ORDER_TOTAL_PROJECTION = `{ "total": ${ORDER_TOTAL_EXPR} }.total`
 
 const CUSTOMER_DASHBOARD_QUERY = `{
   "metrics": {
-    "lifetimeValue": coalesce(math::sum(*[_type == "order" && customerRef._ref == $customerId && status == "paid"].${ORDER_TOTAL_EXPR}), 0),
+    "lifetimeValue": coalesce(math::sum(*[_type == "order" && customerRef._ref == $customerId && status == "paid"]${ORDER_TOTAL_PROJECTION}), 0),
     "totalOrders": count(*[_type == "order" && customerRef._ref == $customerId]),
-    "avgOrderValue": coalesce(math::avg(*[_type == "order" && customerRef._ref == $customerId && status == "paid"].${ORDER_TOTAL_EXPR}), 0),
+    "avgOrderValue": coalesce(math::avg(*[_type == "order" && customerRef._ref == $customerId && status == "paid"]${ORDER_TOTAL_PROJECTION}), 0),
     "lastOrderDate": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) desc)[0]{
       "ts": coalesce(orderDate, createdAt, _createdAt)
     }.ts,

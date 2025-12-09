@@ -67,9 +67,11 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
         throw new Error(result?.error || `HTTP ${response.status}`)
       }
 
-      const nextLabelUrl = normalizeUrl(result?.labelUrl)
+      const nextLabelUrl =
+        normalizeUrl(result?.labelAssetUrl) || normalizeUrl(result?.labelUrl)
       const nextTrackingUrl = normalizeUrl(result?.trackingUrl)
       const nextTrackingNumber = normalizeUrl(result?.trackingNumber)
+      const providerLabelUrl = normalizeUrl(result?.providerLabelUrl)
 
       if (nextLabelUrl) setLocalLabelUrl(nextLabelUrl)
       if (nextTrackingUrl) setLocalTrackingUrl(nextTrackingUrl)
@@ -89,7 +91,7 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
         closable: true,
       })
 
-      const target = nextLabelUrl || nextTrackingUrl
+      const target = nextLabelUrl || nextTrackingUrl || providerLabelUrl
       if (target && typeof window !== 'undefined') {
         try {
           window.open(target, '_blank', 'noopener,noreferrer')

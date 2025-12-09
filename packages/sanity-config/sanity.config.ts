@@ -39,6 +39,7 @@ import {OrderFulfillmentWidget} from './src/plugins/orderFulfillmentWidget'
 import {AppointmentCalendarWidget} from './src/plugins/appointmentCalendarWidget'
 import StripeAnalyticsWidget from './src/components/StripeAnalyticsWidget'
 import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
+import {autoMapperPlugin} from './src/plugins/autoMapper'
 
 declare const __SANITY_STUDIO_RUNTIME_ENV__: Record<string, string | undefined> | undefined
 
@@ -214,6 +215,11 @@ const visionEnabled = disableVisionOverride === true ? false : true
 const visualEditingEnabled =
   disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true
 
+const autoMapperEnabled = getEnvFlag(
+  'SANITY_STUDIO_ENABLE_AUTO_MAPPER',
+  'VITE_SANITY_STUDIO_ENABLE_AUTO_MAPPER',
+) !== false
+
 const defaultDocumentNode = (S: any, {schemaType}: {schemaType: string}) => {
   if (schemaType === 'order') {
     return S.document().views([
@@ -319,6 +325,7 @@ const configuredPlugins = [
       },
     ],
   }),
+  ...(autoMapperEnabled ? [autoMapperPlugin()] : []),
   // preview/presentation tool removed
   ...(visionEnabled ? [visionTool()] : []),
   // Cast through unknown to sidestep pnpm's dual sanity peer variants during type-checking.
