@@ -1,6 +1,10 @@
 import type {Handler} from '@netlify/functions'
-import fs from 'fs'
-import path from 'path'
+import type {Handler} from '@netlify/functions'
+// Import package manifests directly so they are bundled into the function.
+// If a manifest import fails, we fall back to empty data.
+import rootPkg from '../../package.json'
+import sanityPkg from '../../packages/sanity-config/package.json'
+import manifest from './manifest.json'
 
 type Snapshot = {
   packages: Array<{name: string; version: string; source: string}>
@@ -8,17 +12,7 @@ type Snapshot = {
   recognizedPlatforms: string[]
 }
 
-const tryReadJSON = (filePath: string) => {
-  try {
-    const content = fs.readFileSync(filePath, 'utf8')
-    return JSON.parse(content)
-  } catch {
-    return null
-  }
-}
-
-const collectDeps = (pkgPath: string, source: string) => {
-  const pkg = tryReadJSON(pkgPath)
+const collectDeps = (pkg: any, source: string) => {
   if (!pkg) return []
   const entries = Object.entries({
     ...(pkg.dependencies || {}),
@@ -48,11 +42,11 @@ const detectPlatforms = (packages: Snapshot['packages']) => {
   return Array.from(new Set(found))
 }
 
-const listFunctions = (root: string) => {
-  const fnDir = path.join(root, 'netlify', 'functions')
-  if (!fs.existsSync(fnDir)) return []
-  const entries = fs.readdirSync(fnDir)
-  return entries.filter((file) => /\.(ts|js|tsx)$/.test(file)).sort()
+const listFunctions = () => {
+  const files = Array.isArray((manifest as any)?.functions)
+    ? ((manifest as any).functions as Array<{name: string}>).map((fn) => fn.name)
+    : []
+  return files
 }
 
 const handler: Handler = async (event) => {
@@ -60,25 +54,12 @@ const handler: Handler = async (event) => {
     return {statusCode: 405, body: 'Method Not Allowed'}
   }
 
-  const roots = [
-    path.resolve(__dirname, '..', '..', '..'),
-    path.resolve(process.cwd()),
-    path.resolve(__dirname, '..'),
+  const seenPackages: Snapshot['packages'] = [
+    ...collectDeps(rootPkg, 'package.json'),
+    ...collectDeps(sanityPkg, 'packages/sanity-config/package.json'),
   ]
 
-  const seenPackages: Snapshot['packages'] = []
-  roots.forEach((root) => {
-    const rootPkg = path.join(root, 'package.json')
-    if (fs.existsSync(rootPkg)) {
-      seenPackages.push(...collectDeps(rootPkg, rootPkg))
-    }
-    const sanityPkg = path.join(root, 'packages', 'sanity-config', 'package.json')
-    if (fs.existsSync(sanityPkg)) {
-      seenPackages.push(...collectDeps(sanityPkg, sanityPkg))
-    }
-  })
-
-  const functions = listFunctions(roots[0])
+  const functions = listFunctions()
 
   const snapshot: Snapshot = {
     packages: seenPackages,

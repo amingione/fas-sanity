@@ -193,6 +193,17 @@ const parseListValue = (value: string): string[] => {
     .filter(Boolean)
 }
 
+export const stripPlatformPrefix = (value?: string | null): string | undefined => {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const withoutPrefix = trimmed.replace(/^Platform\s*:\s*[^|]+?\|\s*/i, '').trim()
+  return withoutPrefix || trimmed
+}
+
+export const sanitizeCartItemName = (value?: string | null): string | undefined =>
+  stripPlatformPrefix(value)
+
 const normalizeMetadataEntries = (
   metadata: MetadataEntryInput | NormalizedMetadataEntry[],
 ): NormalizedMetadataEntry[] => {

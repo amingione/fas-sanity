@@ -6,6 +6,7 @@ import {useClient} from 'sanity'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 import {calculateVendorItemSubtotal} from '../../../../../shared/vendorPricing'
 import {getNetlifyFnBase} from './netlifyFnBase'
+import {formatInvoiceNumberFromOrder} from '../../utils/orderNumber'
 
 const API_VERSION = '2024-10-01'
 
@@ -226,17 +227,24 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
 
       const createdOrder = await client.create(orderDoc, {autoGenerateArrayKeys: true})
 
-      const invoiceNumber = await generateReferenceCode(client, {
-        prefix: 'INV-',
-        typeName: 'invoice',
-        fieldName: 'invoiceNumber',
-      })
+      const invoiceNumber =
+        formatInvoiceNumberFromOrder(createdOrder.orderNumber) ||
+        (await generateReferenceCode(client, {
+          prefix: 'INV-',
+          typeName: 'invoice',
+          fieldName: 'invoiceNumber',
+        }))
       const billTo = toBillAddress(vendor.businessAddress)
       const shipTo = toBillAddress(vendor.shippingAddress || vendor.businessAddress)
+      const invoiceTitle =
+        createdOrder.orderNumber && vendor.companyName
+          ? `${vendor.companyName} • ${createdOrder.orderNumber}`
+          : `Wholesale order ${quote.quoteNumber || ''}`
       const invoiceDoc: DocumentStub<Record<string, any>> = {
         _type: 'invoice',
-        title: `Wholesale order ${quote.quoteNumber || ''}`,
+        title: invoiceTitle,
         invoiceNumber,
+        orderNumber: createdOrder.orderNumber || undefined,
         orderRef: {_type: 'reference', _ref: createdOrder._id},
         billTo: billTo
           ? {
@@ -265,7 +273,13 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
         paymentTerms: vendor.paymentTerms,
         customerNotes: quote.notes,
       }
-      await client.create(invoiceDoc, {autoGenerateArrayKeys: true})
+      const createdInvoice = await client.create(invoiceDoc, {autoGenerateArrayKeys: true})
+      await client
+        .patch(createdOrder._id)
+        .set({
+          invoiceRef: {_type: 'reference', _ref: createdInvoice._id},
+        })
+        .commit({autoGenerateArrayKeys: true})
 
       const updatedItems = orderItems.map((item) => ({
         _key: item._key,

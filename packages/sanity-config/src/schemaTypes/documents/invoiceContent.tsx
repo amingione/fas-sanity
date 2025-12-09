@@ -13,6 +13,7 @@ import {
 } from '@sanity/ui'
 
 import './invoiceStyles.css'
+import {formatInvoiceNumberFromOrder} from '../../utils/orderNumber'
 
 function fmt(n?: number) {
   return typeof n === 'number' && !isNaN(n) ? Number(n).toFixed(2) : '0.00'
@@ -46,13 +47,50 @@ const DEFAULT_INVOICE_PREFIX = (() => {
 // ---- Invoice Number Input (auto-populate, disables if linked to order or not pending)
 function InvoiceNumberInput(props: any) {
   const {value, onChange, elementProps = {}} = props
+  const client = useClient({apiVersion: '2024-10-01'})
+  const orderRef = useMaybeFormValue<{_ref?: string}>(['orderRef'])
+  const orderNumberField = useMaybeFormValue<string>(['orderNumber'])
+  const [resolvedOrderNumber, setResolvedOrderNumber] = useState<string | undefined>(
+    orderNumberField || undefined,
+  )
+
+  useEffect(() => {
+    if (orderNumberField && orderNumberField !== resolvedOrderNumber) {
+      setResolvedOrderNumber(orderNumberField)
+    }
+  }, [orderNumberField, resolvedOrderNumber])
+
+  useEffect(() => {
+    if (!orderRef?._ref || resolvedOrderNumber) return
+    let cancelled = false
+    client
+      .fetch<string | null>(`*[_type == "order" && _id == $id][0].orderNumber`, {
+        id: orderRef._ref,
+      })
+      .then((orderNumber) => {
+        if (!cancelled && orderNumber) {
+          setResolvedOrderNumber(orderNumber)
+        }
+      })
+      .catch(() => {
+        // Swallow fetch errors; fallback generation will handle missing orderNumber
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, orderRef, resolvedOrderNumber])
 
   useEffect(() => {
     if (value) return
+    const derived = formatInvoiceNumberFromOrder(resolvedOrderNumber)
+    if (derived) {
+      onChange(set(derived))
+      return
+    }
     const rand = Math.floor(Math.random() * 1_000_000)
     const generated = `${DEFAULT_INVOICE_PREFIX}-${rand.toString().padStart(6, '0')}`
     onChange(set(generated))
-  }, [onChange, value])
+  }, [onChange, resolvedOrderNumber, value])
 
   return (
     <TextInput
@@ -350,7 +388,12 @@ export default defineType({
       description: 'Auto-generated: INV-###### or matches order number',
       components: {input: InvoiceNumberInput},
       readOnly: true,
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) =>
+        Rule.required().custom((val) => {
+          if (typeof val !== 'string' || !val.trim()) return 'Invoice number is required'
+          if (!/^INV-\d+$/.test(val.trim())) return 'Invoice number must be in format INV-XXXXXX'
+          return true
+        }),
       fieldset: 'basicInfo',
     }),
 
@@ -668,6 +711,7 @@ export default defineType({
       type: 'reference',
       to: [{type: 'order'}],
       fieldset: 'relatedDocs',
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'workOrderRef',
