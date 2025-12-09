@@ -1,4 +1,6 @@
+import React from 'react'
 import {defineField, defineType} from 'sanity'
+import {sanitizeCartItemName} from '../../utils/cartItemDetails'
 
 export const orderCartItemType = defineType({
   name: 'orderCartItem',
@@ -30,6 +32,7 @@ export const orderCartItemType = defineType({
         addOns,
         upgrades,
         upgradesTotal,
+        image,
       } = selection as {
         title?: unknown
         quantity?: unknown
@@ -41,6 +44,7 @@ export const orderCartItemType = defineType({
         addOns?: unknown
         upgrades?: unknown
         upgradesTotal?: unknown
+        image?: unknown
       }
 
       let cleanVariant = typeof variant === 'string' && variant.trim() ? variant.trim() : undefined
@@ -96,18 +100,33 @@ export const orderCartItemType = defineType({
           : computedTotal
 
       const parts: string[] = []
-      if (cleanVariant) parts.push(`Variant: ${cleanVariant}`)
+      if (cleanVariant) parts.push(`${cleanVariant}`)
       if (cleanAddOns.length > 0) {
-        parts.push(`Add-ons: ${cleanAddOns.join(', ')}`)
+        parts.push(`${cleanAddOns.join(', ')}`)
       }
       let calc = `Qty: ${qty} × $${unitPrice.toFixed(2)}`
       if (addOnTotal > 0) calc += ` + $${addOnTotal.toFixed(2)}`
       calc += ` = $${itemTotal.toFixed(2)}`
       parts.push(calc)
 
+      const cleanTitle =
+        sanitizeCartItemName(typeof title === 'string' ? title : undefined) ||
+        (typeof title === 'string' && title.trim()) ||
+        'Item'
+      const imageUrl = typeof image === 'string' ? image.trim() : undefined
+
       return {
-        title: (typeof title === 'string' && title.trim()) || 'Item',
+        title: cleanTitle,
         subtitle: parts.join(' • '),
+        media: imageUrl
+          ? React.createElement('img', {
+              src: imageUrl,
+              alt: cleanTitle,
+              style: {width: '100%', height: '100%', objectFit: 'cover', borderRadius: '2px'},
+              referrerPolicy: 'strict-origin-when-cross-origin',
+              loading: 'lazy',
+            })
+          : undefined,
       }
     },
   },
@@ -123,23 +142,28 @@ export const orderCartItemType = defineType({
       hidden: true,
     }),
     defineField({name: 'sku', type: 'string', title: 'SKU', readOnly: false}),
-    defineField({name: 'image', type: 'url', title: 'Product Image', readOnly: false}),
+    defineField({
+      name: 'image',
+      type: 'url',
+      title: 'Product Image',
+      readOnly: false,
+      hidden: true,
+      description: 'Product image URL from Stripe (used for previews)',
+    }),
     defineField({name: 'quantity', type: 'number', title: 'Quantity', readOnly: false}),
     defineField({name: 'price', type: 'number', title: 'Unit Price', readOnly: false}),
     defineField({name: 'total', type: 'number', title: 'Line Total', readOnly: false}),
     defineField({
       name: 'selectedVariant',
       type: 'string',
-      title: 'Selected Variant',
-      description: 'Clean variant choice (e.g., "TRX")',
+      title: 'Variant',
       readOnly: false,
     }),
     defineField({
       name: 'addOns',
       type: 'array',
-      title: 'Add-Ons',
+      title: 'Upgrades',
       of: [{type: 'string'}],
-      description: 'Clean add-on names without "Upgrade:" prefix',
       readOnly: false,
     }),
 
