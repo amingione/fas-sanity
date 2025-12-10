@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
+import {createClient} from '@sanity/client'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -24,6 +25,19 @@ const stripe = stripeSecret
   ? new Stripe(stripeSecret, {apiVersion: '2024-11-20.acacia' as any})
   : null
 
+const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID
+const sanityDataset = process.env.SANITY_STUDIO_DATASET
+const sanity =
+  sanityProjectId && sanityDataset
+    ? createClient({
+        projectId: sanityProjectId,
+        dataset: sanityDataset,
+        apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
+        token: process.env.SANITY_API_TOKEN,
+        useCdn: false,
+      })
+    : null
+
 type ShippingRate = {
   rateId?: string
   carrier?: string
@@ -33,6 +47,74 @@ type ShippingRate = {
   serviceCode?: string
   amount?: number
   deliveryDays?: number | null
+}
+
+const normalizeSanityId = (value?: string | null): string | undefined => {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
+}
+
+async function determineCaptureStrategy(cart: any[]): Promise<'auto' | 'manual'> {
+  if (!sanity || !cart.length) return 'auto'
+  const ids = Array.from(
+    new Set(
+      cart
+        .map((item) => {
+          const refId =
+            typeof item?.productId === 'string'
+              ? item.productId
+              : typeof item?._id === 'string'
+                ? item._id
+                : typeof item?.productRef?._ref === 'string'
+                  ? item.productRef._ref
+                  : undefined
+          return normalizeSanityId(refId)
+        })
+        .filter(Boolean) as string[],
+    ),
+  )
+  if (!ids.length) return 'auto'
+
+  type ProductDoc = {
+    _id: string
+    paymentCaptureStrategy?: 'auto' | 'manual'
+    customPaint?: {enabled?: boolean}
+    shippingConfig?: {handlingTime?: number}
+    serviceDeliveryModel?: string
+    productType?: string
+  }
+
+  try {
+    const products = await sanity.fetch<ProductDoc[]>(
+      `*[_type == "product" && _id in $ids]{
+        _id,
+        paymentCaptureStrategy,
+        customPaint{enabled},
+        shippingConfig{handlingTime},
+        serviceDeliveryModel,
+        productType
+      }`,
+      {ids},
+    )
+
+    const requiresManual = products.some((product) => {
+      if (!product) return false
+      if (product.paymentCaptureStrategy === 'manual') return true
+      if (product.paymentCaptureStrategy === 'auto') return false
+      const handling = Number(product.shippingConfig?.handlingTime || 0)
+      const hasCustomPaint = Boolean(product.customPaint?.enabled)
+      const isMailIn = product.serviceDeliveryModel === 'mail-in-service'
+      const isService = product.productType === 'service'
+      return hasCustomPaint || handling > 3 || isMailIn || isService
+    })
+
+    return requiresManual ? 'manual' : 'auto'
+  } catch (err) {
+    console.warn('createCheckoutSession: failed to determine capture strategy', err)
+    return 'auto'
+  }
 }
 
 export const handler: Handler = async (event) => {
@@ -191,6 +273,15 @@ export const handler: Handler = async (event) => {
 
   const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com').replace(/\/+$/, '')
 
+  const captureStrategy = await determineCaptureStrategy(cart as any[])
+  const captureMethod: 'automatic' | 'manual' =
+    captureStrategy === 'manual' ? 'manual' : 'automatic'
+  const paymentIntentMetadata: Stripe.MetadataParam = {
+    capture_strategy: captureStrategy,
+    requires_manual_capture: captureStrategy === 'manual' ? 'true' : 'false',
+  }
+  sessionMetadata.capture_strategy = captureStrategy
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -200,6 +291,10 @@ export const handler: Handler = async (event) => {
         allowed_countries: ['US', 'CA'],
       },
       shipping_options: shippingOptions,
+      payment_intent_data: {
+        capture_method: captureMethod,
+        metadata: paymentIntentMetadata,
+      },
       metadata: sessionMetadata,
       success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart`,

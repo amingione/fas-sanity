@@ -66,14 +66,13 @@ type AppointmentDocument = {
   }
 }
 
-type ExpiredCartDocument = {
+type AbandonedCheckoutDocument = {
   _id: string
   stripeSessionId?: string
   customerEmail?: string
   customerName?: string
   totalAmount?: number
   createdAt?: string
-  status?: string
 }
 
 type CustomerDocument = {
@@ -146,13 +145,20 @@ const APPOINTMENT_QUERY = `*[_type == "appointment" && status in ["scheduled","c
   customer->{_id, firstName, lastName, email}
 }`
 
-const EXPIRED_CART_QUERY = `*[_type == "expiredCart" && status == "expired" && !defined(orderRef._ref) && dateTime(coalesce(createdAt, _createdAt)) >= $start && dateTime(coalesce(createdAt, _createdAt)) <= $end]{
+const ABANDONED_CHECKOUT_QUERY = `*[
+  _type == "abandonedCheckout" &&
+  status == "expired" &&
+  recoveryEmailSent != true &&
+  !defined(recoveredOrderId._ref) &&
+  dateTime(coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)) >= $start &&
+  dateTime(coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)) <= $end
+]{
   _id,
   stripeSessionId,
   customerEmail,
   customerName,
-  totalAmount,
-  createdAt
+  \"totalAmount\": amountTotal,
+  \"createdAt\": coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)
 }`
 
 const INACTIVE_CUSTOMER_QUERY = `*[_type == "customer" && defined(lastOrderDate) && lastOrderDate < $cutoff && defined(email)]{
@@ -194,7 +200,7 @@ export async function runAppointmentReminderAutomations(): Promise<void> {
 export async function runCartAbandonmentAutomations(hoursAgo: number): Promise<void> {
   const end = new Date(Date.now() - hoursAgo * 60 * 60 * 1000 + 15 * 60 * 1000)
   const start = new Date(Date.now() - hoursAgo * 60 * 60 * 1000 - 15 * 60 * 1000)
-  const carts = await sanity.fetch<ExpiredCartDocument[]>(EXPIRED_CART_QUERY, {
+  const carts = await sanity.fetch<AbandonedCheckoutDocument[]>(ABANDONED_CHECKOUT_QUERY, {
     start: start.toISOString(),
     end: end.toISOString(),
   })
@@ -269,7 +275,7 @@ const delaySatisfied = (delayMinutes: number | undefined, context: any): boolean
 
 const sendAutomationMessage = async (
   automation: AutomationDocument,
-  context: OrderDocument | AppointmentDocument | ExpiredCartDocument | CustomerDocument,
+  context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument,
 ): Promise<void> => {
   const template = automation.template
   if (!template) return
@@ -324,7 +330,7 @@ const sendAutomationMessage = async (
 }
 
 const resolveRecipient = (
-  context: OrderDocument | AppointmentDocument | ExpiredCartDocument | CustomerDocument,
+  context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument,
 ): string | null => {
   if ('customerEmail' in context && context.customerEmail) return context.customerEmail
   if ('customer' in context && context.customer?.email) return context.customer.email
@@ -334,7 +340,7 @@ const resolveRecipient = (
 }
 
 const buildVariables = (
-  context: OrderDocument | AppointmentDocument | ExpiredCartDocument | CustomerDocument,
+  context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument,
 ): Record<string, string> => {
   if ('orderNumber' in context) {
     const total =
@@ -376,7 +382,7 @@ const buildVariables = (
 
 const buildContextKey = (
   automationId: string,
-  context: OrderDocument | AppointmentDocument | ExpiredCartDocument | CustomerDocument,
+  context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument,
 ) => {
   const contextId =
     context._id || ('stripeSessionId' in context ? context.stripeSessionId : context.email || '')
@@ -402,7 +408,7 @@ const createEmailLog = async ({
   automationId: string
   templateId: string
   contextKey: string
-  context: OrderDocument | AppointmentDocument | ExpiredCartDocument | CustomerDocument
+  context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument
 }): Promise<string> => {
   const doc: Record<string, any> = {
     _type: 'emailLog',

@@ -39,7 +39,7 @@ Examples:
 
 function parseCliOptions(argv: string[]): OrderStripeBackfillOptions {
   let kind: StripeBackfillKind | undefined
-  let limit = 25
+  let limit = 100
   let dryRun = false
   let id: string | undefined
 

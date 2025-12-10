@@ -41,6 +41,7 @@ import {
   OrdersDocumentTable,
   ProductsDocumentTable,
   CustomersDocumentTable,
+  AbandonedCheckoutsDocumentTable,
   PaymentLinksDocumentTable,
   VendorsDocumentTable,
 } from '../components/studio/documentTables'
@@ -152,6 +153,9 @@ const CustomersRecentlyAddedTableView: ComponentType = () =>
 
 const OrdersListTableView: ComponentType = () =>
   React.createElement(OrdersDocumentTable as any, {title: 'Orders', pageSize: 12})
+
+const AbandonedCheckoutsTableView: ComponentType = () =>
+  React.createElement(AbandonedCheckoutsDocumentTable as any, {})
 
 const OnlineOrdersTableView: ComponentType = () =>
   React.createElement(OrdersDocumentTable as any, {
@@ -393,6 +397,29 @@ const createOrdersSection = (S: any) =>
                 'orders-wholesale',
                 'Wholesale Orders',
                 WholesaleOrdersTableView,
+              ),
+            ),
+          S.listItem()
+            .id('orders2-all')
+            .title('All Orders (Order2)')
+            .icon(ClipboardIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .filter('_type == "order"')
+                .title('All Orders (Order2)')
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('orders-abandoned-checkouts')
+            .title('Abandoned Checkouts')
+            .icon(PauseIcon)
+            .child(
+              documentTablePane(
+                S,
+                'orders-abandoned-checkouts',
+                'Abandoned Checkouts',
+                AbandonedCheckoutsTableView,
               ),
             ),
           S.divider(),

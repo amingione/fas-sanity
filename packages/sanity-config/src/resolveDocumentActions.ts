@@ -12,8 +12,9 @@ import {
 import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
 import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
 import {purchaseOrderLabelAction} from './schemaTypes/documentActions/purchaseOrderLabel'
+import {capturePaymentAction} from './schemaTypes/documentActions/capturePaymentAction'
 import {createEasyPostLabelAction} from './schemaTypes/documentActions/createEasyPostLabelAction'
-import {orderActions} from './schemaTypes/documents/order'
+import {orderActions} from './schemaTypes/documents/order.actions'
 import {
   approveVendorApplicationAction,
   rejectVendorApplicationAction,
@@ -49,6 +50,8 @@ import {
 } from './schemaTypes/documentActions/inventoryActions'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
 
+const isOrderSchemaType = (schemaType: string): schemaType is 'order' => schemaType === 'order'
+
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
   if (context.schemaType === 'invoice') {
@@ -59,7 +62,8 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(backfillInvoicesAction)
     list.push(refundStripeInvoiceAction)
   }
-  if (context.schemaType === 'order') {
+  if (isOrderSchemaType(context.schemaType)) {
+    list.push(capturePaymentAction)
     list.push(purchaseOrderLabelAction)
     list.push(createEasyPostLabelAction)
     return orderActions(list, context)

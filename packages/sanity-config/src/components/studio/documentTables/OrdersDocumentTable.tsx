@@ -1,5 +1,5 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useMemo, useState} from 'react'
 import {PDFDocument} from 'pdf-lib'
 import {
   Box,
@@ -7,6 +7,7 @@ import {
   Checkbox,
   Dialog,
   Flex,
+  Heading,
   Inline,
   Menu,
   MenuButton,
@@ -20,8 +21,8 @@ import {
 import {EllipsisVerticalIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../../utils/base64'
-import {getNetlifyFunctionBaseCandidates} from '../../../utils/netlifyBase'
-import {PaginatedDocumentTable, formatCurrency, formatDate} from './PaginatedDocumentTable'
+import {callNetlifyFunction} from '../../../utils/netlifyHelpers'
+import {PaginatedDocumentTable, formatCurrency} from './PaginatedDocumentTable'
 import {formatOrderNumber} from '../../../utils/orderNumber'
 import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
 import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
@@ -41,6 +42,7 @@ type OrderRowData = {
   currency?: string | null
   createdAt?: string | null
   shippingLabelUrl?: string | null
+  cardBrand?: string | null
 }
 
 const ORDER_PROJECTION = `{
@@ -56,6 +58,7 @@ const ORDER_PROJECTION = `{
   shippingLabelUrl,
   totalAmount,
   amountRefunded,
+  cardBrand,
   currency,
   "createdAt": coalesce(createdAt, _createdAt)
 }`
@@ -64,6 +67,34 @@ export const NEW_ORDERS_FILTER = `!defined(fulfilledAt) && (${GROQ_FILTER_EXCLUD
 
 const DEFAULT_ORDERINGS: Array<{field: string; direction: 'asc' | 'desc'}> = [
   {field: '_createdAt', direction: 'desc'},
+]
+
+const CLOSED_ORDER_STATUSES = ['fulfilled', 'shipped', 'cancelled', 'refunded', 'closed']
+
+type OrderTabId = 'all' | 'open' | 'closed' | 'carts' | 'archived'
+
+const ORDER_TABS: Array<{id: OrderTabId; label: string; filter?: string}> = [
+  {id: 'all', label: 'All'},
+  {
+    id: 'open',
+    label: 'Open',
+    filter: `!(status in ${JSON.stringify(CLOSED_ORDER_STATUSES)})`,
+  },
+  {
+    id: 'closed',
+    label: 'Closed',
+    filter: `(status in ${JSON.stringify(CLOSED_ORDER_STATUSES)})`,
+  },
+  {
+    id: 'carts',
+    label: 'Carts',
+    filter: `(orderType == "cart")`,
+  },
+  {
+    id: 'archived',
+    label: 'Archived',
+    filter: `(defined(archivedAt) || isArchived == true || status == "archived")`,
+  },
 ]
 
 type OrdersDocumentTableProps = {
@@ -101,6 +132,18 @@ function sanitizeFilenameSegment(value: string): string {
   return value.replace(/[^a-z0-9_-]/gi, '') || 'order'
 }
 
+function formatOrderTimestamp(value?: string | null): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function getCustomerLabel(data: OrderRowData) {
   const candidates = [data.customerName, data.shippingName, data.customerEmail]
   for (const value of candidates) {
@@ -121,8 +164,6 @@ export default function OrdersDocumentTable({
 
   // Selection + page tracking
   const client = useClient({apiVersion: '2024-10-01'})
-  const netlifyBases = useMemo(() => getNetlifyFunctionBaseCandidates(), [])
-  const lastSuccessfulBase = useRef<string | null>(netlifyBases[0] ?? null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [currentItems, setCurrentItems] = useState<OrderRow[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -135,51 +176,8 @@ export default function OrdersDocumentTable({
   const toast = useToast()
   const [trackingNumber, setTrackingNumber] = useState('')
   const [trackingUrl, setTrackingUrl] = useState('')
-
-  const callNetlifyFunction = useCallback(
-    async (fnName: string, payload: Record<string, unknown>) => {
-      const attempted = new Set<string>()
-      const body = JSON.stringify(payload)
-      const bases = Array.from(
-        new Set([lastSuccessfulBase.current, ...netlifyBases].filter(Boolean) as string[]),
-      )
-      let lastErr: any
-
-      for (const base of bases) {
-        if (attempted.has(base)) continue
-        attempted.add(base)
-        try {
-          const res = await fetch(`${base}/.netlify/functions/${fnName}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body,
-          })
-          if (!res.ok) {
-            const message = await res.text().catch(() => '')
-            const error = new Error(message || `${fnName} request failed`) as any
-            error.status = res.status
-            lastErr = error
-            if (res.status === 404) continue
-            throw error
-          }
-          lastSuccessfulBase.current = base
-          try {
-            window.localStorage?.setItem('NLFY_BASE', base)
-          } catch {
-            // ignore storage failures
-          }
-          return res
-        } catch (err: any) {
-          lastErr = err
-          const status = err?.status || err?.response?.status
-          if (!(err instanceof TypeError) && status !== 404) break
-        }
-      }
-
-      throw lastErr || new Error(`${fnName} request failed`)
-    },
-    [netlifyBases],
-  )
+  const [activeTab, setActiveTab] = useState<OrderTabId>('all')
+  const [openCount, setOpenCount] = useState<number | null>(null)
 
   const handlePageItemsChange = useCallback((rows: OrderRow[]) => {
     setCurrentItems(rows)
@@ -219,6 +217,10 @@ export default function OrdersDocumentTable({
   if (filter && filter.trim().length > 0) {
     filterClauses.push(`(${filter.trim()})`)
   }
+  const activeTabFilter = ORDER_TABS.find((tab) => tab.id === activeTab)?.filter
+  if (activeTabFilter) {
+    filterClauses.push(`(${activeTabFilter})`)
+  }
   const trimmedSearch = searchTerm.trim().replace(/^#/, '')
   if (trimmedSearch.length > 0) {
     const like = `*${trimmedSearch}*`
@@ -237,9 +239,29 @@ export default function OrdersDocumentTable({
   const combinedFilter = filterClauses.join(' && ')
 
   useEffect(() => {
+    let cancelled = false
+    const openTab = ORDER_TABS.find((tab) => tab.id === 'open')
+    if (!openTab?.filter) return
+    const baseClauses: string[] = []
+    if (excludeCheckoutSessionExpired) baseClauses.push(`(${GROQ_FILTER_EXCLUDE_EXPIRED})`)
+    if (filter && filter.trim().length > 0) baseClauses.push(`(${filter.trim()})`)
+    const queryFilter = ['_type == "order"', ...baseClauses, `(${openTab.filter})`].join(' && ')
+    const query = `count(*[${queryFilter}])`
+    client
+      .fetch<number>(query)
+      .then((count) => {
+        if (!cancelled) setOpenCount(count)
+      })
+      .catch((err) => console.error('Failed to load open order count', err))
+    return () => {
+      cancelled = true
+    }
+  }, [client, excludeCheckoutSessionExpired, filter])
+
+  useEffect(() => {
     // Clear selection when search or filters change
     setSelectedIds(new Set())
-  }, [searchTerm, filter, excludeCheckoutSessionExpired])
+  }, [searchTerm, filter, excludeCheckoutSessionExpired, activeTab])
 
   const selectedIdList = useMemo(() => Array.from(selectedIds), [selectedIds])
   const selectedCount = selectedIdList.length
@@ -328,7 +350,7 @@ export default function OrdersDocumentTable({
       }
       return failures
     },
-    [callNetlifyFunction],
+    [],
   )
 
   const cancelOrders = useCallback(
@@ -348,48 +370,7 @@ export default function OrdersDocumentTable({
       }
       return failures
     },
-    [callNetlifyFunction],
-  )
-
-  const fetchPackingSlip = useCallback(
-    async (payload: Record<string, any>) => {
-      const attempted = new Set<string>()
-      const body = JSON.stringify(payload)
-      const bases = Array.from(
-        new Set([lastSuccessfulBase.current, ...netlifyBases].filter(Boolean) as string[]),
-      )
-      let lastErr: any
-      for (const base of bases) {
-        if (attempted.has(base)) continue
-        attempted.add(base)
-        try {
-          const res = await fetch(`${base}/.netlify/functions/generatePackingSlips`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body,
-          })
-          if (!res.ok) {
-            const message = await res.text().catch(() => '')
-            const err = new Error(message || 'Packing slip request failed') as any
-            err.status = res.status
-            lastErr = err
-            if (res.status === 404) continue
-            throw err
-          }
-          lastSuccessfulBase.current = base
-          try {
-            window.localStorage?.setItem('NLFY_BASE', base)
-          } catch {}
-          return res
-        } catch (err: any) {
-          lastErr = err
-          const status = err?.status || err?.response?.status
-          if (!(err instanceof TypeError) && status !== 404) break
-        }
-      }
-      throw lastErr || new Error('Packing slip request failed')
-    },
-    [netlifyBases],
+    [],
   )
 
   const printPackingSlips = useCallback(
@@ -400,7 +381,7 @@ export default function OrdersDocumentTable({
       const buffers: Array<{id: string; arrayBuffer: ArrayBuffer}> = []
       for (const id of ids) {
         try {
-          const res = await fetchPackingSlip({orderId: id})
+          const res = await callNetlifyFunction('generatePackingSlips', {orderId: id})
           const contentType = (res.headers.get('content-type') || '').toLowerCase()
           let arrayBuffer: ArrayBuffer
           if (contentType.includes('application/pdf')) {
@@ -479,7 +460,7 @@ export default function OrdersDocumentTable({
         }
       }
     },
-    [client, currentItems, fetchPackingSlip, resolvePatchTargets, toast],
+    [client, currentItems, resolvePatchTargets, toast],
   )
 
   const mergePdfBuffers = useCallback(async (buffers: ArrayBuffer[]): Promise<Blob> => {
@@ -660,86 +641,111 @@ export default function OrdersDocumentTable({
     setTrackingDialog({open: true, targetIds: selectedIdList})
   }, [selectedCount, selectedIdList])
 
-  const headerActions = (
-    <Flex align="center" gap={3} wrap="wrap">
-      <TextInput
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.currentTarget.value)}
-        placeholder="Search by order #, customer, email…"
-        style={{width: '320px'}}
-      />
-      {selectedCount > 0 ? (
-        <Text size={1} muted>
-          {selectedCount} selected
-        </Text>
-      ) : null}
-      <MenuButton
-        id="orders-bulk-actions"
-        button={
-          <Button
-            icon={EllipsisVerticalIcon}
-            mode="ghost"
-            text="Actions"
-            disabled={bulkBusy}
-            aria-label="Order actions"
-          />
-        }
-        menu={
-          <Menu>
-            <MenuItem
-              text="Fulfill orders"
-              tone="positive"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={handleBulkFulfill}
+  const headerContent = (
+    <Stack space={3}>
+      <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+        <Heading as="h2" size={3}>
+          {title}
+        </Heading>
+        {selectedCount > 0 ? (
+          <Text size={1} weight="medium">
+            {selectedCount} selected
+          </Text>
+        ) : null}
+      </Flex>
+      <Flex align="center" gap={1} wrap="wrap">
+        {ORDER_TABS.map((tab) => {
+          const isActive = tab.id === activeTab
+          const tabLabel =
+            tab.id === 'open' && openCount !== null ? `Open (${openCount})` : tab.label
+          return (
+            <Button
+              key={tab.id}
+              text={tabLabel}
+              mode={isActive ? 'default' : 'bleed'}
+              tone={isActive ? 'primary' : 'default'}
+              padding={3}
+              onClick={() => setActiveTab(tab.id)}
+              disabled={isActive}
             />
-            <MenuItem
-              text="Print packing slips"
-              tone="primary"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={handleBulkPrint}
+          )
+        })}
+      </Flex>
+      <Flex align="center" gap={3} wrap="wrap">
+        <TextInput
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.currentTarget.value)}
+          placeholder="Search orders…"
+          style={{flex: 1, minWidth: '220px', maxWidth: '360px'}}
+        />
+        <MenuButton
+          id="orders-bulk-actions"
+          button={
+            <Button
+              icon={EllipsisVerticalIcon}
+              mode="ghost"
+              text="Actions"
+              disabled={bulkBusy}
+              aria-label="Order actions"
             />
-            <MenuItem
-              text="Print shipping labels"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={() => printShippingLabels(selectedIdList)}
-            />
-            <MenuItem
-              text="Add tracking"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={handleBulkTracking}
-            />
-            <MenuItem
-              text="Cancel orders"
-              tone="critical"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={handleBulkCancel}
-            />
-            <MenuDivider />
-            <MenuItem
-              text="Duplicate orders"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={() => duplicateOrders(selectedIdList)}
-            />
-            <MenuItem
-              text="Delete orders"
-              tone="critical"
-              disabled={selectedCount === 0 || bulkBusy}
-              onClick={() => deleteOrders(selectedIdList)}
-            />
-            {selectedCount > 0 ? (
-              <>
-                <MenuDivider />
-                <MenuItem
-                  text="Clear selection"
-                  disabled={bulkBusy}
-                  onClick={() => setSelectedIds(new Set())}
-                />
-              </>
-            ) : null}
-          </Menu>
-        }
-      />
-    </Flex>
+          }
+          menu={
+            <Menu>
+              <MenuItem
+                text="Fulfill orders"
+                tone="positive"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={handleBulkFulfill}
+              />
+              <MenuItem
+                text="Print packing slips"
+                tone="primary"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={handleBulkPrint}
+              />
+              <MenuItem
+                text="Print shipping labels"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={() => printShippingLabels(selectedIdList)}
+              />
+              <MenuItem
+                text="Add tracking"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={handleBulkTracking}
+              />
+              <MenuItem
+                text="Cancel orders"
+                tone="critical"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={handleBulkCancel}
+              />
+              <MenuDivider />
+              <MenuItem
+                text="Duplicate orders"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={() => duplicateOrders(selectedIdList)}
+              />
+              <MenuItem
+                text="Delete orders"
+                tone="critical"
+                disabled={selectedCount === 0 || bulkBusy}
+                onClick={() => deleteOrders(selectedIdList)}
+              />
+              {selectedCount > 0 ? (
+                <>
+                  <MenuDivider />
+                  <MenuItem
+                    text="Clear selection"
+                    disabled={bulkBusy}
+                    onClick={() => setSelectedIds(new Set())}
+                  />
+                </>
+              ) : null}
+            </Menu>
+          }
+        />
+      </Flex>
+    </Stack>
   )
 
   return (
@@ -754,7 +760,7 @@ export default function OrdersDocumentTable({
         filter={combinedFilter || undefined}
         emptyState={emptyState}
         excludeExpired={excludeCheckoutSessionExpired}
-        headerActions={headerActions}
+        headerContent={headerContent}
         onPageItemsChange={handlePageItemsChange}
         columns={[
           {
@@ -789,15 +795,29 @@ export default function OrdersDocumentTable({
             key: 'order',
             header: 'Order',
             render: (data: OrderRow) => (
-              <Text size={1} weight="medium">
-                {resolveOrderNumber(data)}
-              </Text>
+              <Stack space={1}>
+                <Text size={1} weight="medium">
+                  {resolveOrderNumber(data)}
+                </Text>
+                <Text size={0} muted>
+                  {formatOrderTimestamp(data.createdAt)}
+                </Text>
+              </Stack>
             ),
           },
           {
             key: 'customer',
             header: 'Customer',
-            render: (data: OrderRow) => <Text size={1}>{getCustomerLabel(data)}</Text>,
+            render: (data: OrderRow) => (
+              <Stack space={1}>
+                <Text size={1}>{getCustomerLabel(data)}</Text>
+                {data.customerEmail ? (
+                  <Text size={0} muted>
+                    {data.customerEmail}
+                  </Text>
+                ) : null}
+              </Stack>
+            ),
           },
           {
             key: 'status',
@@ -848,93 +868,18 @@ export default function OrdersDocumentTable({
             header: 'Total',
             align: 'right',
             render: (data: OrderRow) => (
-              <Text size={1}>
-                {formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}
-              </Text>
-            ),
-          },
-          {
-            key: 'refunded',
-            header: 'Refunded',
-            align: 'right',
-            render: (data: OrderRow) => {
-              const value = data.amountRefunded
-              return (
+              <Stack space={1} style={{alignItems: 'flex-end'}}>
                 <Text size={1}>
-                  {value && value > 0 ? formatCurrency(value, data.currency ?? 'USD') : '—'}
+                  {formatCurrency(data.totalAmount ?? null, data.currency ?? 'USD')}
                 </Text>
-              )
-            },
-          },
-          {
-            key: 'created',
-            header: 'Created',
-            render: (data: OrderRow) => <Text size={1}>{formatDate(data.createdAt)}</Text>,
-          },
-          {
-            key: 'actions',
-            header: 'Actions',
-            width: 280,
-            render: (data: OrderRow) => (
-              <Flex gap={2}>
-                <MenuButton
-                  id={`order-actions-${data._id}`}
-                  button={<Button text="Fulfill" tone="positive" />}
-                  menu={
-                    <Menu>
-                      <MenuItem
-                        text="Add tracking…"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setTrackingDialog({open: true, targetIds: [data._id]})
-                        }}
-                      />
-                      <MenuItem
-                        text="Create label"
-                        onClick={async (e) => {
-                          e.preventDefault()
-                          const failed = await fulfillOrders([data._id])
-                          if (failed.length === 0) {
-                            setRefreshKey((key) => key + 1)
-                          } else {
-                            window.alert('Unable to fulfill order. Check logs for details.')
-                          }
-                        }}
-                      />
-                      <MenuItem
-                        text="Mark as fulfilled"
-                        onClick={async (e) => {
-                          e.preventDefault()
-                          try {
-                            await callNetlifyFunction('fulfill-order', {
-                              orderId: data._id,
-                              markOnly: true,
-                            })
-                            setRefreshKey((key) => key + 1)
-                          } catch (err) {
-                            console.error('Mark fulfilled failed for', data._id, err)
-                            window.alert('Unable to mark order as fulfilled.')
-                          }
-                        }}
-                      />
-                    </Menu>
-                  }
-                />
-                <Button
-                  text="Print"
-                  tone="primary"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    printPackingSlips([data._id])
-                  }}
-                />
-              </Flex>
+                <Text size={0} muted>
+                  {data.cardBrand || '—'}
+                </Text>
+              </Stack>
             ),
           },
         ]}
       />
-
       {trackingDialog.open ? (
         <Dialog
           id="orders-add-tracking"
@@ -966,14 +911,10 @@ export default function OrdersDocumentTable({
                     const url = trackingUrl.trim() || undefined
                     for (const id of trackingDialog.targetIds) {
                       try {
-                        await fetch('/.netlify/functions/manual-fulfill-order', {
-                          method: 'POST',
-                          headers: {'Content-Type': 'application/json'},
-                          body: JSON.stringify({
-                            orderId: id,
-                            trackingNumber: number,
-                            trackingUrl: url,
-                          }),
+                        await callNetlifyFunction('manual-fulfill-order', {
+                          orderId: id,
+                          trackingNumber: number,
+                          trackingUrl: url,
                         })
                       } catch (err) {
                         console.error('Manual fulfill failed for', id, err)

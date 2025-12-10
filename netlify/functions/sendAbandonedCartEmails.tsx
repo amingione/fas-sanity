@@ -87,6 +87,25 @@ const mapCartItems = (cart?: any[]): EmailCartItem[] => {
   })
 }
 
+const markAbandonedCheckoutEmailStatus = async (
+  sessionId?: string | null,
+  patch?: Record<string, any>,
+) => {
+  if (!sanity || !sessionId) return
+  const trimmed = sessionId.trim()
+  if (!trimmed) return
+  try {
+    const doc = await sanity.fetch<{_id: string} | null>(
+      `*[_type == "abandonedCheckout" && stripeSessionId == $sid][0]{_id}`,
+      {sid: trimmed},
+    )
+    if (!doc?._id) return
+    await sanity.patch(doc._id).set(patch || {}).commit({autoGenerateArrayKeys: true})
+  } catch (err) {
+    console.warn('[sendAbandonedCartEmails] failed to update abandoned checkout status', err)
+  }
+}
+
 const buildTrackingUrl = (checkoutUrl?: string): string | undefined => {
   if (!checkoutUrl) return undefined
   try {
@@ -227,6 +246,10 @@ const handler: Handler = async (event) => {
         })
         .unset(['emailError', 'emailErrorAt'])
         .commit({autoGenerateArrayKeys: true})
+      await markAbandonedCheckoutEmailStatus(checkout.sessionId, {
+        recoveryEmailSent: true,
+        recoveryEmailSentAt: new Date().toISOString(),
+      })
 
       sent += 1
       console.log(`[sendAbandonedCartEmails] sent to ${to}`)

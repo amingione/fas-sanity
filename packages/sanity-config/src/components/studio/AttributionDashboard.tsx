@@ -55,7 +55,7 @@ const DASHBOARD_QUERY = `{
     sessionId,
     customer
   },
-  "expiredCarts": count(*[_type == "expiredCart" && coalesce(expiredAt, _createdAt) >= $start]),
+  "expiredCarts": count(*[_type == "abandonedCheckout" && coalesce(sessionExpiredAt, _createdAt) >= $start]),
   "spend": *[_type == "attributionSnapshot" && coalesce(syncDate, _updatedAt) >= $start]{
     source,
     "spend": metrics.spend,
