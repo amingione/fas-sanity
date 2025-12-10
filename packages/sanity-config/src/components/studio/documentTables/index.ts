@@ -1,6 +1,6 @@
 export {default as OrdersDocumentTable, NEW_ORDERS_FILTER} from './OrdersDocumentTable'
 export {default as ProductsDocumentTable} from './ProductsDocumentTable'
 export {default as CustomersDocumentTable} from './CustomersDocumentTable'
-export {default as AbandonedOrdersDocumentTable} from './AbandonedOrdersDocumentTable'
+export {default as AbandonedCheckoutsDocumentTable} from './AbandonedCheckoutsDocumentTable'
 export {default as PaymentLinksDocumentTable} from './PaymentLinksDocumentTable'
 export {default as VendorsDocumentTable} from './VendorsDocumentTable'

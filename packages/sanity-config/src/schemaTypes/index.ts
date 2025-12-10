@@ -1,6 +1,7 @@
 import product from './documents/product'
 import category from './documents/category'
 import order from './documents/order'
+import abandonedCheckout from './documents/abandonedCheckout'
 import bill from './documents/bill'
 import checkoutSession from './documents/checkoutSession'
 import merchantFeed from './documents/merchantFeed'
@@ -51,6 +52,7 @@ import {proxyStringType} from './objects/shopify/proxyStringType'
 import {pricingTierType} from './objects/pricingTierType'
 import {customPaintType} from './objects/customPaintType'
 import {addOnType} from './objects/addOnType'
+import {productAddOnType} from './objects/productAddOnType'
 import {specItemType} from './objects/specItemType'
 import {kitItemType} from './objects/kitItemType'
 import {attributeType} from './objects/attributeType'
@@ -143,6 +145,7 @@ const objects = [
   pricingTierType,
   customPaintType,
   addOnType,
+  productAddOnType,
   specItemType,
   kitItemType,
   attributeType,
@@ -324,6 +327,7 @@ const documents = [
   bill,
   checkoutSession,
   order,
+  abandonedCheckout,
   service,
   appointment,
   workOrder,

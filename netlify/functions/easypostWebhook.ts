@@ -96,16 +96,107 @@ function formatTrackerMessage(tracker: any): string | undefined {
 }
 
 const ORDER_METADATA_KEYS = ['sanityOrderId', 'sanity_order_id', 'orderId', 'order_id']
+const ORDER_NUMBER_METADATA_KEYS = ['orderNumber', 'order_number', 'orderNum', 'order_num']
+const PAYMENT_INTENT_METADATA_KEYS = [
+  'paymentIntentId',
+  'payment_intent_id',
+  'stripePaymentIntentId',
+  'stripe_payment_intent_id',
+  'paymentIntent',
+  'payment_intent',
+]
+const CUSTOMER_EMAIL_METADATA_KEYS = [
+  'customerEmail',
+  'customer_email',
+  'customerEmailAddress',
+  'customer_email_address',
+  'email',
+]
 
-function normalizeOrderId(value?: unknown): string | null {
+function sanitizeString(value?: unknown): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
-  if (!trimmed) return null
-  return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
+  return trimmed || null
+}
+
+function looksLikeStripePaymentIntentId(value?: string | null): boolean {
+  if (!value) return false
+  return /^pi_[a-z0-9]+$/i.test(value.trim())
+}
+
+function isLikelySanityDocumentId(value?: string | null): boolean {
+  if (!value) return false
+  if (looksLikeStripePaymentIntentId(value)) return false
+  return /^[A-Za-z0-9]{10,}$/.test(value)
+}
+
+function normalizeOrderId(value?: unknown): string | null {
+  const normalized = sanitizeString(value)
+  if (!normalized) return null
+  const trimmed = normalized.startsWith('drafts.') ? normalized.slice(7) : normalized
+  if (!isLikelySanityDocumentId(trimmed)) return null
+  return trimmed
+}
+
+function getMetadataSources(shipment: any) {
+  return [shipment?.metadata, shipment?.options?.metadata].filter(
+    (value): value is Record<string, any> => Boolean(value) && typeof value === 'object',
+  )
+}
+
+function extractMetadataValue(shipment: any, keys: string[]): string | null {
+  const sources = getMetadataSources(shipment)
+  for (const source of sources) {
+    for (const key of keys) {
+      const candidate = sanitizeString(source?.[key])
+      if (candidate) return candidate
+    }
+  }
+  return null
+}
+
+function extractPaymentIntentIdFromShipment(shipment: any): string | null {
+  const candidate = extractMetadataValue(shipment, PAYMENT_INTENT_METADATA_KEYS)
+  if (looksLikeStripePaymentIntentId(candidate)) return candidate!.trim()
+  const reference = sanitizeString(shipment?.reference)
+  if (looksLikeStripePaymentIntentId(reference)) return reference!
+  const optionReference = sanitizeString(shipment?.options?.reference)
+  if (looksLikeStripePaymentIntentId(optionReference)) return optionReference!
+  return null
+}
+
+function extractOrderNumberFromShipment(shipment: any): string | null {
+  const candidate = extractMetadataValue(shipment, ORDER_NUMBER_METADATA_KEYS)
+  if (candidate && !isLikelySanityDocumentId(candidate) && !looksLikeStripePaymentIntentId(candidate))
+    return candidate
+  const reference = sanitizeString(shipment?.reference)
+  if (
+    reference &&
+    !isLikelySanityDocumentId(reference) &&
+    !looksLikeStripePaymentIntentId(reference)
+  ) {
+    return reference
+  }
+  const optionReference = sanitizeString(shipment?.options?.reference)
+  if (
+    optionReference &&
+    !isLikelySanityDocumentId(optionReference) &&
+    !looksLikeStripePaymentIntentId(optionReference)
+  ) {
+    return optionReference
+  }
+  return null
+}
+
+function extractCustomerEmailFromShipment(shipment: any): string | null {
+  const metadataEmail = extractMetadataValue(shipment, CUSTOMER_EMAIL_METADATA_KEYS)
+  if (metadataEmail) return metadataEmail
+  const toAddressEmail = sanitizeString(shipment?.to_address?.email)
+  return toAddressEmail
 }
 
 function extractOrderIdFromShipment(shipment: any): string | null {
-  const metadataSources = [shipment?.metadata, shipment?.options?.metadata].filter(Boolean)
+  const metadataSources = getMetadataSources(shipment)
   for (const source of metadataSources) {
     for (const key of ORDER_METADATA_KEYS) {
       const normalized = normalizeOrderId(source?.[key])
@@ -197,6 +288,127 @@ const mapRate = (rate?: Record<string, any> | null) => {
   return Object.keys(mapped).length ? mapped : undefined
 }
 
+const ORDER_PROJECTION = `{
+  _id,
+  orderNumber,
+  easyPostShipmentId,
+  easyPostTrackerId,
+  shippingLabelUrl,
+  trackingNumber,
+  trackingUrl,
+  status,
+  customerEmail
+}`
+
+type SanityOrderRecord = {
+  _id: string
+  orderNumber?: string
+  easyPostShipmentId?: string
+  easyPostTrackerId?: string
+  shippingLabelUrl?: string
+  trackingNumber?: string
+  trackingUrl?: string
+  status?: string
+  customerEmail?: string
+}
+
+type OrderLookupResult = {
+  order: SanityOrderRecord | null
+  orderIdCandidate?: string | null
+  paymentIntentId?: string | null
+  orderNumberCandidate?: string | null
+  customerEmailCandidate?: string | null
+  shipmentId?: string | null
+  trackerId?: string | null
+  trackingNumberCandidate?: string | null
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+function computeRecentIso(referenceIso?: string | null) {
+  const fallback = new Date(Date.now() - ONE_DAY_MS)
+  if (!referenceIso) return fallback.toISOString()
+  const parsed = Date.parse(referenceIso)
+  if (Number.isNaN(parsed)) return fallback.toISOString()
+  return new Date(parsed - ONE_DAY_MS).toISOString()
+}
+
+async function findOrderForShipment(shipment: any): Promise<OrderLookupResult> {
+  const shipmentId = sanitizeString(shipment?.id)
+  const trackerId = sanitizeString(shipment?.tracker?.id)
+  const trackingNumberCandidate = extractTrackingNumber({shipment})
+  const orderIdCandidate = extractOrderIdFromShipment(shipment)
+  const paymentIntentId = extractPaymentIntentIdFromShipment(shipment)
+  const orderNumberCandidate = extractOrderNumberFromShipment(shipment)
+  const customerEmailCandidate = extractCustomerEmailFromShipment(shipment)
+  const createdAt = sanitizeString(shipment?.created_at)
+
+  const baseResult: OrderLookupResult = {
+    order: null,
+    orderIdCandidate,
+    paymentIntentId,
+    orderNumberCandidate,
+    customerEmailCandidate,
+    shipmentId,
+    trackerId,
+    trackingNumberCandidate,
+  }
+
+  if (orderIdCandidate) {
+    const orderById = await sanity.fetch<SanityOrderRecord | null>(
+      `*[_type == "order" && _id == $orderId][0]${ORDER_PROJECTION}`,
+      {orderId: orderIdCandidate},
+    )
+    if (orderById) return {...baseResult, order: orderById}
+  }
+
+  if (shipmentId || trackerId || trackingNumberCandidate) {
+    const orderByShipment = await sanity.fetch<SanityOrderRecord | null>(
+      `*[_type == "order" && (
+        easyPostShipmentId == $shipmentId ||
+        easyPostTrackerId == $trackerId ||
+        trackingNumber == $trackingNumber
+      )][0]${ORDER_PROJECTION}`,
+      {
+        shipmentId: shipmentId || null,
+        trackerId: trackerId || null,
+        trackingNumber: trackingNumberCandidate || null,
+      },
+    )
+    if (orderByShipment) return {...baseResult, order: orderByShipment}
+  }
+
+  if (paymentIntentId) {
+    const orderByPi = await sanity.fetch<SanityOrderRecord | null>(
+      `*[_type == "order" && stripeSummary.paymentIntentId == $piId][0]${ORDER_PROJECTION}`,
+      {piId: paymentIntentId},
+    )
+    if (orderByPi) return {...baseResult, order: orderByPi}
+  }
+
+  if (orderNumberCandidate) {
+    const orderByNumber = await sanity.fetch<SanityOrderRecord | null>(
+      `*[_type == "order" && orderNumber == $orderNumber][0]${ORDER_PROJECTION}`,
+      {orderNumber: orderNumberCandidate},
+    )
+    if (orderByNumber) return {...baseResult, order: orderByNumber}
+  }
+
+  if (customerEmailCandidate) {
+    const orderByEmail = await sanity.fetch<SanityOrderRecord | null>(
+      `*[_type == "order" && customerEmail == $email && _createdAt > $since]
+        | order(_createdAt desc)[0]${ORDER_PROJECTION}`,
+      {
+        email: customerEmailCandidate,
+        since: computeRecentIso(createdAt),
+      },
+    )
+    if (orderByEmail) return {...baseResult, order: orderByEmail}
+  }
+
+  return baseResult
+}
+
 async function fetchShipmentFromEasyPost(shipmentId: string) {
   if (!shipmentId) return null
   if (!easyPost) {
@@ -212,7 +424,11 @@ async function fetchShipmentFromEasyPost(shipmentId: string) {
   }
 }
 
-async function upsertShipmentDocument(shipment: any, rawPayload: any) {
+async function upsertShipmentDocument(
+  shipment: any,
+  rawPayload: any,
+  orderLookup?: OrderLookupResult,
+) {
   if (!shipment?.id) return null
   const trackingDetails = Array.isArray(shipment.tracking_details)
     ? shipment.tracking_details.map((detail: any) => ({
@@ -223,7 +439,9 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
       }))
     : undefined
 
-  const orderRef = extractOrderIdFromShipment(shipment)
+  const orderRef = orderLookup?.order?._id
+  const stripePaymentIntentId =
+    orderLookup?.paymentIntentId ?? extractPaymentIntentIdFromShipment(shipment)
 
   const doc = cleanUndefined({
     title:
@@ -315,6 +533,7 @@ async function upsertShipmentDocument(shipment: any, rawPayload: any) {
       : undefined,
     rawWebhookData: rawPayload ? JSON.stringify(rawPayload, null, 2) : undefined,
     details: JSON.stringify(shipment, null, 2),
+    stripePaymentIntentId: stripePaymentIntentId || undefined,
     order: orderRef ? {_type: 'reference', _ref: orderRef} : undefined,
   })
 
@@ -447,7 +666,8 @@ async function handleShipment(shipment: any, rawPayload?: any) {
     if (fetched) shipmentData = fetched
   }
 
-  await upsertShipmentDocument(shipmentData, rawPayload)
+  const orderLookup = await findOrderForShipment(shipmentData)
+  await upsertShipmentDocument(shipmentData, rawPayload, orderLookup)
 
   const trackingNumber = extractTrackingNumber({shipment: shipmentData})
   const labelUrl = extractLabelUrl({shipment: shipmentData})
@@ -459,31 +679,15 @@ async function handleShipment(shipment: any, rawPayload?: any) {
     undefined
   const trackingUrl = buildTrackingUrl({shipment: shipmentData}, carrier, trackingNumber)
 
-  const orderIdCandidate = extractOrderIdFromShipment(shipmentData)
-  const order = await sanity.fetch<{
-    _id: string
-    easyPostShipmentId?: string
-    shippingLabelUrl?: string
-    trackingNumber?: string
-    trackingUrl?: string
-    status?: string
-  }>(
-    `*[_type == "order" && (
-      _id == $orderId ||
-      easyPostShipmentId == $shipmentId ||
-      trackingNumber == $trackingCode
-    )][0]{ _id, shippingLabelUrl, trackingNumber, trackingUrl, status }`,
-    {
-      orderId: orderIdCandidate || null,
-      shipmentId,
-      trackingCode: trackingNumber || null,
-    },
-  )
+  const order = orderLookup.order
 
   if (!order?._id) {
     console.warn('easypostWebhook unable to locate order for shipment', {
       shipmentId,
-      orderIdCandidate,
+      orderIdCandidate: orderLookup.orderIdCandidate,
+      paymentIntentId: orderLookup.paymentIntentId,
+      orderNumberCandidate: orderLookup.orderNumberCandidate,
+      trackingNumber,
     })
     return
   }

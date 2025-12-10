@@ -15,6 +15,11 @@ import {
   deriveFulfillmentFromMetadata,
 } from '../lib/fulfillmentFromMetadata'
 import {resolveStripeSecretKey} from '../lib/stripeEnv'
+import {
+  simplifyCartForAbandonedCheckout,
+  buildAbandonedCartSummary,
+  upsertAbandonedCheckoutDocument,
+} from '../lib/abandonedCheckouts'
 // CORS helper (same pattern used elsewhere)
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -31,6 +36,29 @@ function makeCORS(origin?: string) {
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
   }
+}
+
+const pruneUndefined = <T extends Record<string, any>>(input: T): T => {
+  const output: Record<string, any> = {}
+  for (const [key, value] of Object.entries(input || {})) {
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === 'string' && !value.trim()) ||
+      (Array.isArray(value) && value.length === 0)
+    ) {
+      continue
+    }
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const nested = pruneUndefined(value as Record<string, any>)
+      if (Object.keys(nested).length > 0) {
+        output[key] = nested
+      }
+      continue
+    }
+    output[key] = value
+  }
+  return output as T
 }
 
 function idVariants(id?: string): string[] {
@@ -503,10 +531,11 @@ async function upsertOrder({
   autoFulfill: boolean
   targetOrderId?: string
 }): Promise<{
-  orderId?: string
+  orderId?: string | null
   invoiceId?: string
   paymentStatus?: string
   packingSlipUploaded?: boolean
+  abandonedCheckoutId?: string | null
 }> {
   if (!sanity) throw new Error('Sanity client unavailable')
 
@@ -531,6 +560,17 @@ async function upsertOrder({
   )
     .toString()
     .trim()
+
+  const metaValue = (...keys: string[]) => {
+    for (const key of keys) {
+      const raw = metadata[key]
+      if (typeof raw === 'string') {
+        const trimmed = raw.trim()
+        if (trimmed) return trimmed
+      }
+    }
+    return undefined
+  }
 
   const email = resolveEmail(metadata, session, paymentIntent)
   const shippingAddress = extractShippingAddress(session, email || undefined)
@@ -624,6 +664,77 @@ async function upsertOrder({
   const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
 
   const cart = await buildCartFromSession(stripeSessionId, metadata)
+
+  if (sessionStatus === 'expired') {
+    const simplifiedCart = simplifyCartForAbandonedCheckout(cart)
+    const cartSummaryFromMetadata = metaValue('cart_summary', 'cartSummary')
+    const generatedSummary =
+      simplifiedCart.length > 0 ? buildAbandonedCartSummary(simplifiedCart) : ''
+    const cartSummary = cartSummaryFromMetadata || generatedSummary || ''
+    const createdAtIso =
+      typeof session.created === 'number'
+        ? new Date(session.created * 1000).toISOString()
+        : new Date().toISOString()
+    const expiredAtIso =
+      typeof session.expires_at === 'number'
+        ? new Date(session.expires_at * 1000).toISOString()
+        : createdAtIso
+    const customerPhone =
+      session.customer_details?.phone ||
+      (session.metadata?.customer_phone as string | undefined) ||
+      undefined
+    const checkoutShippingAddress = shippingAddress
+      ? pruneUndefined({
+          name: shippingAddress.name,
+          line1: shippingAddress.addressLine1,
+          line2: shippingAddress.addressLine2,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postalCode: shippingAddress.postalCode,
+          country: shippingAddress.country,
+        })
+      : undefined
+    const sessionMetadataDoc = pruneUndefined({
+      browser: metaValue('browser', 'Browser'),
+      device: metaValue('device', 'Device'),
+      os: metaValue('os', 'OS'),
+      landingPage: metaValue('landing_page', 'landingPage'),
+      referrer: metaValue('referrer', 'referrer_url', 'referrerUrl'),
+      shippingMode: metaValue('shipping_mode', 'shippingMode'),
+    })
+
+    const abandonedCheckoutId = await upsertAbandonedCheckoutDocument(sanity, {
+      checkoutId: `ABANDONED-${Date.now()}`,
+      stripeSessionId,
+      status: 'expired',
+      customerEmail: email || undefined,
+      customerName,
+      customerPhone,
+      cart: simplifiedCart.length ? simplifiedCart : undefined,
+      cartSummary: cartSummary || undefined,
+      amountSubtotal,
+      amountTotal: totalAmount,
+      shippingCost: amountShipping,
+      shippingAddress:
+        checkoutShippingAddress && Object.keys(checkoutShippingAddress).length
+          ? checkoutShippingAddress
+          : undefined,
+      sessionMetadata: Object.keys(sessionMetadataDoc).length
+        ? sessionMetadataDoc
+        : undefined,
+      recoveryEmailSent: false,
+      sessionCreatedAt: createdAtIso,
+      sessionExpiredAt: expiredAtIso,
+    })
+
+    return {
+      orderId: null,
+      invoiceId: undefined,
+      paymentStatus,
+      packingSlipUploaded: false,
+      abandonedCheckoutId: abandonedCheckoutId || undefined,
+    }
+  }
 
   const cardBrand = charge?.payment_method_details?.card?.brand || undefined
   const cardLast4 = charge?.payment_method_details?.card?.last4 || undefined
@@ -860,7 +971,7 @@ export const handler: Handler = async (event) => {
       targetOrderId: targetOrderId || undefined,
     })
 
-    if (!result.orderId) {
+    if (!result.orderId && !result.abandonedCheckoutId) {
       return {
         statusCode: 500,
         headers,
@@ -872,6 +983,7 @@ export const handler: Handler = async (event) => {
       ok: true,
       type: idType,
       orderId: result.orderId,
+      abandonedCheckoutId: result.abandonedCheckoutId,
       invoiceId: result.invoiceId,
       paymentStatus: result.paymentStatus,
       packingSlipUploaded: result.packingSlipUploaded,

@@ -795,20 +795,11 @@ const product = defineType({
       group: 'options',
     }),
     defineField({
-      name: 'customizations',
-      title: 'Customizations',
-      type: 'array',
-      of: [{type: 'productCustomization'}],
-      description: 'Collect engraving text, notes, or tuning preferences from the customer.',
-      fieldset: 'optionsAndVariants',
-      group: 'options',
-    }),
-    defineField({
       name: 'addOns',
-      title: 'Upgrades',
+      title: 'Add-Ons & Optional Bundles',
       type: 'array',
-      of: [{type: 'addOn'}],
-      description: 'Upsell extras the customer may choose in addition to required product options.',
+      description: 'Upsell extras or link to products that can be bundled with this item.',
+      of: [{type: 'addOn'}, {type: 'productAddOn'}],
       fieldset: 'optionsAndVariants',
       group: 'options',
     }),
@@ -816,9 +807,39 @@ const product = defineType({
       name: 'customPaint',
       title: 'Custom Paint Options',
       type: 'customPaint',
-      description: 'Enable custom paint color selection.',
+      description: 'Offer optional powder coating with paint code collection.',
       fieldset: 'optionsAndVariants',
       group: 'options',
+    }),
+    defineField({
+      name: 'paymentCaptureStrategy',
+      title: 'Payment Capture Strategy',
+      type: 'string',
+      description: "When should we charge the customer's card?",
+      options: {
+        layout: 'radio',
+        list: [
+          {
+            title: 'Auto-Capture – Charge Immediately (in-stock items)',
+            value: 'auto',
+          },
+          {
+            title: 'Manual Capture – Authorize Now, Charge When Ready to Ship',
+            value: 'manual',
+          },
+        ],
+      },
+      initialValue: (context) => {
+        const doc = (context as any)?.document || {}
+        const productType = doc?.productType
+        const handlingTime = Number(doc?.shippingConfig?.handlingTime || 0)
+        const hasCustomPaint = Boolean(doc?.customPaint?.enabled)
+        const isMailIn = doc?.serviceDeliveryModel === 'mail-in-service'
+        if (hasCustomPaint || handlingTime > 3 || isMailIn) return 'manual'
+        if (productType === 'service') return 'manual'
+        return 'auto'
+      },
+      group: 'advanced',
     }),
     defineField({
       name: 'serviceDuration',

@@ -17,6 +17,7 @@ import OrderNumberInput from '../../components/inputs/OrderNumberInput'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
 import ComputedOrderCustomerNameInput from '../../components/inputs/ComputedOrderCustomerNameInput'
 import FulfillmentOverview from '../../components/FulfillmentOverview'
+import {OrderFulfillmentStatus} from '../../components/OrderFulfillmentStatus'
 
 const SANITY_API_VERSION = '2024-10-01'
 
@@ -92,6 +93,16 @@ const orderSchema = defineType({
       },
       fields: [{name: 'placeholder', type: 'string', hidden: true}],
       hidden: ({document}) => !document,
+    }),
+    defineField({
+      name: 'fulfillmentStatusDisplay',
+      title: 'Fulfillment Status',
+      type: 'object',
+      group: 'fulfillment',
+      components: {
+        input: OrderFulfillmentStatus,
+      },
+      fields: [{name: 'placeholder', type: 'string', hidden: true}],
     }),
     defineField({
       name: 'orderNumber',
@@ -458,6 +469,36 @@ const orderSchema = defineType({
       title: 'Payment Status',
       group: 'payment',
       readOnly: false,
+    }),
+    defineField({
+      name: 'paymentCaptureStrategy',
+      title: 'Payment Capture Strategy',
+      type: 'string',
+      description: 'Inherited from product or configured manually.',
+      options: {
+        list: [
+          {title: 'Auto-Capture', value: 'auto'},
+          {title: 'Manual Capture', value: 'manual'},
+        ],
+      },
+      readOnly: true,
+      group: 'payment',
+    }),
+    defineField({
+      name: 'paymentCaptured',
+      title: 'Payment Captured',
+      type: 'boolean',
+      description: 'Indicates whether the Stripe authorization has been captured.',
+      initialValue: false,
+      readOnly: true,
+      group: 'payment',
+    }),
+    defineField({
+      name: 'paymentCapturedAt',
+      title: 'Payment Captured At',
+      type: 'datetime',
+      readOnly: true,
+      group: 'payment',
     }),
     defineField({
       name: 'cardBrand',
@@ -1116,10 +1157,12 @@ const callNetlifyFunction = async (
 // DOCUMENT ACTIONS
 // ============================================================================
 
+const ORDER_DOCUMENT_TYPES = new Set(['order'])
+
 export const orderActions: DocumentActionsResolver = (prev, context) => {
   const {schemaType} = context
 
-  if (schemaType !== 'order') {
+  if (!ORDER_DOCUMENT_TYPES.has(schemaType)) {
     return prev
   }
 

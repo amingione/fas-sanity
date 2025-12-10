@@ -29,6 +29,7 @@ export interface PaginatedDocumentTableProps<TData extends Record<string, unknow
   includeDrafts?: boolean
   excludeExpired?: boolean
   headerActions?: React.ReactNode
+  headerContent?: React.ReactNode
   onPageItemsChange?: (items: Array<RowResult<TData>>) => void
 }
 
@@ -103,6 +104,7 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   includeDrafts = false,
   excludeExpired = true,
   headerActions,
+  headerContent,
   onPageItemsChange,
 }: PaginatedDocumentTableProps<TData>) {
   const client = useClient({apiVersion})
@@ -250,12 +252,16 @@ export function PaginatedDocumentTable<TData extends Record<string, unknown>>({
   return (
     <Card padding={4} radius={3} shadow={1} tone="transparent">
       <Stack space={4}>
-        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
-          <Heading as="h2" size={3}>
-            {title}
-          </Heading>
-          {headerActions ? <div>{headerActions}</div> : null}
-        </Flex>
+        {headerContent ? (
+          <div>{headerContent}</div>
+        ) : (
+          <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+            <Heading as="h2" size={3}>
+              {title}
+            </Heading>
+            {headerActions ? <div>{headerActions}</div> : null}
+          </Flex>
+        )}
 
         <div
           style={{

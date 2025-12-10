@@ -30,6 +30,12 @@ export default defineType({
       title: 'Reference',
       type: 'string',
     }),
+    defineField({
+      name: 'stripePaymentIntentId',
+      title: 'Stripe Payment Intent ID',
+      type: 'string',
+      description: 'External Stripe payment intent identifier used to charge this shipment',
+    }),
 
     defineField({
       name: 'trackingCode',
@@ -304,6 +310,7 @@ export default defineType({
       title: 'Linked Order',
       type: 'reference',
       to: [{type: 'order'}],
+      description: 'Sanity order document that originated this shipment',
     }),
   ],
 
