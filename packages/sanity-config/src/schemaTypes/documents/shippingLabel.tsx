@@ -14,6 +14,15 @@ export default defineType({
       validation: (Rule) => Rule.required().min(2),
     }),
     defineField({
+      name: 'orderRef',
+      title: 'Related Order',
+      type: 'reference',
+      to: [{type: 'order'}],
+      description:
+        'Set this before you generate a label so the saved PDF is copied into that order automatically.',
+      options: {disableNew: true},
+    }),
+    defineField({
       name: 'ship_from',
       title: 'Ship From',
       type: 'shipFromAddress',

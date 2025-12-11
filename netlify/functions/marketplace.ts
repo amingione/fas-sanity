@@ -57,7 +57,7 @@ const handler: Handler = async (event) => {
     return {statusCode: 405, body: 'Method Not Allowed'}
   }
 
-  const url = new URL(event.rawUrl || `http://localhost${event.rawPath || ''}`)
+  const url = new URL(event.rawUrl || `http://localhost${event.path || ''}`)
   const search = (url.searchParams.get('q') || '').toLowerCase()
   const category = (url.searchParams.get('category') || '').toLowerCase()
   const tag = (url.searchParams.get('tag') || '').toLowerCase()

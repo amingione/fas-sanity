@@ -72,16 +72,3 @@ export interface SenderAddress {
   phone?: string
   email?: string
 }
-
-export interface SavedPackage {
-  _id: string
-  _type: 'savedPackage'
-  packageName: string
-  packageType: string
-  dimensions: {
-    length: number
-    width: number
-    height: number
-  }
-  weight?: number
-}

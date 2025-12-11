@@ -128,8 +128,10 @@ export function applyShippingDetailsToDoc(
   }
 
   if (shippingDetails.currency) target.selectedShippingCurrency = shippingDetails.currency
-  if (shippingDetails.deliveryDays !== undefined) target.shippingDeliveryDays = shippingDetails.deliveryDays
-  if (shippingDetails.estimatedDeliveryDate) target.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+  if (shippingDetails.deliveryDays !== undefined)
+    target.shippingDeliveryDays = shippingDetails.deliveryDays
+  if (shippingDetails.estimatedDeliveryDate)
+    target.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
   if (shippingDetails.serviceCode) target.shippingServiceCode = shippingDetails.serviceCode
   if (shippingDetails.serviceName) target.shippingServiceName = shippingDetails.serviceName
   if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
@@ -147,7 +149,8 @@ export const deriveFulfillmentFromMetadata = (
   const trackingUrl = pickFromMeta(meta, FULFILLMENT_TRACKING_URL_KEYS)
   const labelUrl = pickFromMeta(meta, FULFILLMENT_LABEL_URL_KEYS)
   const shipmentId =
-    pickFromMeta(meta, FULFILLMENT_SHIPMENT_ID_KEYS) || shippingDetails.metadata?.['shipping_shipment_id']
+    pickFromMeta(meta, FULFILLMENT_SHIPMENT_ID_KEYS) ||
+    shippingDetails.metadata?.['shipping_shipment_id']
   const trackerId = pickFromMeta(meta, FULFILLMENT_TRACKER_ID_KEYS)
   const rateId =
     pickFromMeta(meta, FULFILLMENT_RATE_ID_KEYS) ||
@@ -156,7 +159,9 @@ export const deriveFulfillmentFromMetadata = (
   const actualCostRaw = pickFromMeta(meta, FULFILLMENT_ACTUAL_COST_KEYS)
   const actualShippingCost = parseNumber(actualCostRaw)
   const labelPurchasedAtRaw = pickFromMeta(meta, FULFILLMENT_PURCHASED_AT_KEYS)
-  const labelPurchasedAt = labelPurchasedAtRaw ? new Date(labelPurchasedAtRaw).toISOString() : undefined
+  const labelPurchasedAt = labelPurchasedAtRaw
+    ? new Date(labelPurchasedAtRaw).toISOString()
+    : undefined
   const carrier =
     pickFromMeta(meta, ['fulfillment_carrier', 'carrier', 'shipping_carrier', 'shippingCarrier']) ||
     shippingDetails.carrier
@@ -165,7 +170,7 @@ export const deriveFulfillmentFromMetadata = (
     shippingDetails.serviceName ||
     shippingDetails.serviceCode
 
-  const fulfillment = pruneUndefined({
+  const fulfillment: Record<string, any> = pruneUndefined({
     status: trackingNumber || labelUrl ? 'label_created' : undefined,
     trackingNumber,
     trackingUrl,

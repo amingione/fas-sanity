@@ -61,39 +61,41 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
           <Card key={key} padding={3} radius={2} border>
             <Flex gap={4} wrap="wrap">
               <Box flex={2} style={{minWidth: 200}}>
-                <Text size={3} weight="semibold">
-                  {displayName}
-                </Text>
-                {item.sku && (
-                  <Text size={1} muted>
-                    SKU: {item.sku}
+                <Stack space={2}>
+                  <Text size={3} weight="semibold">
+                    {displayName}
                   </Text>
-                )}
-                {optionsText && (
-                  <Text size={1} muted>
-                    Options: {optionsText}
-                  </Text>
-                )}
-                {addOnsText && (
-                  <Text size={1} muted>
-                    Upgrades: {addOnsText}
-                  </Text>
-                )}
-                {item.productRef?._ref && (
-                  <IntentLink
-                    intent="edit"
-                    params={{id: item.productRef._ref, type: 'product'}}
-                    style={{display: 'inline-flex', marginTop: 8}}
-                  >
-                    <Button
-                      icon={LaunchIcon}
-                      mode="bleed"
-                      padding={2}
-                      text="View product"
-                      tone="primary"
-                    />
-                  </IntentLink>
-                )}
+                  {item.sku && (
+                    <Text size={1} muted>
+                      SKU: {item.sku}
+                    </Text>
+                  )}
+                  {optionsText && (
+                    <Text size={1} muted>
+                      Options: {optionsText}
+                    </Text>
+                  )}
+                  {addOnsText && (
+                    <Text size={1} muted>
+                      Upgrades: {addOnsText}
+                    </Text>
+                  )}
+                  {item.productRef?._ref && (
+                    <IntentLink
+                      intent="edit"
+                      params={{id: item.productRef._ref, type: 'product'}}
+                      style={{display: 'inline-flex', marginTop: 4}}
+                    >
+                      <Button
+                        icon={LaunchIcon}
+                        mode="bleed"
+                        padding={2}
+                        text="View product"
+                        tone="primary"
+                      />
+                    </IntentLink>
+                  )}
+                </Stack>
               </Box>
               <Flex flex={1} gap={3} align="center" justify="flex-end" wrap="wrap">
                 <Stack space={2} style={{minWidth: 100}}>

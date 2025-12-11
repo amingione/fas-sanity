@@ -383,6 +383,16 @@ function coerceNumber(value: any, divideBy100 = false): number | undefined {
   return divideBy100 ? num / 100 : num
 }
 
+const CHECKOUT_SESSION_ID_PATTERN = /^cs_(?:test|live)_[a-z0-9]{8,}$/i
+
+function isLikelyCheckoutSessionId(id?: string | null): boolean {
+  if (!id) return false
+  const trimmed = id.trim()
+  if (!trimmed.startsWith('cs_')) return false
+  if (trimmed.length < 20) return false
+  return CHECKOUT_SESSION_ID_PATTERN.test(trimmed)
+}
+
 function resolveEmail(
   metadata: NormalizedMetadata,
   session?: Stripe.Checkout.Session | null,
@@ -418,6 +428,12 @@ function toBoolean(value: unknown): boolean {
 
 async function fetchSessionById(id: string): Promise<Stripe.Checkout.Session | null> {
   if (!stripe) return null
+  if (!isLikelyCheckoutSessionId(id)) {
+    if (DEBUG_REPROCESS) {
+      console.debug('reprocessStripeSession: skip checkout lookup for invalid id format', id)
+    }
+    return null
+  }
   try {
     const session = await stripe.checkout.sessions.retrieve(id, {
       expand: ['payment_intent', 'customer_details'],
@@ -468,6 +484,22 @@ async function fetchPaymentIntent(id: string): Promise<Stripe.PaymentIntent | nu
   }
 }
 
+async function fetchCharge(id: string): Promise<Stripe.Charge | null> {
+  if (!stripe) return null
+  if (!id.startsWith('ch_')) {
+    if (DEBUG_REPROCESS) {
+      console.debug('reprocessStripeSession: skip charge lookup for non-ch id', id)
+    }
+    return null
+  }
+  try {
+    return await stripe.charges.retrieve(id, {expand: ['payment_intent']})
+  } catch (err) {
+    console.warn('reprocessStripeSession: failed to retrieve charge', id, err)
+    return null
+  }
+}
+
 async function resolveSessionAndIntent(id: string): Promise<{
   session: Stripe.Checkout.Session | null
   paymentIntent: Stripe.PaymentIntent | null
@@ -489,15 +521,40 @@ async function resolveSessionAndIntent(id: string): Promise<{
         session = await fetchSessionById(metaSessionId)
       }
     }
-  } else {
+  } else if (id.startsWith('cs_')) {
     session = await fetchSessionById(id)
     idType = 'checkout.session'
-    if (!session && id.startsWith('cs_')) {
-      // No session found; fall back to treating as payment intent
-      paymentIntent = await fetchPaymentIntent(id)
+    if (!session && DEBUG_REPROCESS) {
+      console.debug('reprocessStripeSession: checkout session not found for id', id)
+    }
+  } else if (id.startsWith('ch_')) {
+    idType = 'payment_intent'
+    const charge = await fetchCharge(id)
+    const piCandidate =
+      typeof charge?.payment_intent === 'string'
+        ? charge.payment_intent
+        : charge?.payment_intent?.id
+    if (piCandidate) {
+      paymentIntent = await fetchPaymentIntent(piCandidate)
       if (paymentIntent?.id) {
-        idType = 'payment_intent'
         session = await findSessionByPaymentIntent(paymentIntent.id)
+      }
+    } else if (DEBUG_REPROCESS) {
+      console.debug('reprocessStripeSession: charge did not include payment_intent', id)
+    }
+  } else {
+    if (DEBUG_REPROCESS) {
+      console.debug('reprocessStripeSession: received unsupported id format', id)
+    }
+  }
+
+  if (!session && paymentIntent?.metadata?.checkout_session_id) {
+    const metaSessionId = paymentIntent.metadata.checkout_session_id.toString().trim()
+    if (metaSessionId) {
+      const resolved = await fetchSessionById(metaSessionId)
+      if (resolved) {
+        session = resolved
+        idType = 'checkout.session'
       }
     }
   }

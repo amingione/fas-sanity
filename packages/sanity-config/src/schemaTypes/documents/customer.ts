@@ -460,6 +460,32 @@ export default defineType({
       components: {input: CustomerDiscountsInput as any},
       description: 'Synced customer-level coupons and promotions from Stripe.',
     }),
+    defineField({
+      name: 'shippingQuotes',
+      title: 'Shipping Quotes',
+      type: 'array',
+      group: 'activity',
+      description: 'Saved shipping quote PDFs and supporting notes.',
+      of: [
+        {
+          type: 'file',
+          title: 'Quote Document',
+          options: {accept: '.pdf,.png,.jpg,.jpeg,.heic'},
+          fields: [
+            defineField({
+              name: 'createdAt',
+              title: 'Created',
+              type: 'datetime',
+              initialValue: () => new Date().toISOString(),
+            }),
+            defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
+            defineField({name: 'service', title: 'Service', type: 'string'}),
+            defineField({name: 'rate', title: 'Rate', type: 'string'}),
+            defineField({name: 'notes', title: 'Notes', type: 'text', rows: 2}),
+          ],
+        },
+      ],
+    }),
     defineField({name: 'updatedAt', title: 'Updated At', type: 'datetime', group: 'profile'}),
   ],
 

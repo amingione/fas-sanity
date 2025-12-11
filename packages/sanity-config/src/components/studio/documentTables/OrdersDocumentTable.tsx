@@ -18,7 +18,7 @@ import {
   TextInput,
   useToast,
 } from '@sanity/ui'
-import {EllipsisVerticalIcon} from '@sanity/icons'
+import {EllipsisVerticalIcon, FilterIcon} from '@sanity/icons'
 import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../../utils/base64'
 import {callNetlifyFunction} from '../../../utils/netlifyHelpers'
@@ -26,6 +26,7 @@ import {PaginatedDocumentTable, formatCurrency} from './PaginatedDocumentTable'
 import {formatOrderNumber} from '../../../utils/orderNumber'
 import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
 import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
+import RecoveredCartBadge from './RecoveredCartBadge'
 
 type OrderRowData = {
   orderNumber?: string | null
@@ -43,6 +44,7 @@ type OrderRowData = {
   createdAt?: string | null
   shippingLabelUrl?: string | null
   cardBrand?: string | null
+  cartSummary?: string | null
 }
 
 const ORDER_PROJECTION = `{
@@ -63,6 +65,18 @@ const ORDER_PROJECTION = `{
   "createdAt": coalesce(createdAt, _createdAt)
 }`
 
+const CARTS_PROJECTION = `{
+  stripeSessionId,
+  status,
+  customerName,
+  customerEmail,
+  cartSummary,
+  "shippingName": shippingAddress.name,
+  "totalAmount": amountTotal,
+  currency,
+  "createdAt": coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)
+}`
+
 export const NEW_ORDERS_FILTER = `!defined(fulfilledAt) && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && !(status in ["fulfilled","shipped","cancelled","refunded","closed"])`
 
 const DEFAULT_ORDERINGS: Array<{field: string; direction: 'asc' | 'desc'}> = [
@@ -70,10 +84,20 @@ const DEFAULT_ORDERINGS: Array<{field: string; direction: 'asc' | 'desc'}> = [
 ]
 
 const CLOSED_ORDER_STATUSES = ['fulfilled', 'shipped', 'cancelled', 'refunded', 'closed']
+const ARCHIVED_ORDER_STATUSES = ['fulfilled', 'shipped', 'refunded']
+
+type DocumentType = 'order' | 'abandonedCheckout'
 
 type OrderTabId = 'all' | 'open' | 'closed' | 'carts' | 'archived'
+type OrderTabConfig = {
+  id: OrderTabId
+  label: string
+  filter?: string
+  documentType?: DocumentType
+  orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
+}
 
-const ORDER_TABS: Array<{id: OrderTabId; label: string; filter?: string}> = [
+const ORDER_TABS: OrderTabConfig[] = [
   {id: 'all', label: 'All'},
   {
     id: 'open',
@@ -88,13 +112,22 @@ const ORDER_TABS: Array<{id: OrderTabId; label: string; filter?: string}> = [
   {
     id: 'carts',
     label: 'Carts',
-    filter: `(orderType == "cart")`,
+    documentType: 'abandonedCheckout',
+    filter: `(status in ["abandoned", "expired", "recovered"])`,
+    orderings: [{field: 'sessionExpiredAt', direction: 'desc'}],
   },
   {
     id: 'archived',
     label: 'Archived',
-    filter: `(defined(archivedAt) || isArchived == true || status == "archived")`,
+    filter: `(status in ${JSON.stringify(ARCHIVED_ORDER_STATUSES)})`,
   },
+]
+
+const ORDER_TYPE_OPTIONS: Array<{label: string; value: string | null}> = [
+  {label: 'All Types', value: null},
+  {label: 'Online Orders', value: 'online'},
+  {label: 'In-Store Orders', value: 'in-store'},
+  {label: 'Wholesale Orders', value: 'wholesale'},
 ]
 
 type OrdersDocumentTableProps = {
@@ -178,6 +211,7 @@ export default function OrdersDocumentTable({
   const [trackingUrl, setTrackingUrl] = useState('')
   const [activeTab, setActiveTab] = useState<OrderTabId>('all')
   const [openCount, setOpenCount] = useState<number | null>(null)
+  const [orderTypeFilter, setOrderTypeFilter] = useState<string | null>(null)
 
   const handlePageItemsChange = useCallback((rows: OrderRow[]) => {
     setCurrentItems(rows)
@@ -210,33 +244,52 @@ export default function OrdersDocumentTable({
   }, [currentItems, selectedIds])
 
   // Filter + search
+  const activeTabConfig = ORDER_TABS.find((tab) => tab.id === activeTab) ?? ORDER_TABS[0]
+  const documentType: DocumentType = activeTabConfig.documentType ?? 'order'
   const filterClauses: string[] = []
-  if (excludeCheckoutSessionExpired) {
-    filterClauses.push(`(${GROQ_FILTER_EXCLUDE_EXPIRED})`)
-  }
   if (filter && filter.trim().length > 0) {
     filterClauses.push(`(${filter.trim()})`)
   }
-  const activeTabFilter = ORDER_TABS.find((tab) => tab.id === activeTab)?.filter
-  if (activeTabFilter) {
-    filterClauses.push(`(${activeTabFilter})`)
+  if (activeTabConfig?.filter) {
+    filterClauses.push(`(${activeTabConfig.filter})`)
   }
   const trimmedSearch = searchTerm.trim().replace(/^#/, '')
   if (trimmedSearch.length > 0) {
     const like = `*${trimmedSearch}*`
+    const searchFields =
+      documentType === 'abandonedCheckout'
+        ? [
+            'stripeSessionId',
+            'customerName',
+            'customerEmail',
+            'cartSummary',
+            'shippingAddress.name',
+          ]
+        : [
+            'orderNumber',
+            'invoiceNumber',
+            'invoiceRef->orderNumber',
+            'stripeSessionId',
+            'customerName',
+            'customerEmail',
+            'shippingAddress.name',
+          ]
     filterClauses.push(
-      `(
-        orderNumber match ${JSON.stringify(like)} ||
-        invoiceNumber match ${JSON.stringify(like)} ||
-        invoiceRef->orderNumber match ${JSON.stringify(like)} ||
-        stripeSessionId match ${JSON.stringify(like)} ||
-        customerName match ${JSON.stringify(like)} ||
-        customerEmail match ${JSON.stringify(like)} ||
-        shippingAddress.name match ${JSON.stringify(like)}
-      )`,
+      `(${searchFields
+        .map((field) => `${field} match ${JSON.stringify(like)}`)
+        .join(' || ')})`,
     )
   }
+  if (documentType === 'order' && orderTypeFilter) {
+    filterClauses.push(`(orderType == ${JSON.stringify(orderTypeFilter)})`)
+  }
   const combinedFilter = filterClauses.join(' && ')
+
+  useEffect(() => {
+    if (documentType !== 'order' && orderTypeFilter !== null) {
+      setOrderTypeFilter(null)
+    }
+  }, [documentType, orderTypeFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -245,6 +298,7 @@ export default function OrdersDocumentTable({
     const baseClauses: string[] = []
     if (excludeCheckoutSessionExpired) baseClauses.push(`(${GROQ_FILTER_EXCLUDE_EXPIRED})`)
     if (filter && filter.trim().length > 0) baseClauses.push(`(${filter.trim()})`)
+    if (orderTypeFilter) baseClauses.push(`(orderType == ${JSON.stringify(orderTypeFilter)})`)
     const queryFilter = ['_type == "order"', ...baseClauses, `(${openTab.filter})`].join(' && ')
     const query = `count(*[${queryFilter}])`
     client
@@ -256,12 +310,12 @@ export default function OrdersDocumentTable({
     return () => {
       cancelled = true
     }
-  }, [client, excludeCheckoutSessionExpired, filter])
+  }, [client, excludeCheckoutSessionExpired, filter, orderTypeFilter])
 
   useEffect(() => {
     // Clear selection when search or filters change
     setSelectedIds(new Set())
-  }, [searchTerm, filter, excludeCheckoutSessionExpired, activeTab])
+  }, [searchTerm, filter, excludeCheckoutSessionExpired, activeTab, orderTypeFilter])
 
   const selectedIdList = useMemo(() => Array.from(selectedIds), [selectedIds])
   const selectedCount = selectedIdList.length
@@ -678,6 +732,38 @@ export default function OrdersDocumentTable({
           placeholder="Search orders…"
           style={{flex: 1, minWidth: '220px', maxWidth: '360px'}}
         />
+        {documentType === 'order' ? (
+          <MenuButton
+            id="order-type-filter"
+            button={
+              <Button
+                icon={FilterIcon}
+                mode="ghost"
+                aria-label="Filter by order type"
+                tone={orderTypeFilter ? 'primary' : 'default'}
+              />
+            }
+            menu={
+              <Menu>
+                {ORDER_TYPE_OPTIONS.map((option) => (
+                  <MenuItem
+                    key={option.value ?? 'all'}
+                    text={option.label}
+                    selected={orderTypeFilter === option.value}
+                    onClick={() => setOrderTypeFilter(option.value)}
+                  />
+                ))}
+              </Menu>
+            }
+          />
+        ) : (
+          <Button
+            icon={FilterIcon}
+            mode="ghost"
+            aria-label="Order type filter available for orders"
+            disabled
+          />
+        )}
         <MenuButton
           id="orders-bulk-actions"
           button={
@@ -753,13 +839,13 @@ export default function OrdersDocumentTable({
       <PaginatedDocumentTable<OrderRowData>
         key={refreshKey}
         title={title}
-        documentType="order"
-        projection={ORDER_PROJECTION}
-        orderings={orderings}
+        documentType={documentType}
+        projection={documentType === 'abandonedCheckout' ? CARTS_PROJECTION : ORDER_PROJECTION}
+        orderings={activeTabConfig?.orderings ?? orderings}
         pageSize={pageSize}
         filter={combinedFilter || undefined}
         emptyState={emptyState}
-        excludeExpired={excludeCheckoutSessionExpired}
+        excludeExpired={documentType === 'order' ? excludeCheckoutSessionExpired : false}
         headerContent={headerContent}
         onPageItemsChange={handlePageItemsChange}
         columns={[
@@ -816,6 +902,11 @@ export default function OrdersDocumentTable({
                     {data.customerEmail}
                   </Text>
                 ) : null}
+                {data._type === 'abandonedCheckout' && data.cartSummary ? (
+                  <Text size={0} muted>
+                    {data.cartSummary}
+                  </Text>
+                ) : null}
               </Stack>
             ),
           },
@@ -823,6 +914,16 @@ export default function OrdersDocumentTable({
             key: 'status',
             header: 'Status',
             render: (data: OrderRow) => {
+              if (data._type === 'abandonedCheckout') {
+                const cartStatusLabel = formatBadgeLabel(data.status) || 'Abandoned'
+                return (
+                  <Stack space={2}>
+                    <Text size={1}>{cartStatusLabel}</Text>
+                    <RecoveredCartBadge status={data.status ?? undefined} />
+                  </Stack>
+                )
+              }
+
               const badges: React.ReactNode[] = []
               const paymentLabel = formatBadgeLabel(data.paymentStatus)
               if (paymentLabel) {
