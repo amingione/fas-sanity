@@ -1,5 +1,4 @@
 import type {Handler} from '@netlify/functions'
-import type {Handler} from '@netlify/functions'
 // Import package manifests directly so they are bundled into the function.
 // If a manifest import fails, we fall back to empty data.
 import rootPkg from '../../package.json'

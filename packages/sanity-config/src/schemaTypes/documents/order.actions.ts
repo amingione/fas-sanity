@@ -11,6 +11,7 @@ import {
 import type {DocumentActionsResolver} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
+import {purchaseOrderLabelAction} from '../documentActions/purchaseOrderLabel'
 
 const SANITY_API_VERSION = '2024-10-01'
 const ORDER_DOCUMENT_TYPES = new Set(['order'])
@@ -83,6 +84,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
   return [
     ...prev,
+    purchaseOrderLabelAction,
 
     // ---------------------------
     // MESSAGE VENDOR
@@ -355,35 +357,6 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
             alert(e.message || 'Unable to process refund.')
           }
 
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // DUPLICATE ORDER
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      if (!doc) return null
-
-      return {
-        name: 'duplicate',
-        label: 'Duplicate Order',
-        icon: CopyIcon,
-        onHandle: async () => {
-          try {
-            const client = getClient({apiVersion: SANITY_API_VERSION})
-            const {_id, _rev, _createdAt, _updatedAt, _type, ...rest} = doc
-            await client.create({
-              _type: 'order',
-              ...rest,
-              orderNumber: `${doc.orderNumber}-copy`,
-            })
-            alert('Order duplicated.')
-          } catch {
-            alert('Unable to duplicate order.')
-          }
           props.onComplete()
         },
       }

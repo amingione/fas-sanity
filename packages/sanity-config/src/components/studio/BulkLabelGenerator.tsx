@@ -35,9 +35,18 @@ type ShippingLabelDoc = {
   ship_to?: EasyPostAddress
   weight?: ShipmentWeight
   dimensions?: ShipmentDimensions
+  orderRef?: {_ref?: string}
 }
 
 const getFnBase = (): string => resolveNetlifyBase()
+
+const normalizeOrderId = (orderRef?: {_ref?: string} | null): string | undefined => {
+  const ref = orderRef?._ref
+  if (!ref || typeof ref !== 'string') return undefined
+  const trimmed = ref.trim()
+  if (!trimmed) return undefined
+  return trimmed.replace(/^drafts\./, '')
+}
 
 function isValidWeight(weight: ShipmentWeight): boolean {
   if (typeof weight === 'number') return Number.isFinite(weight) && weight > 0
@@ -130,7 +139,8 @@ export default function BulkLabelGenerator() {
             ship_from,
             ship_to,
             weight,
-            dimensions
+            dimensions,
+            orderRef
           } | order(_createdAt asc)`,
         )
         if (!cancelled) setLabels(result)
@@ -150,6 +160,7 @@ export default function BulkLabelGenerator() {
 
   const generateLabel = async (label: ShippingLabelDoc) => {
     const id = label._id
+    const orderId = normalizeOrderId(label.orderRef)
     const guard = (cond: boolean, message: string) => {
       if (!cond) {
         setStatus((prev) => ({...prev, [id]: `⚠️ ${message}`}))
@@ -167,13 +178,16 @@ export default function BulkLabelGenerator() {
       const weightPayload = normalizeWeight(label.weight)
       const dimensionsPayload = normalizeDimensions(label.dimensions)
 
-      const payload = {
+      const payload: Record<string, any> = {
         ship_to: label.ship_to,
         ship_from: label.ship_from,
         package_details: {
           weight: weightPayload,
           dimensions: dimensionsPayload,
         },
+      }
+      if (orderId) {
+        payload.orderId = orderId
       }
 
       const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
@@ -200,7 +214,12 @@ export default function BulkLabelGenerator() {
         .set({trackingNumber, labelUrl, ...(trackingUrl ? {trackingUrl} : {})})
         .commit({autoGenerateArrayKeys: true})
 
-      setStatus((prev) => ({...prev, [id]: '✅ EasyPost label created'}))
+      setStatus((prev) => ({
+        ...prev,
+        [id]: orderId
+          ? '✅ EasyPost label created and synced to the order'
+          : '✅ EasyPost label created',
+      }))
       setLabels((prev) => prev.filter((item) => item._id !== id))
     } catch (error: any) {
       console.error('BulkLabelGenerator: create label failed', error)

@@ -547,17 +547,25 @@ const OrderViewComponent = (props: any) => {
     return (
       <FormField key={field.fieldName} title={field.label} description={getFieldDescription(field)}>
         <Card padding={3} radius={2} tone="transparent" border>
-          {fieldsToShow.map((fieldName) => (
-            <Flex key={fieldName} justify="space-between" style={{gap: 8}}>
-              <Text size={1} muted>
-                {formatAddressLabel(fieldName)}
-              </Text>
-              <Text size={2}>
-                {(value as ShippingAddress | undefined)?.[fieldName as keyof ShippingAddress] ||
-                  '—'}
-              </Text>
-            </Flex>
-          ))}
+          <Stack space={3}>
+            {fieldsToShow.map((fieldName) => (
+              <Flex
+                key={fieldName}
+                justify="space-between"
+                align="flex-start"
+                wrap="wrap"
+                style={{gap: 12}}
+              >
+                <Text size={1} muted style={{minWidth: 140}}>
+                  {formatAddressLabel(fieldName)}
+                </Text>
+                <Text size={2}>
+                  {(value as ShippingAddress | undefined)?.[fieldName as keyof ShippingAddress] ||
+                    '—'}
+                </Text>
+              </Flex>
+            ))}
+          </Stack>
         </Card>
       </FormField>
     )

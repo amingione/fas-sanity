@@ -8,6 +8,15 @@ import {resolveNetlifyBase} from '../../utils/netlifyBase'
 // Priority: ENV -> localStorage -> empty (caller must set)
 const getFnBase = (): string => resolveNetlifyBase()
 
+const normalizeRefId = (value: unknown): string | undefined => {
+  if (!value || typeof value !== 'object') return undefined
+  const ref = (value as {_ref?: unknown})._ref
+  if (typeof ref !== 'string') return undefined
+  const trimmed = ref.trim()
+  if (!trimmed) return undefined
+  return trimmed.replace(/^drafts\./, '')
+}
+
 function setFnBase(next: string) {
   try {
     if (typeof window !== 'undefined') window.localStorage?.setItem('NLFY_BASE', next)
@@ -224,6 +233,8 @@ export function ServiceRateInput(props: any) {
 export function GenerateAndPrintPanel(props: any) {
   const client = useClient({apiVersion: '2024-10-01'})
   const _id = useFormValue(['_id']) as string
+  const orderRef = useFormValue(['orderRef']) as {_ref?: string} | null
+  const orderId = normalizeRefId(orderRef)
   const doc = {
     name: useFormValue(['name']) as any,
     ship_to: useFormValue(['ship_to']) as any,
@@ -231,6 +242,7 @@ export function GenerateAndPrintPanel(props: any) {
     weight: useFormValue(['weight']) as any,
     dimensions: useFormValue(['dimensions']) as any,
     serviceSelection: useFormValue(['serviceSelection']) as string,
+    orderRef,
   }
 
   const [busy, setBusy] = useState(false)
@@ -244,7 +256,7 @@ export function GenerateAndPrintPanel(props: any) {
     setBusy(true)
     setMessage(null)
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         ship_to: doc.ship_to,
         ship_from: doc.ship_from,
         package_details: {
@@ -259,6 +271,10 @@ export function GenerateAndPrintPanel(props: any) {
             : undefined,
         },
       }
+      if (orderId) {
+        payload.orderId = orderId
+      }
+
       const res = (await safeFetchJson(
         `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/easypostCreateLabel`,
         {
@@ -283,7 +299,9 @@ export function GenerateAndPrintPanel(props: any) {
 
       setMessage({
         tone: 'positive',
-        text: 'EasyPost label generated. Tracking & label URL saved below.',
+        text: orderId
+          ? 'EasyPost label generated and synced back to the linked order.'
+          : 'EasyPost label generated. Tracking & label URL saved below.',
       })
       // Optionally, open label
       try {
@@ -320,6 +338,13 @@ export function GenerateAndPrintPanel(props: any) {
           {message.text}
         </Text>
       ) : null}
+      {!orderId && (
+        <Text size={1} muted style={{marginTop: 8}}>
+          In a shippingLabel document, set the “Related Order” reference before clicking “Generate &
+          Print”. The Netlify function will persist the PDF in Sanity and patch that order’s
+          “Shipping Label” file field automatically.
+        </Text>
+      )}
     </div>
   )
 }

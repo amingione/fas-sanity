@@ -1,5 +1,7 @@
 import React, {useMemo, useState} from 'react'
-import {Button, Flex, Text} from '@sanity/ui'
+import {Badge, Box, Button, Flex, Stack, Text, TextInput, Tooltip} from '@sanity/ui'
+import {SearchIcon, AddIcon} from '@sanity/icons'
+import {useRouter} from 'sanity/router'
 import {
   PaginatedDocumentTable,
   formatBoolean,
@@ -56,55 +58,6 @@ const isMarketingSubscribed = (data: CustomerRowData) =>
       data.communicationMarketingOptIn,
   )
 
-type SegmentFilterId = 'all' | 'vip' | 'repeat' | 'new' | 'at_risk' | 'inactive'
-
-type SegmentFilterOption = {
-  id: SegmentFilterId
-  title: string
-  filter?: string
-  description: string
-}
-
-const SEGMENT_FILTERS: SegmentFilterOption[] = [
-  {
-    id: 'all',
-    title: 'All',
-    description: 'Show every customer',
-  },
-  {
-    id: 'vip',
-    title: 'VIP Customers',
-    filter: '(segment == "vip") || coalesce(lifetimeValue, lifetimeSpend, 0) >= 10000',
-    description: 'Lifetime value above $10k or marked as VIP',
-  },
-  {
-    id: 'repeat',
-    title: 'Repeat Customers',
-    filter: '(segment == "repeat") || coalesce(totalOrders, orderCount, 0) >= 3',
-    description: 'Three or more orders',
-  },
-  {
-    id: 'new',
-    title: 'New Customers',
-    filter:
-      '(segment == "new") || dateTime(coalesce(firstOrderDate, _createdAt)) >= dateTime(now()) - 60*60*24*30',
-    description: 'Created within the last 30 days',
-  },
-  {
-    id: 'at_risk',
-    title: 'At Risk',
-    filter:
-      '(segment == "at_risk") || (coalesce(daysSinceLastOrder, 0) >= 180 && coalesce(daysSinceLastOrder, 0) < 365)',
-    description: 'No orders for 6+ months',
-  },
-  {
-    id: 'inactive',
-    title: 'Inactive',
-    filter: '(segment == "inactive") || coalesce(daysSinceLastOrder, 9999) >= 365',
-    description: 'No orders for 12+ months',
-  },
-]
-
 type CustomersDocumentTableProps = {
   title?: string
   filter?: string
@@ -112,7 +65,6 @@ type CustomersDocumentTableProps = {
   pageSize?: number
   orderings?: Array<{field: string; direction: 'asc' | 'desc'}>
   apiVersion?: string
-  showSegmentFilters?: boolean
 }
 
 export default function CustomersDocumentTable({
@@ -122,52 +74,74 @@ export default function CustomersDocumentTable({
   pageSize = 10,
   orderings,
   apiVersion,
-  showSegmentFilters = false,
 }: CustomersDocumentTableProps = {}) {
   type CustomerRow = CustomerRowData & {_id: string; _type: string}
+  const router = useRouter()
   const resolvedOrderings = orderings ?? [
     {field: '_updatedAt', direction: 'desc' as const},
     {field: '_createdAt', direction: 'desc' as const},
   ]
-  const [activeSegmentId, setActiveSegmentId] = useState<SegmentFilterId>('all')
-
-  const activeSegment = useMemo(
-    () => SEGMENT_FILTERS.find((option) => option.id === activeSegmentId) || SEGMENT_FILTERS[0],
-    [activeSegmentId],
-  )
+  const [searchQuery, setSearchQuery] = useState('')
 
   const combinedFilter = useMemo(() => {
     const parts: string[] = []
     if (filter) {
       parts.push(`(${filter})`)
     }
-    if (activeSegment.filter) {
-      parts.push(`(${activeSegment.filter})`)
+    // Add search filter
+    if (searchQuery.trim()) {
+      const searchTerm = searchQuery.trim().toLowerCase()
+      parts.push(
+        `(lower(firstName) match "*${searchTerm}*" || lower(lastName) match "*${searchTerm}*" || lower(email) match "*${searchTerm}*")`,
+      )
     }
     return parts.join(' && ') || undefined
-  }, [filter, activeSegment])
+  }, [filter, searchQuery])
 
-  const resolvedEmptyState =
-    showSegmentFilters && activeSegment.id !== 'all'
-      ? `No ${activeSegment.title}`
-      : emptyState
+  const handleAddCustomer = () => {
+    router.navigateIntent('create', {type: 'customer'})
+  }
 
-  const headerActions = showSegmentFilters ? (
-    <Flex align="center" gap={2} wrap="wrap">
-      <Text size={1} muted>
-        Segment
-      </Text>
-      {SEGMENT_FILTERS.map((option) => (
-        <Button
-          key={option.id}
-          text={option.title}
-          tone={option.id === activeSegment.id ? 'primary' : undefined}
-          mode={option.id === activeSegment.id ? 'default' : 'ghost'}
-          onClick={() => setActiveSegmentId(option.id)}
+  const headerActions = (
+    <Flex align="center" gap={3} wrap="wrap">
+      {/* Search Bar */}
+      <Box flex={1} style={{minWidth: '200px', maxWidth: '400px'}}>
+        <TextInput
+          icon={SearchIcon}
+          placeholder="Search customers..."
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.currentTarget.value)}
+          clearButton
+          onClear={() => setSearchQuery('')}
         />
-      ))}
+      </Box>
+
+      {/* Segment Filters */}
+
+      {/* Add Customer Button */}
+      <Tooltip
+        content={
+          <Box padding={1}>
+            <Text muted size={1}>
+              Add customer
+            </Text>
+          </Box>
+        }
+        placement="top"
+        portal
+      >
+        <span style={{display: 'inline-flex'}}>
+          <Button
+            icon={AddIcon}
+            tone="primary"
+            mode="ghost"
+            onClick={handleAddCustomer}
+            aria-label="Add customer"
+          />
+        </span>
+      </Tooltip>
     </Flex>
-  ) : undefined
+  )
 
   return (
     <PaginatedDocumentTable<CustomerRowData>
@@ -177,7 +151,7 @@ export default function CustomersDocumentTable({
       orderings={resolvedOrderings}
       pageSize={pageSize}
       filter={combinedFilter}
-      emptyState={resolvedEmptyState}
+      emptyState={emptyState}
       apiVersion={apiVersion}
       headerActions={headerActions}
       columns={[
@@ -185,20 +159,17 @@ export default function CustomersDocumentTable({
           key: 'name',
           header: 'Customer',
           render: (data: CustomerRow) => (
-            <Text size={1} weight="medium">
-              {formatName(data)}
-            </Text>
+            <Stack space={2}>
+              <Text size={1} weight="medium">
+                {formatName(data)}
+              </Text>
+              {data.email && (
+                <Text size={1} muted>
+                  {data.email}
+                </Text>
+              )}
+            </Stack>
           ),
-        },
-        {
-          key: 'email',
-          header: 'Email',
-          render: (data: CustomerRow) => <Text size={1}>{data.email || '—'}</Text>,
-        },
-        {
-          key: 'location',
-          header: 'Location',
-          render: (data: CustomerRow) => <Text size={1}>{formatLocation(data)}</Text>,
         },
         {
           key: 'orders',
@@ -207,22 +178,22 @@ export default function CustomersDocumentTable({
           render: (data: CustomerRow) => <Text size={1}>{data.orderCount ?? 0}</Text>,
         },
         {
-          key: 'lifetimeSpend',
-          header: 'Lifetime Spend',
-          align: 'right',
+          key: 'status',
+          header: 'Status',
           render: (data: CustomerRow) => (
-            <Text size={1}>{formatCurrency(data.lifetimeSpend ?? null, 'USD')}</Text>
+            <Flex gap={2} wrap="wrap">
+              {isMarketingSubscribed(data) && (
+                <Badge tone="positive" style={{fontSize: '11px'}}>
+                  Subscribed
+                </Badge>
+              )}
+              {(data.orderCount ?? 0) === 0 && (
+                <Badge tone="caution" style={{fontSize: '11px'}}>
+                  No Orders
+                </Badge>
+              )}
+            </Flex>
           ),
-        },
-        {
-          key: 'marketing',
-          header: 'Marketing Opt-In',
-          render: (data: CustomerRow) => <Text size={1}>{formatBoolean(isMarketingSubscribed(data))}</Text>,
-        },
-        {
-          key: 'updated',
-          header: 'Updated',
-          render: (data: CustomerRow) => <Text size={1}>{formatDate(data.updatedAt)}</Text>,
         },
       ]}
     />

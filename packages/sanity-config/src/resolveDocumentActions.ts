@@ -10,8 +10,6 @@ import {
   refundStripeInvoiceAction,
 } from './schemaTypes/documentActions/refundStripeAction'
 import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
-import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
-import {purchaseOrderLabelAction} from './schemaTypes/documentActions/purchaseOrderLabel'
 import {capturePaymentAction} from './schemaTypes/documentActions/capturePaymentAction'
 import {createEasyPostLabelAction} from './schemaTypes/documentActions/createEasyPostLabelAction'
 import {orderActions} from './schemaTypes/documents/order.actions'
@@ -48,6 +46,10 @@ import {
   createManufacturingOrderAction,
   completeManufacturingOrderAction,
 } from './schemaTypes/documentActions/inventoryActions'
+import {
+  printMergedShipmentDocumentsAction,
+  printShipmentLabelAction,
+} from './schemaTypes/documentActions/shipmentPrintActions'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
 
 const isOrderSchemaType = (schemaType: string): schemaType is 'order' => schemaType === 'order'
@@ -57,14 +59,12 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   if (context.schemaType === 'invoice') {
     list.push(createShippingLabel)
     list.push(getShippingRatesAction)
-    list.push(purchaseShippingLabelAction)
     list.push(reprocessStripeSessionAction)
     list.push(backfillInvoicesAction)
     list.push(refundStripeInvoiceAction)
   }
   if (isOrderSchemaType(context.schemaType)) {
     list.push(capturePaymentAction)
-    list.push(purchaseOrderLabelAction)
     list.push(createEasyPostLabelAction)
     return orderActions(list, context)
   }
@@ -91,6 +91,10 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'appointment') {
     list.push(startWorkOrderAction)
+  }
+  if (context.schemaType === 'shipment') {
+    list.push(printShipmentLabelAction)
+    list.push(printMergedShipmentDocumentsAction)
   }
   if (context.schemaType === 'workOrder') {
     list.push(manageWorkOrderAction)

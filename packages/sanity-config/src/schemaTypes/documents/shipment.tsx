@@ -1,5 +1,8 @@
+import React from 'react'
 import {defineField, defineType} from 'sanity'
 import {RocketIcon} from '@sanity/icons'
+import PDFThumbnail from '../../components/media/PDFThumbnail'
+import {ShipmentStatusIcon} from '../../components/media/ShipmentStatusIcon'
 
 export default defineType({
   name: 'shipment',
@@ -18,13 +21,11 @@ export default defineType({
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
-
     defineField({
       name: 'mode',
       title: 'Mode',
       type: 'string',
     }),
-
     defineField({
       name: 'reference',
       title: 'Reference',
@@ -36,61 +37,54 @@ export default defineType({
       type: 'string',
       description: 'External Stripe payment intent identifier used to charge this shipment',
     }),
-
     defineField({
       name: 'trackingCode',
       title: 'Tracking Code',
       type: 'string',
     }),
-
     defineField({
       name: 'status',
       title: 'Status',
       type: 'string',
     }),
 
-    defineField({
-      name: 'carrier',
-      title: 'Carrier',
-      type: 'string',
-    }),
-
-    defineField({
-      name: 'service',
-      title: 'Service',
-      type: 'string',
-    }),
-
-    defineField({
-      name: 'rate',
-      title: 'Rate',
-      type: 'number',
-    }),
+    // REMOVE these duplicate fields - use selectedRate instead
+    // defineField({
+    //   name: 'carrier',
+    //   title: 'Carrier',
+    //   type: 'string',
+    // }),
+    // defineField({
+    //   name: 'service',
+    //   title: 'Service',
+    //   type: 'string',
+    // }),
+    // defineField({
+    //   name: 'rate',
+    //   title: 'Rate',
+    //   type: 'number',
+    // }),
 
     defineField({
       name: 'currency',
       title: 'Currency',
       type: 'string',
     }),
-
     defineField({
       name: 'transitDays',
       title: 'Transit Days',
       type: 'number',
     }),
-
     defineField({
       name: 'recipient',
       title: 'Recipient',
       type: 'string',
     }),
-
     defineField({
       name: 'labelUrl',
       title: 'Label URL',
       type: 'url',
     }),
-
     defineField({
       name: 'toAddress',
       title: 'To Address',
@@ -107,7 +101,6 @@ export default defineType({
         {name: 'email', type: 'string'},
       ],
     }),
-
     defineField({
       name: 'fromAddress',
       title: 'From Address',
@@ -124,7 +117,6 @@ export default defineType({
         {name: 'email', type: 'string'},
       ],
     }),
-
     defineField({
       name: 'parcel',
       title: 'Parcel',
@@ -136,7 +128,6 @@ export default defineType({
         {name: 'weight', type: 'number'},
       ],
     }),
-
     defineField({
       name: 'selectedRate',
       title: 'Selected Rate',
@@ -148,7 +139,6 @@ export default defineType({
         {name: 'currency', type: 'string'},
       ],
     }),
-
     defineField({
       name: 'rates',
       title: 'Rates',
@@ -166,7 +156,6 @@ export default defineType({
         },
       ],
     }),
-
     defineField({
       name: 'postageLabel',
       title: 'Postage Label',
@@ -176,7 +165,6 @@ export default defineType({
         {name: 'labelPdfUrl', type: 'url'},
       ],
     }),
-
     defineField({
       name: 'tracker',
       title: 'Tracker',
@@ -189,7 +177,6 @@ export default defineType({
         {name: 'tracking_code', type: 'string'},
       ],
     }),
-
     defineField({
       name: 'trackingDetails',
       title: 'Tracking Details',
@@ -215,7 +202,6 @@ export default defineType({
         },
       ],
     }),
-
     defineField({
       name: 'forms',
       title: 'Forms',
@@ -232,7 +218,6 @@ export default defineType({
         },
       ],
     }),
-
     defineField({
       name: 'customsInfo',
       title: 'Customs Info',
@@ -242,7 +227,6 @@ export default defineType({
         {name: 'contents_type', type: 'string'},
       ],
     }),
-
     defineField({
       name: 'insurance',
       title: 'Insurance',
@@ -252,25 +236,21 @@ export default defineType({
         {name: 'provider', type: 'string'},
       ],
     }),
-
     defineField({
       name: 'batchId',
       title: 'Batch ID',
       type: 'string',
     }),
-
     defineField({
       name: 'batchStatus',
       title: 'Batch Status',
       type: 'string',
     }),
-
     defineField({
       name: 'batchMessage',
       title: 'Batch Message',
       type: 'string',
     }),
-
     defineField({
       name: 'scanForm',
       title: 'Scan Form',
@@ -280,31 +260,26 @@ export default defineType({
         {name: 'form_url', type: 'url'},
       ],
     }),
-
     defineField({
       name: 'createdAt',
       title: 'Created At',
       type: 'datetime',
     }),
-
     defineField({
       name: 'updatedAt',
       title: 'Updated At',
       type: 'datetime',
     }),
-
     defineField({
       name: 'rawWebhookData',
       title: 'Raw Webhook Data',
       type: 'text',
     }),
-
     defineField({
       name: 'details',
       title: 'Details (JSON)',
       type: 'text',
     }),
-
     defineField({
       name: 'order',
       title: 'Linked Order',
@@ -316,15 +291,53 @@ export default defineType({
 
   preview: {
     select: {
-      title: 'trackingCode',
-      subtitle: 'status',
-      carrier: 'tracker.carrier',
-      createdAt: 'createdAt',
+      customerName: 'order.customerName',
+      orderNumber: 'order.orderNumber',
+      trackingCode: 'trackingCode',
+      recipient: 'toAddress.name',
+      carrier: 'selectedRate.carrier',
+      service: 'selectedRate.service',
+      rate: 'selectedRate.rate',
+      currency: 'selectedRate.currency',
+      labelUrl: 'labelUrl',
+      postageLabelUrl: 'postageLabel.labelPdfUrl',
+      status: 'status',
     },
-    prepare({title, subtitle, carrier, createdAt}) {
+    prepare({
+      customerName,
+      orderNumber,
+      trackingCode,
+      recipient,
+      carrier,
+      service,
+      rate,
+      currency,
+      labelUrl,
+      postageLabelUrl,
+      status,
+    }) {
+      // Title: Customer name
+      const title = customerName || recipient || 'Unknown Customer'
+
+      // Subtitle: Order number on first line, then tracking/service/cost inline
+      const subtitleParts = []
+      if (orderNumber) subtitleParts.push(orderNumber)
+      if (trackingCode) subtitleParts.push(trackingCode)
+      if (service) subtitleParts.push(service)
+      if (rate) {
+        const formattedRate = `$${parseFloat(rate).toFixed(2)}`
+        subtitleParts.push(formattedRate)
+      }
+
+      const subtitle = subtitleParts.length > 0 ? subtitleParts.join(' • ') : 'No tracking info'
+
+      const pdfUrl = postageLabelUrl || labelUrl
+
       return {
-        title: `${carrier || ''} ${title || ''}`.trim(),
-        subtitle: `${subtitle || ''} — ${createdAt ? new Date(createdAt).toLocaleDateString() : ''}`,
+        title,
+        subtitle,
+        media: () =>
+          pdfUrl ? <PDFThumbnail pdfUrl={pdfUrl} /> : <ShipmentStatusIcon status={status} />,
       }
     },
   },

@@ -59,7 +59,6 @@ import OperationsDashboard from '../components/studio/OperationsDashboard'
 import WholesaleDashboard from '../components/studio/WholesaleDashboard'
 import WholesalePricingCalculator from '../components/studio/WholesalePricingCalculator'
 import ProfitMarginAnalysis from '../components/studio/ProfitMarginAnalysis'
-import CustomerAnalyticsDashboard from '../components/studio/CustomerAnalyticsDashboard'
 import FinancialDashboard from '../components/studio/FinancialDashboard'
 import ExpenseManager from '../components/studio/ExpenseManager'
 import ProductProfitability from '../components/studio/ProductProfitability'
@@ -120,7 +119,6 @@ const CustomersAllTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {
     title: 'All Customers',
     pageSize: 10,
-    showSegmentFilters: true,
   })
 
 const CustomersSubscribedTableView: ComponentType = () =>
@@ -183,149 +181,6 @@ const InStoreOrdersTableView: ComponentType = () =>
     filter: 'orderType == "in-store"',
   })
 
-type OrderWorkflowConfig = {
-  id: string
-  title: string
-  filter: string
-  icon: ComponentType
-}
-
-const ORDER_WORKFLOW_ITEMS: OrderWorkflowConfig[] = [
-  {
-    id: 'needs-fulfillment',
-    title: 'Needs Fulfillment',
-    icon: PackageIcon,
-    filter:
-      '_type == "order" && status == "paid" && !defined(manualTrackingNumber) && !defined(trackingNumber)',
-  },
-  {
-    id: 'ready-to-ship',
-    title: 'Ready to Ship',
-    icon: TrolleyIcon,
-    filter:
-      '_type == "order" && status == "paid" && (defined(manualTrackingNumber) || defined(trackingNumber)) && status != "shipped"',
-  },
-  {
-    id: 'shipped',
-    title: 'Shipped',
-    icon: RocketIcon,
-    filter: '_type == "order" && status == "shipped"',
-  },
-  {
-    id: 'fulfilled',
-    title: 'Fulfilled',
-    icon: CheckmarkCircleIcon,
-    filter: '_type == "order" && status == "fulfilled"',
-  },
-  {
-    id: 'recent-orders',
-    title: 'Recent Orders (Last 30 Days)',
-    icon: ClockIcon,
-    filter:
-      '_type == "order" && status == "paid" && dateTime(createdAt) > dateTime(now()) - 60*60*24*30',
-  },
-  {
-    id: 'all-paid-orders',
-    title: 'All Paid Orders',
-    icon: CreditCardIcon,
-    filter: '_type == "order" && status == "paid"',
-  },
-  {
-    id: 'cancelled-refunded',
-    title: 'Cancelled & Refunded',
-    icon: WarningOutlineIcon,
-    filter: '_type == "order" && (status == "cancelled" || status == "refunded")',
-  },
-  {
-    id: 'all-orders',
-    title: 'All Orders',
-    icon: ClipboardIcon,
-    filter: '_type == "order" && lower(status) != "expired" && lower(paymentStatus) != "expired"',
-  },
-]
-
-const createOrderWorkflowList = (S: any) => {
-  const baseOrderList = S.documentTypeList('order').apiVersion(API_VERSION)
-  return S.listItem()
-    .id('order-workflows')
-    .title('Order workflow views')
-    .icon(TrolleyIcon)
-    .child(
-      S.list()
-        .title('Order workflow views')
-        .items(
-          ORDER_WORKFLOW_ITEMS.map((item) =>
-            S.listItem()
-              .id(item.id)
-              .title(item.title)
-              .icon(item.icon)
-              .child(
-                S.documentList()
-                  .apiVersion(API_VERSION)
-                  .title(item.title)
-                  .filter(item.filter)
-                  .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
-                  .initialValueTemplates(baseOrderList.getInitialValueTemplates())
-                  .menuItems(baseOrderList.getMenuItems())
-                  .canHandleIntent(baseOrderList.getCanHandleIntent()),
-              ),
-          ),
-        ),
-    )
-}
-
-const createCheckoutSessionsPane = (S: any) =>
-  S.listItem()
-    .id('checkout-sessions')
-    .title('Checkout Sessions')
-    .icon(BasketIcon)
-    .child(
-      S.list()
-        .title('Checkout Sessions')
-        .items([
-          S.listItem()
-            .id('checkout-sessions-all')
-            .title('All Sessions')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('All Checkout Sessions')
-                .filter('_type == "checkoutSession"')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('checkout-sessions-expired')
-            .title('Expired Sessions')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Expired Checkout Sessions')
-                .filter('_type == "checkoutSession" && status == "expired"')
-                .defaultOrdering([
-                  {field: 'expiredAt', direction: 'desc'},
-                  {field: 'createdAt', direction: 'desc'},
-                ]),
-            ),
-          S.listItem()
-            .id('checkout-sessions-recovered')
-            .title('Recovered Sessions')
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .title('Recovered Sessions')
-                .filter('_type == "checkoutSession" && recovered == true')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
-            ),
-        ]),
-    )
-
-const createPaymentLinksPane = (S: any) =>
-  S.listItem()
-    .id('payment-links')
-    .title('Payment links')
-    .icon(LinkIcon)
-    .child(documentTablePane(S, 'payment-links', 'Payment links', PaymentLinksDocumentTable as any))
-
 const productDefaultOrdering = [{field: '_updatedAt', direction: 'desc' as const}]
 const canHandleProductIntent = (intentName: string, params?: {type?: string}) =>
   intentName === 'edit' && params?.type === 'product'
@@ -366,132 +221,14 @@ const createOrdersSection = (S: any) =>
     .id('orders')
     .title('Orders')
     .icon(TrolleyIcon)
-    .child(
-      S.list()
-        .title('Orders')
-        .items([
-          S.listItem()
-            .id('orders-all')
-            .title('All Orders')
-            .icon(ClipboardIcon)
-            .child(documentTablePane(S, 'orders-all', 'All Orders', OrdersListTableView)),
-          S.listItem()
-            .id('orders-online')
-            .title('Online Orders')
-            .icon(BasketIcon)
-            .child(documentTablePane(S, 'orders-online', 'Online Orders', OnlineOrdersTableView)),
-          S.listItem()
-            .id('orders-in-store')
-            .title('In-Store Orders')
-            .icon(HomeIcon)
-            .child(
-              documentTablePane(S, 'orders-in-store', 'In-Store Orders', InStoreOrdersTableView),
-            ),
-          S.listItem()
-            .id('orders-wholesale')
-            .title('Wholesale Orders')
-            .icon(CaseIcon)
-            .child(
-              documentTablePane(
-                S,
-                'orders-wholesale',
-                'Wholesale Orders',
-                WholesaleOrdersTableView,
-              ),
-            ),
-          S.listItem()
-            .id('orders2-all')
-            .title('All Orders (Order2)')
-            .icon(ClipboardIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .filter('_type == "order"')
-                .title('All Orders (Order2)')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('orders-abandoned-checkouts')
-            .title('Abandoned Checkouts')
-            .icon(PauseIcon)
-            .child(
-              documentTablePane(
-                S,
-                'orders-abandoned-checkouts',
-                'Abandoned Checkouts',
-                AbandonedCheckoutsTableView,
-              ),
-            ),
-          S.divider(),
-          createOrderWorkflowList(S),
-          createCheckoutSessionsPane(S),
-          createPaymentLinksPane(S),
-        ]),
-    )
+    .child(documentTablePane(S, 'orders-all', 'Orders', OrdersListTableView))
 
 const createCustomersSection = (S: any) =>
   S.listItem()
     .id('customers')
     .title('Customers')
     .icon(UserIcon)
-    .child(
-      S.list()
-        .title('Customers')
-        .items([
-          S.listItem()
-            .id('customers-all')
-            .title('All Customers')
-            .icon(UserIcon)
-            .child(documentTablePane(S, 'customers-all', 'All Customers', CustomersAllTableView)),
-          S.listItem()
-            .id('customers-subscribed')
-            .title('Subscribed to Email')
-            .icon(EnvelopeIcon)
-            .child(
-              documentTablePane(
-                S,
-                'customers-subscribed',
-                'Subscribed to Email',
-                CustomersSubscribedTableView,
-              ),
-            ),
-          S.listItem()
-            .id('customers-no-orders')
-            .title('No Orders Yet')
-            .icon(WarningOutlineIcon)
-            .child(
-              documentTablePane(
-                S,
-                'customers-no-orders',
-                'Customers without orders',
-                CustomersNoOrdersTableView,
-              ),
-            ),
-          S.listItem()
-            .id('customers-recent')
-            .title('Recently Added')
-            .icon(ClockIcon)
-            .child(
-              documentTablePane(
-                S,
-                'customers-recent',
-                'Recently added customers',
-                CustomersRecentlyAddedTableView,
-              ),
-            ),
-          S.divider(),
-          S.listItem()
-            .id('customers-analytics')
-            .title('📊 Customer Analytics')
-            .icon(BarChartIcon)
-            .child(
-              S.component()
-                .id('customers-analytics-pane')
-                .title('Customer Analytics')
-                .component(CustomerAnalyticsDashboard as ComponentType),
-            ),
-        ]),
-    )
+    .child(documentTablePane(S, 'customers-all', 'All Customers', CustomersAllTableView))
 
 const createShippingSection = (S: any) =>
   S.listItem()
@@ -499,64 +236,68 @@ const createShippingSection = (S: any) =>
     .title('Shipping')
     .icon(RocketIcon)
     .child(
+      S.component()
+        .id('shipments-panel')
+        .title('Shipments')
+        .component(ShipmentsPanel as ComponentType),
+    )
+
+const createAdminSection = (S: any) =>
+  S.listItem()
+    .id('admin')
+    .title('Admin')
+    .icon(WrenchIcon)
+    .child(
       S.list()
-        .title('Shipping')
+        .title('Admin')
         .items([
           S.listItem()
-            .id('shipping-analytics')
-            .title('Analytics')
+            .id('admin-tools')
+            .title('Admin Tools')
+            .icon(WrenchIcon)
             .child(
               S.component()
-                .id('shipping-analytics-pane')
-                .title('Analytics')
-                .component(AnalyticsDashboard as ComponentType),
+                .id('admin-tools-pane')
+                .title('Admin Tools')
+                .component(AdminTools as any),
             ),
           S.listItem()
-            .id('shipments')
-            .title('Shipments')
-            .child(
-              S.component()
-                .id('shipments-panel')
-                .title('Shipments')
-                .component(ShipmentsPanel as ComponentType),
-            ),
-          S.divider(),
-          S.listItem()
-            .id('shipping-settings')
-            .title('Shipping Settings')
+            .id('doc-links-archive')
+            .title('Doc Links Archive')
             .child(
               S.list()
-                .title('Shipping Settings')
+                .title('Doc Links Archive')
                 .items([
                   S.listItem()
-                    .id('saved-packages')
-                    .title('Saved Packages')
-                    .schemaType('savedPackage')
-                    .child(S.documentTypeList('savedPackage').title('Saved Packages')),
+                    .id('shipping-settings')
+                    .title('Shipping Settings')
+                    .child(
+                      S.list()
+                        .title('Shipping Settings')
+                        .items([
+                          S.listItem()
+                            .id('sender-addresses')
+                            .title('Sender Addresses')
+                            .icon(DocumentIcon)
+                            .schemaType('senderAddress')
+                            .child(S.documentTypeList('senderAddress').title('Sender Addresses')),
+                        ]),
+                    ),
                   S.listItem()
-                    .id('sender-addresses')
-                    .title('Sender Addresses')
-                    .schemaType('senderAddress')
-                    .child(S.documentTypeList('senderAddress').title('Sender Addresses')),
+                    .id('pickups')
+                    .title('Pickups')
+                    .child(
+                      S.component()
+                        .id('pickups-panel')
+                        .title('Pickups')
+                        .component(PickupsPanel as ComponentType),
+                    ),
+                  S.documentTypeListItem('freightQuote')
+                    .id('freight-quotes')
+                    .title('Freight Quotes')
+                    .icon(CaseIcon),
                 ]),
             ),
-          S.divider(),
-          S.listItem()
-            .id('pickups')
-            .title('Pickups')
-            .child(
-              S.component()
-                .id('pickups-panel')
-                .title('Pickups')
-                .component(PickupsPanel as ComponentType),
-            ),
-          S.divider(),
-          S.documentTypeListItem('shipment').title('Shipments (Records)').icon(DocumentIcon),
-          S.documentTypeListItem('pickup').title('Pickups (Records)').icon(DocumentIcon),
-          S.documentTypeListItem('schedulePickup').title('Schedule Pickup').icon(CalendarIcon),
-          S.documentTypeListItem('shippingLabel').title('Shipping Labels').icon(DocumentIcon),
-          S.documentTypeListItem('freightQuote').title('Freight Quotes').icon(CaseIcon),
-          S.documentTypeListItem('shippingOption').title('Shipping Options').icon(TagIcon),
         ]),
     )
 
@@ -1668,16 +1409,7 @@ const createAnalyticsSection = (S: any) =>
                 .title('Sales Analytics')
                 .component(SalesAnalyticsDashboard as ComponentType),
             ),
-          S.listItem()
-            .id('analytics-customers')
-            .title('Customer Analytics')
-            .icon(UserIcon)
-            .child(
-              S.component()
-                .id('customer-analytics-pane')
-                .title('Customer Analytics')
-                .component(CustomerAnalyticsPane as ComponentType),
-            ),
+
           S.listItem()
             .id('analytics-products')
             .title('Product Performance')
@@ -1744,6 +1476,7 @@ const buildProfitLossStructure = (S: any) =>
             .title('Current Month')
             .child(
               S.documentList()
+                .schemaType('profitLoss')
                 .title('Current Month')
                 .filter('_type == "profitLoss" && period == $period')
                 .params({period: currentPeriod})
@@ -1754,6 +1487,7 @@ const buildProfitLossStructure = (S: any) =>
             .title('Last 12 Months')
             .child(
               S.documentList()
+                .schemaType('profitLoss')
                 .title('Last 12 Months')
                 .filter('_type == "profitLoss" && period >= $period')
                 .params({period: twelveMonthsAgo})
@@ -1764,6 +1498,7 @@ const buildProfitLossStructure = (S: any) =>
             .title('Year to Date')
             .child(
               S.documentList()
+                .schemaType('profitLoss')
                 .title('Year to Date')
                 .filter('_type == "profitLoss" && period match $year')
                 .params({year: yearPrefix})
@@ -1797,6 +1532,7 @@ const buildExpensesStructure = (S: any) =>
             .title('Pending Payment')
             .child(
               S.documentList()
+                .schemaType('expense')
                 .title('Pending Expenses')
                 .filter('_type == "expense" && status != "paid"')
                 .apiVersion('2024-01-01'),
@@ -1806,6 +1542,7 @@ const buildExpensesStructure = (S: any) =>
             .title('Paid This Month')
             .child(
               S.documentList()
+                .schemaType('expense')
                 .title('Paid This Month')
                 .filter(
                   '_type == "expense" && status == "paid" && dateTime(coalesce(paidDate, date)) >= dateTime($month)',
@@ -1819,6 +1556,7 @@ const buildExpensesStructure = (S: any) =>
             .title('Recurring Expenses')
             .child(
               S.documentList()
+                .schemaType('expense')
                 .title('Recurring Expenses')
                 .filter('_type == "expense" && recurring == true')
                 .apiVersion('2024-01-01'),
@@ -1840,6 +1578,7 @@ const buildExpenseCategoryStructure = (S: any) =>
               .title(category.title)
               .child(
                 S.documentList()
+                  .schemaType('expense')
                   .title(category.title)
                   .filter('_type == "expense" && category == $category')
                   .params({category: category.value})
@@ -1863,6 +1602,7 @@ const buildCashFlowStructure = (S: any) =>
             .title('Current Month')
             .child(
               S.documentList()
+                .schemaType('cashFlow')
                 .title('Cash Flow · Current Month')
                 .filter('_type == "cashFlow" && period == $period')
                 .params({period: currentPeriod})
@@ -1873,6 +1613,7 @@ const buildCashFlowStructure = (S: any) =>
             .title('Last 12 Months')
             .child(
               S.documentList()
+                .schemaType('cashFlow')
                 .title('Cash Flow · Last 12 Months')
                 .filter('_type == "cashFlow" && period >= $period')
                 .params({period: twelveMonthsAgo})
@@ -1904,6 +1645,7 @@ const buildAccountsReceivableStructure = (S: any) =>
             .title('Current')
             .child(
               S.documentList()
+                .schemaType('invoice')
                 .title('Current Receivables')
                 .filter(
                   `${WHOLESALE_INVOICE_FILTER} && status != "paid" && ( !defined(dueDate) || dateTime(coalesce(dueDate, invoiceDate)) >= dateTime($now))`,
@@ -1916,6 +1658,7 @@ const buildAccountsReceivableStructure = (S: any) =>
             .title('Overdue')
             .child(
               S.documentList()
+                .schemaType('invoice')
                 .title('Overdue Receivables')
                 .filter(
                   `${WHOLESALE_INVOICE_FILTER} && status != "paid" && defined(dueDate) && dateTime(coalesce(dueDate, invoiceDate)) < dateTime($now)`,
@@ -1928,6 +1671,7 @@ const buildAccountsReceivableStructure = (S: any) =>
             .title('Paid')
             .child(
               S.documentList()
+                .schemaType('invoice')
                 .title('Paid Wholesale Invoices')
                 .filter(`${WHOLESALE_INVOICE_FILTER} && status == "paid"`)
                 .apiVersion('2024-01-01'),
@@ -1964,6 +1708,7 @@ const buildReportsStructure = (S: any) =>
             .title('Tax Summary')
             .child(
               S.documentList()
+                .schemaType('expense')
                 .title('Tax-Deductible Expenses')
                 .filter('_type == "expense" && taxDeductible == true')
                 .apiVersion('2024-01-01')
@@ -1974,6 +1719,7 @@ const buildReportsStructure = (S: any) =>
             .title('Expense Report (YTD)')
             .child(
               S.documentList()
+                .schemaType('expense')
                 .title('Expense Report')
                 .filter('_type == "expense" && dateTime(date) >= dateTime($yearStart)')
                 .params({yearStart: yearStartIso})
@@ -2050,16 +1796,7 @@ export const deskStructure: StructureResolver = (S) =>
             .documentId('printSettings')
             .title('Print & PDF Settings'),
         ),
-      S.listItem()
-        .id('admin-tools')
-        .title('Admin Tools')
-        .icon(WrenchIcon)
-        .child(
-          S.component()
-            .id('admin-tools-pane')
-            .title('Admin Tools')
-            .component(AdminTools as any),
-        ),
+      createAdminSection(S),
     ])
 export default deskStructure
 const createVendorApplicationsSubSection = (S: any) =>

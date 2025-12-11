@@ -1,19 +1,11 @@
 import {defineType, defineField, defineArrayMember, set, useClient, useFormValue} from 'sanity'
 import React, {useEffect, useMemo, useState} from 'react'
 import {SearchIcon} from '@sanity/icons'
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Card,
-  Flex,
-  Stack,
-  Text,
-  TextInput,
-} from '@sanity/ui'
+import {Autocomplete, Box, Button, Card, Flex, Stack, Text, TextInput} from '@sanity/ui'
 
 import './invoiceStyles.css'
 import {formatInvoiceNumberFromOrder} from '../../utils/orderNumber'
+import {purchaseShippingLabelAction} from '../documentActions/purchaseShippingLabel'
 
 function fmt(n?: number) {
   return typeof n === 'number' && !isNaN(n) ? Number(n).toFixed(2) : '0.00'

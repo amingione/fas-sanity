@@ -2347,21 +2347,46 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
     charge: null,
   }
 
-  if (!paymentIntentId) return details
+  if (!paymentIntentId || !stripe) return details
 
   try {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
-      expand: [
-        'charges.data.payment_method_details',
-        'latest_charge.payment_method_details',
-        'payment_method',
-      ],
-    })
+    let expandRejected = false
+    let paymentIntent = null as Stripe.PaymentIntent | null
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+        expand: [
+          'charges.data.payment_method_details',
+          'latest_charge.payment_method_details',
+          'payment_method',
+        ],
+      })
+    } catch (err) {
+      if (isDisallowedExpandError(err)) {
+        expandRejected = true
+        console.warn(
+          'stripeWebhook: Stripe rejected payment intent expand, retrying without it',
+          {paymentIntentId},
+        )
+        paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+      } else {
+        throw err
+      }
+    }
+    if (!paymentIntent) return details
     const expandedCharges = (
       paymentIntent as Stripe.PaymentIntent & {charges?: Stripe.ApiList<Stripe.Charge> | null}
     ).charges
-    const charge = expandedCharges?.data?.[0]
-    const latestCharge = paymentIntent.latest_charge as Stripe.Charge | null | undefined
+    let charge = expandedCharges?.data?.[0] || null
+    let latestCharge = paymentIntent.latest_charge as Stripe.Charge | string | null | undefined
+
+    if (expandRejected || !charge?.payment_method_details?.card) {
+      charge = await hydrateChargeWithDetails(charge)
+    }
+    if (!charge) {
+      charge = await hydrateChargeWithDetails(latestCharge)
+    }
+    latestCharge = await hydrateChargeWithDetails(latestCharge)
+
     if (charge) {
       if (charge.payment_method_details?.card) {
         details.cardBrand = charge.payment_method_details.card.brand || ''
@@ -2382,6 +2407,9 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
           email: billingDetails.email || undefined,
         }
       }
+    }
+    if (!charge && latestCharge) {
+      charge = latestCharge
     }
     if (!details.cardBrand && latestCharge?.payment_method_details?.card?.brand) {
       details.cardBrand = latestCharge.payment_method_details.card.brand || ''
@@ -2406,6 +2434,43 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
   }
 
   return details
+}
+
+function isDisallowedExpandError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const payload = err as {type?: string; message?: string; error?: {message?: string}}
+  if ((payload.type || (payload as any)?.error?.type) !== 'invalid_request_error') return false
+  const message = payload.message || payload.error?.message || ''
+  if (typeof message !== 'string') return false
+  return message.includes('cannot be expanded')
+}
+
+async function hydrateChargeWithDetails(
+  chargeRef: Stripe.Charge | string | null | undefined,
+): Promise<Stripe.Charge | null> {
+  if (!stripe || !chargeRef) return null
+  if (typeof chargeRef === 'object') {
+    if (chargeRef.payment_method_details?.card) return chargeRef
+    if (!chargeRef.id) return chargeRef
+    try {
+      return await stripe.charges.retrieve(chargeRef.id, {
+        expand: ['payment_method_details'],
+      })
+    } catch (err) {
+      console.warn('stripeWebhook: unable to hydrate charge details', err)
+      return chargeRef
+    }
+  }
+  const chargeId = chargeRef.trim()
+  if (!chargeId || !chargeId.startsWith('ch_')) return null
+  try {
+    return await stripe.charges.retrieve(chargeId, {
+      expand: ['payment_method_details'],
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: unable to hydrate charge details', err)
+    return null
+  }
 }
 
 function extractShippingAddressFromSession(

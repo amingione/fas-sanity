@@ -244,7 +244,6 @@ import shipment from './documents/shipment'
 import pickup from './documents/pickup'
 import schedulePickup from './documents/schedulePickup'
 import senderAddress from './documents/senderAddress'
-import savedPackage from './documents/savedPackage'
 import createLabel from './documents/createLabel'
 import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
@@ -348,7 +347,6 @@ const documents = [
   pickup,
   schedulePickup,
   senderAddress,
-  savedPackage,
   createLabel,
   freightQuote,
   vehicleModel,
