@@ -12,11 +12,11 @@ type Shipment = {
   trackingCode?: string
   status?: string
   reference?: string
-  carrier?: string
   selectedRate?: {
     carrier?: string
     service?: string
     rate?: string
+    currency?: string
   }
   toAddress?: {
     name?: string
@@ -44,6 +44,17 @@ const CARD_THUMBNAIL_STYLE: React.CSSProperties = {
   backgroundColor: '#111',
 }
 
+const formatRateDisplay = (rate?: string, currency?: string) => {
+  if (!rate) return '—'
+  const parsed = Number.parseFloat(rate)
+  if (Number.isNaN(parsed)) return rate
+  const normalizedCurrency = currency?.trim().toUpperCase()
+  if (normalizedCurrency && normalizedCurrency !== 'USD') {
+    return `${normalizedCurrency} ${parsed.toFixed(2)}`
+  }
+  return `$${parsed.toFixed(2)}`
+}
+
 const ShipmentsPanel = React.forwardRef<HTMLDivElement>((_props, ref) => {
   const client = useClient({apiVersion: '2024-01-01'})
   const [shipments, setShipments] = useState<Shipment[]>([])
@@ -59,7 +70,6 @@ const ShipmentsPanel = React.forwardRef<HTMLDivElement>((_props, ref) => {
         trackingCode,
         status,
         reference,
-        carrier,
         selectedRate,
         toAddress,
         createdAt,
@@ -161,9 +171,10 @@ const ShipmentsPanel = React.forwardRef<HTMLDivElement>((_props, ref) => {
               const orderNumber = shipment.orderNumber || 'No order number'
               const trackingNumber = shipment.trackingCode || '—'
               const service = shipment.selectedRate?.service || '—'
-              const rate = shipment.selectedRate?.rate
-                ? `$${parseFloat(shipment.selectedRate.rate).toFixed(2)}`
-                : '—'
+              const rate = formatRateDisplay(
+                shipment.selectedRate?.rate,
+                shipment.selectedRate?.currency,
+              )
 
               return (
                 <Card key={shipment._id} padding={3} radius={3} shadow={1}>

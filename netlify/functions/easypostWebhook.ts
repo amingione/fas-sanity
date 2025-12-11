@@ -1,7 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import EasyPost from '@easypost/api'
 import {createHmac, timingSafeEqual} from 'crypto'
-import {createClient} from '@sanity/client'
+import {sanityClient} from '../lib/sanityClient'
 
 const DEFAULT_ORIGIN = process.env.CORS_ALLOW || process.env.CORS_ORIGIN || 'http://localhost:3333'
 const CORS_HEADERS = {
@@ -16,13 +16,7 @@ const WEBHOOK_SECRET = (process.env.EASYPOST_WEBHOOK_SECRET || '').trim()
 const EASYPOST_API_KEY =
   process.env.EASYPOST_API_KEY || process.env.EASYPOST_PROD_API_KEY || process.env.EASYPOST_TEST_API_KEY || ''
 
-const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
-  apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
-  token: process.env.SANITY_API_TOKEN,
-  useCdn: false,
-})
+const sanity = sanityClient
 
 const easyPost = EASYPOST_API_KEY ? new EasyPost(EASYPOST_API_KEY) : null
 
@@ -459,18 +453,6 @@ async function upsertShipmentDocument(
       shipment.trackingCode ||
       undefined,
     status: shipment.status,
-    carrier:
-      shipment.selected_rate?.carrier ||
-      shipment.tracker?.carrier ||
-      shipment.carrier ||
-      shipment?.rates?.[0]?.carrier,
-    service:
-      shipment.selected_rate?.service ||
-      shipment.tracker?.service ||
-      shipment.service ||
-      shipment?.rates?.[0]?.service,
-    rate: shipment.selected_rate?.rate ? Number.parseFloat(shipment.selected_rate.rate) : undefined,
-    currency: shipment.selected_rate?.currency,
     transitDays: shipment.selected_rate?.delivery_days,
     recipient: shipment.to_address?.name,
     labelUrl:

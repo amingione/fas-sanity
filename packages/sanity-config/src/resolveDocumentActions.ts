@@ -51,6 +51,7 @@ import {
   printShipmentLabelAction,
 } from './schemaTypes/documentActions/shipmentPrintActions'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
+import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
 
 const isOrderSchemaType = (schemaType: string): schemaType is 'order' => schemaType === 'order'
 
@@ -58,6 +59,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
   if (context.schemaType === 'invoice') {
     list.push(createShippingLabel)
+    list.push(purchaseShippingLabelAction)
     list.push(getShippingRatesAction)
     list.push(reprocessStripeSessionAction)
     list.push(backfillInvoicesAction)

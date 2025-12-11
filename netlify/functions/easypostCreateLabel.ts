@@ -1,6 +1,5 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
-import {createClient} from '@sanity/client'
 import {getEasyPostFromAddress} from '../lib/ship-from'
 import {
   easypostRequest,
@@ -10,6 +9,7 @@ import {
   type DimensionsInput,
   type WeightInput,
 } from '../lib/easypostClient'
+import {sanityClient} from '../lib/sanityClient'
 
 const DEFAULT_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3333'
 const CORS_HEADERS = {
@@ -104,13 +104,7 @@ function calculatePackageDetails(cart: any[] = []) {
   }
 }
 
-const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
-  apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
-  token: process.env.SANITY_API_TOKEN,
-  useCdn: false,
-})
+const sanity = sanityClient
 
 type OrderDoc = {
   _id: string
@@ -244,7 +238,39 @@ type WizardRate = {
   carrier?: string
   service?: string
   rate?: string
+  currency?: string
   delivery_days?: number | null
+}
+
+type SelectedRateInput = {
+  carrier?: string | null
+  service?: string | null
+  rate?: string | number | null
+  currency?: string | null
+}
+
+function normalizeRateValue(value?: string | number | null) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value.toFixed(2)
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || undefined
+  }
+  return undefined
+}
+
+function buildSelectedRatePayload(rate?: SelectedRateInput) {
+  if (!rate) return undefined
+  const payload = {
+    carrier: typeof rate.carrier === 'string' && rate.carrier.trim() ? rate.carrier.trim() : undefined,
+    service: typeof rate.service === 'string' && rate.service.trim() ? rate.service.trim() : undefined,
+    rate: normalizeRateValue(rate.rate),
+    currency:
+      typeof rate.currency === 'string' && rate.currency.trim() ? rate.currency.trim() : undefined,
+  }
+  const entries = Object.entries(payload).filter(([, value]) => value !== undefined)
+  return entries.length ? Object.fromEntries(entries) : undefined
 }
 
 type WizardAddress = {
@@ -329,10 +355,14 @@ async function createWizardLabel(payload: {
   const postageLabel = updatedShipment.postage_label || shipment.postage_label || null
   const labelUrl = postageLabel?.label_url || postageLabel?.label_pdf_url || undefined
   const trackingCode = updatedShipment.tracking_code || undefined
-  const rateAmount = Number.parseFloat(selectedRate.rate ?? '')
-  const numericRate = Number.isFinite(rateAmount) ? Number(rateAmount.toFixed(2)) : undefined
   const transitDays =
     typeof selectedRate.delivery_days === 'number' ? selectedRate.delivery_days : undefined
+  const selectedRatePayload = buildSelectedRatePayload({
+    carrier: selectedRate.carrier,
+    service: selectedRate.service,
+    rate: selectedRate.rate,
+    currency: selectedRate.currency,
+  })
 
   await sanity.create({
     _type: 'shipment',
@@ -340,12 +370,10 @@ async function createWizardLabel(payload: {
     createdAt: new Date().toISOString(),
     status: updatedShipment?.status,
     trackingCode,
-    carrier: selectedRate.carrier,
-    service: selectedRate.service,
-    rate: numericRate,
     transitDays,
     recipient: `${address.street1}, ${address.city}`,
     labelUrl,
+    selectedRate: selectedRatePayload,
     details: JSON.stringify(updatedShipment || shipment),
   })
 

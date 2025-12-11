@@ -1,8 +1,8 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
-import {createClient} from '@sanity/client'
 import {createEasyPostLabel} from './easypostCreateLabel'
 import {consumeInventoryForItems} from '../../shared/inventory'
+import {sanityClient} from '../lib/sanityClient'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -38,13 +38,7 @@ function jsonResponse(
   }
 }
 
-const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
-  apiVersion: '2024-10-01',
-  token: process.env.SANITY_API_TOKEN!,
-  useCdn: false,
-})
+const sanity = sanityClient
 
 type FulfillRequest = {
   orderId?: string
