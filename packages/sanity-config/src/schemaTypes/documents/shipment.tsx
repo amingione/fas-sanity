@@ -66,11 +66,6 @@ export default defineType({
     // }),
 
     defineField({
-      name: 'currency',
-      title: 'Currency',
-      type: 'string',
-    }),
-    defineField({
       name: 'transitDays',
       title: 'Transit Days',
       type: 'number',
@@ -325,8 +320,15 @@ export default defineType({
       if (trackingCode) subtitleParts.push(trackingCode)
       if (service) subtitleParts.push(service)
       if (rate) {
-        const formattedRate = `$${parseFloat(rate).toFixed(2)}`
-        subtitleParts.push(formattedRate)
+        const parsed = Number.parseFloat(rate)
+        if (!Number.isNaN(parsed)) {
+          const normalizedCurrency = currency?.trim().toUpperCase()
+          const formattedRate =
+            normalizedCurrency && normalizedCurrency !== 'USD'
+              ? `${normalizedCurrency} ${parsed.toFixed(2)}`
+              : `$${parsed.toFixed(2)}`
+          subtitleParts.push(formattedRate)
+        }
       }
 
       const subtitle = subtitleParts.length > 0 ? subtitleParts.join(' • ') : 'No tracking info'

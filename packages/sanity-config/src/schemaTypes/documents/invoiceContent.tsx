@@ -5,7 +5,6 @@ import {Autocomplete, Box, Button, Card, Flex, Stack, Text, TextInput} from '@sa
 
 import './invoiceStyles.css'
 import {formatInvoiceNumberFromOrder} from '../../utils/orderNumber'
-import {purchaseShippingLabelAction} from '../documentActions/purchaseShippingLabel'
 
 function fmt(n?: number) {
   return typeof n === 'number' && !isNaN(n) ? Number(n).toFixed(2) : '0.00'
