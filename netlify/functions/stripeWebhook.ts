@@ -6,6 +6,7 @@ import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {randomUUID} from 'crypto'
+import {logFunctionExecution} from '../../utils/functionLogger'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
 import {mapStripeLineItem, type CartMetadataEntry} from '../lib/stripeCartItem'
@@ -804,7 +805,7 @@ async function recordStripeWebhookEvent(options: {
   })
 
   try {
-    await sanity.createOrReplace(document, {autoGenerateArrayKeys: true})
+    await webhookSanityClient.createOrReplace(document, {autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to record webhook event', err)
   }
@@ -2262,6 +2263,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     name?: string
     email?: string
     stripeCustomerId?: string | null
+    stripeLastSyncedAt?: string | null
     customerType?: string | null
     roles?: string[] | null
     firstName?: string | null
@@ -2278,6 +2280,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
       name?: string
       email?: string
       stripeCustomerId?: string | null
+      stripeLastSyncedAt?: string | null
       customerType?: string | null
       roles?: string[] | null
       firstName?: string | null
@@ -2290,6 +2293,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
       firstName: nameParts.firstName || undefined,
       lastName: nameParts.lastName || undefined,
       stripeCustomerId,
+      stripeLastSyncedAt: new Date().toISOString(),
       customerType: 'retail',
       roles: ['customer'],
     })
@@ -2305,6 +2309,13 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
       fallbackName: name,
     })
     if (resolvedName && resolvedName !== customer.name) patch.name = resolvedName
+    const needsStripeIdUpdate = stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId
+    if (needsStripeIdUpdate) {
+      patch.stripeCustomerId = stripeCustomerId
+    }
+    if (stripeCustomerId || needsStripeIdUpdate) {
+      patch.stripeLastSyncedAt = new Date().toISOString()
+    }
     if (Object.keys(patch).length > 0) {
       try {
         await webhookSanityClient
@@ -3203,23 +3214,28 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         .commit({autoGenerateArrayKeys: true})
     : await webhookSanityClient.create(baseOrderPayload, {autoGenerateArrayKeys: true})
 
-  if (order?._id && !existingOrder?.invoiceRef) {
-    const invoice = await strictCreateInvoice(order, customer, {
-      cartProducts,
-      amountDiscount,
-      discountLabel: resolvedDiscountLabel,
-      amountSubtotal,
-      totalAmount,
-    })
-    await webhookSanityClient
-      .patch(order._id)
-      .set({
-        invoiceRef: {
-          _type: 'reference',
-          _ref: invoice._id,
-        },
+  const needsInvoice = order?._id && !(order as any)?.invoiceRef?._ref
+  if (needsInvoice) {
+    try {
+      const invoice = await strictCreateInvoice(order, customer, {
+        cartProducts,
+        amountDiscount,
+        discountLabel: resolvedDiscountLabel,
+        amountSubtotal,
+        totalAmount,
       })
-      .commit()
+      await webhookSanityClient
+        .patch(order._id)
+        .set({
+          invoiceRef: {
+            _type: 'reference',
+            _ref: invoice._id,
+          },
+        })
+        .commit()
+    } catch (err) {
+      console.warn('stripeWebhook: failed to create/link invoice for checkout order', err)
+    }
   }
 
   if (order?._id) {
@@ -6218,36 +6234,87 @@ async function sendOrderConfirmationEmail(opts: {
 }
 
 export const handler: Handler = async (event) => {
-  if (!stripe) return {statusCode: 500, body: 'Stripe not configured'}
+  const startTime = Date.now()
+  let webhookEvent: Stripe.Event | null = null
+  let webhookStatus: 'processed' | 'ignored' | 'error' = 'processed'
+  let webhookSummary = ''
 
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!endpointSecret) return {statusCode: 500, body: 'Missing STRIPE_WEBHOOK_SECRET'}
-
-  if (event.httpMethod === 'OPTIONS') return {statusCode: 200, body: ''}
-  if (event.httpMethod !== 'POST') return {statusCode: 405, body: 'Method Not Allowed'}
-
-  const skipSignature = process.env.STRIPE_WEBHOOK_NO_VERIFY === '1'
-  const sig = (event.headers['stripe-signature'] || event.headers['Stripe-Signature']) as string
-  if (!sig && !skipSignature) return {statusCode: 400, body: 'Missing Stripe-Signature header'}
-
-  let webhookEvent: Stripe.Event
-  try {
-    const raw = getRawBody(event)
-    if (skipSignature) {
-      webhookEvent = JSON.parse(raw.toString('utf8')) as Stripe.Event
-    } else {
-      webhookEvent = stripe.webhooks.constructEvent(raw, sig, endpointSecret)
-    }
-  } catch (err: any) {
-    const label = skipSignature
-      ? 'stripeWebhook payload parse failed'
-      : 'stripeWebhook signature verification failed'
-    console.error(`${label}:`, err?.message || err)
-    return {statusCode: 400, body: `Webhook Error: ${err?.message || 'invalid signature'}`}
+  const finalize = async (
+    response: {statusCode: number; body: string},
+    status: 'success' | 'error' | 'warning',
+    result?: unknown,
+    error?: unknown,
+  ) => {
+    await logFunctionExecution({
+      functionName: 'stripeWebhook',
+      status,
+      duration: Date.now() - startTime,
+      eventData: event,
+      result,
+      error,
+      metadata: {
+        stripeEventId: webhookEvent?.id,
+        eventType: webhookEvent?.type,
+        webhookStatus,
+      },
+    })
+    return response
   }
 
-  let webhookStatus: 'processed' | 'ignored' | 'error' = 'processed'
-  let webhookSummary = summarizeEventType(webhookEvent.type)
+  try {
+    console.log('Function stripeWebhook invoked')
+    console.log('Has RESEND_API_KEY:', Boolean(process.env.RESEND_API_KEY))
+    console.log('Has SANITY_WRITE_TOKEN:', Boolean(process.env.SANITY_WRITE_TOKEN))
+
+    if (!stripe)
+      return await finalize(
+        {statusCode: 500, body: 'Stripe not configured'},
+        'error',
+        {message: 'Stripe not configured'},
+      )
+
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
+    if (!endpointSecret)
+      return await finalize(
+        {statusCode: 500, body: 'Missing STRIPE_WEBHOOK_SECRET'},
+        'error',
+        {message: 'Missing STRIPE_WEBHOOK_SECRET'},
+      )
+
+    if (event.httpMethod === 'OPTIONS') return await finalize({statusCode: 200, body: ''}, 'success')
+    if (event.httpMethod !== 'POST')
+      return await finalize({statusCode: 405, body: 'Method Not Allowed'}, 'error')
+
+    const skipSignature = process.env.STRIPE_WEBHOOK_NO_VERIFY === '1'
+    const sig = (event.headers['stripe-signature'] || event.headers['Stripe-Signature']) as string
+    if (!sig && !skipSignature)
+      return await finalize(
+        {statusCode: 400, body: 'Missing Stripe-Signature header'},
+        'error',
+        {message: 'Missing Stripe-Signature header'},
+      )
+
+    try {
+      const raw = getRawBody(event)
+      if (skipSignature) {
+        webhookEvent = JSON.parse(raw.toString('utf8')) as Stripe.Event
+      } else {
+        webhookEvent = stripe.webhooks.constructEvent(raw, sig, endpointSecret)
+      }
+    } catch (err: any) {
+      const label = skipSignature
+        ? 'stripeWebhook payload parse failed'
+        : 'stripeWebhook signature verification failed'
+      console.error(`${label}:`, err?.message || err)
+      return await finalize(
+        {statusCode: 400, body: `Webhook Error: ${err?.message || 'invalid signature'}`},
+        'error',
+        undefined,
+        err,
+      )
+    }
+
+    webhookSummary = summarizeEventType(webhookEvent?.type || '')
 
   try {
     type ExtendedStripeEventType = Stripe.Event.Type | string
@@ -7358,11 +7425,23 @@ export const handler: Handler = async (event) => {
     console.warn('stripeWebhook: failed to log webhook event', err)
   }
 
-  if (webhookStatus === 'error') {
-    return {statusCode: 200, body: JSON.stringify({received: true, hint: 'internal error logged'})}
-  }
+  const response =
+    webhookStatus === 'error'
+      ? {statusCode: 200, body: JSON.stringify({received: true, hint: 'internal error logged'})}
+      : {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
 
-  return {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
+  return await finalize(response, webhookStatus === 'error' ? 'error' : 'success', {
+    webhookStatus,
+    summary: webhookSummary,
+  })
+  } catch (error) {
+    return await finalize(
+      {statusCode: 500, body: 'Internal error'},
+      'error',
+      undefined,
+      error,
+    )
+  }
 }
 
 // Netlify picks up the named export automatically; avoid duplicate exports.
