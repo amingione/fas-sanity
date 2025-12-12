@@ -54,6 +54,7 @@
     "@sanity/assist": "^5.0.0",
     "@sanity/cli": "^4.20.3",
     "@sanity/client": "^7.12.0",
+    "@aws-sdk/client-secrets-manager": "^3.676.0",
     "@sanity/code-input": "latest",
     "@sanity/color": "latest",
     "@sanity/color-input": "^4.0.6",

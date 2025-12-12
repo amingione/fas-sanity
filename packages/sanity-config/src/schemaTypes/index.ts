@@ -247,6 +247,7 @@ import senderAddress from './documents/senderAddress'
 import createLabel from './documents/createLabel'
 import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
+import functionLog from './documents/functionLog'
 import vendor from './documents/vendor'
 import vendorApplication from './documents/vendorApplication'
 import purchaseOrder from './documents/purchaseOrder'
@@ -306,6 +307,7 @@ const documents = [
   shippingLabel,
   invoice,
   stripeWebhook,
+  functionLog,
   vendorApplication,
   vendor,
   purchaseOrder,
