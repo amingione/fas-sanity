@@ -1423,6 +1423,92 @@ const createAnalyticsSection = (S: any) =>
         ]),
     )
 
+const createFunctionLogsSection = (S: any) =>
+  S.listItem()
+    .id('function-logs')
+    .title('Function Logs')
+    .icon(ActivityIcon)
+    .child(
+      S.list()
+        .title('Function Logs')
+        .items([
+          S.listItem()
+            .id('function-logs-all')
+            .title('All Function Logs')
+            .icon(ActivityIcon)
+            .child(
+              S.documentList()
+                .id('function-logs-all-docs')
+                .title('All Function Logs')
+                .schemaType('functionLog')
+                .apiVersion(API_VERSION)
+                .filter('_type == "functionLog"')
+                .defaultOrdering([{field: 'executionTime', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('function-logs-errors')
+            .title('Errors (last 24h)')
+            .icon(WarningOutlineIcon)
+            .child(
+              S.documentList()
+                .id('function-logs-errors-docs')
+                .title('Errors (last 24 hours)')
+                .schemaType('functionLog')
+                .apiVersion(API_VERSION)
+                .filter(
+                  '_type == "functionLog" && status == "error" && executionTime > dateTime(now()) - 86400000',
+                )
+                .defaultOrdering([{field: 'executionTime', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('function-logs-warnings')
+            .title('Warnings (last 7 days)')
+            .icon(BulbOutlineIcon)
+            .child(
+              S.documentList()
+                .id('function-logs-warnings-docs')
+                .title('Warnings (last 7 days)')
+                .schemaType('functionLog')
+                .apiVersion(API_VERSION)
+                .filter(
+                  '_type == "functionLog" && status == "warning" && executionTime > dateTime(now()) - 604800000',
+                )
+                .defaultOrdering([{field: 'executionTime', direction: 'desc'}]),
+            ),
+          S.listItem()
+            .id('function-logs-by-function')
+            .title('By Function')
+            .icon(ClipboardIcon)
+            .child(
+              S.list()
+                .title('Function')
+                .items(
+                  [
+                    'stripeWebhook',
+                    'easypostWebhook',
+                    'sendAbandonedCartEmails',
+                    'manual-fulfill-order',
+                    'cleanupFunctionLogs',
+                  ].map((functionName) =>
+                    S.listItem()
+                      .id(`function-logs-${functionName}`)
+                      .title(functionName)
+                      .child(
+                        S.documentList()
+                          .id(`function-logs-docs-${functionName}`)
+                          .title(`${functionName} logs`)
+                          .schemaType('functionLog')
+                          .apiVersion(API_VERSION)
+                          .filter('_type == "functionLog" && functionName == $functionName')
+                          .params({functionName})
+                          .defaultOrdering([{field: 'executionTime', direction: 'desc'}]),
+                      ),
+                  ),
+                ),
+            ),
+        ]),
+    )
+
 const createFinanceSection = (S: any) =>
   S.listItem()
     .id('finance')
@@ -1782,6 +1868,7 @@ export const deskStructure: StructureResolver = (S) =>
       createBlogSection(S),
       createMarketingSection(S),
       createAnalyticsSection(S),
+      createFunctionLogsSection(S),
       downloadsStructure(S),
       createFinanceSection(S),
 
