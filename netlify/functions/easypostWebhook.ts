@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import EasyPost from '@easypost/api'
 import {createHmac, timingSafeEqual} from 'crypto'
+import {logFunctionExecution} from '../../utils/functionLogger'
 import {sanityClient} from '../lib/sanityClient'
 
 const DEFAULT_ORIGIN = process.env.CORS_ALLOW || process.env.CORS_ORIGIN || 'http://localhost:3333'
@@ -758,95 +759,160 @@ async function handleRefund(refund: any) {
 }
 
 export const handler: Handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return {statusCode: 204, headers: CORS_HEADERS, body: ''}
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Method Not Allowed'}),
-    }
-  }
-
-  const providerEnabled =
-    SHIPPING_PROVIDER === 'easypost' || SHIPPING_PROVIDER === 'parcelcraft' // allow legacy value
-
-  if (!providerEnabled) {
-    console.warn('easypostWebhook received event but shipping provider is disabled', {
-      SHIPPING_PROVIDER,
-    })
-    return {
-      statusCode: 200,
-      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({ok: true, ignored: true, reason: 'EasyPost integration disabled'}),
-    }
-  }
-
-  if (SHIPPING_PROVIDER === 'parcelcraft') {
-    console.warn('easypostWebhook: SHIPPING_PROVIDER=parcelcraft (legacy) — proceed as EasyPost')
-  }
-
-  const incomingBody = event.body || ''
-  const rawBodyBuffer = event.isBase64Encoded
-    ? Buffer.from(incomingBody, 'base64')
-    : Buffer.from(incomingBody, 'utf8')
-
-  if (!verifySignature(rawBodyBuffer, event.headers || {})) {
-    return {
-      statusCode: 401,
-      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Invalid webhook signature'}),
-    }
-  }
-
+  const startTime = Date.now()
   let payload: EasyPostEvent | null = null
+
+  const finalize = async (
+    response: {statusCode: number; headers?: Record<string, string>; body: string},
+    status: 'success' | 'error' | 'warning',
+    result?: unknown,
+    error?: unknown,
+  ) => {
+    await logFunctionExecution({
+      functionName: 'easypostWebhook',
+      status,
+      duration: Date.now() - startTime,
+      eventData: event,
+      result,
+      error,
+      metadata: {
+        webhookId: payload?.id,
+        status: payload?.status,
+      },
+    })
+    return response
+  }
+
   try {
-    const rawBody = rawBodyBuffer.toString('utf8')
-    payload = JSON.parse(rawBody || '{}')
-  } catch (err) {
-    console.error('easypostWebhook failed to parse payload', err)
-    return {
-      statusCode: 400,
-      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Invalid payload'}),
+    if (event.httpMethod === 'OPTIONS') {
+      return await finalize({statusCode: 204, headers: CORS_HEADERS, body: ''}, 'success')
     }
-  }
 
-  if (!payload || payload.object !== 'Event') {
-    return {
-      statusCode: 200,
-      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({ok: true, ignored: true}),
+    if (event.httpMethod !== 'POST') {
+      return await finalize(
+        {
+          statusCode: 405,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'Method Not Allowed'}),
+        },
+        'error',
+      )
     }
-  }
 
-  try {
-    const result = payload.result || {}
-    if (result?.object === 'Tracker') {
-      await handleTracker(result, payload)
-    } else if (result?.object === 'Shipment') {
-      await handleShipment(result, payload)
-    } else if (result?.object === 'Refund') {
-      await handleRefund(result)
-    }
-  } catch (err) {
-    console.error('easypostWebhook processing error', err)
-    const message =
-      err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string'
-        ? (err as any).message
-        : String(err)
-    return {
-      statusCode: 500,
-      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: message || 'Webhook processing failed'}),
-    }
-  }
+    const providerEnabled =
+      SHIPPING_PROVIDER === 'easypost' || SHIPPING_PROVIDER === 'parcelcraft' // allow legacy value
 
-  return {
-    statusCode: 200,
-    headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-    body: JSON.stringify({ok: true}),
+    if (!providerEnabled) {
+      console.warn('easypostWebhook received event but shipping provider is disabled', {
+        SHIPPING_PROVIDER,
+      })
+      return await finalize(
+        {
+          statusCode: 200,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({ok: true, ignored: true, reason: 'EasyPost integration disabled'}),
+        },
+        'warning',
+        {ignored: true},
+      )
+    }
+
+    if (SHIPPING_PROVIDER === 'parcelcraft') {
+      console.warn('easypostWebhook: SHIPPING_PROVIDER=parcelcraft (legacy) — proceed as EasyPost')
+    }
+
+    const incomingBody = event.body || ''
+    const rawBodyBuffer = event.isBase64Encoded
+      ? Buffer.from(incomingBody, 'base64')
+      : Buffer.from(incomingBody, 'utf8')
+
+    if (!verifySignature(rawBodyBuffer, event.headers || {})) {
+      return await finalize(
+        {
+          statusCode: 401,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'Invalid webhook signature'}),
+        },
+        'error',
+        {reason: 'invalid signature'},
+      )
+    }
+
+    try {
+      const rawBody = rawBodyBuffer.toString('utf8')
+      payload = JSON.parse(rawBody || '{}')
+    } catch (err) {
+      console.error('easypostWebhook failed to parse payload', err)
+      return await finalize(
+        {
+          statusCode: 400,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'Invalid payload'}),
+        },
+        'error',
+        undefined,
+        err,
+      )
+    }
+
+    if (!payload || payload.object !== 'Event') {
+      return await finalize(
+        {
+          statusCode: 200,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({ok: true, ignored: true}),
+        },
+        'warning',
+        {ignored: true},
+      )
+    }
+
+    try {
+      const result = payload.result || {}
+      if (result?.object === 'Tracker') {
+        await handleTracker(result, payload)
+      } else if (result?.object === 'Shipment') {
+        await handleShipment(result, payload)
+      } else if (result?.object === 'Refund') {
+        await handleRefund(result)
+      }
+    } catch (err) {
+      console.error('easypostWebhook processing error', err)
+      const message =
+        err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string'
+          ? (err as any).message
+          : String(err)
+      return await finalize(
+        {
+          statusCode: 500,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: message || 'Webhook processing failed'}),
+        },
+        'error',
+        undefined,
+        err,
+      )
+    }
+
+    return await finalize(
+      {
+        statusCode: 200,
+        headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({ok: true}),
+      },
+      'success',
+      {ok: true},
+    )
+  } catch (error) {
+    return await finalize(
+      {
+        statusCode: 500,
+        headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Internal error'}),
+      },
+      'error',
+      undefined,
+      error,
+    )
   }
 }

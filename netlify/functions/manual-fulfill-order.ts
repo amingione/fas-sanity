@@ -11,6 +11,7 @@ import {
 } from '../lib/orderFormatting'
 import {canonicalizeTrackingNumber, validateTrackingNumber} from '../../shared/tracking'
 import {consumeInventoryForItems} from '../../shared/inventory'
+import {logFunctionExecution} from '../../utils/functionLogger'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -109,22 +110,52 @@ export const handler: Handler = async (event) => {
     'Access-Control-Allow-Methods': 'OPTIONS,POST',
   }
 
+  const startTime = Date.now()
+  const metadata: Record<string, unknown> = {}
+
+  const finalize = async (
+    response: {statusCode: number; headers?: Record<string, string>; body: string},
+    status: 'success' | 'error' | 'warning',
+    result?: unknown,
+    error?: unknown,
+  ) => {
+    await logFunctionExecution({
+      functionName: 'manual-fulfill-order',
+      status,
+      duration: Date.now() - startTime,
+      eventData: event,
+      result,
+      error,
+      metadata,
+    })
+    return response
+  }
+
   if (event.httpMethod === 'OPTIONS') {
-    return {statusCode: 200, headers: corsHeaders, body: ''}
+    return await finalize({statusCode: 200, headers: corsHeaders, body: ''}, 'success')
   }
 
   if (event.httpMethod !== 'POST') {
-    return jsonResponse(405, corsHeaders, {success: false, message: 'Method Not Allowed'})
+    return await finalize(
+      jsonResponse(405, corsHeaders, {success: false, message: 'Method Not Allowed'}),
+      'error',
+      {reason: 'method not allowed'},
+    )
   }
 
   let payload: any
   try {
     payload = JSON.parse(event.body || '{}')
   } catch {
-    return jsonResponse(400, corsHeaders, {success: false, message: 'Invalid JSON payload'})
+    return await finalize(
+      jsonResponse(400, corsHeaders, {success: false, message: 'Invalid JSON payload'}),
+      'error',
+      {reason: 'invalid json'},
+    )
   }
 
   const baseId = normalizeInput(payload?.orderId).replace(/^drafts\./, '')
+  metadata.orderId = baseId
   const trackingValidation = validateTrackingNumber(payload?.trackingNumber)
   const trackingNumber = trackingValidation.canonical
   const carrierLabel = trackingValidation.carrierLabel
@@ -141,7 +172,11 @@ export const handler: Handler = async (event) => {
 
   if (!baseId) {
     log('warn', 'missing orderId in request payload', {payload})
-    return jsonResponse(400, corsHeaders, {success: false, message: 'Missing orderId'})
+    return await finalize(
+      jsonResponse(400, corsHeaders, {success: false, message: 'Missing orderId'}),
+      'error',
+      {reason: 'missing orderId'},
+    )
   }
   if (!trackingValidation.isValid) {
     log('warn', 'invalid tracking number provided', {
@@ -149,10 +184,14 @@ export const handler: Handler = async (event) => {
       trackingNumber: trackingValidation.canonical || trackingValidation.normalized,
       reason: trackingValidation.reason,
     })
-    return jsonResponse(400, corsHeaders, {
-      success: false,
-      message: trackingValidation.reason || 'Invalid tracking number',
-    })
+    return await finalize(
+      jsonResponse(400, corsHeaders, {
+        success: false,
+        message: trackingValidation.reason || 'Invalid tracking number',
+      }),
+      'error',
+      {reason: 'invalid tracking', carrier: trackingValidation.carrier},
+    )
   }
 
   const draftId = `drafts.${baseId}`
@@ -210,13 +249,22 @@ export const handler: Handler = async (event) => {
       )
     } catch (err) {
       log('error', 'sanity fetch failed', {orderId: baseId, error: err})
-      return jsonResponse(500, corsHeaders, {success: false, message: 'Unable to load order'})
+      return await finalize(
+        jsonResponse(500, corsHeaders, {success: false, message: 'Unable to load order'}),
+        'error',
+        {reason: 'fetch failed'},
+        err,
+      )
     }
   }
 
   if (!order) {
     log('warn', 'requested order was not found', {orderId: baseId})
-    return jsonResponse(404, corsHeaders, {success: false, message: 'Order not found'})
+    return await finalize(
+      jsonResponse(404, corsHeaders, {success: false, message: 'Order not found'}),
+      'error',
+      {reason: 'order not found'},
+    )
   }
 
   const existingTracking = canonicalizeTrackingNumber(order.trackingNumber)
@@ -268,7 +316,12 @@ export const handler: Handler = async (event) => {
           continue
         }
         log('error', 'sanity patch failed', {targetId, orderId: baseId, error: err})
-        return jsonResponse(500, corsHeaders, {success: false, message: 'Failed to update order'})
+        return await finalize(
+          jsonResponse(500, corsHeaders, {success: false, message: 'Failed to update order'}),
+          'error',
+          {reason: 'patch failed', targetId},
+          err,
+        )
       }
     }
     try {
@@ -454,19 +507,31 @@ export const handler: Handler = async (event) => {
     forceResend,
     simulate,
   })
+  metadata.orderNumber = displayOrderNumber
+  metadata.trackingNumber = trackingNumber
 
-  return jsonResponse(200, corsHeaders, {
-    success: true,
-    orderId: baseId,
-    orderStatus: 'fulfilled',
-    trackingNumber,
-    trackingCarrier: trackingValidation.carrier,
-    trackingCarrierLabel: carrierLabel,
-    trackingUrl,
-    emailSent,
-    emailMessage,
-    emailSkipped,
-    simulate,
-    message: `Order ${displayOrderNumber} fulfilled manually.`,
-  })
+  return await finalize(
+    jsonResponse(200, corsHeaders, {
+      success: true,
+      orderId: baseId,
+      orderStatus: 'fulfilled',
+      trackingNumber,
+      trackingCarrier: trackingValidation.carrier,
+      trackingCarrierLabel: carrierLabel,
+      trackingUrl,
+      emailSent,
+      emailMessage,
+      emailSkipped,
+      simulate,
+      message: `Order ${displayOrderNumber} fulfilled manually.`,
+    }),
+    emailDeliveryState === 'failed' ? 'warning' : 'success',
+    {
+      orderId: baseId,
+      trackingNumber,
+      emailSent,
+      emailSkipped,
+      simulate,
+    },
+  )
 }

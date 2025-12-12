@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {render} from '@react-email/render'
 import {Resend} from 'resend'
+import {logFunctionExecution} from '../../utils/functionLogger'
 import AbandonedCartEmail, {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
 
 type CheckoutSessionDoc = {
@@ -125,24 +126,59 @@ const handler: Handler = async (event) => {
   console.log('Has RESEND_API_KEY:', Boolean(process.env.RESEND_API_KEY))
   console.log('Has SANITY_WRITE_TOKEN:', Boolean(process.env.SANITY_WRITE_TOKEN))
 
+  const startTime = Date.now()
+  const metadata: Record<string, unknown> = {
+    audienceId: ABANDONED_AUDIENCE || undefined,
+  }
+
+  const finalize = async (
+    response: {statusCode: number; headers: Record<string, string>; body: string},
+    status: 'success' | 'error' | 'warning',
+    result?: unknown,
+    error?: unknown,
+  ) => {
+    await logFunctionExecution({
+      functionName: 'sendAbandonedCartEmails',
+      status,
+      duration: Date.now() - startTime,
+      eventData: event,
+      result,
+      error,
+      metadata,
+    })
+    return response
+  }
+
+  try {
+
   if (event.httpMethod && !['GET', 'POST'].includes(event.httpMethod)) {
-    return {statusCode: 405, headers: jsonHeaders, body: JSON.stringify({error: 'Method not allowed'})}
+    return await finalize(
+      {statusCode: 405, headers: jsonHeaders, body: JSON.stringify({error: 'Method not allowed'})},
+      'error',
+      {reason: 'method not allowed'},
+    )
   }
 
   if (!sanity) {
-    return {
-      statusCode: 500,
-      headers: jsonHeaders,
-      body: JSON.stringify({error: 'Sanity client not configured'}),
-    }
+    return await finalize(
+      {
+        statusCode: 500,
+        headers: jsonHeaders,
+        body: JSON.stringify({error: 'Sanity client not configured'}),
+      },
+      'error',
+    )
   }
 
   if (!resendClient) {
-    return {
-      statusCode: 500,
-      headers: jsonHeaders,
-      body: JSON.stringify({error: 'RESEND_API_KEY missing'}),
-    }
+    return await finalize(
+      {
+        statusCode: 500,
+        headers: jsonHeaders,
+        body: JSON.stringify({error: 'RESEND_API_KEY missing'}),
+      },
+      'error',
+    )
   }
 
   const triggeredBySchedule = isScheduled(event.headers || {})
@@ -153,7 +189,11 @@ const handler: Handler = async (event) => {
       event.headers?.Authorization ||
       (event.headers || {})['AUTHORIZATION']
     if (!authHeader || authHeader !== `Bearer ${secret}`) {
-      return {statusCode: 401, headers: jsonHeaders, body: JSON.stringify({error: 'Unauthorized'})}
+      return await finalize(
+        {statusCode: 401, headers: jsonHeaders, body: JSON.stringify({error: 'Unauthorized'})},
+        'error',
+        {reason: 'unauthorized'},
+      )
     }
   }
 
@@ -275,10 +315,27 @@ const handler: Handler = async (event) => {
     }
   }
 
-  return {
-    statusCode: 200,
-    headers: jsonHeaders,
-    body: JSON.stringify({success: true, total: expiredCheckouts.length, sent, failed}),
+    metadata.total = expiredCheckouts.length
+    metadata.sent = sent
+    metadata.failed = failed
+    metadata.triggeredBySchedule = triggeredBySchedule
+
+    return await finalize(
+      {
+        statusCode: 200,
+        headers: jsonHeaders,
+        body: JSON.stringify({success: true, total: expiredCheckouts.length, sent, failed}),
+      },
+      failed > 0 ? 'warning' : 'success',
+      {sent, failed, total: expiredCheckouts.length},
+    )
+  } catch (error) {
+    return await finalize(
+      {statusCode: 500, headers: jsonHeaders, body: JSON.stringify({error: 'Internal error'})},
+      'error',
+      undefined,
+      error,
+    )
   }
 }
 
