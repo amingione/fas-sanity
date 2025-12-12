@@ -804,7 +804,7 @@ async function recordStripeWebhookEvent(options: {
   })
 
   try {
-    await sanity.createOrReplace(document, {autoGenerateArrayKeys: true})
+    await webhookSanityClient.createOrReplace(document, {autoGenerateArrayKeys: true})
   } catch (err) {
     console.warn('stripeWebhook: failed to record webhook event', err)
   }
@@ -2262,6 +2262,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     name?: string
     email?: string
     stripeCustomerId?: string | null
+    stripeLastSyncedAt?: string | null
     customerType?: string | null
     roles?: string[] | null
     firstName?: string | null
@@ -2278,6 +2279,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
       name?: string
       email?: string
       stripeCustomerId?: string | null
+      stripeLastSyncedAt?: string | null
       customerType?: string | null
       roles?: string[] | null
       firstName?: string | null
@@ -2290,6 +2292,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
       firstName: nameParts.firstName || undefined,
       lastName: nameParts.lastName || undefined,
       stripeCustomerId,
+      stripeLastSyncedAt: new Date().toISOString(),
       customerType: 'retail',
       roles: ['customer'],
     })
@@ -2305,6 +2308,13 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
       fallbackName: name,
     })
     if (resolvedName && resolvedName !== customer.name) patch.name = resolvedName
+    const needsStripeIdUpdate = stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId
+    if (needsStripeIdUpdate) {
+      patch.stripeCustomerId = stripeCustomerId
+    }
+    if (stripeCustomerId || needsStripeIdUpdate) {
+      patch.stripeLastSyncedAt = new Date().toISOString()
+    }
     if (Object.keys(patch).length > 0) {
       try {
         await webhookSanityClient
@@ -3203,23 +3213,28 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         .commit({autoGenerateArrayKeys: true})
     : await webhookSanityClient.create(baseOrderPayload, {autoGenerateArrayKeys: true})
 
-  if (order?._id && !existingOrder?.invoiceRef) {
-    const invoice = await strictCreateInvoice(order, customer, {
-      cartProducts,
-      amountDiscount,
-      discountLabel: resolvedDiscountLabel,
-      amountSubtotal,
-      totalAmount,
-    })
-    await webhookSanityClient
-      .patch(order._id)
-      .set({
-        invoiceRef: {
-          _type: 'reference',
-          _ref: invoice._id,
-        },
+  const needsInvoice = order?._id && !(order as any)?.invoiceRef?._ref
+  if (needsInvoice) {
+    try {
+      const invoice = await strictCreateInvoice(order, customer, {
+        cartProducts,
+        amountDiscount,
+        discountLabel: resolvedDiscountLabel,
+        amountSubtotal,
+        totalAmount,
       })
-      .commit()
+      await webhookSanityClient
+        .patch(order._id)
+        .set({
+          invoiceRef: {
+            _type: 'reference',
+            _ref: invoice._id,
+          },
+        })
+        .commit()
+    } catch (err) {
+      console.warn('stripeWebhook: failed to create/link invoice for checkout order', err)
+    }
   }
 
   if (order?._id) {
@@ -6218,6 +6233,10 @@ async function sendOrderConfirmationEmail(opts: {
 }
 
 export const handler: Handler = async (event) => {
+  console.log('Function stripeWebhook invoked')
+  console.log('Has RESEND_API_KEY:', Boolean(process.env.RESEND_API_KEY))
+  console.log('Has SANITY_WRITE_TOKEN:', Boolean(process.env.SANITY_WRITE_TOKEN))
+
   if (!stripe) return {statusCode: 500, body: 'Stripe not configured'}
 
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET

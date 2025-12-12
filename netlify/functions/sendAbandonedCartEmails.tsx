@@ -121,6 +121,10 @@ const buildTrackingUrl = (checkoutUrl?: string): string | undefined => {
 }
 
 const handler: Handler = async (event) => {
+  console.log('Function sendAbandonedCartEmails invoked')
+  console.log('Has RESEND_API_KEY:', Boolean(process.env.RESEND_API_KEY))
+  console.log('Has SANITY_WRITE_TOKEN:', Boolean(process.env.SANITY_WRITE_TOKEN))
+
   if (event.httpMethod && !['GET', 'POST'].includes(event.httpMethod)) {
     return {statusCode: 405, headers: jsonHeaders, body: JSON.stringify({error: 'Method not allowed'})}
   }
