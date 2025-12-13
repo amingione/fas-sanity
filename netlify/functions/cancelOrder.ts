@@ -1,9 +1,10 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
-import {createClient} from '@sanity/client'
 import {randomUUID} from 'crypto'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
+import {sanityClient} from '../lib/sanityClient'
+import {resolveStripeSecretKey} from '../lib/stripeEnv'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888'
@@ -25,23 +26,15 @@ const makeCors = (origin?: string) => {
   }
 }
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+const stripeSecretKey =
+  process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY || resolveStripeSecretKey()
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
     apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
   })
 
-const sanityToken = process.env.SANITY_API_TOKEN
-const sanity = sanityToken
-  ? createClient({
-      projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-      dataset: process.env.SANITY_STUDIO_DATASET!,
-      apiVersion: '2024-04-10',
-      token: sanityToken,
-      useCdn: false,
-    })
-  : null
+const sanity = sanityClient
 
 const normalizeSanityId = (value: string): string => value.replace(/^drafts\./, '').trim()
 
@@ -124,14 +117,15 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    const statusValue = (order.status || '').toLowerCase()
     if (
-      order.status === 'cancelled' &&
+      ['cancelled', 'canceled'].includes(statusValue) &&
       (order.paymentStatus === 'refunded' || order.paymentStatus === 'canceled')
     ) {
       return {
         statusCode: 200,
         headers: {...cors, 'Content-Type': 'application/json'},
-        body: JSON.stringify({ok: true, stripeAction: 'noop', message: 'Order already cancelled'}),
+        body: JSON.stringify({ok: true, stripeAction: 'noop', message: 'Order already canceled'}),
       }
     }
 
@@ -218,7 +212,7 @@ export const handler: Handler = async (event) => {
 
     const now = new Date().toISOString()
     const orderPatch: Record<string, any> = {
-      status: 'cancelled',
+      status: 'canceled',
       paymentStatus: stripeAction === 'refunded' ? 'refunded' : 'canceled',
       stripeLastSyncedAt: now,
     }
@@ -248,9 +242,9 @@ export const handler: Handler = async (event) => {
     if (order.invoiceRef?._id) {
       const invoicePatch: Record<string, any> = {
         stripeLastSyncedAt: now,
-        status: stripeAction === 'refunded' ? 'refunded' : 'cancelled',
+        status: stripeAction === 'refunded' ? 'refunded' : 'canceled',
         stripeInvoiceStatus:
-          stripeAction === 'refunded' ? 'refunded_via_sanity' : 'cancelled_via_sanity',
+          stripeAction === 'refunded' ? 'refunded_via_sanity' : 'canceled_via_sanity',
       }
       try {
         await sanity

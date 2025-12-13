@@ -1,3 +1,4 @@
+import React from 'react'
 import {defineField, defineType} from 'sanity'
 
 export default defineType({
@@ -184,10 +185,22 @@ export default defineType({
       const customer = email || name || 'Anonymous'
       const amount = typeof total === 'number' ? `$${total.toFixed(2)}` : 'Unknown'
       const date = expiredAt ? new Date(expiredAt).toLocaleDateString() : ''
+      const icon = status === 'recovered' ? '✅' : '🛒'
+      const iconLabel =
+        status === 'recovered' ? 'Recovered checkout' : 'Abandoned checkout session'
+      const mediaNode = React.createElement(
+        'span',
+        {
+          role: 'img',
+          'aria-label': iconLabel,
+          style: {fontSize: '1.25rem', lineHeight: 1},
+        },
+        icon,
+      )
       return {
         title: `${customer} - ${amount}`,
         subtitle: `${cartSummary || 'No items'} • Expired ${date}`,
-        media: status === 'recovered' ? '✅' : '🛒',
+        media: () => mediaNode,
       }
     },
   },

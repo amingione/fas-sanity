@@ -1,24 +1,27 @@
 // src/schemaTypes/documents/order.actions.ts
 import {
-  DocumentPdfIcon,
+  DocumentIcon,
   PackageIcon,
   ResetIcon,
-  CheckmarkCircleIcon,
-  CopyIcon,
   TrashIcon,
-  EnvelopeIcon,
+  WarningOutlineIcon,
 } from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
-import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
-import {purchaseOrderLabelAction} from '../documentActions/purchaseOrderLabel'
 
 const SANITY_API_VERSION = '2024-10-01'
 const ORDER_DOCUMENT_TYPES = new Set(['order'])
+const FULFILLABLE_STATUSES = new Set(['paid'])
+const NON_CANCELABLE_STATUSES = new Set([
+  'fulfilled',
+  'shipped',
+  'delivered',
+  'canceled',
+  'cancelled',
+  'refunded',
+])
+const REFUNDABLE_STATUSES = new Set(['fulfilled', 'shipped', 'delivered'])
 
-// ---------------------------
-// Utility helpers
-// ---------------------------
 const normalizeId = (val?: string | null) =>
   val
     ? String(val)
@@ -29,25 +32,29 @@ const normalizeId = (val?: string | null) =>
 const resolveTargets = (id?: string | null) => {
   if (!id) return []
   const clean = id.replace(/^drafts\./, '')
-  return [id, clean]
+  return clean ? Array.from(new Set([id, clean])) : [id]
 }
 
 const readResponseMessage = async (res: Response) => {
   try {
-    const j = await res.clone().json()
-    if (j?.message) return j.message
-    if (j?.error) return j.error
-  } catch {}
+    const json = await res.clone().json()
+    if (json?.message) return json.message
+    if (json?.error) return json.error
+  } catch {
+    // ignore JSON parse failures
+  }
   try {
-    const t = await res.text()
-    if (t) return t
-  } catch {}
+    const text = await res.text()
+    if (text) return text
+  } catch {
+    // ignore text parse failures
+  }
   return `Request failed (${res.status})`
 }
 
 const callFn = async (fn: string, json?: unknown) => {
   const bases = getNetlifyFunctionBaseCandidates()
-  let lastErr: any = null
+  let lastErr: unknown = null
 
   for (const base of bases) {
     try {
@@ -61,12 +68,29 @@ const callFn = async (fn: string, json?: unknown) => {
         continue
       }
       return res
-    } catch (e) {
-      lastErr = e
+    } catch (err) {
+      lastErr = err
     }
   }
 
-  throw lastErr
+  throw lastErr ?? new Error(`Unable to call ${fn}`)
+}
+
+const detachInvoiceReferences = async (client: any, orderId: string) => {
+  try {
+    const invoices: string[] =
+      (await client.fetch(
+        `array::compact(*[_type == "invoice" && orderRef._ref == $id]._id)`,
+        {id: orderId},
+      )) || []
+    await Promise.all(
+      invoices.map((invoiceId) =>
+        client.patch(invoiceId).unset(['orderRef']).commit({autoGenerateArrayKeys: true}),
+      ),
+    )
+  } catch (err) {
+    console.warn('order.delete: failed detaching invoice references', err)
+  }
 }
 
 // ---------------------------
@@ -76,321 +100,222 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
   const {schemaType, getClient} = context
   if (!ORDER_DOCUMENT_TYPES.has(schemaType)) return prev
 
-  const flags = (doc: any) => ({
-    tracking: doc?.trackingNumber || null,
-    labelUrl: doc?.shippingLabelUrl || null,
-    isFulfilled: ['fulfilled', 'shipped'].includes(doc?.status),
-  })
-
   return [
     ...prev,
-    purchaseOrderLabelAction,
-
-    // ---------------------------
-    // MESSAGE VENDOR
-    // ---------------------------
+    // Fulfill order: creates shipment, buys label, emails customer.
     (props) => {
       const doc = props.draft || props.published
-      if (!doc || doc.orderType !== 'wholesale') return null
-
-      const vendor = (doc?.wholesaleDetails as any)?.vendor?._ref
-      const orderId = normalizeId(doc?._id)
-      if (!vendor) return null
-
-      return {
-        name: 'messageVendor',
-        label: 'Message Vendor',
-        icon: EnvelopeIcon,
-        onHandle: async () => {
-          try {
-            const client = getClient({apiVersion: SANITY_API_VERSION})
-            const msg = await client.create({
-              _type: 'vendorMessage',
-              vendor: {_type: 'reference', _ref: vendor},
-              subject: `Order ${doc.orderNumber}`,
-              status: 'open',
-              priority: 'normal',
-              category: 'order',
-              relatedOrder: {_type: 'reference', _ref: orderId},
-            })
-            window.location.hash = `#/desk/vendorMessage;${msg._id}`
-          } catch {
-            alert('Unable to create vendor message.')
-          }
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // APPROVE WHOLESALE ORDER
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      if (!doc || doc.orderType !== 'wholesale') return null
-      if (doc.wholesaleWorkflowStatus !== 'pending') return null
-
-      return {
-        name: 'approveWholesale',
-        label: 'Approve Order',
-        icon: CheckmarkCircleIcon,
-        tone: 'positive',
-        onHandle: async () => {
-          try {
-            const orderId = normalizeId(doc._id)
-            const res = await callFn('create-wholesale-payment-link', {orderId})
-            const data = await res
-              .clone()
-              .json()
-              .catch(() => null)
-            if (!res.ok || data?.error)
-              throw new Error(data?.error || (await readResponseMessage(res)))
-
-            const client = getClient({apiVersion: SANITY_API_VERSION})
-            await client
-              .patch(orderId)
-              .set({
-                wholesaleWorkflowStatus: 'approved',
-                'wholesaleDetails.paymentLinkId': data.paymentLinkId || null,
-              })
-              .commit()
-
-            alert('Order approved.')
-          } catch (e: any) {
-            alert(e.message || 'Unable to approve order.')
-          }
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // CREATE / VIEW LABEL
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      const f = flags(doc)
       if (!doc) return null
-
+      const status = typeof doc.status === 'string' ? doc.status : ''
+      const eligible = FULFILLABLE_STATUSES.has(status)
       return {
-        name: 'createLabel',
-        label: f.labelUrl ? 'View Label' : 'Create Label',
+        name: 'fulfillOrder',
+        label: 'Fulfill Order',
         icon: PackageIcon,
-        tone: f.labelUrl ? 'default' : 'primary',
+        tone: 'primary',
+        title: eligible ? undefined : 'Order must be paid before fulfillment.',
+        disabled: !eligible,
+        hidden: !eligible,
         onHandle: async () => {
-          if (f.labelUrl) {
-            window.open(f.labelUrl, '_blank')
+          const orderId = normalizeId(doc._id)
+          if (!orderId) {
+            alert('Publish this order before fulfilling it.')
             props.onComplete()
             return
           }
 
           try {
-            const orderId = normalizeId(doc._id)
-            const res = await callFn('easypostCreateLabel', {orderId})
-            const data = await res
-              .clone()
-              .json()
-              .catch(() => null)
-            if (!res.ok || data?.error)
+            const res = await callFn('fulfillOrder', {orderId})
+            const data = await res.clone().json().catch(() => null)
+            if (!res.ok || data?.error) {
               throw new Error(data?.error || (await readResponseMessage(res)))
-
-            const url = data.labelUrl || data.labelAssetUrl
-            const client = getClient({apiVersion: SANITY_API_VERSION})
-
-            await client
-              .patch(orderId)
-              .set({
-                shippingLabelUrl: url || null,
-                trackingNumber: data.trackingNumber || null,
-                trackingUrl: data.trackingUrl || null,
-                easyPostShipmentId: data.shipmentId || null,
-                easyPostTrackerId: data.trackerId || null,
-                status: data.trackingNumber ? 'shipped' : doc.status,
-              })
-              .commit()
-
-            if (url) window.open(url, '_blank')
-            alert('Label created.')
-          } catch (e: any) {
-            alert(e.message || 'Unable to create label.')
-          }
-
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // ADD / EDIT TRACKING
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      const f = flags(doc)
-      if (!doc) return null
-
-      return {
-        name: 'addTracking',
-        label: f.tracking ? 'Edit Tracking' : 'Add Tracking',
-        icon: PackageIcon,
-        onHandle: async () => {
-          const tn = prompt('Enter tracking number:', f.tracking || '')?.trim()
-          if (!tn) {
-            props.onComplete()
-            return
-          }
-
-          try {
-            const orderId = normalizeId(doc._id)
-            const client = getClient({apiVersion: SANITY_API_VERSION})
-            await client
-              .patch(orderId)
-              .set({
-                trackingNumber: tn,
-                status: 'shipped',
-              })
-              .commit()
-            alert('Tracking saved.')
-          } catch {
-            alert('Unable to save tracking.')
-          }
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // MARK FULFILLED / UNFULFILLED
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      const f = flags(doc)
-      if (!doc) return null
-
-      return {
-        name: 'markFulfilled',
-        label: f.isFulfilled ? 'Mark Unfulfilled' : 'Mark Fulfilled',
-        icon: CheckmarkCircleIcon,
-        tone: f.isFulfilled ? 'caution' : 'positive',
-        onHandle: async () => {
-          const next = f.isFulfilled ? 'paid' : 'fulfilled'
-          try {
-            const orderId = normalizeId(doc._id)
-            const client = getClient({apiVersion: SANITY_API_VERSION})
-            await client
-              .patch(orderId)
-              .set({
-                status: next,
-              })
-              .commit()
-            alert(`Order marked ${next}.`)
-          } catch {
-            alert('Failed to update fulfill status.')
-          }
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // PRINT PACKING SLIP
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      if (!doc) return null
-
-      return {
-        name: 'packingSlip',
-        label: 'Print Packing Slip',
-        icon: DocumentPdfIcon,
-        onHandle: async () => {
-          try {
-            const orderId = normalizeId(doc._id)
-            const res = await callFn('generatePackingSlips', {orderId})
-
-            if (!res.ok) {
-              const msg = await readResponseMessage(res)
-              throw new Error(msg)
             }
 
-            const blob = new Blob([await res.arrayBuffer()], {type: 'application/pdf'})
-            const url = URL.createObjectURL(blob)
-            window.open(url, '_blank')
-            setTimeout(() => URL.revokeObjectURL(url), 60000)
-          } catch (e: any) {
-            alert(e.message || 'Unable to generate packing slip.')
-          }
+            if (data?.labelUrl && typeof window !== 'undefined') {
+              try {
+                window.open(data.labelUrl, '_blank', 'noopener')
+              } catch {
+                window.location.href = data.labelUrl
+              }
+            }
 
-          props.onComplete()
+            alert('Order fulfilled and customer notified.')
+          } catch (error: any) {
+            console.error('fulfillOrder action failed', error)
+            alert(error?.message || 'Unable to fulfill order')
+          } finally {
+            props.onComplete()
+          }
         },
       }
     },
 
-    // ---------------------------
-    // REFUND IN STRIPE
-    // ---------------------------
-    (props) => {
-      const doc = props.draft || props.published
-      if (!doc || !doc.paymentIntentId) return null
-      if (['refunded', 'cancelled'].includes(String(doc.status))) return null
-
-      return {
-        name: 'refundStripe',
-        label: 'Refund in Stripe',
-        icon: ResetIcon,
-        tone: 'critical',
-        onHandle: async () => {
-          const amt = prompt('Refund amount:', String(doc.totalAmount || ''))?.trim()
-          if (!amt) return props.onComplete()
-
-          const amount = Number(amt)
-          const orderId = normalizeId(doc._id)
-
-          try {
-            const res = await callFn('createRefund', {
-              orderId,
-              amount,
-              amountCents: Math.round(amount * 100),
-            })
-            if (!res.ok) throw new Error(await readResponseMessage(res))
-            alert('Refund processed.')
-          } catch (e: any) {
-            alert(e.message || 'Unable to process refund.')
-          }
-
-          props.onComplete()
-        },
-      }
-    },
-
-    // ---------------------------
-    // CANCEL ORDER
-    // ---------------------------
+    // Cancel order before it ships.
     (props) => {
       const doc = props.draft || props.published
       if (!doc) return null
+      const status = typeof doc.status === 'string' ? doc.status : ''
+      const disableCancel = !status || NON_CANCELABLE_STATUSES.has(status)
 
       return {
         name: 'cancelOrder',
         label: 'Cancel Order',
         icon: TrashIcon,
         tone: 'critical',
+        title: disableCancel ? 'Only paid orders can be cancelled. Use Refund for shipped orders.' : undefined,
+        disabled: disableCancel,
+        hidden: disableCancel,
         onHandle: async () => {
-          if (!confirm('Cancel this order?')) return props.onComplete()
+          if (
+            !confirm(
+              'Cancel this order?\n\nThis will void fulfillment, maintain the invoice for records, and release inventory.',
+            )
+          ) {
+            props.onComplete()
+            return
+          }
 
           try {
             const orderId = normalizeId(doc._id)
-            const res = await callFn('cancelOrder', {
-              orderId,
-              orderNumber: doc.orderNumber,
-              stripePaymentIntentId: doc.paymentIntentId,
-            })
+            const res = await callFn('cancelOrder', {orderId})
             if (!res.ok) throw new Error(await readResponseMessage(res))
             alert('Order cancelled.')
-          } catch (e: any) {
-            alert(e.message || 'Unable to cancel order.')
+          } catch (error: any) {
+            console.error('cancelOrder action failed', error)
+            alert(error?.message || 'Unable to cancel order')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Refund shipped orders.
+    (props) => {
+      const doc = props.draft || props.published
+      if (!doc) return null
+      const status = typeof doc.status === 'string' ? doc.status : ''
+      const paymentIntentId =
+        typeof doc.paymentIntentId === 'string'
+          ? doc.paymentIntentId
+          : typeof (doc as any)?.stripePaymentIntentId === 'string'
+            ? (doc as any).stripePaymentIntentId
+            : ''
+      if (!paymentIntentId) return null
+      const allowRefund = REFUNDABLE_STATUSES.has(status)
+
+      return {
+        name: 'refundOrder',
+        label: 'Refund Order',
+        icon: ResetIcon,
+        tone: 'critical',
+        title: allowRefund ? undefined : 'Only shipped or delivered orders can be refunded.',
+        disabled: !allowRefund,
+        hidden: !allowRefund,
+        onHandle: async () => {
+          if (
+            !confirm('Refund this order?\n\nStripe will refund the payment and any existing shipment will be cancelled.')
+          ) {
+            props.onComplete()
+            return
           }
 
+          try {
+            const res = await callFn('refundOrder', {orderId: normalizeId(doc._id)})
+            const data = await res.clone().json().catch(() => null)
+            if (!res.ok || data?.error) {
+              throw new Error(data?.error || (await readResponseMessage(res)))
+            }
+            alert('Order refunded.')
+          } catch (error: any) {
+            console.error('refundOrder action failed', error)
+            alert(error?.message || 'Unable to refund order')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // View invoice shortcut.
+    (props) => {
+      const doc = props.draft || props.published
+      const invoiceData = doc?.invoiceData || {}
+      const invoiceUrl = typeof invoiceData?.invoiceUrl === 'string' ? invoiceData.invoiceUrl : ''
+      const invoiceId = typeof invoiceData?.invoiceId === 'string' ? invoiceData.invoiceId : ''
+      const legacyRef =
+        typeof (doc as any)?.invoiceRef?._ref === 'string' ? (doc as any).invoiceRef._ref : ''
+      if (!invoiceUrl && !invoiceId && !legacyRef) return null
+
+      return {
+        name: 'viewInvoice',
+        label: 'View Invoice',
+        icon: DocumentIcon,
+        onHandle: () => {
+          if (invoiceUrl) {
+            try {
+              window.open(invoiceUrl, '_blank', 'noopener')
+            } catch {
+              window.location.href = invoiceUrl
+            }
+          } else {
+            const normalized = normalizeId(invoiceId || legacyRef)
+            if (normalized && typeof window !== 'undefined') {
+              window.location.hash = `#/desk/invoice;${normalized}`
+            }
+          }
           props.onComplete()
+        },
+      }
+    },
+
+    // Delete order (with confirmation).
+    (props) => {
+      const doc = props.draft || props.published
+      if (!doc) return null
+      const targets = resolveTargets(doc._id || props.id)
+      if (!targets.length) return null
+
+      return {
+        name: 'deleteOrder',
+        label: 'Delete Order',
+        icon: WarningOutlineIcon,
+        tone: 'critical',
+        hidden: !['canceled', 'cancelled', 'refunded'].includes(
+          typeof (doc as any)?.status === 'string' ? (doc as any).status : '',
+        ),
+        onHandle: async () => {
+          const confirmed = confirm(
+            'Delete this order?\n\nThis will:\n• Keep the invoice for records\n• Keep the customer profile\n• Remove the order permanently\n\nContinue?',
+          )
+          if (!confirmed) {
+            props.onComplete()
+            return
+          }
+
+          try {
+            const client = getClient({apiVersion: SANITY_API_VERSION})
+            const orderId = normalizeId(doc._id)
+            if (orderId) {
+              await detachInvoiceReferences(client, orderId)
+            }
+            await Promise.all(
+              targets.map(async (target) => {
+                try {
+                  await client.delete(target)
+                } catch (error: any) {
+                  const status = error?.statusCode || error?.response?.statusCode
+                  if (status && status !== 404) throw error
+                }
+              }),
+            )
+            alert('Order deleted.')
+          } catch (error: any) {
+            console.error('deleteOrder action failed', error)
+            alert(error?.message || 'Unable to delete order')
+          } finally {
+            props.onComplete()
+          }
         },
       }
     },

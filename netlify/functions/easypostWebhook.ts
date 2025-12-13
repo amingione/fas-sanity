@@ -1,6 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import EasyPost from '@easypost/api'
-import {createHmac, timingSafeEqual} from 'crypto'
+import {createHmac, timingSafeEqual, randomUUID} from 'crypto'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {sanityClient} from '../lib/sanityClient'
 
@@ -591,6 +591,9 @@ async function handleTracker(tracker: any, rawPayload?: any) {
     tracker?.created_at ||
     new Date().toISOString()
 
+  const trackerStatus = typeof tracker?.status === 'string' ? tracker.status.toLowerCase() : ''
+  const normalizedOrderStatus = typeof order.status === 'string' ? order.status.toLowerCase() : ''
+
   const patchSet: Record<string, any> = Object.fromEntries(
     Object.entries({
       shippingCarrier: tracker?.carrier || undefined,
@@ -614,12 +617,21 @@ async function handleTracker(tracker: any, rawPayload?: any) {
   if (shipmentId && !order.easyPostShipmentId) {
     patchSet.easyPostShipmentId = shipmentId
   }
-  if (trackingCode && order.status !== 'fulfilled') {
+  if (trackerStatus === 'delivered') {
+    if (normalizedOrderStatus !== 'delivered') {
+      patchSet.status = 'delivered'
+    }
+  } else if (
+    trackingCode &&
+    normalizedOrderStatus !== 'fulfilled' &&
+    normalizedOrderStatus !== 'delivered'
+  ) {
     patchSet.status = 'fulfilled'
   }
 
   const logEntry = {
     _type: 'shippingLogEntry',
+    _key: randomUUID(),
     status: tracker?.status || 'update',
     message: formatTrackerMessage(tracker),
     labelUrl: undefined,
@@ -675,6 +687,9 @@ async function handleShipment(shipment: any, rawPayload?: any) {
     return
   }
 
+  const normalizedOrderStatus =
+    typeof order.status === 'string' ? order.status.toLowerCase() : ''
+
   const setOps: Record<string, any> = {}
   if (!order?.easyPostShipmentId) {
     setOps.easyPostShipmentId = shipmentId
@@ -691,13 +706,83 @@ async function handleShipment(shipment: any, rawPayload?: any) {
   if (trackingUrl && !order.trackingUrl) {
     setOps.trackingUrl = trackingUrl
   }
-  if (trackingNumber && order.status !== 'fulfilled') {
+  if (
+    trackingNumber &&
+    normalizedOrderStatus !== 'fulfilled' &&
+    normalizedOrderStatus !== 'delivered'
+  ) {
     setOps.status = 'fulfilled'
   }
 
-  if (!Object.keys(setOps).length) return
+  const selectedRate = shipmentData?.selected_rate || shipmentData?.rates?.[0]
+  const rateValue =
+    typeof selectedRate?.rate === 'string'
+      ? Number.parseFloat(selectedRate.rate)
+      : typeof selectedRate?.rate === 'number'
+        ? selectedRate.rate
+        : NaN
+  const normalizedRate = Number.isFinite(rateValue) ? Number(rateValue.toFixed(2)) : undefined
+  const normalizedCurrency =
+    typeof selectedRate?.currency === 'string' && selectedRate.currency.trim()
+      ? selectedRate.currency.trim().toUpperCase()
+      : undefined
+  const statusTimestamp =
+    shipmentData?.tracker?.updated_at ||
+    shipmentData?.tracker?.last_updated_at ||
+    shipmentData?.updated_at ||
+    shipmentData?.created_at ||
+    new Date().toISOString()
+  const lastEventDate =
+    statusTimestamp && !Number.isNaN(Date.parse(statusTimestamp))
+      ? new Date(statusTimestamp)
+      : new Date()
+  const shippingStatus = Object.fromEntries(
+    Object.entries({
+      status: shipmentData?.status || 'label_created',
+      carrier,
+      service: selectedRate?.service || undefined,
+      trackingCode: trackingNumber || undefined,
+      trackingUrl,
+      labelUrl,
+      cost: normalizedRate,
+      currency: normalizedCurrency,
+      lastEventAt: lastEventDate.toISOString(),
+    }).filter(([, value]) => value !== undefined),
+  )
+  if (Object.keys(shippingStatus).length) {
+    setOps.shippingStatus = shippingStatus
+  }
 
-  await sanity.patch(order._id).setIfMissing({}).set(setOps).commit({autoGenerateArrayKeys: true})
+  const logParts = [
+    'Label generated via EasyPost',
+    carrier && selectedRate?.service ? `(${carrier} – ${selectedRate.service})` : carrier ? `(${carrier})` : null,
+  ].filter(Boolean)
+  const logEntry =
+    trackingNumber || labelUrl
+      ? {
+          _type: 'shippingLogEntry',
+          _key: randomUUID(),
+          status: shipmentData?.status || 'label_created',
+          message: logParts.join(' '),
+          labelUrl: labelUrl || undefined,
+          trackingUrl: trackingUrl || undefined,
+          trackingNumber: trackingNumber || undefined,
+          weight:
+            typeof shipmentData?.parcel?.weight === 'number'
+              ? Number(shipmentData.parcel.weight)
+              : undefined,
+          createdAt: new Date().toISOString(),
+        }
+      : null
+
+  if (!Object.keys(setOps).length && !logEntry) return
+
+  const patch = sanity.patch(order._id).setIfMissing({})
+  if (Object.keys(setOps).length) patch.set(setOps)
+  if (logEntry) {
+    patch.setIfMissing({shippingLog: []}).append('shippingLog', [logEntry])
+  }
+  await patch.commit({autoGenerateArrayKeys: true})
 }
 
 async function handleRefund(refund: any) {
@@ -743,6 +828,7 @@ async function handleRefund(refund: any) {
 
   const logEntry = {
     _type: 'shippingLogEntry',
+    _key: randomUUID(),
     status: refund?.status || 'refunded',
     message: `EasyPost refund ${refund?.status || ''}`.trim(),
     labelUrl: undefined,

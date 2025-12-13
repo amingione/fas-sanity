@@ -2,7 +2,14 @@ import type {ReactNode} from 'react'
 
 export const ORDER_VIEW_CONFIG_DOCUMENT_ID = '0c7693ee-7c3d-43ee-8d40-0e50a064a41b'
 
-export type OrderStatus = 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded'
+export type OrderStatus =
+  | 'paid'
+  | 'fulfilled'
+  | 'shipped'
+  | 'delivered'
+  | 'canceled'
+  | 'cancelled'
+  | 'refunded'
 
 export type SanityReference = {
   _type: 'reference'
@@ -106,7 +113,18 @@ export interface OrderDocument {
   cardBrand?: string
   cardLast4?: string
   receiptUrl?: string
+  invoiceData?: {
+    invoiceNumber?: string | null
+    invoiceId?: string | null
+    invoiceUrl?: string | null
+    pdfUrl?: string | null
+  } | null
   invoiceRef?: SanityReference | null
+  amountRefunded?: number | null
+  lastRefundId?: string | null
+  lastRefundReason?: string | null
+  lastRefundStatus?: string | null
+  lastRefundedAt?: string | null
   customerName?: string
   customerEmail?: string
   customerRef?: SanityReference | null
@@ -119,10 +137,52 @@ export interface OrderDocument {
   shippingLabelFile?: FileAsset | null
   shippingLabelUrl?: string | null
   packingSlipUrl?: string | null
+  shippingLog?: Array<{
+    _key?: string
+    status?: string | null
+    message?: string | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    labelUrl?: string | null
+    weight?: number | null
+    createdAt?: string | null
+  }> | null
+  shippingStatus?: {
+    status?: string | null
+    carrier?: string | null
+    service?: string | null
+    trackingCode?: string | null
+    trackingUrl?: string | null
+    labelUrl?: string | null
+    cost?: number | null
+    currency?: string | null
+    lastEventAt?: string | null
+  } | null
+  orderEvents?: Array<{
+    _key?: string
+    type?: string | null
+    status?: string | null
+    label?: string | null
+    message?: string | null
+    amount?: number | null
+    currency?: string | null
+    stripeEventId?: string | null
+    metadata?: string | null
+    createdAt?: string | null
+  }> | null
+  attribution?: {
+    sessionId?: string | null
+    landingPage?: string | null
+    referrer?: string | null
+    device?: string | null
+    browser?: string | null
+    os?: string | null
+    capturedAt?: string | null
+  } | null
+  dimensions?: PackageDimensions | null
+  weight?: ShipmentWeight | null
   shippingAddress?: OrderAddress
   billingAddress?: OrderAddress
-  weight?: ShipmentWeight | null
-  dimensions?: PackageDimensions | null
   packageDimensions?: PackageDimensions | null
   fulfillment?: {
     status?: string | null
@@ -153,6 +213,9 @@ export interface OrderDocument {
   shippingEstimatedDeliveryDate?: string | null
   shippingServiceCode?: string | null
   shippingServiceName?: string | null
+  stripeLastSyncedAt?: string | null
+  stripePaymentIntentStatus?: string | null
+  stripeSource?: string | null
   webhookNotified?: boolean | null
   confirmationEmailSent?: boolean | null
 }
