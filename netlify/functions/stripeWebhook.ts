@@ -5520,6 +5520,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   const order = await sanity.fetch<{
     _id: string
     orderNumber?: string
+    status?: string
     invoiceRef?: {_id: string}
     customerRef?: {_ref: string}
     customerEmail?: string
@@ -6363,7 +6364,16 @@ export const handler: Handler = async (event) => {
       )
     }
 
-    webhookSummary = summarizeEventType(webhookEvent?.type || '')
+    if (!webhookEvent) {
+      webhookSummary = 'Missing Stripe event'
+      return await finalize(
+        {statusCode: 400, body: 'Invalid webhook event payload'},
+        'error',
+        {message: 'Stripe event missing from payload'},
+      )
+    }
+
+    webhookSummary = summarizeEventType(webhookEvent.type || '')
 
   try {
     type ExtendedStripeEventType = Stripe.Event.Type | string
@@ -6752,7 +6762,7 @@ export const handler: Handler = async (event) => {
           const amountLabel = formatMajorAmount(amountCaptured, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'paid',
             orderStatus: 'paid',
             invoiceStatus: 'paid',
@@ -6778,7 +6788,7 @@ export const handler: Handler = async (event) => {
           const amountLabel = formatMajorAmount(amountPending, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'pending',
             invoiceStatus: 'pending',
             label: 'Charge pending',
@@ -6803,7 +6813,7 @@ export const handler: Handler = async (event) => {
           const amountLabel = formatMajorAmount(amountFailed, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'failed',
             orderStatus: 'cancelled',
             invoiceStatus: 'cancelled',
@@ -6841,7 +6851,7 @@ export const handler: Handler = async (event) => {
           const amountLabel = formatMajorAmount(amount, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'expired',
             orderStatus: 'expired',
             invoiceStatus: 'cancelled',
@@ -6865,7 +6875,7 @@ export const handler: Handler = async (event) => {
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'disputed',
             label: 'Dispute opened',
             messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
@@ -6882,7 +6892,7 @@ export const handler: Handler = async (event) => {
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'disputed',
             label: 'Dispute updated',
             messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
@@ -6914,7 +6924,7 @@ export const handler: Handler = async (event) => {
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus,
             orderStatus,
             invoiceStatus,
@@ -6934,7 +6944,7 @@ export const handler: Handler = async (event) => {
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'dispute_funds_withdrawn',
             label: 'Dispute funds withdrawn',
             messageParts: [
@@ -6955,7 +6965,7 @@ export const handler: Handler = async (event) => {
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent,
+            event: webhookEvent!,
             paymentStatus: 'dispute_funds_reinstated',
             orderStatus: 'paid',
             invoiceStatus: 'paid',
@@ -6975,14 +6985,14 @@ export const handler: Handler = async (event) => {
       case 'charge.refunded':
       case 'charge.refund.created':
       case 'charge.refund.updated': {
-        await handleRefundWebhookEvent(webhookEvent)
+        await handleRefundWebhookEvent(webhookEvent!)
         break
       }
 
       case 'refund.created':
       case 'refund.updated':
       case 'refund.failed': {
-        await handleRefundWebhookEvent(webhookEvent)
+        await handleRefundWebhookEvent(webhookEvent!)
         break
       }
 
@@ -7478,7 +7488,7 @@ export const handler: Handler = async (event) => {
 
   try {
     await recordStripeWebhookEvent({
-      event: webhookEvent,
+      event: webhookEvent!,
       status: webhookStatus,
       summary: webhookSummary,
     })
