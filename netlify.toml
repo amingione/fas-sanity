@@ -52,12 +52,6 @@ package = "@netlify/plugin-secrets-manager"
   name = "sendAbandonedCartEmails"
   schedule = "0 * * * *"
 
-# Bypass redirect for Netlify functions
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
 # Bypass redirect for known static assets
 [[redirects]]
   from = "/site.webmanifest"
@@ -86,8 +80,8 @@ package = "@netlify/plugin-secrets-manager"
   force = true
   conditions = { Host = ["fasmotorsports.us", "www.fasmotorsports.us"] }
 
-# Catch-all redirect for everything else
+# SPA catch-all redirect for everything else
 [[redirects]]
   from = "/*"
-  to = "/"
+  to = "/index.html"
   status = 200
