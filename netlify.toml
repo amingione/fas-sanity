@@ -52,6 +52,12 @@ package = "@netlify/plugin-secrets-manager"
   name = "sendAbandonedCartEmails"
   schedule = "0 * * * *"
 
+# Bypass redirect for Netlify functions
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 # Bypass redirect for known static assets
 [[redirects]]
   from = "/site.webmanifest"
