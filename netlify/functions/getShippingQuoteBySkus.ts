@@ -266,7 +266,7 @@ export const handler: Handler = async (event) => {
       if (title) productByTitle.set(title, prod)
     }
 
-    // Package logic (mirrors fulfill-order.ts)
+    // Package logic (mirrors fulfillOrder.ts)
     const defaultDims = {
       unit: 'inch' as const,
       length: Number(process.env.DEFAULT_PACKAGE_LENGTH_IN || 12),

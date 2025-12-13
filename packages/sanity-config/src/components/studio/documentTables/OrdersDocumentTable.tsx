@@ -30,8 +30,8 @@ import RecoveredCartBadge from './RecoveredCartBadge'
 
 type OrderRowData = {
   orderNumber?: string | null
-  invoiceOrderNumber?: string | null
   invoiceNumber?: string | null
+  invoiceId?: string | null
   stripeSessionId?: string | null
   status?: string | null
   paymentStatus?: string | null
@@ -50,8 +50,8 @@ type OrderRowData = {
 const ORDER_PROJECTION = `{
   orderNumber,
   stripeSessionId,
-  "invoiceOrderNumber": invoiceRef->orderNumber,
-  "invoiceNumber": invoiceRef->invoiceNumber,
+  "invoiceNumber": invoiceData.invoiceNumber,
+  "invoiceId": invoiceData.invoiceId,
   status,
   paymentStatus,
   customerName,
@@ -77,14 +77,22 @@ const CARTS_PROJECTION = `{
   "createdAt": coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)
 }`
 
-export const NEW_ORDERS_FILTER = `!defined(fulfilledAt) && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && !(status in ["fulfilled","shipped","cancelled","refunded","closed"])`
+export const NEW_ORDERS_FILTER = `!defined(fulfilledAt) && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && !(status in ["fulfilled","shipped","delivered","canceled","cancelled","refunded","closed"])`
 
 const DEFAULT_ORDERINGS: Array<{field: string; direction: 'asc' | 'desc'}> = [
   {field: '_createdAt', direction: 'desc'},
 ]
 
-const CLOSED_ORDER_STATUSES = ['fulfilled', 'shipped', 'cancelled', 'refunded', 'closed']
-const ARCHIVED_ORDER_STATUSES = ['fulfilled', 'shipped', 'refunded']
+const CLOSED_ORDER_STATUSES = [
+  'fulfilled',
+  'shipped',
+  'delivered',
+  'canceled',
+  'cancelled',
+  'refunded',
+  'closed',
+]
+const ARCHIVED_ORDER_STATUSES = ['fulfilled', 'delivered', 'refunded']
 
 type DocumentType = 'order' | 'abandonedCheckout'
 
@@ -140,12 +148,9 @@ type OrdersDocumentTableProps = {
 }
 
 function resolveOrderNumber(data: OrderRowData & {_id: string}) {
-  const identifiers = [
-    data.orderNumber,
-    data.invoiceOrderNumber,
-    data.invoiceNumber,
-    data.stripeSessionId,
-  ].filter((candidate): candidate is string => Boolean(candidate && candidate.trim()))
+  const identifiers = [data.orderNumber, data.invoiceNumber, data.stripeSessionId].filter(
+    (candidate): candidate is string => Boolean(candidate && candidate.trim()),
+  )
   const candidate = identifiers.find((id) => formatOrderNumber(id))
   if (candidate) {
     const formatted = formatOrderNumber(candidate)
@@ -268,7 +273,8 @@ export default function OrdersDocumentTable({
         : [
             'orderNumber',
             'invoiceNumber',
-            'invoiceRef->orderNumber',
+            'invoiceData.invoiceNumber',
+            'invoiceData.invoiceId',
             'stripeSessionId',
             'customerName',
             'customerEmail',
@@ -396,7 +402,7 @@ export default function OrdersDocumentTable({
       const failures: string[] = []
       for (const id of ids) {
         try {
-          await callNetlifyFunction('fulfill-order', {orderId: id})
+          await callNetlifyFunction('fulfillOrder', {orderId: id})
         } catch (err) {
           console.error('Fulfill failed for', id, err)
           failures.push(id)

@@ -298,6 +298,11 @@ const createAdminSection = (S: any) =>
                     .icon(CaseIcon),
                 ]),
             ),
+          S.divider(),
+          createMarketingSection(S),
+          createAnalyticsSection(S),
+          createFunctionLogsSection(S),
+          createFinanceSection(S),
         ]),
     )
 
@@ -1866,11 +1871,7 @@ export const deskStructure: StructureResolver = (S) =>
 
       S.divider().title('F.A.S. Resources'),
       createBlogSection(S),
-      createMarketingSection(S),
-      createAnalyticsSection(S),
-      createFunctionLogsSection(S),
       downloadsStructure(S),
-      createFinanceSection(S),
 
       S.divider().title('SETTINGS'),
       S.listItem()

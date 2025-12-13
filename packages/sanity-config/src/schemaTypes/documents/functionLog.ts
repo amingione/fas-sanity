@@ -1,3 +1,4 @@
+import React from 'react'
 import {defineField, defineType} from 'sanity'
 
 export default defineType({
@@ -42,10 +43,22 @@ export default defineType({
     },
     prepare(selection) {
       const {title, status, subtitle} = selection
+      const icon = status === 'error' || status === 'warning' ? '⚠️' : '✅'
+      const iconLabel =
+        status === 'error' || status === 'warning' ? 'Function error' : 'Function success'
+      const mediaNode = React.createElement(
+        'span',
+        {
+          role: 'img',
+          'aria-label': iconLabel,
+          style: {fontSize: '1.25rem', lineHeight: 1},
+        },
+        icon,
+      )
       return {
         title: title || 'Function',
         subtitle: subtitle || 'Execution',
-        media: status === 'error' ? '⚠️' : status === 'warning' ? '⚠️' : '✅',
+        media: () => mediaNode,
       }
     },
   },

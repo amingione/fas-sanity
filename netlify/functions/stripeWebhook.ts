@@ -2833,6 +2833,35 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     return
   }
 
+  const existingOrder = await webhookSanityClient.fetch<{
+    _id: string
+    status?: string
+    invoiceRef?: {_ref: string}
+    orderNumber?: string
+    cart?: any[]
+    fulfillment?: Record<string, unknown> | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    shippingLabelUrl?: string | null
+  } | null>(
+    `*[_type == "order" && (
+      stripeSessionId == $sid ||
+      paymentIntentId == $pid ||
+      stripePaymentIntentId == $pid
+    )][0]{_id, status, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment}`,
+    {sid: session.id, pid: paymentIntentId},
+  )
+
+  if (
+    existingOrder?.status &&
+    ['canceled', 'cancelled', 'refunded'].includes(existingOrder.status.toLowerCase())
+  ) {
+    console.log(
+      `stripeWebhook: checkout.session.completed ignored for terminal order ${existingOrder.orderNumber}`,
+    )
+    return
+  }
+
   const customer = await strictFindOrCreateCustomer(session)
   const paymentDetails = await strictGetPaymentDetails(paymentIntentId)
   const sessionPaymentIntent =
@@ -3016,22 +3045,6 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     sessionMeta['auth0_user_id'] ||
     sessionMeta['auth_user_id'] ||
     undefined
-
-  const existingOrder = await webhookSanityClient.fetch<{
-    _id: string
-    invoiceRef?: {_ref: string}
-    orderNumber?: string
-    cart?: any[]
-    fulfillment?: Record<string, unknown> | null
-    trackingNumber?: string | null
-    trackingUrl?: string | null
-    shippingLabelUrl?: string | null
-  } | null>(
-    `*[_type == "order" && stripeSessionId == $sid][0]{_id, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment}`,
-    {
-      sid: session.id,
-    },
-  )
 
   const orderNumber = existingOrder?.orderNumber || (await generateRandomOrderNumber())
   const nowIso = new Date().toISOString()
@@ -5076,6 +5089,22 @@ async function fetchPaymentIntentResource(
   }
 }
 
+const TERMINAL_ORDER_STATUSES = new Set(['canceled', 'cancelled', 'refunded'])
+const FULFILLMENT_COMPLETE_STATUSES = new Set(['fulfilled', 'delivered', 'shipped'])
+
+const normalizeOrderStatusValue = (value?: string | null): string => {
+  if (typeof value !== 'string') return ''
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'cancelled') return 'canceled'
+  return normalized
+}
+
+const isTerminalOrderStatus = (value?: string | null) =>
+  TERMINAL_ORDER_STATUSES.has(normalizeOrderStatusValue(value))
+
+const isFulfillmentCompleteStatus = (value?: string | null) =>
+  FULFILLMENT_COMPLETE_STATUSES.has(normalizeOrderStatusValue(value))
+
 type OrderPaymentStatusInput = {
   paymentStatus?: string
   orderStatus?: 'paid' | 'fulfilled' | 'shipped' | 'cancelled' | 'refunded' | 'closed' | 'expired'
@@ -5502,7 +5531,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       ($pi != '' && paymentIntentId == $pi) ||
       ($charge != '' && chargeId == $charge) ||
       ($session != '' && stripeSessionId == $session)
-    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, paymentStatus, attribution, invoiceRef->{ _id } }`,
+    )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, paymentStatus, status, attribution, invoiceRef->{ _id } }`,
     params,
   )
 
@@ -5510,11 +5539,15 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
 
   const existingPaymentStatus =
     typeof order?.paymentStatus === 'string' ? order.paymentStatus.trim().toLowerCase() : undefined
+  const existingOrderStatus = normalizeOrderStatusValue(order?.status)
   const normalizedOrderStatus =
     typeof orderStatus === 'string' ? orderStatus.trim().toLowerCase() : undefined
   const previouslyPaid = existingPaymentStatus
-    ? ['paid', 'fulfilled', 'shipped'].includes(existingPaymentStatus)
-    : false
+    ? ['paid', 'fulfilled', 'shipped', 'delivered'].includes(existingPaymentStatus)
+    : Boolean(
+        existingOrderStatus &&
+          (existingOrderStatus === 'paid' || isFulfillmentCompleteStatus(existingOrderStatus)),
+      )
   const normalizedPaymentStatus =
     typeof paymentStatus === 'string' ? paymentStatus.toLowerCase() : undefined
   const nowPaid =
@@ -5522,10 +5555,11 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     normalizedPaymentStatus === 'succeeded' ||
     normalizedOrderStatus === 'paid'
   const shouldTriggerOrderPlaced = nowPaid && !previouslyPaid
+  const wasPreviouslyRefunded = existingPaymentStatus
+    ? ['refunded', 'partially_refunded'].includes(existingPaymentStatus)
+    : existingOrderStatus === 'refunded'
   const shouldPreserveRefundedStatus = Boolean(
-    preserveExistingRefundedStatus &&
-      existingPaymentStatus &&
-      ['refunded', 'partially_refunded'].includes(existingPaymentStatus),
+    preserveExistingRefundedStatus && wasPreviouslyRefunded,
   )
 
   const orderPatch: Record<string, any> = {
@@ -5535,7 +5569,22 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
   if (!shouldPreserveRefundedStatus) {
     orderPatch.paymentStatus = paymentStatus
   }
-  if (orderStatus) orderPatch.status = orderStatus
+  const shouldApplyOrderStatus = (() => {
+    if (!orderStatus || !normalizedOrderStatus) return false
+    if (isTerminalOrderStatus(existingOrderStatus)) {
+      return normalizedOrderStatus === existingOrderStatus
+    }
+    if (
+      normalizedOrderStatus === 'paid' &&
+      isFulfillmentCompleteStatus(existingOrderStatus)
+    ) {
+      return false
+    }
+    return true
+  })()
+  if (shouldApplyOrderStatus) {
+    orderPatch.status = orderStatus
+  }
   if (additionalOrderFields && typeof additionalOrderFields === 'object') {
     const existingFailureDetails =
       preserveExistingFailureDiagnostics && order
@@ -7157,6 +7206,8 @@ export const handler: Handler = async (event) => {
           const existingOrder = existingOrderId
             ? await sanity.fetch<{
                 _id: string
+                orderNumber?: string | null
+                status?: string | null
                 packingSlipUrl?: string | null
                 stripeSessionId?: string | null
                 trackingNumber?: string | null
@@ -7165,7 +7216,7 @@ export const handler: Handler = async (event) => {
                 fulfillment?: Record<string, any> | null
                 fulfillmentWorkflow?: Record<string, any> | null
               }>(
-                `*[_type == "order" && _id == $id][0]{_id, packingSlipUrl, stripeSessionId, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
+                `*[_type == "order" && _id == $id][0]{_id, orderNumber, status, packingSlipUrl, stripeSessionId, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
                 {
                   id: existingOrderId,
                 },
@@ -7177,6 +7228,14 @@ export const handler: Handler = async (event) => {
             !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
           const resolvedStripeSessionId =
             existingOrder?.stripeSessionId || checkoutSessionMeta || pi.id
+          if (existingOrder && isTerminalOrderStatus(existingOrder.status)) {
+            console.log(
+              `stripeWebhook: payment_intent.succeeded ignored for terminal order ${
+                existingOrder.orderNumber || existingOrder._id
+              }`,
+            )
+            break
+          }
           const baseDoc: any = {
             _type: 'order',
             stripeSource: 'payment_intent',
@@ -7186,7 +7245,9 @@ export const handler: Handler = async (event) => {
             customerName,
             customerEmail: email || undefined,
             totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
-            status: derivedOrderStatus,
+            status: existingOrder?.status && isFulfillmentCompleteStatus(existingOrder.status)
+              ? existingOrder.status
+              : derivedOrderStatus,
             createdAt: new Date().toISOString(),
             paymentStatus,
             stripePaymentIntentStatus: pi.status || undefined,
@@ -7382,7 +7443,7 @@ export const handler: Handler = async (event) => {
             ).trim()
             const hasShipping = Boolean((pi as any)?.shipping?.address?.line1)
             if (base && base.startsWith('http') && orderId && hasShipping) {
-              const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfill-order`
+              const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfillOrder`
               await fetch(url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},

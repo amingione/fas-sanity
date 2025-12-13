@@ -14,7 +14,7 @@ import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../utils/orderFilters'
 
 const fmt = (n?: number) => (typeof n === 'number' ? n.toFixed(2) : '0.00')
 
-const FULFILL_ENDPOINT = '/.netlify/functions/fulfill-order'
+const FULFILL_ENDPOINT = '/.netlify/functions/fulfillOrder'
 const ORDER_QUERY = `*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && status != "fulfilled"]{
   _id,
   orderNumber,

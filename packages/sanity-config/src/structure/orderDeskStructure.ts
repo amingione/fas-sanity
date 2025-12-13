@@ -28,7 +28,7 @@ export const orderDeskStructure = (S: any) =>
               S.documentList()
                 .title('Orders With Tracking')
                 .filter(
-                  '_type == "order" && status == "paid" && (defined(manualTrackingNumber) || defined(trackingNumber)) && status != "shipped"',
+                  '_type == "order" && status == "paid" && (defined(manualTrackingNumber) || defined(trackingNumber))',
                 )
                 .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                 .menuItems(S.documentTypeList('order').getMenuItems()),
@@ -36,24 +36,24 @@ export const orderDeskStructure = (S: any) =>
 
           // 🚚 SHIPPED
           S.listItem()
-            .title('🚚 Shipped')
+            .title('🚚 Fulfilled')
             .icon(() => '🚀')
             .child(
               S.documentList()
                 .title('Orders In Transit')
-                .filter('_type == "order" && status == "shipped"')
+                .filter('_type == "order" && status == "fulfilled"')
                 .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                 .menuItems(S.documentTypeList('order').getMenuItems()),
             ),
 
           // ✅ FULFILLED
           S.listItem()
-            .title('✅ Fulfilled')
+            .title('✅ Delivered')
             .icon(() => '✓')
             .child(
               S.documentList()
                 .title('Completed Orders')
-                .filter('_type == "order" && status == "fulfilled"')
+                .filter('_type == "order" && status == "delivered"')
                 .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                 .menuItems(S.documentTypeList('order').getMenuItems()),
             ),
@@ -95,7 +95,7 @@ export const orderDeskStructure = (S: any) =>
             .child(
               S.documentList()
                 .title('Cancelled or Refunded Orders')
-                .filter('_type == "order" && (status == "cancelled" || status == "refunded")')
+                .filter('_type == "order" && (status == "canceled" || status == "cancelled" || status == "refunded")')
                 .defaultOrdering([{field: 'createdAt', direction: 'desc'}])
                 .menuItems(S.documentTypeList('order').getMenuItems()),
             ),

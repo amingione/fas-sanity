@@ -57,7 +57,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     'orderType',
     'slug',
     'customerRef',
-    'invoiceRef',
+    'invoiceData',
     'paymentIntentId',
     'stripeSessionId',
     'currency',
@@ -82,7 +82,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     'cardBrand',
     'cardLast4',
     'receiptUrl',
-    'invoiceRef',
+    'invoiceData',
     'currency',
     'trackingNumber',
     'trackingUrl',
@@ -119,7 +119,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
           type: 'string',
           prominent: true,
           editable: true,
-          options: ['paid', 'fulfilled', 'shipped', 'cancelled', 'refunded'],
+          options: ['paid', 'fulfilled', 'delivered', 'canceled', 'refunded'],
         },
         {
           _key: 'createdAt',
@@ -240,13 +240,7 @@ const SECTION_ICONS: Record<string, ComponentType> = {
   shipping: PinIcon,
 }
 
-const ORDER_STATUS_OPTIONS: OrderStatus[] = [
-  'paid',
-  'fulfilled',
-  'shipped',
-  'cancelled',
-  'refunded',
-]
+const ORDER_STATUS_OPTIONS: OrderStatus[] = ['paid', 'fulfilled', 'delivered', 'canceled', 'refunded']
 const FULFILLMENT_STATUS_OPTIONS = ['unfulfilled', 'shipped', 'delivered']
 
 const STRIPE_SYNC_FIELDS = new Set([
@@ -261,7 +255,7 @@ const STRIPE_SYNC_FIELDS = new Set([
   'cardLast4',
   'currency',
   'receiptUrl',
-  'invoiceRef',
+  'invoiceData',
   'trackingNumber',
   'trackingUrl',
   'shippingLabelUrl',
@@ -272,7 +266,6 @@ const STRIPE_SYNC_FIELDS = new Set([
 
 const REFERENCE_TARGETS: Record<string, string> = {
   customerRef: 'customer',
-  invoiceRef: 'invoice',
 }
 
 const OrderViewComponent = (props: any) => {

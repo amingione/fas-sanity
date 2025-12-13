@@ -702,6 +702,7 @@ export default defineType({
       type: 'reference',
       to: [{type: 'order'}],
       fieldset: 'relatedDocs',
+      weak: true,
       validation: (Rule) => Rule.required(),
     }),
     defineField({

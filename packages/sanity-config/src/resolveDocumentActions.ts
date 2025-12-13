@@ -11,7 +11,6 @@ import {
 } from './schemaTypes/documentActions/refundStripeAction'
 import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
 import {capturePaymentAction} from './schemaTypes/documentActions/capturePaymentAction'
-import {createEasyPostLabelAction} from './schemaTypes/documentActions/createEasyPostLabelAction'
 import {orderActions} from './schemaTypes/documents/order.actions'
 import {
   approveVendorApplicationAction,
@@ -67,7 +66,6 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (isOrderSchemaType(context.schemaType)) {
     list.push(capturePaymentAction)
-    list.push(createEasyPostLabelAction)
     return orderActions(list, context)
   }
   if (context.schemaType === 'vendorApplication') {

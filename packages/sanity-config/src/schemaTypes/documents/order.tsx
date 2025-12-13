@@ -25,7 +25,7 @@ const deriveOrderType = async (
   document: any,
   getClient?: (options?: {apiVersion?: string}) => any,
 ): Promise<'online' | 'in-store' | 'wholesale'> => {
-  if (document?.invoiceRef?._ref) return 'in-store'
+  if (document?.invoiceData?.invoiceId) return 'in-store'
   if (document?.wholesaleDetails || document?.wholesaleWorkflowStatus) return 'wholesale'
   if (document?.orderType === 'wholesale') return 'wholesale'
   if (document?.stripeSessionId) return 'online'
@@ -53,6 +53,22 @@ const deriveOrderType = async (
 // ============================================================================
 // ORDER SCHEMA
 // ============================================================================
+
+/**
+ * ORDER LIFECYCLE
+ *
+ * 1. Created via Stripe checkout/payment intent → status `paid`
+ * 2. Fulfilled via Studio "Fulfill Order" (EasyPost label + email) → status `fulfilled`
+ * 3. Delivered via EasyPost webhook → status `delivered`
+ * 4a. Canceled before fulfillment → status `canceled`
+ * 4b. Refunded after fulfillment → status `refunded`
+ * 5. Delete allowed only for canceled/refunded orders (invoice references detached)
+ *
+ * Guardrails:
+ * - Stripe webhooks skip recreating canceled/refunded orders.
+ * - Fulfill/cancel actions only appear on eligible statuses.
+ * - Refund action cancels EasyPost + Stripe.
+ */
 
 const orderSchema = defineType({
   name: 'order',
@@ -93,6 +109,47 @@ const orderSchema = defineType({
       },
       fields: [{name: 'placeholder', type: 'string', hidden: true}],
       hidden: ({document}) => !document,
+    }),
+    // Refund telemetry
+    defineField({
+      name: 'amountRefunded',
+      type: 'number',
+      title: 'Amount Refunded',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => typeof document?.amountRefunded !== 'number',
+    }),
+    defineField({
+      name: 'lastRefundId',
+      type: 'string',
+      title: 'Last Refund ID',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.lastRefundId,
+    }),
+    defineField({
+      name: 'lastRefundReason',
+      type: 'string',
+      title: 'Refund Reason',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.lastRefundReason,
+    }),
+    defineField({
+      name: 'lastRefundStatus',
+      type: 'string',
+      title: 'Refund Status',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.lastRefundStatus,
+    }),
+    defineField({
+      name: 'lastRefundedAt',
+      type: 'datetime',
+      title: 'Refunded At',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.lastRefundedAt,
     }),
     defineField({
       name: 'fulfillmentStatusDisplay',
@@ -140,14 +197,35 @@ const orderSchema = defineType({
       group: 'basics',
       options: {
         list: [
-          {title: 'Paid', value: 'paid'},
-          {title: 'Fulfilled', value: 'fulfilled'},
-          {title: 'Shipped', value: 'shipped'},
-          {title: 'Cancelled', value: 'cancelled'},
-          {title: 'Refunded', value: 'refunded'},
+          {title: '📦 Needs Fulfillment', value: 'paid'},
+          {title: '🚚 Fulfilled - Shipped', value: 'fulfilled'},
+          {title: '✅ Delivered', value: 'delivered'},
+          {title: '❌ Canceled', value: 'canceled'},
+          {title: '💰 Refunded', value: 'refunded'},
         ],
         layout: 'dropdown',
       },
+      readOnly: ({document}) =>
+        document?.status === 'canceled' || document?.status === 'refunded',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const doc = context.document as any
+          if (!value || !doc) return true
+          const current = doc.status
+          if (current === 'canceled' && value !== 'canceled') {
+            return 'Cannot change status of a canceled order.'
+          }
+          if (current === 'refunded' && value !== 'refunded') {
+            return 'Cannot change status of a refunded order.'
+          }
+          if (
+            ['fulfilled', 'delivered'].includes(value) &&
+            ['canceled', 'refunded'].includes(current)
+          ) {
+            return 'Cannot fulfill a canceled or refunded order.'
+          }
+          return true
+        }),
     }),
     defineField({
       name: 'wholesaleWorkflowStatus',
@@ -555,13 +633,47 @@ const orderSchema = defineType({
       initialValue: 'USD',
     }),
     defineField({
+      name: 'invoiceData',
+      type: 'object',
+      title: 'Invoice Snapshot',
+      description: 'Embedded invoice metadata to avoid circular references.',
+      group: 'payment',
+      options: {collapsible: true, collapsed: true},
+      fields: [
+        defineField({
+          name: 'invoiceNumber',
+          type: 'string',
+          title: 'Invoice Number',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'invoiceId',
+          type: 'string',
+          title: 'Invoice ID',
+          description: 'Stores the Sanity invoice document ID for quick linking.',
+          readOnly: true,
+        }),
+        defineField({
+          name: 'invoiceUrl',
+          type: 'url',
+          title: 'Invoice URL',
+        }),
+        defineField({
+          name: 'pdfUrl',
+          type: 'url',
+          title: 'PDF URL',
+        }),
+      ],
+    }),
+    defineField({
       name: 'invoiceRef',
       type: 'reference',
-      title: 'Invoice',
+      title: 'Legacy Invoice Reference',
       to: [{type: 'invoice'}],
       group: 'payment',
-      readOnly: false,
+      readOnly: true,
       hidden: true,
+      weak: true,
     }),
     defineField({
       name: 'stripeSummary',
@@ -988,25 +1100,143 @@ const orderSchema = defineType({
         },
       ],
     }),
+    defineField({
+      name: 'shippingLog',
+      type: 'array',
+      title: 'Shipping Log',
+      description: 'Historical shipping events from EasyPost',
+      group: 'fulfillment',
+      of: [{type: 'shippingLogEntry'}],
+      readOnly: true,
+      hidden: ({document}) => !Array.isArray(document?.shippingLog) || !document.shippingLog.length,
+    }),
+    defineField({
+      name: 'shippingStatus',
+      type: 'object',
+      title: 'Shipping Status',
+      group: 'fulfillment',
+      readOnly: true,
+      fields: [
+        {name: 'status', type: 'string', title: 'Status'},
+        {name: 'carrier', type: 'string', title: 'Carrier'},
+        {name: 'service', type: 'string', title: 'Service'},
+        {name: 'trackingCode', type: 'string', title: 'Tracking Code'},
+        {name: 'trackingUrl', type: 'url', title: 'Tracking URL'},
+        {name: 'labelUrl', type: 'url', title: 'Label URL'},
+        {name: 'cost', type: 'number', title: 'Cost'},
+        {name: 'currency', type: 'string', title: 'Currency'},
+        {name: 'lastEventAt', type: 'datetime', title: 'Last Event'},
+      ],
+      hidden: ({document}) => !document?.shippingStatus,
+    }),
+    defineField({
+      name: 'orderEvents',
+      type: 'array',
+      title: 'Order Events',
+      group: 'basics',
+      of: [{type: 'orderEvent'}],
+      readOnly: true,
+      hidden: ({document}) => !Array.isArray(document?.orderEvents) || !document.orderEvents.length,
+    }),
+    defineField({
+      name: 'attribution',
+      type: 'object',
+      title: 'Attribution',
+      group: 'basics',
+      readOnly: true,
+      fields: [
+        {name: 'sessionId', type: 'string', title: 'Session ID'},
+        {name: 'landingPage', type: 'url', title: 'Landing Page'},
+        {name: 'referrer', type: 'url', title: 'Referrer'},
+        {name: 'device', type: 'string', title: 'Device'},
+        {name: 'browser', type: 'string', title: 'Browser'},
+        {name: 'os', type: 'string', title: 'OS'},
+        {name: 'capturedAt', type: 'datetime', title: 'Captured At'},
+      ],
+      hidden: ({document}) => !document?.attribution,
+    }),
+    defineField({
+      name: 'dimensions',
+      type: 'object',
+      title: 'Package Dimensions',
+      group: 'fulfillment',
+      readOnly: true,
+      fields: [
+        {name: 'length', type: 'number', title: 'Length (inches)'},
+        {name: 'width', type: 'number', title: 'Width (inches)'},
+        {name: 'height', type: 'number', title: 'Height (inches)'},
+      ],
+      hidden: ({document}) => !document?.dimensions,
+    }),
+    defineField({
+      name: 'weight',
+      type: 'object',
+      title: 'Weight',
+      group: 'fulfillment',
+      readOnly: true,
+      fields: [
+        {name: 'value', type: 'number', title: 'Value'},
+        {name: 'unit', type: 'string', title: 'Unit'},
+      ],
+      hidden: ({document}) => !document?.weight,
+    }),
+    defineField({
+      name: 'stripeLastSyncedAt',
+      type: 'datetime',
+      title: 'Last Synced with Stripe',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.stripeLastSyncedAt,
+    }),
+    defineField({
+      name: 'stripePaymentIntentStatus',
+      type: 'string',
+      title: 'Stripe Payment Status',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.stripePaymentIntentStatus,
+    }),
+    defineField({
+      name: 'stripeSource',
+      type: 'string',
+      title: 'Stripe Source',
+      group: 'payment',
+      readOnly: true,
+      hidden: ({document}) => !document?.stripeSource,
+    }),
   ],
   preview: {
     select: {
       orderNumber: 'orderNumber',
-      customerName: 'customerName',
-      shippingName: 'shippingAddress.name',
       status: 'status',
       total: 'totalAmount',
+      customerEmail: 'customerEmail',
+      trackingNumber: 'trackingNumber',
     },
-    prepare({orderNumber, customerName, shippingName, status, total}) {
-      const displayOrderNumber = formatOrderNumber(orderNumber) || orderNumber
-      const formattedTotal = total
-        ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(total)
+    prepare({orderNumber, status, total, customerEmail, trackingNumber}) {
+      const displayOrderNumber = formatOrderNumber(orderNumber) || orderNumber || 'Untitled Order'
+      const numericTotal =
+        typeof total === 'number' && Number.isFinite(total)
+          ? total
+          : Number.isFinite(Number(total))
+            ? Number(total)
+            : null
+      const hasTotal = typeof numericTotal === 'number' && Number.isFinite(numericTotal)
+      const formattedTotal = hasTotal
+        ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(
+            numericTotal!,
+          )
         : '$0.00'
-      const displayName = customerName || shippingName || 'No customer'
-
+      const subtitleParts = [
+        status || 'unknown',
+        formattedTotal,
+        customerEmail || 'Unknown customer',
+      ]
+      const description = trackingNumber ? `Tracking: ${trackingNumber}` : 'Not shipped'
       return {
-        title: displayOrderNumber || 'Untitled Order',
-        subtitle: `${displayName} • ${status || 'unknown'} • ${formattedTotal}`,
+        title: displayOrderNumber,
+        subtitle: subtitleParts.join(' • '),
+        description,
       }
     },
   },
@@ -1340,7 +1570,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
               props.onComplete()
               return
             }
-            await callNetlifyFunction('fulfill-order', {json: {orderId, markOnly: true}})
+            await callNetlifyFunction('fulfillOrder', {json: {orderId}})
             alert('Order marked as fulfilled.')
           } catch (error) {
             console.error('Fulfill order failed', error)
@@ -1451,7 +1681,9 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
           const orderId = normalizeDocumentId(doc._id || id)
           const invoiceId = normalizeDocumentId(
-            (doc?.invoiceRef as {_ref?: string} | undefined)?._ref,
+            typeof (doc as any)?.invoiceData?.invoiceId === 'string'
+              ? (doc as any).invoiceData.invoiceId
+              : '',
           )
           const orderNumberValue = asOptionalString(doc?.orderNumber)
           if (!orderId && !invoiceId) {
