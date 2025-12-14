@@ -15,7 +15,6 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
         orderNumber?: string
         shippingAddress?: unknown
         cart?: unknown
-        selectedService?: unknown
         fulfillment?: {labelUrl?: string}
       }
     | null
@@ -55,7 +54,6 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
             orderNumber: doc.orderNumber,
             shippingAddress: doc.shippingAddress,
             cart: doc.cart,
-            selectedService: doc.selectedService,
           }),
         })
 
@@ -73,14 +71,14 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
           {
             set: {
               'fulfillment.status': 'label_created',
-              'fulfillment.trackingNumber': trackingNumber,
-              'fulfillment.trackingUrl': trackingUrl,
-              'fulfillment.labelUrl': labelUrl,
-              'fulfillment.carrier': carrier,
-              'fulfillment.service': service,
-              'fulfillment.easypostShipmentId': shipmentId,
-              'fulfillment.labelPurchasedAt': new Date().toISOString(),
-              'fulfillment.estimatedDelivery': estimatedDelivery,
+              trackingNumber,
+              trackingUrl,
+              shippingLabelUrl: labelUrl,
+              carrier,
+              service,
+              easyPostShipmentId: shipmentId,
+              labelCreatedAt: new Date().toISOString(),
+              estimatedDeliveryDate: estimatedDelivery,
             },
           },
         ])

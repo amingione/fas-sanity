@@ -45,7 +45,7 @@ type PackageDimensions = {
   height?: number
 }
 
-type SelectedService = {
+type LegacySelectedService = {
   carrierId?: string
   carrier?: string
   service?: string
@@ -54,6 +54,17 @@ type SelectedService = {
   currency?: string
   deliveryDays?: number
   estimatedDeliveryDate?: string
+}
+
+type FulfillmentDetails = {
+  carrier?: string
+  service?: string
+  deliveryDays?: number
+  estimatedDeliveryDate?: string
+  easypostRateId?: string
+  trackingNumber?: string
+  trackingUrl?: string
+  shippingLabelUrl?: string
 }
 
 type ShippingLogEntry = {
@@ -73,7 +84,8 @@ type OrderShippingLike = {
   trackingNumber?: string
   trackingUrl?: string
   shippingLabelUrl?: string
-  selectedService?: SelectedService | null
+  fulfillment?: FulfillmentDetails | null
+  selectedService?: LegacySelectedService | null
 } | null
 
 type InvoiceDocument = {
@@ -103,7 +115,8 @@ type InvoiceDocument = {
   shippingLabelUrl?: string
   weight?: ShipmentWeight | null
   dimensions?: PackageDimensions | null
-  selectedService?: SelectedService | null
+  fulfillment?: FulfillmentDetails | null
+  selectedService?: LegacySelectedService | null
   shippingLog?: ShippingLogEntry[] | null
   orderRef?: OrderShippingLike
   order?: OrderShippingLike
@@ -146,7 +159,7 @@ type EditorState = {
   shippingLabelUrl: string
   weight: ShipmentWeight
   dimensions: PackageDimensions
-  selectedService: SelectedService | null
+  fulfillmentDetails: FulfillmentDetails | null
   shippingLog: ShippingLogEntry[]
 }
 
@@ -203,7 +216,7 @@ const defaultEditorState: EditorState = {
   shippingLabelUrl: '',
   weight: {value: 0, unit: 'pound'},
   dimensions: {length: 0, width: 0, height: 0},
-  selectedService: null,
+  fulfillmentDetails: null,
   shippingLog: [],
 }
 
@@ -313,56 +326,85 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
     height: sanitizeNumber(input?.height, 0),
   })
 
-  const normalizeService = (input?: SelectedService | null): SelectedService | null => {
+  const normalizeFulfillmentDetails = (
+    input?: FulfillmentDetails | null,
+  ): FulfillmentDetails | null => {
     if (!input) return null
-    const normalized: SelectedService = {}
-    if (trimString(input.carrierId)) normalized.carrierId = trimString(input.carrierId)
+    const normalized: FulfillmentDetails = {}
     if (trimString(input.carrier)) normalized.carrier = trimString(input.carrier)
     if (trimString(input.service)) normalized.service = trimString(input.service)
-    if (trimString(input.serviceCode)) normalized.serviceCode = trimString(input.serviceCode)
-    const amount = Number(input.amount)
-    if (Number.isFinite(amount)) normalized.amount = amount
-    if (trimString(input.currency)) normalized.currency = trimString(input.currency)
+    const days = Number((input as any)?.deliveryDays ?? input?.deliveryDays)
+    if (Number.isFinite(days)) normalized.deliveryDays = days
+    if (trimString(input.estimatedDeliveryDate))
+      normalized.estimatedDeliveryDate = trimString(input.estimatedDeliveryDate)
+    if (trimString(input.easypostRateId)) normalized.easypostRateId = trimString(input.easypostRateId)
+    if (trimString((input as any).trackingNumber))
+      normalized.trackingNumber = trimString((input as any).trackingNumber)
+    if (trimString((input as any).trackingUrl))
+      normalized.trackingUrl = trimString((input as any).trackingUrl)
+    if (trimString((input as any).shippingLabelUrl))
+      normalized.shippingLabelUrl = trimString((input as any).shippingLabelUrl)
+    return Object.keys(normalized).length ? normalized : null
+  }
+
+  const normalizeLegacySelectedService = (
+    input?: LegacySelectedService | null,
+  ): FulfillmentDetails | null => {
+    if (!input) return null
+    const normalized: FulfillmentDetails = {}
+    if (trimString(input.carrier)) normalized.carrier = trimString(input.carrier)
+    else if (trimString(input.carrierId)) normalized.carrier = trimString(input.carrierId)
+    if (trimString(input.service)) normalized.service = trimString(input.service)
+    else if (trimString(input.serviceCode)) normalized.service = trimString(input.serviceCode)
     const days = Number(input.deliveryDays)
     if (Number.isFinite(days)) normalized.deliveryDays = days
     if (trimString(input.estimatedDeliveryDate))
       normalized.estimatedDeliveryDate = trimString(input.estimatedDeliveryDate)
-    return normalized
+    return Object.keys(normalized).length ? normalized : null
   }
 
-  const selectedService =
-    normalizeService(doc?.selectedService) ||
-    normalizeService(doc?.orderRef?.selectedService) ||
-    normalizeService(doc?.order?.selectedService) ||
+  const fulfillmentDetails =
+    normalizeFulfillmentDetails(doc?.fulfillment) ||
+    normalizeFulfillmentDetails(doc?.orderRef?.fulfillment) ||
+    normalizeFulfillmentDetails(doc?.order?.fulfillment) ||
+    normalizeLegacySelectedService(doc?.selectedService) ||
+    normalizeLegacySelectedService(doc?.orderRef?.selectedService) ||
+    normalizeLegacySelectedService(doc?.order?.selectedService) ||
     null
 
   const amountShipping = pickNumber(
     doc?.amountShipping,
     doc?.orderRef?.amountShipping,
     doc?.order?.amountShipping,
-    selectedService?.amount,
   )
 
   const shippingCarrier =
+    trimString(doc?.carrier) ||
     trimString(doc?.shippingCarrier) ||
+    trimString(fulfillmentDetails?.carrier) ||
+    trimString(doc?.orderRef?.carrier) ||
     trimString(doc?.orderRef?.shippingCarrier) ||
+    trimString(doc?.order?.carrier) ||
     trimString(doc?.order?.shippingCarrier) ||
     ''
 
   const trackingNumber =
     trimString(doc?.trackingNumber) ||
+    trimString(fulfillmentDetails?.trackingNumber) ||
     trimString(doc?.orderRef?.trackingNumber) ||
     trimString(doc?.order?.trackingNumber) ||
     ''
 
   const trackingUrl =
     trimString(doc?.trackingUrl) ||
+    trimString(fulfillmentDetails?.trackingUrl) ||
     trimString(doc?.orderRef?.trackingUrl) ||
     trimString(doc?.order?.trackingUrl) ||
     ''
 
   const shippingLabelUrl =
     trimString(doc?.shippingLabelUrl) ||
+    trimString(fulfillmentDetails?.shippingLabelUrl) ||
     trimString(doc?.orderRef?.shippingLabelUrl) ||
     trimString(doc?.order?.shippingLabelUrl) ||
     ''
@@ -393,7 +435,7 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
     shippingLabelUrl,
     weight: normalizeWeight(doc?.weight),
     dimensions: normalizeDimensions(doc?.dimensions),
-    selectedService,
+    fulfillmentDetails,
     shippingLog,
   }
 }
@@ -707,7 +749,7 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
           amountSubtotal: totals.subtotal,
           amountTax: totals.tax,
           amountShipping: shippingAmount,
-          shippingCarrier: shippingCarrier || null,
+          carrier: shippingCarrier || null,
           trackingNumber: trackingNumber || null,
           trackingUrl: trackingUrl || null,
           shippingLabelUrl: shippingLabelUrl || null,
@@ -1417,42 +1459,50 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
             </div>
 
             <div className="mt-6 rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] p-4 text-sm text-[var(--studio-text)]">
-              <h3 className="text-sm font-semibold text-[var(--studio-text)]">Selected Rate</h3>
-              {state.selectedService ? (
+              <h3 className="text-sm font-semibold text-[var(--studio-text)]">Shipping Details</h3>
+              {state.fulfillmentDetails || state.amountShipping ? (
                 <dl className="mt-3 space-y-1.5">
                   <div className="flex justify-between gap-4">
                     <dt>Service</dt>
                     <dd className="font-medium text-[var(--studio-text)]">
-                      {state.selectedService.service || state.selectedService.serviceCode || '—'}
+                      {state.fulfillmentDetails?.service || '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4">
                     <dt>Carrier</dt>
                     <dd className="font-medium text-[var(--studio-text)]">
-                      {state.selectedService.carrier || state.selectedService.carrierId || '—'}
+                      {state.fulfillmentDetails?.carrier || '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-4">
                     <dt>Amount</dt>
                     <dd className="font-medium text-[var(--studio-text)]">
-                      {typeof state.selectedService.amount === 'number'
-                        ? `$${fmt(state.selectedService.amount)}`
+                      {typeof state.amountShipping === 'number' && state.amountShipping > 0
+                        ? `$${fmt(state.amountShipping)}`
                         : '—'}
                     </dd>
                   </div>
-                  {typeof state.selectedService.deliveryDays === 'number' ? (
+                  {typeof state.fulfillmentDetails?.deliveryDays === 'number' ? (
                     <div className="flex justify-between gap-4">
                       <dt>Est. Days</dt>
                       <dd className="font-medium text-[var(--studio-text)]">
-                        {state.selectedService.deliveryDays}
+                        {state.fulfillmentDetails.deliveryDays}
                       </dd>
                     </div>
                   ) : null}
-                  {state.selectedService.estimatedDeliveryDate ? (
+                  {state.fulfillmentDetails?.estimatedDeliveryDate ? (
                     <div className="flex justify-between gap-4">
                       <dt>Est. Delivery</dt>
                       <dd className="font-medium text-[var(--studio-text)]">
-                        {formatDate(state.selectedService.estimatedDeliveryDate)}
+                        {formatDate(state.fulfillmentDetails.estimatedDeliveryDate)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {state.fulfillmentDetails?.easypostRateId ? (
+                    <div className="flex justify-between gap-4">
+                      <dt>Rate ID</dt>
+                      <dd className="font-medium text-[var(--studio-text)]">
+                        {state.fulfillmentDetails.easypostRateId}
                       </dd>
                     </div>
                   ) : null}

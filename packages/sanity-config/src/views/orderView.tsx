@@ -48,7 +48,7 @@ type OrderViewConfigResult = {
 const ORDER_VIEW_QUERY = `*[_id == $configId][0]{orderViewConfig}`
 
 const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
-  editableFields: ['status', 'fulfillment.trackingNumber', 'fulfillment.status'],
+  editableFields: ['status', 'trackingNumber', 'fulfillmentDetails.status'],
   hiddenFields: [
     'metadata',
     'stripeMetadata',
@@ -61,8 +61,6 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     'paymentIntentId',
     'stripeSessionId',
     'currency',
-    'trackingNumber',
-    'trackingUrl',
     'shippingLabelUrl',
     'packingSlipUrl',
   ],
@@ -179,23 +177,27 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
       collapsed: false,
       fields: [
         {
-          fieldName: 'fulfillment.status',
+          fieldName: 'fulfillmentDetails.status',
           label: 'Fulfillment Status',
           type: 'string',
           editable: true,
-          options: ['unfulfilled', 'shipped', 'delivered'],
+          options: ['unfulfilled', 'processing', 'shipped', 'delivered'],
         },
         {
-          fieldName: 'fulfillment.trackingNumber',
+          fieldName: 'trackingNumber',
           label: 'Tracking Number',
           type: 'string',
           editable: true,
         },
-        {fieldName: 'fulfillment.trackingUrl', label: 'Tracking URL', type: 'url'},
-        {fieldName: 'fulfillment.carrier', label: 'Carrier', type: 'string'},
-        {fieldName: 'fulfillment.shippedAt', label: 'Shipped Date', type: 'datetime'},
-        {fieldName: 'fulfillment.deliveredAt', label: 'Delivered Date', type: 'datetime'},
-        {fieldName: 'fulfillment.fulfillmentNotes', label: 'Fulfillment Notes', type: 'string'},
+        {fieldName: 'trackingUrl', label: 'Tracking URL', type: 'url'},
+        {fieldName: 'carrier', label: 'Carrier', type: 'string'},
+        {fieldName: 'shippedAt', label: 'Shipped Date', type: 'datetime'},
+        {fieldName: 'deliveredAt', label: 'Delivered Date', type: 'datetime'},
+        {
+          fieldName: 'fulfillmentDetails.fulfillmentNotes',
+          label: 'Fulfillment Notes',
+          type: 'string',
+        },
       ],
     },
     {
@@ -226,7 +228,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
     defaultCollapsedSections: ['payment', 'shipping'],
     hideComplexMetadata: true,
     preserveStripeSync: true,
-    prominentFields: ['orderNumber', 'status', 'totalAmount', 'fulfillment.trackingNumber'],
+    prominentFields: ['orderNumber', 'status', 'totalAmount', 'trackingNumber'],
   },
 }
 
@@ -241,7 +243,7 @@ const SECTION_ICONS: Record<string, ComponentType> = {
 }
 
 const ORDER_STATUS_OPTIONS: OrderStatus[] = ['paid', 'fulfilled', 'delivered', 'canceled', 'refunded']
-const FULFILLMENT_STATUS_OPTIONS = ['unfulfilled', 'shipped', 'delivered']
+const FULFILLMENT_STATUS_OPTIONS = ['unfulfilled', 'processing', 'shipped', 'delivered']
 
 const STRIPE_SYNC_FIELDS = new Set([
   'paymentIntentId',
@@ -260,8 +262,6 @@ const STRIPE_SYNC_FIELDS = new Set([
   'trackingUrl',
   'shippingLabelUrl',
   'packingSlipUrl',
-  'fulfillment.trackingNumber',
-  'fulfillment.trackingUrl',
 ])
 
 const REFERENCE_TARGETS: Record<string, string> = {
@@ -284,10 +284,10 @@ const OrderViewComponent = (props: any) => {
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const [statusDraft, setStatusDraft] = useState<OrderStatus | ''>(order.status ?? '')
   const [fulfillmentStatusDraft, setFulfillmentStatusDraft] = useState<string>(
-    order.fulfillment?.status ?? '',
+    order.fulfillmentDetails?.status ?? '',
   )
   const [trackingDraft, setTrackingDraft] = useState(
-    order.fulfillment?.trackingNumber ?? order.trackingNumber ?? '',
+    order.trackingNumber ?? order.fulfillmentDetails?.trackingNumber ?? '',
   )
 
   useEffect(() => {
@@ -295,12 +295,12 @@ const OrderViewComponent = (props: any) => {
   }, [order.status])
 
   useEffect(() => {
-    setFulfillmentStatusDraft(order.fulfillment?.status ?? '')
-  }, [order.fulfillment?.status])
+    setFulfillmentStatusDraft(order.fulfillmentDetails?.status ?? '')
+  }, [order.fulfillmentDetails?.status])
 
   useEffect(() => {
-    setTrackingDraft(order.fulfillment?.trackingNumber ?? order.trackingNumber ?? '')
-  }, [order.fulfillment?.trackingNumber, order.trackingNumber])
+    setTrackingDraft(order.trackingNumber ?? order.fulfillmentDetails?.trackingNumber ?? '')
+  }, [order.fulfillmentDetails?.trackingNumber, order.trackingNumber])
 
   useEffect(() => {
     let cancelled = false
@@ -426,15 +426,15 @@ const OrderViewComponent = (props: any) => {
 
   const handleFulfillmentStatusChange = useCallback(
     (nextValue: string) => {
-      if (!editableFields.has('fulfillment.status')) return
+      if (!editableFields.has('fulfillmentDetails.status')) return
       const nextStatus = nextValue || ''
       setFulfillmentStatusDraft(nextStatus)
-      const current = order.fulfillment?.status || ''
+      const current = order.fulfillmentDetails?.status || ''
       if (nextStatus === current) return
       if (nextStatus) {
-        patch.execute([{set: {'fulfillment.status': nextStatus}}])
+        patch.execute([{set: {'fulfillmentDetails.status': nextStatus}}])
       } else {
-        patch.execute([{unset: ['fulfillment.status']}])
+        patch.execute([{unset: ['fulfillmentDetails.status']}])
       }
       pushToast({
         status: 'success',
@@ -442,25 +442,25 @@ const OrderViewComponent = (props: any) => {
         description: `Fulfillment status changed to ${nextStatus || 'unset'}`,
       })
     },
-    [editableFields, order.fulfillment?.status, patch, pushToast],
+    [editableFields, order.fulfillmentDetails?.status, patch, pushToast],
   )
 
   const handleTrackingCommit = useCallback(() => {
-    if (!editableFields.has('fulfillment.trackingNumber')) return
+    if (!editableFields.has('trackingNumber')) return
     const trimmed = trackingDraft.trim()
-    const current = order.fulfillment?.trackingNumber || order.trackingNumber || ''
+    const current = order.trackingNumber || order.fulfillmentDetails?.trackingNumber || ''
     if (!trimmed && !current) return
     if (trimmed === current) return
 
     if (trimmed) {
-      patch.execute([{set: {'fulfillment.trackingNumber': trimmed, trackingNumber: trimmed}}])
+      patch.execute([{set: {trackingNumber: trimmed}}])
       pushToast({
         status: 'success',
         title: 'Tracking number saved',
         description: 'Tracking number stored on the order',
       })
     } else {
-      patch.execute([{unset: ['fulfillment.trackingNumber', 'trackingNumber']}])
+      patch.execute([{unset: ['trackingNumber']}])
       pushToast({
         status: 'warning',
         title: 'Tracking number cleared',
@@ -468,7 +468,7 @@ const OrderViewComponent = (props: any) => {
     }
   }, [
     editableFields,
-    order.fulfillment?.trackingNumber,
+    order.fulfillmentDetails?.trackingNumber,
     order.trackingNumber,
     patch,
     pushToast,
@@ -667,7 +667,7 @@ const OrderViewComponent = (props: any) => {
           placeholder="Enter tracking number"
         />
       </EditableFieldWrapper>
-      {(order.fulfillment?.trackingNumber || order.trackingNumber) && (
+      {(order.trackingNumber || order.fulfillmentDetails?.trackingNumber) && (
         <Inline space={3} style={{alignItems: 'center'}}>
           <CheckmarkCircleIcon style={{color: 'var(--card-fg-color)', fontSize: 16}} />
           <Card paddingX={3} paddingY={2} radius={2} tone="positive" border>
@@ -725,11 +725,11 @@ const OrderViewComponent = (props: any) => {
       return renderStatusField(field)
     }
 
-    if (field.fieldName === 'fulfillment.status') {
+    if (field.fieldName === 'fulfillmentDetails.status') {
       return renderFulfillmentStatusField(field)
     }
 
-    if (field.fieldName === 'fulfillment.trackingNumber') {
+    if (field.fieldName === 'trackingNumber') {
       return renderTrackingField(field)
     }
 

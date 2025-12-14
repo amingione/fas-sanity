@@ -2011,21 +2011,18 @@ async function handleShippingStatusSync(
   const setOps: Record<string, any> = {}
   if (status) setOps['fulfillment.status'] = status
   if (trackingNumber) {
-    setOps['fulfillment.trackingNumber'] = trackingNumber
     setOps.trackingNumber = trackingNumber
   }
   if (trackingUrl) {
-    setOps['fulfillment.trackingUrl'] = trackingUrl
     setOps.trackingUrl = trackingUrl
   }
   if (labelUrl) {
-    setOps['fulfillment.shippingLabelUrl'] = labelUrl
     setOps.shippingLabelUrl = labelUrl
   }
-  if (carrier) setOps['fulfillment.carrier'] = carrier
-  if (service) setOps['fulfillment.service'] = service
-  if (purchasedAt) setOps['fulfillment.labelPurchasedAt'] = purchasedAt
-  if (eta) setOps['fulfillment.estimatedDelivery'] = eta
+  if (carrier) setOps.carrier = carrier
+  if (service) setOps.service = service
+  if (purchasedAt) setOps.labelCreatedAt = purchasedAt
+  if (eta) setOps.estimatedDeliveryDate = eta
 
   try {
     await sanity.patch(orderId).set(setOps).commit({autoGenerateArrayKeys: true})
@@ -2843,12 +2840,24 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     trackingNumber?: string | null
     trackingUrl?: string | null
     shippingLabelUrl?: string | null
+    carrier?: string | null
+    service?: string | null
+    labelCreatedAt?: string | null
+    deliveryDays?: number | null
+    estimatedDeliveryDate?: string | null
+    easyPostShipmentId?: string | null
+    easyPostTrackerId?: string | null
+    easypostRateId?: string | null
+    labelCost?: number | null
+    labelPurchased?: boolean | null
+    labelPurchasedAt?: string | null
+    labelPurchasedBy?: string | null
   } | null>(
     `*[_type == "order" && (
       stripeSessionId == $sid ||
       paymentIntentId == $pid ||
       stripePaymentIntentId == $pid
-    )][0]{_id, status, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment}`,
+    )][0]{_id, status, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, carrier, service, labelCreatedAt, deliveryDays, estimatedDeliveryDate, easyPostShipmentId, easyPostTrackerId, easypostRateId, labelCost, labelPurchased, labelPurchasedAt, labelPurchasedBy}`,
     {sid: session.id, pid: paymentIntentId},
   )
 
@@ -3132,6 +3141,9 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     paymentCaptureStrategy,
     paymentCaptured,
     paymentCapturedAt,
+    labelPurchased: existingOrder?.labelPurchased ?? false,
+    labelPurchasedAt: existingOrder?.labelPurchasedAt ?? null,
+    labelPurchasedBy: existingOrder?.labelPurchasedBy ?? null,
     ...(shippingAddress ? {shippingAddress} : {}),
     ...(billingAddress ? {billingAddress} : {}),
   }
@@ -3163,14 +3175,42 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       : fulfillmentResult.fulfillment
     baseOrderPayload.fulfillment = mergedFulfillment
 
-    if (fulfillmentResult.topLevelFields?.trackingNumber && !existingOrder?.trackingNumber) {
-      baseOrderPayload.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
+    const topFields = fulfillmentResult.topLevelFields || {}
+    if (topFields.trackingNumber && !existingOrder?.trackingNumber) {
+      baseOrderPayload.trackingNumber = topFields.trackingNumber
     }
-    if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
-      baseOrderPayload.trackingUrl = fulfillmentResult.topLevelFields.trackingUrl
+    if (topFields.trackingUrl && !existingOrder?.trackingUrl) {
+      baseOrderPayload.trackingUrl = topFields.trackingUrl
     }
-    if (fulfillmentResult.topLevelFields?.shippingLabelUrl && !existingOrder?.shippingLabelUrl) {
-      baseOrderPayload.shippingLabelUrl = fulfillmentResult.topLevelFields.shippingLabelUrl
+    if (topFields.shippingLabelUrl && !existingOrder?.shippingLabelUrl) {
+      baseOrderPayload.shippingLabelUrl = topFields.shippingLabelUrl
+    }
+    if (topFields.carrier && !existingOrder?.carrier) {
+      baseOrderPayload.carrier = topFields.carrier
+    }
+    if (topFields.service && !existingOrder?.service) {
+      baseOrderPayload.service = topFields.service
+    }
+    if (topFields.labelCreatedAt && !existingOrder?.labelCreatedAt) {
+      baseOrderPayload.labelCreatedAt = topFields.labelCreatedAt
+    }
+    if (typeof topFields.deliveryDays === 'number' && existingOrder?.deliveryDays === undefined) {
+      baseOrderPayload.deliveryDays = topFields.deliveryDays
+    }
+    if (topFields.estimatedDeliveryDate && !existingOrder?.estimatedDeliveryDate) {
+      baseOrderPayload.estimatedDeliveryDate = topFields.estimatedDeliveryDate
+    }
+    if (topFields.easyPostShipmentId && !existingOrder?.easyPostShipmentId) {
+      baseOrderPayload.easyPostShipmentId = topFields.easyPostShipmentId
+    }
+    if (topFields.easyPostTrackerId && !existingOrder?.easyPostTrackerId) {
+      baseOrderPayload.easyPostTrackerId = topFields.easyPostTrackerId
+    }
+    if (topFields.easypostRateId && !existingOrder?.easypostRateId) {
+      baseOrderPayload.easypostRateId = topFields.easypostRateId
+    }
+    if (typeof topFields.labelCost === 'number' && existingOrder?.labelCost === undefined) {
+      baseOrderPayload.labelCost = topFields.labelCost
     }
   }
 
@@ -7442,25 +7482,6 @@ export const handler: Handler = async (event) => {
               console.warn('stripeWebhook: PI order confirmation email failed', err)
             }
           }
-
-          // Try auto-fulfillment only if we have a shipping address on the PI
-          try {
-            const base = (
-              process.env.SANITY_STUDIO_NETLIFY_BASE ||
-              process.env.PUBLIC_SITE_URL ||
-              process.env.AUTH0_BASE_URL ||
-              ''
-            ).trim()
-            const hasShipping = Boolean((pi as any)?.shipping?.address?.line1)
-            if (base && base.startsWith('http') && orderId && hasShipping) {
-              const url = `${base.replace(/\/$/, '')}/.netlify/functions/fulfillOrder`
-              await fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({orderId}),
-              })
-            }
-          } catch {}
         } catch (e) {
           console.warn('stripeWebhook: PI fallback order creation failed', e)
         }

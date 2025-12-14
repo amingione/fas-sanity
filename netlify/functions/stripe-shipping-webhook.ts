@@ -150,15 +150,14 @@ const patchOrderFulfillment = async (orderId: string, update: FulfillmentUpdate)
     .setIfMissing({fulfillment: {status: 'unfulfilled'}})
     .set({
       'fulfillment.status': update.status || 'shipped',
-      'fulfillment.trackingNumber': update.trackingNumber,
-      'fulfillment.trackingUrl': update.trackingUrl,
-      'fulfillment.carrier': update.carrier,
-      'fulfillment.shippedAt': update.shippedAt || new Date().toISOString(),
-      shippingCarrier: update.carrier,
+      trackingNumber: update.trackingNumber,
+      trackingUrl: update.trackingUrl,
+      carrier: update.carrier,
+      shippedAt: update.shippedAt || new Date().toISOString(),
     })
 
   if (update.labelUrl) {
-    patch.set({'shippingMetadata.labelUrl': update.labelUrl})
+    patch.set({shippingLabelUrl: update.labelUrl})
   }
 
   try {

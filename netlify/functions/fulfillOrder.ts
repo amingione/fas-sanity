@@ -2,11 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {randomUUID} from 'crypto'
 import {Resend} from 'resend'
 import {sanityClient} from '../lib/sanityClient'
-import {
-  getEasyPostClient,
-  resolveDimensions,
-  resolveWeight,
-} from '../lib/easypostClient'
+import {getEasyPostClient, resolveDimensions, resolveWeight} from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
 
 type OrderCartItem = {
@@ -94,17 +90,24 @@ function normalizeAddress(address?: OrderDoc['shippingAddress']) {
   }
 }
 
-const buildTrackingEmail = (order: OrderDoc, trackingUrl?: string | null, trackingCode?: string) => {
+const buildTrackingEmail = (
+  order: OrderDoc,
+  trackingUrl?: string | null,
+  trackingCode?: string,
+) => {
   const items =
     order.cart
       ?.filter(Boolean)
       .map((item) => {
-        const qty = typeof item?.quantity === 'number' && item.quantity > 1 ? `×${item.quantity}` : ''
+        const qty =
+          typeof item?.quantity === 'number' && item.quantity > 1 ? `×${item.quantity}` : ''
         return `<li>${item?.name || 'Item'} ${qty}</li>`
       })
       .join('') || ''
 
-  const listMarkup = items ? `<ul style="padding-left:20px;margin:12px 0;color:#111827;">${items}</ul>` : ''
+  const listMarkup = items
+    ? `<ul style="padding-left:20px;margin:12px 0;color:#111827;">${items}</ul>`
+    : ''
   const trackingButton = trackingUrl
     ? `<p style="margin:20px 0;"><a href="${trackingUrl}" style="display:inline-block;padding:12px 20px;background:#dc2626;color:#fff;font-weight:600;text-decoration:none;border-radius:6px;" target="_blank" rel="noopener">Track your shipment</a></p>`
     : ''
@@ -210,7 +213,7 @@ export const handler: Handler = async (event) => {
       throw new Error('EasyPost did not return any purchasable rates.')
     }
 
-    const purchased = await shipment.buy(lowestRate)
+    const purchased = await easypost.Shipment.buy(shipment.id, lowestRate)
     const trackingCode =
       purchased.tracking_code || purchased.tracker?.tracking_code || shipment.tracking_code
     const trackingUrl = purchased.tracker?.public_url || null
@@ -274,12 +277,7 @@ export const handler: Handler = async (event) => {
         easyPostShipmentId: purchased.id,
         easyPostTrackerId: purchased.tracker?.id || null,
         shippingStatus,
-      })
-      .set({
         'fulfillment.status': 'fulfilled',
-        'fulfillment.trackingNumber': trackingCode || null,
-        'fulfillment.trackingUrl': trackingUrl || null,
-        'fulfillment.shippedAt': timestamp,
       })
       .setIfMissing({shippingLog: []})
       .append('shippingLog', [shippingLogEntry])
@@ -307,7 +305,9 @@ export const handler: Handler = async (event) => {
         trackingNumber: trackingCode || null,
         trackingUrl,
         labelUrl,
-        rate: lowestRate ? `${lowestRate.carrier} ${lowestRate.service} ${formatCurrency(Number(lowestRate.rate))}` : null,
+        rate: lowestRate
+          ? `${lowestRate.carrier} ${lowestRate.service} ${formatCurrency(Number(lowestRate.rate))}`
+          : null,
       }),
     }
   } catch (error: any) {

@@ -233,11 +233,10 @@ const handler: Handler = async (event) => {
       .setIfMissing({fulfillment: {status: 'unfulfilled'}})
       .set({
         'fulfillment.status': 'shipped',
-        'fulfillment.trackingNumber': trackingNumber || null,
-        'fulfillment.trackingUrl': trackingUrl || null,
-        'fulfillment.carrier': carrier || 'Parcelcraft',
-        'fulfillment.shippedAt': shippedAt,
-        shippingCarrier: carrier || 'Parcelcraft',
+        trackingNumber: trackingNumber || null,
+        trackingUrl: trackingUrl || null,
+        carrier: carrier || 'Parcelcraft',
+        shippedAt,
       })
       .set({'shippingMetadata.labelUrl': labelUrl || null})
       .commit({autoGenerateArrayKeys: true})
