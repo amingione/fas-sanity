@@ -34,7 +34,7 @@ type OrderRecord = {
   fulfillmentStatus?: string | null
   deliveryStatus?: string | null
   tags?: string[] | null
-  customer?: {
+  customerRef?: {
     name?: string | null
   } | null
 }
@@ -62,7 +62,7 @@ const ORDER_QUERY = `*[_type == "order"] | order(orderDate desc)[0...250]{
   fulfillmentStatus,
   deliveryStatus,
   tags,
-  customer->{name}
+  customerRef->{name}
 }`
 
 const formatCurrency = (value?: number | null) => {
@@ -208,7 +208,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
         orderNumberSearchTokens(order.orderNumber).some((token) =>
           token.toLowerCase().includes(term),
         ) ||
-        order.customer?.name?.toLowerCase().includes(term)
+        order.customerRef?.name?.toLowerCase().includes(term)
 
       if (!matchesTerm) return false
       if (filter === 'all' || filter === 'expired') return true
@@ -419,7 +419,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                           {formatOrderNumber(order.orderNumber) || '—'}
                         </Text>
                         <Text size={1} muted style={{flex: 1}}>
-                          {order.customer?.name || '—'}
+                          {order.customerRef?.name || '—'}
                         </Text>
                         <Text size={1} style={{flex: 1}}>
                           {formatDate(order.orderDate)}

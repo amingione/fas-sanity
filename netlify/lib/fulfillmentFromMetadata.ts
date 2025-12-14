@@ -106,36 +106,19 @@ export function applyShippingDetailsToDoc(
   const shippingAmountForDoc = shippingDetails.amount
   if (shippingAmountForDoc !== undefined) {
     target.amountShipping = shippingAmountForDoc
-    target.selectedShippingAmount = shippingAmountForDoc
   }
-  if (shippingDetails.carrier) target.shippingCarrier = shippingDetails.carrier
-
-  if (
-    shippingDetails.serviceName ||
-    shippingDetails.serviceCode ||
-    shippingAmountForDoc !== undefined
-  ) {
-    target.selectedService = pruneUndefined({
-      carrierId: shippingDetails.carrierId,
-      carrier: shippingDetails.carrier,
-      service: shippingDetails.serviceName || shippingDetails.serviceCode,
-      serviceCode: shippingDetails.serviceCode || shippingDetails.serviceName,
-      amount: shippingAmountForDoc,
-      currency: shippingDetails.currency || currencyUpper || 'USD',
-      deliveryDays: shippingDetails.deliveryDays,
-      estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
-    })
+  if (shippingDetails.carrier) target.carrier = shippingDetails.carrier
+  if (shippingDetails.serviceName || shippingDetails.serviceCode) {
+    target.service = shippingDetails.serviceName || shippingDetails.serviceCode
   }
-
-  if (shippingDetails.currency) target.selectedShippingCurrency = shippingDetails.currency
-  if (shippingDetails.deliveryDays !== undefined)
-    target.shippingDeliveryDays = shippingDetails.deliveryDays
-  if (shippingDetails.estimatedDeliveryDate)
-    target.shippingEstimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
-  if (shippingDetails.serviceCode) target.shippingServiceCode = shippingDetails.serviceCode
-  if (shippingDetails.serviceName) target.shippingServiceName = shippingDetails.serviceName
-  if (shippingDetails.metadata && Object.keys(shippingDetails.metadata).length) {
-    target.shippingMetadata = shippingDetails.metadata
+  if (shippingDetails.deliveryDays !== undefined) {
+    target.deliveryDays = shippingDetails.deliveryDays
+  }
+  if (shippingDetails.estimatedDeliveryDate) {
+    target.estimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
+  }
+  if (shippingDetails.serviceCode || shippingDetails.carrierId) {
+    target.easypostRateId = shippingDetails.serviceCode || shippingDetails.carrierId
   }
 }
 
@@ -172,20 +155,26 @@ export const deriveFulfillmentFromMetadata = (
 
   const fulfillment: Record<string, any> = pruneUndefined({
     status: trackingNumber || labelUrl ? 'label_created' : undefined,
-    trackingNumber,
-    trackingUrl,
-    carrier,
-    service,
-    labelUrl,
     labelFormat: labelUrl ? 'PDF' : undefined,
-    labelPurchasedAt,
-    easypostShipmentId: shipmentId,
-    easypostTrackerId: trackerId,
-    easypostRateId: rateId,
-    actualShippingCost,
   })
 
-  if (!Object.keys(fulfillment).length) return null
+  const topLevelFields = pruneUndefined({
+    trackingNumber,
+    trackingUrl,
+    shippingLabelUrl: labelUrl,
+    carrier,
+    service,
+    labelCreatedAt: labelPurchasedAt,
+    easyPostShipmentId: shipmentId,
+    easyPostTrackerId: trackerId,
+    easypostRateId: rateId,
+    labelCost: actualShippingCost,
+    deliveryDays:
+      shippingDetails.deliveryDays !== undefined ? shippingDetails.deliveryDays : undefined,
+    estimatedDeliveryDate: shippingDetails.estimatedDeliveryDate,
+  })
+
+  if (!Object.keys(fulfillment).length && !Object.keys(topLevelFields).length) return null
 
   let workflow: Record<string, any> | undefined
   const hasExistingWorkflowStage =
@@ -205,11 +194,6 @@ export const deriveFulfillmentFromMetadata = (
       ],
     }
   }
-
-  const topLevelFields: Record<string, any> = {}
-  if (trackingNumber) topLevelFields.trackingNumber = trackingNumber
-  if (trackingUrl) topLevelFields.trackingUrl = trackingUrl
-  if (labelUrl) topLevelFields.shippingLabelUrl = labelUrl
 
   if (
     actualShippingCost !== undefined &&

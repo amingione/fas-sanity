@@ -537,22 +537,21 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
       }),
       shipping: cleanValue({
         address: cleanValue(document.shippingAddress),
-        selectedRate: cleanValue(document.selectedService),
-        selectedAmount: toCleanNumber(document.selectedShippingAmount),
-        selectedCurrency: toCleanString(document.selectedShippingCurrency),
-        deliveryDays: toCleanNumber(document.shippingDeliveryDays),
-        estimatedDeliveryDate: toCleanString(document.shippingEstimatedDeliveryDate),
-        serviceCode: toCleanString(document.shippingServiceCode),
-        serviceName: toCleanString(document.shippingServiceName),
-        metadata: cleanValue(document.shippingMetadata),
+        carrier: toCleanString(document.carrier || document.shippingCarrier),
+        service: toCleanString(document.service),
+        deliveryDays: toCleanNumber(document.deliveryDays),
+        estimatedDeliveryDate: toCleanString(document.estimatedDeliveryDate),
+        rateId: toCleanString(document.easypostRateId),
       }),
       fulfillment: cleanValue({
-        carrier: toCleanString(document.shippingCarrier),
+        carrier: toCleanString(document.carrier || document.shippingCarrier),
+        service: toCleanString(document.service),
         weight: cleanValue(document.weight),
         dimensions: cleanValue(document.dimensions),
         shippingLabelUrl: toCleanString(document.shippingLabelUrl),
         trackingNumber: toCleanString(document.trackingNumber),
         trackingUrl: toCleanString(document.trackingUrl),
+        labelCreatedAt: toCleanString(document.labelCreatedAt),
         packingSlipUrl: toCleanString(document.packingSlipUrl),
       }),
       cart: cartItems,
@@ -577,7 +576,7 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
         shipTo: cleanValue(document.shipTo),
         weight: cleanValue(document.weight),
         dimensions: cleanValue(document.dimensions),
-        carrier: toCleanString(document.shippingCarrier),
+        carrier: toCleanString(document.carrier || document.shippingCarrier),
       }),
       fulfillment: cleanValue({
         shippingLabelUrl: toCleanString(document.shippingLabelUrl),
@@ -600,7 +599,8 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
       weight: cleanValue(document.weight),
       dimensions: cleanValue(document.dimensions),
       serviceSelection:
-        toCleanString(document.shippingCarrier) || toCleanString(document.serviceSelection),
+        toCleanString(document.carrier || document.shippingCarrier) ||
+        toCleanString(document.serviceSelection),
       trackingNumber: toCleanString(document.trackingNumber),
       labelUrl: toCleanString(document.shippingLabelUrl || (document as any).labelUrl),
       metadata: cleanValue(document.metadata),
@@ -942,7 +942,8 @@ const ensureShippingLabelForInvoice = async (
     ship_to: shipTo,
     weight,
     dimensions,
-    serviceSelection: document.shippingCarrier || shippingDoc?.serviceSelection || 'ups_ground',
+    serviceSelection:
+      document.carrier || document.shippingCarrier || shippingDoc?.serviceSelection || 'ups_ground',
     trackingNumber: document.trackingNumber || shippingDoc?.trackingNumber || null,
     labelUrl: document.shippingLabelUrl || shippingDoc?.labelUrl || null,
     metadata: {
@@ -969,8 +970,9 @@ const ensureShippingLabelForInvoice = async (
       if (JSON.stringify(weight) !== JSON.stringify(shippingDoc.weight)) patchSet.weight = weight
       if (JSON.stringify(dimensions) !== JSON.stringify(shippingDoc.dimensions))
         patchSet.dimensions = dimensions
-      if (document.shippingCarrier && document.shippingCarrier !== shippingDoc.serviceSelection) {
-        patchSet.serviceSelection = document.shippingCarrier
+      const nextService = document.carrier || document.shippingCarrier
+      if (nextService && nextService !== shippingDoc.serviceSelection) {
+        patchSet.serviceSelection = nextService
       }
       if (document.shippingLabelUrl && document.shippingLabelUrl !== shippingDoc.labelUrl) {
         patchSet.labelUrl = document.shippingLabelUrl

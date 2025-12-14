@@ -43,12 +43,6 @@ type RawShippingLog = {
   createdAt?: string | null
 }
 
-type RawSelectedService = {
-  carrier?: string | null
-  service?: string | null
-  serviceCode?: string | null
-}
-
 type RawShippingAddress = {
   name?: string | null
   city?: string | null
@@ -73,10 +67,14 @@ type RawOrder = {
   createdAt?: string | null
   _createdAt?: string | null
   fulfilledAt?: string | null
+  carrier?: string | null
+  service?: string | null
+  deliveryDays?: number | null
+  estimatedDeliveryDate?: string | null
+  trackingNumber?: string | null
+  trackingUrl?: string | null
   cart?: Array<RawCartItem | null> | null
   shippingLog?: Array<RawShippingLog | null> | null
-  shippingCarrier?: string | null
-  selectedService?: RawSelectedService | null
   shippingAddress?: RawShippingAddress | null
 }
 
@@ -118,10 +116,14 @@ const ORDER_QUERY = `*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED})] | o
   createdAt,
   _createdAt,
   fulfilledAt,
+  carrier,
+  service,
+  deliveryDays,
+  estimatedDeliveryDate,
+  trackingNumber,
+  trackingUrl,
   cart[]{quantity},
   shippingLog[]{status, createdAt},
-  shippingCarrier,
-  selectedService{carrier, service, serviceCode},
   shippingAddress{state, country, city, name}
 }`
 
@@ -134,12 +136,18 @@ const ORDER_PREVIEW_QUERY = `*[_type == "order" && _id == $id][0]{
   amountSubtotal,
   amountShipping,
   amountTax,
-  shippingCarrier,
+  carrier,
+  service,
+  deliveryDays,
+  estimatedDeliveryDate,
   trackingNumber,
+  trackingUrl,
   shippingLabelUrl,
   packingSlipUrl,
   createdAt,
   fulfilledAt,
+  shippedAt,
+  deliveredAt,
   customerEmail,
   customerName,
   shippingAddress,
@@ -424,7 +432,10 @@ function normalizeOrder(raw: RawOrder): OrderRow {
     fulfillmentStatus = hasManualFulfillment ? 'Fulfilled (Manual)' : 'Fulfilled (Auto)'
     fulfillmentStatusBase = 'fulfilled'
   }
-  const deliveryMethod = raw.selectedService?.service || raw.shippingCarrier || '—'
+  const deliveryParts = [raw.service, raw.carrier].filter(
+    (value): value is string => Boolean(value),
+  )
+  const deliveryMethod = deliveryParts.length ? deliveryParts.join(' • ') : '—'
 
   const searchTokens = [
     ...orderNumberSearchTokens(raw.orderNumber),
@@ -1246,12 +1257,18 @@ type OrderPreviewDoc = {
   amountSubtotal?: number | null
   amountShipping?: number | null
   amountTax?: number | null
-  shippingCarrier?: string | null
+  carrier?: string | null
+  service?: string | null
+  deliveryDays?: number | null
+  estimatedDeliveryDate?: string | null
   trackingNumber?: string | null
+  trackingUrl?: string | null
   shippingLabelUrl?: string | null
   packingSlipUrl?: string | null
   createdAt?: string | null
   fulfilledAt?: string | null
+  shippedAt?: string | null
+  deliveredAt?: string | null
   customerEmail?: string | null
   customerName?: string | null
   shippingAddress?: RawShippingAddress | null
@@ -1690,8 +1707,18 @@ function OrderPreviewPane({orderId, onOpenDocument}: OrderPreviewPaneProps) {
                   </Flex>
                   <Stack space={1} style={{wordBreak: 'break-word'}}>
                     <Text size={1} muted>
-                      Carrier: {order.shippingCarrier || 'Not set'}
+                      Carrier: {order.carrier || 'Not set'}
                     </Text>
+                    {order.service && (
+                      <Text size={1} muted>
+                        Service: {order.service}
+                      </Text>
+                    )}
+                    {typeof order.deliveryDays === 'number' && (
+                      <Text size={1} muted>
+                        ETA: {order.deliveryDays} days
+                      </Text>
+                    )}
                     {order.trackingNumber && (
                       <Text size={1} muted>
                         Tracking: {order.trackingNumber}

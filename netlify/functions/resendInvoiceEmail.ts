@@ -146,9 +146,17 @@ const handler: Handler = async (event) => {
       amountSubtotal,
       amountTax,
       amountShipping,
-      shippingCarrier,
       trackingNumber,
       shippingLabelUrl,
+      fulfillment{
+        carrier,
+        service,
+        deliveryDays,
+        estimatedDeliveryDate,
+        trackingNumber,
+        trackingUrl,
+        easypostRateId
+      },
       billTo,
       shipTo,
       lineItems[]{
@@ -172,10 +180,19 @@ const handler: Handler = async (event) => {
         amountSubtotal,
         amountTax,
         amountShipping,
-        shippingCarrier,
         trackingNumber,
         shippingLabelUrl,
-        selectedService->{carrier, service, amount},
+        fulfillment{
+          carrier,
+          service,
+          deliveryDays,
+          estimatedDeliveryDate,
+          trackingNumber,
+          trackingUrl,
+          shippedAt,
+          deliveredAt,
+          easypostRateId
+        },
         cart[]{
             _key,
             name,
@@ -198,10 +215,19 @@ const handler: Handler = async (event) => {
         amountSubtotal,
         amountTax,
         amountShipping,
-        shippingCarrier,
         trackingNumber,
         shippingLabelUrl,
-        selectedService->{carrier, service, amount},
+        fulfillment{
+          carrier,
+          service,
+          deliveryDays,
+          estimatedDeliveryDate,
+          trackingNumber,
+          trackingUrl,
+          shippedAt,
+          deliveredAt,
+          easypostRateId
+        },
         cart[]{
             _key,
             name,

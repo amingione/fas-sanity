@@ -82,17 +82,6 @@ export interface ShippingAddress {
   email?: string
 }
 
-export interface SelectedService {
-  carrier?: string | null
-  carrierId?: string | null
-  service?: string | null
-  serviceCode?: string | null
-  amount?: number | null
-  currency?: string | null
-  deliveryDays?: number | null
-  estimatedDeliveryDate?: string | null
-}
-
 export interface OrderDocument {
   _id?: string
   _type?: 'order'
@@ -128,12 +117,25 @@ export interface OrderDocument {
   customerName?: string
   customerEmail?: string
   customerRef?: SanityReference | null
-  customer?: SanityReference | null
   cart?: OrderCartItem[] | null
   currency?: string
   manualTrackingNumber?: string | null
   trackingNumber?: string | null
   trackingUrl?: string | null
+  carrier?: string | null
+  service?: string | null
+  deliveryDays?: number | null
+  estimatedDeliveryDate?: string | null
+  easypostRateId?: string | null
+  easyPostShipmentId?: string | null
+  easyPostTrackerId?: string | null
+  labelCreatedAt?: string | null
+  labelCost?: number | null
+  labelPurchased?: boolean | null
+  labelPurchasedAt?: string | null
+  labelPurchasedBy?: string | null
+  shippedAt?: string | null
+  deliveredAt?: string | null
   shippingLabelFile?: FileAsset | null
   shippingLabelUrl?: string | null
   packingSlipUrl?: string | null
@@ -184,14 +186,20 @@ export interface OrderDocument {
   shippingAddress?: OrderAddress
   billingAddress?: OrderAddress
   packageDimensions?: PackageDimensions | null
+  fulfillmentDetails?: {
+    status?: string | null
+    shippingAddress?: string | null
+    packageWeight?: number | null
+    packageDimensions?: string | null
+    trackingNumber?: string | null
+    trackingDetails?: string | null
+    fulfillmentNotes?: string | null
+  } | null
   fulfillment?: {
     status?: string | null
-    trackingNumber?: string | null
-    trackingUrl?: string | null
-    carrier?: string | null
-    shippedAt?: string | null
-    deliveredAt?: string | null
     fulfillmentNotes?: string | null
+    processedBy?: string | null
+    processedAt?: string | null
   } | null
   fulfillmentWorkflow?:
     | {
@@ -205,14 +213,6 @@ export interface OrderDocument {
         }>
       }
     | null
-  selectedService?: SelectedService | null
-  selectedShippingAmount?: number | null
-  selectedShippingCurrency?: string | null
-  shippingCarrier?: string | null
-  shippingDeliveryDays?: number | null
-  shippingEstimatedDeliveryDate?: string | null
-  shippingServiceCode?: string | null
-  shippingServiceName?: string | null
   stripeLastSyncedAt?: string | null
   stripePaymentIntentStatus?: string | null
   stripeSource?: string | null

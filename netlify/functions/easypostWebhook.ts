@@ -596,12 +596,15 @@ async function handleTracker(tracker: any, rawPayload?: any) {
 
   const patchSet: Record<string, any> = Object.fromEntries(
     Object.entries({
-      shippingCarrier: tracker?.carrier || undefined,
       'shippingStatus.carrier': tracker?.carrier || undefined,
       'shippingStatus.trackingCode': trackingCode || undefined,
       'shippingStatus.trackingUrl': tracker?.public_url || undefined,
       'shippingStatus.status': tracker?.status || undefined,
       'shippingStatus.lastEventAt': lastEventAt ? new Date(lastEventAt).toISOString() : undefined,
+      'fulfillment.status': tracker?.status || undefined,
+      ...(tracker?.status === 'delivered' && lastEventAt
+        ? {deliveredAt: new Date(lastEventAt).toISOString()}
+        : {}),
     }).filter(([, value]) => value !== undefined),
   )
 
@@ -610,6 +613,9 @@ async function handleTracker(tracker: any, rawPayload?: any) {
   }
   if (trackingCode && !order.trackingNumber) {
     patchSet.trackingNumber = trackingCode
+  }
+  if (tracker?.carrier) {
+    patchSet.carrier = tracker.carrier
   }
   if (trackerId && !order.easyPostTrackerId) {
     patchSet.easyPostTrackerId = trackerId
@@ -751,6 +757,29 @@ async function handleShipment(shipment: any, rawPayload?: any) {
   )
   if (Object.keys(shippingStatus).length) {
     setOps.shippingStatus = shippingStatus
+  }
+  if (carrier) {
+    setOps.carrier = carrier
+  }
+  if (trackingNumber) {
+    setOps.trackingNumber = trackingNumber
+  }
+  if (trackingUrl) {
+    setOps.trackingUrl = trackingUrl
+  }
+  if (selectedRate?.service) {
+    setOps.service = selectedRate.service
+  }
+  setOps['fulfillment.status'] = shippingStatus.status || 'label_created'
+  setOps.shippedAt = shippingStatus.lastEventAt
+  if (typeof selectedRate?.delivery_days === 'number') {
+    setOps.deliveryDays = selectedRate.delivery_days
+  }
+  if (shipmentData?.tracker?.est_delivery_date) {
+    setOps.estimatedDeliveryDate = new Date(shipmentData.tracker.est_delivery_date).toISOString()
+  }
+  if ((selectedRate as any)?.id || selectedRate?.service_code) {
+    setOps.easypostRateId = (selectedRate as any)?.id || selectedRate?.service_code || undefined
   }
 
   const logParts = [

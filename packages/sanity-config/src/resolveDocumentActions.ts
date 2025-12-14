@@ -51,6 +51,11 @@ import {
 } from './schemaTypes/documentActions/shipmentPrintActions'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
 import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
+import {
+  GeneratePackingSlipAction,
+  CreateShippingLabelAction,
+  SendShippingConfirmationAction,
+} from './schemaTypes/actions/orderActions'
 
 const isOrderSchemaType = (schemaType: string): schemaType is 'order' => schemaType === 'order'
 
@@ -66,6 +71,11 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (isOrderSchemaType(context.schemaType)) {
     list.push(capturePaymentAction)
+    list.push(
+      GeneratePackingSlipAction,
+      CreateShippingLabelAction,
+      SendShippingConfirmationAction,
+    )
     return orderActions(list, context)
   }
   if (context.schemaType === 'vendorApplication') {

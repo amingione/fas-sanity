@@ -663,7 +663,9 @@ export async function createEasyPostLabel(
     const rateId =
       (appliedRate as any)?.id ||
       (updatedShipment?.selected_rate as any)?.id ||
-      (shipment?.selected_rate as any)?.id
+      (shipment?.selected_rate as any)?.id ||
+      appliedRate?.service_code ||
+      undefined
 
   const logEntry = {
     _type: 'shippingLogEntry',
@@ -676,43 +678,29 @@ export async function createEasyPostLabel(
       createdAt: new Date().toISOString(),
     }
 
-    const selectedService = Object.fromEntries(
-      Object.entries({
-        carrierId: appliedRate?.carrier_account_id || undefined,
-        carrier: shippingStatus.carrier,
-        service: appliedRate?.service || undefined,
-        serviceCode: appliedRate?.service_code || appliedRate?.service || undefined,
-        amount,
-        currency: appliedRate?.currency || undefined,
-        deliveryDays:
-          typeof appliedRate?.delivery_days === 'number' ? appliedRate.delivery_days : undefined,
-        estimatedDeliveryDate: tracker?.est_delivery_date
-          ? new Date(tracker.est_delivery_date).toISOString()
-          : undefined,
-      }).filter(([, value]) => value !== undefined),
-    )
-
     const patchSet = Object.fromEntries(
       Object.entries({
         shippingLabelUrl: labelUrl,
         shippingLabelFile: labelFileField,
         trackingNumber: trackingCode,
         trackingUrl,
-        shippingCarrier: shippingStatus.carrier,
         shippingStatus,
         easyPostShipmentId: shipment.id,
         easyPostTrackerId: tracker?.id,
-        selectedService: Object.keys(selectedService).length ? selectedService : undefined,
         labelCreatedAt: shippingStatus.lastEventAt,
         labelCost: amount,
         labelPurchasedFrom: resolvedCarrier || 'EasyPost',
         'fulfillment.status': 'label_created',
-        'fulfillment.carrier': resolvedCarrier,
-        'fulfillment.trackingNumber': trackingCode,
-        'fulfillment.trackingUrl': trackingUrl,
-        'fulfillment.shippedAt': shippingStatus.lastEventAt,
-        ...(rateId ? {'fulfillment.easypostRateId': rateId} : {}),
-        ...(shippingStatus.service ? {'fulfillment.service': shippingStatus.service} : {}),
+        carrier: resolvedCarrier,
+        service: shippingStatus.service || undefined,
+        shippedAt: shippingStatus.lastEventAt,
+        ...(rateId ? {easypostRateId: rateId} : {}),
+        ...(typeof appliedRate?.delivery_days === 'number'
+          ? {deliveryDays: appliedRate.delivery_days}
+          : {}),
+        ...(tracker?.est_delivery_date
+          ? {estimatedDeliveryDate: new Date(tracker.est_delivery_date).toISOString()}
+          : {}),
         packingSlipUrl: packingSlipUrl || undefined,
         qrCodeUrl: qrCodeUrl || undefined,
       }).filter(([, value]) => value !== undefined),

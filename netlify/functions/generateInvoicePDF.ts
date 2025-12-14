@@ -50,9 +50,17 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
     amountTax,
     amountShipping,
     total,
-    shippingCarrier,
     trackingNumber,
     shippingLabelUrl,
+    fulfillment{
+      carrier,
+      service,
+      deliveryDays,
+      estimatedDeliveryDate,
+      trackingNumber,
+      trackingUrl,
+      easypostRateId
+    },
     billTo,
     shipTo,
     lineItems[]{
@@ -76,10 +84,19 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
       amountSubtotal,
       amountTax,
       amountShipping,
-      shippingCarrier,
       trackingNumber,
       shippingLabelUrl,
-      selectedService->{carrier, service, amount},
+      fulfillment{
+        carrier,
+        service,
+        deliveryDays,
+        estimatedDeliveryDate,
+        trackingNumber,
+        trackingUrl,
+        shippedAt,
+        deliveredAt,
+        easypostRateId
+      },
       cart[]{
         _key,
         name,
@@ -103,10 +120,19 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
       amountDiscount,
       amountTax,
       amountShipping,
-      shippingCarrier,
       trackingNumber,
       shippingLabelUrl,
-      selectedService->{carrier, service, amount},
+      fulfillment{
+        carrier,
+        service,
+        deliveryDays,
+        estimatedDeliveryDate,
+        trackingNumber,
+        trackingUrl,
+        shippedAt,
+        deliveredAt,
+        easypostRateId
+      },
       cart[]{
         _key,
         name,

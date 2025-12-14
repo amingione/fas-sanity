@@ -81,6 +81,15 @@ export type InvoiceLike = {
   shippingCarrier?: string | null
   trackingNumber?: string | null
   shippingLabelUrl?: string | null
+  fulfillment?: {
+    carrier?: string | null
+    service?: string | null
+    deliveryDays?: number | null
+    estimatedDeliveryDate?: string | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    easypostRateId?: string | null
+  } | null
   order?: {
     cart?: OrderCartItem[] | null
     amountSubtotal?: number | null
@@ -89,6 +98,15 @@ export type InvoiceLike = {
     shippingCarrier?: string | null
     trackingNumber?: string | null
     shippingLabelUrl?: string | null
+    fulfillment?: {
+      carrier?: string | null
+      service?: string | null
+      deliveryDays?: number | null
+      estimatedDeliveryDate?: string | null
+      trackingNumber?: string | null
+      trackingUrl?: string | null
+      easypostRateId?: string | null
+    } | null
     selectedService?: {
       carrier?: string | null
       service?: string | null
@@ -103,6 +121,15 @@ export type InvoiceLike = {
     shippingCarrier?: string | null
     trackingNumber?: string | null
     shippingLabelUrl?: string | null
+    fulfillment?: {
+      carrier?: string | null
+      service?: string | null
+      deliveryDays?: number | null
+      estimatedDeliveryDate?: string | null
+      trackingNumber?: string | null
+      trackingUrl?: string | null
+      easypostRateId?: string | null
+    } | null
     selectedService?: {
       carrier?: string | null
       service?: string | null
@@ -494,8 +521,6 @@ function extractShippingAmount(invoice: InvoiceLike | null | undefined): number 
     (invoice as any)?.shippingAmount,
     (invoice as any)?.orderRef?.amountShipping,
     (invoice as any)?.order?.amountShipping,
-    (invoice as any)?.orderRef?.selectedService?.amount,
-    (invoice as any)?.order?.selectedService?.amount,
   ]
 
   for (const raw of rawCandidates) {
@@ -896,24 +921,57 @@ function collectShippingLines(invoice: InvoiceLike, shippingAmount: number): str
   const lines: string[] = []
   lines.push(`Shipping: ${money(shippingAmount)}`)
 
+  const fulfillment =
+    (invoice.fulfillment as any) ||
+    (invoice as any)?.orderRef?.fulfillment ||
+    (invoice as any)?.order?.fulfillment ||
+    null
+
   const carrier = coalesceString(
+    (invoice as any)?.carrier,
+    (invoice as any)?.orderRef?.carrier,
+    (invoice as any)?.order?.carrier,
+    fulfillment?.carrier,
     invoice.shippingCarrier,
-    (invoice as any)?.orderRef?.shippingCarrier,
-    (invoice as any)?.order?.shippingCarrier,
-    (invoice as any)?.orderRef?.selectedService?.carrier,
-    (invoice as any)?.order?.selectedService?.carrier,
   )
   const service = coalesceString(
+    (invoice as any)?.service,
+    (invoice as any)?.orderRef?.service,
+    (invoice as any)?.order?.service,
+    fulfillment?.service,
     (invoice as any)?.orderRef?.selectedService?.service,
     (invoice as any)?.order?.selectedService?.service,
   )
   const method = [carrier, service].filter(Boolean).join(' – ')
   if (method) lines.push(`Method: ${method}`)
 
+  const deliveryDays =
+    typeof (invoice as any)?.deliveryDays === 'number'
+      ? (invoice as any).deliveryDays
+      : typeof (invoice as any)?.orderRef?.deliveryDays === 'number'
+        ? (invoice as any).orderRef.deliveryDays
+        : typeof (invoice as any)?.order?.deliveryDays === 'number'
+          ? (invoice as any).order.deliveryDays
+          : fulfillment?.deliveryDays
+  if (typeof deliveryDays === 'number') {
+    lines.push(`Delivery ETA: ${deliveryDays} days`)
+  } else {
+    const eta =
+      (invoice as any)?.estimatedDeliveryDate ||
+      (invoice as any)?.orderRef?.estimatedDeliveryDate ||
+      (invoice as any)?.order?.estimatedDeliveryDate ||
+      fulfillment?.estimatedDeliveryDate
+    if (eta) {
+      lines.push(`Delivery ETA: ${new Date(eta).toLocaleDateString()}`)
+    }
+  }
+
   const tracking = coalesceString(
-    invoice.trackingNumber,
+    (invoice as any)?.trackingNumber,
     (invoice as any)?.orderRef?.trackingNumber,
     (invoice as any)?.order?.trackingNumber,
+    fulfillment?.trackingNumber,
+    invoice.trackingNumber,
   )
   if (tracking) lines.push(`Tracking: ${tracking}`)
 

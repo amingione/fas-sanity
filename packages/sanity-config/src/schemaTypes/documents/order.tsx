@@ -1,727 +1,174 @@
-// NOTE: orderId is deprecated; prefer orderNumber for identifiers.
-// src/schemaTypes/documents/order.tsx
+// schemas/order.tsx
 import {defineField, defineType} from 'sanity'
 import {
   PackageIcon,
-  DocumentPdfIcon,
-  ResetIcon,
   CheckmarkCircleIcon,
-  CopyIcon,
-  TrashIcon,
-  EnvelopeIcon,
+  RestoreIcon,
+  WarningOutlineIcon,
+  CloseIcon,
+  UndoIcon,
 } from '@sanity/icons'
-import type {DocumentActionsResolver} from 'sanity'
-import {decodeBase64ToArrayBuffer} from '../../utils/base64'
-import {formatOrderNumber} from '../../utils/orderNumber'
-import OrderNumberInput from '../../components/inputs/OrderNumberInput'
-import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
-import ComputedOrderCustomerNameInput from '../../components/inputs/ComputedOrderCustomerNameInput'
-import FulfillmentOverview from '../../components/FulfillmentOverview'
-import {OrderFulfillmentStatus} from '../../components/OrderFulfillmentStatus'
+import {OrderHeader} from '../components/OrderHeader'
 
-const SANITY_API_VERSION = '2024-10-01'
-
-const deriveOrderType = async (
-  document: any,
-  getClient?: (options?: {apiVersion?: string}) => any,
-): Promise<'online' | 'in-store' | 'wholesale'> => {
-  if (document?.invoiceData?.invoiceId) return 'in-store'
-  if (document?.wholesaleDetails || document?.wholesaleWorkflowStatus) return 'wholesale'
-  if (document?.orderType === 'wholesale') return 'wholesale'
-  if (document?.stripeSessionId) return 'online'
-
-  const customerRef = document?.customerRef?._ref
-  if (customerRef && typeof getClient === 'function') {
-    try {
-      const client = getClient({apiVersion: SANITY_API_VERSION})
-      const customer = await client.fetch(
-        `*[_type == "customer" && _id == $id][0]{roles, customerType}`,
-        {id: customerRef},
-      )
-      const roles = Array.isArray(customer?.roles) ? customer?.roles : []
-      const customerType = (customer?.customerType || '').toString().toLowerCase()
-      if (roles.includes('wholesale') || roles.includes('vendor')) return 'wholesale'
-      if (customerType === 'vendor' || customerType === 'wholesale') return 'wholesale'
-    } catch {
-      // fall back to default
-    }
-  }
-
-  return 'online'
-}
-
-// ============================================================================
-// ORDER SCHEMA
-// ============================================================================
-
-/**
- * ORDER LIFECYCLE
- *
- * 1. Created via Stripe checkout/payment intent → status `paid`
- * 2. Fulfilled via Studio "Fulfill Order" (EasyPost label + email) → status `fulfilled`
- * 3. Delivered via EasyPost webhook → status `delivered`
- * 4a. Canceled before fulfillment → status `canceled`
- * 4b. Refunded after fulfillment → status `refunded`
- * 5. Delete allowed only for canceled/refunded orders (invoice references detached)
- *
- * Guardrails:
- * - Stripe webhooks skip recreating canceled/refunded orders.
- * - Fulfill/cancel actions only appear on eligible statuses.
- * - Refund action cancels EasyPost + Stripe.
- */
-
-const orderSchema = defineType({
+export default defineType({
   name: 'order',
   title: 'Order',
   type: 'document',
   icon: PackageIcon,
-  initialValue: async (_, context) => {
-    const baseDoc = (context as any)?.document || {}
-    const orderType = await deriveOrderType(baseDoc, (context as any)?.getClient)
-    const workflowDefaults =
-      orderType === 'wholesale'
-        ? {
-            wholesaleWorkflowStatus: 'pending',
-          }
-        : {}
-    return {
-      orderType,
-      currency: 'USD',
-      ...workflowDefaults,
-    }
-  },
   groups: [
-    {name: 'basics', title: 'Order Basics'},
-    {name: 'customer', title: 'Customer'},
-    {name: 'items', title: 'Items', default: true},
-    {name: 'totals', title: 'Totals'},
-    {name: 'payment', title: 'Payment'},
+    {name: 'overview', title: 'Overview', default: true},
     {name: 'fulfillment', title: 'Fulfillment'},
+    {name: 'documents', title: 'Documents'},
+    {name: 'technical', title: 'Technical'},
   ],
   fields: [
+    // CUSTOMER REFERENCE - First field, shows at top
     defineField({
-      name: 'fulfillmentOverview',
-      type: 'object',
-      title: 'Fulfillment Overview',
-      group: 'basics',
+      name: 'customerRef',
+      title: 'Customer',
+      type: 'reference',
+      to: [{type: 'customer'}],
+      group: 'overview',
+      readOnly: true,
+      description: 'Click to view customer profile',
+    }),
+
+    // CUSTOM HEADER COMPONENT - Shows below customer reference
+    defineField({
+      name: 'orderHeaderDisplay',
+      title: 'Order Summary',
+      type: 'string',
       components: {
-        input: FulfillmentOverview,
+        input: OrderHeader,
       },
-      fields: [{name: 'placeholder', type: 'string', hidden: true}],
-      hidden: ({document}) => !document,
+      group: 'overview',
+      hidden: false,
     }),
-    // Refund telemetry
-    defineField({
-      name: 'amountRefunded',
-      type: 'number',
-      title: 'Amount Refunded',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => typeof document?.amountRefunded !== 'number',
-    }),
-    defineField({
-      name: 'lastRefundId',
-      type: 'string',
-      title: 'Last Refund ID',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.lastRefundId,
-    }),
-    defineField({
-      name: 'lastRefundReason',
-      type: 'string',
-      title: 'Refund Reason',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.lastRefundReason,
-    }),
-    defineField({
-      name: 'lastRefundStatus',
-      type: 'string',
-      title: 'Refund Status',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.lastRefundStatus,
-    }),
-    defineField({
-      name: 'lastRefundedAt',
-      type: 'datetime',
-      title: 'Refunded At',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.lastRefundedAt,
-    }),
-    defineField({
-      name: 'fulfillmentStatusDisplay',
-      title: 'Fulfillment Status',
-      type: 'object',
-      group: 'fulfillment',
-      components: {
-        input: OrderFulfillmentStatus,
-      },
-      fields: [{name: 'placeholder', type: 'string', hidden: true}],
-    }),
+
     defineField({
       name: 'orderNumber',
-      type: 'string',
       title: 'Order Number',
-      group: 'basics',
-      readOnly: false,
-      components: {input: OrderNumberInput},
-    }),
-    defineField({
-      name: 'slug',
-      type: 'slug',
-      title: 'Order Slug',
-      description: 'URL-friendly identifier',
-      group: 'basics',
-      options: {
-        source: 'orderNumber',
-        maxLength: 96,
-      },
-      hidden: true,
-    }),
-    defineField({
-      name: 'orderType',
       type: 'string',
-      title: 'Order Type',
-      description: 'Computed automatically for internal filtering',
-      group: 'basics',
-      readOnly: false,
+      group: 'overview',
+      readOnly: true,
+      hidden: true,
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'createdAt',
+      title: 'Order Date',
+      type: 'datetime',
+      group: 'overview',
+      readOnly: true,
       hidden: true,
     }),
     defineField({
       name: 'status',
-      type: 'string',
       title: 'Order Status',
-      group: 'basics',
-      options: {
-        list: [
-          {title: '📦 Needs Fulfillment', value: 'paid'},
-          {title: '🚚 Fulfilled - Shipped', value: 'fulfilled'},
-          {title: '✅ Delivered', value: 'delivered'},
-          {title: '❌ Canceled', value: 'canceled'},
-          {title: '💰 Refunded', value: 'refunded'},
-        ],
-        layout: 'dropdown',
-      },
-      readOnly: ({document}) =>
-        document?.status === 'canceled' || document?.status === 'refunded',
-      validation: (Rule) =>
-        Rule.custom((value, context) => {
-          const doc = context.document as any
-          if (!value || !doc) return true
-          const current = doc.status
-          if (current === 'canceled' && value !== 'canceled') {
-            return 'Cannot change status of a canceled order.'
-          }
-          if (current === 'refunded' && value !== 'refunded') {
-            return 'Cannot change status of a refunded order.'
-          }
-          if (
-            ['fulfilled', 'delivered'].includes(value) &&
-            ['canceled', 'refunded'].includes(current)
-          ) {
-            return 'Cannot fulfill a canceled or refunded order.'
-          }
-          return true
-        }),
-    }),
-    defineField({
-      name: 'wholesaleWorkflowStatus',
-      title: 'Wholesale Workflow Status',
       type: 'string',
-      description: 'Internal workflow for wholesale orders',
-      group: 'basics',
-      hidden: ({document}) => document?.orderType !== 'wholesale',
+      group: 'overview',
+      hidden: true,
       options: {
         list: [
-          {title: 'Pending Review', value: 'pending'},
-          {title: 'Approved - Awaiting Payment', value: 'approved'},
-          {title: 'Paid - Ready to Fulfill', value: 'paid'},
-          {title: 'Partially Fulfilled', value: 'partial'},
+          {title: 'Paid', value: 'paid'},
           {title: 'Fulfilled', value: 'fulfilled'},
-          {title: 'Cancelled', value: 'cancelled'},
+          {title: 'Delivered', value: 'delivered'},
+          {title: 'Canceled', value: 'canceled'},
+          {title: 'Refunded', value: 'refunded'},
         ],
         layout: 'dropdown',
       },
-      initialValue: 'pending',
     }),
     defineField({
-      name: 'wholesaleDetails',
-      title: 'Wholesale Details',
-      type: 'object',
-      hidden: ({document}) => document?.orderType !== 'wholesale',
-      group: 'basics',
-      options: {collapsible: true, collapsed: false},
-      fields: [
-        {
-          name: 'vendor',
-          title: 'Vendor',
-          type: 'reference',
-          to: [{type: 'vendor'}],
-        },
-        {
-          name: 'vendorId',
-          title: 'Vendor ID',
-          type: 'string',
-          description: 'External vendor ID (optional)',
-        },
-        {
-          name: 'vendorName',
-          title: 'Vendor Name',
-          type: 'string',
-        },
-        {
-          name: 'pricingTier',
-          title: 'Pricing Tier',
-          type: 'string',
-          options: {
-            list: [
-              {title: 'Standard', value: 'standard'},
-              {title: 'Preferred', value: 'preferred'},
-              {title: 'Platinum', value: 'platinum'},
-            ],
-          },
-        },
-        {
-          name: 'poNumber',
-          title: 'PO Number',
-          type: 'string',
-        },
-        {
-          name: 'bulkQuantity',
-          title: 'Bulk Quantity',
-          type: 'number',
-          validation: (Rule) => Rule.min(1),
-        },
-        {
-          name: 'expectedShipDate',
-          title: 'Expected Ship Date',
-          type: 'date',
-        },
-        {
-          name: 'paymentTerms',
-          title: 'Payment Terms',
-          type: 'string',
-          options: {
-            list: [
-              {title: 'Immediate Payment', value: 'immediate'},
-              {title: 'Net 30', value: 'net30'},
-              {title: 'Net 60', value: 'net60'},
-              {title: 'Net 90', value: 'net90'},
-              {title: 'Upon Receipt', value: 'upon_receipt'},
-              // legacy values kept for backwards compatibility
-              {title: 'Net 30 (legacy)', value: 'net_30'},
-              {title: 'Net 60 (legacy)', value: 'net_60'},
-              {title: 'Due on Receipt (legacy)', value: 'due_on_receipt'},
-            ],
-          },
-          initialValue: 'immediate',
-        },
-        {
-          name: 'bulkUnitPrice',
-          title: 'Bulk Unit Price',
-          type: 'number',
-          validation: (Rule) => Rule.min(0),
-        },
-        {
-          name: 'workflowStatus',
-          title: 'Workflow Status',
-          type: 'string',
-          options: {
-            list: [
-              {title: 'Pending Review', value: 'pending'},
-              {title: 'Approved - Awaiting Payment', value: 'approved'},
-              {title: 'Paid - Ready to Fulfill', value: 'paid'},
-              {title: 'Partially Fulfilled', value: 'partial'},
-              {title: 'Fulfilled', value: 'fulfilled'},
-              {title: 'Cancelled', value: 'cancelled'},
-            ],
-          },
-          initialValue: 'pending',
-        },
-        {
-          name: 'paymentLinkId',
-          title: 'Payment Link ID',
-          type: 'string',
-          description: 'Stripe payment link for this order',
-        },
-        {
-          name: 'approvedAt',
-          title: 'Approved At',
-          type: 'datetime',
-        },
-        {
-          name: 'approvedBy',
-          title: 'Approved By',
-          type: 'string',
-        },
-        {
-          name: 'paidAt',
-          title: 'Paid At',
-          type: 'datetime',
-        },
-        {
-          name: 'dueDate',
-          title: 'Payment Due Date',
-          type: 'date',
-          description: 'For net terms orders',
-        },
-        {
-          name: 'partialFulfillment',
-          title: 'Partial Fulfillment',
-          type: 'object',
-          fields: [
-            {
-              name: 'enabled',
-              title: 'Split Order',
-              type: 'boolean',
-            },
-            {
-              name: 'fulfilledItems',
-              title: 'Fulfilled Items',
-              type: 'array',
-              of: [{type: 'string'}],
-              description: 'SKUs of items already shipped',
-            },
-            {
-              name: 'pendingItems',
-              title: 'Pending Items',
-              type: 'array',
-              of: [{type: 'string'}],
-              description: 'SKUs of items still waiting (preorder/backorder)',
-            },
-            {
-              name: 'notes',
-              title: 'Partial Fulfillment Notes',
-              type: 'text',
-            },
-          ],
-        },
-        {
-          name: 'notes',
-          title: 'Wholesale Notes',
-          type: 'text',
-          rows: 3,
-        },
-      ],
+      name: 'paymentStatus',
+      title: 'Payment Status',
+      type: 'string',
+      group: 'overview',
+      readOnly: true,
+      hidden: true,
     }),
-    defineField({
-      name: 'inStoreDetails',
-      title: 'In-Store Details',
-      type: 'object',
-      hidden: ({document}) => document?.orderType !== 'in-store',
-      group: 'basics',
-      options: {collapsible: true, collapsed: false},
-      fields: [
-        {
-          name: 'appointment',
-          title: 'Appointment',
-          type: 'reference',
-          to: [{type: 'appointment'}],
-        },
-        {
-          name: 'workOrder',
-          title: 'Work Order',
-          type: 'reference',
-          to: [{type: 'workOrder'}],
-        },
-        {
-          name: 'bay',
-          title: 'Service Bay',
-          type: 'string',
-          options: {
-            list: [
-              {title: 'Bay 1', value: 'bay1'},
-              {title: 'Bay 2', value: 'bay2'},
-              {title: 'Bay 3', value: 'bay3'},
-              {title: 'Bay 4', value: 'bay4'},
-            ],
-          },
-        },
-        {
-          name: 'technician',
-          title: 'Technician',
-          type: 'string',
-        },
-      ],
-    }),
-    defineField({
-      name: 'createdAt',
-      type: 'datetime',
-      title: 'Order Date',
-      group: 'basics',
-      readOnly: false,
-    }),
-
-    // Customer
     defineField({
       name: 'customerName',
-      type: 'string',
       title: 'Customer Name',
-      group: 'customer',
-      readOnly: false,
-      description: 'Computed from customer record or shipping address; updates automatically.',
-      components: {input: ComputedOrderCustomerNameInput as any},
+      type: 'string',
+      group: 'overview',
+      readOnly: true,
+      hidden: true,
     }),
     defineField({
       name: 'customerEmail',
-      type: 'string',
       title: 'Customer Email',
-      group: 'customer',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'customerRef',
-      type: 'reference',
-      title: 'Customer Reference',
-      to: [{type: 'customer'}, {type: 'vendor'}],
-      group: 'customer',
-      readOnly: false,
+      type: 'string',
+      group: 'overview',
+      readOnly: true,
       hidden: true,
     }),
-    defineField({
-      name: 'customer',
-      type: 'reference',
-      title: 'Customer',
-      to: [{type: 'customer'}],
-      group: 'customer',
-      readOnly: false,
-      description: 'Legacy customer reference retained for backwards compatibility.',
-      hidden: true,
-    }),
-
-    // Items
     defineField({
       name: 'cart',
-      type: 'array',
       title: 'Order Items',
-      group: 'items',
-      readOnly: false,
+      type: 'array',
+      group: 'overview',
+      hidden: true,
       of: [{type: 'orderCartItem'}],
-    }),
-
-    // Totals
-    defineField({
-      name: 'amountSubtotal',
-      type: 'number',
-      title: 'Subtotal',
-      group: 'totals',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'amountTax',
-      type: 'number',
-      title: 'Tax',
-      group: 'totals',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'amountShipping',
-      type: 'number',
-      title: 'Shipping',
-      group: 'totals',
-      readOnly: false,
+      validation: (Rule) => Rule.required().min(1),
     }),
     defineField({
       name: 'totalAmount',
-      type: 'number',
       title: 'Total Amount',
-      group: 'totals',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'amountDiscount',
       type: 'number',
-      title: 'Discounts',
-      group: 'totals',
-      readOnly: false,
-      hidden: true,
-    }),
-
-    // Payment
-    defineField({
-      name: 'paymentStatus',
-      type: 'string',
-      title: 'Payment Status',
-      group: 'payment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'paymentCaptureStrategy',
-      title: 'Payment Capture Strategy',
-      type: 'string',
-      description: 'Inherited from product or configured manually.',
-      options: {
-        list: [
-          {title: 'Auto-Capture', value: 'auto'},
-          {title: 'Manual Capture', value: 'manual'},
-        ],
-      },
+      group: 'overview',
       readOnly: true,
-      group: 'payment',
+      hidden: true,
     }),
     defineField({
-      name: 'paymentCaptured',
-      title: 'Payment Captured',
-      type: 'boolean',
-      description: 'Indicates whether the Stripe authorization has been captured.',
-      initialValue: false,
+      name: 'amountSubtotal',
+      title: 'Subtotal',
+      type: 'number',
+      group: 'overview',
       readOnly: true,
-      group: 'payment',
+      hidden: true,
     }),
     defineField({
-      name: 'paymentCapturedAt',
-      title: 'Payment Captured At',
-      type: 'datetime',
+      name: 'amountTax',
+      title: 'Tax',
+      type: 'number',
+      group: 'overview',
       readOnly: true,
-      group: 'payment',
-    }),
-    defineField({
-      name: 'cardBrand',
-      type: 'string',
-      title: 'Card Brand',
-      group: 'payment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'cardLast4',
-      type: 'string',
-      title: 'Card Last 4',
-      group: 'payment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'receiptUrl',
-      type: 'url',
-      title: 'Receipt URL',
-      group: 'payment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'paymentIntentId',
-      type: 'string',
-      title: 'Payment Intent ID',
-      group: 'payment',
-      readOnly: false,
       hidden: true,
     }),
     defineField({
-      name: 'chargeId',
-      type: 'string',
-      title: 'Charge ID',
-      group: 'payment',
-      readOnly: false,
+      name: 'amountShipping',
+      title: 'Shipping',
+      type: 'number',
+      group: 'overview',
+      readOnly: true,
       hidden: true,
-    }),
-    defineField({
-      name: 'stripeSessionId',
-      type: 'string',
-      title: 'Stripe Session ID',
-      group: 'payment',
-      readOnly: false,
-      hidden: true,
-    }),
-    defineField({
-      name: 'currency',
-      type: 'string',
-      title: 'Currency',
-      group: 'payment',
-      readOnly: false,
-      hidden: true,
-      initialValue: 'USD',
-    }),
-    defineField({
-      name: 'invoiceData',
-      type: 'object',
-      title: 'Invoice Snapshot',
-      description: 'Embedded invoice metadata to avoid circular references.',
-      group: 'payment',
-      options: {collapsible: true, collapsed: true},
-      fields: [
-        defineField({
-          name: 'invoiceNumber',
-          type: 'string',
-          title: 'Invoice Number',
-          readOnly: true,
-        }),
-        defineField({
-          name: 'invoiceId',
-          type: 'string',
-          title: 'Invoice ID',
-          description: 'Stores the Sanity invoice document ID for quick linking.',
-          readOnly: true,
-        }),
-        defineField({
-          name: 'invoiceUrl',
-          type: 'url',
-          title: 'Invoice URL',
-        }),
-        defineField({
-          name: 'pdfUrl',
-          type: 'url',
-          title: 'PDF URL',
-        }),
-      ],
     }),
     defineField({
       name: 'invoiceRef',
+      title: 'Invoice',
       type: 'reference',
-      title: 'Legacy Invoice Reference',
       to: [{type: 'invoice'}],
-      group: 'payment',
-      readOnly: true,
-      hidden: true,
-      weak: true,
+      group: 'overview',
+      description: 'Click to view invoice',
+      hidden: ({document}) => !document?.invoiceRef,
     }),
     defineField({
-      name: 'stripeSummary',
-      type: 'stripeOrderSummary',
-      title: 'Stripe Summary',
-      description: 'Stripe checkout/payment snapshot',
-      group: 'payment',
-      readOnly: false,
-      options: {collapsible: true, collapsed: true},
-    }),
-    defineField({
-      name: 'webhookNotified',
-      type: 'boolean',
-      title: 'Webhook Notified',
-      description: 'Set when a Stripe webhook successfully processed this order.',
-      group: 'payment',
-      readOnly: false,
-      hidden: true,
-    }),
-    defineField({
-      name: 'confirmationEmailSent',
-      type: 'boolean',
-      title: 'Confirmation Email Sent',
-      description: 'Set when the customer confirmation email was sent.',
-      group: 'payment',
-      readOnly: false,
-      hidden: true,
-    }),
-
-    // Fulfillment
-    defineField({
-      name: 'fulfillment',
+      name: 'fulfillmentDetails',
+      title: 'Fulfillment Information',
       type: 'object',
-      title: 'Fulfillment',
-      description: 'Tracking and delivery status',
       group: 'fulfillment',
-      options: {
-        collapsible: true,
-        collapsed: false,
-      },
+      options: {collapsible: true, collapsed: true},
+      hidden: true,
       fields: [
         {
           name: 'status',
-          type: 'string',
           title: 'Fulfillment Status',
+          type: 'string',
           options: {
             list: [
               {title: 'Unfulfilled', value: 'unfulfilled'},
+              {title: 'Processing', value: 'processing'},
               {title: 'Shipped', value: 'shipped'},
               {title: 'Delivered', value: 'delivered'},
             ],
@@ -731,1424 +178,304 @@ const orderSchema = defineType({
         },
         {
           name: 'shippingAddress',
-          type: 'shippingAddress',
           title: 'Shipping Address',
-          options: {collapsible: true, collapsed: false},
+          type: 'text',
+          rows: 5,
+          readOnly: true,
+          description: 'Customer shipping address',
+        },
+        {
+          name: 'packageWeight',
+          title: 'Package Weight (lbs)',
+          type: 'number',
+          description: 'Total weight in pounds',
         },
         {
           name: 'packageDimensions',
-          type: 'object',
-          title: 'Package Dimensions & Weight',
-          options: {collapsible: true, collapsed: true},
-          fields: [
-            {
-              name: 'weightDisplay',
-              type: 'string',
-              title: 'Weight',
-              readOnly: false,
-              description: 'Auto-filled from Stripe or product data (e.g., 8 lb)',
-            },
-            {
-              name: 'dimensionsDisplay',
-              type: 'string',
-              title: 'Dimensions',
-              readOnly: false,
-              description: 'Auto-filled from product data (e.g., 10 x 8 x 2 in)',
-            },
-            {name: 'length', type: 'number', title: 'Length (inches)'},
-            {name: 'width', type: 'number', title: 'Width (inches)'},
-            {name: 'height', type: 'number', title: 'Height (inches)'},
-            {name: 'weight', type: 'number', title: 'Weight'},
-            {
-              name: 'weightUnit',
-              type: 'string',
-              title: 'Weight Unit',
-              options: {
-                list: [
-                  {title: 'Pounds (lbs)', value: 'lbs'},
-                  {title: 'Ounces (oz)', value: 'oz'},
-                  {title: 'Kilograms (kg)', value: 'kg'},
-                ],
-              },
-              hidden: true,
-            },
-            {
-              name: 'dimensionUnit',
-              type: 'string',
-              title: 'Dimension Unit',
-              options: {
-                list: [
-                  {title: 'Inches (in)', value: 'in'},
-                  {title: 'Centimeters (cm)', value: 'cm'},
-                ],
-              },
-              hidden: true,
-            },
-          ],
-        },
-        {
-          name: 'easypostRateId',
+          title: 'Package Dimensions (L × W × H inches)',
           type: 'string',
-          title: 'EasyPost Rate ID',
-          description: 'Selected shipping rate ID from EasyPost/Stripe',
-          readOnly: false,
-        },
-        {
-          name: 'service',
-          type: 'string',
-          title: 'Shipping Service',
-          description: 'Service level (e.g., Priority, Ground)',
-          readOnly: false,
+          placeholder: 'e.g., 12 × 10 × 4',
+          description: 'Length × Width × Height in inches',
         },
         {
           name: 'trackingNumber',
-          type: 'string',
           title: 'Tracking Number',
-        },
-        {
-          name: 'trackingUrl',
-          type: 'url',
-          title: 'Tracking URL',
-        },
-        {
-          name: 'carrier',
           type: 'string',
-          title: 'Carrier',
-          options: {
-            list: ['USPS', 'UPS', 'FedEx', 'Other'],
-          },
+          description: 'Carrier tracking number',
         },
         {
-          name: 'shippedAt',
-          type: 'datetime',
-          title: 'Shipped Date',
-        },
-        {
-          name: 'deliveredAt',
-          type: 'datetime',
-          title: 'Delivered Date',
+          name: 'trackingDetails',
+          title: 'Tracking Details',
+          type: 'text',
+          rows: 5,
+          readOnly: true,
+          description: 'Shipping service, tracking number, dates',
+          hidden: ({parent}) => !parent?.trackingNumber,
         },
         {
           name: 'fulfillmentNotes',
-          type: 'text',
           title: 'Fulfillment Notes',
-          description: 'Internal notes about packing, shipping issues, etc.',
+          type: 'text',
           rows: 3,
+          description: 'Internal notes about packing, shipping issues, etc.',
+          hidden: true, // Hidden here because it's in the custom component
         },
       ],
     }),
     defineField({
-      name: 'shippingAddress',
-      type: 'shippingAddress',
-      title: 'Shipping Address',
-      group: 'fulfillment',
-      hidden: undefined,
-      options: {
-        collapsible: true,
-        collapsed: false,
-      },
-    }),
-    defineField({
-      name: 'billingAddress',
-      type: 'object',
-      title: 'Billing Address',
-      group: 'customer',
-      options: {
-        collapsible: true,
-        collapsed: true,
-      },
-      fields: [
-        {name: 'name', type: 'string', title: 'Billing Name'},
-        {name: 'phone', type: 'string', title: 'Phone'},
-        {name: 'email', type: 'string', title: 'Email'},
-        {name: 'addressLine1', type: 'string', title: 'Address Line 1'},
-        {name: 'addressLine2', type: 'string', title: 'Address Line 2'},
-        {name: 'city', type: 'string', title: 'City'},
-        {name: 'state', type: 'string', title: 'State / Province'},
-        {name: 'postalCode', type: 'string', title: 'Postal Code'},
-        {name: 'country', type: 'string', title: 'Country'},
+      name: 'orderDocuments',
+      title: 'Order Documents',
+      type: 'array',
+      group: 'documents',
+      description: 'Packing slips and shipping labels',
+      of: [
+        {
+          type: 'object',
+          name: 'orderDocument',
+          fields: [
+            {
+              name: 'documentType',
+              title: 'Document Type',
+              type: 'string',
+              options: {
+                list: [
+                  {title: 'Packing Slip', value: 'packing_slip'},
+                  {title: 'Shipping Label', value: 'shipping_label'},
+                  {title: 'Other', value: 'other'},
+                ],
+              },
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'file',
+              title: 'PDF File',
+              type: 'file',
+              options: {accept: 'application/pdf'},
+            },
+            {
+              name: 'url',
+              title: 'Document URL',
+              type: 'url',
+              description: 'External link to document (if not uploaded)',
+            },
+            {
+              name: 'createdAt',
+              title: 'Created',
+              type: 'datetime',
+              initialValue: () => new Date().toISOString(),
+            },
+          ],
+          preview: {
+            select: {
+              type: 'documentType',
+              fileName: 'file.asset.originalFilename',
+              url: 'url',
+            },
+            prepare({type, fileName, url}) {
+              const typeLabel: Record<string, string> = {
+                packing_slip: '📄 Packing Slip',
+                shipping_label: '🏷️ Shipping Label',
+                other: '📎 Document',
+              }
+              const label = type ? typeLabel[type] || '📎 Document' : '📎 Document'
+              return {title: label, subtitle: fileName || url || 'No file'}
+            },
+          },
+        },
       ],
     }),
     defineField({
-      name: 'manualTrackingNumber',
+      name: 'currency',
+      title: 'Currency',
       type: 'string',
-      title: 'Tracking Number (Manual Entry)',
-      description: 'Legacy field for quick entry',
-      group: 'fulfillment',
+      group: 'technical',
+      readOnly: true,
       hidden: true,
     }),
     defineField({
-      name: 'trackingNumber',
+      name: 'paymentIntentId',
+      title: 'Payment Intent ID',
       type: 'string',
-      title: 'Tracking Number (Auto)',
-      group: 'fulfillment',
-      readOnly: false,
+      group: 'technical',
+      readOnly: true,
       hidden: true,
     }),
     defineField({
-      name: 'trackingUrl',
-      type: 'url',
-      title: 'Tracking URL',
-      group: 'fulfillment',
-      readOnly: false,
+      name: 'stripeSessionId',
+      title: 'Stripe Session ID',
+      type: 'string',
+      group: 'technical',
+      readOnly: true,
       hidden: true,
     }),
     defineField({
       name: 'easyPostShipmentId',
-      type: 'string',
       title: 'EasyPost Shipment ID',
-      group: 'fulfillment',
-      description: 'Shipment id returned by EasyPost after label purchase',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'easyPostTrackerId',
       type: 'string',
-      title: 'EasyPost Tracker ID',
-      group: 'fulfillment',
-      description: 'Tracker id returned by EasyPost after label purchase',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'selectedService',
-      type: 'object',
-      title: 'Selected Shipping Service',
-      description: 'Original service choice from checkout (Stripe/EasyPost).',
-      group: 'fulfillment',
-      options: {collapsible: true, collapsed: true},
-      fields: [
-        {name: 'carrier', type: 'string', title: 'Carrier'},
-        {name: 'carrierId', type: 'string', title: 'Carrier ID'},
-        {name: 'service', type: 'string', title: 'Service'},
-        {name: 'serviceCode', type: 'string', title: 'Service Code'},
-        {name: 'amount', type: 'number', title: 'Amount'},
-        {name: 'currency', type: 'string', title: 'Currency'},
-        {name: 'deliveryDays', type: 'number', title: 'Est. Delivery Days'},
-        {name: 'estimatedDeliveryDate', type: 'datetime', title: 'Est. Delivery Date'},
-      ],
-    }),
-    defineField({
-      name: 'selectedShippingAmount',
-      type: 'number',
-      title: 'Selected Shipping Amount',
-      description: 'Shipping amount captured at checkout.',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'selectedShippingCurrency',
-      type: 'string',
-      title: 'Selected Shipping Currency',
-      description: 'Currency for selected shipping amount.',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'shippingCarrier',
-      type: 'string',
-      title: 'Shipping Carrier',
-      description: 'Carrier reported by Stripe/EasyPost.',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'shippingDeliveryDays',
-      type: 'number',
-      title: 'Estimated Delivery Days',
-      description: 'Quoted delivery days from the selected rate.',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'shippingEstimatedDeliveryDate',
-      type: 'datetime',
-      title: 'Estimated Delivery Date',
-      description: 'Quoted delivery date from the selected rate.',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'shippingServiceCode',
-      type: 'string',
-      title: 'Shipping Service Code',
-      description: 'Service code from Stripe/EasyPost (e.g., rate id).',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'shippingServiceName',
-      type: 'string',
-      title: 'Shipping Service Name',
-      description: 'Human-friendly service name from the selected rate.',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'shippingLabelFile',
-      type: 'file',
-      title: 'Shipping Label',
-      description: 'Saved PDF of the shipping label for quick reference.',
-      group: 'fulfillment',
-      options: {
-        storeOriginalFilename: true,
-        accept: 'application/pdf',
-      },
-    }),
-    defineField({
-      name: 'shippingLabelUrl',
-      type: 'url',
-      title: 'Shipping Label URL',
-      description: 'Link to the saved label PDF (auto-set when a label is created).',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'labelCreatedAt',
-      type: 'datetime',
-      title: 'Label Created At',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'labelCost',
-      type: 'number',
-      title: 'Label Cost',
-      description: 'Cost charged for the label',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'labelPurchasedFrom',
-      type: 'string',
-      title: 'Label Purchased From',
-      description: 'Carrier or provider used to buy the label',
-      group: 'fulfillment',
-      readOnly: false,
-    }),
-    defineField({
-      name: 'packingSlipUrl',
-      type: 'url',
-      title: 'Packing Slip',
-      group: 'fulfillment',
-      readOnly: false,
+      group: 'technical',
+      readOnly: true,
       hidden: true,
     }),
     defineField({
-      name: 'qrCodeUrl',
-      type: 'url',
-      title: 'QR Code (Label)',
-      description: 'Optional QR code form URL from EasyPost for warehouse scanning',
-      group: 'fulfillment',
-      readOnly: false,
+      name: 'labelPurchased',
+      title: 'Label Purchased',
+      type: 'boolean',
+      group: 'technical',
+      readOnly: true,
+      initialValue: false,
       hidden: true,
     }),
     defineField({
-      name: 'fulfilledAt',
+      name: 'labelPurchasedAt',
+      title: 'Label Purchased At',
       type: 'datetime',
-      title: 'Fulfilled Date',
-      group: 'fulfillment',
-      readOnly: false,
+      group: 'technical',
+      readOnly: true,
       hidden: true,
     }),
     defineField({
-      name: 'fulfillmentWorkflow',
-      type: 'object',
-      title: 'Fulfillment Workflow',
-      description: 'Tracking for label creation and shipping stages.',
-      group: 'fulfillment',
-      options: {collapsible: true, collapsed: true},
-      fields: [
-        {name: 'currentStage', type: 'string', title: 'Current Stage'},
-        {
-          name: 'stages',
-          type: 'array',
-          title: 'Stages',
-          of: [
-            {
-              type: 'object',
-              fields: [
-                {name: 'stage', type: 'string', title: 'Stage'},
-                {name: 'timestamp', type: 'datetime', title: 'Timestamp'},
-                {name: 'completedBy', type: 'string', title: 'Completed By'},
-                {name: 'notes', type: 'text', title: 'Notes', rows: 2},
-              ],
-            },
-          ],
-        },
-      ],
+      name: 'labelPurchasedBy',
+      title: 'Label Purchased By',
+      type: 'string',
+      group: 'technical',
+      readOnly: true,
+      hidden: true,
     }),
     defineField({
-      name: 'shippingMetadata',
+      name: 'shippingAddress',
       type: 'object',
-      title: 'Shipping Metadata',
-      description: 'Raw shipping data from Stripe',
-      group: 'fulfillment',
-      options: {
-        collapsible: true,
-        collapsed: true,
-      },
-      readOnly: false,
       hidden: true,
       fields: [
-        {
-          name: 'raw',
-          type: 'text',
-          title: 'Raw Metadata (JSON)',
-          description: 'Unparsed metadata payload from Stripe',
-          rows: 6,
-          readOnly: false,
-        },
+        {name: 'name', type: 'string'},
+        {name: 'phone', type: 'string'},
+        {name: 'email', type: 'string'},
+        {name: 'addressLine1', type: 'string'},
+        {name: 'addressLine2', type: 'string'},
+        {name: 'city', type: 'string'},
+        {name: 'state', type: 'string'},
+        {name: 'postalCode', type: 'string'},
+        {name: 'country', type: 'string'},
       ],
     }),
     defineField({
-      name: 'shippingLog',
-      type: 'array',
-      title: 'Shipping Log',
-      description: 'Historical shipping events from EasyPost',
-      group: 'fulfillment',
-      of: [{type: 'shippingLogEntry'}],
-      readOnly: true,
-      hidden: ({document}) => !Array.isArray(document?.shippingLog) || !document.shippingLog.length,
-    }),
-    defineField({
-      name: 'shippingStatus',
+      name: 'billingAddress',
       type: 'object',
-      title: 'Shipping Status',
-      group: 'fulfillment',
-      readOnly: true,
+      hidden: true,
       fields: [
-        {name: 'status', type: 'string', title: 'Status'},
-        {name: 'carrier', type: 'string', title: 'Carrier'},
-        {name: 'service', type: 'string', title: 'Service'},
-        {name: 'trackingCode', type: 'string', title: 'Tracking Code'},
-        {name: 'trackingUrl', type: 'url', title: 'Tracking URL'},
-        {name: 'labelUrl', type: 'url', title: 'Label URL'},
-        {name: 'cost', type: 'number', title: 'Cost'},
-        {name: 'currency', type: 'string', title: 'Currency'},
-        {name: 'lastEventAt', type: 'datetime', title: 'Last Event'},
+        {name: 'name', type: 'string'},
+        {name: 'phone', type: 'string'},
+        {name: 'email', type: 'string'},
+        {name: 'addressLine1', type: 'string'},
+        {name: 'addressLine2', type: 'string'},
+        {name: 'city', type: 'string'},
+        {name: 'state', type: 'string'},
+        {name: 'postalCode', type: 'string'},
+        {name: 'country', type: 'string'},
       ],
-      hidden: ({document}) => !document?.shippingStatus,
     }),
+    defineField({name: 'carrier', type: 'string', hidden: true}),
+    defineField({name: 'service', type: 'string', hidden: true}),
+    defineField({name: 'trackingNumber', type: 'string', hidden: true}),
+    defineField({name: 'trackingUrl', type: 'url', hidden: true}),
+    defineField({name: 'shippedAt', type: 'datetime', hidden: true}),
+    defineField({name: 'deliveredAt', type: 'datetime', hidden: true}),
+    defineField({name: 'estimatedDeliveryDate', type: 'datetime', hidden: true}),
+    defineField({name: 'easypostRateId', type: 'string', hidden: true}),
     defineField({
-      name: 'orderEvents',
-      type: 'array',
-      title: 'Order Events',
-      group: 'basics',
-      of: [{type: 'orderEvent'}],
-      readOnly: true,
-      hidden: ({document}) => !Array.isArray(document?.orderEvents) || !document.orderEvents.length,
-    }),
-    defineField({
-      name: 'attribution',
+      name: 'stripeSummary',
       type: 'object',
-      title: 'Attribution',
-      group: 'basics',
-      readOnly: true,
-      fields: [
-        {name: 'sessionId', type: 'string', title: 'Session ID'},
-        {name: 'landingPage', type: 'url', title: 'Landing Page'},
-        {name: 'referrer', type: 'url', title: 'Referrer'},
-        {name: 'device', type: 'string', title: 'Device'},
-        {name: 'browser', type: 'string', title: 'Browser'},
-        {name: 'os', type: 'string', title: 'OS'},
-        {name: 'capturedAt', type: 'datetime', title: 'Captured At'},
-      ],
-      hidden: ({document}) => !document?.attribution,
+      hidden: true,
+      fields: [{name: 'data', type: 'text', title: 'Stripe Data (JSON)'}],
     }),
+    defineField({name: 'amountDiscount', type: 'number', hidden: true}),
+    defineField({name: 'paymentCaptured', type: 'boolean', hidden: true}),
+    defineField({name: 'paymentCapturedAt', type: 'datetime', hidden: true}),
+    defineField({name: 'cardBrand', type: 'string', hidden: true}),
+    defineField({name: 'cardLast4', type: 'string', hidden: true}),
+    defineField({name: 'receiptUrl', type: 'url', hidden: true}),
+    defineField({name: 'chargeId', type: 'string', hidden: true}),
+    defineField({name: 'confirmationEmailSent', type: 'boolean', hidden: true}),
+    defineField({name: 'webhookNotified', type: 'boolean', hidden: true}),
+    defineField({name: 'slug', type: 'slug', hidden: true}),
     defineField({
-      name: 'dimensions',
+      name: 'fulfillment',
       type: 'object',
-      title: 'Package Dimensions',
-      group: 'fulfillment',
-      readOnly: true,
+      hidden: true,
       fields: [
-        {name: 'length', type: 'number', title: 'Length (inches)'},
-        {name: 'width', type: 'number', title: 'Width (inches)'},
-        {name: 'height', type: 'number', title: 'Height (inches)'},
+        {name: 'status', type: 'string'},
+        {name: 'fulfillmentNotes', type: 'text'},
+        {name: 'shippedAt', type: 'datetime'},
+        {name: 'deliveredAt', type: 'datetime'},
       ],
-      hidden: ({document}) => !document?.dimensions,
     }),
     defineField({
-      name: 'weight',
+      name: 'invoiceData',
       type: 'object',
-      title: 'Weight',
-      group: 'fulfillment',
-      readOnly: true,
+      hidden: true,
       fields: [
-        {name: 'value', type: 'number', title: 'Value'},
-        {name: 'unit', type: 'string', title: 'Unit'},
+        {name: 'invoiceNumber', type: 'string'},
+        {name: 'invoiceId', type: 'string'},
+        {name: 'invoiceUrl', type: 'url'},
+        {name: 'pdfUrl', type: 'url'},
       ],
-      hidden: ({document}) => !document?.weight,
     }),
     defineField({
-      name: 'stripeLastSyncedAt',
-      type: 'datetime',
-      title: 'Last Synced with Stripe',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.stripeLastSyncedAt,
+      name: 'packageDimensions',
+      type: 'object',
+      hidden: true,
+      fields: [
+        {name: 'weight', type: 'number'},
+        {name: 'length', type: 'number'},
+        {name: 'width', type: 'number'},
+        {name: 'height', type: 'number'},
+        {name: 'weightDisplay', type: 'string'},
+        {name: 'dimensionsDisplay', type: 'string'},
+      ],
     }),
+    defineField({name: 'packingSlipUrl', type: 'url', hidden: true}),
+    defineField({name: 'shippingLabelUrl', type: 'url', hidden: true}),
+    defineField({name: 'shippingLabelFile', type: 'file', hidden: true}),
+    defineField({name: 'labelCreatedAt', type: 'datetime', hidden: true}),
+    defineField({name: 'labelCost', type: 'number', hidden: true}),
+    defineField({name: 'deliveryDays', type: 'number', hidden: true}),
+    defineField({name: 'easyPostTrackerId', type: 'string', hidden: true}),
+    defineField({name: 'paymentCaptureStrategy', type: 'string', hidden: true}),
     defineField({
-      name: 'stripePaymentIntentStatus',
-      type: 'string',
-      title: 'Stripe Payment Status',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.stripePaymentIntentStatus,
+      name: 'fulfillmentStatusDisplay',
+      type: 'object',
+      hidden: true,
+      fields: [{name: 'display', type: 'string'}],
     }),
-    defineField({
-      name: 'stripeSource',
-      type: 'string',
-      title: 'Stripe Source',
-      group: 'payment',
-      readOnly: true,
-      hidden: ({document}) => !document?.stripeSource,
-    }),
+    defineField({name: 'amountRefunded', type: 'number', hidden: true}),
+    defineField({name: 'lastRefundId', type: 'string', hidden: true}),
+    defineField({name: 'lastRefundReason', type: 'string', hidden: true}),
+    defineField({name: 'lastRefundStatus', type: 'string', hidden: true}),
+    defineField({name: 'lastRefundedAt', type: 'datetime', hidden: true}),
   ],
   preview: {
     select: {
       orderNumber: 'orderNumber',
+      customerName: 'customerName',
       status: 'status',
-      total: 'totalAmount',
-      customerEmail: 'customerEmail',
-      trackingNumber: 'trackingNumber',
+      totalAmount: 'totalAmount',
+      fulfillmentStatus: 'fulfillmentDetails.status',
     },
-    prepare({orderNumber, status, total, customerEmail, trackingNumber}) {
-      const displayOrderNumber = formatOrderNumber(orderNumber) || orderNumber || 'Untitled Order'
-      const numericTotal =
-        typeof total === 'number' && Number.isFinite(total)
-          ? total
-          : Number.isFinite(Number(total))
-            ? Number(total)
-            : null
-      const hasTotal = typeof numericTotal === 'number' && Number.isFinite(numericTotal)
-      const formattedTotal = hasTotal
-        ? new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(
-            numericTotal!,
-          )
-        : '$0.00'
-      const subtitleParts = [
-        status || 'unknown',
-        formattedTotal,
-        customerEmail || 'Unknown customer',
-      ]
-      const description = trackingNumber ? `Tracking: ${trackingNumber}` : 'Not shipped'
+    prepare({orderNumber, customerName, status, totalAmount, fulfillmentStatus}) {
+      const statusIconMap: Record<string, React.ComponentType> = {
+        paid: PackageIcon,
+        fulfilled: RestoreIcon,
+        delivered: CheckmarkCircleIcon,
+        canceled: CloseIcon,
+        refunded: UndoIcon,
+      }
+
+      const Icon = (status && statusIconMap[status]) || PackageIcon
+
       return {
-        title: displayOrderNumber,
-        subtitle: subtitleParts.join(' • '),
-        description,
+        title: `${customerName || 'Unknown Customer'} — ${orderNumber || 'New Order'}`,
+        subtitle: `$${totalAmount?.toFixed(2) || '0.00'} • ${fulfillmentStatus || 'unfulfilled'}`,
+        media: Icon,
       }
     },
   },
 })
-
-export default orderSchema
-
-type NetlifyRequestInit = RequestInit & {json?: unknown}
-
-const normalizeDocumentId = (value?: string | null): string => {
-  if (!value) return ''
-  return String(value)
-    .trim()
-    .replace(/^drafts\./, '')
-}
-
-const resolvePatchTargets = (rawId?: string | null): string[] => {
-  if (!rawId) return []
-  const clean = String(rawId).trim()
-  if (!clean) return []
-  const published = clean.replace(/^drafts\./, '')
-  const ids = new Set<string>([clean])
-  if (published && published !== clean) {
-    ids.add(published)
-  }
-  return Array.from(ids)
-}
-
-const openExternalUrl = (url?: string | null) => {
-  if (!url || typeof window === 'undefined') return
-  try {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  } catch {
-    window.location.href = url
-  }
-}
-
-const confirmAction = (message: string) => {
-  if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true
-  return window.confirm(message)
-}
-
-const filenameSafe = (value?: string | null, fallback = 'order') => {
-  const base = (value ?? fallback ?? 'order').toString().trim()
-  const normalized = base
-    .replace(/[^a-z0-9_-]+/gi, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-  return normalized || fallback || 'order'
-}
-
-const asOptionalString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-  const trimmed = value.trim()
-  return trimmed || undefined
-}
-
-const readResponseMessage = async (response: Response) => {
-  try {
-    const data = await response.clone().json()
-    if (data && typeof data === 'object') {
-      if (typeof (data as any).error === 'string') return (data as any).error
-      if (typeof (data as any).message === 'string') return (data as any).message
-    }
-  } catch {
-    // fall through to text parsing
-  }
-
-  try {
-    const text = await response.text()
-    if (text) return text
-  } catch {
-    // ignore
-  }
-
-  return `Request failed (HTTP ${response.status})`
-}
-
-const responseToPdfBlob = async (response: Response): Promise<Blob> => {
-  const contentType = (response.headers.get('content-type') || '').toLowerCase()
-  if (contentType.includes('application/pdf')) {
-    const buffer = await response.arrayBuffer()
-    return new Blob([buffer], {type: 'application/pdf'})
-  }
-  const base64 = (await response.text()).replace(/^"|"$/g, '')
-  const buffer = decodeBase64ToArrayBuffer(base64)
-  return new Blob([buffer], {type: 'application/pdf'})
-}
-
-const parseCurrencyAmount = (value: unknown): number => {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (typeof value === 'string') {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed)) return parsed
-  }
-  return 0
-}
-
-const callNetlifyFunction = async (
-  fnName: string,
-  init: NetlifyRequestInit = {},
-): Promise<Response> => {
-  const {json, ...rest} = init
-  const body =
-    rest.body !== undefined ? rest.body : json !== undefined ? JSON.stringify(json) : undefined
-
-  const baseHeaders = new Headers(rest.headers || undefined)
-  if (body && !baseHeaders.has('Content-Type') && typeof body === 'string') {
-    baseHeaders.set('Content-Type', 'application/json')
-  }
-
-  const bases = getNetlifyFunctionBaseCandidates()
-  let lastError: unknown = null
-
-  for (const base of bases) {
-    const url = `${base}/.netlify/functions/${fnName}`
-    try {
-      const response = await fetch(url, {
-        ...rest,
-        method: rest.method ?? 'POST',
-        headers: new Headers(baseHeaders),
-        body,
-      })
-
-      if (response.status === 404) {
-        lastError = new Error(`${fnName} not available at ${base}`)
-        continue
-      }
-
-      if (response.ok && typeof window !== 'undefined') {
-        try {
-          window.localStorage?.setItem('NLFY_BASE', base)
-        } catch {
-          // ignore storage failures
-        }
-      }
-
-      return response
-    } catch (error) {
-      lastError = error
-    }
-  }
-
-  throw lastError ?? new Error('Unable to reach Netlify functions')
-}
-
-// ============================================================================
-// DOCUMENT ACTIONS
-// ============================================================================
-
-const ORDER_DOCUMENT_TYPES = new Set(['order'])
-
-export const orderActions: DocumentActionsResolver = (prev, context) => {
-  const {schemaType} = context
-
-  if (!ORDER_DOCUMENT_TYPES.has(schemaType)) {
-    return prev
-  }
-
-  const getStateFlags = (doc: any) => {
-    if (!doc || typeof doc !== 'object') {
-      return {tracking: undefined, labelUrl: undefined, isFulfilled: false}
-    }
-    const tracking =
-      asOptionalString(doc.trackingNumber) || asOptionalString(doc.manualTrackingNumber)
-    const labelUrl = asOptionalString(doc.shippingLabelUrl)
-    const fulfillmentStatus = asOptionalString(doc?.fulfillment?.status)?.toLowerCase()
-    const isFulfilled =
-      fulfillmentStatus === 'fulfilled' ||
-      fulfillmentStatus === 'shipped' ||
-      doc?.status === 'fulfilled' ||
-      doc?.status === 'shipped'
-    return {tracking, labelUrl, isFulfilled}
-  }
-
-  return [
-    ...prev,
-
-    // Message vendor (creates vendorMessage linked to order)
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      const anyDoc = doc as any
-      if (!anyDoc || anyDoc.orderType !== 'wholesale') return null
-
-      const vendorRef = anyDoc.wholesaleDetails?.vendor?._ref || anyDoc.customerRef?._ref
-      const orderId = normalizeDocumentId(anyDoc?._id || id)
-      const subject = `Regarding Order ${anyDoc.orderNumber || orderId || 'wholesale'}`
-
-      return {
-        name: 'messageVendor',
-        label: 'Message Vendor',
-        icon: EnvelopeIcon,
-        tone: 'primary',
-        disabled: !vendorRef || !orderId,
-        title: vendorRef ? undefined : 'Add a vendor to this order first',
-        onHandle: async () => {
-          if (!vendorRef || !orderId) {
-            props.onComplete()
-            return
-          }
-
-          try {
-            const client = context.getClient({apiVersion: SANITY_API_VERSION})
-            const message = await client.create(
-              {
-                _type: 'vendorMessage',
-                vendor: {_type: 'reference', _ref: vendorRef},
-                subject,
-                status: 'open',
-                priority: 'normal',
-                category: 'order',
-                relatedOrder: {_type: 'reference', _ref: orderId},
-              },
-              {autoGenerateArrayKeys: true},
-            )
-
-            if (typeof window !== 'undefined' && message?._id) {
-              window.location.hash = `#/desk/vendorMessage;${message._id}`
-            }
-          } catch (error) {
-            console.error('messageVendor failed', error)
-            alert('Unable to create vendor message.')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Approve wholesale order (generate payment link or set terms)
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      const anyDoc = doc as any
-      if (!anyDoc || anyDoc.orderType !== 'wholesale') return null
-
-      const workflow =
-        anyDoc.wholesaleDetails?.workflowStatus || anyDoc.wholesaleWorkflowStatus || 'pending'
-
-      return {
-        name: 'approveWholesaleOrder',
-        label: 'Approve Order',
-        icon: CheckmarkCircleIcon,
-        tone: 'positive',
-        disabled: workflow !== 'pending',
-        onHandle: async () => {
-          if (!anyDoc) {
-            alert('Document not found.')
-            props.onComplete()
-            return
-          }
-          const orderId = normalizeDocumentId(anyDoc?._id || id)
-          if (!orderId) {
-            alert('Publish the order before approving.')
-            props.onComplete()
-            return
-          }
-
-          try {
-            const response = await callNetlifyFunction('create-wholesale-payment-link', {
-              json: {orderId},
-            })
-            const payload = await response
-              .clone()
-              .json()
-              .catch(() => null as any)
-
-            if (!response.ok || !payload?.success) {
-              const message =
-                (payload && (payload.error || payload.message)) ||
-                (await readResponseMessage(response))
-              throw new Error(message || 'Unable to approve order.')
-            }
-
-            const client = context.getClient({apiVersion: SANITY_API_VERSION})
-            const patch = client.patch(orderId).set({
-              wholesaleWorkflowStatus: payload.workflowStatus || 'approved',
-              'wholesaleDetails.workflowStatus': payload.workflowStatus || 'approved',
-              'wholesaleDetails.approvedAt': new Date().toISOString(),
-            })
-
-            if (payload.paymentLinkId) {
-              patch.set({'wholesaleDetails.paymentLinkId': payload.paymentLinkId})
-            }
-            if (payload.paymentLinkUrl) {
-              patch.set({'wholesaleDetails.paymentLinkUrl': payload.paymentLinkUrl})
-            }
-            if (payload.dueDate) {
-              patch.set({'wholesaleDetails.dueDate': payload.dueDate})
-            }
-
-            await patch.commit({autoGenerateArrayKeys: true})
-            alert(
-              payload.paymentLinkUrl
-                ? 'Order approved and payment link generated.'
-                : 'Order approved.',
-            )
-          } catch (error) {
-            console.error('approveWholesaleOrder failed', error)
-            alert((error as Error)?.message || 'Unable to approve order.')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Fulfill Order (calls Netlify function)
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      const stateFlags = getStateFlags(doc)
-      if (!doc) return null
-
-      return {
-        name: 'fulfillOrder',
-        label: 'Fulfill Order',
-        icon: CheckmarkCircleIcon,
-        tone: 'positive',
-        disabled: stateFlags.isFulfilled,
-        onHandle: async () => {
-          if (!doc) {
-            props.onComplete()
-            return
-          }
-          try {
-            const orderId = normalizeDocumentId(doc._id || id)
-            if (!orderId) {
-              alert('Publish the order before fulfilling.')
-              props.onComplete()
-              return
-            }
-            await callNetlifyFunction('fulfillOrder', {json: {orderId}})
-            alert('Order marked as fulfilled.')
-          } catch (error) {
-            console.error('Fulfill order failed', error)
-            alert('Unable to fulfill order.')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Duplicate Order
-    (props) => {
-      const {draft, published} = props
-      const source = draft || published
-      if (!source) return null
-
-      return {
-        name: 'duplicateOrder',
-        label: 'Duplicate Order',
-        icon: CopyIcon,
-        onHandle: async () => {
-          try {
-            const client = context.getClient({apiVersion: SANITY_API_VERSION})
-            const {
-              _id,
-              _rev,
-              _updatedAt,
-              _createdAt,
-              _type,
-              _seqNo,
-              _version,
-              orderNumber,
-              ...rest
-            } = source as any
-            const payload: {_type: 'order'} & Record<string, any> = {
-              ...rest,
-              _type: 'order',
-              orderNumber: orderNumber ? `${orderNumber}-copy` : undefined,
-              status: rest?.status || 'draft',
-            }
-            await client.create(payload, {autoGenerateArrayKeys: true})
-            alert('Order duplicated.')
-          } catch (error) {
-            console.error('Duplicate order failed', error)
-            alert('Unable to duplicate order.')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Delete Order (draft + published)
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      if (!doc) return null
-
-      return {
-        name: 'deleteOrder',
-        label: 'Delete Order',
-        icon: TrashIcon,
-        tone: 'critical',
-        onHandle: async () => {
-          const confirmDelete = window.confirm('Delete this order? This cannot be undone.')
-          if (!confirmDelete) {
-            props.onComplete()
-            return
-          }
-          try {
-            const client = context.getClient({apiVersion: SANITY_API_VERSION})
-            const targets = resolvePatchTargets(id)
-            const tx = client.transaction()
-            targets.forEach((targetId) => tx.delete(targetId))
-            await tx.commit({autoGenerateArrayKeys: true})
-            alert('Order deleted.')
-          } catch (error) {
-            console.error('Delete order failed', error)
-            alert('Unable to delete order.')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Print Packing Slip
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-
-      return {
-        name: 'printPackingSlip',
-        label: 'Print Packing Slip',
-        icon: DocumentPdfIcon,
-        tone: 'primary',
-        disabled: !doc,
-        onHandle: async () => {
-          if (!doc) return
-
-          const savedUrl = typeof doc.packingSlipUrl === 'string' ? doc.packingSlipUrl.trim() : ''
-          if (savedUrl) {
-            openExternalUrl(savedUrl)
-            props.onComplete()
-            return
-          }
-
-          const orderId = normalizeDocumentId(doc._id || id)
-          const invoiceId = normalizeDocumentId(
-            typeof (doc as any)?.invoiceData?.invoiceId === 'string'
-              ? (doc as any).invoiceData.invoiceId
-              : '',
-          )
-          const orderNumberValue = asOptionalString(doc?.orderNumber)
-          if (!orderId && !invoiceId) {
-            alert('Publish the order or link an invoice before generating a packing slip.')
-            props.onComplete()
-            return
-          }
-
-          const payload: Record<string, string> = {}
-          if (orderId) payload.orderId = orderId
-          if (invoiceId) payload.invoiceId = invoiceId
-          const patchTargets = resolvePatchTargets(id)
-
-          try {
-            const response = await callNetlifyFunction('generatePackingSlips', {
-              json: payload,
-            })
-
-            if (!response.ok) {
-              const message = await readResponseMessage(response)
-              throw new Error(message)
-            }
-
-            const pdfBlob = await responseToPdfBlob(response)
-            const client = context.getClient({apiVersion: SANITY_API_VERSION})
-            let targetUrl: string | null = null
-
-            try {
-              const asset = await client.assets.upload('file', pdfBlob, {
-                filename: `packing-slip-${filenameSafe(orderNumberValue || 'order')}.pdf`,
-                contentType: 'application/pdf',
-              })
-              if ((asset as any)?.url) {
-                targetUrl = (asset as any).url
-                for (const targetId of patchTargets) {
-                  try {
-                    await client
-                      .patch(targetId)
-                      .set({packingSlipUrl: targetUrl})
-                      .commit({autoGenerateArrayKeys: true})
-                  } catch (patchErr: any) {
-                    if (patchErr?.statusCode !== 404) {
-                      throw patchErr
-                    }
-                  }
-                }
-              }
-            } catch (uploadErr) {
-              console.warn('Packing slip upload failed', uploadErr)
-            }
-
-            if (!targetUrl) {
-              const objectUrl = URL.createObjectURL(pdfBlob)
-              targetUrl = objectUrl
-              setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
-            }
-
-            openExternalUrl(targetUrl)
-          } catch (error: any) {
-            console.error('Error generating packing slip:', error)
-            alert(error?.message || 'Unable to generate packing slip')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Cancel Order (Netlify cancelOrder function)
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      if (!doc) return null
-
-      return {
-        name: 'cancelOrder',
-        label: 'Cancel Order',
-        icon: TrashIcon,
-        tone: 'critical',
-        onHandle: async () => {
-          const confirmed = window.confirm('Cancel this order? This cannot be undone.')
-          if (!confirmed) {
-            props.onComplete()
-            return
-          }
-          const reason = prompt('Reason for cancellation (optional):')?.trim() || undefined
-          try {
-            const orderId = normalizeDocumentId(doc._id || id)
-            if (!orderId) {
-              alert('Publish the order before cancelling.')
-              props.onComplete()
-              return
-            }
-            const response = await callNetlifyFunction('cancelOrder', {
-              json: {
-                orderId,
-                orderNumber: doc.orderNumber,
-                stripePaymentIntentId: (doc as any)?.paymentIntentId,
-                reason,
-              },
-            })
-            if (!response.ok) {
-              const message = await readResponseMessage(response)
-              throw new Error(message)
-            }
-            alert('Order cancelled.')
-          } catch (error) {
-            console.error('Cancel order failed', error)
-            alert((error as Error)?.message || 'Unable to cancel order.')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Add/Edit Tracking
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      const stateFlags = getStateFlags(doc)
-
-      return {
-        name: 'addTracking',
-        label: stateFlags.tracking ? 'Edit Tracking' : 'Add Tracking',
-        icon: PackageIcon,
-        tone: 'primary',
-        disabled: !doc || doc?.status === 'cancelled',
-        onHandle: async () => {
-          if (!doc) {
-            props.onComplete()
-            return
-          }
-
-          const trackingNumber = prompt('Enter tracking number:', stateFlags.tracking || '')
-          const normalized = trackingNumber?.trim()
-          if (!normalized) {
-            props.onComplete()
-            return
-          }
-
-          const client = context.getClient({apiVersion: SANITY_API_VERSION})
-          const patchTargets = resolvePatchTargets(id)
-
-          try {
-            for (const targetId of patchTargets) {
-              try {
-                await client
-                  .patch(targetId)
-                  .set({
-                    manualTrackingNumber: normalized,
-                    trackingNumber: normalized,
-                    'fulfillment.trackingNumber': normalized,
-                    'fulfillment.status': 'shipped',
-                  })
-                  .commit({autoGenerateArrayKeys: true})
-              } catch (patchErr: any) {
-                if (patchErr?.statusCode !== 404) {
-                  throw patchErr
-                }
-              }
-            }
-            alert('Tracking number saved.')
-          } catch (error) {
-            console.error('Error adding tracking:', error)
-            alert('Failed to add tracking number')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // View/Print or Create Shipping Label
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      const stateFlags = getStateFlags(doc)
-      const hasLabel = Boolean(stateFlags.labelUrl)
-
-      return {
-        name: 'createShippingLabel',
-        label: hasLabel ? 'View/Print Label' : 'Create Label',
-        icon: PackageIcon,
-        tone: hasLabel ? 'default' : 'primary',
-        disabled: !doc || !doc?.shippingAddress || doc?.status === 'cancelled',
-        onHandle: async () => {
-          if (!doc) {
-            props.onComplete()
-            return
-          }
-          if (hasLabel && stateFlags.labelUrl) {
-            openExternalUrl(stateFlags.labelUrl)
-            props.onComplete()
-            return
-          }
-
-          const orderId = normalizeDocumentId(doc._id || id)
-          if (!orderId) {
-            alert('Publish the order before creating a label.')
-            props.onComplete()
-            return
-          }
-
-          try {
-            const response = await fetch('/.netlify/functions/easypostCreateLabel', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({orderId}),
-            })
-
-            const payload = await response.clone().json().catch(() => null as any)
-
-            if (!response.ok || (payload && payload.error)) {
-              const message =
-                (payload && (payload.error || payload.message)) ||
-                (await readResponseMessage(response))
-              throw new Error(message)
-            }
-
-            const labelAssetUrl =
-              typeof payload?.labelAssetUrl === 'string' ? payload.labelAssetUrl.trim() : undefined
-            const labelAssetId =
-              typeof payload?.labelAssetId === 'string' ? payload.labelAssetId.trim() : undefined
-            const providerLabelUrl =
-              typeof payload?.providerLabelUrl === 'string'
-                ? payload.providerLabelUrl.trim()
-                : undefined
-            const labelUrl =
-              labelAssetUrl ||
-              (typeof payload?.labelUrl === 'string' ? payload.labelUrl.trim() : undefined)
-            const trackingUrl =
-              typeof payload?.trackingUrl === 'string' ? payload.trackingUrl.trim() : undefined
-            const trackingNumber =
-              typeof payload?.trackingNumber === 'string'
-                ? payload.trackingNumber.trim()
-                : undefined
-            const shipmentId =
-              typeof payload?.shipmentId === 'string' ? payload.shipmentId.trim() : undefined
-            const trackerId =
-              typeof payload?.trackerId === 'string' ? payload.trackerId.trim() : undefined
-            const carrier = typeof payload?.carrier === 'string' ? payload.carrier.trim() : undefined
-            const service = typeof payload?.service === 'string' ? payload.service.trim() : undefined
-            const labelCreatedAt =
-              typeof payload?.labelCreatedAt === 'string' ? payload.labelCreatedAt : undefined
-            const labelCost =
-              typeof payload?.rate === 'number' && Number.isFinite(payload.rate)
-                ? Number(payload.rate)
-                : undefined
-
-            const updates: Record<string, any> = {}
-            const resolvedLabelUrl = labelUrl || providerLabelUrl
-            if (resolvedLabelUrl) updates.shippingLabelUrl = resolvedLabelUrl
-            if (labelAssetId) {
-              updates.shippingLabelFile = {
-                _type: 'file',
-                asset: {_type: 'reference', _ref: labelAssetId},
-              }
-            }
-            if (trackingUrl) {
-              updates.trackingUrl = trackingUrl
-              updates['fulfillment.trackingUrl'] = trackingUrl
-            }
-            if (trackingNumber) {
-              updates.trackingNumber = trackingNumber
-              updates['fulfillment.trackingNumber'] = trackingNumber
-              updates['fulfillment.status'] = 'shipped'
-            }
-            if (shipmentId) updates.easyPostShipmentId = shipmentId
-            if (trackerId) updates.easyPostTrackerId = trackerId
-            if (carrier) updates['fulfillment.carrier'] = carrier
-            if (service) updates['fulfillment.service'] = service
-            if (labelCreatedAt) updates.labelCreatedAt = labelCreatedAt
-            if (labelCost !== undefined) updates.labelCost = labelCost
-
-            if (Object.keys(updates).length > 0) {
-              const client = context.getClient({apiVersion: SANITY_API_VERSION})
-              const patchTargets = resolvePatchTargets(id)
-              for (const targetId of patchTargets) {
-                try {
-                  await client.patch(targetId).set(updates).commit({autoGenerateArrayKeys: true})
-                } catch (patchErr: any) {
-                  const msg = (patchErr?.message || '').toString().toLowerCase()
-                  const isReadOnly = msg.includes('read-only') || patchErr?.statusCode === 403
-                  if (patchErr?.statusCode === 404) continue
-                  if (isReadOnly) {
-                    console.warn('Skipping local patch on read-only document', {targetId, patchErr})
-                    continue
-                  }
-                  throw patchErr
-                }
-              }
-            }
-
-            if (resolvedLabelUrl || trackingUrl) {
-              openExternalUrl(resolvedLabelUrl || trackingUrl)
-            }
-
-            alert(
-              trackingNumber
-                ? `Label created! Tracking: ${trackingNumber}`
-                : 'Shipping label created via EasyPost.',
-            )
-          } catch (error) {
-            console.error('Error creating shipping label:', error)
-            alert((error as Error)?.message || 'Failed to create shipping label')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Mark as Fulfilled / Unfulfilled
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-      const stateFlags = getStateFlags(doc)
-
-      return {
-        label: stateFlags.isFulfilled ? 'Mark Unfulfilled' : 'Mark Fulfilled',
-        icon: PackageIcon,
-        tone: stateFlags.isFulfilled ? 'caution' : 'positive',
-        disabled: !doc || doc?.status === 'cancelled',
-        onHandle: async () => {
-          if (!doc) return
-
-          if (
-            !confirmAction(
-              stateFlags.isFulfilled
-                ? 'Mark this order as unfulfilled?'
-                : 'Mark this order as fulfilled?',
-            )
-          ) {
-            return
-          }
-
-          const orderId = normalizeDocumentId(doc._id || id)
-          if (!orderId) {
-            alert('Publish the order before marking it fulfilled.')
-            props.onComplete()
-            return
-          }
-
-          try {
-            const nextStatus = stateFlags.isFulfilled ? 'unfulfilled' : 'fulfilled'
-            const client = context.getClient({apiVersion: SANITY_API_VERSION})
-            const patchTargets = resolvePatchTargets(id)
-            for (const targetId of patchTargets) {
-              try {
-                await client
-                  .patch(targetId)
-                  .set({
-                    status: nextStatus,
-                    fulfilledAt: nextStatus === 'fulfilled' ? new Date().toISOString() : undefined,
-                    'fulfillment.status': nextStatus === 'fulfilled' ? 'delivered' : 'unfulfilled',
-                    'fulfillment.deliveredAt':
-                      nextStatus === 'fulfilled' ? new Date().toISOString() : undefined,
-                  })
-                  .commit({autoGenerateArrayKeys: true})
-              } catch (patchErr: any) {
-                if (patchErr?.statusCode !== 404) {
-                  throw patchErr
-                }
-              }
-            }
-
-            alert(
-              nextStatus === 'fulfilled'
-                ? 'Order marked as fulfilled.'
-                : 'Order marked as unfulfilled.',
-            )
-          } catch (error) {
-            console.error('Error marking as fulfilled:', error)
-            alert((error as Error)?.message || 'Error updating order')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-
-    // Refund in Stripe
-    (props) => {
-      const {id, draft, published} = props
-      const doc = draft || published
-
-      return {
-        label: 'Refund in Stripe',
-        icon: ResetIcon,
-        tone: 'critical',
-        disabled:
-          !doc ||
-          !doc?.paymentIntentId ||
-          doc?.status === 'refunded' ||
-          doc?.status === 'cancelled',
-        onHandle: async () => {
-          if (!doc || !doc.paymentIntentId) return
-
-          const orderTotal = parseCurrencyAmount(doc.totalAmount)
-          const amountInput = prompt(
-            `Enter refund amount (max: $${orderTotal.toFixed(2)}):`,
-            orderTotal > 0 ? orderTotal.toFixed(2) : '',
-          )
-          if (!amountInput) return
-
-          const refundAmount = parseFloat(amountInput)
-          if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
-            alert('Invalid refund amount')
-            return
-          }
-
-          if (orderTotal > 0 && refundAmount - orderTotal > 0.001) {
-            alert(`Refund amount cannot exceed order total of $${orderTotal.toFixed(2)}`)
-            return
-          }
-
-          const reasonInput = prompt('Refund reason (optional):')
-          const reason = reasonInput ? reasonInput.trim() : undefined
-
-          if (!confirmAction(`Refund $${refundAmount.toFixed(2)} to customer?`)) {
-            return
-          }
-
-          const orderId = normalizeDocumentId(doc._id || id)
-          if (!orderId) {
-            alert('Publish the order before processing refunds.')
-            return
-          }
-
-          const amountCents = Math.round(refundAmount * 100)
-
-          try {
-            const response = await callNetlifyFunction('createRefund', {
-              json: {
-                orderId,
-                amount: refundAmount,
-                amountCents,
-                reason,
-              },
-            })
-
-            let payload: any = null
-            try {
-              payload = await response.clone().json()
-            } catch {
-              payload = null
-            }
-
-            if (!response.ok || (payload && payload.error)) {
-              const message =
-                (payload && (payload.error || payload.message)) ||
-                (await readResponseMessage(response))
-              throw new Error(message)
-            }
-
-            alert('Refund processed successfully!')
-          } catch (error) {
-            console.error('Error processing refund:', error)
-            alert((error as Error)?.message || 'Error processing refund')
-          } finally {
-            props.onComplete()
-          }
-        },
-      }
-    },
-  ]
-}

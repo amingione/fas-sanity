@@ -23,18 +23,18 @@ type OrderDocument = {
   paymentStatus?: string
   totalAmount?: number
   amountShipping?: number
+  currency?: string
   createdAt?: string
   packingSlipUrl?: string
   stripeSessionId?: string
-  selectedService?: {
+  fulfillment?: {
     carrier?: string
     service?: string
-    amount?: number
-    currency?: string
     deliveryDays?: number
     estimatedDeliveryDate?: string
-  }
-  shippingCarrier?: string
+    trackingNumber?: string
+    trackingUrl?: string
+  } | null
   shippingLabelUrl?: string
   trackingNumber?: string
   trackingUrl?: string
@@ -268,6 +268,8 @@ export default function OrderShippingView(props: DocumentViewProps) {
 
   const shippingLog = Array.isArray(order.shippingLog) ? order.shippingLog : []
   const orderRefLabel = formatOrderNumber(order.orderNumber) || 'Not assigned'
+  const trackingNumber = order.trackingNumber || order.fulfillment?.trackingNumber || ''
+  const trackingUrl = order.trackingUrl || order.fulfillment?.trackingUrl || ''
 
   return (
     <Stack space={4} padding={4}>
@@ -282,7 +284,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
               <Badge tone={paymentMeta.tone} mode="outline" fontSize={0}>
                 {paymentMeta.label}
               </Badge>
-              {order.trackingNumber && (
+              {trackingNumber && (
                 <Badge tone="positive" mode="outline" fontSize={0}>
                   Tracking ready
                 </Badge>
@@ -340,23 +342,20 @@ export default function OrderShippingView(props: DocumentViewProps) {
                 <Text muted size={1}>
                   Carrier
                 </Text>
-                <Text>{order.selectedService?.carrier || order.shippingCarrier || '—'}</Text>
+                <Text>{order.carrier || order.fulfillment?.carrier || '—'}</Text>
               </Stack>
               <Stack space={1}>
                 <Text muted size={1}>
                   Service
                 </Text>
-                <Text>{order.selectedService?.service || '—'}</Text>
+                <Text>{order.service || order.fulfillment?.service || '—'}</Text>
               </Stack>
               <Stack space={1}>
                 <Text muted size={1}>
                   Rate
                 </Text>
                 <Text>
-                  {formatCurrency(
-                    order.selectedService?.amount ?? order.amountShipping,
-                    order.selectedService?.currency || 'USD',
-                  )}
+                  {formatCurrency(order.amountShipping, order.currency || 'USD')}
                 </Text>
               </Stack>
               <Stack space={1}>
@@ -364,9 +363,13 @@ export default function OrderShippingView(props: DocumentViewProps) {
                   Delivery
                 </Text>
                 <Text>
-                  {order.selectedService?.deliveryDays
-                    ? `${order.selectedService.deliveryDays} days`
-                    : '—'}
+                  {typeof order.deliveryDays === 'number'
+                    ? `${order.deliveryDays} days`
+                    : order.estimatedDeliveryDate
+                      ? formatDate(order.estimatedDeliveryDate)
+                      : order.fulfillment?.estimatedDeliveryDate
+                        ? formatDate(order.fulfillment.estimatedDeliveryDate)
+                      : '—'}
                 </Text>
               </Stack>
             </Grid>
@@ -389,24 +392,24 @@ export default function OrderShippingView(props: DocumentViewProps) {
                 {buildAddress(order.shippingAddress)}
               </Text>
             </Box>
-            {order.trackingNumber && (
+            {trackingNumber && (
               <Stack space={1}>
                 <Text muted size={1}>
                   Tracking number
                 </Text>
                 <Button
-                  text={order.trackingNumber}
+                  text={trackingNumber}
                   mode="bleed"
                   tone="primary"
                   onClick={() => {
-                    if (order.trackingUrl) {
-                      openUrl(order.trackingUrl)
+                    if (trackingUrl) {
+                      openUrl(trackingUrl)
                     } else if (
                       typeof navigator !== 'undefined' &&
                       navigator.clipboard &&
                       typeof navigator.clipboard.writeText === 'function'
                     ) {
-                      navigator.clipboard.writeText(order.trackingNumber || '')
+                      navigator.clipboard.writeText(trackingNumber || '')
                     }
                   }}
                 />
