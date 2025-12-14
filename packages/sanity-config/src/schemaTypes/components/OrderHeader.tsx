@@ -2,20 +2,19 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react'
 import {Container, Card, Text, Box, Stack, TextArea, Flex, Inline} from '@sanity/ui'
 import {useFormValue} from 'sanity'
-import {set, unset} from 'sanity'
+import {PatchEvent, set, unset} from 'sanity'
 import {format} from 'date-fns'
 import {ShippingDetails} from './ShippingDetails'
 import {DocumentBadge, buildOrderStatusBadges} from '../../components/studio/documentTables/DocumentBadge'
 
 export function OrderHeader(props: any) {
-  const {onChange} = props
+  const {onChange, value} = props
 
   // Get order data from form
   const orderNumber = useFormValue(['orderNumber']) as string
   const createdAt = useFormValue(['createdAt']) as string
   const status = useFormValue(['status']) as string
   const paymentStatus = useFormValue(['paymentStatus']) as string
-  const stripePaymentIntentStatus = useFormValue(['stripePaymentIntentStatus']) as string
 
   // Try new structure first, fallback to old structure
   const fulfillmentDetails = useFormValue(['fulfillmentDetails']) as any
@@ -33,6 +32,17 @@ export function OrderHeader(props: any) {
   const [localNotes, setLocalNotes] = useState(fulfillmentNotes || '')
   const [isSaving, setIsSaving] = useState(false)
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clean up legacy documents where orderHeaderDisplay stored object data instead of a string
+  useEffect(() => {
+    if (!value || typeof value !== 'object') return
+
+    const legacyNotes = (value as any)?.fulfillmentDetails?.fulfillmentNotes
+    const patchList = legacyNotes
+      ? [set(legacyNotes, ['fulfillmentDetails', 'fulfillmentNotes']), unset()]
+      : [unset()]
+    onChange(PatchEvent.from(patchList))
+  }, [onChange, value])
 
   useEffect(() => {
     setLocalNotes(fulfillmentNotes || '')
@@ -96,7 +106,6 @@ export function OrderHeader(props: any) {
 
   const badges = buildOrderStatusBadges({
     paymentStatus,
-    stripePaymentIntentStatus,
     orderStatus: status,
   })
 

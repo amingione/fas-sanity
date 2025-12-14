@@ -16,6 +16,7 @@ type BasicAddress = {
 }
 
 type CustomerOrderSummary = {
+  orderDocumentId?: string | null
   orderNumber?: string | null
   status?: string | null
   orderDate?: string | null

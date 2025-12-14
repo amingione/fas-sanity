@@ -39,7 +39,7 @@ const safeStringify = (value: unknown) => {
       },
       2,
     )
-  } catch (err) {
+  } catch {
     return typeof value === 'string' ? value : String(value)
   }
 }

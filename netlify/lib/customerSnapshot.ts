@@ -1,7 +1,12 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {SanityClient} from '@sanity/client'
 import {mapStripeMetadata} from './stripeMetadata'
-import {filterOutExpiredOrders, GROQ_FILTER_EXCLUDE_EXPIRED} from './orderFilters'
+import {
+  filterOutCanceledOrRefundedOrders,
+  filterOutExpiredOrders,
+  GROQ_FILTER_EXCLUDE_CANCELLED_REFUNDED,
+  GROQ_FILTER_EXCLUDE_EXPIRED,
+} from './orderFilters'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 
 type ShippingLike = {
@@ -234,17 +239,19 @@ export async function updateCustomerProfileForOrder({
         _id,
         orderNumber,
         status,
+        paymentStatus,
+        stripePaymentIntentStatus,
         "orderDate": coalesce(orderDate, createdAt, _createdAt),
         "totalAmount": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
       },
-      "orderCount": count(*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
+      "orderCount": count(*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (${GROQ_FILTER_EXCLUDE_CANCELLED_REFUNDED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       )]),
-      "orderTotals": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
+      "orderTotals": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (${GROQ_FILTER_EXCLUDE_CANCELLED_REFUNDED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
-      ) && status != "cancelled"]{
+      )]{
         "amount": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
       },
       "quotes": *[_type == "quote" && (
@@ -274,8 +281,11 @@ export async function updateCustomerProfileForOrder({
     orderId: string
     summary: {
       _type: 'customerOrderSummary'
+      orderDocumentId?: string
       orderNumber: string
       status: string
+      paymentStatus?: string
+      stripePaymentIntentStatus?: string
       orderDate: string | null
       total?: number
     }
@@ -283,16 +293,23 @@ export async function updateCustomerProfileForOrder({
 
   const orderSummaries: CustomerOrderSummaryEntry[] = Array.isArray(stats?.orders)
     ? filterOutExpiredOrders(stats.orders)
-        .map((order: any) => ({
-          orderId: typeof order?._id === 'string' ? order._id : '',
-          summary: {
-            _type: 'customerOrderSummary',
-            orderNumber: order?.orderNumber || '',
-            status: order?.status || '',
-            orderDate: order?.orderDate || null,
-            total: typeof order?.totalAmount === 'number' ? Number(order.totalAmount) : undefined,
-          },
-        }))
+        .map((order: any) => {
+          const rawOrderId = typeof order?._id === 'string' ? order._id : ''
+          const normalizedOrderId = rawOrderId ? rawOrderId.replace(/^drafts\./, '') : ''
+          return {
+            orderId: rawOrderId,
+            summary: {
+              _type: 'customerOrderSummary',
+              orderDocumentId: normalizedOrderId || undefined,
+              orderNumber: order?.orderNumber || '',
+              status: order?.status || '',
+              paymentStatus: order?.paymentStatus || undefined,
+              stripePaymentIntentStatus: order?.stripePaymentIntentStatus || undefined,
+              orderDate: order?.orderDate || null,
+              total: typeof order?.totalAmount === 'number' ? Number(order.totalAmount) : undefined,
+            },
+          }
+        })
         .filter((entry) => entry.summary.orderNumber)
     : []
 
@@ -315,6 +332,8 @@ export async function updateCustomerProfileForOrder({
     }
     dedupedOrders.push(entry.summary)
   }
+
+  const activeOrders = filterOutCanceledOrRefundedOrders(dedupedOrders)
 
   const lifetimeSpend = Array.isArray(stats?.orderTotals)
     ? stats.orderTotals.reduce((sum: number, entry: any) => {
@@ -395,7 +414,7 @@ export async function updateCustomerProfileForOrder({
   const nameParts = splitFullName(shippingFromOrder?.name || customerName || '')
 
   const patch: Record<string, any> = {
-    orderCount: typeof stats?.orderCount === 'number' ? stats.orderCount : dedupedOrders.length,
+    orderCount: typeof stats?.orderCount === 'number' ? stats.orderCount : activeOrders.length,
     quoteCount: typeof stats?.quoteCount === 'number' ? stats.quoteCount : quoteSummaries.length,
     lifetimeSpend: Number(lifetimeSpend.toFixed(2)),
     orders: dedupedOrders,

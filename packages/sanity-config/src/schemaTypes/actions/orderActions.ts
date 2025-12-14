@@ -49,8 +49,8 @@ export const GeneratePackingSlipAction: DocumentActionComponent = (props) => {
 
 export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
   const {type, draft, published, onComplete} = props
-  if (type !== 'order') return null
   const currentUser = useCurrentUser()
+  if (type !== 'order') return null
   const doc = draft || published
   const labelAlreadyPurchased = Boolean(doc?.labelPurchased)
 
@@ -80,7 +80,7 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
       const packageDimensions = doc.packageDimensions || {}
       const hasWeight = typeof packageDimensions.weight === 'number' && packageDimensions.weight > 0
       if (!hasWeight) {
-        const confirmDefault = confirm(
+        const confirmDefault = window.confirm(
           'Package dimensions are missing. Default values will be used:\n\n' +
             'Weight: 2 lbs\nDimensions: 10 x 8 x 4 inches\n\nContinue?',
         )
@@ -90,7 +90,7 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
         }
       }
 
-      const confirmPurchase = confirm(
+      const confirmPurchase = window.confirm(
         `Purchase shipping label for order ${doc.orderNumber || doc._id}?\n\n` +
           `Customer: ${doc.customerName || 'Customer'}\n` +
           `Ship to: ${doc.shippingAddress.city || ''}, ${doc.shippingAddress.state || ''}\n` +

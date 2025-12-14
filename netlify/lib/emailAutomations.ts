@@ -157,8 +157,8 @@ const ABANDONED_CHECKOUT_QUERY = `*[
   stripeSessionId,
   customerEmail,
   customerName,
-  \"totalAmount\": amountTotal,
-  \"createdAt\": coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)
+  "totalAmount": amountTotal,
+  "createdAt": coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)
 }`
 
 const INACTIVE_CUSTOMER_QUERY = `*[_type == "customer" && defined(lastOrderDate) && lastOrderDate < $cutoff && defined(email)]{

@@ -24,7 +24,7 @@ import {decodeBase64ToArrayBuffer} from '../../../utils/base64'
 import {callNetlifyFunction} from '../../../utils/netlifyHelpers'
 import {PaginatedDocumentTable, formatCurrency} from './PaginatedDocumentTable'
 import {formatOrderNumber} from '../../../utils/orderNumber'
-import {DocumentBadge, formatBadgeLabel, resolveBadgeTone} from './DocumentBadge'
+import {DocumentBadge, buildOrderStatusBadges, formatBadgeLabel} from './DocumentBadge'
 import {GROQ_FILTER_EXCLUDE_EXPIRED} from '../../../utils/orderFilters'
 import RecoveredCartBadge from './RecoveredCartBadge'
 
@@ -33,6 +33,7 @@ type OrderRowData = {
   invoiceNumber?: string | null
   invoiceId?: string | null
   stripeSessionId?: string | null
+  stripePaymentIntentStatus?: string | null
   status?: string | null
   paymentStatus?: string | null
   customerName?: string | null
@@ -50,6 +51,7 @@ type OrderRowData = {
 const ORDER_PROJECTION = `{
   orderNumber,
   stripeSessionId,
+  stripePaymentIntentStatus,
   "invoiceNumber": invoiceData.invoiceNumber,
   "invoiceId": invoiceData.invoiceId,
   status,
@@ -930,42 +932,24 @@ export default function OrdersDocumentTable({
                 )
               }
 
-              const badges: React.ReactNode[] = []
-              const paymentLabel = formatBadgeLabel(data.paymentStatus)
-              if (paymentLabel) {
-                badges.push(
-                  <DocumentBadge
-                    key="payment-status"
-                    label={paymentLabel}
-                    tone={resolveBadgeTone(data.paymentStatus)}
-                    title={`Payment status: ${paymentLabel}`}
-                  />,
-                )
-              }
-
-              const fulfillmentLabel =
-                data.status && data.status !== data.paymentStatus
-                  ? formatBadgeLabel(data.status)
-                  : null
-
-              if (fulfillmentLabel) {
-                badges.push(
-                  <DocumentBadge
-                    key="fulfillment-status"
-                    label={fulfillmentLabel}
-                    tone={resolveBadgeTone(data.status)}
-                    title={`Order status: ${fulfillmentLabel}`}
-                  />,
-                )
-              }
-
+              const badges = buildOrderStatusBadges({
+                paymentStatus: data.paymentStatus,
+                orderStatus: data.status,
+              })
               if (!badges.length) {
                 return <Text size={1}>—</Text>
               }
 
               return (
                 <Inline space={4} style={{flexWrap: 'wrap', rowGap: '12px'}}>
-                  {badges}
+                  {badges.map((badge) => (
+                    <DocumentBadge
+                      key={badge.key}
+                      label={badge.label}
+                      tone={badge.tone}
+                      title={badge.title}
+                    />
+                  ))}
                 </Inline>
               )
             },

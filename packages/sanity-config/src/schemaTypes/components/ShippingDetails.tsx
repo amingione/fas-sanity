@@ -1,27 +1,49 @@
 // schemas/components/ShippingDetails.tsx
 import React, {useState} from 'react'
-import {Card, Box, Stack, Text, Button, Dialog, Badge} from '@sanity/ui'
+import {Card, Box, Stack, Text, Button, Dialog, Badge, useToast} from '@sanity/ui'
 import {useFormValue} from 'sanity'
-import {format} from 'date-fns'
+import {differenceInCalendarDays, format} from 'date-fns'
+import {callNetlifyFunction} from '../../utils/netlifyHelpers'
 
 export function ShippingDetails() {
+  const toast = useToast()
   const [open, setOpen] = useState(false)
+  const [isRefunding, setIsRefunding] = useState(false)
+  const [refundMetaOverride, setRefundMetaOverride] = useState<{amount?: number; at?: string} | null>(
+    null,
+  )
   const onOpen = () => setOpen(true)
   const onClose = () => setOpen(false)
 
   // Get shipping data from form - check both new and old structures
+  const orderIdValue = useFormValue(['_id']) as string | undefined
   const shippingAddress = useFormValue(['shippingAddress']) as any
   const fulfillmentDetails = useFormValue(['fulfillmentDetails']) as any
   const oldFulfillment = useFormValue(['fulfillment']) as any
+  const shippingLabelUrlValue = useFormValue(['shippingLabelUrl']) as string | undefined
+  const shippingLabelRefundedValue = useFormValue(['shippingLabelRefunded']) as boolean | undefined
+  const shippingLabelRefundedAtValue = useFormValue(['shippingLabelRefundedAt']) as string | undefined
+  const shippingLabelRefundAmountValue = useFormValue([
+    'shippingLabelRefundAmount',
+  ]) as number | undefined
+  const easyPostShipmentId = useFormValue(['easyPostShipmentId']) as string | undefined
 
   const labelCreatedAt = useFormValue(['labelCreatedAt']) as string
-  const labelPurchased = useFormValue(['labelPurchased']) as boolean
   const labelCancelled = useFormValue(['labelCancelled']) as boolean
   const labelCancelledAt = useFormValue(['labelCancelledAt']) as string
 
   // Check for label refund in fulfillment object
-  const labelRefunded = oldFulfillment?.labelRefunded || fulfillmentDetails?.labelRefunded
-  const labelRefundedAt = oldFulfillment?.labelRefundedAt || fulfillmentDetails?.labelRefundedAt
+  const labelRefunded =
+    typeof shippingLabelRefundedValue === 'boolean'
+      ? shippingLabelRefundedValue
+      : Boolean(oldFulfillment?.labelRefunded || fulfillmentDetails?.labelRefunded)
+  const labelRefundedAt =
+    shippingLabelRefundedAtValue ||
+    oldFulfillment?.labelRefundedAt ||
+    fulfillmentDetails?.labelRefundedAt ||
+    null
+  const labelRefundAmount =
+    typeof shippingLabelRefundAmountValue === 'number' ? shippingLabelRefundAmountValue : undefined
 
   // Try new structure first, fallback to old
   const carrier = (useFormValue(['carrier']) as string) || oldFulfillment?.carrier
@@ -34,19 +56,93 @@ export function ShippingDetails() {
   const fulfillmentStatus = fulfillmentDetails?.status || oldFulfillment?.status || 'unfulfilled'
 
   // Get package dimensions from either location
+  const packageDimensionsValue = useFormValue(['packageDimensions']) as any
   const packageDims =
-    fulfillmentDetails?.packageDimensions ||
-    oldFulfillment?.packageDimensions ||
-    useFormValue(['packageDimensions'])
+    fulfillmentDetails?.packageDimensions || oldFulfillment?.packageDimensions || packageDimensionsValue
 
   // Format label created date
   const formattedLabelDate = labelCreatedAt
     ? format(new Date(labelCreatedAt), 'MMMM d, yyyy')
     : null
 
+  const shippingLabelUrl = typeof shippingLabelUrlValue === 'string' ? shippingLabelUrlValue.trim() : ''
+  const orderId = (orderIdValue || '').replace(/^drafts\./, '')
+  const sanitizedShipmentId = (easyPostShipmentId || '').trim()
+  const labelAgeDays =
+    labelCreatedAt && !Number.isNaN(Date.parse(labelCreatedAt))
+      ? differenceInCalendarDays(new Date(), new Date(labelCreatedAt))
+      : null
+  const withinRefundWindow = labelAgeDays === null || labelAgeDays <= 30
+  const normalizedFulfillmentStatus = (fulfillmentStatus || '').toLowerCase()
+  const labelLikelyScanned =
+    normalizedFulfillmentStatus === 'shipped' || normalizedFulfillmentStatus === 'delivered'
+  const effectiveRefunded = Boolean(refundMetaOverride || labelRefunded)
+  const effectiveRefundAt = refundMetaOverride?.at || labelRefundedAt
+  const effectiveRefundAmount =
+    typeof refundMetaOverride?.amount === 'number' ? refundMetaOverride.amount : labelRefundAmount
+  const refundAmountDisplay =
+    typeof effectiveRefundAmount === 'number' ? effectiveRefundAmount.toFixed(2) : null
+  const refundEligibilityMessage = (() => {
+    if (!orderId) return 'Publish this order before requesting a refund.'
+    if (!withinRefundWindow) return 'EasyPost only refunds unused labels within 30 days.'
+    if (labelLikelyScanned) return 'Carrier has already scanned this label.'
+    if (labelCancelled) return 'Label is already cancelled.'
+    return null
+  })()
+  const refundButtonDisabled =
+    isRefunding || effectiveRefunded || Boolean(refundEligibilityMessage)
+  const refundButtonText = effectiveRefunded
+    ? 'Label refunded'
+    : isRefunding
+      ? 'Requesting refund…'
+      : 'Cancel / Refund Label'
+  const formattedRefundDate =
+    effectiveRefundAt && !Number.isNaN(Date.parse(effectiveRefundAt))
+      ? format(new Date(effectiveRefundAt), 'MMMM d, yyyy h:mm a')
+      : null
+
+  const handleRefundLabel = async () => {
+    if (!shippingLabelUrl || !orderId || effectiveRefunded || isRefunding) return
+    setIsRefunding(true)
+    try {
+      const response = await callNetlifyFunction('refund-shipping-label', {
+        orderId,
+        shipmentId: sanitizedShipmentId || undefined,
+      })
+      let result: any = null
+      try {
+        result = await response.json()
+      } catch {
+        // ignore parse failures
+      }
+      const nextAmount =
+        typeof result?.refundAmount === 'number' ? result.refundAmount : effectiveRefundAmount
+      const nextTimestamp =
+        typeof result?.refundAt === 'string' ? result.refundAt : new Date().toISOString()
+      setRefundMetaOverride({amount: nextAmount, at: nextTimestamp})
+      toast.push({
+        status: 'success',
+        title: 'Shipping label refund submitted',
+        description:
+          typeof nextAmount === 'number' ? `Refund amount: $${nextAmount.toFixed(2)}` : undefined,
+        closable: true,
+      })
+    } catch (err: any) {
+      console.error('Shipping label refund failed', err)
+      toast.push({
+        status: 'error',
+        title: 'Unable to refund label',
+        description: err?.message || 'Unknown error',
+        closable: true,
+      })
+    } finally {
+      setIsRefunding(false)
+    }
+  }
+
   // Get label status based on cancellation, refund, fulfillment status, and tracking number
   const getLabelStatusTone = () => {
-    if (labelCancelled || labelRefunded) return 'critical'
+    if (labelCancelled || effectiveRefunded) return 'critical'
     if (trackingNumber || fulfillmentStatus === 'label_created' || fulfillmentStatus === 'shipped')
       return 'positive'
     if (fulfillmentStatus === 'processing') return 'primary'
@@ -55,7 +151,7 @@ export function ShippingDetails() {
 
   const getLabelStatusText = () => {
     if (labelCancelled) return 'Label Cancelled'
-    if (labelRefunded) return 'Label Refunded'
+    if (effectiveRefunded) return 'Label Refunded'
     if (trackingNumber || fulfillmentStatus === 'label_created') return 'Label Created'
     if (fulfillmentStatus === 'shipped') return 'Shipped'
     if (fulfillmentStatus === 'processing') return 'Processing'
@@ -89,6 +185,31 @@ export function ShippingDetails() {
               {getLabelStatusText()}
             </Badge>
           </Text>
+
+          {effectiveRefunded && (
+            <Card
+              padding={[3, 3, 4]}
+              radius={2}
+              tone="positive"
+              style={{border: '1px solid rgba(51, 140, 105, 0.35)'}}
+            >
+              <Stack space={2}>
+                <Text align="center" size={[1, 1, 2]} weight="semibold">
+                  Label refund submitted
+                </Text>
+                {refundAmountDisplay && (
+                  <Text align="center" size={[1, 1, 2]}>
+                    Refund amount: ${refundAmountDisplay}
+                  </Text>
+                )}
+                {formattedRefundDate && (
+                  <Text align="center" size={[1, 1, 2]} muted>
+                    Refunded {formattedRefundDate}
+                  </Text>
+                )}
+              </Stack>
+            </Card>
+          )}
 
           {/* Only show carrier/service if we have valid carrier data */}
           {isValidCarrier && service ? (
@@ -125,7 +246,7 @@ export function ShippingDetails() {
           )}
 
           {/* Tracking Number - only show if exists and not cancelled */}
-          {trackingNumber && !labelCancelled && !labelRefunded && (
+          {trackingNumber && !labelCancelled && !effectiveRefunded && (
             <Card
               padding={[3, 3, 4]}
               radius={2}
@@ -156,7 +277,7 @@ export function ShippingDetails() {
           )}
 
           {/* Show cancelled/refunded tracking number with warning */}
-          {trackingNumber && (labelCancelled || labelRefunded) && (
+          {trackingNumber && (labelCancelled || effectiveRefunded) && (
             <Card
               padding={[3, 3, 4]}
               radius={2}
@@ -170,20 +291,41 @@ export function ShippingDetails() {
             >
               <Stack space={2}>
                 <Text align="center" size={[2, 2, 3]} weight="semibold">
-                  {labelRefunded ? 'Label Refunded' : 'Label Cancelled'}
+                  {effectiveRefunded ? 'Label Refunded' : 'Label Cancelled'}
                 </Text>
                 <Text align="center" size={[1, 1, 2]} muted>
                   Tracking: {trackingNumber}
                 </Text>
-                {(labelCancelledAt || labelRefundedAt) && (
+                {(labelCancelledAt || effectiveRefundAt) && (
                   <Text align="center" size={[1, 1, 2]} muted>
-                    {format(new Date(labelCancelledAt || labelRefundedAt), 'MMMM d, yyyy h:mm a')}
+                    {format(
+                      new Date(labelCancelledAt || effectiveRefundAt!),
+                      'MMMM d, yyyy h:mm a',
+                    )}
                   </Text>
                 )}
               </Stack>
             </Card>
           )}
         </Stack>
+
+        {shippingLabelUrl && (
+          <Card padding={4} style={{textAlign: 'center'}} marginTop={4}>
+            <Stack space={2}>
+              <Button
+                onClick={handleRefundLabel}
+                text={refundButtonText}
+                tone="critical"
+                disabled={refundButtonDisabled}
+              />
+              {!effectiveRefunded && refundEligibilityMessage && (
+                <Text align="center" muted size={[1, 1, 2]}>
+                  {refundEligibilityMessage}
+                </Text>
+              )}
+            </Stack>
+          </Card>
+        )}
 
         <Card padding={4} style={{textAlign: 'center'}} marginTop={4}>
           <Button onClick={onOpen} text="Package Details" mode="ghost" />

@@ -167,7 +167,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         hidden: disableCancel,
         onHandle: async () => {
           if (
-            !confirm(
+            !window.confirm(
               'Cancel this order?\n\nThis will void fulfillment, maintain the invoice for records, and release inventory.',
             )
           ) {
@@ -214,7 +214,9 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         hidden: !allowRefund,
         onHandle: async () => {
           if (
-            !confirm('Refund this order?\n\nStripe will refund the payment and any existing shipment will be cancelled.')
+            !window.confirm(
+              'Refund this order?\n\nStripe will refund the payment and any existing shipment will be cancelled.',
+            )
           ) {
             props.onComplete()
             return
@@ -285,7 +287,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
           typeof (doc as any)?.status === 'string' ? (doc as any).status : '',
         ),
         onHandle: async () => {
-          const confirmed = confirm(
+          const confirmed = window.confirm(
             'Delete this order?\n\nThis will:\n• Keep the invoice for records\n• Keep the customer profile\n• Remove the order permanently\n\nContinue?',
           )
           if (!confirmed) {

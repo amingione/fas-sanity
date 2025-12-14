@@ -138,6 +138,9 @@ export interface OrderDocument {
   deliveredAt?: string | null
   shippingLabelFile?: FileAsset | null
   shippingLabelUrl?: string | null
+  shippingLabelRefunded?: boolean | null
+  shippingLabelRefundedAt?: string | null
+  shippingLabelRefundAmount?: number | null
   packingSlipUrl?: string | null
   shippingLog?: Array<{
     _key?: string
