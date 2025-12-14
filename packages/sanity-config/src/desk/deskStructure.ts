@@ -41,8 +41,6 @@ import {
   OrdersDocumentTable,
   ProductsDocumentTable,
   CustomersDocumentTable,
-  AbandonedCheckoutsDocumentTable,
-  PaymentLinksDocumentTable,
   VendorsDocumentTable,
 } from '../components/studio/documentTables'
 import {CogIcon} from '@sanity/icons'
@@ -51,7 +49,6 @@ import AppointmentCalendarPane from '../components/studio/AppointmentCalendarPan
 import AppointmentBookingPane from '../components/studio/AppointmentBookingPane'
 import WorkOrderManagementPane from '../components/studio/WorkOrderManagementPane'
 import WholesaleOrdersPane from '../components/studio/WholesaleOrdersPane'
-import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard'
 import ShipmentsPanel from '../components/shipments/ShipmentsPanel'
 import PickupsPanel from '../components/pickups/PickupsPanel'
 import SalesAnalyticsDashboard from '../components/studio/SalesAnalyticsDashboard'
@@ -121,64 +118,12 @@ const CustomersAllTableView: ComponentType = () =>
     pageSize: 10,
   })
 
-const CustomersSubscribedTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'Subscribed to Email',
-    filter: EMAIL_SUBSCRIBER_FILTER,
-    orderings: [{field: 'emailMarketing.subscribedAt', direction: 'desc'}],
-    emptyState: 'No subscribed customers',
-    pageSize: 10,
-    apiVersion: '2024-01-01',
-  })
-
-const CustomersNoOrdersTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'No orders yet',
-    filter: 'coalesce(orderCount, 0) == 0',
-    emptyState: 'All customers have orders',
-    pageSize: 10,
-  })
-
-const CustomersRecentlyAddedTableView: ComponentType = () =>
-  React.createElement(CustomersDocumentTable as any, {
-    title: 'Recently added',
-    orderings: [
-      {field: '_createdAt', direction: 'desc'},
-      {field: '_updatedAt', direction: 'desc'},
-    ],
-    pageSize: 10,
-  })
-
 const OrdersListTableView: ComponentType = () =>
   React.createElement(OrdersDocumentTable as any, {title: 'Orders', pageSize: 12})
-
-const AbandonedCheckoutsTableView: ComponentType = () =>
-  React.createElement(AbandonedCheckoutsDocumentTable as any, {})
-
-const OnlineOrdersTableView: ComponentType = () =>
-  React.createElement(OrdersDocumentTable as any, {
-    title: 'Online Orders',
-    pageSize: 10,
-    filter: '!defined(orderType) || orderType == "online"',
-  })
-
-const WholesaleOrdersTableView: ComponentType = () =>
-  React.createElement(OrdersDocumentTable as any, {
-    title: 'Wholesale Orders',
-    pageSize: 10,
-    filter: 'orderType == "wholesale"',
-  })
 
 const VendorsTableView: ComponentType = () =>
   React.createElement(VendorsDocumentTable as any, {
     title: 'Vendors',
-  })
-
-const InStoreOrdersTableView: ComponentType = () =>
-  React.createElement(OrdersDocumentTable as any, {
-    title: 'In-Store Orders',
-    pageSize: 10,
-    filter: 'orderType == "in-store"',
   })
 
 const productDefaultOrdering = [{field: '_updatedAt', direction: 'desc' as const}]

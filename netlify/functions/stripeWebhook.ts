@@ -3377,6 +3377,20 @@ const SESSION_METADATA_KEYS = [
 ]
 const WEBHOOK_DOCUMENT_PREFIX = 'stripeWebhook.'
 
+const mergeMetadata = (
+  ...sources: Array<Record<string, unknown> | null | undefined>
+): Record<string, unknown> | undefined => {
+  const merged: Record<string, unknown> = {}
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue
+    for (const [key, value] of Object.entries(source)) {
+      if (typeof key !== 'string') continue
+      merged[key] = value
+    }
+  }
+  return Object.keys(merged).length ? merged : undefined
+}
+
 function isStripeProduct(
   product: Stripe.Product | Stripe.DeletedProduct | string | null | undefined,
 ): product is Stripe.Product {
@@ -5146,6 +5160,7 @@ type OrderPaymentStatusInput = {
   paymentIntentId?: string
   chargeId?: string
   stripeSessionId?: string
+  metadata?: Record<string, unknown> | null
   additionalOrderFields?: Record<string, any>
   additionalInvoiceFields?: Record<string, any>
   preserveExistingFailureDiagnostics?: boolean
@@ -5278,6 +5293,11 @@ const handleChargeEvent = async (input: HandleChargeEventInput) => {
 
   const metadata = metadataOverride || (charge?.metadata as Record<string, unknown> | null) || null
 
+  const combinedMetadata = mergeMetadata(
+    (resolvedPaymentIntent?.metadata as Record<string, unknown> | null | undefined) || null,
+    (charge?.metadata as Record<string, unknown> | null | undefined) || null,
+  )
+
   await updateOrderPaymentStatus({
     paymentStatus,
     orderStatus,
@@ -5285,6 +5305,7 @@ const handleChargeEvent = async (input: HandleChargeEventInput) => {
     invoiceStripeStatus: event.type,
     paymentIntentId: resolvedPaymentIntentId,
     chargeId: charge?.id,
+    metadata: combinedMetadata,
     additionalOrderFields: orderFields,
     additionalInvoiceFields: Object.keys(invoiceFields).length ? invoiceFields : undefined,
     preserveExistingFailureDiagnostics,
@@ -5472,6 +5493,12 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
             ? refund.payment_intent
             : undefined
 
+    const combinedMetadata = mergeMetadata(
+      (paymentIntent?.metadata as Record<string, unknown> | null | undefined) || null,
+      (charge?.metadata as Record<string, unknown> | null | undefined) || null,
+      (refund?.metadata as Record<string, unknown> | null | undefined) || null,
+    )
+
     await updateOrderPaymentStatus({
       paymentIntentId,
       chargeId: charge?.id || (typeof refund?.charge === 'string' ? refund.charge : undefined),
@@ -5499,6 +5526,7 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
         }),
       },
       preserveExistingRefundedStatus: preserveRefundedStatus,
+      metadata: combinedMetadata,
       event: {
         eventType: webhookEvent.type,
         label: refund?.id ? `Refund ${refund.id}` : 'Charge refunded',
@@ -5541,6 +5569,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     preserveExistingFailureDiagnostics,
     preserveExistingRefundedStatus,
     event,
+    metadata,
   } = opts
   if (!paymentIntentId && !chargeId && !stripeSessionId) return false
 
@@ -5550,7 +5579,35 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     session: stripeSessionId || '',
   }
 
-  const order = await sanity.fetch<{
+  const fetchOrderById = async (id: string) => {
+    const ids = idVariants(id)
+    return sanity.fetch<{
+      _id: string
+      orderNumber?: string
+      status?: string
+      invoiceRef?: {_id: string}
+      customerRef?: {_ref: string}
+      customerEmail?: string
+      paymentFailureCode?: string
+      paymentFailureMessage?: string
+      paymentStatus?: string
+    } | null>(`*[_type == "order" && _id in $orderIds][0]{
+      _id,
+      orderNumber,
+      customerRef,
+      customerEmail,
+      paymentFailureCode,
+      paymentFailureMessage,
+      paymentStatus,
+      status,
+      attribution,
+      invoiceRef->{ _id }
+    }`, {
+      orderIds: ids,
+    })
+  }
+
+  let order = await sanity.fetch<{
     _id: string
     orderNumber?: string
     status?: string
@@ -5568,6 +5625,22 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     )][0]{ _id, orderNumber, customerRef, customerEmail, paymentFailureCode, paymentFailureMessage, paymentStatus, status, attribution, invoiceRef->{ _id } }`,
     params,
   )
+
+  if (!order?._id && metadata) {
+    try {
+      const fallbackOrderId = await findOrderDocumentIdForEvent({
+        metadata: metadata as Record<string, any>,
+        paymentIntentId,
+        chargeId,
+        sessionId: stripeSessionId,
+      })
+      if (fallbackOrderId) {
+        order = await fetchOrderById(fallbackOrderId)
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: metadata order lookup failed', err)
+    }
+  }
 
   if (!order?._id) return false
 
@@ -5828,6 +5901,7 @@ export async function handleCheckoutAsyncPaymentSucceeded(
     invoiceStripeStatus,
     paymentIntentId,
     stripeSessionId: session.id,
+    metadata,
     additionalOrderFields,
     additionalInvoiceFields,
     event: {
@@ -5919,6 +5993,7 @@ export async function handleCheckoutAsyncPaymentFailed(
     invoiceStripeStatus,
     paymentIntentId,
     stripeSessionId: session.id,
+    metadata,
     additionalOrderFields,
     additionalInvoiceFields,
     preserveExistingFailureDiagnostics: !(failureCode || failureMessage),
@@ -6652,6 +6727,7 @@ export const handler: Handler = async (event) => {
                 paymentIntentId,
                 paymentStatus: 'requires_action',
                 invoiceStripeStatus: webhookEvent.type,
+                metadata: (invoice.metadata || {}) as Record<string, unknown>,
                 preserveExistingFailureDiagnostics: true,
                 event: {
                   eventType: webhookEvent.type,
@@ -6709,6 +6785,7 @@ export const handler: Handler = async (event) => {
                 orderStatus: 'paid',
                 invoiceStatus: 'paid',
                 invoiceStripeStatus: webhookEvent.type,
+                metadata: (invoice.metadata || {}) as Record<string, unknown>,
                 additionalOrderFields,
                 additionalInvoiceFields,
                 event: {
@@ -6768,6 +6845,7 @@ export const handler: Handler = async (event) => {
             orderStatus: 'cancelled',
             invoiceStatus: 'cancelled',
             invoiceStripeStatus: 'payment_intent.canceled',
+            metadata: (pi.metadata || {}) as Record<string, unknown>,
             additionalOrderFields: {
               paymentFailureCode: diagnostics.code,
               paymentFailureMessage: diagnostics.message,

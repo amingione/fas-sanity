@@ -48,10 +48,13 @@ const WARNING_STATUSES = new Set([
   'unfulfilled',
 ])
 
+const STATUS_CANONICAL_MAP: Record<string, string> = {
+  cancelled: 'canceled',
+}
+
 const DANGER_STATUSES = new Set([
   'archived',
   'canceled',
-  'cancelled',
   'chargeback',
   'declined',
   'error',
@@ -64,13 +67,15 @@ const DANGER_STATUSES = new Set([
   'void',
 ])
 
-const normalizeStatus = (value?: string | null) =>
-  value
-    ? value
-        .trim()
-        .toLowerCase()
-        .replace(/[\s_-]+/g, ' ')
-    : ''
+export const normalizeStatus = (value?: string | null) => {
+  if (!value) return ''
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, ' ')
+  if (!normalized) return ''
+  return STATUS_CANONICAL_MAP[normalized] || normalized
+}
 
 export const formatBadgeLabel = (value?: string | null): string | null => {
   if (!value) return null
@@ -83,6 +88,12 @@ export const formatBadgeLabel = (value?: string | null): string | null => {
     .join(' ')
 }
 
+export const formatStatusLabel = (value?: string | null): string | null => {
+  const normalized = normalizeStatus(value)
+  if (!normalized) return null
+  return formatBadgeLabel(normalized)
+}
+
 export const resolveBadgeTone = (value?: string | null): DocumentBadgeTone => {
   const normalized = normalizeStatus(value)
   if (!normalized) return 'default'
@@ -90,6 +101,75 @@ export const resolveBadgeTone = (value?: string | null): DocumentBadgeTone => {
   if (SUCCESS_STATUSES.has(normalized)) return 'positive'
   if (WARNING_STATUSES.has(normalized)) return 'caution'
   return 'primary'
+}
+
+export function resolvePrimaryPaymentStatus({
+  paymentStatus,
+  stripePaymentIntentStatus,
+  useStripeFallback = false,
+}: {
+  paymentStatus?: string | null
+  stripePaymentIntentStatus?: string | null
+  useStripeFallback?: boolean
+}): string | null {
+  if (paymentStatus && paymentStatus.trim()) {
+    return paymentStatus
+  }
+  if (useStripeFallback && stripePaymentIntentStatus && stripePaymentIntentStatus.trim()) {
+    return stripePaymentIntentStatus
+  }
+  return null
+}
+
+export type StatusBadgeDescriptor = {
+  key: string
+  label: string
+  tone: DocumentBadgeTone
+  title: string
+}
+
+export function buildOrderStatusBadges({
+  paymentStatus,
+  stripePaymentIntentStatus,
+  orderStatus,
+  useStripePaymentFallback = false,
+}: {
+  paymentStatus?: string | null
+  stripePaymentIntentStatus?: string | null
+  orderStatus?: string | null
+  useStripePaymentFallback?: boolean
+}): StatusBadgeDescriptor[] {
+  const badges: StatusBadgeDescriptor[] = []
+  const primaryPaymentStatus = resolvePrimaryPaymentStatus({
+    paymentStatus,
+    stripePaymentIntentStatus,
+    useStripeFallback: useStripePaymentFallback,
+  })
+  const paymentLabel = formatStatusLabel(primaryPaymentStatus)
+  if (paymentLabel) {
+    badges.push({
+      key: 'payment-status',
+      label: paymentLabel,
+      tone: resolveBadgeTone(primaryPaymentStatus),
+      title: `Payment status: ${paymentLabel}`,
+    })
+  }
+
+  const normalizedPayment = normalizeStatus(primaryPaymentStatus)
+  const normalizedOrder = normalizeStatus(orderStatus)
+  if (normalizedOrder && normalizedOrder !== normalizedPayment) {
+    const fulfillmentLabel = formatStatusLabel(orderStatus)
+    if (fulfillmentLabel) {
+      badges.push({
+        key: 'fulfillment-status',
+        label: fulfillmentLabel,
+        tone: resolveBadgeTone(orderStatus),
+        title: `Order status: ${fulfillmentLabel}`,
+      })
+    }
+  }
+
+  return badges
 }
 
 export function DocumentBadge({label, tone = 'default', title, className}: DocumentBadgeProps) {

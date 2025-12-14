@@ -4,6 +4,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient} from '@sanity/client'
+import {
+  GROQ_FILTER_EXCLUDE_CANCELLED_REFUNDED,
+  GROQ_FILTER_EXCLUDE_EXPIRED,
+  isCanceledOrRefundedOrder,
+} from '../packages/sanity-config/src/utils/orderFilters'
 
 const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
 
@@ -38,6 +43,8 @@ const sanity = createClient({
 
 type OrderSummary = {
   _id: string
+  status?: string | null
+  paymentStatus?: string | null
   totalAmount?: number | string | null
   total?: number | string | null
   amountSubtotal?: number | string | null
@@ -51,8 +58,10 @@ type OrderSummary = {
 
 type CustomerDoc = {_id: string}
 
-const ORDER_QUERY = `*[_type == "order" && customerRef._ref == $customerId]{
+const ORDER_QUERY = `*[_type == "order" && customerRef._ref == $customerId && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (${GROQ_FILTER_EXCLUDE_CANCELLED_REFUNDED})]{
   _id,
+  status,
+  paymentStatus,
   totalAmount,
   total,
   amountSubtotal,
@@ -116,7 +125,9 @@ async function main() {
   let skipped = 0
 
   for (const customer of customers) {
-    const orders = await fetchOrders(customer._id)
+    const orders = (await fetchOrders(customer._id)).filter(
+      (order) => !isCanceledOrRefundedOrder(order),
+    )
 
     if (!orders.length) {
       await sanity

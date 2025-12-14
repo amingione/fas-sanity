@@ -37,6 +37,7 @@ export default defineType({
       description:
         'Legacy identifier for imported accounts. FAS Auth uses this document ID, so new users can leave this empty.',
       group: 'profile',
+      hidden: true,
     }),
     defineField({
       name: 'name',
@@ -48,6 +49,7 @@ export default defineType({
       validation: (Rule) =>
         Rule.required().error('Name is required and is computed from first/last name or email.'),
       group: 'profile',
+      hidden: true,
     }),
     defineField({name: 'firstName', title: 'First Name', type: 'string', group: 'profile'}),
     defineField({name: 'lastName', title: 'Last Name', type: 'string', group: 'profile'}),
@@ -64,6 +66,7 @@ export default defineType({
       type: 'string',
       readOnly: true,
       group: 'stripe',
+      hidden: true,
     }),
     defineField({
       name: 'stripeLastSyncedAt',
@@ -232,6 +235,7 @@ export default defineType({
       type: 'array',
       of: [{type: 'reference', to: [{type: 'product'}]}],
       group: 'activity',
+      hidden: true,
     }),
     defineField({
       name: 'vehicles',
@@ -269,6 +273,7 @@ export default defineType({
       initialValue: 0,
       readOnly: true,
       group: 'activity',
+      hidden: true,
     }),
     defineField({
       name: 'stripeMetadata',
@@ -277,6 +282,7 @@ export default defineType({
       of: [{type: 'stripeMetadataEntry'}],
       readOnly: true,
       group: 'stripe',
+      hidden: true,
     }),
     // Marketing preferences
     defineField({
@@ -455,7 +461,7 @@ export default defineType({
       title: 'Stripe Discounts',
       type: 'array',
       of: [{type: 'customerDiscount'}],
-      readOnly: true,
+      readOnly: false,
       group: 'discounts',
       components: {input: CustomerDiscountsInput as any},
       description: 'Synced customer-level coupons and promotions from Stripe.',
@@ -486,7 +492,13 @@ export default defineType({
         },
       ],
     }),
-    defineField({name: 'updatedAt', title: 'Updated At', type: 'datetime', group: 'profile'}),
+    defineField({
+      name: 'updatedAt',
+      title: 'Updated At',
+      type: 'datetime',
+      group: 'profile',
+      hidden: true,
+    }),
   ],
 
   preview: {
@@ -496,7 +508,6 @@ export default defineType({
       email: 'email',
       orderCount: 'orderCount',
       lifetimeSpend: 'lifetimeSpend',
-      lifetimeValue: 'lifetimeValue',
       city: 'shippingAddress.city',
       state: 'shippingAddress.state',
       emailOptIn: 'emailOptIn',
@@ -509,7 +520,6 @@ export default defineType({
       email,
       orderCount,
       lifetimeSpend,
-      lifetimeValue,
       city,
       state,
       emailOptIn,
@@ -520,18 +530,9 @@ export default defineType({
       const displayName = fullName || email || 'Unnamed Customer'
       const location = [city, state].filter(Boolean).join(', ')
       const orders = typeof orderCount === 'number' ? orderCount : 0
-      const segmentLabelMap: Record<string, string> = {
-        vip: '💎 VIP',
-        repeat: '🔁 Repeat',
-        new: '🆕 New',
-        at_risk: '⚠️ At Risk',
-        inactive: '😴 Inactive',
-        active: '✅ Active',
-      }
-      const segmentLabel = segment ? segmentLabelMap[segment] || segment : ''
       const lifetimeTotal =
-        typeof lifetimeValue === 'number' && Number.isFinite(lifetimeValue)
-          ? lifetimeValue
+        typeof lifetimeSpend === 'number' && Number.isFinite(lifetimeSpend)
+          ? lifetimeSpend
           : lifetimeSpend
       const spend =
         typeof lifetimeTotal === 'number'
@@ -544,7 +545,6 @@ export default defineType({
       const subscribed = emailOptIn || marketingOptIn ? '✓' : ''
 
       const parts = [
-        segmentLabel,
         orders > 0 ? `${orders} orders` : 'No orders',
         spend,
         location,

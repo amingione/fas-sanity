@@ -226,7 +226,7 @@ export const searchSettingsType = defineType({
           description: 'Predefined price ranges for filtering',
           of: [
             defineField({
-              name: 'priceRange',
+              name: 'priceRangeEntry',
               type: 'object',
               fields: [
                 {name: 'label', type: 'string', title: 'Label', placeholder: 'e.g., "Under $100"'},

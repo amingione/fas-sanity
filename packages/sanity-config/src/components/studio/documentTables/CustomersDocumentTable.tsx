@@ -2,12 +2,7 @@ import React, {useMemo, useState} from 'react'
 import {Badge, Box, Button, Flex, Stack, Text, TextInput, Tooltip} from '@sanity/ui'
 import {SearchIcon, AddIcon} from '@sanity/icons'
 import {useRouter} from 'sanity/router'
-import {
-  PaginatedDocumentTable,
-  formatBoolean,
-  formatCurrency,
-  formatDate,
-} from './PaginatedDocumentTable'
+import {PaginatedDocumentTable} from './PaginatedDocumentTable'
 
 type CustomerRowData = {
   firstName?: string | null
@@ -43,11 +38,6 @@ const formatName = (data: CustomerRowData) => {
   const parts = [data.firstName, data.lastName].filter(Boolean)
   if (parts.length) return parts.join(' ')
   return data.email || 'Customer'
-}
-
-const formatLocation = (data: CustomerRowData) => {
-  const parts = [data.city, data.state].filter((value) => value && value.trim())
-  return parts.length ? parts.join(', ') : '—'
 }
 
 const isMarketingSubscribed = (data: CustomerRowData) =>

@@ -72,7 +72,7 @@ function LabelStatusBanner() {
             Warning: Shipping label not purchased
           </Text>
           <Text size={1} muted>
-            Use "Create Shipping Label" to buy a label after reviewing the order.
+            Use &ldquo;Create Shipping Label&rdquo; to buy a label after reviewing the order.
           </Text>
         </Flex>
       </Card>

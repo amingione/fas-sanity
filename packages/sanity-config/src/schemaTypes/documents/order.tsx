@@ -1,14 +1,7 @@
 // schemas/order.tsx
 import type {ComponentType} from 'react'
 import {defineField, defineType} from 'sanity'
-import {
-  PackageIcon,
-  CheckmarkCircleIcon,
-  RestoreIcon,
-  WarningOutlineIcon,
-  CloseIcon,
-  UndoIcon,
-} from '@sanity/icons'
+import {PackageIcon, CheckmarkCircleIcon, RestoreIcon, CloseIcon, UndoIcon} from '@sanity/icons'
 import {OrderHeader} from '../components/OrderHeader'
 
 export default defineType({
@@ -38,7 +31,9 @@ export default defineType({
     defineField({
       name: 'orderHeaderDisplay',
       title: 'Order Summary',
+      // Use a string field so Studio renders the slot while the custom component handles display
       type: 'string',
+      readOnly: true,
       components: {
         input: OrderHeader,
       },
@@ -134,7 +129,7 @@ export default defineType({
       type: 'number',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'amountShipping',
@@ -142,7 +137,7 @@ export default defineType({
       type: 'number',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'invoiceRef',
@@ -435,6 +430,9 @@ export default defineType({
     defineField({name: 'packingSlipUrl', type: 'url', hidden: true}),
     defineField({name: 'shippingLabelUrl', type: 'url', hidden: true}),
     defineField({name: 'shippingLabelFile', type: 'file', hidden: true}),
+    defineField({name: 'shippingLabelRefunded', type: 'boolean', hidden: true}),
+    defineField({name: 'shippingLabelRefundedAt', type: 'datetime', hidden: true}),
+    defineField({name: 'shippingLabelRefundAmount', type: 'number', hidden: true}),
     defineField({name: 'labelCreatedAt', type: 'datetime', hidden: true}),
     defineField({name: 'labelCost', type: 'number', hidden: true}),
     defineField({name: 'deliveryDays', type: 'number', hidden: true}),
