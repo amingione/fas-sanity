@@ -1,14 +1,11 @@
 // schemas/components/OrderHeader.tsx
-import React from 'react'
-import {Container, Card, Text, Box, Stack, TextArea, Badge, Flex, Inline} from '@sanity/ui'
+import React, {useCallback, useEffect, useRef, useState} from 'react'
+import {Container, Card, Text, Box, Stack, TextArea, Flex, Inline} from '@sanity/ui'
 import {useFormValue} from 'sanity'
 import {set, unset} from 'sanity'
 import {format} from 'date-fns'
 import {ShippingDetails} from './ShippingDetails'
-import {
-  formatBadgeLabel,
-  resolveBadgeTone,
-} from '../../components/studio/documentTables/DocumentBadge'
+import {DocumentBadge, buildOrderStatusBadges} from '../../components/studio/documentTables/DocumentBadge'
 
 export function OrderHeader(props: any) {
   const {onChange} = props
@@ -33,6 +30,50 @@ export function OrderHeader(props: any) {
   const cart = useFormValue(['cart']) as any[]
   const fulfillmentNotes =
     fulfillmentDetails?.fulfillmentNotes || oldFulfillment?.fulfillmentNotes || ''
+  const [localNotes, setLocalNotes] = useState(fulfillmentNotes || '')
+  const [isSaving, setIsSaving] = useState(false)
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setLocalNotes(fulfillmentNotes || '')
+    setIsSaving(false)
+  }, [fulfillmentNotes])
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current)
+      }
+    }
+  }, [])
+
+  const debouncedOnChange = useCallback(
+    (value: string) => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current)
+      }
+
+      debounceTimeout.current = setTimeout(() => {
+        onChange(
+          value
+            ? set(value, ['fulfillmentDetails', 'fulfillmentNotes'])
+            : unset(['fulfillmentDetails', 'fulfillmentNotes']),
+        )
+        setIsSaving(false)
+      }, 500)
+    },
+    [onChange],
+  )
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = event.currentTarget.value
+      setLocalNotes(newValue)
+      setIsSaving(true)
+      debouncedOnChange(newValue)
+    },
+    [debouncedOnChange],
+  )
 
   // Calculate subtotal from cart if not available
   if (!amountSubtotal && cart && cart.length > 0) {
@@ -53,40 +94,11 @@ export function OrderHeader(props: any) {
   // Format date
   const formattedDate = createdAt ? format(new Date(createdAt), 'MMMM d, yyyy') : 'Unknown date'
 
-  // EXACT SAME LOGIC AS OrderDocumentList - use stripePaymentIntentStatus OR paymentStatus
-  const badges: React.ReactNode[] = []
-
-  // First badge: stripePaymentIntentStatus OR paymentStatus
-  const firstStatusValue = stripePaymentIntentStatus || paymentStatus
-  const paymentLabel = formatBadgeLabel(firstStatusValue)
-  if (paymentLabel) {
-    badges.push(
-      <Badge
-        key="payment-status"
-        tone={resolveBadgeTone(firstStatusValue)}
-        fontSize={[1, 1, 2]}
-        mode="outline"
-      >
-        {paymentLabel}
-      </Badge>,
-    )
-  }
-
-  // Second badge: status (only if different from first badge)
-  const fulfillmentLabel = status && status !== firstStatusValue ? formatBadgeLabel(status) : null
-
-  if (fulfillmentLabel) {
-    badges.push(
-      <Badge
-        key="fulfillment-status"
-        tone={resolveBadgeTone(status)}
-        fontSize={[1, 1, 2]}
-        mode="outline"
-      >
-        {fulfillmentLabel}
-      </Badge>,
-    )
-  }
+  const badges = buildOrderStatusBadges({
+    paymentStatus,
+    stripePaymentIntentStatus,
+    orderStatus: status,
+  })
 
   return (
     <Stack space={4}>
@@ -109,7 +121,16 @@ export function OrderHeader(props: any) {
                   <Text size={[1, 1, 2, 3]} muted>
                     |
                   </Text>
-                  <Inline space={2}>{badges}</Inline>
+                  <Inline space={2}>
+                    {badges.map((badge) => (
+                      <DocumentBadge
+                        key={badge.key}
+                        label={badge.label}
+                        tone={badge.tone}
+                        title={badge.title}
+                      />
+                    ))}
+                  </Inline>
                 </>
               )}
             </Flex>
@@ -245,19 +266,15 @@ export function OrderHeader(props: any) {
             </Text>
             <TextArea
               fontSize={[2, 2, 3, 4]}
-              onChange={(event) => {
-                const newValue = event.currentTarget.value
-                onChange(
-                  newValue
-                    ? set(newValue, ['fulfillmentDetails', 'fulfillmentNotes'])
-                    : unset(['fulfillmentDetails', 'fulfillmentNotes']),
-                )
-              }}
+              onChange={handleChange}
               padding={[3, 3, 4]}
               placeholder="Add internal notes about this order..."
-              value={fulfillmentNotes}
+              value={localNotes}
               rows={4}
             />
+            <Text size={1} muted>
+              {isSaving ? 'Saving...' : 'Saved'}
+            </Text>
           </Stack>
         </Card>
       </Container>
