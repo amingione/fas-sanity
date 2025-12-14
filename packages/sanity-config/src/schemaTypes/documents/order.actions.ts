@@ -1,11 +1,5 @@
 // src/schemaTypes/documents/order.actions.ts
-import {
-  DocumentIcon,
-  PackageIcon,
-  ResetIcon,
-  TrashIcon,
-  WarningOutlineIcon,
-} from '@sanity/icons'
+import {DocumentIcon, PackageIcon, ResetIcon, TrashIcon, WarningOutlineIcon} from '@sanity/icons'
 import type {DocumentActionsResolver} from 'sanity'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
 
@@ -79,10 +73,9 @@ const callFn = async (fn: string, json?: unknown) => {
 const detachInvoiceReferences = async (client: any, orderId: string) => {
   try {
     const invoices: string[] =
-      (await client.fetch(
-        `array::compact(*[_type == "invoice" && orderRef._ref == $id]._id)`,
-        {id: orderId},
-      )) || []
+      (await client.fetch(`array::compact(*[_type == "invoice" && orderRef._ref == $id]._id)`, {
+        id: orderId,
+      })) || []
     await Promise.all(
       invoices.map((invoiceId) =>
         client.patch(invoiceId).unset(['orderRef']).commit({autoGenerateArrayKeys: true}),
@@ -126,7 +119,10 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
           try {
             const res = await callFn('fulfillOrder', {orderId})
-            const data = await res.clone().json().catch(() => null)
+            const data = await res
+              .clone()
+              .json()
+              .catch(() => null)
             if (!res.ok || data?.error) {
               throw new Error(data?.error || (await readResponseMessage(res)))
             }
@@ -162,7 +158,9 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         label: 'Cancel Order',
         icon: TrashIcon,
         tone: 'critical',
-        title: disableCancel ? 'Only paid orders can be cancelled. Use Refund for shipped orders.' : undefined,
+        title: disableCancel
+          ? 'Only paid orders can be cancelled. Use Refund for shipped orders.'
+          : undefined,
         disabled: disableCancel,
         hidden: disableCancel,
         onHandle: async () => {
@@ -224,7 +222,10 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
           try {
             const res = await callFn('refundOrder', {orderId: normalizeId(doc._id)})
-            const data = await res.clone().json().catch(() => null)
+            const data = await res
+              .clone()
+              .json()
+              .catch(() => null)
             if (!res.ok || data?.error) {
               throw new Error(data?.error || (await readResponseMessage(res)))
             }
@@ -242,7 +243,7 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
     // View invoice shortcut.
     (props) => {
       const doc = props.draft || props.published
-      const invoiceData = doc?.invoiceData || {}
+      const invoiceData = (doc?.invoiceData || {}) as Record<string, any>
       const invoiceUrl = typeof invoiceData?.invoiceUrl === 'string' ? invoiceData.invoiceUrl : ''
       const invoiceId = typeof invoiceData?.invoiceId === 'string' ? invoiceData.invoiceId : ''
       const legacyRef =
