@@ -231,6 +231,7 @@ export async function updateCustomerProfileForOrder({
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
       )] | order(coalesce(orderDate, createdAt, _createdAt) desc)[0...10]{
+        _id,
         orderNumber,
         status,
         "orderDate": coalesce(orderDate, createdAt, _createdAt),
@@ -269,29 +270,50 @@ export async function updateCustomerProfileForOrder({
     {id: customerId, email},
   )
 
-  const orderSummaries = Array.isArray(stats?.orders)
+  type CustomerOrderSummaryEntry = {
+    orderId: string
+    summary: {
+      _type: 'customerOrderSummary'
+      orderNumber: string
+      status: string
+      orderDate: string | null
+      total?: number
+    }
+  }
+
+  const orderSummaries: CustomerOrderSummaryEntry[] = Array.isArray(stats?.orders)
     ? filterOutExpiredOrders(stats.orders)
         .map((order: any) => ({
-          _type: 'customerOrderSummary' as const,
-          orderNumber: order?.orderNumber || '',
-          status: order?.status || '',
-          orderDate: order?.orderDate || null,
-          total: typeof order?.totalAmount === 'number' ? Number(order.totalAmount) : undefined,
+          orderId: typeof order?._id === 'string' ? order._id : '',
+          summary: {
+            _type: 'customerOrderSummary',
+            orderNumber: order?.orderNumber || '',
+            status: order?.status || '',
+            orderDate: order?.orderDate || null,
+            total: typeof order?.totalAmount === 'number' ? Number(order.totalAmount) : undefined,
+          },
         }))
-        .filter((entry: any) => entry.orderNumber)
+        .filter((entry) => entry.summary.orderNumber)
     : []
 
-  const dedupedOrders: typeof orderSummaries = []
-  const orderKeys = new Set<string>()
+  const dedupedOrders: CustomerOrderSummaryEntry['summary'][] = []
+  const orderIdKeys = new Set<string>()
+  const orderNumberKeys = new Set<string>()
   for (const entry of orderSummaries) {
-    const key =
-      (entry?.orderNumber || '')
-        .toString()
-        .trim()
-        .toUpperCase() || `${entry?.orderNumber || ''}|${entry?.orderDate || ''}`
-    if (key && orderKeys.has(key)) continue
-    if (key) orderKeys.add(key)
-    dedupedOrders.push(entry)
+    const normalizedId = (entry.orderId || '').replace(/^drafts\./, '')
+    const normalizedNumber = entry.summary.orderNumber
+      ? entry.summary.orderNumber.toString().trim().toUpperCase()
+      : ''
+    if (normalizedId) {
+      if (orderIdKeys.has(normalizedId)) continue
+      orderIdKeys.add(normalizedId)
+    } else if (normalizedNumber) {
+      if (orderNumberKeys.has(normalizedNumber)) continue
+      orderNumberKeys.add(normalizedNumber)
+    } else {
+      continue
+    }
+    dedupedOrders.push(entry.summary)
   }
 
   const lifetimeSpend = Array.isArray(stats?.orderTotals)

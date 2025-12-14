@@ -1,4 +1,5 @@
 // schemas/order.tsx
+import type {ComponentType} from 'react'
 import {defineField, defineType} from 'sanity'
 import {
   PackageIcon,
@@ -108,7 +109,6 @@ export default defineType({
       title: 'Order Items',
       type: 'array',
       group: 'overview',
-      hidden: true,
       of: [{type: 'orderCartItem'}],
       validation: (Rule) => Rule.required().min(1),
     }),
@@ -273,11 +273,11 @@ export default defineType({
             },
             prepare({type, fileName, url}) {
               const typeLabel: Record<string, string> = {
-                packing_slip: '📄 Packing Slip',
-                shipping_label: '🏷️ Shipping Label',
-                other: '📎 Document',
+                packing_slip: 'Packing Slip',
+                shipping_label: 'Shipping Label',
+                other: 'Document',
               }
-              const label = type ? typeLabel[type] || '📎 Document' : '📎 Document'
+              const label = type ? (typeLabel[type] ?? 'Document') : 'Document'
               return {title: label, subtitle: fileName || url || 'No file'}
             },
           },
@@ -461,7 +461,7 @@ export default defineType({
       fulfillmentStatus: 'fulfillmentDetails.status',
     },
     prepare({orderNumber, customerName, status, totalAmount, fulfillmentStatus}) {
-      const statusIconMap: Record<string, React.ComponentType> = {
+      const statusIconMap: Record<string, ComponentType> = {
         paid: PackageIcon,
         fulfilled: RestoreIcon,
         delivered: CheckmarkCircleIcon,
