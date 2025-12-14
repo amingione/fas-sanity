@@ -2984,19 +2984,12 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     shippingMetrics.weight = {_type: 'shipmentWeight', value: sessionWeight, unit: 'pound'}
   }
 
-  const stripeSubtotal = toCurrencyNumber(toMajorUnits((session as any)?.amount_subtotal)) ?? 0
-  const amountTax = toCurrencyNumber(toMajorUnits((session as any)?.total_details?.amount_tax)) ?? 0
-  const amountShippingRaw = Number.isFinite(
-    Number(
-      (session as any)?.total_details?.amount_shipping ||
-        (session as any)?.shipping_cost?.amount_total,
-    ),
+  // Extract amounts from Stripe session FIRST
+  const stripeSubtotal = toMajorUnits(session.amount_subtotal) ?? 0
+  const amountTax = toMajorUnits(session.total_details?.amount_tax) ?? 0
+  const amountShippingRaw = toMajorUnits(
+    session.total_details?.amount_shipping ?? session.shipping_cost?.amount_total,
   )
-    ? Number(
-        (session as any)?.total_details?.amount_shipping ||
-          (session as any)?.shipping_cost?.amount_total,
-      ) / 100
-    : undefined
 
   const shippingDetails = await resolveStripeShippingDetails({
     metadata: sessionMeta,

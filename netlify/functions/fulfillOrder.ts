@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {randomUUID} from 'crypto'
 import {Resend} from 'resend'
+import {buildTrackingEmailHtml} from '../../shared/email/trackingEmail'
 import {sanityClient} from '../lib/sanityClient'
 import {getEasyPostClient, resolveDimensions, resolveWeight} from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
@@ -88,40 +89,6 @@ function normalizeAddress(address?: OrderDoc['shippingAddress']) {
     phone: phone || undefined,
     email: email || undefined,
   }
-}
-
-const buildTrackingEmail = (
-  order: OrderDoc,
-  trackingUrl?: string | null,
-  trackingCode?: string,
-) => {
-  const items =
-    order.cart
-      ?.filter(Boolean)
-      .map((item) => {
-        const qty =
-          typeof item?.quantity === 'number' && item.quantity > 1 ? `×${item.quantity}` : ''
-        return `<li>${item?.name || 'Item'} ${qty}</li>`
-      })
-      .join('') || ''
-
-  const listMarkup = items
-    ? `<ul style="padding-left:20px;margin:12px 0;color:#111827;">${items}</ul>`
-    : ''
-  const trackingButton = trackingUrl
-    ? `<p style="margin:20px 0;"><a href="${trackingUrl}" style="display:inline-block;padding:12px 20px;background:#dc2626;color:#fff;font-weight:600;text-decoration:none;border-radius:6px;" target="_blank" rel="noopener">Track your shipment</a></p>`
-    : ''
-
-  return `
-    <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#111827;background:#ffffff;">
-      <h2 style="margin:0 0 12px;">Your order ${order.orderNumber || ''} is on the way 🚚</h2>
-      <p style="margin:0 0 12px;">We've created a shipment for your order and will keep you posted as it moves.</p>
-      ${trackingCode ? `<p style="margin:0 0 8px;font-weight:600;">Tracking #: ${trackingCode}</p>` : ''}
-      ${trackingButton}
-      ${listMarkup}
-      <p style="margin:20px 0 0;color:#4b5563;">Thanks for shopping with F.A.S. Motorsports!</p>
-    </div>
-  `
 }
 
 export const handler: Handler = async (event) => {
@@ -289,7 +256,10 @@ export const handler: Handler = async (event) => {
           from: resendFrom,
           to: order.customerEmail,
           subject: `Your order ${order.orderNumber || ''} has shipped`,
-          html: buildTrackingEmail(order, trackingUrl, trackingCode || undefined),
+          html: buildTrackingEmailHtml(order, {
+            trackingUrl,
+            trackingCode: trackingCode || undefined,
+          }),
         })
       } catch (emailError) {
         console.warn('fulfillOrder: failed to send tracking email', emailError)

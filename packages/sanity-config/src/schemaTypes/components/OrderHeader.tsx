@@ -1,10 +1,14 @@
 // schemas/components/OrderHeader.tsx
 import React from 'react'
-import {Container, Card, Text, Box, Stack, TextArea, Badge, Flex} from '@sanity/ui'
+import {Container, Card, Text, Box, Stack, TextArea, Badge, Flex, Inline} from '@sanity/ui'
 import {useFormValue} from 'sanity'
 import {set, unset} from 'sanity'
 import {format} from 'date-fns'
 import {ShippingDetails} from './ShippingDetails'
+import {
+  formatBadgeLabel,
+  resolveBadgeTone,
+} from '../../components/studio/documentTables/DocumentBadge'
 
 export function OrderHeader(props: any) {
   const {onChange} = props
@@ -14,40 +18,74 @@ export function OrderHeader(props: any) {
   const createdAt = useFormValue(['createdAt']) as string
   const status = useFormValue(['status']) as string
   const paymentStatus = useFormValue(['paymentStatus']) as string
+  const stripePaymentIntentStatus = useFormValue(['stripePaymentIntentStatus']) as string
 
   // Try new structure first, fallback to old structure
   const fulfillmentDetails = useFormValue(['fulfillmentDetails']) as any
   const oldFulfillment = useFormValue(['fulfillment']) as any
 
   const totalAmount = useFormValue(['totalAmount']) as number
+  let amountSubtotal = useFormValue(['amountSubtotal']) as number
+  let amountTax = useFormValue(['amountTax']) as number
+  let amountShipping = useFormValue(['amountShipping']) as number
+  const amountDiscount = useFormValue(['amountDiscount']) as number
+
   const cart = useFormValue(['cart']) as any[]
   const fulfillmentNotes =
     fulfillmentDetails?.fulfillmentNotes || oldFulfillment?.fulfillmentNotes || ''
 
+  // Calculate subtotal from cart if not available
+  if (!amountSubtotal && cart && cart.length > 0) {
+    amountSubtotal = cart.reduce((sum, item) => {
+      const itemTotal = item.total || (item.price || 0) * (item.quantity || 1)
+      return sum + itemTotal
+    }, 0)
+  }
+
+  // Calculate shipping and tax from total if not available
+  if (totalAmount && amountSubtotal) {
+    if (!amountShipping && !amountTax) {
+      amountShipping = totalAmount - amountSubtotal
+      amountTax = 0
+    }
+  }
+
   // Format date
   const formattedDate = createdAt ? format(new Date(createdAt), 'MMMM d, yyyy') : 'Unknown date'
 
-  // Status badge colors
-  const getStatusTone = (status: string) => {
-    const tones: Record<string, any> = {
-      paid: 'primary',
-      fulfilled: 'positive',
-      delivered: 'positive',
-      canceled: 'critical',
-      cancelled: 'critical',
-      refunded: 'caution',
-      unfulfilled: 'caution',
-      processing: 'primary',
-      shipped: 'positive',
-    }
-    return tones[status] || 'default'
+  // EXACT SAME LOGIC AS OrderDocumentList - use stripePaymentIntentStatus OR paymentStatus
+  const badges: React.ReactNode[] = []
+
+  // First badge: stripePaymentIntentStatus OR paymentStatus
+  const firstStatusValue = stripePaymentIntentStatus || paymentStatus
+  const paymentLabel = formatBadgeLabel(firstStatusValue)
+  if (paymentLabel) {
+    badges.push(
+      <Badge
+        key="payment-status"
+        tone={resolveBadgeTone(firstStatusValue)}
+        fontSize={[1, 1, 2]}
+        mode="outline"
+      >
+        {paymentLabel}
+      </Badge>,
+    )
   }
 
-  // Format status for display
-  const formatStatus = (status: string) => {
-    if (!status) return 'Unknown'
-    if (status === 'cancelled') return 'Cancelled'
-    return status.charAt(0).toUpperCase() + status.slice(1)
+  // Second badge: status (only if different from first badge)
+  const fulfillmentLabel = status && status !== firstStatusValue ? formatBadgeLabel(status) : null
+
+  if (fulfillmentLabel) {
+    badges.push(
+      <Badge
+        key="fulfillment-status"
+        tone={resolveBadgeTone(status)}
+        fontSize={[1, 1, 2]}
+        mode="outline"
+      >
+        {fulfillmentLabel}
+      </Badge>,
+    )
   }
 
   return (
@@ -61,29 +99,17 @@ export function OrderHeader(props: any) {
               </Text>
             </Flex>
 
-            {/* Status Line: Date | Payment Status | Order Status */}
+            {/* Status Line: Date | Badges */}
             <Flex align="center" gap={3} wrap="wrap">
               <Text size={[1, 1, 2, 3]} muted>
                 {formattedDate}
               </Text>
-              {paymentStatus && (
+              {badges.length > 0 && (
                 <>
                   <Text size={[1, 1, 2, 3]} muted>
                     |
                   </Text>
-                  <Badge tone={getStatusTone(paymentStatus)} fontSize={[1, 1, 2]}>
-                    {formatStatus(paymentStatus)}
-                  </Badge>
-                </>
-              )}
-              {status && (
-                <>
-                  <Text size={[1, 1, 2, 3]} muted>
-                    |
-                  </Text>
-                  <Badge tone={getStatusTone(status)} fontSize={[1, 1, 2]}>
-                    {formatStatus(status)}
-                  </Badge>
+                  <Inline space={2}>{badges}</Inline>
                 </>
               )}
             </Flex>
@@ -137,9 +163,71 @@ export function OrderHeader(props: any) {
               </Stack>
             )}
 
-            <Text size={[2, 2, 3]} weight="bold">
-              Total: ${totalAmount?.toFixed(2) || '0.00'}
-            </Text>
+            {/* Order Totals */}
+            <Box paddingTop={3} style={{borderTop: '1px solid var(--card-border-color)'}}>
+              <Stack space={2}>
+                {amountSubtotal !== undefined && amountSubtotal !== null && (
+                  <Flex justify="space-between">
+                    <Text size={[1, 1, 2]} muted>
+                      Subtotal:
+                    </Text>
+                    <Text size={[1, 1, 2]} muted>
+                      ${amountSubtotal.toFixed(2)}
+                    </Text>
+                  </Flex>
+                )}
+
+                {amountDiscount !== undefined && amountDiscount !== null && amountDiscount > 0 && (
+                  <Flex justify="space-between">
+                    <Text
+                      size={[1, 1, 2]}
+                      muted
+                      style={{color: 'var(--card-badge-caution-fg-color)'}}
+                    >
+                      Discount:
+                    </Text>
+                    <Text
+                      size={[1, 1, 2]}
+                      muted
+                      style={{color: 'var(--card-badge-caution-fg-color)'}}
+                    >
+                      -${amountDiscount.toFixed(2)}
+                    </Text>
+                  </Flex>
+                )}
+
+                {amountShipping !== undefined && amountShipping !== null && amountShipping > 0 && (
+                  <Flex justify="space-between">
+                    <Text size={[1, 1, 2]} muted>
+                      Shipping:
+                    </Text>
+                    <Text size={[1, 1, 2]} muted>
+                      ${amountShipping.toFixed(2)}
+                    </Text>
+                  </Flex>
+                )}
+
+                {amountTax !== undefined && amountTax !== null && amountTax > 0 && (
+                  <Flex justify="space-between">
+                    <Text size={[1, 1, 2]} muted>
+                      Tax:
+                    </Text>
+                    <Text size={[1, 1, 2]} muted>
+                      ${amountTax.toFixed(2)}
+                    </Text>
+                  </Flex>
+                )}
+
+                <Flex justify="space-between" paddingTop={2}>
+                  <Text size={[2, 2, 3]} weight="bold">
+                    Total:
+                  </Text>
+                  <Text size={[2, 2, 3]} weight="bold">
+                    ${totalAmount?.toFixed(2) || '0.00'}
+                  </Text>
+                </Flex>
+              </Stack>
+            </Box>
           </Stack>
         </Card>
       </Container>
@@ -159,7 +247,6 @@ export function OrderHeader(props: any) {
               fontSize={[2, 2, 3, 4]}
               onChange={(event) => {
                 const newValue = event.currentTarget.value
-                // Update the fulfillmentDetails.fulfillmentNotes field
                 onChange(
                   newValue
                     ? set(newValue, ['fulfillmentDetails', 'fulfillmentNotes'])

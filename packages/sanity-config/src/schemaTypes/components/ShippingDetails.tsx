@@ -16,6 +16,12 @@ export function ShippingDetails() {
 
   const labelCreatedAt = useFormValue(['labelCreatedAt']) as string
   const labelPurchased = useFormValue(['labelPurchased']) as boolean
+  const labelCancelled = useFormValue(['labelCancelled']) as boolean
+  const labelCancelledAt = useFormValue(['labelCancelledAt']) as string
+
+  // Check for label refund in fulfillment object
+  const labelRefunded = oldFulfillment?.labelRefunded || fulfillmentDetails?.labelRefunded
+  const labelRefundedAt = oldFulfillment?.labelRefundedAt || fulfillmentDetails?.labelRefundedAt
 
   // Try new structure first, fallback to old
   const carrier = (useFormValue(['carrier']) as string) || oldFulfillment?.carrier
@@ -38,8 +44,9 @@ export function ShippingDetails() {
     ? format(new Date(labelCreatedAt), 'MMMM d, yyyy')
     : null
 
-  // Get label status based on fulfillment status and tracking number
+  // Get label status based on cancellation, refund, fulfillment status, and tracking number
   const getLabelStatusTone = () => {
+    if (labelCancelled || labelRefunded) return 'critical'
     if (trackingNumber || fulfillmentStatus === 'label_created' || fulfillmentStatus === 'shipped')
       return 'positive'
     if (fulfillmentStatus === 'processing') return 'primary'
@@ -47,6 +54,8 @@ export function ShippingDetails() {
   }
 
   const getLabelStatusText = () => {
+    if (labelCancelled) return 'Label Cancelled'
+    if (labelRefunded) return 'Label Refunded'
     if (trackingNumber || fulfillmentStatus === 'label_created') return 'Label Created'
     if (fulfillmentStatus === 'shipped') return 'Shipped'
     if (fulfillmentStatus === 'processing') return 'Processing'
@@ -115,8 +124,8 @@ export function ShippingDetails() {
             </Stack>
           )}
 
-          {/* Tracking Number - only show if exists */}
-          {trackingNumber && (
+          {/* Tracking Number - only show if exists and not cancelled */}
+          {trackingNumber && !labelCancelled && !labelRefunded && (
             <Card
               padding={[3, 3, 4]}
               radius={2}
@@ -143,6 +152,35 @@ export function ShippingDetails() {
                   trackingNumber
                 )}
               </Text>
+            </Card>
+          )}
+
+          {/* Show cancelled/refunded tracking number with warning */}
+          {trackingNumber && (labelCancelled || labelRefunded) && (
+            <Card
+              padding={[3, 3, 4]}
+              radius={2}
+              shadow={1}
+              tone="critical"
+              style={{
+                background:
+                  'linear-gradient(135deg, rgba(120,40,40,0.85) 0%, rgba(60,20,20,0.85) 100%)',
+                border: '1px solid rgba(220, 38, 38, 0.35)',
+              }}
+            >
+              <Stack space={2}>
+                <Text align="center" size={[2, 2, 3]} weight="semibold">
+                  {labelRefunded ? 'Label Refunded' : 'Label Cancelled'}
+                </Text>
+                <Text align="center" size={[1, 1, 2]} muted>
+                  Tracking: {trackingNumber}
+                </Text>
+                {(labelCancelledAt || labelRefundedAt) && (
+                  <Text align="center" size={[1, 1, 2]} muted>
+                    {format(new Date(labelCancelledAt || labelRefundedAt), 'MMMM d, yyyy h:mm a')}
+                  </Text>
+                )}
+              </Stack>
             </Card>
           )}
         </Stack>
