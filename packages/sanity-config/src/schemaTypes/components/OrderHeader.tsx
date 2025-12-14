@@ -18,7 +18,6 @@ export function OrderHeader(props: any) {
   // Try new structure first, fallback to old structure
   const fulfillmentDetails = useFormValue(['fulfillmentDetails']) as any
   const oldFulfillment = useFormValue(['fulfillment']) as any
-  const fulfillmentStatus = fulfillmentDetails?.status || oldFulfillment?.status || 'unfulfilled'
 
   const totalAmount = useFormValue(['totalAmount']) as number
   const cart = useFormValue(['cart']) as any[]
@@ -35,6 +34,7 @@ export function OrderHeader(props: any) {
       fulfilled: 'positive',
       delivered: 'positive',
       canceled: 'critical',
+      cancelled: 'critical',
       refunded: 'caution',
       unfulfilled: 'caution',
       processing: 'primary',
@@ -46,6 +46,7 @@ export function OrderHeader(props: any) {
   // Format status for display
   const formatStatus = (status: string) => {
     if (!status) return 'Unknown'
+    if (status === 'cancelled') return 'Cancelled'
     return status.charAt(0).toUpperCase() + status.slice(1)
   }
 
@@ -60,23 +61,31 @@ export function OrderHeader(props: any) {
               </Text>
             </Flex>
 
-            {/* Status Line: Date | Fulfillment Status | Payment Status */}
+            {/* Status Line: Date | Payment Status | Order Status */}
             <Flex align="center" gap={3} wrap="wrap">
               <Text size={[1, 1, 2, 3]} muted>
                 {formattedDate}
               </Text>
-              <Text size={[1, 1, 2, 3]} muted>
-                |
-              </Text>
-              <Badge tone={getStatusTone(fulfillmentStatus)} fontSize={[1, 1, 2]}>
-                {formatStatus(fulfillmentStatus)}
-              </Badge>
-              <Text size={[1, 1, 2, 3]} muted>
-                |
-              </Text>
-              <Badge tone={getStatusTone(paymentStatus || 'unpaid')} fontSize={[1, 1, 2]}>
-                {formatStatus(paymentStatus || 'unpaid')}
-              </Badge>
+              {paymentStatus && (
+                <>
+                  <Text size={[1, 1, 2, 3]} muted>
+                    |
+                  </Text>
+                  <Badge tone={getStatusTone(paymentStatus)} fontSize={[1, 1, 2]}>
+                    {formatStatus(paymentStatus)}
+                  </Badge>
+                </>
+              )}
+              {status && (
+                <>
+                  <Text size={[1, 1, 2, 3]} muted>
+                    |
+                  </Text>
+                  <Badge tone={getStatusTone(status)} fontSize={[1, 1, 2]}>
+                    {formatStatus(status)}
+                  </Badge>
+                </>
+              )}
             </Flex>
 
             {/* Order Items */}

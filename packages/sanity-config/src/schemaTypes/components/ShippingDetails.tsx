@@ -20,24 +20,42 @@ export function ShippingDetails() {
   // Try new structure first, fallback to old
   const carrier = (useFormValue(['carrier']) as string) || oldFulfillment?.carrier
   const service = (useFormValue(['service']) as string) || oldFulfillment?.service
-  const trackingNumber = useFormValue(['trackingNumber']) as string
-  const trackingUrl = useFormValue(['trackingUrl']) as string
+  const trackingNumber =
+    (useFormValue(['trackingNumber']) as string) || oldFulfillment?.trackingNumber
+  const trackingUrl = (useFormValue(['trackingUrl']) as string) || oldFulfillment?.trackingUrl
+
+  // Get fulfillment status for label badge
+  const fulfillmentStatus = fulfillmentDetails?.status || oldFulfillment?.status || 'unfulfilled'
+
+  // Get package dimensions from either location
+  const packageDims =
+    fulfillmentDetails?.packageDimensions ||
+    oldFulfillment?.packageDimensions ||
+    useFormValue(['packageDimensions'])
 
   // Format label created date
   const formattedLabelDate = labelCreatedAt
     ? format(new Date(labelCreatedAt), 'MMMM d, yyyy')
     : null
 
-  // Get label status
+  // Get label status based on fulfillment status and tracking number
   const getLabelStatusTone = () => {
-    if (labelPurchased) return 'positive'
+    if (trackingNumber || fulfillmentStatus === 'label_created' || fulfillmentStatus === 'shipped')
+      return 'positive'
+    if (fulfillmentStatus === 'processing') return 'primary'
     return 'caution'
   }
 
   const getLabelStatusText = () => {
-    if (labelPurchased) return 'Label Created'
+    if (trackingNumber || fulfillmentStatus === 'label_created') return 'Label Created'
+    if (fulfillmentStatus === 'shipped') return 'Shipped'
+    if (fulfillmentStatus === 'processing') return 'Processing'
     return 'Label Not Created'
   }
+
+  // Check if carrier looks like valid carrier data (not a customer name)
+  const validCarriers = ['USPS', 'UPS', 'FedEx', 'DHL']
+  const isValidCarrier = carrier && validCarriers.some((c) => carrier.toUpperCase().includes(c))
 
   return (
     <Card padding={4}>
@@ -51,6 +69,11 @@ export function ShippingDetails() {
           <Text align="center" size={[2, 2, 3, 4]} weight="bold">
             Shipping Details
           </Text>
+
+          <Text align="center" muted size={[1, 1, 2]}>
+            Shipping Address
+          </Text>
+
           <Text align="center" muted size={[1, 1, 2]}>
             {formattedLabelDate || 'Not created'} |{' '}
             <Badge tone={getLabelStatusTone()} fontSize={[1, 1, 2]}>
@@ -58,9 +81,16 @@ export function ShippingDetails() {
             </Badge>
           </Text>
 
-          <Text align="center" muted size={[1, 1, 2]}>
-            {carrier || 'No carrier'} | {service || 'No service'}
-          </Text>
+          {/* Only show carrier/service if we have valid carrier data */}
+          {isValidCarrier && service ? (
+            <Text align="center" muted size={[1, 1, 2]}>
+              {carrier} | {service}
+            </Text>
+          ) : (
+            <Text align="center" muted size={[1, 1, 2]}>
+              Carrier information not available
+            </Text>
+          )}
 
           {/* Shipping Address */}
           {shippingAddress && (
@@ -129,16 +159,19 @@ export function ShippingDetails() {
                   Package Weight
                 </Text>
                 <Text size={1} muted>
-                  {fulfillmentDetails?.packageWeight
-                    ? `${fulfillmentDetails.packageWeight} lbs`
-                    : 'Not specified'}
+                  {packageDims?.weight
+                    ? `${packageDims.weight} ${packageDims.weightUnit || 'lbs'}`
+                    : packageDims?.weightDisplay || 'Not specified'}
                 </Text>
 
                 <Text size={2} weight="semibold">
                   Package Dimensions
                 </Text>
                 <Text size={1} muted>
-                  {fulfillmentDetails?.packageDimensions || 'Not specified'}
+                  {packageDims?.dimensionsDisplay ||
+                    (packageDims?.length && packageDims?.width && packageDims?.height
+                      ? `${packageDims.length} × ${packageDims.width} × ${packageDims.height} ${packageDims.dimensionUnit || 'in'}`
+                      : 'Not specified')}
                 </Text>
               </Stack>
             </Box>
