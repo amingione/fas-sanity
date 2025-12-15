@@ -5,7 +5,7 @@
   "main": "package.json",
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "tsx scripts/ensure-sanity-cors.ts && sanity dev",
+    "dev": "tsx scripts/ensure-sanity-cors.ts && tsx scripts/ensure-netlify-cjs.ts && sanity dev",
     "start": "sanity start",
     "build": "node scripts/sanitize-cors-env.js && sanity build",
     "build:ci": "node scripts/sanitize-cors-env.js && sanity build && node scripts/deploy-schema-if-token.js",

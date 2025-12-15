@@ -8,17 +8,38 @@ import {deriveVariantAndAddOns, sanitizeCartItemName} from '../utils/cartItemDet
 type OrderItemsListProps = {
   items?: OrderCartItem[] | null
   currency?: string
+  amountTax?: number | null
+}
+
+const getQuantity = (item: OrderCartItem): number =>
+  typeof item.quantity === 'number' && item.quantity > 0 ? item.quantity : 1
+
+const getUnitPrice = (item: OrderCartItem): number | undefined => {
+  if (typeof item.price === 'number') return item.price
+  const fallbackTotal = typeof item.lineTotal === 'number' ? item.lineTotal : item.total
+  if (typeof fallbackTotal === 'number') {
+    const quantity = getQuantity(item)
+    if (quantity > 0) return fallbackTotal / quantity
+  }
+  return undefined
 }
 
 const getLineTotal = (item: OrderCartItem): number | undefined => {
   if (typeof item.lineTotal === 'number') return item.lineTotal
   if (typeof item.total === 'number') return item.total
-  const quantity = typeof item.quantity === 'number' ? item.quantity : 1
-  if (typeof item.price === 'number') return item.price * quantity
+  const unitPrice = getUnitPrice(item)
+  if (typeof unitPrice === 'number') return unitPrice * getQuantity(item)
   return undefined
 }
 
-function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
+type NormalizedItem = {
+  item: OrderCartItem
+  lineTotal?: number
+  unitPrice?: number
+  key: string
+}
+
+function OrderItemsList({items, currency = 'USD', amountTax}: OrderItemsListProps) {
   const formatter = useMemo(
     () =>
       new Intl.NumberFormat('en-US', {
@@ -38,10 +59,25 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
     )
   }
 
+  const normalizedItems = useMemo<NormalizedItem[]>(() => {
+    if (!items) return []
+    return items.map((item, index) => ({
+      item,
+      lineTotal: getLineTotal(item),
+      unitPrice: getUnitPrice(item),
+      key: item._key || `${item.sku || 'item'}-${index}`,
+    }))
+  }, [items])
+
+  const totalLineValue = useMemo(() => {
+    return normalizedItems.reduce((sum, entry) => sum + (entry.lineTotal || 0), 0)
+  }, [normalizedItems])
+
+  const taxAmount = typeof amountTax === 'number' && amountTax > 0 ? amountTax : 0
+
   return (
     <Stack space={3}>
-      {items.map((item, index) => {
-        const lineTotal = getLineTotal(item)
+      {normalizedItems.map(({item, key, lineTotal, unitPrice}) => {
         const {selectedVariant, addOns} = deriveVariantAndAddOns({
           selectedVariant: (item as any)?.selectedVariant,
           optionDetails: (item as any)?.optionDetails,
@@ -49,14 +85,20 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
         })
         const optionsText = selectedVariant || undefined
         const addOnsText = addOns.length ? addOns.join(', ') : undefined
-        const unitPrice = typeof item.price === 'number' ? item.price : undefined
-        const key = item._key || `${item.sku || 'item'}-${index}`
         const displayName =
           sanitizeCartItemName(item.name) ||
           sanitizeCartItemName(item.productName) ||
           item.name ||
           item.productName ||
           'Product'
+        const allocatedTax =
+          taxAmount > 0 && totalLineValue > 0 && lineTotal
+            ? (lineTotal / totalLineValue) * taxAmount
+            : 0
+        const adjustedTotal =
+          typeof lineTotal === 'number'
+            ? Number((lineTotal - (allocatedTax > 0 ? allocatedTax : 0)).toFixed(2))
+            : undefined
         return (
           <Card key={key} padding={3} radius={2} border>
             <Flex gap={4} wrap="wrap">
@@ -119,8 +161,17 @@ function OrderItemsList({items, currency = 'USD'}: OrderItemsListProps) {
                     Total
                   </Text>
                   <Text size={2} weight="semibold">
-                    {typeof lineTotal === 'number' ? formatter.format(lineTotal) : '—'}
+                    {typeof adjustedTotal === 'number'
+                      ? formatter.format(adjustedTotal)
+                      : typeof lineTotal === 'number'
+                        ? formatter.format(lineTotal)
+                        : '—'}
                   </Text>
+                  {allocatedTax > 0 && (
+                    <Text size={1} muted>
+                      (excludes {formatter.format(allocatedTax)} tax)
+                    </Text>
+                  )}
                 </Stack>
               </Flex>
             </Flex>

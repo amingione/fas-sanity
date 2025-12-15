@@ -26,12 +26,14 @@ package = "@netlify/plugin-secrets-manager"
 [functions.environment]
   NODE_OPTIONS = "--require ./scripts/aws-secrets-shim.cjs"
 
+[functions.masterBackfill]
+  node_module_format = "esm"
+
 [dev]
   command = "pnpm run dev"
   targetPort = 3333
   port = 8888
   framework = "#custom"
-  filter = "@fas/sanity-config"
 
 [dev.environment]
   SANITY_STUDIO_PORT = "3333"

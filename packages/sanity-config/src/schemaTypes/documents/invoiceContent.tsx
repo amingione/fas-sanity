@@ -72,15 +72,18 @@ function InvoiceNumberInput(props: any) {
   }, [client, orderRef, resolvedOrderNumber])
 
   useEffect(() => {
-    if (value) return
     const derived = formatInvoiceNumberFromOrder(resolvedOrderNumber)
     if (derived) {
-      onChange(set(derived))
+      if (value !== derived) {
+        onChange(set(derived))
+      }
       return
     }
-    const rand = Math.floor(Math.random() * 1_000_000)
-    const generated = `${DEFAULT_INVOICE_PREFIX}-${rand.toString().padStart(6, '0')}`
-    onChange(set(generated))
+    if (!value) {
+      const rand = Math.floor(Math.random() * 1_000_000)
+      const generated = `${DEFAULT_INVOICE_PREFIX}-${rand.toString().padStart(6, '0')}`
+      onChange(set(generated))
+    }
   }, [onChange, resolvedOrderNumber, value])
 
   return (
@@ -386,6 +389,15 @@ export default defineType({
           return true
         }),
       fieldset: 'basicInfo',
+    }),
+    defineField({
+      name: 'orderNumber',
+      title: 'Order Number',
+      type: 'string',
+      description: 'Matches the related order number when available',
+      readOnly: true,
+      fieldset: 'basicInfo',
+      hidden: ({document}) => !document?.orderNumber,
     }),
 
     defineField({
