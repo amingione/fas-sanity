@@ -275,7 +275,7 @@ function BillToInput(props: any) {
                 {noMatches && (
                   <Box marginTop={3}>
                     <Text muted size={1}>
-                      No matches — fill the form below and click “Create Customer from Bill To”.
+                      No matches — fill the form below and click "Create Customer from Bill To".
                     </Text>
                   </Box>
                 )}
@@ -457,6 +457,7 @@ export default defineType({
       fieldset: 'lineItems',
     }),
 
+    // PRICING SECTION - Simple fields that match webhook data
     defineField({
       name: 'subtotal',
       title: 'Subtotal',
@@ -464,6 +465,25 @@ export default defineType({
       readOnly: true,
       fieldset: 'pricing',
     }),
+
+    defineField({
+      name: 'tax',
+      title: 'Tax',
+      type: 'number',
+      description: 'Tax amount from payment processor',
+      readOnly: true,
+      fieldset: 'pricing',
+    }),
+
+    defineField({
+      name: 'shipping',
+      title: 'Shipping Cost',
+      type: 'number',
+      description: 'Shipping amount from payment processor',
+      readOnly: true,
+      fieldset: 'pricing',
+    }),
+
     defineField({
       name: 'discountLabel',
       title: 'Discount Label',
@@ -477,12 +497,13 @@ export default defineType({
       type: 'string',
       options: {
         list: [
+          {title: 'None', value: 'none'},
           {title: 'Amount ($)', value: 'amount'},
           {title: 'Percent (%)', value: 'percent'},
         ],
         layout: 'radio',
       },
-      initialValue: 'amount',
+      initialValue: 'none',
       fieldset: 'pricing',
     }),
     defineField({
@@ -507,15 +528,16 @@ export default defineType({
       fieldset: 'pricing',
     }),
 
+    // SHIPPING DETAILS - Advanced object for manual fulfillment
     defineField({
-      name: 'shipping',
+      name: 'shippingDetails',
       type: 'object',
-      title: 'Shipping Details',
-      description: 'Shipping method, cost, and tracking information',
+      title: 'Shipping & Fulfillment',
+      description: 'Advanced shipping options for manual fulfillment',
       fieldset: 'pricing',
       options: {
         collapsible: true,
-        collapsed: false,
+        collapsed: true,
       },
       fields: [
         {
@@ -524,13 +546,6 @@ export default defineType({
           title: 'Requires Shipping',
           description: 'Disable for in-store pickup or install-only services',
           initialValue: true,
-        },
-        {
-          name: 'shippingCost',
-          type: 'number',
-          title: 'Shipping Cost',
-          description: 'Amount charged to customer for shipping',
-          validation: (Rule) => Rule.min(0),
         },
         {
           name: 'shippingMethod',
