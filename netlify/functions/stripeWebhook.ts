@@ -2582,59 +2582,42 @@ function extractShippingAddressFromSession(
         | null
         | undefined)
     const customerDetails = session.customer_details
-    const shippingAddress = shippingDetails?.address
+    const shippingAddressDetails = shippingDetails?.address
     const customerAddress = customerDetails?.address || (session as any)?.shipping?.address
-    const name = shippingDetails?.name || customerDetails?.name || undefined
-    const phone = shippingDetails?.phone || customerDetails?.phone || undefined
-    const email =
-      customerDetails?.email ||
-      (shippingDetails as any)?.email ||
-      (customerDetails as any)?.email ||
-      fallbackEmail ||
-      undefined
-    const addressLine1 = shippingAddress?.line1 || customerAddress?.line1 || undefined
-    const addressLine2 = shippingAddress?.line2 || customerAddress?.line2 || undefined
-    const city = shippingAddress?.city || customerAddress?.city || undefined
-    const state =
-      (shippingAddress as any)?.state ||
-      (customerAddress as any)?.state ||
-      (shippingAddress as any)?.province ||
-      (customerAddress as any)?.province ||
-      undefined
-    const postalCode =
-      (shippingAddress as any)?.postal_code ||
-      (customerAddress as any)?.postal_code ||
-      undefined
-    const country = shippingAddress?.country || customerAddress?.country || undefined
-    const hasAddressFields = Boolean(
-      addressLine1 || addressLine2 || city || state || postalCode || country,
-    )
-    if (!hasAddressFields && !name && !phone && !email) return undefined
-
-    const normalized = {
-      name: name || undefined,
-      phone: phone || undefined,
-      email: email || undefined,
-      addressLine1,
-      addressLine2,
-      city,
-      state,
-      postalCode,
-      country,
+    const shippingAddress = {
+      name: shippingDetails?.name || customerDetails?.name || '',
+      email:
+        customerDetails?.email ||
+        (shippingDetails as any)?.email ||
+        (customerDetails as any)?.email ||
+        fallbackEmail ||
+        '',
+      phone: shippingDetails?.phone || customerDetails?.phone || '',
+      addressLine1: shippingAddressDetails?.line1 || customerAddress?.line1 || '',
+      addressLine2: shippingAddressDetails?.line2 || customerAddress?.line2 || '',
+      city: shippingAddressDetails?.city || customerAddress?.city || '',
+      state:
+        (shippingAddressDetails as any)?.state ||
+        (customerAddress as any)?.state ||
+        (shippingAddressDetails as any)?.province ||
+        (customerAddress as any)?.province ||
+        '',
+      postalCode:
+        (shippingAddressDetails as any)?.postal_code ||
+        (customerAddress as any)?.postal_code ||
+        '',
+      country: shippingAddressDetails?.country || customerAddress?.country || '',
     }
 
-    const hasAddressFields = Boolean(
-      normalized.addressLine1 ||
-        normalized.addressLine2 ||
-        normalized.city ||
-        normalized.state ||
-        normalized.postalCode ||
-        normalized.country,
-    )
-    if (!hasAddressFields && !normalized.name && !normalized.phone && !normalized.email) {
-      return undefined
+    const hasValidAddress =
+      shippingAddress.addressLine1 && shippingAddress.city && shippingAddress.postalCode
+
+    if (!hasValidAddress) {
+      console.error('Missing required shipping address fields')
+      throw new Error('Invalid shipping address')
     }
-    return normalized
+
+    return shippingAddress
   } catch (err) {
     console.warn('stripeWebhook: failed to extract shipping address from session', err)
     return undefined
