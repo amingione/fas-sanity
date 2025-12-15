@@ -86,6 +86,15 @@ const normalizeAddress = (
     country: address?.country,
   })
 
+const normalizeStripeEntityId = (value?: string | {id?: string | null} | null) => {
+  if (!value) return undefined
+  if (typeof value === 'string') return value || undefined
+  if (typeof value === 'object' && typeof value.id === 'string' && value.id.trim()) {
+    return value.id
+  }
+  return undefined
+}
+
 const buildMetadataEntries = (
   sources: Array<{data?: Record<string, string> | null; label: string}>,
 ) => {
@@ -176,6 +185,25 @@ const buildPaymentMethodDetails = (pi?: PaymentLike, charge?: ChargeLike) => {
     riskLevel:
       charge?.outcome?.risk_level ||
       (charge?.outcome?.risk_score !== undefined ? String(charge.outcome.risk_score) : undefined),
+  })
+}
+
+const buildLastPaymentErrorDetails = (pi?: PaymentLike) => {
+  const lastError = (pi as any)?.last_payment_error
+  if (!lastError) return undefined
+  return prune({
+    type: lastError.type,
+    code: lastError.code,
+    message: lastError.message,
+    userMessage: (lastError as any)?.user_message,
+    decline_code: lastError.decline_code,
+    doc_url: lastError.doc_url,
+    payment_intent: normalizeStripeEntityId(lastError.payment_intent),
+    payment_method: normalizeStripeEntityId(lastError.payment_method),
+    payment_method_type: lastError.payment_method_type,
+    setup_intent: normalizeStripeEntityId(lastError.setup_intent),
+    charge: normalizeStripeEntityId(lastError.charge),
+    source: normalizeStripeEntityId(lastError.source),
   })
 }
 
@@ -304,6 +332,7 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
       {data: (chargeAny?.metadata as Record<string, string>) || null, label: 'charge'},
     ]),
     attempts: buildAttemptEntries(paymentIntent || null, charge || null),
+    lastPaymentError: buildLastPaymentErrorDetails(paymentIntent || null),
   })
 
   return summary

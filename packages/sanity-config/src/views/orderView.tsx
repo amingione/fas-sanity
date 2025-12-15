@@ -712,7 +712,11 @@ const OrderViewComponent = (props: any) => {
           title={field.label}
           description={getFieldDescription(field)}
         >
-          <OrderItemsList items={order.cart} currency={order.currency} />
+          <OrderItemsList
+            items={order.cart}
+            currency={order.currency}
+            amountTax={order.amountTax}
+          />
         </FormField>
       )
     }

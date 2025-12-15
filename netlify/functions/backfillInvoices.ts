@@ -332,15 +332,25 @@ export const handler: Handler = async (event) => {
           unsetOps.push('customer')
         } else if (d.customer) unsetOps.push('customer')
 
-        if (orderDoc?._id && (!d.orderRef || d.orderRef._ref !== orderDoc._id)) {
-          setOps.orderRef = {_type: 'reference', _ref: orderDoc._id}
+        const needsWeakOrderRef =
+          !!d.orderRef && !!d.orderRef._ref && d.orderRef._weak !== true
+
+        if (
+          orderDoc?._id &&
+          (!d.orderRef || d.orderRef._ref !== orderDoc._id || d.orderRef._weak !== true)
+        ) {
+          setOps.orderRef = {_type: 'reference', _ref: orderDoc._id, _weak: true}
           orderRefId = orderDoc._id
           unsetOps.push('order')
           migratedOrder++
         } else if (!orderRefId && d.order?._ref) {
-          setOps.orderRef = {_type: 'reference', _ref: d.order._ref}
+          setOps.orderRef = {_type: 'reference', _ref: d.order._ref, _weak: true}
           orderRefId = d.order._ref
           unsetOps.push('order')
+          migratedOrder++
+        } else if (needsWeakOrderRef) {
+          setOps.orderRef = {_type: 'reference', _ref: d.orderRef._ref, _weak: true}
+          orderRefId = d.orderRef._ref
           migratedOrder++
         } else if (d.order) unsetOps.push('order')
 

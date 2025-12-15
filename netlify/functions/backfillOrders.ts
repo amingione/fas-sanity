@@ -335,6 +335,120 @@ async function loadCartFromStripe(sessionId: string): Promise<any[] | null> {
   }
 }
 
+// NEW: Calculate total package weight from cart items
+function calculatePackageWeight(cart: any[]): number {
+  if (!Array.isArray(cart) || cart.length === 0) return 0
+
+  const totalWeight = cart.reduce((sum, item) => {
+    const weight = Number(item?.weight || 0)
+    const quantity = Number(item?.quantity || 1)
+    return sum + weight * quantity
+  }, 0)
+
+  // Add packaging weight (estimate 1 lb for packaging materials)
+  return totalWeight > 0 ? totalWeight + 1 : 0
+}
+
+// NEW: Calculate package dimensions (use largest item dimensions or default box)
+function calculatePackageDimensions(
+  cart: any[],
+): {length: number; width: number; height: number} | null {
+  if (!Array.isArray(cart) || cart.length === 0) return null
+
+  let maxLength = 0
+  let maxWidth = 0
+  let maxHeight = 0
+
+  for (const item of cart) {
+    const dims = item?.dimensions
+    if (dims && typeof dims === 'object') {
+      maxLength = Math.max(maxLength, Number(dims.length || 0))
+      maxWidth = Math.max(maxWidth, Number(dims.width || 0))
+      maxHeight = Math.max(maxHeight, Number(dims.height || 0))
+    }
+  }
+
+  // If no dimensions found, use default medium box
+  if (maxLength === 0 && maxWidth === 0 && maxHeight === 0) {
+    return {length: 12, width: 9, height: 6}
+  }
+
+  // Add 2 inches to each dimension for packaging
+  return {
+    length: maxLength + 2,
+    width: maxWidth + 2,
+    height: maxHeight + 2,
+  }
+}
+
+async function fetchShippingDetailsFromStripe(sessionId: string): Promise<any> {
+  if (!stripe || !sessionId) return null
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['shipping_cost.shipping_rate'],
+    })
+
+    // Cast to any to access shipping_details (it exists but isn't in type definition)
+    const sessionData = session as any
+
+    if (!sessionData.shipping_details && !session.shipping_cost) return null
+
+    const shippingDetails: any = {}
+
+    // Shipping address from customer_details or shipping_details
+    const shippingInfo = sessionData.shipping_details || session.customer_details
+    if (shippingInfo?.address) {
+      shippingDetails.address = {
+        name: shippingInfo.name || session.customer_details?.name || '',
+        addressLine1: shippingInfo.address.line1 || '',
+        addressLine2: shippingInfo.address.line2 || '',
+        city: shippingInfo.address.city || '',
+        state: shippingInfo.address.state || '',
+        postalCode: shippingInfo.address.postal_code || '',
+        country: shippingInfo.address.country || 'US',
+      }
+    }
+
+    // Shipping cost
+    if (session.shipping_cost?.amount_total) {
+      shippingDetails.cost = session.shipping_cost.amount_total / 100
+    }
+
+    // Shipping rate ID
+    if (session.shipping_cost?.shipping_rate) {
+      const rateId =
+        typeof session.shipping_cost.shipping_rate === 'string'
+          ? session.shipping_cost.shipping_rate
+          : (session.shipping_cost.shipping_rate as any)?.id
+      if (rateId) {
+        shippingDetails.shippingRateId = rateId
+      }
+    }
+
+    // Shipping options (deprecated but may exist in older sessions)
+    if (
+      sessionData.shipping_options &&
+      Array.isArray(sessionData.shipping_options) &&
+      sessionData.shipping_options.length > 0
+    ) {
+      const option = sessionData.shipping_options[0]
+      if (option.shipping_rate) {
+        shippingDetails.carrier =
+          typeof option.shipping_rate === 'string' ? option.shipping_rate : option.shipping_rate?.id
+      }
+      if (option.shipping_amount) {
+        shippingDetails.amount = option.shipping_amount / 100
+      }
+    }
+
+    return Object.keys(shippingDetails).length > 0 ? shippingDetails : null
+  } catch (err) {
+    console.warn('backfillOrders: failed to fetch shipping details from Stripe', err)
+    return null
+  }
+}
+
 function createOrderSlug(source?: string | null, fallback?: string | null): string | null {
   const raw = (source || fallback || '').toString().trim()
   if (!raw) return null
@@ -437,6 +551,8 @@ export const handler: Handler = async (event) => {
   let changed = 0
   let migratedCustomer = 0
   let cartFixed = 0
+  let shippingBackfilled = 0
+  let cardDetailsBackfilled = 0
 
   let processed = 0
   const startedAt = Date.now()
@@ -462,9 +578,14 @@ export const handler: Handler = async (event) => {
           customerEmail,
           slug,
           stripeSessionId,
+          paymentIntentId,
           orderNumber,
           customerName,
           shippingAddress,
+          packageWeight,
+          packageDimensions,
+          cardBrand,
+          cardLast4,
           "customerRefFirstName": customerRef->firstName,
           "customerRefLastName": customerRef->lastName,
           "customerRefLegacyName": customerRef->name,
@@ -557,6 +678,36 @@ export const handler: Handler = async (event) => {
           }
         }
 
+        // NEW: Backfill package weight and dimensions
+        const finalCart = setOps.cart || workingCart
+        if (Array.isArray(finalCart) && finalCart.length > 0) {
+          if (!doc.packageWeight || doc.packageWeight === 0) {
+            const calculatedWeight = calculatePackageWeight(finalCart)
+            if (calculatedWeight > 0) {
+              setOps.packageWeight = calculatedWeight
+            }
+          }
+
+          if (!doc.packageDimensions) {
+            const calculatedDimensions = calculatePackageDimensions(finalCart)
+            if (calculatedDimensions) {
+              setOps.packageDimensions = calculatedDimensions
+            }
+          }
+        }
+
+        // NEW: Backfill shipping details from Stripe
+        if (stripe && doc.stripeSessionId && (!doc.shippingAddress || !doc.packageWeight)) {
+          const shippingDetails = await fetchShippingDetailsFromStripe(doc.stripeSessionId)
+          if (shippingDetails) {
+            if (shippingDetails.address && !doc.shippingAddress) {
+              setOps.shippingAddress = shippingDetails.address
+              shippingBackfilled++
+            }
+          }
+        }
+
+        // UPDATED: Backfill card details from Stripe PaymentIntent
         if (stripe && (!doc.cardBrand || !doc.cardLast4) && doc.paymentIntentId) {
           try {
             const pi = await stripe.paymentIntents.retrieve(doc.paymentIntentId, {
@@ -569,8 +720,13 @@ export const handler: Handler = async (event) => {
             const pm = charge?.payment_method_details?.card
             const brand = pm?.brand || (charge?.payment_method_details as any)?.type
             const last4 = pm?.last4
-            if (brand && !setOps.cardBrand) setOps.cardBrand = brand
-            if (last4 && !setOps.cardLast4) setOps.cardLast4 = last4
+            if (brand && !doc.cardBrand) {
+              setOps.cardBrand = brand
+              cardDetailsBackfilled++
+            }
+            if (last4 && !doc.cardLast4) {
+              setOps.cardLast4 = last4
+            }
           } catch (err) {
             console.warn('backfillOrders: failed to fetch card details', err)
           }
@@ -659,7 +815,7 @@ export const handler: Handler = async (event) => {
               orderId: doc._id,
               customerId: resultingCustomerRef,
               email: customerEmail,
-              shippingAddress: doc.shippingAddress,
+              shippingAddress: setOps.shippingAddress || doc.shippingAddress,
             })
           } catch (err) {
             console.warn('backfillOrders: failed to refresh customer profile', err)
@@ -699,6 +855,8 @@ export const handler: Handler = async (event) => {
       changed,
       migratedCustomer,
       cartFixed,
+      shippingBackfilled,
+      cardDetailsBackfilled,
       remainingCustomer,
       nextCursor: processed >= maxRecords || timedOut ? cursor : null,
       limit: maxRecords,

@@ -615,6 +615,58 @@ function normalizeStripeContactAddress(
   return normalized
 }
 
+function extractCompleteShippingAddress(
+  session: Stripe.Checkout.Session,
+  stripeSummary?: any,
+  fallbackEmail?: string | null,
+): NormalizedContactAddress | undefined {
+  if (stripeSummary?.shippingAddress) {
+    const addr = stripeSummary.shippingAddress
+    return {
+      name: addr.name || session.customer_details?.name || '',
+      email: addr.email || session.customer_details?.email || fallbackEmail || '',
+      phone: addr.phone || session.customer_details?.phone || '',
+      addressLine1: addr.line1 || addr.addressLine1 || '',
+      addressLine2: addr.line2 || addr.addressLine2 || '',
+      city: addr.city || '',
+      state: addr.state || '',
+      postalCode: addr.postal_code || addr.postalCode || '',
+      country: addr.country || 'US',
+    }
+  }
+
+  const shippingDetails = (session as any)?.shipping_details
+  if (shippingDetails?.address) {
+    return {
+      name: shippingDetails.name || session.customer_details?.name || '',
+      email: session.customer_details?.email || fallbackEmail || '',
+      phone: session.customer_details?.phone || '',
+      addressLine1: shippingDetails.address.line1 || '',
+      addressLine2: shippingDetails.address.line2 || '',
+      city: shippingDetails.address.city || '',
+      state: shippingDetails.address.state || '',
+      postalCode: shippingDetails.address.postal_code || '',
+      country: shippingDetails.address.country || 'US',
+    }
+  }
+
+  if (session.customer_details?.address) {
+    return {
+      name: session.customer_details.name || '',
+      email: session.customer_details.email || fallbackEmail || '',
+      phone: session.customer_details.phone || '',
+      addressLine1: session.customer_details.address.line1 || '',
+      addressLine2: session.customer_details.address.line2 || '',
+      city: session.customer_details.address.city || '',
+      state: session.customer_details.address.state || '',
+      postalCode: session.customer_details.address.postal_code || '',
+      country: session.customer_details.address.country || 'US',
+    }
+  }
+
+  return undefined
+}
+
 function resolveStripeCustomerId(
   value?: string | Stripe.Customer | Stripe.DeletedCustomer | null,
 ): string | undefined {
@@ -1607,29 +1659,61 @@ function determineOrderType(metadata?: Record<string, string | undefined>): stri
   return 'online'
 }
 
+type PaymentDetailInput = {
+  brand?: string | null | undefined
+  cardBrand?: string | null | undefined
+  last4?: string | null | undefined
+  cardLast4?: string | null | undefined
+  receiptUrl?: string | null | undefined
+  paymentMethod?: {brand?: string | null; last4?: string | null} | null
+}
+
 function ensureRequiredPaymentDetails(
   target: Record<string, any>,
-  details: {
-    brand?: string | null | undefined
-    last4?: string | null | undefined
-    receiptUrl?: string | null | undefined
-  },
+  details: PaymentDetailInput,
   contextLabel: string,
 ) {
-  const brand = (details.brand || '').toString().trim()
-  const last4 = (details.last4 || '').toString().trim()
+  const brand =
+    details.brand ||
+    details.cardBrand ||
+    (details as {paymentMethod?: {brand?: string | null}})?.paymentMethod?.brand ||
+    target?.stripeSummary?.paymentMethod?.brand ||
+    ''
+  const last4 =
+    details.last4 ||
+    details.cardLast4 ||
+    (details as {paymentMethod?: {last4?: string | null}})?.paymentMethod?.last4 ||
+    target?.stripeSummary?.paymentMethod?.last4 ||
+    ''
   const receipt = (details.receiptUrl || '').toString().trim()
 
-  target.cardBrand = brand || 'unknown'
-  target.cardLast4 = last4 || 'unknown'
-  target.receiptUrl = receipt || 'https://'
+  const normalizedBrand = brand ? brand.toString().trim() : ''
+  const normalizedLast4 = last4 ? last4.toString().trim() : ''
 
-  if (!brand || !last4 || !receipt) {
+  if (normalizedBrand) {
+    target.cardBrand = normalizedBrand
+  } else if (!target.cardBrand) {
+    target.cardBrand = null
+  }
+
+  if (normalizedLast4) {
+    target.cardLast4 = normalizedLast4
+  } else if (!target.cardLast4) {
+    target.cardLast4 = null
+  }
+
+  if (receipt) {
+    target.receiptUrl = receipt
+  } else if (!target.receiptUrl) {
+    target.receiptUrl = null
+  }
+
+  if (!normalizedBrand || !normalizedLast4 || !receipt) {
     const missing = []
-    if (!brand) missing.push('cardBrand')
-    if (!last4) missing.push('cardLast4')
+    if (!normalizedBrand) missing.push('cardBrand')
+    if (!normalizedLast4) missing.push('cardLast4')
     if (!receipt) missing.push('receiptUrl')
-    console.error(
+    console.warn(
       `stripeWebhook: missing payment details [${missing.join(', ')}] (${contextLabel})`,
     )
   }
@@ -2570,58 +2654,8 @@ async function hydrateChargeWithDetails(
 function extractShippingAddressFromSession(
   session: Stripe.Checkout.Session,
   fallbackEmail?: string | null,
-): Record<string, string | undefined> | undefined {
-  try {
-    const shippingDetails =
-      ((session as any)?.shipping_details as
-        | {address?: Stripe.Address | null; name?: string | null; phone?: string | null}
-        | null
-        | undefined) ||
-      ((session as any)?.shipping as
-        | {address?: Stripe.Address | null; name?: string | null; phone?: string | null; email?: string | null}
-        | null
-        | undefined)
-    const customerDetails = session.customer_details
-    const shippingAddressDetails = shippingDetails?.address
-    const customerAddress = customerDetails?.address || (session as any)?.shipping?.address
-    const shippingAddress = {
-      name: shippingDetails?.name || customerDetails?.name || '',
-      email:
-        customerDetails?.email ||
-        (shippingDetails as any)?.email ||
-        (customerDetails as any)?.email ||
-        fallbackEmail ||
-        '',
-      phone: shippingDetails?.phone || customerDetails?.phone || '',
-      addressLine1: shippingAddressDetails?.line1 || customerAddress?.line1 || '',
-      addressLine2: shippingAddressDetails?.line2 || customerAddress?.line2 || '',
-      city: shippingAddressDetails?.city || customerAddress?.city || '',
-      state:
-        (shippingAddressDetails as any)?.state ||
-        (customerAddress as any)?.state ||
-        (shippingAddressDetails as any)?.province ||
-        (customerAddress as any)?.province ||
-        '',
-      postalCode:
-        (shippingAddressDetails as any)?.postal_code ||
-        (customerAddress as any)?.postal_code ||
-        '',
-      country: shippingAddressDetails?.country || customerAddress?.country || '',
-    }
-
-    const hasValidAddress =
-      shippingAddress.addressLine1 && shippingAddress.city && shippingAddress.postalCode
-
-    if (!hasValidAddress) {
-      console.error('Missing required shipping address fields')
-      throw new Error('Invalid shipping address')
-    }
-
-    return shippingAddress
-  } catch (err) {
-    console.warn('stripeWebhook: failed to extract shipping address from session', err)
-    return undefined
-  }
+): NormalizedContactAddress | undefined {
+  return extractCompleteShippingAddress(session, undefined, fallbackEmail)
 }
 
 async function strictFindProductForCartItem(item: Stripe.LineItem) {
@@ -3147,7 +3181,18 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   const customerEmail = (session.customer_details?.email || session.customer_email || '')
     .toString()
     .trim()
-  const shippingAddress = extractShippingAddressFromSession(session, customerEmail)
+  const preliminaryStripeSummary = buildStripeSummary({
+    session,
+    paymentIntent: paymentDetails.paymentIntent || undefined,
+    charge: paymentDetails.charge || undefined,
+    eventType: 'checkout.session.completed',
+    eventCreated: session.created,
+  })
+  const shippingAddress = extractCompleteShippingAddress(
+    session,
+    preliminaryStripeSummary,
+    customerEmail,
+  )
   const billingAddress =
     paymentDetails.billingAddress ||
     (sessionCharge?.billing_details?.address
@@ -3162,6 +3207,14 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       email: session.customer_details?.email || customerEmail || undefined,
       phone: session.customer_details?.phone || undefined,
     })
+  const cardBrandFromSummary = preliminaryStripeSummary?.paymentMethod?.brand
+  const cardLast4FromSummary = preliminaryStripeSummary?.paymentMethod?.last4
+  if (cardBrandFromSummary && !paymentDetails.cardBrand) {
+    paymentDetails.cardBrand = cardBrandFromSummary
+  }
+  if (cardLast4FromSummary && !paymentDetails.cardLast4) {
+    paymentDetails.cardLast4 = cardLast4FromSummary
+  }
   console.log('stripeWebhook: checkout shipping details', (session as any).shipping_details)
   console.log('stripeWebhook: checkout customer address', session.customer_details?.address)
   console.log('stripeWebhook: extracted checkout shipping address', shippingAddress)
@@ -3214,9 +3267,9 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
           _ref: customer._id,
         }
       : undefined,
-    cardBrand: paymentDetails.cardBrand,
-    cardLast4: paymentDetails.cardLast4,
-    receiptUrl: paymentDetails.receiptUrl,
+    cardBrand: paymentDetails.cardBrand || cardBrandFromSummary || null,
+    cardLast4: paymentDetails.cardLast4 || cardLast4FromSummary || null,
+    receiptUrl: paymentDetails.receiptUrl || null,
     paymentIntentId: paymentIntentId,
     stripePaymentIntentId: paymentIntentId,
     cart: normalizedCart,
@@ -3232,23 +3285,24 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     labelPurchased: existingOrder?.labelPurchased ?? false,
     labelPurchasedAt: existingOrder?.labelPurchasedAt ?? null,
     labelPurchasedBy: existingOrder?.labelPurchasedBy ?? null,
-    ...(shippingAddress ? {shippingAddress} : {}),
-    ...(billingAddress ? {billingAddress} : {}),
+    shippingAddress: shippingAddress || undefined,
+    billingAddress: billingAddress || undefined,
+    packageWeight: sessionWeight || shippingMetrics?.weight?.value || null,
+    packageDimensions: shippingMetrics?.dimensions || {length: 12, width: 9, height: 6},
   }
 
-  ensureRequiredPaymentDetails(baseOrderPayload, paymentDetails, 'checkout.session')
-
-  applyShippingDetailsToDoc(baseOrderPayload, shippingDetails, currencyUpper)
+  // Apply shipping metrics to nested fulfillment data as well
   applyShippingMetrics(baseOrderPayload, shippingMetrics)
   applyPackageDimensions(baseOrderPayload, shippingMetrics, sessionWeight)
+  applyShippingDetailsToDoc(baseOrderPayload, shippingDetails, currencyUpper)
 
-  baseOrderPayload.stripeSummary = buildStripeSummary({
-    session,
-    paymentIntent: paymentDetails.paymentIntent || undefined,
-    charge: paymentDetails.charge || undefined,
-    eventType: 'checkout.session.completed',
-    eventCreated: session.created,
-  })
+  baseOrderPayload.stripeSummary = preliminaryStripeSummary
+  if (!baseOrderPayload.cardBrand && baseOrderPayload.stripeSummary?.paymentMethod?.brand) {
+    baseOrderPayload.cardBrand = baseOrderPayload.stripeSummary.paymentMethod.brand
+  }
+  if (!baseOrderPayload.cardLast4 && baseOrderPayload.stripeSummary?.paymentMethod?.last4) {
+    baseOrderPayload.cardLast4 = baseOrderPayload.stripeSummary.paymentMethod.last4
+  }
 
   const fulfillmentResult = deriveFulfillmentFromMetadata(
     sessionMeta,
