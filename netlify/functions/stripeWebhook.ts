@@ -404,6 +404,92 @@ function summarizeEventType(eventType?: string): string {
 
 type ComputedShippingMetrics = ReturnType<typeof computeShippingMetrics>
 
+const resolveCartItemQuantity = (value: unknown): number => {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return 1
+  return Math.max(1, Math.round(num))
+}
+
+const deriveWeightFromProducts = (
+  cart: CartItem[],
+  products: CartProductSummary[],
+): number | null => {
+  if (!Array.isArray(cart) || !Array.isArray(products) || !products.length) return null
+  let total = 0
+  let found = false
+  for (const item of cart) {
+    if (!item || typeof item !== 'object') continue
+    const product = findProductForItem(item, products)
+    if (!product) continue
+    const rawWeight =
+      typeof product.shippingConfig?.weight === 'number' && product.shippingConfig.weight > 0
+        ? product.shippingConfig.weight
+        : typeof product.shippingWeight === 'number' && product.shippingWeight > 0
+          ? product.shippingWeight
+          : null
+    if (!rawWeight) continue
+    const qty = resolveCartItemQuantity((item as any)?.quantity)
+    total += rawWeight * qty
+    found = true
+  }
+  if (!found) return null
+  return Number(total.toFixed(2))
+}
+
+const deriveDimensionsFromProducts = (
+  cart: CartItem[],
+  products: CartProductSummary[],
+): {length: number; width: number; height: number} | null => {
+  if (!Array.isArray(cart) || !Array.isArray(products) || !products.length) return null
+  let maxLength = 0
+  let maxWidth = 0
+  let stackedHeight = 0
+  let hasDimensions = false
+  for (const item of cart) {
+    if (!item || typeof item !== 'object') continue
+    const product = findProductForItem(item, products)
+    if (!product) continue
+    const dims = product.shippingConfig?.dimensions
+    if (!dims) continue
+    const length = typeof dims.length === 'number' && dims.length > 0 ? dims.length : null
+    const width = typeof dims.width === 'number' && dims.width > 0 ? dims.width : null
+    const height = typeof dims.height === 'number' && dims.height > 0 ? dims.height : null
+    if (length === null || width === null || height === null) continue
+    const qty = resolveCartItemQuantity((item as any)?.quantity)
+    maxLength = Math.max(maxLength, length)
+    maxWidth = Math.max(maxWidth, width)
+    stackedHeight += height * qty
+    hasDimensions = true
+  }
+  if (!hasDimensions || maxLength <= 0 || maxWidth <= 0 || stackedHeight <= 0) return null
+  return {
+    length: Number(maxLength.toFixed(2)),
+    width: Number(maxWidth.toFixed(2)),
+    height: Number(stackedHeight.toFixed(2)),
+  }
+}
+
+function ensureShippingMetricsFromProducts(
+  metrics: ComputedShippingMetrics | null | undefined,
+  cart: CartItem[],
+  products: CartProductSummary[],
+): ComputedShippingMetrics {
+  const next: ComputedShippingMetrics = metrics ? {...metrics} : {}
+  if (!next.weight || !next.weight.value || next.weight.value <= 0) {
+    const fallbackWeight = deriveWeightFromProducts(cart, products)
+    if (fallbackWeight) {
+      next.weight = {_type: 'shipmentWeight', value: fallbackWeight, unit: 'pound'}
+    }
+  }
+  if (!next.dimensions) {
+    const fallbackDimensions = deriveDimensionsFromProducts(cart, products)
+    if (fallbackDimensions) {
+      next.dimensions = {_type: 'packageDimensions', ...fallbackDimensions}
+    }
+  }
+  return next
+}
+
 function applyShippingMetrics(
   target: Record<string, any>,
   metrics: ComputedShippingMetrics | null | undefined,
@@ -2492,31 +2578,49 @@ function extractShippingAddressFromSession(
         | null
         | undefined) ||
       ((session as any)?.shipping as
-        | {address?: Stripe.Address | null; name?: string | null; phone?: string | null}
+        | {address?: Stripe.Address | null; name?: string | null; phone?: string | null; email?: string | null}
         | null
         | undefined)
     const customerDetails = session.customer_details
-    const address =
-      shippingDetails?.address ||
-      customerDetails?.address ||
-      (session as any)?.shipping?.address ||
-      undefined
+    const shippingAddress = shippingDetails?.address
+    const customerAddress = customerDetails?.address || (session as any)?.shipping?.address
     const name = shippingDetails?.name || customerDetails?.name || undefined
     const phone = shippingDetails?.phone || customerDetails?.phone || undefined
     const email =
-      customerDetails?.email || (shippingDetails as any)?.email || fallbackEmail || undefined
-    if (!address && !name && !phone && !email) return undefined
+      customerDetails?.email ||
+      (shippingDetails as any)?.email ||
+      (customerDetails as any)?.email ||
+      fallbackEmail ||
+      undefined
+    const addressLine1 = shippingAddress?.line1 || customerAddress?.line1 || undefined
+    const addressLine2 = shippingAddress?.line2 || customerAddress?.line2 || undefined
+    const city = shippingAddress?.city || customerAddress?.city || undefined
+    const state =
+      (shippingAddress as any)?.state ||
+      (customerAddress as any)?.state ||
+      (shippingAddress as any)?.province ||
+      (customerAddress as any)?.province ||
+      undefined
+    const postalCode =
+      (shippingAddress as any)?.postal_code ||
+      (customerAddress as any)?.postal_code ||
+      undefined
+    const country = shippingAddress?.country || customerAddress?.country || undefined
+    const hasAddressFields = Boolean(
+      addressLine1 || addressLine2 || city || state || postalCode || country,
+    )
+    if (!hasAddressFields && !name && !phone && !email) return undefined
 
     const normalized = {
       name: name || undefined,
       phone: phone || undefined,
       email: email || undefined,
-      addressLine1: address?.line1 || undefined,
-      addressLine2: address?.line2 || undefined,
-      city: address?.city || undefined,
-      state: (address as any)?.state || (address as any)?.province || undefined,
-      postalCode: (address as any)?.postal_code || undefined,
-      country: address?.country || undefined,
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      postalCode,
+      country,
     }
 
     const hasAddressFields = Boolean(
@@ -2973,7 +3077,11 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     upgrades: Array.isArray(item.upgrades) ? item.upgrades : [],
   }))
 
-  const shippingMetrics = computeShippingMetrics(normalizedCart, cartProducts)
+  let shippingMetrics = ensureShippingMetricsFromProducts(
+    computeShippingMetrics(normalizedCart, cartProducts),
+    normalizedCart,
+    cartProducts,
+  )
   const sessionWeight =
     resolveShippingWeightLbs(session, sessionMeta) ||
     resolveShippingWeightLbs(undefined, paymentDetails.paymentIntent?.metadata as any)
@@ -2981,7 +3089,10 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     sessionWeight !== undefined &&
     (!shippingMetrics.weight || !shippingMetrics.weight.value || shippingMetrics.weight.value <= 0)
   ) {
-    shippingMetrics.weight = {_type: 'shipmentWeight', value: sessionWeight, unit: 'pound'}
+    shippingMetrics = {
+      ...shippingMetrics,
+      weight: {_type: 'shipmentWeight', value: sessionWeight, unit: 'pound'},
+    }
   }
 
   // Extract amounts from Stripe session FIRST
@@ -3124,6 +3235,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     cardLast4: paymentDetails.cardLast4,
     receiptUrl: paymentDetails.receiptUrl,
     paymentIntentId: paymentIntentId,
+    stripePaymentIntentId: paymentIntentId,
     cart: normalizedCart,
     amountDiscount,
     totalAmount,
@@ -7305,7 +7417,11 @@ export const handler: Handler = async (event) => {
             orderId: normalizedOrderNumber,
           })
 
-          const shippingMetrics = computeShippingMetrics(cart, cartProducts)
+          let shippingMetrics = ensureShippingMetricsFromProducts(
+            computeShippingMetrics(cart, cartProducts),
+            cart,
+            cartProducts,
+          )
           const metaWeight = resolveShippingWeightLbs(undefined, meta)
           if (
             metaWeight !== undefined &&
@@ -7313,7 +7429,10 @@ export const handler: Handler = async (event) => {
               !shippingMetrics.weight.value ||
               shippingMetrics.weight.value <= 0)
           ) {
-            shippingMetrics.weight = {_type: 'shipmentWeight', value: metaWeight, unit: 'pound'}
+            shippingMetrics = {
+              ...shippingMetrics,
+              weight: {_type: 'shipmentWeight', value: metaWeight, unit: 'pound'},
+            }
           }
 
           const existingOrderId =
@@ -7344,6 +7463,16 @@ export const handler: Handler = async (event) => {
               )
             : null
           const existingId = existingOrder?._id || null
+          if (!existingId) {
+            console.log(
+              'stripeWebhook: payment_intent.succeeded skipped (no checkout order found)',
+              {
+                paymentIntentId: pi.id,
+                checkoutSessionId: checkoutSessionMeta,
+              },
+            )
+            break
+          }
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
           const shouldSendConfirmation =
             !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
@@ -7375,6 +7504,7 @@ export const handler: Handler = async (event) => {
             stripeLastSyncedAt: new Date().toISOString(),
             currency,
             paymentIntentId: pi.id,
+            stripePaymentIntentId: pi.id,
             chargeId,
             ...(invoiceDocId ? {invoiceRef: {_type: 'reference', _ref: invoiceDocId}} : {}),
             stripeCustomerId: stripeCustomerIdValue || undefined,
@@ -7462,13 +7592,8 @@ export const handler: Handler = async (event) => {
             }
           }
 
-          let orderId = existingId
-          if (existingId) {
-            await sanity.patch(existingId).set(baseDoc).commit({autoGenerateArrayKeys: true})
-          } else {
-            const created = await sanity.create(baseDoc, {autoGenerateArrayKeys: true})
-            orderId = created?._id
-          }
+          const orderId = existingId
+          await sanity.patch(existingId).set(baseDoc).commit({autoGenerateArrayKeys: true})
 
           if (orderId) {
             await appendOrderEvent(orderId, {
