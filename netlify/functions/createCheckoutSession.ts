@@ -56,6 +56,48 @@ const normalizeSanityId = (value?: string | null): string | undefined => {
   return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
 }
 
+type ProductShippingSnapshot = {
+  _id: string
+  title?: string
+  shippingWeight?: number | null
+  shippingConfig?: {
+    weight?: number | null
+    dimensions?: {length?: number | null; width?: number | null; height?: number | null} | null
+  } | null
+}
+
+const toPositiveNumber = (value?: unknown): number | null => {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return null
+  return num
+}
+
+const resolveProductWeight = (product?: ProductShippingSnapshot | null): number | null => {
+  if (!product) return null
+  const configWeight = toPositiveNumber(product.shippingConfig?.weight)
+  if (configWeight !== null) return configWeight
+  return toPositiveNumber(product.shippingWeight)
+}
+
+const resolveProductDimensions = (
+  product?: ProductShippingSnapshot | null,
+): {length: number; width: number; height: number} | null => {
+  if (!product) return null
+  const dims = product.shippingConfig?.dimensions
+  if (!dims) return null
+  const length = toPositiveNumber(dims.length)
+  const width = toPositiveNumber(dims.width)
+  const height = toPositiveNumber(dims.height)
+  if (length === null || width === null || height === null) return null
+  return {length, width, height}
+}
+
+const resolveCartQuantity = (value?: unknown): number => {
+  const num = Number(value)
+  if (!Number.isFinite(num) || num <= 0) return 1
+  return Math.max(1, Math.round(num))
+}
+
 async function determineCaptureStrategy(cart: any[]): Promise<'auto' | 'manual'> {
   if (!sanity || !cart.length) return 'auto'
   const ids = Array.from(
@@ -162,39 +204,144 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  const lineItems = cart
-    .map((item: any) => {
-      const quantity = Number(item?.quantity || 1)
-      if (!Number.isFinite(quantity) || quantity <= 0) return null
+  type NormalizedCartItem = {
+    name: string
+    quantity: number
+    price?: number
+    stripePriceId?: string
+    images: string[]
+    metadata: Stripe.MetadataParam
+    sanityProductId?: string
+  }
 
-      const image = typeof item?.image === 'string' && item.image.trim() ? [item.image.trim()] : []
+  const normalizedCart = cart
+    .map((item: any): NormalizedCartItem | null => {
+      if (!item || typeof item !== 'object') return null
+      const quantity = resolveCartQuantity(item.quantity)
+      const images =
+        typeof item?.image === 'string' && item.image.trim() ? [item.image.trim()] : []
       const metadata: Stripe.MetadataParam = {}
-      if (item?._id) metadata.sanity_product_id = String(item._id)
-      if (item?.productId) metadata.sanity_product_id = String(item.productId)
-      if (item?.sku) metadata.sku = String(item.sku)
+      const sanityProductId =
+        normalizeSanityId(
+          item?._id ||
+            item?.productId ||
+            item?.product?._id ||
+            item?.productRef?._ref ||
+            item?.product?._ref,
+        ) || undefined
+      if (sanityProductId) metadata.sanity_product_id = sanityProductId
+      const sku = typeof item?.sku === 'string' && item.sku.trim() ? item.sku.trim() : undefined
+      if (sku) metadata.sku = sku
+      const stripePriceId = item?.stripePriceId ? String(item.stripePriceId) : undefined
+      const price = Number(item?.price)
+      if (!stripePriceId && (!Number.isFinite(price) || price < 0)) return null
+      return {
+        name: item?.title || item?.name || 'Item',
+        quantity,
+        price: Number.isFinite(price) && price >= 0 ? price : undefined,
+        stripePriceId,
+        images,
+        metadata,
+        sanityProductId,
+      }
+    })
+    .filter(Boolean) as NormalizedCartItem[]
 
-      if (item?.stripePriceId) {
+  if (!normalizedCart.length) {
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'No valid line items in cart'}),
+    }
+  }
+
+  const productIds = Array.from(
+    new Set(
+      normalizedCart
+        .map((item) => item.sanityProductId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  )
+
+  let productMap = new Map<string, ProductShippingSnapshot>()
+  if (productIds.length && sanity) {
+    try {
+      const products = await sanity.fetch<ProductShippingSnapshot[]>(
+        `*[_type == "product" && _id in $ids]{
+          _id,
+          title,
+          shippingWeight,
+          shippingConfig{
+            weight,
+            dimensions{
+              length,
+              width,
+              height
+            }
+          }
+        }`,
+        {ids: productIds},
+      )
+      productMap = new Map((products || []).map((product) => [product._id, product]))
+    } catch (err) {
+      console.warn('createCheckoutSession: failed to load product shipping data', err)
+    }
+  }
+
+  const weightSummary = normalizedCart.reduce((total, item) => {
+    if (!item.sanityProductId) return total
+    const product = productMap.get(item.sanityProductId)
+    const weight = resolveProductWeight(product)
+    if (!weight) return total
+    return total + weight * item.quantity
+  }, 0)
+
+  type DimensionsSummary = {length: number; width: number; height: number}
+  const dimensionsSummary = normalizedCart.reduce<DimensionsSummary | null>((acc, item) => {
+    if (!item.sanityProductId) return acc
+    const product = productMap.get(item.sanityProductId)
+    const dims = resolveProductDimensions(product)
+    if (!dims) return acc
+    const next = acc || {length: 0, width: 0, height: 0}
+    next.length = Math.max(next.length, dims.length)
+    next.width = Math.max(next.width, dims.width)
+    next.height += dims.height * item.quantity
+    return next
+  }, null)
+
+  const lineItems = normalizedCart
+    .map((item) => {
+      if (item.stripePriceId) {
         return {
-          price: String(item.stripePriceId),
-          quantity,
+          price: item.stripePriceId,
+          quantity: item.quantity,
         }
       }
-
-      const price = Number(item?.price)
-      if (!Number.isFinite(price) || price < 0) return null
-
+      if (typeof item.price !== 'number') return null
+      const unitAmount = Math.round(item.price * 100)
+      if (!Number.isFinite(unitAmount) || unitAmount < 0) return null
+      const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
+      const metadata: Stripe.MetadataParam = {...item.metadata}
+      const productWeight = resolveProductWeight(product)
+      if (productWeight) metadata.weight_lbs = productWeight.toString()
+      const dims = resolveProductDimensions(product)
+      if (dims) {
+        metadata.length_in = dims.length.toString()
+        metadata.width_in = dims.width.toString()
+        metadata.height_in = dims.height.toString()
+      }
       return {
         price_data: {
           currency: 'usd',
           product_data: {
-            name: item?.title || item?.name || 'Item',
-            images: image,
+            name: product?.title || item.name || 'Item',
+            images: item.images,
             metadata: Object.keys(metadata).length ? metadata : undefined,
           },
-          unit_amount: Math.round(price * 100),
+          unit_amount: unitAmount,
           tax_behavior: 'exclusive',
         },
-        quantity,
+        quantity: item.quantity,
       }
     })
     .filter(Boolean) as Stripe.Checkout.SessionCreateParams.LineItem[]
@@ -238,6 +385,14 @@ export const handler: Handler = async (event) => {
   pushMeta('carrier', shippingRate.carrier)
   pushMeta('service', shippingRate.service)
   pushMeta('shipping_amount', (Number(shippingRate.amount || 0) || 0).toFixed(2))
+  if (weightSummary > 0) {
+    pushMeta('total_weight_lbs', Number(weightSummary.toFixed(2)))
+  }
+  if (dimensionsSummary) {
+    pushMeta('package_length_in', Number(dimensionsSummary.length.toFixed(2)))
+    pushMeta('package_width_in', Number(dimensionsSummary.width.toFixed(2)))
+    pushMeta('package_height_in', Number(dimensionsSummary.height.toFixed(2)))
+  }
 
   const shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] = [
     {
@@ -256,6 +411,16 @@ export const handler: Handler = async (event) => {
     shipping_carrier: shippingRate.carrier || '',
     shipping_service: shippingRate.service || '',
     shipping_amount: (Number(shippingRate.amount || 0) || 0).toFixed(2),
+  }
+  if (weightSummary > 0) {
+    const roundedWeight = Number(weightSummary.toFixed(2)).toString()
+    sessionMetadata.shipping_total_weight_lbs = roundedWeight
+    sessionMetadata.shipping_chargeable_lbs = roundedWeight
+  }
+  if (dimensionsSummary) {
+    sessionMetadata.shipping_package_length_in = Number(dimensionsSummary.length.toFixed(2)).toString()
+    sessionMetadata.shipping_package_width_in = Number(dimensionsSummary.width.toFixed(2)).toString()
+    sessionMetadata.shipping_package_height_in = Number(dimensionsSummary.height.toFixed(2)).toString()
   }
 
   try {

@@ -39,12 +39,14 @@
     "sync:ads-performance": "tsx scripts/sync-google-ads-performance.ts",
     "sync:resend": "tsx scripts/sync-resend-contacts.ts",
     "seed:email-channel": "tsx scripts/ensure-email-marketing-channel.ts",
-    "migrate:email-marketing": "tsx scripts/backfill-email-marketing.ts"
+    "migrate:email-marketing": "tsx scripts/backfill-email-marketing.ts",
+    "mcp:sanity": "pnpm exec sanity-mcp-server"
   },
   "keywords": [
     "sanity"
   ],
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.676.0",
     "@easypost/api": "^8.2.0",
     "@netlify/functions": "^3.0.4",
     "@portabletext/react": "^4.0.3",
@@ -54,7 +56,6 @@
     "@sanity/assist": "^5.0.0",
     "@sanity/cli": "^4.20.3",
     "@sanity/client": "^7.12.0",
-    "@aws-sdk/client-secrets-manager": "^3.676.0",
     "@sanity/code-input": "latest",
     "@sanity/color": "latest",
     "@sanity/color-input": "^4.0.6",
@@ -108,6 +109,7 @@
     "@netlify/plugin-secrets-manager": "^1.1.1",
     "@portabletext/types": "^2.0.2",
     "@sanity/eslint-config-studio": "^5.0.2",
+    "@sanity/mcp-server": "^0.12.1",
     "@tailwindcss/vite": "^4.1.16",
     "@types/jspdf": "^1.3.3",
     "@types/multiparty": "^4.2.1",
