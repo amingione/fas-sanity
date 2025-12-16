@@ -1,5 +1,5 @@
 import {Resend} from 'resend'
-import {resolveResendApiKey} from '../../shared/resendEnv'
+import {resolveResendApiKey} from '../../../shared/resendEnv'
 
 type ContactAction = 'created' | 'updated' | 'removed' | 'skipped' | 'failed'
 
