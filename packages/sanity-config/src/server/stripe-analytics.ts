@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
 
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2025-08-27.basil'
+const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2024-06-20'
 const DAY_SECONDS = 60 * 60 * 24
 const DAY_BUCKETS = 30
 const DEFAULT_CHARGE_SCAN_LIMIT = getNumericEnv(

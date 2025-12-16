@@ -36,7 +36,10 @@ function getHeader(headers: Record<string, any> | undefined, key: string): strin
 }
 
 function verifySignature(rawBody: Buffer, headers: Record<string, any> | undefined): boolean {
-  if (!WEBHOOK_SECRET) return true
+  if (!WEBHOOK_SECRET) {
+    console.error('easypostWebhook missing EASYPOST_WEBHOOK_SECRET; signature check disabled')
+    return false
+  }
   const headerSignature =
     getHeader(headers, 'x-hmac-signature') ||
     getHeader(headers, 'x-easypost-signature') ||
@@ -934,6 +937,19 @@ export const handler: Handler = async (event) => {
 
     if (SHIPPING_PROVIDER === 'parcelcraft') {
       console.warn('easypostWebhook: SHIPPING_PROVIDER=parcelcraft (legacy) — proceed as EasyPost')
+    }
+
+    if (!WEBHOOK_SECRET) {
+      console.error('easypostWebhook missing EASYPOST_WEBHOOK_SECRET; reject webhook')
+      return await finalize(
+        {
+          statusCode: 500,
+          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'Webhook secret not configured'}),
+        },
+        'error',
+        {reason: 'missing webhook secret'},
+      )
     }
 
     const incomingBody = event.body || ''
