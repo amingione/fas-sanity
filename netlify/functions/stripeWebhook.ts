@@ -52,6 +52,7 @@ import {
   markAbandonedCheckoutRecovered,
 } from '../lib/abandonedCheckouts'
 import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 function cleanCartItemForStorage(item: CartItem): CartItem {
   const normalizeAddOnLabel = (value: string): string | undefined => {
@@ -2356,7 +2357,7 @@ if (!stripeKey) {
   )
 }
 const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
-const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
+const RESEND_API_KEY = resolveResendApiKey() || ''
 const resendClient = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 const RESEND_ABANDONED_AUDIENCE =
   process.env.RESEND_AUDIENCE_ABANDONED_CART || process.env.RESEND_AUDIENCE_ABANDONED_CART_ID || ''
