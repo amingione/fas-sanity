@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
-import {resolveResendApiKey} from '../../../shared/resendEnv'
+import {resolveResendApiKey} from '../../../../shared/resendEnv'
 
 export type EmailProvider = 'sendgrid' | 'mailgun' | 'ses' | 'postmark' | 'resend'
 
