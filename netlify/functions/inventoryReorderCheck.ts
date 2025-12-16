@@ -6,14 +6,6 @@ import {generateReferenceCode} from '../../shared/referenceCodes'
 import {applyInventoryChanges} from '../../shared/inventory'
 import {INVENTORY_DOCUMENT_TYPE} from '../../shared/docTypes'
 
-const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_STUDIO_DATASET!,
-  apiVersion: '2024-10-01',
-  token: process.env.SANITY_API_TOKEN!,
-  useCdn: false,
-})
-
 const resendApiKey = resolveResendApiKey()
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
 const alertRecipient =
@@ -22,6 +14,29 @@ const alertRecipient =
   process.env.SHIP_FROM_EMAIL ||
   ''
 const alertSender = process.env.RESEND_FROM || 'Inventory Alerts <alerts@fasmotorsports.com>'
+
+function getSanityClient() {
+  const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
+  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+  const token = process.env.SANITY_API_TOKEN
+
+  if (!projectId || !dataset || !token) {
+    console.error('inventoryReorderCheck missing Sanity environment configuration', {
+      projectId: Boolean(projectId),
+      dataset: Boolean(dataset),
+      hasToken: Boolean(token),
+    })
+    return null
+  }
+
+  return createClient({
+    projectId,
+    dataset,
+    apiVersion: '2024-10-01',
+    token,
+    useCdn: false,
+  })
+}
 
 type InventoryDoc = {
   _id: string
@@ -37,6 +52,14 @@ type InventoryDoc = {
 }
 
 const handler = schedule('0 9 * * *', async () => {
+  const sanity = getSanityClient()
+  if (!sanity) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({error: 'Sanity not configured for inventory check'}),
+    }
+  }
+
   const inventory = await sanity.fetch<InventoryDoc[]>(
     `*[_type == "${INVENTORY_DOCUMENT_TYPE}"]{
       _id,

@@ -16,7 +16,9 @@ const sanityToken =
   process.env.SANITY_ACCESS_TOKEN ||
   ''
 
-const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: '2025-08-27.basil'}) : null
+const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2024-06-20'
+
+const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
 
 const sanity =
   sanityProjectId && sanityDataset && sanityToken
