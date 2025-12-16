@@ -65,9 +65,13 @@ if (disableShim) {
       return
     }
 
-    const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION
+    const region =
+      process.env.AWS_REGION ||
+      process.env.AWS_DEFAULT_REGION ||
+      process.env.NETLIFY_AWS_DEFAULT_REGION
+
     if (!region) {
-      warn('AWS_REGION not set; cannot fetch secrets from AWS')
+      warn('AWS region not set; cannot fetch secrets from AWS')
       return
     }
 
@@ -80,7 +84,18 @@ if (disableShim) {
     }
 
     const {SecretsManagerClient, GetSecretValueCommand} = awsSdk
-    const client = new SecretsManagerClient({region})
+
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID || process.env.NETLIFY_AWS_ACCESS_KEY_ID
+    const secretAccessKey =
+      process.env.AWS_SECRET_ACCESS_KEY || process.env.NETLIFY_AWS_SECRET_ACCESS_KEY
+    const sessionToken = process.env.AWS_SESSION_TOKEN
+
+    const credentials =
+      accessKeyId && secretAccessKey
+        ? {accessKeyId, secretAccessKey, sessionToken: sessionToken || undefined}
+        : undefined
+
+    const client = new SecretsManagerClient({region, credentials})
     const loaded = []
 
     for (const secretId of secretIds) {

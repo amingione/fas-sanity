@@ -40,6 +40,7 @@
     "sync:resend": "tsx scripts/sync-resend-contacts.ts",
     "seed:email-channel": "tsx scripts/ensure-email-marketing-channel.ts",
     "migrate:email-marketing": "tsx scripts/backfill-email-marketing.ts",
+    "repair:references": "tsx scripts/repair-references.ts",
     "mcp:sanity": "pnpm exec sanity-mcp-server"
   },
   "keywords": [
