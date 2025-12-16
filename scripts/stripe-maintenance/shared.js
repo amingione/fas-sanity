@@ -2,7 +2,7 @@ const Stripe = require('stripe')
 const {createClient} = require('@sanity/client')
 
 const DEFAULT_SANITY_API_VERSION = '2024-10-01'
-const DEFAULT_STRIPE_API_VERSION = '2025-08-27.basil'
+const DEFAULT_STRIPE_API_VERSION = '2024-06-20'
 
 function requireEnv(name) {
   const value = process.env[name]
