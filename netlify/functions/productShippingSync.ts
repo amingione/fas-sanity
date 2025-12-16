@@ -23,7 +23,7 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const stripe = new Stripe(stripeSecret, {apiVersion: '2025-08-27.basil'})
+const stripe = new Stripe(stripeSecret, {apiVersion: '2024-06-20'})
 
 const verifySignature = (body: string, signature?: string): boolean => {
   if (!webhookSecret) return true
