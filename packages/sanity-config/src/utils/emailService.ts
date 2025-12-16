@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../../shared/resendEnv'
 
 export type EmailProvider = 'sendgrid' | 'mailgun' | 'ses' | 'postmark' | 'resend'
 
@@ -37,7 +38,8 @@ type EmailEventUpdate = {
 
 const SUPPORTED_PROVIDERS: EmailProvider[] = ['sendgrid', 'mailgun', 'ses', 'postmark', 'resend']
 const providerEnv = (process.env.EMAIL_PROVIDER || '').toLowerCase()
-const hasResendKey = Boolean(process.env.RESEND_API_KEY)
+const RESEND_API_KEY = resolveResendApiKey()
+const hasResendKey = Boolean(RESEND_API_KEY)
 const EMAIL_PROVIDER: EmailProvider =
   (SUPPORTED_PROVIDERS.includes(providerEnv as EmailProvider)
     ? (providerEnv as EmailProvider)
@@ -48,7 +50,7 @@ const DEFAULT_FROM =
 const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
 const SANITY_DATASET = process.env.SANITY_STUDIO_DATASET
 const SANITY_TOKEN = process.env.SANITY_API_TOKEN
-const RESEND_CLIENT = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const RESEND_CLIENT = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
 const emailLogClient =
   SANITY_PROJECT_ID && SANITY_DATASET && SANITY_TOKEN

@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {triggerOnboardingCampaign} from '../lib/vendorOnboardingCampaign'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -20,7 +21,7 @@ const TOKEN =
   process.env.SANITY_ACCESS_TOKEN ||
   ''
 
-const resendApiKey = process.env.RESEND_API_KEY || ''
+const resendApiKey = resolveResendApiKey() || ''
 const resendFrom =
   process.env.RESEND_FROM ||
   process.env.EMAIL_FROM ||

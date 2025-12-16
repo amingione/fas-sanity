@@ -112,6 +112,10 @@ const documentTablePane = (S: any, id: string, title: string, component: Compone
         .id(`${id}-table`),
     ])
 
+// Wrapper to ensure the campaign performance view always receives a valid component function
+const EmailCampaignPerformanceView: ComponentType = (props: any) =>
+  React.createElement(CampaignPerformance as any, props)
+
 const CustomersAllTableView: ComponentType = () =>
   React.createElement(CustomersDocumentTable as any, {
     title: 'All Customers',
@@ -1232,9 +1236,7 @@ const createMarketingSection = (S: any) =>
                             .documentId(documentId)
                             .views([
                               S.view.form().title('Editor'),
-                              S.view
-                                .component(CampaignPerformance as ComponentType)
-                                .title('Performance'),
+                              S.view.component(EmailCampaignPerformanceView).title('Performance'),
                             ]),
                         ),
                     ),

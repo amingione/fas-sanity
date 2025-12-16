@@ -1,6 +1,7 @@
 import {schedule} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 import {generateReferenceCode} from '../../shared/referenceCodes'
 import {applyInventoryChanges} from '../../shared/inventory'
 import {INVENTORY_DOCUMENT_TYPE} from '../../shared/docTypes'
@@ -13,7 +14,8 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const resendClient = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const resendApiKey = resolveResendApiKey()
+const resendClient = resendApiKey ? new Resend(resendApiKey) : null
 const alertRecipient =
   process.env.INVENTORY_ALERT_EMAIL ||
   process.env.ORDERS_ALERT_EMAIL ||
