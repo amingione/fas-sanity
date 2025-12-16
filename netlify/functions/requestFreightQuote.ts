@@ -2,6 +2,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 import {randomUUID} from 'crypto'
 
 const DEFAULT_ORIGINS = (
@@ -28,7 +29,8 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const resendApiKey = resolveResendApiKey()
+const resend = resendApiKey ? new Resend(resendApiKey) : null
 
 function parseDims(
   s?: string,

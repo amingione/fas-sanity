@@ -1,9 +1,10 @@
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 import {createClient} from '@sanity/client'
 import type {Handler} from '@netlify/functions'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(resolveResendApiKey()!)
 
 // Prefer the single write token you set up; no fallback to PUBLIC_*
 const sanity = createClient({

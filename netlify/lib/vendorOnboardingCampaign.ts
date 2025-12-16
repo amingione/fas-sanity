@@ -1,5 +1,6 @@
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
 const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
@@ -9,7 +10,7 @@ const token =
   process.env.SANITY_ACCESS_TOKEN ||
   ''
 const apiVersion = process.env.SANITY_API_VERSION || '2024-10-01'
-const resendApiKey = process.env.RESEND_API_KEY || ''
+const resendApiKey = resolveResendApiKey() || ''
 const SITE_URL =
   process.env.SANITY_STUDIO_SITE_URL ||
   process.env.PUBLIC_SITE_URL ||

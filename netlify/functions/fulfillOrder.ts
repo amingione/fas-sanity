@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {randomUUID} from 'crypto'
 import {Resend} from 'resend'
 import {buildTrackingEmailHtml} from '../../shared/email/trackingEmail'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 import {sanityClient} from '../lib/sanityClient'
 import {getEasyPostClient, resolveDimensions, resolveWeight} from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
@@ -51,7 +52,7 @@ const buildCorsHeaders = (origin?: string) => ({
   'Access-Control-Allow-Methods': 'OPTIONS,POST',
 })
 
-const resendApiKey = process.env.RESEND_API_KEY || ''
+const resendApiKey = resolveResendApiKey() || ''
 const resendFrom =
   process.env.RESEND_FROM || 'F.A.S. Motorsports <noreply@updates.fasmotorsports.com>'
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null

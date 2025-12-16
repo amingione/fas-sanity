@@ -12,6 +12,7 @@ import {
 import {canonicalizeTrackingNumber, validateTrackingNumber} from '../../shared/tracking'
 import {consumeInventoryForItems} from '../../shared/inventory'
 import {logFunctionExecution} from '../../utils/functionLogger'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -55,7 +56,8 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const resendApiKey = resolveResendApiKey()
+const resend = resendApiKey ? new Resend(resendApiKey) : null
 const resendFrom = process.env.RESEND_FROM || 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
 
 const netlifyContext = (process.env.CONTEXT || '').toLowerCase()

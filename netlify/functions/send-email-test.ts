@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
 
 const sanity = createClient({
@@ -14,7 +15,7 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const resendApiKey = process.env.RESEND_API_KEY
+const resendApiKey = resolveResendApiKey()
 const resend = resendApiKey ? new Resend(resendApiKey) : null
 
 const handler: Handler = async (event) => {

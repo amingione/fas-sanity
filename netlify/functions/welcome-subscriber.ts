@@ -3,6 +3,7 @@ import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {syncContact} from '../lib/resend/contacts'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -12,7 +13,7 @@ const sanityClient = createClient({
   useCdn: false,
 })
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
+const resend = new Resend(resolveResendApiKey()!)
 
 export const handler: Handler = async (event) => {
   const headers = {

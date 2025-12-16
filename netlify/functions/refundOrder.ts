@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import {Resend} from 'resend'
 import {sanityClient} from '../lib/sanityClient'
 import {easypostRequest} from '../lib/easypostClient'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 type OrderDoc = {
   _id: string
@@ -22,7 +23,7 @@ const stripe = stripeSecretKey
     })
   : null
 
-const resendApiKey = process.env.RESEND_API_KEY || ''
+const resendApiKey = resolveResendApiKey() || ''
 const resendFrom =
   process.env.RESEND_FROM || 'F.A.S. Motorsports <noreply@updates.fasmotorsports.com>'
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
