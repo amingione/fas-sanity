@@ -1,7 +1,7 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
-import {requireSanityCredentials} from '../sanityEnv'
+import {requireSanityCredentials} from '../lib/sanityEnv'
 
 const {projectId, dataset, token} = requireSanityCredentials()
 
