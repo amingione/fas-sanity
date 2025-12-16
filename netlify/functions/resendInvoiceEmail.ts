@@ -5,6 +5,7 @@ import imageUrlBuilder from '@sanity/image-url'
 import Stripe from 'stripe'
 import {renderInvoicePdf, computeInvoiceTotals} from '../lib/invoicePdf'
 import {fetchPrintSettings} from '../lib/printSettings'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 // --- CORS (more permissive localhost-aware)
 const DEFAULT_ORIGINS = (
@@ -28,7 +29,7 @@ function makeCORS(origin?: string) {
   }
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(resolveResendApiKey()!)
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY as string)
   : (null as any)

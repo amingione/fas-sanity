@@ -4,6 +4,7 @@ import {render} from '@react-email/render'
 import {Resend} from 'resend'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import AbandonedCartEmail, {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 type CheckoutSessionDoc = {
   _id: string
@@ -38,7 +39,7 @@ const sanity =
       })
     : null
 
-const resendApiKey = process.env.RESEND_API_KEY || ''
+const resendApiKey = resolveResendApiKey() || ''
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
 const FROM_EMAIL =
   process.env.FROM_EMAIL ||

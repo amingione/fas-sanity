@@ -1,4 +1,5 @@
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 type ContactAction = 'created' | 'updated' | 'removed' | 'skipped' | 'failed'
 
@@ -20,7 +21,7 @@ export interface SyncContactResult {
   subscribers: ContactAudienceResult
 }
 
-const resendApiKey = process.env.RESEND_API_KEY
+const resendApiKey = resolveResendApiKey()
 const resend = resendApiKey ? new Resend(resendApiKey) : null
 
 const AUDIENCE_GENERAL =

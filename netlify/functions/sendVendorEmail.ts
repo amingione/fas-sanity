@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 import {buildVendorEmail, type VendorEmailTemplateInput} from '../lib/emailTemplates/vendorEmails'
 
 const corsHeaders = {
@@ -8,7 +9,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const resendApiKey = process.env.RESEND_API_KEY
+const resendApiKey = resolveResendApiKey()
 const resend = resendApiKey ? new Resend(resendApiKey) : null
 
 const handler: Handler = async (event) => {

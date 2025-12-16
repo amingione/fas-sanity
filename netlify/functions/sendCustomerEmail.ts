@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {Resend} from 'resend'
+import {resolveResendApiKey} from '../../shared/resendEnv'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const resendApiKey = process.env.RESEND_API_KEY
+const resendApiKey = resolveResendApiKey()
 const fromAddress =
   process.env.RESEND_FROM || 'F.A.S. Motorsports <noreply@updates.fasmotorsports.com>'
 const resend = resendApiKey ? new Resend(resendApiKey) : null
