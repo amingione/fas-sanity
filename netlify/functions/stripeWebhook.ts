@@ -7481,7 +7481,6 @@ export const handler: Handler = async (event) => {
                 phone: ch?.billing_details?.phone || undefined,
               },
             ) || undefined
-          let amountShipping: number | undefined = undefined
           const rawPaymentStatus = (pi.status || '').toLowerCase()
           let paymentStatus = rawPaymentStatus || 'pending'
           if (['succeeded', 'paid'].includes(rawPaymentStatus)) paymentStatus = 'paid'

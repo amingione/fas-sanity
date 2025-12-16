@@ -21,7 +21,8 @@ package = "@netlify/plugin-secrets-manager"
   # Ensure certain deps are not bundled and are resolved from node_modules
   node_bundler = "esbuild"
   included_files = ["scripts/aws-secrets-shim.cjs"]
-  external_node_modules = ["get-stream"]
+  # Keep AWS SDK available at runtime for the secrets shim (not referenced by functions code directly)
+  external_node_modules = ["get-stream", "@aws-sdk/client-secrets-manager"]
 
 [functions.environment]
   NODE_OPTIONS = "--require ./scripts/aws-secrets-shim.cjs"
