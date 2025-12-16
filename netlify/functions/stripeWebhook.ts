@@ -53,6 +53,12 @@ import {
 } from '../lib/abandonedCheckouts'
 import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {
+  linkCheckoutSessionToCustomer,
+  linkInvoiceToCustomer,
+  linkOrderToCustomer,
+  linkOrderToInvoice,
+} from '../lib/referenceIntegrity'
 
 function cleanCartItemForStorage(item: CartItem): CartItem {
   const normalizeAddOnLabel = (value: string): string | undefined => {
@@ -2261,6 +2267,7 @@ async function upsertCheckoutSessionDocument(
     amountTotal?: number
     currency?: string
     customerName?: string
+    customerId?: string | null
     checkoutUrl?: string | null
     attribution?: AttributionParams | null
   },
@@ -2293,6 +2300,7 @@ async function upsertCheckoutSessionDocument(
     customerEmail: email,
     customerName: opts.customerName || undefined,
     customerPhone: session.customer_details?.phone || undefined,
+    customerRef: opts.customerId ? {_type: 'reference', _ref: opts.customerId} : undefined,
     cart: cartForDoc.length ? cartForDoc : undefined,
     amountSubtotal: opts.amountSubtotal,
     amountTax: opts.amountTax,
@@ -2884,12 +2892,13 @@ async function strictCreateInvoice(
     invoiceDate: order.createdAt,
     dueDate: order.createdAt,
     paymentTerms: 'Paid in full',
-    customerRef: customer
-      ? {
-          _type: 'reference',
-          _ref: customer._id,
-        }
-      : undefined,
+    customerRef:
+      customer?._id || order?.customerRef?._ref
+        ? {
+            _type: 'reference',
+            _ref: customer?._id || order?.customerRef?._ref,
+          }
+        : undefined,
     orderRef: {
       _type: 'reference',
       _ref: order._id,
@@ -3400,6 +3409,9 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       sessionId: session.id,
       issues: validationIssues,
     })
+    if (validationIssues.includes('Cart is empty')) {
+      throw new Error('stripeWebhook: cannot create order without cart items')
+    }
   }
 
   const order = existingOrder
@@ -3410,7 +3422,13 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         .commit({autoGenerateArrayKeys: true})
     : await webhookSanityClient.create(baseOrderPayload, {autoGenerateArrayKeys: true})
 
+  const orderCustomerId = (order as any)?.customerRef?._ref || customer?._id || null
+  if (order?._id && orderCustomerId) {
+    await linkOrderToCustomer(webhookSanityClient, order._id, orderCustomerId)
+  }
+
   const needsInvoice = order?._id && !(order as any)?.invoiceRef?._ref
+  let linkedInvoiceId: string | null = null
   if (needsInvoice) {
     try {
       const invoice = await strictCreateInvoice(order, customer, {
@@ -3420,17 +3438,46 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
         amountSubtotal,
         totalAmount,
       })
-      await webhookSanityClient
-        .patch(order._id)
-        .set({
-          invoiceRef: {
-            _type: 'reference',
-            _ref: invoice._id,
-          },
-        })
-        .commit()
+      linkedInvoiceId = invoice._id
+      await linkOrderToInvoice(webhookSanityClient, order._id, invoice._id)
+      if (orderCustomerId) {
+        await linkInvoiceToCustomer(webhookSanityClient, invoice._id, orderCustomerId)
+      }
     } catch (err) {
       console.warn('stripeWebhook: failed to create/link invoice for checkout order', err)
+    }
+  } else if (order?._id && !(order as any)?.invoiceRef?._ref) {
+    try {
+      linkedInvoiceId =
+        (await webhookSanityClient.fetch<string | null>(
+          `*[_type == "invoice" && orderNumber == $orderNumber][0]._id`,
+          {orderNumber},
+        )) || null
+      if (linkedInvoiceId) {
+        await linkOrderToInvoice(webhookSanityClient, order._id, linkedInvoiceId)
+        if (orderCustomerId) {
+          await linkInvoiceToCustomer(webhookSanityClient, linkedInvoiceId, orderCustomerId)
+        }
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: failed to backfill invoice linkage for checkout order', err)
+    }
+  }
+
+  const existingInvoiceRef =
+    linkedInvoiceId || ((order as any)?.invoiceRef?._ref as string | undefined) || null
+  if (existingInvoiceRef && orderCustomerId) {
+    try {
+      await linkInvoiceToCustomer(webhookSanityClient, existingInvoiceRef, orderCustomerId)
+    } catch (err) {
+      console.warn('stripeWebhook: failed to ensure invoice -> customer linkage', err)
+    }
+  }
+  if (existingInvoiceRef && order?._id) {
+    try {
+      await linkOrderToInvoice(webhookSanityClient, order._id, existingInvoiceRef)
+    } catch (err) {
+      console.warn('stripeWebhook: failed to ensure order <-> invoice linkage', err)
     }
   }
 
@@ -3439,7 +3486,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       await updateCustomerProfileForOrder({
         sanity: webhookSanityClient,
         orderId: order._id,
-        customerId: (order as any)?.customerRef?._ref || customer?._id || undefined,
+        customerId: orderCustomerId || undefined,
         email: order.customerEmail,
         shippingAddress: (baseOrderPayload as any)?.shippingAddress,
         billingAddress,
@@ -6330,6 +6377,7 @@ async function handleCheckoutExpired(
   }
 
   try {
+    const expiredCustomer = await strictFindOrCreateCustomer(session)
     await upsertCheckoutSessionDocument(session, {
       cart: cartItems,
       metadata,
@@ -6342,6 +6390,7 @@ async function handleCheckoutExpired(
       amountTotal,
       currency: currencyUpper || currencyLower,
       customerName,
+      customerId: expiredCustomer?._id || undefined,
       checkoutUrl: checkoutRecoveryUrl,
       attribution,
     })
