@@ -2075,6 +2075,16 @@ function validateOrderData(order: any): string[] {
     }
   }
 
+  const paidStatuses = new Set(['paid', 'fulfilled', 'shipped', 'completed'])
+  if (paidStatuses.has((order?.status || '').toString().toLowerCase())) {
+    if (!(order?.customerRef?._ref || order?.customer?._ref)) {
+      issues.push('Missing customer reference')
+    }
+    if (!order?.invoiceRef?._ref) {
+      issues.push('Missing invoice reference')
+    }
+  }
+
   return issues
 }
 
@@ -6208,6 +6218,56 @@ export async function handleCheckoutAsyncPaymentFailed(
   })
 }
 
+async function handleCheckoutCreated(session: Stripe.Checkout.Session): Promise<void> {
+  const metadata = (session.metadata || {}) as Record<string, string>
+  let cartItems: CartItem[] = []
+
+  try {
+    const result = await buildCartFromSessionLineItems(session.id, metadata)
+    cartItems = result.items
+  } catch (err) {
+    console.warn('stripeWebhook: failed to load cart for created session', err)
+    cartItems = cartItemsFromMetadata(metadata)
+  }
+
+  const createdAt = unixToIso(session.created) || new Date().toISOString()
+  const expiresAt = unixToIso(session.expires_at) || undefined
+  const amountSubtotal = toMajorUnits((session as any)?.amount_subtotal ?? undefined)
+  const amountTax = toMajorUnits((session as any)?.total_details?.amount_tax ?? undefined)
+  const shippingCost = toMajorUnits(
+    (session as any)?.shipping_cost?.amount_total ??
+      (session as any)?.total_details?.amount_shipping ??
+      undefined,
+  )
+  const amountTotal = toMajorUnits(session.amount_total ?? undefined)
+  const currencyLower = (session.currency || '').toString().toLowerCase() || undefined
+  const currencyUpper = currencyLower ? currencyLower.toUpperCase() : undefined
+  const attribution = extractAttributionFromMetadata(
+    metadata,
+    session?.id ? {session_id: session.id} : undefined,
+  )
+  const customer = await strictFindOrCreateCustomer(session)
+  const docId = await upsertCheckoutSessionDocument(session, {
+    cart: cartItems,
+    metadata,
+    createdAt,
+    expiresAt,
+    amountSubtotal,
+    amountTax,
+    amountShipping: shippingCost,
+    amountTotal,
+    currency: currencyUpper || currencyLower,
+    customerName: session.customer_details?.name || session.customer_email || undefined,
+    customerId: customer?._id || undefined,
+    checkoutUrl: (session as any)?.url || undefined,
+    attribution,
+  })
+
+  if (docId && customer?._id) {
+    await linkCheckoutSessionToCustomer(webhookSanityClient, docId, customer._id)
+  }
+}
+
 async function handleCheckoutExpired(
   session: Stripe.Checkout.Session,
   context: {stripeEventId?: string; eventCreated?: number | null} = {},
@@ -7339,6 +7399,16 @@ export const handler: Handler = async (event) => {
         break
       }
 
+      case 'checkout.session.created': {
+        const session = webhookEvent.data.object as Stripe.Checkout.Session
+        try {
+          await handleCheckoutCreated(session)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to handle checkout.session.created', err)
+        }
+        break
+      }
+
       case 'checkout.session.completed': {
         const session = webhookEvent.data.object as Stripe.Checkout.Session
         try {
@@ -7522,6 +7592,41 @@ export const handler: Handler = async (event) => {
             }
           }
 
+          const amountShipping =
+            typeof shippingDetails.amount === 'number'
+              ? toCurrencyNumber(shippingDetails.amount)
+              : undefined
+          const amountTax =
+            toCurrencyNumber(
+              toMajorUnits(
+                ((pi as any)?.amount_details as any)?.tax ??
+                  (ch as any)?.amount_tax ??
+                  undefined,
+              ),
+            ) ?? undefined
+          const cartSubtotal = cart.reduce((sum, item) => {
+            const value = Number((item as any)?.total ?? (item as any)?.lineTotal ?? 0)
+            return Number.isFinite(value) ? sum + value : sum
+          }, 0)
+          const amountSubtotal =
+            toCurrencyNumber(cartSubtotal) ??
+            toCurrencyNumber(
+              (Number.isFinite(totalAmount)
+                ? (totalAmount as number) - (amountShipping || 0) - (amountTax || 0)
+                : undefined) as number | undefined,
+            ) ??
+            (Number.isFinite(totalAmount) ? (totalAmount as number) : undefined)
+          const amountDiscount =
+            amountSubtotal !== undefined && Number.isFinite(totalAmount)
+              ? toCurrencyNumber(
+                  Math.max(
+                    0,
+                    (amountSubtotal || 0) -
+                      ((totalAmount as number) - (amountShipping || 0) - (amountTax || 0)),
+                  ),
+                )
+              : undefined
+
           const existingOrderId =
             (await findOrderDocumentIdForEvent({
               metadata: meta,
@@ -7581,7 +7686,11 @@ export const handler: Handler = async (event) => {
             orderType: determineOrderType(meta),
             customerName,
             customerEmail: email || undefined,
-            totalAmount: Number.isFinite(totalAmount) ? totalAmount : undefined,
+            ...(Number.isFinite(totalAmount) ? {totalAmount} : {}),
+            ...(amountSubtotal !== undefined ? {amountSubtotal} : {}),
+            ...(amountTax !== undefined ? {amountTax} : {}),
+            ...(amountShipping !== undefined ? {amountShipping} : {}),
+            ...(amountDiscount !== undefined ? {amountDiscount} : {}),
             status: existingOrder?.status && isFulfillmentCompleteStatus(existingOrder.status)
               ? existingOrder.status
               : derivedOrderStatus,
@@ -7718,9 +7827,10 @@ export const handler: Handler = async (event) => {
             await autoReserveInventoryForOrder(orderId, cart, normalizedOrderNumber)
           }
 
+          let customerDocIdForPatch =
+            ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
+
           if (orderId) {
-            let customerDocIdForPatch =
-              ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
             try {
               const updatedCustomerId = await updateCustomerProfileForOrder({
                 sanity,
@@ -7743,6 +7853,55 @@ export const handler: Handler = async (event) => {
               stripeCustomerId: stripeCustomerIdValue,
               billingAddress,
             })
+          }
+
+          if (orderId) {
+            try {
+              if (customerDocIdForPatch) {
+                await linkOrderToCustomer(webhookSanityClient, orderId, customerDocIdForPatch)
+              }
+
+              if (!invoiceDocId) {
+                try {
+                  const invoice = await strictCreateInvoice(
+                    {
+                      ...baseDoc,
+                      _id: orderId,
+                      orderNumber: normalizedOrderNumber,
+                      cart,
+                      amountSubtotal,
+                      amountTax,
+                      amountShipping,
+                      amountDiscount,
+                      totalAmount: Number.isFinite(totalAmount) ? totalAmount : amountSubtotal,
+                    },
+                    customerDocIdForPatch ? {_id: customerDocIdForPatch} : null,
+                    {
+                      cartProducts,
+                      amountSubtotal: amountSubtotal ?? undefined,
+                      amountDiscount: amountDiscount ?? undefined,
+                      totalAmount: Number.isFinite(totalAmount) ? totalAmount : amountSubtotal,
+                    },
+                  )
+                  invoiceDocId = invoice._id
+                } catch (err) {
+                  console.warn('stripeWebhook: failed to create invoice for payment intent order', err)
+                }
+              }
+
+              if (invoiceDocId) {
+                await linkOrderToInvoice(webhookSanityClient, orderId, invoiceDocId)
+                if (customerDocIdForPatch) {
+                  await linkInvoiceToCustomer(
+                    webhookSanityClient,
+                    invoiceDocId,
+                    customerDocIdForPatch,
+                  )
+                }
+              }
+            } catch (err) {
+              console.warn('stripeWebhook: failed to ensure order references after payment intent', err)
+            }
           }
 
           if (shouldSendConfirmation && orderId) {
