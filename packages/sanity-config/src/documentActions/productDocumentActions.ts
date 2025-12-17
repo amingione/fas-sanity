@@ -7,6 +7,7 @@ import {ensureProductCodes} from '../utils/generateProductCodes'
 import {ensureShippingConfig} from '../utils/ensureShippingConfig'
 import {ensureSalePricing} from '../utils/ensureSalePricing'
 import {getNetlifyFunctionBaseCandidates} from '../utils/netlifyBase'
+import {ensureProductMetaAndStatus} from '../utils/ensureProductMeta'
 
 const API_VERSION = '2024-10-01'
 const TAG_ACTIONS_FLAG = Symbol.for('fas.productTagsApplied')
@@ -117,9 +118,12 @@ async function ensureCodesBeforePublish(
     await ensureProductCodes(targetId, client, {
       log: (...args: unknown[]) => console.log('[product-codes]', ...args),
     })
+    await ensureProductMetaAndStatus(targetId, client, {
+      log: (...args: unknown[]) => console.log('[product-meta]', ...args),
+    })
   } catch (error) {
     console.warn(
-      'Failed to auto-generate SKU/MPN, shipping config, or sale pricing before publish',
+      'Failed to auto-generate SKU/MPN, shipping config, sale pricing, or meta before publish',
       error,
     )
   }
