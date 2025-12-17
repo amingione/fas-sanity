@@ -133,12 +133,12 @@ type ProductForMeta = {
   slug?: {current?: string}
   shortDescription?: PortableTextBlock[] | string
   description?: PortableTextBlock[] | string
-  images?: Array<{asset?: {\_ref?: string}; alt?: unknown}>
+  images?: Array<{asset?: {_ref?: string}; alt?: unknown}>
   metaTitle?: string
   metaDescription?: string
   focusKeyword?: string
   canonicalUrl?: string
-  socialImage?: {asset?: {\_ref?: string}}
+  socialImage?: {asset?: {_ref?: string}}
   analytics?: Record<string, unknown>
   merchantCenterStatus?: Record<string, unknown>
   gtin?: string
