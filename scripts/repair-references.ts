@@ -114,7 +114,7 @@ async function findOrCreateCustomer(
 
 async function repairOrdersWithoutInvoices(sanity: SanityClient) {
   const orders = await sanity.fetch<OrderDoc[]>(
-    `*[_type == "order" && status in ["paid","fulfilled","shipped","completed"] && !defined(invoiceRef)]{
+    `*[_type == "order" && status in ["paid","fulfilled","shipped","completed","delivered"] && !defined(invoiceRef)]{
       _id, orderNumber, status, customerRef, customerEmail, stripeSummary
     }`,
   )
@@ -261,6 +261,76 @@ async function repairInvoicesWithoutOrders(sanity: SanityClient) {
   console.log(`Invoices without orders processed: ${linked}/${invoices.length}`)
 }
 
+async function repairInvoicesMissingOrderRefsFromOrders(sanity: SanityClient) {
+  const orders = await sanity.fetch<
+    Array<{_id: string; orderNumber?: string; customerRef?: {_ref?: string} | null; invoiceRef?: {_ref?: string} | null}>
+  >(
+    `*[_type == "order" && defined(invoiceRef._ref)]{
+      _id,
+      orderNumber,
+      customerRef,
+      invoiceRef
+    }`,
+  )
+
+  let linked = 0
+  for (const order of orders) {
+    const orderId = normalizeId(order._id)
+    const invoiceId = normalizeId(order.invoiceRef?._ref)
+    if (!orderId || !invoiceId) continue
+
+    let invoice: InvoiceDoc | null = null
+    try {
+      invoice = await sanity.fetch<InvoiceDoc | null>(
+        `*[_type == "invoice" && _id == $id][0]{_id, orderRef, customerRef, orderNumber}`,
+        {id: invoiceId},
+      )
+    } catch (err) {
+      console.warn('repair-references: failed to load invoice for order link check', {
+        orderId,
+        invoiceId,
+        err,
+      })
+    }
+
+    if (!invoice?._id) continue
+
+    const invoiceOrderId = normalizeId(invoice.orderRef?._ref)
+    const orderCustomerId = normalizeId(order.customerRef?._ref)
+    const invoiceCustomerId = normalizeId(invoice.customerRef?._ref)
+    const needsOrderLink = invoiceOrderId !== orderId
+    const needsCustomerLink = !invoiceCustomerId && !!orderCustomerId
+    const needsOrderNumber = !invoice.orderNumber && order.orderNumber
+
+    if (!needsOrderLink && !needsCustomerLink && !needsOrderNumber) continue
+
+    try {
+      if (needsOrderLink) {
+        await linkOrderToInvoice(sanity, orderId, invoiceId)
+      }
+      if (needsCustomerLink && orderCustomerId) {
+        await linkInvoiceToCustomer(sanity, invoiceId, orderCustomerId)
+      }
+      if (needsOrderNumber && order.orderNumber) {
+        await sanity
+          .patch(invoiceId)
+          .set({orderNumber: order.orderNumber})
+          .commit({autoGenerateArrayKeys: true})
+      }
+      linked++
+      await delay(25)
+    } catch (err) {
+      console.warn('repair-references: failed to normalize invoice link for order', {
+        orderId,
+        invoiceId,
+        err,
+      })
+    }
+  }
+
+  console.log(`Invoices normalized from orders: ${linked}/${orders.length}`)
+}
+
 async function repairShipmentsWithoutOrders(sanity: SanityClient) {
   const shipments = await sanity.fetch<ShipmentDoc[]>(
     `*[_type == "shipment" && !defined(order)]{_id, reference, easypostId, trackingCode, trackingNumber, stripePaymentIntentId}`,
@@ -344,6 +414,7 @@ async function main() {
   await repairOrdersWithoutCustomers(client)
   await repairInvoicesWithoutCustomers(client)
   await repairInvoicesWithoutOrders(client)
+  await repairInvoicesMissingOrderRefsFromOrders(client)
   await repairShipmentsWithoutOrders(client)
   await repairCheckoutSessionsWithoutCustomers(client)
   await logCartIntegrity(client)

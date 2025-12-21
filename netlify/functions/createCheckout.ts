@@ -466,6 +466,8 @@ export const handler: Handler = async (event) => {
   const billTo = invoice?.billTo || {}
   const customerEmail = (billTo?.email || '').trim() || undefined
   const customerName = (billTo?.name || '').trim() || undefined
+  const customerPhone =
+    (billTo?.phone || payload?.phone || payload?.customerPhone || '').toString().trim() || undefined
   const emailOptInFlag =
     typeof payload?.emailOptIn !== 'undefined'
       ? Boolean(payload.emailOptIn)
@@ -496,6 +498,7 @@ export const handler: Handler = async (event) => {
     appendAttributionMetadata(metadata as Record<string, string>, utmParams)
   if (customerName) metadata.bill_to_name = customerName
   if (customerEmail) metadata.bill_to_email = customerEmail
+  if (customerPhone) metadata.customer_phone = customerPhone
   if (emailOptInFlag !== undefined) metadata.email_opt_in = String(emailOptInFlag)
   if (marketingOptInFlag !== undefined) metadata.marketing_opt_in = String(marketingOptInFlag)
   if (textOptInFlag !== undefined) metadata.text_opt_in = String(textOptInFlag)
@@ -611,10 +614,15 @@ export const handler: Handler = async (event) => {
       if (allowAffirm) {
         sessionParams.phone_number_collection = {enabled: true}
       }
+      if (!sessionParams.phone_number_collection) {
+        sessionParams.phone_number_collection = {enabled: true}
+      }
 
       if (automaticTaxEnabled) {
         sessionParams.automatic_tax = {enabled: true}
       }
+
+      sessionParams.billing_address_collection = 'required'
 
       if (allowedShippingCountries.length > 0) {
         sessionParams.shipping_address_collection = {

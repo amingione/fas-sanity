@@ -2425,13 +2425,85 @@ const renderAddressText = (address?: any): string => {
   return lines.join('\n')
 }
 
+const normalizeString = (value?: string | null): string | undefined => {
+  const trimmed = (value || '').toString().trim()
+  return trimmed || undefined
+}
+
+const metaValue = (meta: Record<string, unknown>, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = meta[key]
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return undefined
+}
+
+async function resolveCheckoutCustomerContact(
+  checkoutSession: Stripe.Checkout.Session,
+): Promise<{email?: string; name?: string; phone?: string; stripeCustomerId?: string | null}> {
+  const metadata = (checkoutSession.metadata || {}) as Record<string, string>
+  const email =
+    normalizeString(checkoutSession.customer_details?.email) ||
+    normalizeString(checkoutSession.customer_email) ||
+    metaValue(
+      metadata,
+      'customer_email',
+      'customerEmail',
+      'customer_email_prefilled',
+      'customerEmailPrefilled',
+      'email',
+      'bill_to_email',
+      'contact_email',
+      'prefilled_email',
+      'guest_email',
+    )
+  const name =
+    normalizeString(checkoutSession.customer_details?.name) ||
+    normalizeString((checkoutSession as any)?.shipping_details?.name) ||
+    metaValue(metadata, 'customer_name', 'bill_to_name', 'shipping_name') ||
+    email
+  const phone =
+    normalizeString(checkoutSession.customer_details?.phone) ||
+    normalizeString((checkoutSession as any)?.shipping_details?.phone) ||
+    metaValue(metadata, 'customer_phone', 'phone', 'shipping_phone')
+  const stripeCustomerId =
+    typeof checkoutSession.customer === 'string'
+      ? checkoutSession.customer
+      : checkoutSession.customer?.id || null
+
+  if ((!email || !name || !phone) && stripeCustomerId && stripe) {
+    try {
+      const customer = await stripe.customers.retrieve(stripeCustomerId)
+      if (!customer || (customer as any)?.deleted) {
+        return {email, name, phone, stripeCustomerId}
+      }
+      return {
+        email: email || normalizeString((customer as Stripe.Customer).email),
+        name: name || normalizeString((customer as Stripe.Customer).name) || email,
+        phone: phone || normalizeString((customer as Stripe.Customer).phone),
+        stripeCustomerId,
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: failed to resolve Stripe customer details', err)
+    }
+  }
+
+  return {
+    email,
+    name,
+    phone,
+    stripeCustomerId,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Strict order creation helpers (mandatory field enforcement)
 // ---------------------------------------------------------------------------
 
 async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Session) {
-  const email = checkoutSession.customer_details?.email || checkoutSession.customer_email || ''
-  const name = checkoutSession.customer_details?.name || ''
+  const contact = await resolveCheckoutCustomerContact(checkoutSession)
+  const email = contact.email || ''
+  const name = contact.name || ''
   const nameParts = splitFullName(name)
   const computedName = computeCustomerName({
     firstName: nameParts.firstName,
@@ -2439,10 +2511,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     email,
     fallbackName: name,
   })
-  const stripeCustomerId =
-    typeof checkoutSession.customer === 'string'
-      ? checkoutSession.customer
-      : checkoutSession.customer?.id || null
+  const stripeCustomerId = contact.stripeCustomerId || null
 
   let customer = await webhookSanityClient.fetch<{
     _id: string
@@ -6283,14 +6352,39 @@ async function handleCheckoutExpired(
     console.warn('stripeWebhook: failed to load cart for expired session', err)
     cartItems = cartItemsFromMetadata(metadata)
   }
+  let contact = await resolveCheckoutCustomerContact(session)
+  let expandedSession: Stripe.Checkout.Session | null = null
+  if ((!contact.email || !contact.name || !contact.phone) && stripe) {
+    try {
+      expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['customer', 'customer_details', 'line_items', 'total_details'],
+      })
+      contact = await resolveCheckoutCustomerContact(expandedSession)
+      // If we successfully fetched line items, prefer them for cart reconstruction
+      if (!cartItems.length && expandedSession?.line_items) {
+        try {
+          const mapped = (expandedSession.line_items.data || []) as Stripe.LineItem[]
+          const result = await buildCartFromSessionLineItems(session.id, metadata, {
+            lineItems: mapped,
+          })
+          cartItems = result.items
+        } catch (err) {
+          console.warn('stripeWebhook: failed to load cart from expanded expired session', err)
+        }
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: failed to expand checkout session on expiration', err)
+    }
+  }
   const simplifiedCart = simplifyCartForAbandonedCheckout(cartItems)
   const cartSummary =
     metadata['cart_summary'] ||
     metadata['cartSummary'] ||
     (simplifiedCart.length ? buildAbandonedCartSummary(simplifiedCart) : '') ||
     ''
-  const email = (session.customer_details?.email || session.customer_email || '').toString().trim()
+  const email = contact.email || ''
   const customerPhone =
+    contact.phone ||
     session.customer_details?.phone ||
     (session.metadata?.customer_phone as string | undefined) ||
     undefined
@@ -6318,7 +6412,7 @@ async function handleCheckoutExpired(
   const currencyLower = (session.currency || '').toString().toLowerCase() || undefined
   const currencyUpper = currencyLower ? currencyLower.toUpperCase() : undefined
   const summary = buildStripeSummary({
-    session,
+    session: expandedSession || session,
     failureCode,
     failureMessage,
     eventType: 'checkout.session.expired',
@@ -6355,32 +6449,23 @@ async function handleCheckoutExpired(
         })
       : undefined
 
-  const metaValue = (...keys: string[]) => {
-    for (const key of keys) {
-      const value = metadata[key]
-      if (typeof value === 'string' && value.trim()) return value.trim()
-    }
-    return undefined
-  }
-
   const customerName =
-    (
+    (contact.name ||
       shippingName ||
-      metaValue('customer_name', 'bill_to_name') ||
+      metaValue(metadata, 'customer_name', 'bill_to_name') ||
       session.customer_details?.name ||
       email ||
-      ''
-    )
+      '')
       .toString()
       .trim() || undefined
 
   const sessionMetadataDoc = pruneUndefined({
-    browser: metaValue('browser', 'Browser'),
-    device: metaValue('device', 'Device'),
-    os: metaValue('os', 'OS'),
-    landingPage: metaValue('landing_page', 'landingPage'),
-    referrer: metaValue('referrer', 'referrer_url', 'referrerUrl'),
-    shippingMode: metaValue('shipping_mode', 'shippingMode'),
+    browser: metaValue(metadata, 'browser', 'Browser'),
+    device: metaValue(metadata, 'device', 'Device'),
+    os: metaValue(metadata, 'os', 'OS'),
+    landingPage: metaValue(metadata, 'landing_page', 'landingPage'),
+    referrer: metaValue(metadata, 'referrer', 'referrer_url', 'referrerUrl'),
+    shippingMode: metaValue(metadata, 'shipping_mode', 'shippingMode'),
   })
 
   try {
@@ -7572,6 +7657,12 @@ export const handler: Handler = async (event) => {
             sessionId: checkoutSessionMeta || pi.id,
             orderId: normalizedOrderNumber,
           })
+
+          if (!cart.length) {
+            throw new Error(
+              `stripeWebhook: cannot create payment_intent order without cart items (${normalizedOrderNumber || pi.id})`,
+            )
+          }
 
           let shippingMetrics = ensureShippingMetricsFromProducts(
             computeShippingMetrics(cart, cartProducts),

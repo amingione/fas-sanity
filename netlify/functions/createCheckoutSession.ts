@@ -195,6 +195,8 @@ export const handler: Handler = async (event) => {
   const shippingRate: ShippingRate | undefined = payload.shippingRate
   const customerEmail =
     typeof payload.customerEmail === 'string' ? payload.customerEmail.trim() : undefined
+  const customerPhone =
+    typeof payload.customerPhone === 'string' ? payload.customerPhone.trim() : undefined
 
   if (!cart.length || !shippingRate) {
     return {
@@ -423,6 +425,17 @@ export const handler: Handler = async (event) => {
     sessionMetadata.shipping_package_height_in = Number(dimensionsSummary.height.toFixed(2)).toString()
   }
 
+  if (customerEmail) {
+    sessionMetadata.customer_email = customerEmail
+    sessionMetadata.customerEmail = customerEmail
+    sessionMetadata.email = customerEmail
+  }
+  if (customerPhone) {
+    sessionMetadata.customer_phone = customerPhone
+    sessionMetadata.customerPhone = customerPhone
+    sessionMetadata.phone = customerPhone
+  }
+
   try {
     sessionMetadata.cart = JSON.stringify(
       cart.map((item: any) => ({
@@ -461,6 +474,8 @@ export const handler: Handler = async (event) => {
         metadata: paymentIntentMetadata,
       },
       metadata: sessionMetadata,
+      billing_address_collection: 'required',
+      phone_number_collection: {enabled: true},
       success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart`,
     })

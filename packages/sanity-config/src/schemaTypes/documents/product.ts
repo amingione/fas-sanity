@@ -54,7 +54,7 @@ const isServiceProduct = (context?: VisibilityContext): boolean =>
 const isBundleProduct = (context?: VisibilityContext): boolean =>
   resolveProductType(context) === 'bundle'
 
-const SHIPPING_CLASS_VALUES = ['standard', 'oversized', 'fragile', 'hazmat', 'install_only']
+const SHIPPING_CLASS_VALUES = ['standard', 'freight', 'install_only']
 
 const normalizeShippingClass = (value?: string | null) =>
   typeof value === 'string' ? value.toLowerCase().replace(/\s+/g, '_') : undefined
@@ -1285,9 +1285,7 @@ const product = defineType({
           options: {
             list: [
               {title: 'Standard', value: 'standard'},
-              {title: 'Oversized', value: 'oversized'},
-              {title: 'Fragile - Extra Packaging', value: 'fragile'},
-              {title: 'Hazmat', value: 'hazmat'},
+              {title: 'Freight', value: 'freight'},
               {title: 'Install Only (No Shipping)', value: 'install_only'},
             ],
           },
