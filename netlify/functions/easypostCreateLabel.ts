@@ -124,6 +124,8 @@ type OrderDoc = {
   customerEmail?: string
   customerName?: string
   orderNumber?: string
+  paymentIntentId?: string | null
+  stripePaymentIntentId?: string | null
   cart?: Array<{
     quantity?: number
     name?: string
@@ -439,7 +441,9 @@ async function fetchOrder(orderId: string): Promise<OrderDoc | null> {
       },
       customerEmail,
       customerName,
-      orderNumber
+      orderNumber,
+      paymentIntentId,
+      stripePaymentIntentId
     }`,
     {id: orderId},
   )
@@ -490,16 +494,39 @@ export async function createEasyPostLabel(
     dimensionsInput,
     order?.dimensions ?? packageFromCart?.dimensions,
   )
+  const orderPaymentIntentId = order?.stripePaymentIntentId || order?.paymentIntentId || null
+  const shipmentMetadata = Object.fromEntries(
+    Object.entries({
+      sanity_order_id: orderId || undefined,
+      sanityOrderId: orderId || undefined,
+      order_id: orderId || undefined,
+      orderId: orderId || undefined,
+      sanity_order_number: order?.orderNumber || undefined,
+      order_number: order?.orderNumber || undefined,
+      orderNumber: order?.orderNumber || undefined,
+      sanity_invoice_id: invoiceId || undefined,
+      invoice_id: invoiceId || undefined,
+      customer_email: order?.customerEmail || undefined,
+      customerEmail: order?.customerEmail || undefined,
+      email: order?.customerEmail || undefined,
+      stripe_payment_intent_id: orderPaymentIntentId || undefined,
+      stripePaymentIntentId: orderPaymentIntentId || undefined,
+    }).filter(([, value]) => Boolean(value)),
+  )
+  const metadataPayload = Object.keys(shipmentMetadata).length ? shipmentMetadata : undefined
+  const shipmentReference = reference || order?.orderNumber || orderId || invoiceId
 
   const client = getEasyPostClient()
 
   const shipment = await client.Shipment.create({
     to_address: toAddress,
     from_address: fromAddress,
-    reference: reference || orderId || invoiceId,
+    reference: shipmentReference,
+    metadata: metadataPayload,
     options: {
       label_format: 'PDF',
       label_size: '4x6',
+      metadata: metadataPayload,
       invoice_number: order?.orderNumber || orderId || invoiceId,
       print_custom_1: order
         ? `Order ${order.orderNumber || orderId?.slice(-6)}`

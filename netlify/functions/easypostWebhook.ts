@@ -3,6 +3,7 @@ import EasyPost from '@easypost/api'
 import {createHmac, timingSafeEqual, randomUUID} from 'crypto'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {sanityClient} from '../lib/sanityClient'
+import {linkShipmentToOrder} from '../lib/referenceIntegrity'
 
 const DEFAULT_ORIGIN = process.env.CORS_ALLOW || process.env.CORS_ORIGIN || 'http://localhost:3333'
 const CORS_HEADERS = {
@@ -671,7 +672,7 @@ async function handleShipment(shipment: any, rawPayload?: any) {
   }
 
   const orderLookup = await findOrderForShipment(shipmentData)
-  await upsertShipmentDocument(shipmentData, rawPayload, orderLookup)
+  const shipmentDocId = await upsertShipmentDocument(shipmentData, rawPayload, orderLookup)
 
   const trackingNumber = extractTrackingNumber({shipment: shipmentData})
   const labelUrl = extractLabelUrl({shipment: shipmentData})
@@ -694,6 +695,10 @@ async function handleShipment(shipment: any, rawPayload?: any) {
       trackingNumber,
     })
     return
+  }
+
+  if (order?._id && shipmentDocId) {
+    await linkShipmentToOrder(sanity, shipmentDocId, order._id)
   }
 
   const normalizedOrderStatus =
