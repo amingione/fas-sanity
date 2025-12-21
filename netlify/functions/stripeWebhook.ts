@@ -6359,7 +6359,9 @@ async function handleCheckoutExpired(
       expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
         expand: ['customer', 'customer_details', 'line_items', 'total_details'],
       })
-      contact = await resolveCheckoutCustomerContact(expandedSession)
+      if (expandedSession) {
+        contact = await resolveCheckoutCustomerContact(expandedSession)
+      }
       // If we successfully fetched line items, prefer them for cart reconstruction
       if (!cartItems.length && expandedSession?.line_items) {
         try {
