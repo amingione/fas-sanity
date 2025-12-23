@@ -726,6 +726,14 @@ export default defineType({
       group: 'settings',
     }),
     defineField({
+      name: 'customerRef',
+      title: 'Linked Customer',
+      type: 'reference',
+      to: [{type: 'customer'}],
+      description: 'Associate this vendor with the matching customer account',
+      group: 'settings',
+    }),
+    defineField({
       name: 'applicationRef',
       title: 'Linked Application',
       type: 'reference',

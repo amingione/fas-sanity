@@ -52,7 +52,12 @@ const SOURCE_PRESETS: Record<Exclude<DataSourceType, 'stripe'>, SourceField[]> =
 }
 
 const ConfidenceBadge = ({candidate}: {candidate: MappingCandidate}) => {
-  const tone = candidate.status === 'high' ? 'positive' : candidate.status === 'medium' ? 'caution' : 'critical'
+  const tone =
+    candidate.status === 'high'
+      ? 'positive'
+      : candidate.status === 'medium'
+        ? 'caution'
+        : 'critical'
   return (
     <Badge tone={tone} padding={2} fontSize={1}>
       {candidate.status.toUpperCase()} · {Math.round(candidate.breakdown.total * 100)}%
@@ -332,7 +337,10 @@ export function AutoMapperTool() {
 
   const renderSourceStep = () => (
     <Card padding={4} radius={3} shadow={1}>
-      <StepHeader title="Select source" subtitle="Choose the data source you want to map into Sanity" />
+      <StepHeader
+        title="Select source"
+        subtitle="Choose the data source you want to map into Sanity"
+      />
       <Grid columns={[1, 2]} gap={4} marginTop={4}>
         <Stack space={3}>
           <Label size={1}>Source type</Label>
@@ -363,7 +371,8 @@ export function AutoMapperTool() {
       </Grid>
       <Box marginTop={4}>
         <Text size={1} muted>
-          Templates include pre-tagged fields for faster matching. You can refine mappings in the next steps.
+          Templates include pre-tagged fields for faster matching. You can refine mappings in the
+          next steps.
         </Text>
       </Box>
     </Card>
@@ -371,7 +380,10 @@ export function AutoMapperTool() {
 
   const renderSchemaStep = () => (
     <Card padding={4} radius={3} shadow={1}>
-      <StepHeader title="Select schema" subtitle="Pick the Sanity document type you want to map into" />
+      <StepHeader
+        title="Select schema"
+        subtitle="Pick the Sanity document type you want to map into"
+      />
       <Stack space={3} marginTop={4}>
         <Label size={1}>Target schema</Label>
         <Select
@@ -387,8 +399,8 @@ export function AutoMapperTool() {
       </Stack>
       <Box marginTop={4}>
         <Text size={1} muted>
-          Schema scanner indexed {schemaIndex.fields.length} fields across {schemaIndex.snapshot().documents.length}{' '}
-          document types.
+          Schema scanner indexed {schemaIndex.fields.length} fields across{' '}
+          {schemaIndex.snapshot().documents.length} document types.
         </Text>
       </Box>
     </Card>
@@ -403,7 +415,11 @@ export function AutoMapperTool() {
         />
         <Flex justify="space-between" align="center" marginTop={3} gap={3} wrap="wrap">
           <Flex gap={2} align="center">
-            <Switch id="use-ai" checked={useAi} onChange={(event) => setUseAi(event.currentTarget.checked)} />
+            <Switch
+              id="use-ai"
+              checked={useAi}
+              onChange={(event) => setUseAi(event.currentTarget.checked)}
+            />
             <Label htmlFor="use-ai" size={1}>
               Enable AI suggestions
             </Label>
@@ -441,12 +457,13 @@ export function AutoMapperTool() {
         <Stack space={3} marginTop={4}>
           <Label size={1}>Command input</Label>
           <Flex gap={3} align="center">
-            <TextInput
-              value={command}
-              onChange={(event) => setCommand(event.currentTarget.value)}
-              placeholder='e.g. "Map unit_amount to price.rate"'
-              flex={1}
-            />
+            <Box flex={1}>
+              <TextInput
+                value={command}
+                onChange={(event) => setCommand(event.currentTarget.value)}
+                placeholder='e.g. "Map unit_amount to price.rate"'
+              />
+            </Box>
             <Button text="Apply" tone="primary" icon={SparklesIcon} onClick={applyCommand} />
           </Flex>
           {nlpMessage && (
@@ -460,7 +477,10 @@ export function AutoMapperTool() {
       <Card padding={4} radius={3} shadow={1}>
         <Stack space={3}>
           <Flex justify="space-between" align="center">
-            <StepHeader title="Suggestions" subtitle="Confidence-weighted matches per source field" />
+            <StepHeader
+              title="Suggestions"
+              subtitle="Confidence-weighted matches per source field"
+            />
             <Badge tone="default" padding={2} fontSize={1}>
               {activeSuggestions.length} source fields
             </Badge>
@@ -470,7 +490,13 @@ export function AutoMapperTool() {
             {activeSuggestions.map((entry) => {
               const targetPath = selectedMappings[entry.source.name] || ''
               return (
-                <Card key={`src-${entry.source.name}`} padding={3} radius={2} shadow={1} tone="transparent">
+                <Card
+                  key={`src-${entry.source.name}`}
+                  padding={3}
+                  radius={2}
+                  shadow={1}
+                  tone="transparent"
+                >
                   <Flex justify="space-between" align="center" gap={3} wrap="wrap">
                     <Stack space={2} style={{minWidth: 200}}>
                       <Text weight="semibold">{entry.source.name}</Text>
@@ -481,12 +507,17 @@ export function AutoMapperTool() {
                     <Flex gap={3} align="center" style={{flex: 1}}>
                       <Select
                         value={targetPath}
-                        onChange={(event) => handleMappingChange(entry.source.name, event.currentTarget.value)}
+                        onChange={(event) =>
+                          handleMappingChange(entry.source.name, event.currentTarget.value)
+                        }
                         style={{flex: 1}}
                       >
                         <option value="">Unmapped</option>
                         {entry.suggestions.map((candidate) => (
-                          <option key={`cand-${entry.source.name}-${candidate.target.path}`} value={candidate.target.path}>
+                          <option
+                            key={`cand-${entry.source.name}-${candidate.target.path}`}
+                            value={candidate.target.path}
+                          >
                             {candidate.target.path} ({candidate.target.type})
                           </option>
                         ))}
@@ -519,7 +550,10 @@ export function AutoMapperTool() {
     const unmapped = activeSuggestions.length - mappedCount
     return (
       <Card padding={4} radius={3} shadow={1}>
-        <StepHeader title="Review mappings" subtitle="Confirm matches and finalize the import plan" />
+        <StepHeader
+          title="Review mappings"
+          subtitle="Confirm matches and finalize the import plan"
+        />
         <Stack space={3} marginTop={4}>
           <Flex gap={3} wrap="wrap">
             <Badge tone="positive" padding={2} fontSize={1}>
@@ -615,7 +649,12 @@ export function AutoMapperTool() {
       {renderStep()}
 
       <Flex justify="space-between" marginTop={2}>
-        <Button text="Back" disabled={step === 0} mode="ghost" onClick={() => setStep((s) => (s > 0 ? ((s - 1) as Step) : s))} />
+        <Button
+          text="Back"
+          disabled={step === 0}
+          mode="ghost"
+          onClick={() => setStep((s) => (s > 0 ? ((s - 1) as Step) : s))}
+        />
         <Flex gap={2}>
           <Button
             text="Cancel"

@@ -140,6 +140,22 @@ export function buildOrderStatusBadges({
   useStripePaymentFallback?: boolean
 }): StatusBadgeDescriptor[] {
   const badges: StatusBadgeDescriptor[] = []
+  const normalizedOrder = normalizeStatus(orderStatus)
+
+  // Prioritize overall order status (e.g., cancelled) before payment state.
+  if (normalizedOrder === 'canceled' || normalizedOrder === 'cancelled') {
+    const normalizedPayment = normalizeStatus(paymentStatus) || normalizeStatus(stripePaymentIntentStatus)
+    const paid = normalizedPayment === 'paid' || normalizedPayment === 'succeeded'
+    const label = paid ? 'Cancelled/Refunded' : 'Cancelled'
+    badges.push({
+      key: 'order-status',
+      label,
+      tone: resolveBadgeTone('canceled'),
+      title: paid ? 'Order cancelled and refunded' : 'Order cancelled',
+    })
+    return badges
+  }
+
   const primaryPaymentStatus = resolvePrimaryPaymentStatus({
     paymentStatus,
     stripePaymentIntentStatus,
@@ -156,7 +172,6 @@ export function buildOrderStatusBadges({
   }
 
   const normalizedPayment = normalizeStatus(primaryPaymentStatus)
-  const normalizedOrder = normalizeStatus(orderStatus)
   if (normalizedOrder && normalizedOrder !== normalizedPayment) {
     const fulfillmentLabel = formatStatusLabel(orderStatus)
     if (fulfillmentLabel) {

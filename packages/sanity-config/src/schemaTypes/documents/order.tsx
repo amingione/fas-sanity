@@ -504,14 +504,29 @@ export default defineType({
         fulfilled: RestoreIcon,
         delivered: CheckmarkCircleIcon,
         canceled: CloseIcon,
+        cancelled: CloseIcon,
         refunded: UndoIcon,
       }
 
-      const Icon = (status && statusIconMap[status]) || PackageIcon
+      const normalize = (value?: string | null) =>
+        typeof value === 'string' ? value.trim().toLowerCase() : ''
+
+      const normalizedStatus = normalize(status)
+      const normalizedFulfillment = normalize(fulfillmentStatus)
+
+      const primaryStatus =
+        normalizedStatus === 'canceled' || normalizedStatus === 'cancelled'
+          ? 'cancelled'
+          : normalizedStatus || normalizedFulfillment || 'unfulfilled'
+
+      const statusLabel =
+        primaryStatus.charAt(0).toUpperCase() + primaryStatus.slice(1).toLowerCase()
+
+      const Icon = statusIconMap[primaryStatus] || statusIconMap[normalizedStatus] || PackageIcon
 
       return {
         title: `${customerName || 'Unknown Customer'} — ${orderNumber || 'New Order'}`,
-        subtitle: `$${totalAmount?.toFixed(2) || '0.00'} • ${fulfillmentStatus || 'unfulfilled'}`,
+        subtitle: `$${totalAmount?.toFixed(2) || '0.00'} • ${statusLabel}`,
         media: Icon,
       }
     },
