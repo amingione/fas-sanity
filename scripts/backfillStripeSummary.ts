@@ -21,7 +21,9 @@ async function main() {
   }
 
   // Use a stable, supported Stripe API version
-  const stripe = new Stripe(stripeKey, {apiVersion: '2024-06-20'})
+  const stripe = new Stripe(stripeKey, {
+    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+  })
   const sanity = createClient({
     projectId: sanityProjectId,
     dataset: sanityDataset,
