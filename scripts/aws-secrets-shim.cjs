@@ -1,5 +1,13 @@
-const dotenv = require('dotenv')
-dotenv.config()
+let dotenvLoaded = false
+try {
+  const dotenv = require('dotenv')
+  dotenv.config()
+  dotenvLoaded = true
+} catch (err) {
+  if (err && err.code !== 'MODULE_NOT_FOUND') {
+    throw err
+  }
+}
 
 /**
  * Copy secrets injected by @netlify/plugin-secrets-manager (prefixed, e.g. NETLIFY_AWS_SECRET_FOO)
@@ -14,7 +22,7 @@ const log = (message, ...rest) => console.log(`${shimLabel} ${message}`, ...rest
 const warn = (message, ...rest) => console.warn(`${shimLabel} ${message}`, ...rest)
 const error = (message, ...rest) => console.error(`${shimLabel} ${message}`, ...rest)
 
-log('🔐 AWS Secrets Shim starting...')
+log(`🔐 AWS Secrets Shim starting...${dotenvLoaded ? ' (dotenv loaded)' : ' (dotenv missing)'}`)
 
 const disableShim =
   process.env.NETLIFY_DISABLE_SECRETS_SHIM === 'true' ||
