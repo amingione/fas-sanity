@@ -23,10 +23,10 @@ Netlify pulls oversized build secrets from AWS Secrets Manager via `@netlify/plu
 
 ## Usage notes
 
-1) Create/update your AWS secret with the JSON payload for the big env var(s).  
-2) Ensure the Netlify site has the AWS credentials (and optional region/prefix) set.  
-3) Redeploy; the build output will log which secrets were injected.  
-4) Update app code to read the prefixed env var names or set a custom prefix via `NETLIFY_AWS_SECRET_PREFIX` to match your naming convention.
+1. Create/update your AWS secret with the JSON payload for the big env var(s).
+2. Ensure the Netlify site has the AWS credentials (and optional region/prefix) set.
+3. Redeploy; the build output will log which secrets were injected.
+4. Update app code to read the prefixed env var names or set a custom prefix via `NETLIFY_AWS_SECRET_PREFIX` to match your naming convention.
 
 Local sanity check (requires valid AWS creds in your shell):
 
