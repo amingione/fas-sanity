@@ -1,3 +1,7 @@
+AUTHORITATIVE LOCATION:
+This Codex is authoritative for ALL FAS repositories.
+Any copies elsewhere are references only.
+
 IMPORTANT:
 This document is binding. Codex must follow it before performing any task.
 Failure to do so invalidates the task.
