@@ -4,7 +4,7 @@ import Stripe from 'stripe'
 dotenv.config()
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
 })
 
 const debug = async () => {
