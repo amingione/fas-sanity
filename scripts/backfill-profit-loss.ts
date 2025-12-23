@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import dotenv from 'dotenv'
 import {createClient} from '@sanity/client'
 import {
   addMonths,
@@ -6,6 +7,8 @@ import {
   formatPeriod,
   startOfMonth,
 } from '../shared/finance/calculateMonthlyFinancials'
+
+dotenv.config()
 
 type CliOptions = {
   months: number

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+const dotenv = require('dotenv')
+dotenv.config()
+
 /**
  * Syncs shipping metadata from Sanity products into Stripe product metadata so shipping quotes stay accurate.
  *

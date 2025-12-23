@@ -85,7 +85,9 @@ export default defineType({
       options: {
         list: [
           {title: 'Online', value: 'online'},
-          {title: 'In-Person', value: 'in-store'},
+          {title: 'Retail', value: 'retail'},
+          {title: 'Wholesale', value: 'wholesale'},
+          {title: 'In-Store', value: 'in-store'},
           {title: 'Phone', value: 'phone'},
         ],
       },

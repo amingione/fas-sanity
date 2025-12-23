@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 /**
  * Utility script to invoke the masterBackfill Netlify function across paginated

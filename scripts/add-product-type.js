@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+const dotenv = require('dotenv')
+dotenv.config()
+
 /**
  * Adds the new productType classification (physical/service/bundle) and migrates the legacy
  * simple/variable productType values into the variantStrategy field.

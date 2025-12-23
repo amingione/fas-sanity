@@ -1,6 +1,9 @@
+import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
 import {buildStripeSummary} from '../netlify/lib/stripeSummary'
+
+dotenv.config()
 
 // Hard-coded IDs for the backfill run; adjust if needed.
 const orderId = '4e3xl4aFRE2qSir4YLQqvh'

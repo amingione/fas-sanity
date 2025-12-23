@@ -1,17 +1,22 @@
 # Schema Alignment Fix
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Date:** 2025-12-23  
-**Purpose:** Fix critical schema misalignments between fas-cms-fresh and fas-sanity
+**Purpose:** Comprehensive fix for all schema misalignments and integration issues between fas-cms-fresh and fas-sanity
 
 ---
 
 ## Overview
 
-This document contains the complete fix for schema misalignments discovered in the audit.
+This document contains the complete fix for all schema misalignments, API inconsistencies, and integration issues discovered in the comprehensive audit.
 
-**Issues Fixed:**
+**NOTE:** Local directory is `fas-cms-fresh` (clone of `fas-cms` GitHub repo)
 
+---
+
+## Issues Fixed
+
+### Critical (v1.0.0 - v1.0.2)
 1. ✅ Cart item type mismatch (`cartLine` → `orderCartItem`)
 2. ✅ Customer reference fields (`customer`/`userId` → `customerRef`/`customerName`/`customerEmail`)
 3. ✅ Shipping address source (billing → shipping)
@@ -22,136 +27,403 @@ This document contains the complete fix for schema misalignments discovered in t
 8. ✅ API version alignment
 9. ✅ Totals calculation consistency
 
+### New in v2.0.0
+10. ✅ Webhook refund handler bug (embedded in formatOrderDate)
+11. ✅ save-order.ts missing required fields
+12. ✅ All Stripe API version standardization (2024-11-20)
+13. ✅ All Sanity API version standardization (2024-01-01)
+14. ✅ Schema field mismatches in queries
+15. ✅ Auth field name mismatch (authId → userId)
+16. ✅ Email logging for all transactional emails
+17. ✅ Shipping metadata capture and usage
+18. ✅ EasyPost rate fetching endpoint
+19. ✅ EasyPost label creation endpoint
+20. ✅ Attribution tracking with UTM parameters
+
 ---
 
-## Files to Modify
+## Files Modified
 
+### Critical Fixes
 1. `fas-cms-fresh/src/pages/api/checkout.ts`
 2. `fas-cms-fresh/src/pages/api/webhooks.ts`
-3. `fas-sanity/schemas/order.tsx` (minor update)
+3. `fas-cms-fresh/src/pages/api/orders/save-order.ts`
+4. `fas-cms-fresh/src/pages/api/orders/[id].ts`
+5. `fas-cms-fresh/src/pages/api/orders/get-user-order.ts`
+6. `fas-cms-fresh/src/pages/api/customer/update.ts`
+7. `fas-cms-fresh/src/pages/api/vendor/invoices/pay.ts`
+8. `fas-cms-fresh/src/lib/sanityClient.ts`
+9. `fas-cms-fresh/src/lib/sanityServer.ts`
+10. `fas-cms-fresh/src/lib/sanityFetch.ts`
+11. `fas-cms-fresh/src/lib/sanity-client.ts`
+12. `fas-sanity/packages/sanity-config/src/schemaTypes/documents/order.tsx`
+
+### New Files Created
+13. `fas-cms-fresh/src/pages/api/shipping/rates.ts` (NEW)
+14. `fas-cms-fresh/src/pages/api/shipping/create-label.ts` (NEW)
+15. `fas-cms-fresh/src/pages/api/attribution/track.ts` (NEW)
 
 ---
 
-## Change 1: fas-cms-fresh/src/pages/api/checkout.ts
+## Change Summary by Priority
 
-### Update Stripe API Version
+### 🔴 CRITICAL FIXES
 
-**FIND:**
+#### 1. Webhook Refund Handler
+- **File:** `fas-cms-fresh/src/pages/api/webhooks.ts`
+- **Fix:** Move refund handling from `formatOrderDate` to main switch statement
+- **Impact:** Refunds now process correctly
 
+#### 2. Customer Reference Alignment
+- **Files:** `webhooks.ts`, `save-order.ts`, `[id].ts`
+- **Fix:** Use `customerRef` (reference) instead of `customer` (string)
+- **Impact:** Customer linking works consistently
+
+#### 3. Missing Order Fields
+- **File:** `save-order.ts`
+- **Fix:** Add `orderNumber`, `amountSubtotal`, `amountTax`, `amountShipping`, `paymentStatus`
+- **Impact:** Orders have complete data
+
+#### 4. Stripe API Version Standardization
+- **Files:** `checkout.ts`, `webhooks.ts`, `save-order.ts`, `pay.ts`
+- **Fix:** All use `apiVersion: '2024-11-20'`
+- **Impact:** Consistent Stripe behavior
+
+#### 5. Sanity API Version Standardization
+- **Files:** All Sanity client configs
+- **Fix:** All use `apiVersion: '2024-01-01'`
+- **Impact:** Consistent Sanity behavior
+
+---
+
+### 🟡 HIGH PRIORITY FIXES
+
+#### 6. Schema Field Mismatches
+- **File:** `get-user-order.ts`
+- **Fix:** Remove non-existent fields, use correct field names
+- **Impact:** Queries work without errors
+
+#### 7. Auth Field Name
+- **File:** `customer/update.ts`
+- **Fix:** Use `userId` instead of `authId`
+- **Impact:** Customer updates work correctly
+
+#### 8. Email Logging
+- **Files:** `webhooks.ts`, `contact.ts`, quote files
+- **Fix:** Create `emailLog` documents for all emails
+- **Impact:** Email audit trail exists
+
+#### 9. Shipping Metadata
+- **Files:** `checkout.ts`, `webhooks.ts`
+- **Fix:** Capture and use shipping selection metadata
+- **Impact:** Shipping carrier/service fields populated
+
+---
+
+### 🟢 MEDIUM PRIORITY FIXES
+
+#### 10. EasyPost Integration
+- **Files:** NEW `shipping/rates.ts`, `shipping/create-label.ts`
+- **Fix:** Add missing EasyPost endpoints
+- **Impact:** Shipping rates and labels can be created
+
+#### 11. Attribution Tracking
+- **Files:** NEW `attribution/track.ts`, updated `webhooks.ts`
+- **Fix:** Persist UTM parameters to attribution schema
+- **Impact:** Marketing ROI can be measured
+
+---
+
+## Detailed Changes
+
+### CRITICAL FIX 1: Webhook Refund Handler
+
+**File:** `fas-cms-fresh/src/pages/api/webhooks.ts`
+
+**Remove refund handling from `formatOrderDate` function**
+
+**Add to main switch statement:**
 ```typescript
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20'
-})
-REPLACE WITH:
-
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20'
-})
-Update Metadata Keys
-FIND:
-
-metadata: {
-  userId: session?.userId,
-  userEmail: session?.userEmail,
-  site: 'fas-cms-fresh',
-  cart: JSON.stringify(cart.map(i => ({ n: i.productName, q: i.quantity, p: i.price })))
-}
-REPLACE WITH:
-
-metadata: {
-  customer_id: session?.userId || '',
-  customer_email: session?.userEmail || '',
-  order_type: 'retail', // TODO: Set to 'wholesale' for vendor customers
-  cart_data: JSON.stringify(cart.map(item => ({
-    productId: item.productId,
-    productName: item.productName,
-    sku: item.sku,
-    quantity: item.quantity,
-    price: item.price,
-    unitPrice: item.unitPrice || item.price,
-    options: item.options,
-    upgrades: item.upgrades,
-    imageUrl: item.imageUrl
-  })))
-}
-Add Options/Upgrades to Line Item Metadata
-FIND:
-
-metadata: {
-  sanity_product_id: item.productId,
-  sku: item.sku
-}
-REPLACE WITH:
-
-metadata: {
-  sanity_product_id: item.productId || '',
-  sku: item.sku || '',
-  options: item.options || '',
-  upgrades: JSON.stringify(item.upgrades || [])
-}
-Add Cart Validation
-ADD at the start of the POST handler (after parsing JSON):
-
-// Validate cart
-if (!cart || !Array.isArray(cart) || cart.length === 0) {
-  return new Response(
-    JSON.stringify({ error: 'Cart is empty or invalid' }),
-    { status: 400, headers: { 'Content-Type': 'application/json' } }
-  )
-}
-Add Error Handling
-WRAP the entire checkout session creation in try/catch:
-
-try {
-  const checkoutSession = await stripe.checkout.sessions.create({
-    // ... existing code
-  })
-
-  return new Response(
-    JSON.stringify({ url: checkoutSession.url }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } }
-  )
-
-} catch (error) {
-  console.error('Checkout creation error:', error)
-
-  if (error instanceof Stripe.errors.StripeError) {
-    return new Response(
-      JSON.stringify({
-        error: 'Payment processing failed',
-        message: error.message
-      }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    )
+case 'charge.refunded': {
+  const charge = event.data.object as Stripe.Charge
+  const paymentIntentId = charge.payment_intent as string
+  
+  if (!paymentIntentId) {
+    console.warn('No payment intent ID in refund charge')
+    break
   }
-
-  return new Response(
-    JSON.stringify({ error: 'Failed to create checkout session' }),
-    { status: 500, headers: { 'Content-Type': 'application/json' } }
+  
+  const orders = await sanityClient.fetch(
+    `*[_type == "order" && stripePaymentIntentId == $paymentIntentId]`,
+    { paymentIntentId }
   )
+  
+  if (orders.length === 0) {
+    console.warn('No order found for payment intent:', paymentIntentId)
+    break
+  }
+  
+  const order = orders[0]
+  await sanityClient.patch(order._id)
+    .set({
+      status: 'refunded',
+      paymentStatus: 'refunded',
+      amountRefunded: charge.amount_refunded / 100,
+      lastRefundedAt: new Date().toISOString()
+    })
+    .commit()
+  
+  console.log('✅ Order refunded:', order._id)
+  break
 }
-Change 2: fas-cms-fresh/src/pages/api/webhooks.ts
-Update API Versions
-FIND:
+```
 
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil'
+CRITICAL FIX 2: Customer Reference Fields
+A. webhooks.ts - Order Creation
+
+customerRef: session.metadata?.customer_id ? {
+  _type: 'reference',
+  _ref: session.metadata.customer_id
+} : undefined,
+customerName: customerDetails?.name || '',
+customerEmail: customerDetails?.email || '',
+B. save-order.ts
+
+// CHANGE FROM:
+customer: customerId
+
+// CHANGE TO:
+customerRef: customerId ? {
+  _type: 'reference',
+  _ref: customerId
+} : undefined,
+customerEmail: email || '',
+customerName: name || '',
+C. [id].ts - Query Fix
+
+// CHANGE FROM:
+*[_type == "order" && customer->email == $email]
+
+// CHANGE TO:
+*[_type == "order" && customerRef->email == $email]
+
+CRITICAL FIX 3: Missing Order Fields in save-order.ts
+const order = await sanityClient.create({
+  _type: 'order',
+  
+  // ✅ ADD REQUIRED FIELDS:
+  orderNumber: `FAS-${Date.now().toString().slice(-6)}`,
+  createdAt: new Date().toISOString(),
+  status: 'pending',
+  orderType: 'retail',
+  paymentStatus: 'pending',
+  
+  amountSubtotal: subtotal || 0,
+  amountTax: tax || 0,
+  amountShipping: shipping || 0,
+  amountDiscount: discount || 0,
+  totalAmount: total || 0,
+  
+  customerRef: customerId ? {
+    _type: 'reference',
+    _ref: customerId
+  } : undefined,
+  customerEmail: email || '',
+  customerName: name || '',
+  
+  cart: cart,
+  currency: 'usd',
+  // ... rest
 })
-REPLACE WITH:
 
+CRITICAL FIX 4: Stripe API Versions
+Update all files to use 2024-11-20:
+
+// checkout.ts, webhooks.ts, save-order.ts, pay.ts
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-11-20'
 })
-FIND:
 
+CRITICAL FIX 5: Sanity API Versions
+Update all Sanity clients to use 2024-01-01:
+
+// All Sanity client configs
 const sanityClient = createClient({
   projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
   dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
-  apiVersion: '2023-06-07',
+  apiVersion: '2024-01-01',
   useCdn: false
 })
-REPLACE WITH:
+
+HIGH PRIORITY FIX 6: Schema Field Mismatches
+File: get-user-order.ts
+
+// CORRECT QUERY:
+*[_type == "order" && customerRef->email == $email]{
+  _id,
+  orderNumber,
+  status,
+  paymentStatus,
+  orderType,
+  totalAmount,
+  amountSubtotal,
+  amountTax,
+  amountShipping,
+  createdAt,
+  carrier,
+  service,
+  trackingNumber,
+  trackingUrl,
+  shippingAddress,
+  billingAddress,
+  cart,
+  customerName,
+  customerEmail
+}
+
+HIGH PRIORITY FIX 7: Auth Field Name
+File: customer/update.ts
+
+// CHANGE FROM:
+authId: session.userId
+
+// CHANGE TO:
+userId: session.userId
+
+HIGH PRIORITY FIX 8: Email Logging
+A. Order Confirmation (webhooks.ts)
+
+await sanityClient.create({
+  _type: 'emailLog',
+  to: customerEmail,
+  subject: `Order Confirmation - ${orderNumber}`,
+  status: 'sent',
+  sentAt: new Date().toISOString(),
+  emailType: 'order_confirmation',
+  relatedOrder: {
+    _type: 'reference',
+    _ref: order._id
+  }
+}).catch(err => console.error('Failed to log email:', err))
+B. Contact Form (contact.ts)
+
+await sanityClient.create({
+  _type: 'emailLog',
+  to: email,
+  subject: 'Contact Form Submission',
+  status: 'sent',
+  sentAt: new Date().toISOString(),
+  emailType: 'contact_form',
+  body: message
+}).catch(err => console.error('Failed to log email:', err))
+
+HIGH PRIORITY FIX 9: Shipping Metadata
+A. Capture in checkout.ts
+
+metadata: {
+  customer_id: userId,
+  customer_email: userEmail,
+  order_type: orderType,
+  cart_data: JSON.stringify(cart),
+  
+  // ✅ ADD:
+  shipping_carrier: selectedCarrier || '',
+  shipping_service: selectedService || '',
+  easypost_rate_id: selectedRateId || '',
+  
+  utm_source: utmSource || '',
+  utm_medium: utmMedium || '',
+  utm_campaign: utmCampaign || ''
+}
+B. Use in webhooks.ts
+
+carrier: session.metadata?.shipping_carrier || null,
+service: session.metadata?.shipping_service || null,
+easypostRateId: session.metadata?.easypost_rate_id || null,
+
+MEDIUM PRIORITY FIX 10: EasyPost Endpoints
+NEW FILE: fas-cms-fresh/src/pages/api/shipping/rates.ts
+
+import EasyPost from '@easypost/api'
+import type { APIRoute } from 'astro'
+
+const easypost = new EasyPost(import.meta.env.EASYPOST_API_KEY!)
+
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const { fromAddress, toAddress, parcel } = await request.json()
+    
+    const shipment = await easypost.Shipment.create({
+      from_address: fromAddress,
+      to_address: toAddress,
+      parcel: parcel
+    })
+    
+    return new Response(
+      JSON.stringify({ success: true, rates: shipment.rates, shipmentId: shipment.id }),
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error('EasyPost rate fetch error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch shipping rates' }),
+      { status: 500 }
+    )
+  }
+}
+NEW FILE: fas-cms-fresh/src/pages/api/shipping/create-label.ts
+
+import EasyPost from '@easypost/api'
+import { createClient } from '@sanity/client'
+import type { APIRoute } from 'astro'
+
+const easypost = new EasyPost(import.meta.env.EASYPOST_API_KEY!)
+const sanityClient = createClient({
+  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
+  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  token: import.meta.env.SANITY_API_TOKEN!,
+  apiVersion: '2024-01-01',
+  useCdn: false
+})
+
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const { orderId, shipmentId, rateId } = await request.json()
+    
+    const shipment = await easypost.Shipment.retrieve(shipmentId)
+    await shipment.buy(rateId)
+    
+    await sanityClient.patch(orderId)
+      .set({
+        easyPostShipmentId: shipment.id,
+        trackingNumber: shipment.tracking_code,
+        trackingUrl: shipment.tracker?.public_url,
+        shippingLabelUrl: shipment.postage_label?.label_url,
+        carrier: shipment.selected_rate?.carrier,
+        service: shipment.selected_rate?.service,
+        labelCreatedAt: new Date().toISOString()
+      })
+      .commit()
+    
+    return new Response(
+      JSON.stringify({ success: true, trackingNumber: shipment.tracking_code }),
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error('EasyPost label creation error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to create shipping label' }),
+      { status: 500 }
+    )
+  }
+}
+
+MEDIUM PRIORITY FIX 11: Attribution Tracking
+NEW FILE: fas-cms-fresh/src/pages/api/attribution/track.ts
+
+import { createClient } from '@sanity/client'
+import type { APIRoute } from 'astro'
 
 const sanityClient = createClient({
   projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
@@ -160,282 +432,80 @@ const sanityClient = createClient({
   apiVersion: '2024-01-01',
   useCdn: false
 })
-Replace Order Creation Function
-ADD this function after the POST handler (or replace existing createOrderFromSession):
 
-async function createOrderFromSession(session: Stripe.Checkout.Session) {
-  const lineItems = session.line_items?.data || []
-
-  // Map line items to cart format
-  const cart = lineItems.map(item => {
-    const product = item.price?.product as Stripe.Product
-    const metadata = product?.metadata || {}
-
-    let upgrades: string[] = []
-    try {
-      upgrades = metadata.upgrades ? JSON.parse(metadata.upgrades) : []
-    } catch (e) {
-      console.warn('Failed to parse upgrades:', metadata.upgrades)
-    }
-
-    return {
-      _type: 'orderCartItem', // ✅ CRITICAL: Must be orderCartItem, not cartLine
-      _key: generateKey(),
-      productId: metadata.sanity_product_id || null,
-      productName: item.description || product?.name || 'Unknown Product',
-      sku: metadata.sku || null,
-      quantity: item.quantity || 1,
-      price: (item.amount_total || 0) / 100,
-      unitPrice: (item.price?.unit_amount || 0) / 100,
-      options: metadata.options || null,
-      upgrades: upgrades,
-      imageUrl: product?.images?.[0] || null
-    }
-  })
-
-  // ✅ CRITICAL: Use shipping_details.address, NOT customer_details.address
-  const shippingDetails = session.shipping_details
-  const shippingAddress = shippingDetails?.address ? {
-    name: shippingDetails.name || '',
-    phone: session.customer_details?.phone || '',
-    email: session.customer_details?.email || '',
-    addressLine1: shippingDetails.address.line1 || '',
-    addressLine2: shippingDetails.address.line2 || '',
-    city: shippingDetails.address.city || '',
-    state: shippingDetails.address.state || '',
-    postalCode: shippingDetails.address.postal_code || '',
-    country: shippingDetails.address.country || ''
-  } : undefined
-
-  const customerDetails = session.customer_details
-  const billingAddress = customerDetails?.address ? {
-    name: customerDetails.name || '',
-    phone: customerDetails.phone || '',
-    email: customerDetails.email || '',
-    addressLine1: customerDetails.address.line1 || '',
-    addressLine2: customerDetails.address.line2 || '',
-    city: customerDetails.address.city || '',
-    state: customerDetails.address.state || '',
-    postalCode: customerDetails.address.postal_code || '',
-    country: customerDetails.address.country || ''
-  } : undefined
-
-  // ✅ CRITICAL: Use total_details for all amounts
-  const amountSubtotal = (session.amount_subtotal || 0) / 100
-  const amountTax = (session.total_details?.amount_tax || 0) / 100
-  const amountShipping = (session.total_details?.amount_shipping || 0) / 100
-  const amountDiscount = (session.total_details?.amount_discount || 0) / 100
-  const totalAmount = (session.amount_total || 0) / 100
-
-  const orderNumber = `FAS-${Date.now().toString().slice(-6)}`
-
-  // ✅ CRITICAL: Use exact field names from schema
-  const order = await sanityClient.create({
-    _type: 'order',
-    orderNumber: orderNumber,
-    createdAt: new Date().toISOString(),
-    status: 'paid',
-    orderType: session.metadata?.order_type || 'retail',
-    paymentStatus: session.payment_status || 'paid',
-
-    // ✅ CRITICAL: customerRef (reference), customerName, customerEmail
-    customerRef: session.metadata?.customer_id ? {
-      _type: 'reference',
-      _ref: session.metadata.customer_id
-    } : undefined,
-    customerName: customerDetails?.name || '',
-    customerEmail: customerDetails?.email || '',
-
-    cart: cart,
-
-    // ✅ CRITICAL: All amount fields required
-    amountSubtotal: amountSubtotal,
-    amountTax: amountTax,
-    amountShipping: amountShipping,
-    amountDiscount: amountDiscount,
-    totalAmount: totalAmount,
-
-    shippingAddress: shippingAddress,
-    billingAddress: billingAddress,
-
-    currency: session.currency || 'usd',
-    stripeSessionId: session.id,
-    stripePaymentIntentId: session.payment_intent as string || null,
-    paymentIntentId: session.payment_intent as string || null,
-
-    // ✅ CRITICAL: stripeSummary must be an object
-    stripeSummary: {
-      data: JSON.stringify(session),
-      amountDiscount: amountDiscount,
-      paymentCaptured: session.payment_status === 'paid',
-      paymentCapturedAt: session.payment_status === 'paid' ? new Date().toISOString() : undefined,
-      webhookNotified: true
-    }
-  })
-
-  console.log('✅ Order created:', order._id, orderNumber)
-  return order
-}
-
-function generateKey(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-}
-Update checkout.session.completed Case
-FIND:
-
-case 'checkout.session.completed': {
-  const session = event.data.object as Stripe.Checkout.Session
-  // ... existing order creation code
-}
-REPLACE WITH:
-
-case 'checkout.session.completed': {
-  const session = event.data.object as Stripe.Checkout.Session
-
-  const fullSession = await stripe.checkout.sessions.retrieve(
-    session.id,
-    { expand: ['line_items.data.price.product'] }
-  )
-
-  await createOrderFromSession(fullSession)
-  break
-}
-Add Refund Handler (Optional but Recommended)
-ADD this case to the switch statement:
-
-case 'charge.refunded': {
-  const charge = event.data.object as Stripe.Charge
-  const paymentIntentId = charge.payment_intent as string
-
-  if (paymentIntentId) {
-    const orders = await sanityClient.fetch(
-      `*[_type == "order" && stripePaymentIntentId == $paymentIntentId]`,
-      { paymentIntentId }
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const { orderId, utmParams, sessionId } = await request.json()
+    
+    const attribution = await sanityClient.create({
+      _type: 'attribution',
+      order: { _type: 'reference', _ref: orderId },
+      sessionId: sessionId || null,
+      utmSource: utmParams?.utm_source || null,
+      utmMedium: utmParams?.utm_medium || null,
+      utmCampaign: utmParams?.utm_campaign || null,
+      utmTerm: utmParams?.utm_term || null,
+      utmContent: utmParams?.utm_content || null,
+      timestamp: new Date().toISOString()
+    })
+    
+    return new Response(
+      JSON.stringify({ success: true, attribution }),
+      { status: 200 }
     )
-
-    if (orders.length > 0) {
-      const order = orders[0]
-      await sanityClient.patch(order._id)
-        .set({
-          status: 'refunded',
-          paymentStatus: 'refunded',
-          amountRefunded: charge.amount_refunded / 100,
-          lastRefundedAt: new Date().toISOString()
-        })
-        .commit()
-      console.log('✅ Order refunded:', order._id)
-    }
+  } catch (error) {
+    console.error('Attribution tracking error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Failed to track attribution' }),
+      { status: 500 }
+    )
   }
-  break
 }
-Change 3: fas-sanity/schemas/order.tsx
-Update orderType Options
-FIND:
+UPDATE: webhooks.ts - Add after order creation:
 
-{
-  name: 'orderType',
-  type: 'string',
-  options: {
-    list: [
-      { title: 'Online', value: 'online' },
-      { title: 'In-Store', value: 'in-store' },
-      { title: 'Phone', value: 'phone' }
-    ]
-  },
-  group: 'overview'
+// Track attribution
+if (session.metadata?.utm_source) {
+  try {
+    await sanityClient.create({
+      _type: 'attribution',
+      order: { _type: 'reference', _ref: order._id },
+      sessionId: session.metadata.session_id || null,
+      utmSource: session.metadata.utm_source || null,
+      utmMedium: session.metadata.utm_medium || null,
+      utmCampaign: session.metadata.utm_campaign || null,
+      timestamp: new Date().toISOString()
+    })
+  } catch (err) {
+    console.error('Failed to track attribution:', err)
+  }
 }
-REPLACE WITH:
 
-{
-  name: 'orderType',
-  type: 'string',
-  options: {
-    list: [
-      { title: 'Online', value: 'online' },
-      { title: 'Retail', value: 'retail' },
-      { title: 'Wholesale', value: 'wholesale' },
-      { title: 'In-Store', value: 'in-store' },
-      { title: 'Phone', value: 'phone' }
-    ]
-  },
-  group: 'overview'
-}
 Testing Checklist
-Before Deploying
- Environment variables set correctly
- Stripe webhook endpoint configured
- Test with Stripe CLI: stripe listen --forward-to localhost:4321/api/webhooks
-Test Flow
-Create Test Order
-
-Add items to cart
-Proceed to checkout
-Use Stripe test card: 4242 4242 4242 4242
-Verify Order in Sanity
-
- Order appears in Sanity Studio
- orderNumber is set (e.g., FAS-123456)
- customerName and customerEmail populated
- customerRef links to customer (if logged in)
- orderType is set (e.g., retail)
- cart items have _type: 'orderCartItem'
- shippingAddress has correct shipping address
- billingAddress has correct billing address
- All amount fields populated
- stripePaymentIntentId is set
- stripeSummary has data
-Verify Totals Match
-
-Stripe Dashboard Total = Sanity totalAmount
-Stripe Subtotal = Sanity amountSubtotal
-Stripe Tax = Sanity amountTax
-Stripe Shipping = Sanity amountShipping
-Test with Discount Code
-
- Apply promo code in checkout
- Verify amountDiscount is populated
- Verify totalAmount reflects discount
-Test Refund
-
- Refund order in Stripe Dashboard
- Verify order status changes to refunded
- Verify amountRefunded is set
-Regression Testing
- Load existing orders (should still display)
- Verify old orders don't break
- Check that cart items display correctly
+Critical Fixes
+ Refund handler in main switch (not in formatOrderDate)
+ All order writes use customerRef
+ All order queries use customerRef->email
+ save-order.ts includes all required fields
+ All Stripe clients use 2024-11-20
+ All Sanity clients use 2024-01-01
+High Priority
+ Queries use only schema fields
+ customer/update uses userId
+ Email logs created for all emails
+ Shipping metadata captured and used
+Medium Priority
+ EasyPost rates endpoint works
+ EasyPost label endpoint works
+ Attribution tracking works
 Rollback Plan
-If issues occur:
+# Quick rollback
+git diff > v2-fixes-backup.patch
+git reset --hard HEAD
 
-Quick Rollback (Git)
-git revert HEAD
-git push
-Manual Rollback
-Revert checkout.ts:
-
-Change metadata back to userId, userEmail, site
-Remove options and upgrades from line item metadata
-Change API version back to 2024-06-20
-Revert webhooks.ts:
-
-Change _type: 'orderCartItem' back to _type: 'cartLine'
-Change customerRef back to customer
-Remove new fields
-Change API versions back
-Summary
-What Changed
-Component	Before	After
-Cart item type	cartLine	orderCartItem ✅
-Customer field	customer	customerRef ✅
-Customer name	Missing	customerName ✅
-Order type	Not set	retail/wholesale ✅
-Billing address	Missing	Full object ✅
-Shipping source	Billing address	Shipping address ✅
-Discount amount	Missing	amountDiscount ✅
-Payment intent	paymentIntentId only	Both fields ✅
-Stripe summary	Missing	Rich object ✅
-Metadata keys	userId, userEmail	customer_id, customer_email ✅
-Product metadata	sku only	sku, options, upgrades ✅
-API versions	Mixed	Aligned to 2024-11-20 ✅
-End of Schema Alignment Fix v1.0.0 EOF
-```
+# To reapply
+git apply v2-fixes-backup.patch
+Version History
+v2.0.0 (2025-12-23): Comprehensive fixes for all audit issues
+v1.0.2 (2025-12-23): Updated paths for local clone
+v1.0.1 (2025-12-23): Corrected order.tsx path
+v1.0.0 (2025-12-23): Initial schema alignment fixes
