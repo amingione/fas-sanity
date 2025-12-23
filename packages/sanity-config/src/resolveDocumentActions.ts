@@ -39,6 +39,7 @@ import {
   markExpensePaidAction,
 } from './schemaTypes/documentActions/expenseActions'
 import SyncMerchantFeedAction from './schemaTypes/documentActions/syncMerchantFeedAction'
+import {generateVendorNumberAction} from './schemaTypes/documentActions/generateVendorNumberAction'
 import {
   adjustInventoryAction,
   reserveInventoryAction,
@@ -126,6 +127,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(forceDeleteUnlinkAction)
   }
   if (context.schemaType === 'vendor') {
+    list.push(generateVendorNumberAction)
     list.push(sendVendorInviteAction)
   }
   return list

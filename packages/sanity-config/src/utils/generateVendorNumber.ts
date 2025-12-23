@@ -3,7 +3,7 @@ import type {SanityClient} from '@sanity/client'
 const SETTINGS_TYPE = 'siteSettings'
 const SETTINGS_TITLE = 'Site Settings'
 const NEXT_VENDOR_FIELD = 'nextVendorNumber'
-const DEFAULT_START = 201
+const DEFAULT_START = 262
 const VENDOR_PREFIX = 'VEN-'
 const PAD_LENGTH = 3
 
@@ -27,41 +27,57 @@ function parseVendorNumber(value?: string | null): number {
 export async function generateInitialVendorNumber(
   client: SanityClient | undefined,
 ): Promise<string> {
-  if (!client) return ''
+  const safeFallback = () => formatVendorNumber(DEFAULT_START)
 
-  const settings = await client.fetch<SettingsDoc | null>(
-    `*[_type == $type][0]{_id, ${NEXT_VENDOR_FIELD}}`,
-    {type: SETTINGS_TYPE},
-  )
+  if (!client) return safeFallback()
 
-  const highestExisting = await client.fetch<string | null>(
-    '*[_type == "vendor" && defined(vendorNumber)] | order(vendorNumber desc)[0].vendorNumber',
-  )
+  try {
+    const settings = await client.fetch<SettingsDoc | null>(
+      `*[_type == $type][0]{_id, ${NEXT_VENDOR_FIELD}}`,
+      {type: SETTINGS_TYPE},
+    )
 
-  const settingsId = settings?._id || SETTINGS_TYPE
-  const startingValue =
-    typeof settings?.nextVendorNumber === 'number' ? settings.nextVendorNumber : DEFAULT_START
-  const highestValue = parseVendorNumber(highestExisting)
-  const seedValue = Math.max(startingValue, highestValue + 1, DEFAULT_START)
+    const highestExisting = await client.fetch<string | null>(
+      '*[_type == "vendor" && defined(vendorNumber)] | order(vendorNumber desc)[0].vendorNumber',
+    )
 
-  await client.createIfNotExists({
-    _id: settingsId,
-    _type: SETTINGS_TYPE,
-    title: SETTINGS_TITLE,
-    [NEXT_VENDOR_FIELD]: seedValue,
-  })
+    const settingsId = settings?._id || SETTINGS_TYPE
+    const startingValue =
+      typeof settings?.nextVendorNumber === 'number' ? settings.nextVendorNumber : DEFAULT_START
+    const highestValue = parseVendorNumber(highestExisting)
+    const seedValue = Math.max(startingValue, highestValue + 1, DEFAULT_START)
 
-  const updatedSettings = await client
-    .patch(settingsId)
-    .setIfMissing({[NEXT_VENDOR_FIELD]: seedValue})
-    .inc({[NEXT_VENDOR_FIELD]: 1})
-    .commit({autoGenerateArrayKeys: true})
+    await client.createIfNotExists({
+      _id: settingsId,
+      _type: SETTINGS_TYPE,
+      title: SETTINGS_TITLE,
+      [NEXT_VENDOR_FIELD]: seedValue,
+    })
 
-  const nextValue =
-    typeof updatedSettings?.nextVendorNumber === 'number'
-      ? updatedSettings.nextVendorNumber
-      : seedValue + 1
+    const updatedSettings = await client
+      .patch(settingsId)
+      .setIfMissing({[NEXT_VENDOR_FIELD]: seedValue})
+      .inc({[NEXT_VENDOR_FIELD]: 1})
+      .commit({autoGenerateArrayKeys: true})
 
-  const reservedNumber = nextValue - 1
-  return formatVendorNumber(reservedNumber)
+    const nextValue =
+      typeof updatedSettings?.nextVendorNumber === 'number'
+        ? updatedSettings.nextVendorNumber
+        : seedValue + 1
+
+    const reservedNumber = nextValue - 1
+    return formatVendorNumber(reservedNumber)
+  } catch (error) {
+    console.warn('generateInitialVendorNumber: falling back after error', error)
+    try {
+      const highestExisting = await client.fetch<string | null>(
+        '*[_type == "vendor" && defined(vendorNumber)] | order(vendorNumber desc)[0].vendorNumber',
+      )
+      const nextValue = Math.max(parseVendorNumber(highestExisting) + 1, DEFAULT_START)
+      return formatVendorNumber(nextValue)
+    } catch (fallbackError) {
+      console.warn('generateInitialVendorNumber: fallback failed, using default', fallbackError)
+      return safeFallback()
+    }
+  }
 }

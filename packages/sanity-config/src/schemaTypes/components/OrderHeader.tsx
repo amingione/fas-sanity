@@ -1,11 +1,77 @@
 // schemas/components/OrderHeader.tsx
-import React, {useCallback, useEffect, useRef, useState} from 'react'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {Container, Card, Text, Box, Stack, TextArea, Flex, Inline} from '@sanity/ui'
 import {useFormValue} from 'sanity'
 import {PatchEvent, set, unset} from 'sanity'
 import {format} from 'date-fns'
 import {ShippingDetails} from './ShippingDetails'
-import {DocumentBadge, buildOrderStatusBadges} from '../../components/studio/documentTables/DocumentBadge'
+import {
+  DocumentBadge,
+  buildOrderStatusBadges,
+} from '../../components/studio/documentTables/DocumentBadge'
+import {sanitizeCartItemName} from '../../utils/cartItemDetails'
+
+const parseUpgradeAmount = (value?: unknown): number => {
+  if (typeof value !== 'string') return 0
+  const match = value.match(/-?\$?\s*([\d,]+(?:\.\d+)?)/)
+  if (!match?.[1]) return 0
+  const parsed = Number.parseFloat(match[1].replace(/,/g, ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const computeUpgradeTotal = (item: any): number => {
+  if (typeof item?.upgradesTotal === 'number' && Number.isFinite(item.upgradesTotal)) {
+    return item.upgradesTotal
+  }
+  const fromUpgrades = Array.isArray(item?.upgrades)
+    ? item.upgrades.reduce((sum: number, entry: unknown) => sum + parseUpgradeAmount(entry), 0)
+    : 0
+  return fromUpgrades
+}
+
+const computeItemSubtotal = (item: any): number => {
+  const quantity = Number.isFinite(item?.quantity) && item.quantity > 0 ? item.quantity : 1
+  const base = typeof item?.price === 'number' ? item.price * quantity : 0
+  const upgrades = computeUpgradeTotal(item)
+  const totals = [item?.total, item?.lineTotal]
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
+    .map(Number)
+  const explicit = totals.length ? Math.max(...totals) : undefined
+  return explicit !== undefined ? explicit : base + upgrades
+}
+
+const formatOptions = (item: any): string | null => {
+  const parts = new Set<string>()
+
+  const push = (value?: unknown) => {
+    if (!value) return
+    const raw = String(value).trim()
+    if (!raw) return
+    parts.add(raw)
+  }
+
+  if (typeof item?.optionSummary === 'string') {
+    item.optionSummary
+      .split(/[,•]/)
+      .map((segment: string) => segment.trim())
+      .filter(Boolean)
+      .forEach(push)
+  }
+
+  if (Array.isArray(item?.optionDetails)) {
+    item.optionDetails.map((opt: unknown) => push(opt)).forEach(() => undefined)
+  }
+
+  if (typeof item?.selectedVariant === 'string') {
+    push(item.selectedVariant)
+  }
+
+  const cleaned = Array.from(parts)
+  return cleaned.length ? cleaned.join(', ') : null
+}
+
+const computeOrderSubtotal = (cart: any[] | undefined | null): number =>
+  (cart || []).reduce((sum, item) => sum + computeItemSubtotal(item), 0)
 
 export function OrderHeader(props: any) {
   const {onChange, value} = props
@@ -32,6 +98,16 @@ export function OrderHeader(props: any) {
   const [localNotes, setLocalNotes] = useState(fulfillmentNotes || '')
   const [isSaving, setIsSaving] = useState(false)
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const computedSubtotal = useMemo(() => computeOrderSubtotal(cart), [cart])
+  const computedTotal = useMemo(
+    () =>
+      (computedSubtotal || 0) + (amountShipping || 0) + (amountTax || 0) - (amountDiscount || 0),
+    [amountDiscount, amountShipping, amountTax, computedSubtotal],
+  )
+  const hasDiscrepancy =
+    typeof totalAmount === 'number' &&
+    Number.isFinite(totalAmount) &&
+    Math.abs(totalAmount - computedTotal) > 0.01
 
   // Clean up legacy documents where orderHeaderDisplay stored object data instead of a string
   useEffect(() => {
@@ -148,9 +224,21 @@ export function OrderHeader(props: any) {
             {cart && cart.length > 0 && (
               <Stack space={3}>
                 {cart.map((item: any, index: number) => {
-                  const displayName = item.name || 'Unknown Product'
-                  const optionsText = item.optionSummary || item.optionDetails?.join(' • ')
-                  const addOnsText = item.upgrades?.join(', ') || item.addOns?.join(', ')
+                  const displayName =
+                    sanitizeCartItemName(item.productName) ||
+                    sanitizeCartItemName(item.name) ||
+                    item.productName ||
+                    item.name ||
+                    'Unknown Product'
+                  const optionsText = formatOptions(item)
+                  const upgradesText = Array.isArray(item.upgrades)
+                    ? item.upgrades.filter(Boolean).join(', ')
+                    : item.addOns?.join(', ')
+                  const itemSubtotal = computeItemSubtotal(item)
+                  const unitPrice =
+                    typeof item.price === 'number' && Number.isFinite(item.price)
+                      ? item.price
+                      : itemSubtotal / (item.quantity || 1 || 1)
 
                   return (
                     <Box
@@ -175,16 +263,15 @@ export function OrderHeader(props: any) {
                           </Text>
                         )}
 
-                        {addOnsText && (
+                        {upgradesText && (
                           <Text size={1} muted>
-                            Upgrades: {addOnsText}
+                            Upgrades: {upgradesText}
                           </Text>
                         )}
 
                         <Text size={2} weight="medium">
-                          Qty: {item.quantity || 1} × ${item.price?.toFixed(2) || '0.00'} = $
-                          {item.total?.toFixed(2) ||
-                            ((item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                          Qty: {item.quantity || 1} × ${unitPrice.toFixed(2)} = $
+                          {itemSubtotal.toFixed(2)}
                         </Text>
                       </Stack>
                     </Box>
@@ -196,16 +283,14 @@ export function OrderHeader(props: any) {
             {/* Order Totals */}
             <Box paddingTop={3} style={{borderTop: '1px solid var(--card-border-color)'}}>
               <Stack space={2}>
-                {amountSubtotal !== undefined && amountSubtotal !== null && (
-                  <Flex justify="space-between">
-                    <Text size={[1, 1, 2]} muted>
-                      Subtotal:
-                    </Text>
-                    <Text size={[1, 1, 2]} muted>
-                      ${amountSubtotal.toFixed(2)}
-                    </Text>
-                  </Flex>
-                )}
+                <Flex justify="space-between">
+                  <Text size={[1, 1, 2]} muted>
+                    Subtotal:
+                  </Text>
+                  <Text size={[1, 1, 2]} muted>
+                    ${(Number(amountSubtotal) || computedSubtotal).toFixed(2)}
+                  </Text>
+                </Flex>
 
                 {amountDiscount !== undefined && amountDiscount !== null && amountDiscount > 0 && (
                   <Flex justify="space-between">
@@ -253,9 +338,15 @@ export function OrderHeader(props: any) {
                     Total:
                   </Text>
                   <Text size={[2, 2, 3]} weight="bold">
-                    ${totalAmount?.toFixed(2) || '0.00'}
+                    ${(Number(totalAmount) || computedTotal).toFixed(2)}
                   </Text>
                 </Flex>
+                {hasDiscrepancy && (
+                  <Text size={1} muted style={{color: 'var(--card-badge-caution-fg-color)'}}>
+                    Calculated total {computedTotal.toFixed(2)} differs from stored value{' '}
+                    {(totalAmount || 0).toFixed(2)}.
+                  </Text>
+                )}
               </Stack>
             </Box>
           </Stack>

@@ -1,14 +1,5 @@
 import {useCallback, useMemo, useState} from 'react'
-import {
-  Box,
-  Button,
-  Dialog,
-  Flex,
-  Stack,
-  Text,
-  TextArea,
-  TextInput,
-} from '@sanity/ui'
+import {Box, Button, Dialog, Flex, Stack, Text, TextArea, TextInput} from '@sanity/ui'
 import {PatchEvent, StringInputProps, set, unset} from 'sanity'
 
 /**
@@ -106,9 +97,7 @@ function extractKeywords(productTitle: string, productDescription: string): stri
     const parts = trimmedToken.split(/\//)
 
     parts.forEach((part) => {
-      const cleaned = part
-        .replace(/^[^\p{L}0-9+.-]+/u, '')
-        .replace(/[^\p{L}0-9+.-]+$/u, '')
+      const cleaned = part.replace(/^[^\p{L}0-9+.-]+/u, '').replace(/[^\p{L}0-9+.-]+$/u, '')
 
       if (!cleaned) {
         return
@@ -244,7 +233,8 @@ const AltTextInput = (props: StringInputProps) => {
           <Box padding={4}>
             <Stack space={4}>
               <Text size={1} muted>
-                Paste a product title and description to auto-generate accessible, SEO-friendly alt text.
+                Paste a product title and description to auto-generate accessible, SEO-friendly alt
+                text.
               </Text>
 
               <Box>
@@ -272,12 +262,16 @@ const AltTextInput = (props: StringInputProps) => {
 
               <Flex gap={3}>
                 <Button text="Generate" tone="primary" onClick={handleGenerate} />
-                <Button text="Reset" mode="bleed" onClick={() => {
-                  setProductTitle('')
-                  setProductDescription('')
-                  setDraftAltText('')
-                  setErrorMessage(null)
-                }} />
+                <Button
+                  text="Reset"
+                  mode="bleed"
+                  onClick={() => {
+                    setProductTitle('')
+                    setProductDescription('')
+                    setDraftAltText('')
+                    setErrorMessage(null)
+                  }}
+                />
               </Flex>
 
               <Box>
@@ -291,12 +285,12 @@ const AltTextInput = (props: StringInputProps) => {
                   placeholder="Generated alt text will appear here for review"
                 />
                 {helperText && (
-                  <Text size={1} tone="caution">
+                  <Text size={1} muted style={{color: '#f4a822'}}>
                     {helperText}
                   </Text>
                 )}
                 {errorMessage && (
-                  <Text size={1} tone="critical">
+                  <Text size={1} muted style={{color: '#d32f2f'}}>
                     {errorMessage}
                   </Text>
                 )}

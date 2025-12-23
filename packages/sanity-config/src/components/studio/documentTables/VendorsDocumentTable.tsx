@@ -1,5 +1,7 @@
 import React, {useMemo, useState} from 'react'
+import {AddIcon} from '@sanity/icons'
 import {Button, Flex, Stack, Text} from '@sanity/ui'
+import {useRouter} from 'sanity/router'
 import {
   PaginatedDocumentTable,
   formatCurrency,
@@ -76,6 +78,7 @@ const formatCredit = (row: VendorRowData) => {
 }
 
 export default function VendorsDocumentTable({title = 'Vendors'}: {title?: string}) {
+  const router = useRouter()
   const [statusFilterId, setStatusFilterId] = useState<StatusFilterId>('all')
   const [tierFilterId, setTierFilterId] = useState<TierFilterId>('all')
 
@@ -96,8 +99,20 @@ export default function VendorsDocumentTable({title = 'Vendors'}: {title?: strin
     return clauses.join(' && ')
   }, [activeStatus.filter, activeTier.filter])
 
+  const handleCreateVendor = () => {
+    router.navigateIntent('create', {type: 'vendor'})
+  }
+
   const headerActions = (
     <Stack space={3}>
+      <Flex justify="flex-end">
+        <Button
+          icon={AddIcon}
+          text="Create New Vendor"
+          tone="primary"
+          onClick={handleCreateVendor}
+        />
+      </Flex>
       <Flex align="center" gap={2} wrap="wrap">
         <Text size={1} muted>
           Status

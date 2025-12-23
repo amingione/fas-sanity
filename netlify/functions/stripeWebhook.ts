@@ -27,6 +27,7 @@ import {
   resolveUpgradeTotal,
   normalizeOptionSelections,
   uniqueStrings,
+  sanitizeCartItemName,
 } from '@fas/sanity-config/utils/cartItemDetails'
 import {
   hydrateDiscountResources,
@@ -142,10 +143,19 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
         ? item.lineTotal
         : unitPrice * quantity + upgradesTotal
 
+  const cleanedName =
+    sanitizeCartItemName(item.name) ||
+    sanitizeCartItemName((item as any).productName) ||
+    sanitizeCartItemName((item as any).description) ||
+    sanitizeCartItemName((item as any).productSlug) ||
+    sanitizeCartItemName(item.sku) ||
+    'Order item'
+
   return {
     _type: 'orderCartItem',
     _key: (item as any)._key || randomUUID(),
-    name: item.name,
+    name: cleanedName,
+    productName: cleanedName,
     productRef: (item as any).productRef,
     sku: item.sku,
     image: (item as any).image,
