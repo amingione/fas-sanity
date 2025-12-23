@@ -1,6 +1,6 @@
 import type {StudioTheme} from 'sanity'
 
-export const fasBrandTheme = {
+export const fasBrandTheme: StudioTheme = {
   _version: 0,
   avatar: {
     sizes: [

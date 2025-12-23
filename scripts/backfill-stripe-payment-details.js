@@ -1,5 +1,8 @@
+import dotenv from 'dotenv'
 import { createClient } from '@sanity/client'
 import Stripe from 'stripe'
+
+dotenv.config()
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const client = createClient({

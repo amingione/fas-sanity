@@ -1,3 +1,7 @@
+import dotenv from 'dotenv'
+
+dotenv.config()
+
 // scripts/migrate-filters-to-strings.ts
 import {createClient} from '@sanity/client'
 

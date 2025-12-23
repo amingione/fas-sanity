@@ -1,6 +1,10 @@
 #!/usr/bin/env tsx
+import dotenv from 'dotenv'
+
 
 import Stripe from 'stripe'
+
+dotenv.config()
 
 const sessionIdArg = process.argv[2]
 

@@ -1,22 +1,42 @@
-AUTHORITATIVE LOCATION:
-This Codex is authoritative for ALL FAS repositories.
-Any copies elsewhere are references only.
+# FAS Motorsports Codex Master Prompt
 
-IMPORTANT:
-This document is binding. Codex must follow it before performing any task.
-Failure to do so invalidates the task.
+**Version:** 1.2.1  
+**Last Updated:** 2025-12-23  
+**Repos:** fas-sanity, fas-cms (GitHub) / fas-cms-fresh (local)
 
-FAS Motorsports Codex Master Prompt
-Version: 1.1.0
-Last Updated: 2025-12-23
-Repos: fas-sanity, fas-cms-fresh
+---
 
-Overview
+## Local Development Setup
+
+**Directory Structure:**
+~/projects/ ├── fas-sanity/ # Sanity Studio repo └── fas-cms-fresh/ # Astro frontend (clone of fas-cms GitHub repo)
+
+**When working locally:**
+
+- Use `fas-cms-fresh/` for all file paths
+- GitHub repo is named `fas-cms`
+- Documentation may reference `fas-cms` but local path is `fas-cms-fresh`
+- Local path to fas-sanity: /Users/ambermin/LocalStorm/Workspace/DevProjects/fas-sanity
+- Local path to fas-cms-fresh: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
+
+**GraphQL tooling (language server / schema introspection):**
+- `graphql.config.cjs` defines the schema endpoint for editor tooling.
+- Optional env vars for authenticated introspection: `SANITY_GRAPHQL_TOKEN` (preferred), `SANITY_API_TOKEN`, or `SANITY_READ_TOKEN`.
+- If you have a dumped schema file, you can point the config at it to avoid network calls.
+
+## Overview
+
 You have trusted read/write access to the following repositories:
 
 fas-sanity — Sanity Studio, schemas, plugins, webhooks, business logic
 fas-cms-fresh — Astro/React frontend, API routes, queries, UI components
-This document defines the rules, patterns, and constraints for making changes across both repos while maintaining data integrity, type safety, and business logic consistency.
+
+**IMPORTANT:**
+
+- GitHub repo: `fas-cms`
+- Local directory: `fas-cms-fresh`
+- When referencing paths, use the logical name `fas-cms` but understand the local directory is `fas-cms-fresh`
+  This document defines the rules, patterns, and constraints for making changes across both repos while maintaining data integrity, type safety, and business logic consistency.
 
 Core Principles
 
@@ -1066,7 +1086,7 @@ SANITY_API_TOKEN=skxxx
 
 # Stripe (if needed in Studio)
 
-SANITY_STUDIO_STRIPE_SECRET_KEY=sk_test_xxx
+SANITY_STUDIO_STRIPE_SECRET_KEY=<YOUR_SANITY_STUDIO_STRIPE_SECRET_KEY>
 
 # EasyPost (if needed in Studio)
 
@@ -1081,9 +1101,9 @@ SANITY_API_TOKEN=skxxx # Write token for server-side
 
 # Stripe
 
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+STRIPE_SECRET_KEY=<your_stripe_secret_key>
+PUBLIC_STRIPE_PUBLISHABLE_KEY=<your_stripe_publishable_key>
+STRIPE_WEBHOOK_SECRET=<your_stripe_webhook_secret>
 
 # EasyPost
 
@@ -2232,7 +2252,7 @@ SANITY_STUDIO_API_VERSION=2024-01-01
 SANITY_API_TOKEN=skxxx
 
 # Stripe (if needed in Studio)
-SANITY_STUDIO_STRIPE_SECRET_KEY=sk_test_xxx
+SANITY_STUDIO_STRIPE_SECRET_KEY=<your_sanity_studio_stripe_secret_key>
 
 # EasyPost (if needed in Studio)
 SANITY_STUDIO_EASYPOST_API_KEY=EZAK_xxx
@@ -2247,9 +2267,9 @@ PUBLIC_SANITY_DATASET=production
 SANITY_API_TOKEN=skxxx  # Write token for server-side
 
 # Stripe
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+STRIPE_SECRET_KEY=<your_stripe_secret_key>
+PUBLIC_STRIPE_PUBLISHABLE_KEY=<your_stripe_publishable_key>
+STRIPE_WEBHOOK_SECRET=<your_stripe_webhook_secret>
 
 # EasyPost
 EASYPOST_API_KEY=EZAK_xxx
@@ -2334,6 +2354,16 @@ try {
 ---
 
 ## Version History
+
+# Update the codex.md file
+
+cat > docs/codex.md << 'EOF'
+
+# FAS Motorsports Codex Master Prompt
+
+**Version:** 1.2.1  
+**Last Updated:** 2025-12-23  
+**Repos:** fas-sanity, fas-cms (GitHub) / fas-cms-fresh (local)
 
 ### v1.2.0 (2025-12-23)
 

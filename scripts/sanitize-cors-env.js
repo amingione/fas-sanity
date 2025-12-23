@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+const dotenv = require('dotenv')
+dotenv.config()
+
 
 /**
  * Sanitize CORS_ALLOW so wildcard values like "https://*" don't break RegExp().

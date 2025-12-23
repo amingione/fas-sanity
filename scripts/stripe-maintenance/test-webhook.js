@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const fs = require('fs/promises')
 const path = require('path')

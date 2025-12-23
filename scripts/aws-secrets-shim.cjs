@@ -1,3 +1,6 @@
+const dotenv = require('dotenv')
+dotenv.config()
+
 /**
  * Copy secrets injected by @netlify/plugin-secrets-manager (prefixed, e.g. NETLIFY_AWS_SECRET_FOO)
  * to their original env var names when the unprefixed version is missing. Also attempts to hydrate

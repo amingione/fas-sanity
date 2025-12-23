@@ -1,3 +1,6 @@
+const dotenv = require('dotenv')
+dotenv.config()
+
 const Stripe = require('stripe')
 const {createClient} = require('@sanity/client')
 

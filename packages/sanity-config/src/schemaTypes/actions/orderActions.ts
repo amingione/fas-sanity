@@ -1,6 +1,7 @@
 import type {DocumentActionComponent} from 'sanity'
 import {useCurrentUser} from 'sanity'
 import {PackageIcon, RocketIcon, EnvelopeIcon} from '@sanity/icons'
+import {callNetlifyFunction} from '../../utils/netlifyHelpers'
 
 const openUrl = (url?: string | null) => {
   if (!url) return
@@ -26,18 +27,17 @@ export const GeneratePackingSlipAction: DocumentActionComponent = (props) => {
         return
       }
       try {
-        const response = await fetch('/api/generate-packing-slip', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({orderId: doc._id, orderNumber: doc.orderNumber}),
-        })
-        if (!response.ok) {
-          const {message} = await response.json().catch(() => ({message: 'Unable to generate'}))
-          throw new Error(message || 'Unable to generate packing slip')
-        }
-        const {pdfUrl} = (await response.json()) as {pdfUrl?: string}
+        const orderId = doc._id.replace(/^drafts\./, '')
+        const response = await callNetlifyFunction('generatePackingSlips', {orderId})
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const filenameSafe = (doc.orderNumber || orderId).toString().replace(/[^a-z0-9_-]/gi, '') || 'order'
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `packing-slip-${filenameSafe}.pdf`
+        a.click()
+        window.URL.revokeObjectURL(url)
         onComplete()
-        openUrl(pdfUrl)
       } catch (err) {
         console.error('GeneratePackingSlipAction failed', err)
         alert((err as Error)?.message || 'Failed to generate packing slip')

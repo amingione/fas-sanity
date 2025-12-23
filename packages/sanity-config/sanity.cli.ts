@@ -20,6 +20,7 @@ const resolvedHostname =
 
 const resolvedPort =
   parsePort(process.env.SANITY_STUDIO_PORT) || parsePort(process.env.PORT) || 3333
+const deploymentAppId = process.env.SANITY_STUDIO_APP_ID?.trim() || undefined
 
 export default defineCliConfig({
   api: {
@@ -39,8 +40,10 @@ export default defineCliConfig({
     },
   ],
   vite: (config) => config,
-  deployment: {
-    appId: 'ps4wgpv9q82jyqj4k9x6uxol',
-    autoUpdates: true,
-  },
+  deployment: deploymentAppId
+    ? {
+        appId: deploymentAppId,
+        autoUpdates: true,
+      }
+    : undefined,
 })
