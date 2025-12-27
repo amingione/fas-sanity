@@ -55,7 +55,15 @@ export default defineType({
       name: 'conditions',
       title: 'Conditions',
       type: 'object',
-      fields: [],
+      fields: [
+        defineField({
+          name: 'rules',
+          title: 'Rules',
+          type: 'array',
+          of: [{type: 'string'}],
+          description: 'Optional human-readable promotion conditions.',
+        }),
+      ],
     }),
   ],
 })
