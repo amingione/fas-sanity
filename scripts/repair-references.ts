@@ -7,6 +7,7 @@ import {
   linkOrderToInvoice,
   linkShipmentToOrder,
 } from '../netlify/lib/referenceIntegrity'
+import {parseStripeSummaryData} from '../netlify/lib/stripeSummary'
 
 type OrderDoc = {
   _id: string
@@ -14,7 +15,7 @@ type OrderDoc = {
   status?: string
   customerRef?: {_ref?: string}
   customerEmail?: string | null
-  stripeSummary?: {customer?: {email?: string}}
+  stripeSummary?: {data?: string | null} | Record<string, any> | null
 }
 
 type InvoiceDoc = {
@@ -179,8 +180,9 @@ async function repairOrdersWithoutCustomers(sanity: SanityClient) {
   for (const order of orders) {
     const orderId = normalizeId(order._id)
     if (!orderId) continue
+    const stripeSummary = parseStripeSummaryData(order.stripeSummary)
     const email =
-      (order.customerEmail || order.stripeSummary?.customer?.email || '').toString().trim() || ''
+      (order.customerEmail || stripeSummary?.customer?.email || '').toString().trim() || ''
     const customerId = await findOrCreateCustomer(sanity, email, order.orderNumber || undefined)
     if (!customerId) continue
     await linkOrderToCustomer(sanity, orderId, customerId)
@@ -351,9 +353,10 @@ async function repairShipmentsWithoutOrders(sanity: SanityClient) {
           `*[_type == "order" && (
             easyPostShipmentId == $easypostId ||
             trackingNumber == $tracking ||
-            orderNumber == $reference ||
-            stripeSummary.paymentIntentId == $paymentIntent
-          )][0]._id`,
+          orderNumber == $reference ||
+          paymentIntentId == $paymentIntent ||
+          stripePaymentIntentId == $paymentIntent
+        )][0]._id`,
           {
             easypostId: shipment.easypostId || null,
             tracking: tracking,

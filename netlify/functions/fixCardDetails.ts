@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import {createClient} from '@sanity/client'
 import {requireSanityCredentials} from '../lib/sanityEnv'
+import {parseStripeSummaryData} from '../lib/stripeSummary'
 
 const {projectId, dataset, token} = requireSanityCredentials()
 
@@ -17,26 +18,27 @@ type OrderCardDetails = {
   orderNumber?: string
   cardBrand?: string | null
   cardLast4?: string | null
-  brand?: string | null
-  last4?: string | null
+  stripeSummary?: {data?: string | null} | Record<string, any> | null
 }
 
 async function fixCardDetails() {
   const orders = await sanity.fetch<OrderCardDetails[]>(
-    `*[_type == "order" && defined(stripeSummary.paymentMethod.brand)]{
+    `*[_type == "order" && defined(stripeSummary.data) && (
+      cardBrand == "" || !defined(cardBrand) || cardLast4 == "" || !defined(cardLast4)
+    )]{
       _id,
       orderNumber,
       cardBrand,
       cardLast4,
-      "brand": stripeSummary.paymentMethod.brand,
-      "last4": stripeSummary.paymentMethod.last4
+      stripeSummary
     }`,
   )
 
   let updated = 0
   for (const order of orders) {
-    const brand = (order.brand || '').trim()
-    const last4 = (order.last4 || '').trim()
+    const summary = parseStripeSummaryData(order.stripeSummary)
+    const brand = (summary?.paymentMethod?.brand || '').trim()
+    const last4 = (summary?.paymentMethod?.last4 || '').trim()
     if (!brand || !last4) continue
     const hasSameBrand = (order.cardBrand || '').trim() === brand
     const hasSameLast4 = (order.cardLast4 || '').trim() === last4

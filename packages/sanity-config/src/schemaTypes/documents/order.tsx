@@ -3,12 +3,13 @@ import type {ComponentType} from 'react'
 import {defineField, defineType} from 'sanity'
 import {PackageIcon, CheckmarkCircleIcon, RestoreIcon, CloseIcon, UndoIcon} from '@sanity/icons'
 import {OrderHeader} from '../components/OrderHeader'
+import {deriveWorkflowState} from '../../utils/orderWorkflow'
 
 export default defineType({
   name: 'order',
   title: 'Order',
   type: 'document',
-  icon: PackageIcon,
+  icon: PackageIcon as unknown as ComponentType,
   groups: [
     {name: 'overview', title: 'Overview', default: true},
     {name: 'fulfillment', title: 'Fulfillment'},
@@ -47,7 +48,7 @@ export default defineType({
       type: 'string',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -56,14 +57,14 @@ export default defineType({
       type: 'datetime',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'status',
       title: 'Order Status',
       type: 'string',
       group: 'overview',
-      hidden: true,
+      hidden: false,
       options: {
         list: [
           {title: 'Paid', value: 'paid'},
@@ -99,7 +100,7 @@ export default defineType({
       type: 'string',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'customerName',
@@ -107,7 +108,7 @@ export default defineType({
       type: 'string',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'customerEmail',
@@ -115,7 +116,23 @@ export default defineType({
       type: 'string',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
+    }),
+    defineField({
+      name: 'customerInstructions',
+      title: 'Customer Instructions (Internal)',
+      type: 'text',
+      rows: 3,
+      group: 'overview',
+      description: 'Optional delivery notes. UX-only; not used by integrations.',
+    }),
+    defineField({
+      name: 'opsInternalNotes',
+      title: 'Ops Notes (Internal)',
+      type: 'text',
+      rows: 4,
+      group: 'overview',
+      description: 'Internal ops/support notes. UX-only; not used by integrations.',
     }),
     defineField({
       name: 'cart',
@@ -131,7 +148,7 @@ export default defineType({
       type: 'number',
       group: 'overview',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'amountSubtotal',
@@ -195,7 +212,8 @@ export default defineType({
           type: 'text',
           rows: 5,
           readOnly: true,
-          description: 'Customer shipping address',
+          description: 'Deprecated: use structured shippingAddress fields instead',
+          hidden: true,
         },
         {
           name: 'packageWeight',
@@ -214,7 +232,9 @@ export default defineType({
           name: 'trackingNumber',
           title: 'Tracking Number',
           type: 'string',
-          description: 'Carrier tracking number',
+          readOnly: true,
+          description: 'Deprecated: use top-level trackingNumber instead',
+          hidden: true,
         },
         {
           name: 'trackingDetails',
@@ -341,18 +361,18 @@ export default defineType({
       name: 'labelPurchased',
       title: 'Label Purchased',
       type: 'boolean',
-      group: 'technical',
+      group: 'fulfillment',
       readOnly: true,
       initialValue: false,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'labelPurchasedAt',
       title: 'Label Purchased At',
       type: 'datetime',
-      group: 'technical',
+      group: 'fulfillment',
       readOnly: true,
-      hidden: true,
+      hidden: false,
     }),
     defineField({
       name: 'labelPurchasedBy',
@@ -380,8 +400,11 @@ export default defineType({
     }),
     defineField({
       name: 'shippingAddress',
+      title: 'Shipping Address',
       type: 'object',
-      hidden: true,
+      group: 'fulfillment',
+      readOnly: true,
+      hidden: false,
       fields: [
         {name: 'name', type: 'string'},
         {name: 'phone', type: 'string'},
@@ -412,7 +435,14 @@ export default defineType({
     }),
     defineField({name: 'carrier', type: 'string', hidden: true}),
     defineField({name: 'service', type: 'string', hidden: true}),
-    defineField({name: 'trackingNumber', type: 'string', hidden: true}),
+    defineField({
+      name: 'trackingNumber',
+      title: 'Tracking Number',
+      type: 'string',
+      group: 'fulfillment',
+      readOnly: true,
+      hidden: false,
+    }),
     defineField({name: 'trackingUrl', type: 'url', hidden: true}),
     defineField({name: 'shippedAt', type: 'datetime', hidden: true}),
     defineField({name: 'deliveredAt', type: 'datetime', hidden: true}),
@@ -476,7 +506,13 @@ export default defineType({
     defineField({name: 'shippingLabelRefundedAt', type: 'datetime', hidden: true}),
     defineField({name: 'shippingLabelRefundAmount', type: 'number', hidden: true}),
     defineField({name: 'labelCreatedAt', type: 'datetime', hidden: true}),
-    defineField({name: 'labelCost', type: 'number', hidden: true}),
+    defineField({
+      name: 'labelCost',
+      title: 'Label Cost',
+      type: 'number',
+      group: 'fulfillment',
+      hidden: false,
+    }),
     defineField({name: 'deliveryDays', type: 'number', hidden: true}),
     defineField({name: 'easyPostTrackerId', type: 'string', hidden: true}),
     defineField({name: 'paymentCaptureStrategy', type: 'string', hidden: true}),
@@ -486,28 +522,72 @@ export default defineType({
       hidden: true,
       fields: [{name: 'display', type: 'string'}],
     }),
-    defineField({name: 'amountRefunded', type: 'number', hidden: true}),
-    defineField({name: 'lastRefundId', type: 'string', hidden: true}),
-    defineField({name: 'lastRefundReason', type: 'string', hidden: true}),
-    defineField({name: 'lastRefundStatus', type: 'string', hidden: true}),
-    defineField({name: 'lastRefundedAt', type: 'datetime', hidden: true}),
+    defineField({
+      name: 'amountRefunded',
+      title: 'Amount Refunded',
+      type: 'number',
+      group: 'overview',
+      hidden: ({document}) => document?.status !== 'refunded',
+    }),
+    defineField({
+      name: 'lastRefundId',
+      title: 'Last Refund ID',
+      type: 'string',
+      group: 'overview',
+      hidden: ({document}) => document?.status !== 'refunded',
+    }),
+    defineField({
+      name: 'lastRefundReason',
+      title: 'Last Refund Reason',
+      type: 'string',
+      group: 'overview',
+      hidden: ({document}) => document?.status !== 'refunded',
+    }),
+    defineField({
+      name: 'lastRefundStatus',
+      title: 'Last Refund Status',
+      type: 'string',
+      group: 'overview',
+      hidden: ({document}) => document?.status !== 'refunded',
+    }),
+    defineField({
+      name: 'lastRefundedAt',
+      title: 'Last Refunded At',
+      type: 'datetime',
+      group: 'overview',
+      hidden: ({document}) => document?.status !== 'refunded',
+    }),
   ],
   preview: {
     select: {
       orderNumber: 'orderNumber',
       customerName: 'customerName',
       status: 'status',
+      paymentStatus: 'paymentStatus',
       totalAmount: 'totalAmount',
       fulfillmentStatus: 'fulfillmentDetails.status',
+      labelPurchased: 'labelPurchased',
+      shippedAt: 'shippedAt',
+      deliveredAt: 'deliveredAt',
     },
-    prepare({orderNumber, customerName, status, totalAmount, fulfillmentStatus}) {
+    prepare({
+      orderNumber,
+      customerName,
+      status,
+      paymentStatus,
+      totalAmount,
+      fulfillmentStatus,
+      labelPurchased,
+      shippedAt,
+      deliveredAt,
+    }) {
       const statusIconMap: Record<string, ComponentType> = {
-        paid: PackageIcon,
-        fulfilled: RestoreIcon,
-        delivered: CheckmarkCircleIcon,
-        canceled: CloseIcon,
-        cancelled: CloseIcon,
-        refunded: UndoIcon,
+        paid: PackageIcon as unknown as ComponentType,
+        fulfilled: RestoreIcon as unknown as ComponentType,
+        delivered: CheckmarkCircleIcon as unknown as ComponentType,
+        canceled: CloseIcon as unknown as ComponentType,
+        cancelled: CloseIcon as unknown as ComponentType,
+        refunded: UndoIcon as unknown as ComponentType,
       }
 
       const normalize = (value?: string | null) =>
@@ -526,9 +606,22 @@ export default defineType({
 
       const Icon = statusIconMap[primaryStatus] || statusIconMap[normalizedStatus] || PackageIcon
 
+      const workflowState = deriveWorkflowState({
+        paymentStatus,
+        labelPurchased,
+        shippedAt,
+        deliveredAt,
+      })
+      const workflowDetails = [
+        workflowState.label,
+        workflowState.actionLabel ? `Action: ${workflowState.actionLabel}` : null,
+      ]
+        .filter(Boolean)
+        .join(' • ')
+
       return {
         title: `${customerName || 'Unknown Customer'} — ${orderNumber || 'New Order'}`,
-        subtitle: `$${totalAmount?.toFixed(2) || '0.00'} • ${statusLabel}`,
+        subtitle: `$${totalAmount?.toFixed(2) || '0.00'} • ${workflowDetails || statusLabel}`,
         media: Icon,
       }
     },

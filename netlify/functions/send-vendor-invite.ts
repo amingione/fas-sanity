@@ -287,7 +287,7 @@ const handler: Handler = async (event) => {
       subject,
       html,
       text,
-      reply_to: template?.replyTo,
+      replyTo: template?.replyTo,
     })
 
     const errorMessage = (result as any)?.error?.message || (result as any)?.message

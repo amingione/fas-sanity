@@ -5,6 +5,7 @@ import {randomUUID} from 'crypto'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {sanityClient} from '../lib/sanityClient'
 import {resolveStripeSecretKey} from '../lib/stripeEnv'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888'
@@ -31,7 +32,7 @@ const stripeSecretKey =
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
 
 const sanity = sanityClient

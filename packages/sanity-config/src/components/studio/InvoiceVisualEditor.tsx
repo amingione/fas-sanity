@@ -390,7 +390,6 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
 
   const trackingNumber =
     trimString(doc?.trackingNumber) ||
-    trimString(fulfillmentDetails?.trackingNumber) ||
     trimString(doc?.orderRef?.trackingNumber) ||
     trimString(doc?.order?.trackingNumber) ||
     ''

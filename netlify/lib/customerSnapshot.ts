@@ -299,7 +299,7 @@ export async function updateCustomerProfileForOrder({
           return {
             orderId: rawOrderId,
             summary: {
-              _type: 'customerOrderSummary',
+              _type: 'customerOrderSummary' as const,
               orderDocumentId: normalizedOrderId || undefined,
               orderNumber: order?.orderNumber || '',
               status: order?.status || '',

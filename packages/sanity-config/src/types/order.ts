@@ -116,6 +116,8 @@ export interface OrderDocument {
   lastRefundedAt?: string | null
   customerName?: string
   customerEmail?: string
+  customerInstructions?: string | null
+  opsInternalNotes?: string | null
   customerRef?: SanityReference | null
   cart?: OrderCartItem[] | null
   currency?: string

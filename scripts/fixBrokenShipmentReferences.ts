@@ -24,7 +24,7 @@ type OrderRecord = {_id: string; orderNumber?: string}
 
 async function findOrderByPaymentIntent(paymentIntent: string) {
   return sanity.fetch<OrderRecord | null>(
-    `*[_type == "order" && stripeSummary.paymentIntentId == $piId][0]{_id, orderNumber}`,
+    `*[_type == "order" && (paymentIntentId == $piId || stripePaymentIntentId == $piId)][0]{_id, orderNumber}`,
     {piId: paymentIntent},
   )
 }

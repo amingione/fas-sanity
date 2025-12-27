@@ -1,5 +1,6 @@
 import React from 'react'
 import {Badge} from '@sanity/ui'
+import {buildWorkflowBadges, resolveWorkflowActionBadge} from '../../../utils/orderWorkflow'
 
 export type DocumentBadgeTone = 'default' | 'primary' | 'positive' | 'caution' | 'critical'
 
@@ -132,11 +133,17 @@ export function buildOrderStatusBadges({
   paymentStatus,
   stripePaymentIntentStatus,
   orderStatus,
+  labelPurchased,
+  shippedAt,
+  deliveredAt,
   useStripePaymentFallback = false,
 }: {
   paymentStatus?: string | null
   stripePaymentIntentStatus?: string | null
   orderStatus?: string | null
+  labelPurchased?: boolean | null
+  shippedAt?: string | null
+  deliveredAt?: string | null
   useStripePaymentFallback?: boolean
 }): StatusBadgeDescriptor[] {
   const badges: StatusBadgeDescriptor[] = []
@@ -182,6 +189,35 @@ export function buildOrderStatusBadges({
         title: `Order status: ${fulfillmentLabel}`,
       })
     }
+  }
+
+  const workflowBadges = buildWorkflowBadges({
+    paymentStatus: primaryPaymentStatus,
+    labelPurchased,
+    shippedAt,
+    deliveredAt,
+  })
+  const actionBadge = resolveWorkflowActionBadge({
+    paymentStatus: primaryPaymentStatus,
+    labelPurchased,
+    shippedAt,
+    deliveredAt,
+  })
+  workflowBadges.forEach((badge) => {
+    badges.push({
+      key: badge.key,
+      label: badge.label,
+      tone: badge.tone,
+      title: badge.title,
+    })
+  })
+  if (actionBadge) {
+    badges.push({
+      key: actionBadge.key,
+      label: actionBadge.label,
+      tone: actionBadge.tone,
+      title: actionBadge.title,
+    })
   }
 
   return badges

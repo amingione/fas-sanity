@@ -36,7 +36,10 @@ const handler = schedule('0 5 * * *', async () => {
       eventData: {schedule: 'daily'},
       result: {reason: 'sanity client missing'},
     })
-    return
+    return {
+      statusCode: 500,
+      body: JSON.stringify({error: 'Sanity client missing'}),
+    }
   }
 
   try {
@@ -70,6 +73,10 @@ const handler = schedule('0 5 * * *', async () => {
       eventData: {schedule: 'daily'},
       result: {deleted: {errors: staleErrors, nonError: staleInfo}},
     })
+    return {
+      statusCode: 200,
+      body: JSON.stringify({deleted: {errors: staleErrors, nonError: staleInfo}}),
+    }
   } catch (error) {
     await logFunctionExecution({
       functionName: 'cleanupFunctionLogs',
@@ -78,7 +85,10 @@ const handler = schedule('0 5 * * *', async () => {
       eventData: {schedule: 'daily'},
       error,
     })
-    throw error
+    return {
+      statusCode: 500,
+      body: JSON.stringify({error: 'Failed to cleanup function logs'}),
+    }
   }
 })
 

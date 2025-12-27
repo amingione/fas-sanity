@@ -210,17 +210,19 @@ const mapAiResponse = (
   sources: SourceField[],
   targets: TargetField[],
 ): MappingSuggestion[] => {
-  const findTarget = (name: string) => {
+  const findTarget = (name: string): TargetField | undefined => {
     const exact = targets.find((t) => t.path === name) || targets.find((t) => t.name === name)
     if (exact) return exact
-    let best: {item: TargetField; score: number} | null = null
+    let best: TargetField | null = null
+    let bestScore = -1
     targets.forEach((candidate) => {
       const score = similarity(name, candidate.name)
-      if (!best || score > best.score) {
-        best = {item: candidate, score}
+      if (score > bestScore) {
+        best = candidate
+        bestScore = score
       }
     })
-    return best?.item
+    return best ?? undefined
   }
 
   const bySource: Record<string, MappingCandidate[]> = {}

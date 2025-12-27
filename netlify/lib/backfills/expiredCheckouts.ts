@@ -1,6 +1,7 @@
 import type {Handler, HandlerEvent} from '@netlify/functions'
 import Stripe from 'stripe'
 import {requireStripeSecretKey} from '../stripeEnv'
+import {STRIPE_API_VERSION} from '../stripeConfig'
 
 export type ExpiredCheckoutBackfillOptions = {
   dryRun?: boolean
@@ -25,7 +26,7 @@ const MAX_PAGE_SIZE = 100
 const createStripeClient = (): Stripe => {
   const key = requireStripeSecretKey()
   return new Stripe(key, {
-    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
 }
 

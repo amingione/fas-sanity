@@ -379,7 +379,7 @@ async function findOrderForShipment(shipment: any): Promise<OrderLookupResult> {
 
   if (paymentIntentId) {
     const orderByPi = await sanity.fetch<SanityOrderRecord | null>(
-      `*[_type == "order" && stripeSummary.paymentIntentId == $piId][0]${ORDER_PROJECTION}`,
+      `*[_type == "order" && (paymentIntentId == $piId || stripePaymentIntentId == $piId)][0]${ORDER_PROJECTION}`,
       {piId: paymentIntentId},
     )
     if (orderByPi) return {...baseResult, order: orderByPi}

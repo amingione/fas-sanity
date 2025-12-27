@@ -69,16 +69,16 @@ const CUSTOMER_DASHBOARD_QUERY = `{
     "lifetimeValue": coalesce(math::sum(*[_type == "order" && customerRef._ref == $customerId && status == "paid"]${ORDER_TOTAL_PROJECTION}), 0),
     "totalOrders": count(*[_type == "order" && customerRef._ref == $customerId]),
     "avgOrderValue": coalesce(math::avg(*[_type == "order" && customerRef._ref == $customerId && status == "paid"]${ORDER_TOTAL_PROJECTION}), 0),
-    "lastOrderDate": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) desc)[0]{
-      "ts": coalesce(orderDate, createdAt, _createdAt)
+    "lastOrderDate": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0]{
+      "ts": coalesce(createdAt, _createdAt)
     }.ts,
-    "firstOrderDate": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) asc)[0]{
-      "ts": coalesce(orderDate, createdAt, _createdAt)
+    "firstOrderDate": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(createdAt, _createdAt)) asc)[0]{
+      "ts": coalesce(createdAt, _createdAt)
     }.ts,
     "segment": *[_type == "customer" && _id == $customerId][0].segment,
     "daysSinceLastOrder": *[_type == "customer" && _id == $customerId][0].daysSinceLastOrder
   },
-  "orders": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) desc)[0...10]{
+  "orders": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...10]{
     _id,
     orderNumber,
     _createdAt,

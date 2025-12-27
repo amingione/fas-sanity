@@ -40,7 +40,7 @@ function getSanityClient() {
 
 type InventoryDoc = {
   _id: string
-  product?: {_ref?: string; title?: string; sku?: string}
+  product?: {_ref?: string; _id?: string; title?: string; sku?: string}
   quantityAvailable?: number
   quantityOnHand?: number
   quantityReserved?: number

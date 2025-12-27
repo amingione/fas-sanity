@@ -2,12 +2,13 @@ import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
 import {requireSanityCredentials} from '../lib/sanityEnv'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const SANITY_API_VERSION = '2024-10-01'
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 const stripe =
   stripeSecret && stripeSecret.trim()
-    ? new Stripe(stripeSecret, {apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion']})
+    ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION})
     : null
 
 const corsHeaders = {
@@ -173,14 +174,10 @@ const handler: Handler = async (event) => {
         amountSubtotal,
         amountTax,
         amountShipping,
-        wholesaleWorkflowStatus,
         wholesaleDetails{
-          paymentTerms,
-          workflowStatus,
-          paymentLinkId,
-          vendor->{_id, companyName, portalAccess, primaryContact},
-          poNumber
+          workflowStatus
         },
+        customerRef->{_id, companyName, portalAccess, primaryContact, paymentTerms},
         cart[]{name, sku, quantity, price, total, lineTotal}
       }`,
       {orderId},
@@ -197,16 +194,14 @@ const handler: Handler = async (event) => {
       }
     }
 
-    const paymentTerms = normalizePaymentTerms(order.wholesaleDetails?.paymentTerms)
-    const vendorId = order.wholesaleDetails?.vendor?._id
-    const workflowStatus = order.wholesaleDetails?.workflowStatus || order.wholesaleWorkflowStatus
+    const paymentTerms = normalizePaymentTerms(order.customerRef?.paymentTerms)
+    const vendorId = order.customerRef?._id
+    const workflowStatus = order.wholesaleDetails?.workflowStatus
     const basePatch = sanity
       .patch(order._id)
       .setIfMissing({wholesaleDetails: {}})
       .set({
         'wholesaleDetails.workflowStatus': 'approved',
-        wholesaleWorkflowStatus: 'approved',
-        'wholesaleDetails.approvedAt': new Date().toISOString(),
       })
 
     if (paymentTerms === 'immediate') {
@@ -229,12 +224,7 @@ const handler: Handler = async (event) => {
         },
       })
 
-      await basePatch
-        .set({
-          'wholesaleDetails.paymentLinkId': link.id,
-          'wholesaleDetails.paymentLinkUrl': link.url,
-        })
-        .commit({autoGenerateArrayKeys: true})
+      await basePatch.commit({autoGenerateArrayKeys: true})
 
       await createVendorMessage({
         vendorId,
@@ -263,7 +253,7 @@ const handler: Handler = async (event) => {
     dueDate.setDate(dueDate.getDate() + days)
     const dueIso = dueDate.toISOString()
 
-    await basePatch.set({'wholesaleDetails.dueDate': dueIso}).commit({autoGenerateArrayKeys: true})
+    await basePatch.commit({autoGenerateArrayKeys: true})
 
     await createVendorMessage({
       vendorId,

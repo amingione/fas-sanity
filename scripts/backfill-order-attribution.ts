@@ -10,6 +10,7 @@ import {
   hasAttributionData,
   AttributionParams,
 } from '../netlify/lib/attribution'
+import {parseStripeSummaryData} from '../netlify/lib/stripeSummary'
 
 type StripeMetadataEntry = {
   key?: string
@@ -21,7 +22,7 @@ type OrderDoc = {
   attribution?: AttributionParams | null
   createdAt?: string
   _createdAt?: string
-  stripeSummary?: {metadata?: StripeMetadataEntry[]}
+  stripeSummary?: {data?: string | null} | Record<string, any> | null
 }
 
 const ENV_FILES = ['.env.local', '.env.development', '.env']
@@ -69,7 +70,7 @@ async function run() {
       attribution,
       createdAt,
       _createdAt,
-      stripeSummary{metadata}
+      stripeSummary
     }`,
   )
 
@@ -78,7 +79,8 @@ async function run() {
   for (const order of orders) {
     if (hasAttributionData(order.attribution)) continue
 
-    const metadataRecord = metadataEntriesToRecord(order?.stripeSummary?.metadata)
+    const stripeSummary = parseStripeSummaryData(order?.stripeSummary)
+    const metadataRecord = metadataEntriesToRecord(stripeSummary?.metadata)
     let params = extractAttributionFromMetadata(metadataRecord)
 
     if (!hasAttributionData(params)) {

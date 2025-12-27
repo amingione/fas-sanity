@@ -3,6 +3,7 @@ import {createClient, type SanityClient} from '@sanity/client'
 import Stripe from 'stripe'
 import {requireSanityCredentials} from '../sanityEnv'
 import {requireStripeSecretKey} from '../stripeEnv'
+import {STRIPE_API_VERSION} from '../stripeConfig'
 
 type BackfillStatus = 'all' | 'success' | 'failure'
 
@@ -68,7 +69,7 @@ function formatOrderRef(doc: OrderDoc): string {
 function createStripeClient(): Stripe {
   const key = requireStripeSecretKey()
   return new Stripe(key, {
-    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
 }
 

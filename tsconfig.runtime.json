@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "netlify/functions/**/*",
+    "netlify/lib/**/*",
+    "src/pages/api/**/*"
+  ],
+  "exclude": [
+    "scripts/**/*",
+    "packages/sanity-config/**/*",
+    "src/components/**/*",
+    "src/pages/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}

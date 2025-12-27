@@ -26,7 +26,8 @@ import {
 type OrderRecord = {
   _id: string
   orderNumber?: string | null
-  orderDate?: string | null
+  createdAt?: string | null
+  _createdAt?: string | null
   status?: string | null
   total?: number | null
   paymentMethod?: string | null
@@ -51,10 +52,11 @@ const ORDER_FILTER_LABELS: Record<OrderFilter, string> = {
   expired: EXPIRED_SESSION_PANEL_TITLE,
 }
 
-const ORDER_QUERY = `*[_type == "order"] | order(orderDate desc)[0...250]{
+const ORDER_QUERY = `*[_type == "order"] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...250]{
   _id,
   orderNumber,
-  orderDate,
+  createdAt,
+  _createdAt,
   status,
   total,
   paymentMethod,
@@ -422,7 +424,7 @@ const OrdersListPane = React.forwardRef<HTMLDivElement, Record<string, never>>((
                           {order.customerRef?.name || '—'}
                         </Text>
                         <Text size={1} style={{flex: 1}}>
-                          {formatDate(order.orderDate)}
+                          {formatDate(order.createdAt || order._createdAt)}
                         </Text>
                         <Box style={{flex: 1}}>
                           {statusBadges.length || tagBadges.length ? (

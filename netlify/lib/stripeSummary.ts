@@ -337,3 +337,30 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
 
   return summary
 }
+
+export const serializeStripeSummaryData = (summary: Record<string, any>): {data: string} => ({
+  data: JSON.stringify(summary ?? {}),
+})
+
+export const parseStripeSummaryData = (
+  input?: {data?: string | null} | Record<string, any> | null,
+): Record<string, any> | null => {
+  if (!input) return null
+  if (typeof (input as {data?: string | null}).data === 'string') {
+    const raw = (input as {data?: string}).data
+    if (!raw) return null
+    try {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, any>
+      }
+    } catch {
+      return null
+    }
+    return null
+  }
+  if (typeof input === 'object' && !Array.isArray(input)) {
+    return input as Record<string, any>
+  }
+  return null
+}

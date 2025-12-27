@@ -296,6 +296,22 @@ const mappingByType: Record<string, MappingFn> = {
   },
 }
 
+const parseStripeSummary = (value: Record<string, any> | null): Record<string, any> | null => {
+  if (!value) return null
+  if (typeof value.data === 'string') {
+    try {
+      const parsed = JSON.parse(value.data)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, any>
+      }
+    } catch {
+      return null
+    }
+    return null
+  }
+  return value
+}
+
 export default function AddressAutocompleteInput(props: ObjectInputProps<Record<string, any>>) {
   const {renderDefault, schemaType, value, onChange, id, path} = props
   const mapping = useMemo(() => mappingByType[schemaType.name], [schemaType.name])
@@ -306,7 +322,11 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   const [query, setQuery] = useState<string>('')
   const [optionLookup, setOptionLookup] = useState<Map<string, AddressOption>>(new Map())
   const autoFilledRef = useRef(false)
-  const stripeSummary = useFormValue(['stripeSummary']) as Record<string, any> | null
+  const stripeSummaryValue = useFormValue(['stripeSummary']) as Record<string, any> | null
+  const stripeSummary = useMemo(
+    () => parseStripeSummary(stripeSummaryValue),
+    [stripeSummaryValue],
+  )
   const schemaOptions = schemaType.options as Record<string, any> | undefined
   const lookupSetting = schemaOptions?.showSavedAddressLookup
   const showLookup = lookupSetting === true

@@ -3,7 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient, type SanityClient} from '@sanity/client'
-import {buildStripeSummary} from '../../lib/stripeSummary'
+import {buildStripeSummary, serializeStripeSummaryData} from '../../lib/stripeSummary'
+import {STRIPE_API_VERSION} from '../../lib/stripeConfig'
 import Stripe from 'stripe'
 import {requireSanityCredentials} from '../sanityEnv'
 import {requireStripeSecretKey} from '../stripeEnv'
@@ -93,7 +94,7 @@ function getStripe(): Stripe {
   if (cachedStripe) return cachedStripe
   const secret = requireStripeSecretKey()
   cachedStripe = new Stripe(secret, {
-    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
   return cachedStripe
 }
@@ -444,17 +445,6 @@ async function updateInvoice(
     patch.stripeInvoiceStatus = invoiceStripeStatus
     hasChanges = true
   }
-  const summary = buildStripeSummary({
-    paymentIntent,
-    session,
-    failureCode: diagnostics.code,
-    failureMessage: diagnostics.message,
-  })
-  if (Object.keys(summary).length > 0) {
-    patch.stripeSummary = summary
-    hasChanges = true
-  }
-
   if (!hasChanges) return
   patch.stripeLastSyncedAt = new Date().toISOString()
 
@@ -555,7 +545,7 @@ async function processOrder(
     failureMessage: diagnostics.message,
   })
   if (Object.keys(summary).length > 0) {
-    orderPatch.stripeSummary = summary
+    orderPatch.stripeSummary = serializeStripeSummaryData(summary)
     hasChanges = true
   }
 

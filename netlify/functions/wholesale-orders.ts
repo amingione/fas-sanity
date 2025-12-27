@@ -103,28 +103,14 @@ export const handler: Handler = async (event) => {
 
     const orderNumber = await generateWholesaleOrderNumber(client)
     const nowIso = new Date().toISOString()
-    const bulkQuantity = cart.reduce((sum, item) => sum + item.quantity, 0)
-    const expectedShipDate =
-      typeof body.expectedShipDate === 'string' && body.expectedShipDate.trim().length
-        ? body.expectedShipDate
-        : undefined
-    const wholesaleNotes =
-      typeof body.notes === 'string' && body.notes.trim().length ? body.notes.trim() : undefined
-
     const orderDoc = {
       _type: 'order',
       orderNumber,
       orderType: 'wholesale',
-      status: 'pending',
+      status: 'paid',
       currency: 'USD',
-      wholesaleWorkflowStatus: 'requested',
       wholesaleDetails: {
-        vendor: {_type: 'reference', _ref: vendor._id},
-        pricingTier: tier,
-        bulkQuantity,
-        expectedShipDate,
-        paymentTerms: vendor.paymentTerms || 'net_30',
-        notes: wholesaleNotes,
+        workflowStatus: 'requested',
       },
       customerName: vendor.companyName,
       customerEmail: vendor.portalAccess?.email || vendor.primaryContact?.email,
@@ -155,7 +141,7 @@ export const handler: Handler = async (event) => {
           orderNumber: created.orderNumber,
           totalAmount: created.totalAmount,
           status: created.status,
-          wholesaleDetails: created.wholesaleDetails,
+          workflowStatus: created.wholesaleDetails?.workflowStatus || null,
         },
       }),
     }

@@ -24,10 +24,9 @@ const backfillOrder = async (orderId: string) => {
     `*[_id == $id][0]{
       _id,
       orderNumber,
-      stripeSummary{
-        checkoutSessionId,
-        paymentIntentId
-      }
+      stripeSessionId,
+      paymentIntentId,
+      stripePaymentIntentId
     }`,
     {id: orderId},
   )
@@ -39,8 +38,8 @@ const backfillOrder = async (orderId: string) => {
 
   console.log('Order:', order.orderNumber)
 
-  const sessionId = order.stripeSummary?.checkoutSessionId
-  const paymentIntentId = order.stripeSummary?.paymentIntentId
+  const sessionId = order.stripeSessionId
+  const paymentIntentId = order.paymentIntentId || order.stripePaymentIntentId
 
   if (!sessionId && !paymentIntentId) {
     console.log('No Stripe session or payment intent ID')

@@ -4,6 +4,7 @@ import {Resend} from 'resend'
 import {sanityClient} from '../lib/sanityClient'
 import {easypostRequest} from '../lib/easypostClient'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 type OrderDoc = {
   _id: string
@@ -19,7 +20,7 @@ type OrderDoc = {
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY || ''
 const stripe = stripeSecretKey
   ? new Stripe(stripeSecretKey, {
-      apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+      apiVersion: STRIPE_API_VERSION,
     })
   : null
 

@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -22,7 +23,7 @@ function makeCORS(origin?: string) {
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 const stripe = stripeSecret
-  ? new Stripe(stripeSecret, {apiVersion: '2024-11-20.acacia' as any})
+  ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION})
   : null
 
 const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID

@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 type PayoutSummary = {
   currency: string
@@ -36,7 +37,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const stripe = new Stripe(secretKey)
+    const stripe = new Stripe(secretKey, {apiVersion: STRIPE_API_VERSION})
 
     const [balance, payouts] = await Promise.all([
       stripe.balance.retrieve(),

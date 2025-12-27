@@ -7,6 +7,19 @@ const client = twilio(
 )
 
 export const handler: Handler = async (event) => {
+  // FAIL FAST: Ensure Twilio is configured
+  if (
+    !process.env.TWILIO_ACCOUNT_SID ||
+    !process.env.TWILIO_AUTH_TOKEN ||
+    !process.env.TWILIO_PHONE_NUMBER
+  ) {
+    console.error('Missing Twilio environment variables')
+    return {
+      statusCode: 500,
+      body: JSON.stringify({error: 'Twilio not configured'}),
+    }
+  }
+
   try {
     if (!event.body) {
       return {statusCode: 400, body: 'Missing body'}
@@ -28,6 +41,12 @@ export const handler: Handler = async (event) => {
     // 2. Build Sanity Studio link
     const studioUrl = `${process.env.SANITY_STUDIO_BASE_URL}/desk/${docType};${id}`
 
+    const formatCurrency = (value: any) => {
+      const num = Number(value)
+      if (Number.isNaN(num)) return 'N/A'
+      return num > 1000 ? (num / 100).toFixed(2) : num.toFixed(2)
+    }
+
     let messageText = ''
 
     // ============================
@@ -40,9 +59,18 @@ export const handler: Handler = async (event) => {
         webhook.customer?.name ||
         'New Customer'
 
-      const total = webhook.totalAmount || webhook.total || webhook.amount || webhook.orderTotal || 'N/A'
+      const total = formatCurrency(
+        webhook.totalAmount || webhook.total || webhook.amount || webhook.orderTotal,
+      )
       const orderType = webhook.orderType || 'online'
       const orderNumber = webhook.orderNumber || id
+
+      if (webhook.status && webhook.status !== 'paid') {
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ok: true, skipped: 'order_not_paid'}),
+        }
+      }
 
       // DISTINGUISH WHOLESALE VS REGULAR ORDERS
       if (orderType === 'wholesale') {

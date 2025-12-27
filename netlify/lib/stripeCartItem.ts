@@ -283,94 +283,6 @@ const TOTAL_METADATA_KEYS = [
   'amountTotal',
 ]
 
-const CUSTOMIZATION_METADATA_KEYS = [
-  'customizations',
-  'customization',
-  'custom_details',
-  'custom_detail',
-  'customDetails',
-  'customDetail',
-  'customization_details',
-  'customization_detail',
-  'customizationDetails',
-  'customizationDetail',
-  'custom_text',
-  'customtext',
-  'customText',
-  'custom_message',
-  'custommessage',
-  'customMessage',
-  'custom_notes',
-  'customnotes',
-  'customNotes',
-  'engraving',
-  'engraving_text',
-  'engravingtext',
-  'engrave_text',
-  'engravingText',
-  'personalization',
-  'personalisation',
-  'personalized_message',
-  'personalizedmessage',
-  'personalised_message',
-  'personalizedMessage',
-  'personalisedMessage',
-  'monogram',
-  'monogram_text',
-  'monogramText',
-  'inscription',
-  'inscription_text',
-  'inscriptionText',
-  'gift_message',
-  'giftmessage',
-  'giftMessage',
-  'item_note',
-  'product_note',
-  'order_item_note',
-  'itemNote',
-  'productNote',
-  'orderItemNote',
-]
-
-function extractCategories(
-  product: Stripe.Product | null,
-  metadataMap: Record<string, string>,
-): string[] | undefined {
-  const categories: string[] = []
-  const metaCandidate = metadataMap.categories || metadataMap.category
-  const productMetaCandidate = product?.metadata?.categories || product?.metadata?.category
-
-  const addFromValue = (value?: string) => {
-    if (!value) return
-    const trimmed = value.trim()
-    if (!trimmed) return
-    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(trimmed)
-        if (Array.isArray(parsed)) {
-          parsed
-            .map((item) => toStringValue(item))
-            .filter(Boolean)
-            .forEach((item) => categories.push(item as string))
-          return
-        }
-      } catch {
-        // ignore parse errors
-      }
-    }
-    trimmed
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .forEach((part) => categories.push(part))
-  }
-
-  addFromValue(metaCandidate)
-  addFromValue(productMetaCandidate)
-
-  return categories.length ? Array.from(new Set(categories)) : undefined
-}
-
 export function mapStripeLineItem(
   lineItem: Stripe.LineItem,
   options?: MapLineItemOptions,
@@ -499,12 +411,8 @@ export function mapStripeLineItem(
     ? normalizedOptions.optionDetails
     : undefined
   const upgrades = normalizedOptions.upgrades.length ? normalizedOptions.upgrades : undefined
-  const customizationCandidates = normalizeDetails(
-    ...CUSTOMIZATION_METADATA_KEYS.map((key) => metadata.map[key]),
-  )
-  const customizations = customizationCandidates.length ? customizationCandidates : undefined
   const name = baseName || undefined
-  const categories = extractCategories(productObj, metadata.map)
+  // const categories = extractCategories(productObj, metadata.map)
 
   const productImage = Array.isArray(productObj?.images)
     ? productObj?.images.find((img) => typeof img === 'string' && img.trim())
@@ -612,21 +520,16 @@ export function mapStripeLineItem(
     productSlug,
     stripeProductId,
     stripePriceId,
-    lineItem: lineItem.id,
     sku,
     name,
-    productName,
-    description,
     image,
     productUrl,
     optionSummary: normalizedOptions.optionSummary,
     optionDetails,
     upgrades,
     upgradesTotal: upgradesTotal !== undefined ? upgradesTotal : undefined,
-    customizations,
     price,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : undefined,
-    categories,
     lineTotal: resolvedLineTotal,
     total: resolvedTotal ?? resolvedLineTotal,
     selectedVariant: normalizeChoiceLabel(selectedVariantCandidate),
@@ -637,3 +540,42 @@ export function mapStripeLineItem(
 }
 
 export {deriveCartOptions as deriveOptionsFromMetadata}
+
+const ORDER_CART_ITEM_FIELDS = new Set([
+  '_type',
+  '_key',
+  'id',
+  'name',
+  'productRef',
+  'sku',
+  'image',
+  'quantity',
+  'price',
+  'total',
+  'selectedVariant',
+  'addOns',
+  'optionDetails',
+  'optionSummary',
+  'upgrades',
+  'upgradesTotal',
+  'productSlug',
+  'productUrl',
+  'lineTotal',
+  'metadata',
+  'metadataEntries',
+  'stripePriceId',
+  'stripeProductId',
+])
+
+export function sanitizeOrderCartItem(item: Record<string, any>): Record<string, any> {
+  const output: Record<string, any> = {_type: 'orderCartItem'}
+  if (!item || typeof item !== 'object') return output
+  for (const [key, value] of Object.entries(item)) {
+    if (!ORDER_CART_ITEM_FIELDS.has(key)) continue
+    if (value !== undefined) output[key] = value
+  }
+  if (item._key && output._key === undefined) {
+    output._key = item._key
+  }
+  return output
+}

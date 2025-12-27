@@ -1,6 +1,7 @@
 import {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {
   appendAttributionMetadata,
   buildAttributionDocument,
@@ -24,9 +25,8 @@ function makeCORS(origin?: string) {
   }
 }
 
-// Use account default API version to avoid TS literal mismatches
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY as string)
+  ? new Stripe(process.env.STRIPE_SECRET_KEY as string, {apiVersion: STRIPE_API_VERSION})
   : (null as any)
 
 const sanity = createClient({

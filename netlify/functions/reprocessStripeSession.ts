@@ -4,11 +4,12 @@ import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
 import {randomUUID} from 'crypto'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
-import {mapStripeLineItem} from '../lib/stripeCartItem'
+import {mapStripeLineItem, sanitizeOrderCartItem} from '../lib/stripeCartItem'
 import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import type {CartItem} from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
-import {buildStripeSummary} from '../lib/stripeSummary'
+import {buildStripeSummary, serializeStripeSummaryData} from '../lib/stripeSummary'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
 import {
   applyShippingDetailsToDoc,
@@ -169,7 +170,7 @@ async function resolveOrderNumber(options: {
 
 const stripeKey = resolveStripeSecretKey()
 const stripe = stripeKey
-  ? new Stripe(stripeKey, {apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion']})
+  ? new Stripe(stripeKey, {apiVersion: STRIPE_API_VERSION})
   : null
 
 const sanityToken = process.env.SANITY_API_TOKEN
@@ -335,7 +336,8 @@ async function buildCartFromSession(
       _key: randomUUID(),
       ...mapStripeLineItem(line, {sessionMetadata: metadata}),
     })) as CartItem[]
-    return await enrichCartItemsFromSanity(cart, sanity!)
+    const enriched = await enrichCartItemsFromSanity(cart, sanity!)
+    return enriched.map((item) => sanitizeOrderCartItem(item as Record<string, any>)) as CartItem[]
   } catch (err) {
     console.warn('reprocessStripeSession: failed to list line items', err)
     return []
@@ -832,13 +834,15 @@ async function upsertOrder({
     ...(cart.length ? {cart} : {}),
   }
 
-  baseDoc.stripeSummary = buildStripeSummary({
-    session,
-    paymentIntent,
-    charge,
-    eventType: 'manual.reprocess',
-    eventCreated: Date.now() / 1000,
-  })
+  baseDoc.stripeSummary = serializeStripeSummaryData(
+    buildStripeSummary({
+      session,
+      paymentIntent,
+      charge,
+      eventType: 'manual.reprocess',
+      eventCreated: Date.now() / 1000,
+    }),
+  )
 
   applyShippingDetailsToDoc(baseDoc, shippingDetails, currency ? currency.toUpperCase() : undefined)
 
