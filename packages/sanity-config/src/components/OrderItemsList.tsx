@@ -49,16 +49,6 @@ function OrderItemsList({items, currency = 'USD', amountTax}: OrderItemsListProp
     [currency],
   )
 
-  if (!items || items.length === 0) {
-    return (
-      <Card padding={3} radius={2} tone="transparent" border>
-        <Text size={2} muted>
-          No cart items were synced from Stripe for this order.
-        </Text>
-      </Card>
-    )
-  }
-
   const normalizedItems = useMemo<NormalizedItem[]>(() => {
     if (!items) return []
     return items.map((item, index) => ({
@@ -72,6 +62,16 @@ function OrderItemsList({items, currency = 'USD', amountTax}: OrderItemsListProp
   const totalLineValue = useMemo(() => {
     return normalizedItems.reduce((sum, entry) => sum + (entry.lineTotal || 0), 0)
   }, [normalizedItems])
+
+  if (!items || items.length === 0) {
+    return (
+      <Card padding={3} radius={2} tone="transparent" border>
+        <Text size={2} muted>
+          No cart items were synced from Stripe for this order.
+        </Text>
+      </Card>
+    )
+  }
 
   const taxAmount = typeof amountTax === 'number' && amountTax > 0 ? amountTax : 0
 

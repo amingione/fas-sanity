@@ -31,6 +31,7 @@ import {
 import HomePane from '../components/studio/HomePane'
 import AdminTools from '../components/studio/AdminTools'
 import {downloadsStructure} from '../structure/downloadsStructure'
+import discountsStructure from '../structure/discountsStructure'
 import MerchantFeedPreview from '../components/studio/MerchantFeedPreview'
 import MerchantCenterDashboard from '../components/studio/MerchantCenterDashboard'
 import AttributionDashboard from '../components/studio/AttributionDashboard'
@@ -942,18 +943,6 @@ const createVendorPortalSection = (S: any) =>
                 .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
             ),
           S.listItem()
-            .id('vendor-portal-messages')
-            .title('Messages')
-            .icon(EnvelopeIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorMessage')
-                .title('Vendor Messages')
-                .filter('_type == "vendorMessage"')
-                .defaultOrdering([{field: 'lastReplyAt', direction: 'desc'}]),
-            ),
-          S.listItem()
             .id('vendor-portal-notifications')
             .title('Notifications')
             .icon(BellIcon)
@@ -1806,6 +1795,7 @@ export const deskStructure: StructureResolver = (S) =>
       createProductsSection(S),
       createOrdersSection(S),
       createCustomersSection(S),
+      discountsStructure(S),
       createShippingSection(S),
       S.documentTypeListItem('invoice').title('Invoices').icon(ClipboardIcon),
       S.documentTypeListItem('quote').title('Quotes').icon(DocumentIcon),

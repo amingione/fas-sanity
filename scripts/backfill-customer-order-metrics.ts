@@ -52,7 +52,6 @@ type OrderSummary = {
   amountShipping?: number | string | null
   amountDiscount?: number | string | null
   createdAt?: string | null
-  orderDate?: string | null
   _createdAt?: string
 }
 
@@ -69,9 +68,8 @@ const ORDER_QUERY = `*[_type == "order" && customerRef._ref == $customerId && ($
   amountShipping,
   amountDiscount,
   createdAt,
-  orderDate,
   _createdAt
-} | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) asc)`
+} | order(dateTime(coalesce(createdAt, _createdAt)) asc)`
 
 const CUSTOMERS_QUERY = '*[_type == "customer" && !(_id in path("drafts.**"))]{_id}'
 
@@ -107,7 +105,7 @@ const computeOrderTotal = (order: OrderSummary): number => {
 }
 
 const getOrderTimestamp = (order: OrderSummary): string | null =>
-  order.orderDate || order.createdAt || order._createdAt || null
+  order.createdAt || order._createdAt || null
 
 async function fetchCustomers(): Promise<CustomerDoc[]> {
   return sanity.fetch(CUSTOMERS_QUERY)

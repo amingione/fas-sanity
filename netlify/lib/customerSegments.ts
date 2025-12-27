@@ -6,11 +6,11 @@ export const CUSTOMER_METRICS_QUERY = `*[_type == "customer" && !(_id in path("d
   _id,
   "lifetimeValue": coalesce(math::sum(*[_type == "order" && status == "paid" && customerRef._ref == ^._id]${ORDER_TOTAL_PROJECTION}), 0),
   "totalOrders": count(*[_type == "order" && customerRef._ref == ^._id]),
-  "lastOrderDate": *[_type == "order" && customerRef._ref == ^._id] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) desc)[0]{
-    "ts": coalesce(orderDate, createdAt, _createdAt)
+  "lastOrderDate": *[_type == "order" && customerRef._ref == ^._id] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0]{
+    "ts": coalesce(createdAt, _createdAt)
   }.ts,
-  "firstOrderDate": *[_type == "order" && customerRef._ref == ^._id] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) asc)[0]{
-    "ts": coalesce(orderDate, createdAt, _createdAt)
+  "firstOrderDate": *[_type == "order" && customerRef._ref == ^._id] | order(dateTime(coalesce(createdAt, _createdAt)) asc)[0]{
+    "ts": coalesce(createdAt, _createdAt)
   }.ts,
   "current": {
     "segment": segment,

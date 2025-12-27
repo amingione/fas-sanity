@@ -67,6 +67,7 @@ export default defineType({
       hidden: false,
       options: {
         list: [
+          {title: 'Pending', value: 'pending'},
           {title: 'Paid', value: 'paid'},
           {title: 'Fulfilled', value: 'fulfilled'},
           {title: 'Delivered', value: 'delivered'},
@@ -101,6 +102,17 @@ export default defineType({
       group: 'overview',
       readOnly: true,
       hidden: false,
+      options: {
+        list: [
+          {title: 'Pending', value: 'pending'},
+          {title: 'Unpaid', value: 'unpaid'},
+          {title: 'Paid', value: 'paid'},
+          {title: 'Failed', value: 'failed'},
+          {title: 'Refunded', value: 'refunded'},
+          {title: 'Partially Refunded', value: 'partially_refunded'},
+          {title: 'Cancelled', value: 'cancelled'},
+        ],
+      },
     }),
     defineField({
       name: 'customerName',
@@ -443,10 +455,36 @@ export default defineType({
       readOnly: true,
       hidden: false,
     }),
+    defineField({
+      name: 'shippingStatus',
+      title: 'Shipping Status',
+      type: 'string',
+      group: 'fulfillment',
+      readOnly: true,
+      options: {
+        list: [
+          {title: 'Pre-Transit', value: 'pre_transit'},
+          {title: 'In Transit', value: 'in_transit'},
+          {title: 'Out for Delivery', value: 'out_for_delivery'},
+          {title: 'Delivered', value: 'delivered'},
+          {title: 'Returned', value: 'returned'},
+          {title: 'Failure', value: 'failure'},
+          {title: 'Unknown', value: 'unknown'},
+        ],
+      },
+    }),
+    defineField({
+      name: 'shippingLog',
+      title: 'Shipping Log',
+      type: 'array',
+      group: 'fulfillment',
+      readOnly: true,
+      of: [{type: 'shippingLogEntry'}],
+    }),
     defineField({name: 'trackingUrl', type: 'url', hidden: true}),
-    defineField({name: 'shippedAt', type: 'datetime', hidden: true}),
-    defineField({name: 'deliveredAt', type: 'datetime', hidden: true}),
-    defineField({name: 'estimatedDeliveryDate', type: 'datetime', hidden: true}),
+    defineField({name: 'shippedAt', type: 'datetime', readOnly: true, hidden: true}),
+    defineField({name: 'deliveredAt', type: 'date', readOnly: true, hidden: true}),
+    defineField({name: 'estimatedDeliveryDate', type: 'date', readOnly: true, hidden: true}),
     defineField({name: 'easypostRateId', type: 'string', hidden: true}),
     defineField({
       name: 'stripeSummary',
@@ -471,8 +509,8 @@ export default defineType({
       fields: [
         {name: 'status', type: 'string'},
         {name: 'fulfillmentNotes', type: 'text'},
-        {name: 'shippedAt', type: 'datetime'},
-        {name: 'deliveredAt', type: 'datetime'},
+        {name: 'shippedAt', type: 'datetime', readOnly: true},
+        {name: 'deliveredAt', type: 'date', readOnly: true},
       ],
     }),
     defineField({

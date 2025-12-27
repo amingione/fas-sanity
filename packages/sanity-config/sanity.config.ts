@@ -220,6 +220,11 @@ const autoMapperEnabled = getEnvFlag(
   'VITE_SANITY_STUDIO_ENABLE_AUTO_MAPPER',
 ) !== false
 
+const deskStructureConfigured = typeof deskStructure === 'function'
+if (hasProcess && process.env.DEBUG_STUDIO_ENV) {
+  console.info('[sanity-config] deskStructure configured:', deskStructureConfigured)
+}
+
 const defaultDocumentNode = (S: any, {schemaType}: {schemaType: string}) => {
   if (schemaType === 'order') {
     return S.document().views([

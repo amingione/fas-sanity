@@ -441,6 +441,25 @@ export default defineType({
           title: 'Portal Login Email',
           type: 'string',
           validation: (Rule) => Rule.email(),
+          readOnly: true,
+        }),
+        defineField({
+          name: 'userSub',
+          title: 'Portal User Sub',
+          type: 'string',
+          readOnly: true,
+          hidden: true,
+          validation: (Rule) =>
+            Rule.custom(async (value, context) => {
+              if (!value) return true
+              const docId = context?.document?._id
+              const client = context.getClient({apiVersion: API_VERSION})
+              const matches = await client.fetch<number>(
+                'count(*[_type == "vendor" && portalAccess.userSub == $sub && _id != $id])',
+                {sub: value, id: docId},
+              )
+              return matches > 0 ? 'Portal userSub must be unique per vendor.' : true
+            }),
         }),
         defineField({
           name: 'passwordHash',
@@ -731,6 +750,21 @@ export default defineType({
       type: 'reference',
       to: [{type: 'customer'}],
       description: 'Associate this vendor with the matching customer account',
+      validation: (Rule) =>
+        Rule.custom(async (value, context) => {
+          if (!value?._ref) return true
+          const client = context.getClient({apiVersion: API_VERSION})
+          const customer = await client.fetch<{roles?: string[]; email?: string} | null>(
+            `*[_type == "customer" && _id == $id][0]{roles, email}`,
+            {id: value._ref},
+          )
+          if (!customer) return 'Linked customer not found.'
+          if (!customer.email) return 'Linked customer must have an email.'
+          if (!customer.roles?.includes('vendor')) {
+            return 'Linked customer must include the vendor role.'
+          }
+          return true
+        }),
       group: 'settings',
     }),
     defineField({

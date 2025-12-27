@@ -9,6 +9,6 @@ export const vendorOrderSummaryType = defineType({
     defineField({name: 'orderNumber', title: 'Order Number', type: 'string'}),
     defineField({name: 'status', title: 'Status', type: 'string'}),
     defineField({name: 'amount', title: 'Order Total', type: 'number'}),
-    defineField({name: 'orderDate', title: 'Order Date', type: 'datetime'}),
+    defineField({name: 'createdAt', title: 'Order Date', type: 'datetime'}),
   ],
 })

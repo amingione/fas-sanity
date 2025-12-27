@@ -419,8 +419,6 @@ async function updateInvoice(
     invoiceStatus,
     invoiceStripeStatus,
     dryRun,
-    paymentIntent,
-    session,
     logger,
   } = options
   const patch: Record<string, any> = {}

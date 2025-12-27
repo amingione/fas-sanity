@@ -182,7 +182,7 @@ export default defineType({
           fields: [
             {name: 'message', type: 'string'},
             {name: 'status', type: 'string'},
-            {name: 'datetime', type: 'datetime'},
+            {name: 'datetime', type: 'datetime', readOnly: true},
             {
               name: 'trackingLocation',
               type: 'object',
@@ -208,7 +208,7 @@ export default defineType({
             {name: 'formId', type: 'string', title: 'Form ID'},
             {name: 'formType', type: 'string', title: 'Type'},
             {name: 'formUrl', type: 'url', title: 'URL'},
-            {name: 'createdAt', type: 'datetime', title: 'Created At'},
+            {name: 'createdAt', type: 'datetime', title: 'Created At', readOnly: true},
           ],
         },
       ],
@@ -259,11 +259,13 @@ export default defineType({
       name: 'createdAt',
       title: 'Created At',
       type: 'datetime',
+      readOnly: true,
     }),
     defineField({
       name: 'updatedAt',
       title: 'Updated At',
       type: 'datetime',
+      readOnly: true,
     }),
     defineField({
       name: 'rawWebhookData',

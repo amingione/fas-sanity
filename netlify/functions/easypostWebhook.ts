@@ -607,7 +607,7 @@ async function handleTracker(tracker: any, rawPayload?: any) {
       'shippingStatus.lastEventAt': lastEventAt ? new Date(lastEventAt).toISOString() : undefined,
       'fulfillment.status': tracker?.status || undefined,
       ...(tracker?.status === 'delivered' && lastEventAt
-        ? {deliveredAt: new Date(lastEventAt).toISOString()}
+        ? {deliveredAt: new Date(lastEventAt).toISOString().slice(0, 10)}
         : {}),
     }).filter(([, value]) => value !== undefined),
   )
@@ -784,7 +784,9 @@ async function handleShipment(shipment: any, rawPayload?: any) {
     setOps.deliveryDays = selectedRate.delivery_days
   }
   if (shipmentData?.tracker?.est_delivery_date) {
-    setOps.estimatedDeliveryDate = new Date(shipmentData.tracker.est_delivery_date).toISOString()
+    setOps.estimatedDeliveryDate = new Date(shipmentData.tracker.est_delivery_date)
+      .toISOString()
+      .slice(0, 10)
   }
   if ((selectedRate as any)?.id || selectedRate?.service_code) {
     setOps.easypostRateId = (selectedRate as any)?.id || selectedRate?.service_code || undefined

@@ -7,6 +7,7 @@ import products from './productStructure'
 import settings from './settingStructure'
 import orders from './orderStructure'
 import freightQuotes from './freightQuoteStructure'
+import discounts from './discountsStructure'
 
 /**
  * Structure overrides
@@ -58,6 +59,7 @@ export const structure: StructureResolver = (S, context) =>
       S.divider(),
       settings(S, context),
       orders(S, context),
+      discounts(S),
       freightQuotes(S, context),
       S.listItem()
         .title('Shipping Labels')

@@ -10,6 +10,10 @@ function fmt(n?: number) {
   return typeof n === 'number' && !isNaN(n) ? Number(n).toFixed(2) : '0.00'
 }
 
+function toDateOnly(value?: string | null) {
+  return typeof value === 'string' ? value.slice(0, 10) : null
+}
+
 type FormValuePath = (string | number)[]
 
 function useMaybeFormValue<T = unknown>(path: FormValuePath): T | undefined {
@@ -278,7 +282,8 @@ function BillToInput(props: any) {
                 {noMatches && (
                   <Box marginTop={3}>
                     <Text muted size={1}>
-                      No matches — fill the form below and click "Create Customer from Bill To".
+                      No matches — fill the form below and click &quot;Create Customer from Bill
+                      To&quot;.
                     </Text>
                   </Box>
                 )}
@@ -421,10 +426,37 @@ export default defineType({
       title: 'Invoice Date',
       type: 'date',
       initialValue: () => new Date().toISOString().slice(0, 10),
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) =>
+        Rule.required().custom(async (value, context) => {
+          if (!value) return true
+          const orderRef = context?.document?.orderRef?._ref
+          if (!orderRef) return true
+          const client = context.getClient({apiVersion: '2024-10-01'})
+          const orderCreatedAt = await client.fetch<string | null>(
+            `*[_type == "order" && _id == $id][0].createdAt`,
+            {id: orderRef},
+          )
+          const orderCreatedDate = toDateOnly(orderCreatedAt)
+          if (!orderCreatedDate) return true
+          return value >= orderCreatedDate
+            ? true
+            : 'Invoice date must be on or after the order created date'
+        }),
       fieldset: 'basicInfo',
     }),
-    defineField({name: 'dueDate', title: 'Due Date', type: 'date', fieldset: 'basicInfo'}),
+    defineField({
+      name: 'dueDate',
+      title: 'Due Date',
+      type: 'date',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          if (!value) return true
+          const invoiceDate = context?.document?.invoiceDate
+          if (!invoiceDate) return true
+          return value > invoiceDate ? true : 'Due date must be after invoice date'
+        }),
+      fieldset: 'basicInfo',
+    }),
     defineField({
       name: 'paymentTerms',
       title: 'Payment Terms',
@@ -667,6 +699,7 @@ export default defineType({
                   name: 'estimatedDeliveryDate',
                   type: 'date',
                   title: 'Est. Delivery',
+                  readOnly: true,
                 },
               ],
               preview: {
@@ -705,6 +738,7 @@ export default defineType({
           name: 'labelPurchasedAt',
           type: 'datetime',
           title: 'Label Purchased',
+          readOnly: true,
         },
         {
           name: 'fulfillmentStatus',

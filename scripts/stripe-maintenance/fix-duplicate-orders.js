@@ -13,8 +13,8 @@ function dedupeOrders(orders) {
   const result = []
   for (const entry of orders) {
     const orderNumber = (entry?.orderNumber || '').toString().trim().toUpperCase()
-    const orderDate = entry?.orderDate || ''
-    const key = orderNumber || `${orderNumber}|${orderDate}`
+    const createdAt = entry?.createdAt || ''
+    const key = orderNumber || `${orderNumber}|${createdAt}`
     if (key && seen.has(key)) continue
     if (key) seen.add(key)
     result.push(entry)

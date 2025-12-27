@@ -1,0 +1,8 @@
+# Blocking Issues
+
+- 🔴 Missing `promotion` schema while fas-cms-fresh reads it via Sanity queries (`src/server/sanity/promotions.ts`, `src/lib/storefrontQueries.ts`, `src/pages/api/promotions/active.ts`, `src/pages/api/promotions/[slug].ts`, `src/pages/api/promotions/validate.ts`). No schema definition found under `packages/sanity-config/src/schemaTypes`.
+- 🔴 Missing `vendorAuthToken` schema while fas-cms-fresh creates/reads it for vendor invitation and reset flows (`src/server/sanity-client.ts`, `src/server/vendor-portal/service.ts`). No schema definition found under `packages/sanity-config/src/schemaTypes`.
+- 🔴 Vendor session lookup uses `userSub` field that is not defined in the vendor schema: `src/server/sanity-client.ts` (`getVendorBySub`) and `src/pages/api/vendor/me.ts` expect `vendor.userSub`.
+- 🔴 Vendor portal invoices query relies on `references($vendorId)` against `invoice` docs (`src/server/vendor-portal/data.ts`, `src/pages/api/vendor/invoices/[id].ts`), but the invoice schema defines no vendor reference field (`packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx`).
+- 🔴 Wholesale orders are linked to vendors by reusing `order.customerRef` (`src/pages/api/vendor/orders/[id].ts`, `src/server/vendor-portal/data.ts`), but the order schema constrains `customerRef` to `customer` documents only (`packages/sanity-config/src/schemaTypes/documents/order.tsx`).
+- 🟡 `src/pages/api/save-order.ts` writes order `status: 'pending'` and `paymentStatus: 'pending'` values while the order schema status list omits `pending` (`packages/sanity-config/src/schemaTypes/documents/order.tsx`), which can make orders invisible in Studio lists that filter by `status`.

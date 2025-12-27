@@ -19,7 +19,7 @@ type CustomerOrderSummary = {
   orderDocumentId?: string | null
   orderNumber?: string | null
   status?: string | null
-  orderDate?: string | null
+  createdAt?: string | null
   total?: number | null
 }
 
@@ -223,7 +223,7 @@ const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
   orders[]{
     orderNumber,
     status,
-    orderDate,
+    createdAt,
     total
   },
   quotes[]{
@@ -844,11 +844,11 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
     if (!activeProfile?.orders?.length) return []
     return [...activeProfile.orders]
       .filter((order): order is CustomerOrderSummary =>
-        Boolean(order && (order.orderNumber || order.orderDate || order.total)),
+        Boolean(order && (order.orderNumber || order.createdAt || order.total)),
       )
       .sort((a, b) => {
-        const dateA = safeParseDate(a.orderDate)
-        const dateB = safeParseDate(b.orderDate)
+        const dateA = safeParseDate(a.createdAt)
+        const dateB = safeParseDate(b.createdAt)
         if (!dateA && !dateB) return 0
         if (!dateA) return 1
         if (!dateB) return -1
@@ -859,8 +859,8 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
   const latestOrder = sortedOrders[0] ?? null
   const earliestOrder = sortedOrders[sortedOrders.length - 1] ?? null
 
-  const latestOrderDate = safeParseDate(latestOrder?.orderDate)
-  const earliestOrderDate = safeParseDate(earliestOrder?.orderDate)
+  const latestOrderDate = safeParseDate(latestOrder?.createdAt)
+  const earliestOrderDate = safeParseDate(earliestOrder?.createdAt)
   const createdAtDate = safeParseDate(activeProfile?._createdAt)
   const customerSinceDate = earliestOrderDate ?? createdAtDate
 
@@ -901,7 +901,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
     const groups = new Map<string, TimelineAccumulator>()
 
     sortedOrders.forEach((order, index) => {
-      const orderDate = safeParseDate(order.orderDate)
+      const orderDate = safeParseDate(order.createdAt)
       const dateKey = orderDate ? format(orderDate, 'yyyy-MM-dd') : `undated-${index}`
       const timeLabel = orderDate ? format(orderDate, 'p') : null
 

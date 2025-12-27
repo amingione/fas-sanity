@@ -10,6 +10,7 @@ import {logFunctionExecution} from '../../utils/functionLogger'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
 import {mapStripeLineItem, type CartMetadataEntry} from '../lib/stripeCartItem'
+import {syncVendorPortalEmail} from '../lib/vendorPortalEmail'
 import {
   enrichCartItemsFromSanity,
   computeShippingMetrics,
@@ -2189,7 +2190,7 @@ async function handleShippingStatusSync(
     metadata.estimated_delivery ??
     metadata.estimated_delivery_date ??
     (payload as any)?.tracking?.estimated_delivery
-  const eta = etaRaw ? toIsoTimestamp(etaRaw) : undefined
+  const eta = etaRaw ? isoDateOnly(toIsoTimestamp(etaRaw)) : undefined
 
   const eventLabelParts = [
     status ? status.replace(/_/g, ' ') : null,
@@ -2515,20 +2516,188 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
   })
   const stripeCustomerId = contact.stripeCustomerId || null
 
-  let customer = await webhookSanityClient.fetch<{
-    _id: string
-    name?: string
-    email?: string
-    stripeCustomerId?: string | null
-    stripeLastSyncedAt?: string | null
-    customerType?: string | null
-    roles?: string[] | null
+  const customerProjection =
+    '{_id, name, email, stripeCustomerId, customerType, roles, firstName, lastName}'
+
+  const fetchCustomerByEmail = async (value: string) =>
+    webhookSanityClient.fetch<{
+      _id: string
+      name?: string
+      email?: string
+      stripeCustomerId?: string | null
+      stripeLastSyncedAt?: string | null
+      customerType?: string | null
+      roles?: string[] | null
+      firstName?: string | null
+      lastName?: string | null
+    } | null>(`*[_type == "customer" && email == $email][0]${customerProjection}`, {email: value})
+
+  const fetchCustomerById = async (id: string) =>
+    webhookSanityClient.fetch<{
+      _id: string
+      name?: string
+      email?: string
+      stripeCustomerId?: string | null
+      stripeLastSyncedAt?: string | null
+      customerType?: string | null
+      roles?: string[] | null
+      firstName?: string | null
+      lastName?: string | null
+    } | null>(`*[_type == "customer" && _id == $id][0]${customerProjection}`, {id})
+
+  const ensureNamePatch = (customer: {
+    name?: string | null
     firstName?: string | null
     lastName?: string | null
-  } | null>(
-    `*[_type == "customer" && email == $email][0]{_id, name, email, stripeCustomerId, customerType, roles, firstName, lastName}`,
-    {email},
-  )
+  }) => {
+    const patch: Record<string, any> = {}
+    if (nameParts.firstName && !customer.firstName) patch.firstName = nameParts.firstName
+    if (nameParts.lastName && !customer.lastName) patch.lastName = nameParts.lastName
+    const resolvedName = computeCustomerName({
+      firstName: patch.firstName ?? customer.firstName,
+      lastName: patch.lastName ?? customer.lastName,
+      email,
+      fallbackName: name,
+    })
+    if (resolvedName && resolvedName !== customer.name) patch.name = resolvedName
+    return patch
+  }
+
+  const ensureStripePatch = (customer: {stripeCustomerId?: string | null}) => {
+    const patch: Record<string, any> = {}
+    const needsStripeIdUpdate = stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId
+    if (needsStripeIdUpdate) patch.stripeCustomerId = stripeCustomerId
+    if (stripeCustomerId || needsStripeIdUpdate) {
+      patch.stripeLastSyncedAt = new Date().toISOString()
+    }
+    return patch
+  }
+
+  const ensureVendorRolePatch = (customer: {
+    roles?: string[] | null
+    customerType?: string | null
+  }) => {
+    const roles = Array.isArray(customer.roles) ? customer.roles.slice() : []
+    const hasCustomerRole = roles.includes('customer')
+    const hasVendorRole = roles.includes('vendor')
+    if (!hasVendorRole) roles.push('vendor')
+
+    let customerType = customer.customerType || null
+    if (!customerType || customerType === 'retail' || customerType === 'in-store') {
+      customerType = hasCustomerRole ? 'both' : 'vendor'
+    }
+    if (customerType === 'vendor' && hasCustomerRole) customerType = 'both'
+
+    const patch: Record<string, any> = {}
+    if (!hasVendorRole) patch.roles = roles
+    if (customerType && customerType !== customer.customerType) patch.customerType = customerType
+    return patch
+  }
+
+  const applyCustomerPatch = async (
+    customer: {
+      _id: string
+      name?: string
+      email?: string
+      stripeCustomerId?: string | null
+      stripeLastSyncedAt?: string | null
+      customerType?: string | null
+      roles?: string[] | null
+      firstName?: string | null
+      lastName?: string | null
+    },
+    patch: Record<string, any>,
+  ) => {
+    if (!Object.keys(patch).length) return customer
+    try {
+      await webhookSanityClient
+        .patch(customer._id)
+        .set(patch)
+        .commit({autoGenerateArrayKeys: true})
+      return {...customer, ...patch}
+    } catch (err) {
+      console.warn('stripeWebhook: failed to refresh customer details', err)
+      return customer
+    }
+  }
+
+  const vendor = email
+    ? await webhookSanityClient.fetch<{
+        _id: string
+        customerRef?: {_ref?: string} | null
+      } | null>(
+        `*[_type == "vendor" && primaryContact.email == $email][0]{_id, customerRef}`,
+        {email},
+      )
+    : null
+
+  if (vendor) {
+    const vendorCustomerId = vendor.customerRef?._ref
+      ? vendor.customerRef._ref.replace(/^drafts\\./, '')
+      : ''
+    let customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
+
+    if (!customer && email) {
+      customer = await fetchCustomerByEmail(email)
+    }
+
+    if (!customer) {
+      const newCustomerId = `customer.${randomUUID()}`
+      customer = await webhookSanityClient.create<{
+        _id: string
+        name?: string
+        email?: string
+        stripeCustomerId?: string | null
+        stripeLastSyncedAt?: string | null
+        customerType?: string | null
+        roles?: string[] | null
+        firstName?: string | null
+        lastName?: string | null
+      }>({
+        _id: newCustomerId,
+        _type: 'customer',
+        email: email || undefined,
+        name: computedName || email || 'Customer',
+        firstName: nameParts.firstName || undefined,
+        lastName: nameParts.lastName || undefined,
+        stripeCustomerId,
+        stripeLastSyncedAt: new Date().toISOString(),
+        customerType: 'vendor',
+        roles: ['vendor'],
+      })
+      console.log(`✅ Created new vendor customer: ${customer.name || email}`)
+    } else {
+      const patch = {
+        ...ensureNamePatch(customer),
+        ...ensureStripePatch(customer),
+        ...ensureVendorRolePatch(customer),
+      }
+      customer = await applyCustomerPatch(customer, patch)
+    }
+
+    if (customer._id !== vendorCustomerId) {
+      try {
+        await webhookSanityClient
+          .patch(vendor._id)
+          .set({customerRef: {_type: 'reference', _ref: customer._id}})
+          .commit({autoGenerateArrayKeys: true})
+      } catch (err) {
+        console.warn('stripeWebhook: failed to link vendor to customer', err)
+      }
+    }
+
+    if (customer.email) {
+      try {
+        await syncVendorPortalEmail(webhookSanityClient, vendor._id, customer.email)
+      } catch (err) {
+        console.warn('stripeWebhook: failed to sync vendor portal email', err)
+      }
+    }
+
+    return customer
+  }
+
+  let customer = email ? await fetchCustomerByEmail(email) : null
 
   if (!customer) {
     const newCustomerId = `customer.${randomUUID()}`
@@ -2556,34 +2725,11 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     })
     console.log(`✅ Created new customer: ${customer.name || email}`)
   } else {
-    const patch: Record<string, any> = {}
-    if (nameParts.firstName && !customer.firstName) patch.firstName = nameParts.firstName
-    if (nameParts.lastName && !customer.lastName) patch.lastName = nameParts.lastName
-    const resolvedName = computeCustomerName({
-      firstName: patch.firstName ?? customer.firstName,
-      lastName: patch.lastName ?? customer.lastName,
-      email,
-      fallbackName: name,
-    })
-    if (resolvedName && resolvedName !== customer.name) patch.name = resolvedName
-    const needsStripeIdUpdate = stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId
-    if (needsStripeIdUpdate) {
-      patch.stripeCustomerId = stripeCustomerId
+    const patch = {
+      ...ensureNamePatch(customer),
+      ...ensureStripePatch(customer),
     }
-    if (stripeCustomerId || needsStripeIdUpdate) {
-      patch.stripeLastSyncedAt = new Date().toISOString()
-    }
-    if (Object.keys(patch).length > 0) {
-      try {
-        await webhookSanityClient
-          .patch(customer._id)
-          .set(patch)
-          .commit({autoGenerateArrayKeys: true})
-        customer = {...customer, ...patch}
-      } catch (err) {
-        console.warn('stripeWebhook: failed to refresh customer name parts', err)
-      }
-    }
+    customer = await applyCustomerPatch(customer, patch)
   }
 
   return customer
