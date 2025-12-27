@@ -487,8 +487,8 @@ export const handler: Handler = async (event) => {
           }
         }
 
-        const orderDate = dateStringFrom(orderDoc?.createdAt)
-        const invoiceDateCandidate = orderDate || dateStringFrom(d._createdAt)
+        const createdAtDate = dateStringFrom(orderDoc?.createdAt)
+        const invoiceDateCandidate = createdAtDate || dateStringFrom(d._createdAt)
         if (!d.invoiceDate && invoiceDateCandidate) {
           setOps.invoiceDate = invoiceDateCandidate
           datesUpdated++

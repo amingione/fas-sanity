@@ -294,6 +294,8 @@ import {searchSettingsType} from './documents/searchSettings'
 import {searchQueryType} from './documents/searchQuery'
 import customerMessage from './documents/customerMessage'
 import quoteRequest from './documents/quoteRequest'
+import promotion from './documents/promotion'
+import vendorAuthToken from './documents/vendorAuthToken'
 
 const documents = [
   collectionType,
@@ -374,6 +376,8 @@ const documents = [
   downloadResource,
   altText,
   searchQueryType,
+  promotion,
+  vendorAuthToken,
 ]
 
 import {homeType} from './singletons/homeType'

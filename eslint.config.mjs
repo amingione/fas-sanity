@@ -17,7 +17,15 @@ const nodeGlobals = {
 
 export default [
   {
-    ignores: ['.netlify/**', '**/.netlify/**', '.sanity/**', '**/.sanity/**', 'dist/static/**', '**/dist/static/**'],
+    ignores: [
+      '.netlify/**',
+      '**/.netlify/**',
+      '.sanity/**',
+      '**/.sanity/**',
+      'dist/static/**',
+      '**/dist/static/**',
+      'scripts/**',
+    ],
   },
   ...studio,
   {

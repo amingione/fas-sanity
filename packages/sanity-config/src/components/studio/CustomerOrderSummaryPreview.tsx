@@ -12,7 +12,7 @@ type CustomerOrderSummaryValue = {
   status?: string | null
   paymentStatus?: string | null
   stripePaymentIntentStatus?: string | null
-  orderDate?: string | null
+  createdAt?: string | null
   total?: number | null
 }
 
@@ -49,7 +49,7 @@ const ORDER_LOOKUP_QUERY = `*[_type == "order" && (
   status,
   paymentStatus,
   stripePaymentIntentStatus,
-  "orderDate": coalesce(createdAt, _createdAt),
+  "createdAt": coalesce(createdAt, _createdAt),
   "total": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
 }`
 
@@ -72,14 +72,14 @@ export function CustomerOrderSummaryPreview({
     status?: string | null
     paymentStatus?: string | null
     stripePaymentIntentStatus?: string | null
-    orderDate?: string | null
+    createdAt?: string | null
     total?: number | null
   }>(() => ({
     orderNumber: value?.orderNumber || null,
     status: value?.status || null,
     paymentStatus: value?.paymentStatus || null,
     stripePaymentIntentStatus: value?.stripePaymentIntentStatus || null,
-    orderDate: value?.orderDate || null,
+    createdAt: value?.createdAt || null,
     total: typeof value?.total === 'number' ? value.total : null,
   }))
   const [isResolvingOrder, setResolvingOrder] = useState(false)
@@ -96,7 +96,7 @@ export function CustomerOrderSummaryPreview({
       status: value?.status ?? prev.status,
       paymentStatus: value?.paymentStatus ?? prev.paymentStatus,
       stripePaymentIntentStatus: value?.stripePaymentIntentStatus ?? prev.stripePaymentIntentStatus,
-      orderDate: value?.orderDate ?? prev.orderDate,
+      createdAt: value?.createdAt ?? prev.createdAt,
       total:
         typeof value?.total === 'number' && !Number.isNaN(value.total) ? value.total : prev.total,
     }))
@@ -105,7 +105,7 @@ export function CustomerOrderSummaryPreview({
     value?.status,
     value?.paymentStatus,
     value?.stripePaymentIntentStatus,
-    value?.orderDate,
+    value?.createdAt,
     value?.total,
   ])
 
@@ -130,10 +130,10 @@ export function CustomerOrderSummaryPreview({
 
   const metadata = useMemo(
     () =>
-      [formatDate(orderDetails.orderDate), formatTotal(orderDetails.total)]
+      [formatDate(orderDetails.createdAt), formatTotal(orderDetails.total)]
         .filter(Boolean)
         .join(' • '),
-    [orderDetails.orderDate, orderDetails.total],
+    [orderDetails.createdAt, orderDetails.total],
   )
 
   const hydrateOrderSummary = useCallback(async () => {
@@ -147,7 +147,7 @@ export function CustomerOrderSummaryPreview({
         status?: string
         paymentStatus?: string
         stripePaymentIntentStatus?: string
-        orderDate?: string
+        createdAt?: string
         total?: number
       } | null>(ORDER_LOOKUP_QUERY, {
         targetId: resolvedOrderId || null,
@@ -165,7 +165,7 @@ export function CustomerOrderSummaryPreview({
           paymentStatus: order.paymentStatus || prev.paymentStatus,
           stripePaymentIntentStatus:
             order.stripePaymentIntentStatus || prev.stripePaymentIntentStatus,
-          orderDate: order.orderDate || prev.orderDate,
+          createdAt: order.createdAt || prev.createdAt,
           total:
             typeof order.total === 'number' && !Number.isNaN(order.total)
               ? Number(order.total)
@@ -236,7 +236,7 @@ export function CustomerOrderSummaryPreview({
           status?: string
           paymentStatus?: string
           stripePaymentIntentStatus?: string
-          orderDate?: string
+          createdAt?: string
           total?: number
         } | null>(ORDER_LOOKUP_QUERY, {
           targetId: null,
@@ -254,7 +254,7 @@ export function CustomerOrderSummaryPreview({
           paymentStatus: order.paymentStatus || prev.paymentStatus,
           stripePaymentIntentStatus:
             order.stripePaymentIntentStatus || prev.stripePaymentIntentStatus,
-          orderDate: order.orderDate || prev.orderDate,
+          createdAt: order.createdAt || prev.createdAt,
           total:
             typeof order.total === 'number' && !Number.isNaN(order.total)
               ? Number(order.total)

@@ -196,7 +196,7 @@ const normalizeSkuCandidate = (value?: string | null): string | undefined => {
 
 interface PackingData {
   orderNumber: string
-  orderDate: string
+  createdAt: string
   customerName: string
   shippingAddress: string[]
   billingAddress: string[]
@@ -539,7 +539,7 @@ async function buildPdf(data: PackingData, settings: PrintSettings | null): Prom
     })
   }
 
-  const orderMeta: string[] = [data.orderDate, data.customerName].filter(Boolean)
+  const orderMeta: string[] = [data.createdAt, data.customerName].filter(Boolean)
   orderMeta.forEach((line, idx) => {
     const fontToUse = helvetica
     const size = idx === 0 ? 12 : 11
@@ -900,7 +900,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
     cleanIdentifier(cleanInvoiceId)
   const orderNumber = invoiceNumber || primaryOrderNumber || fallbackId || ''
   const dateSource = invoice?.invoiceDate || order?.createdAt || invoice?._createdAt
-  const orderDate = dateSource
+  const createdAt = dateSource
     ? new Date(dateSource).toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
@@ -1000,7 +1000,7 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
 
   return {
     orderNumber,
-    orderDate,
+    createdAt,
     customerName,
     shippingAddress: addressLines(shippingAddress),
     billingAddress: addressLines(billingAddress),

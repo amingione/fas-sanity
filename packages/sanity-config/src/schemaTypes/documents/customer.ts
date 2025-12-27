@@ -89,7 +89,26 @@ export default defineType({
           {title: 'Admin', value: 'admin'},
         ],
       },
-      validation: (Rule) => Rule.required().min(1).warning('Users should have at least one role'),
+      validation: (Rule) =>
+        Rule.required()
+          .min(1)
+          .warning('Users should have at least one role')
+          .custom(async (value, context) => {
+            const roles = Array.isArray(value) ? value : []
+            const hasVendorRole = roles.includes('vendor')
+            const documentId = context?.document?._id || ''
+            const customerId = documentId.replace(/^drafts\./, '')
+            if (!customerId) return true
+            const client = context.getClient({apiVersion: '2024-10-01'})
+            const vendorCount = await client.fetch<number>(
+              'count(*[_type == "vendor" && customerRef._ref == $id])',
+              {id: customerId},
+            )
+            if (vendorCount > 0 && !hasVendorRole) {
+              return 'Cannot remove vendor role while a vendor is linked to this customer.'
+            }
+            return true
+          }),
       description:
         'Used by FAS Auth to gate access to portals. Guests are imported from Stripe and do not have login access.',
       group: 'profile',
@@ -483,6 +502,7 @@ export default defineType({
               title: 'Created',
               type: 'datetime',
               initialValue: () => new Date().toISOString(),
+              readOnly: true,
             }),
             defineField({name: 'carrier', title: 'Carrier', type: 'string'}),
             defineField({name: 'service', title: 'Service', type: 'string'}),

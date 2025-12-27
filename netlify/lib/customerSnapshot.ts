@@ -235,13 +235,13 @@ export async function updateCustomerProfileForOrder({
       "orders": *[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (
         ($id != "" && customerRef._ref == $id) ||
         ($email != "" && customerEmail == $email)
-      )] | order(coalesce(orderDate, createdAt, _createdAt) desc)[0...10]{
+      )] | order(coalesce(createdAt, _createdAt) desc)[0...10]{
         _id,
         orderNumber,
         status,
         paymentStatus,
         stripePaymentIntentStatus,
-        "orderDate": coalesce(orderDate, createdAt, _createdAt),
+        "createdAt": coalesce(createdAt, _createdAt),
         "totalAmount": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
       },
       "orderCount": count(*[_type == "order" && (${GROQ_FILTER_EXCLUDE_EXPIRED}) && (${GROQ_FILTER_EXCLUDE_CANCELLED_REFUNDED}) && (
@@ -286,7 +286,7 @@ export async function updateCustomerProfileForOrder({
       status: string
       paymentStatus?: string
       stripePaymentIntentStatus?: string
-      orderDate: string | null
+      createdAt: string | null
       total?: number
     }
   }
@@ -305,7 +305,7 @@ export async function updateCustomerProfileForOrder({
               status: order?.status || '',
               paymentStatus: order?.paymentStatus || undefined,
               stripePaymentIntentStatus: order?.stripePaymentIntentStatus || undefined,
-              orderDate: order?.orderDate || null,
+              createdAt: order?.createdAt || null,
               total: typeof order?.totalAmount === 'number' ? Number(order.totalAmount) : undefined,
             },
           }

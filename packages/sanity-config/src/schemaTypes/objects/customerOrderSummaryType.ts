@@ -7,7 +7,7 @@ export const customerOrderSummaryType = defineType({
   fields: [
     defineField({name: 'orderNumber', title: 'Order Number', type: 'string'}),
     defineField({name: 'status', title: 'Status', type: 'string'}),
-    defineField({name: 'orderDate', title: 'Order Date', type: 'datetime'}),
+    defineField({name: 'createdAt', title: 'Order Date', type: 'datetime'}),
     defineField({name: 'total', title: 'Total Amount', type: 'number'}),
   ],
 })

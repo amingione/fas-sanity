@@ -197,7 +197,7 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
         {fieldName: 'trackingUrl', label: 'Tracking URL', type: 'url'},
         {fieldName: 'carrier', label: 'Carrier', type: 'string'},
         {fieldName: 'shippedAt', label: 'Shipped Date', type: 'datetime'},
-        {fieldName: 'deliveredAt', label: 'Delivered Date', type: 'datetime'},
+        {fieldName: 'deliveredAt', label: 'Delivered Date', type: 'date'},
         {
           fieldName: 'fulfillmentDetails.fulfillmentNotes',
           label: 'Fulfillment Notes',

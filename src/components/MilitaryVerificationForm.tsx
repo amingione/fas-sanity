@@ -144,7 +144,7 @@ export function MilitaryVerificationForm() {
               <h3>Document Upload Required</h3>
               <p>Please upload your military ID or documentation.</p>
               {result.uploadUrl && (
-                <a className="military-verification__button" href={result.uploadUrl} target="_blank">
+                <a className="military-verification__button" href={result.uploadUrl} target="_blank" rel="noreferrer">
                   Upload Documents
                 </a>
               )}

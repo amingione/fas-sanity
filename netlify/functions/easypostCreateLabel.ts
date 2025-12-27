@@ -726,7 +726,7 @@ export async function createEasyPostLabel(
           ? {deliveryDays: appliedRate.delivery_days}
           : {}),
         ...(tracker?.est_delivery_date
-          ? {estimatedDeliveryDate: new Date(tracker.est_delivery_date).toISOString()}
+          ? {estimatedDeliveryDate: new Date(tracker.est_delivery_date).toISOString().slice(0, 10)}
           : {}),
         packingSlipUrl: packingSlipUrl || undefined,
         qrCodeUrl: qrCodeUrl || undefined,

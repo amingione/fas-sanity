@@ -52,6 +52,8 @@ type CreatePayload = {
   duration?: 'once' | 'repeating' | 'forever'
   durationInMonths?: number
   name?: string
+  promotionCode?: string
+  redeemBy?: string
 }
 
 type DeletePayload = {
@@ -145,6 +147,19 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    let redeemBy: number | undefined
+    if (body.redeemBy) {
+      const parsed = Date.parse(body.redeemBy)
+      if (!Number.isFinite(parsed)) {
+        return {
+          statusCode: 400,
+          headers: {...CORS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'redeemBy must be a valid ISO date'}),
+        }
+      }
+      redeemBy = Math.floor(parsed / 1000)
+    }
+
     try {
       const couponParams: Stripe.CouponCreateParams = {
         name: body.name?.trim() || undefined,
@@ -158,6 +173,9 @@ export const handler: Handler = async (event) => {
       }
       if (duration === 'repeating' && durationInMonths) {
         couponParams.duration_in_months = Math.floor(durationInMonths)
+      }
+      if (redeemBy) {
+        couponParams.redeem_by = redeemBy
       }
 
       const coupon = await stripe.coupons.create(couponParams)

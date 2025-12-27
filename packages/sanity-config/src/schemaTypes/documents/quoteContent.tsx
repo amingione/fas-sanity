@@ -551,6 +551,14 @@ export default defineType({
       type: 'date',
       initialValue: () => new Date().toISOString().slice(0, 10),
       components: {input: QuoteDateInput},
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          if (!value) return true
+          const createdAt = context?.document?.createdAt
+          if (typeof createdAt !== 'string') return true
+          const createdDate = createdAt.slice(0, 10)
+          return value >= createdDate ? true : 'Quote date must be on or after created date'
+        }),
     }),
     defineField({
       name: 'expirationDate',
@@ -563,6 +571,19 @@ export default defineType({
       title: 'Accepted Date',
       type: 'date',
       components: {input: QuoteDateInput},
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          if (!value) return true
+          const quoteDate = context?.document?.quoteDate
+          const expirationDate = context?.document?.expirationDate
+          if (quoteDate && value < quoteDate) {
+            return 'Accepted date must be on or after quote date'
+          }
+          if (expirationDate && value > expirationDate) {
+            return 'Accepted date must be on or before expiration date'
+          }
+          return true
+        }),
     }),
     defineField({
       name: 'acceptedBy',
