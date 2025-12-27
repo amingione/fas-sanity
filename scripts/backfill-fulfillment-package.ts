@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient} from '@sanity/client'
+import {parseStripeSummaryData} from '../netlify/lib/stripeSummary'
 
 const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
@@ -40,15 +41,10 @@ const client = createClient({
 type OrderDoc = {
   _id: string
   orderNumber?: string
-  stripeSummary?: {
-    metadata?: Array<{key?: string; value?: string; source?: string}>
-    shippingAddress?: Record<string, any>
-  }
-  fulfillment?: {
-    shippingAddress?: Record<string, any>
-    packageDimensions?: Record<string, any>
-    dimensions?: {length?: number; width?: number; height?: number}
-  } | null
+  stripeSummary?: {data?: string | null} | Record<string, any> | null
+  shippingAddress?: Record<string, any> | null
+  packageDimensions?: Record<string, any> | null
+  dimensions?: {length?: number; width?: number; height?: number} | null
 }
 
 const WEIGHT_KEYS = [
@@ -58,7 +54,7 @@ const WEIGHT_KEYS = [
   'shipping_weight',
 ]
 
-function parseWeight(metadata?: OrderDoc['stripeSummary']['metadata']): number | undefined {
+function parseWeight(metadata?: Array<{key?: string; value?: string; source?: string}>): number | undefined {
   if (!Array.isArray(metadata)) return undefined
   for (const entry of metadata) {
     const key = (entry?.key || '').toString().trim().toLowerCase()
@@ -103,23 +99,18 @@ async function main() {
   const orders = await client.fetch<OrderDoc[]>(
     `*[
       _type == "order" &&
-      defined(stripeSummary.metadata) &&
+      defined(stripeSummary.data) &&
       (
-        !defined(fulfillment.packageDimensions.weight) ||
-        !defined(fulfillment.packageDimensions.weightDisplay)
+        !defined(packageDimensions.weight) ||
+        !defined(packageDimensions.weightDisplay)
       )
     ]{
       _id,
       orderNumber,
-      stripeSummary{
-        metadata,
-        shippingAddress
-      },
-      fulfillment{
-        shippingAddress,
-        packageDimensions,
-        dimensions
-      }
+      stripeSummary,
+      shippingAddress,
+      packageDimensions,
+      dimensions
     }`,
   )
 
@@ -133,17 +124,17 @@ async function main() {
   let skipped = 0
 
   for (const order of orders) {
-    const weight = parseWeight(order.stripeSummary?.metadata)
-    const hasWeight = Boolean(order.fulfillment?.packageDimensions?.weight)
-    const legacyDims = order.fulfillment?.dimensions || {}
-    const pkg = order.fulfillment?.packageDimensions || {}
+    const stripeSummary = parseStripeSummaryData(order.stripeSummary)
+    const weight = parseWeight(stripeSummary?.metadata)
+    const hasWeight = Boolean(order.packageDimensions?.weight)
+    const legacyDims = order.dimensions || {}
+    const pkg = order.packageDimensions || {}
 
     const length = pkg.length ?? legacyDims.length
     const width = pkg.width ?? legacyDims.width
     const height = pkg.height ?? legacyDims.height
 
-    const shippingAddress =
-      order.fulfillment?.shippingAddress || order.stripeSummary?.shippingAddress
+    const shippingAddress = order.shippingAddress || stripeSummary?.shippingAddress
 
     if (hasWeight && shippingAddress) {
       skipped += 1
@@ -154,7 +145,7 @@ async function main() {
 
     const setOps: Record<string, any> = {}
     if (!hasWeight && weight !== undefined) {
-      setOps['fulfillment.packageDimensions'] = {
+      setOps['packageDimensions'] = {
         ...pkg,
         length,
         width,
@@ -166,15 +157,15 @@ async function main() {
         ...(display.dimensionsDisplay ? {dimensionsDisplay: display.dimensionsDisplay} : {}),
       }
     } else if (display.weightDisplay || display.dimensionsDisplay) {
-      setOps['fulfillment.packageDimensions'] = {
+      setOps['packageDimensions'] = {
         ...pkg,
         ...(display.weightDisplay ? {weightDisplay: display.weightDisplay} : {}),
         ...(display.dimensionsDisplay ? {dimensionsDisplay: display.dimensionsDisplay} : {}),
       }
     }
 
-    if (shippingAddress && !order.fulfillment?.shippingAddress) {
-      setOps['fulfillment.shippingAddress'] = shippingAddress
+    if (shippingAddress && !order.shippingAddress) {
+      setOps.shippingAddress = shippingAddress
     }
 
     if (Object.keys(setOps).length === 0) {
@@ -185,7 +176,7 @@ async function main() {
     await client.patch(order._id).set(setOps).commit({autoGenerateArrayKeys: true})
     updated += 1
     console.log(
-      `Updated ${order.orderNumber || order._id} • weight=${setOps['fulfillment.packageDimensions']?.weight ?? pkg.weight ?? 'n/a'}`,
+      `Updated ${order.orderNumber || order._id} • weight=${setOps['packageDimensions']?.weight ?? pkg.weight ?? 'n/a'}`,
     )
   }
 

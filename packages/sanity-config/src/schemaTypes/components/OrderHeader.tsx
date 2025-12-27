@@ -10,6 +10,11 @@ import {
   buildOrderStatusBadges,
 } from '../../components/studio/documentTables/DocumentBadge'
 import {sanitizeCartItemName} from '../../utils/cartItemDetails'
+import {
+  buildWorkflowBadges,
+  deriveWorkflowState,
+  resolveWorkflowActionBadge,
+} from '../../utils/orderWorkflow'
 
 const parseUpgradeAmount = (value?: unknown): number => {
   if (typeof value !== 'string') return 0
@@ -81,6 +86,13 @@ export function OrderHeader(props: any) {
   const createdAt = useFormValue(['createdAt']) as string
   const status = useFormValue(['status']) as string
   const paymentStatus = useFormValue(['paymentStatus']) as string
+  const labelPurchased = useFormValue(['labelPurchased']) as boolean
+  const shippedAt = useFormValue(['shippedAt']) as string
+  const deliveredAt = useFormValue(['deliveredAt']) as string
+  const confirmationEmailSent = useFormValue(['confirmationEmailSent']) as boolean
+  const shippingLog = useFormValue(['shippingLog']) as Array<{status?: string}> | null
+  const customerInstructions = useFormValue(['customerInstructions']) as string
+  const opsInternalNotes = useFormValue(['opsInternalNotes']) as string
 
   // Try new structure first, fallback to old structure
   const fulfillmentDetails = useFormValue(['fulfillmentDetails']) as any
@@ -97,7 +109,15 @@ export function OrderHeader(props: any) {
     fulfillmentDetails?.fulfillmentNotes || oldFulfillment?.fulfillmentNotes || ''
   const [localNotes, setLocalNotes] = useState(fulfillmentNotes || '')
   const [isSaving, setIsSaving] = useState(false)
+  const [localCustomerInstructions, setLocalCustomerInstructions] = useState(
+    customerInstructions || '',
+  )
+  const [localOpsNotes, setLocalOpsNotes] = useState(opsInternalNotes || '')
+  const [isSavingCustomerInstructions, setIsSavingCustomerInstructions] = useState(false)
+  const [isSavingOpsNotes, setIsSavingOpsNotes] = useState(false)
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const customerInstructionsTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const opsNotesTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const computedSubtotal = useMemo(() => computeOrderSubtotal(cart), [cart])
   const computedTotal = useMemo(
     () =>
@@ -126,9 +146,25 @@ export function OrderHeader(props: any) {
   }, [fulfillmentNotes])
 
   useEffect(() => {
+    setLocalCustomerInstructions(customerInstructions || '')
+    setIsSavingCustomerInstructions(false)
+  }, [customerInstructions])
+
+  useEffect(() => {
+    setLocalOpsNotes(opsInternalNotes || '')
+    setIsSavingOpsNotes(false)
+  }, [opsInternalNotes])
+
+  useEffect(() => {
     return () => {
       if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current)
+      }
+      if (customerInstructionsTimeout.current) {
+        clearTimeout(customerInstructionsTimeout.current)
+      }
+      if (opsNotesTimeout.current) {
+        clearTimeout(opsNotesTimeout.current)
       }
     }
   }, [])
@@ -161,6 +197,52 @@ export function OrderHeader(props: any) {
     [debouncedOnChange],
   )
 
+  const debouncedCustomerInstructionsChange = useCallback(
+    (value: string) => {
+      if (customerInstructionsTimeout.current) {
+        clearTimeout(customerInstructionsTimeout.current)
+      }
+      customerInstructionsTimeout.current = setTimeout(() => {
+        onChange(value ? set(value, ['customerInstructions']) : unset(['customerInstructions']))
+        setIsSavingCustomerInstructions(false)
+      }, 500)
+    },
+    [onChange],
+  )
+
+  const debouncedOpsNotesChange = useCallback(
+    (value: string) => {
+      if (opsNotesTimeout.current) {
+        clearTimeout(opsNotesTimeout.current)
+      }
+      opsNotesTimeout.current = setTimeout(() => {
+        onChange(value ? set(value, ['opsInternalNotes']) : unset(['opsInternalNotes']))
+        setIsSavingOpsNotes(false)
+      }, 500)
+    },
+    [onChange],
+  )
+
+  const handleCustomerInstructionsChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = event.currentTarget.value
+      setLocalCustomerInstructions(newValue)
+      setIsSavingCustomerInstructions(true)
+      debouncedCustomerInstructionsChange(newValue)
+    },
+    [debouncedCustomerInstructionsChange],
+  )
+
+  const handleOpsNotesChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = event.currentTarget.value
+      setLocalOpsNotes(newValue)
+      setIsSavingOpsNotes(true)
+      debouncedOpsNotesChange(newValue)
+    },
+    [debouncedOpsNotesChange],
+  )
+
   // Calculate subtotal from cart if not available
   if (!amountSubtotal && cart && cart.length > 0) {
     amountSubtotal = cart.reduce((sum, item) => {
@@ -183,7 +265,37 @@ export function OrderHeader(props: any) {
   const badges = buildOrderStatusBadges({
     paymentStatus,
     orderStatus: status,
+    labelPurchased,
+    shippedAt,
+    deliveredAt,
   })
+  const workflowState = deriveWorkflowState({
+    paymentStatus,
+    labelPurchased,
+    shippedAt,
+    deliveredAt,
+  })
+  const workflowBadges = buildWorkflowBadges({
+    paymentStatus,
+    labelPurchased,
+    shippedAt,
+    deliveredAt,
+  })
+  const actionBadge = resolveWorkflowActionBadge({
+    paymentStatus,
+    labelPurchased,
+    shippedAt,
+    deliveredAt,
+  })
+  const shippingLogEntries = useMemo(
+    () => (Array.isArray(shippingLog) ? shippingLog.filter(Boolean) : []),
+    [shippingLog],
+  )
+  const trackingEmailSent = useMemo(
+    () =>
+      shippingLogEntries.some((entry) => (entry?.status || '').trim().toLowerCase() === 'notified'),
+    [shippingLogEntries],
+  )
 
   return (
     <Stack space={4}>
@@ -219,6 +331,54 @@ export function OrderHeader(props: any) {
                 </>
               )}
             </Flex>
+
+            <Flex align="center" gap={3} wrap="wrap">
+              <Text size={[1, 1, 2]} muted>
+                Workflow
+              </Text>
+              <Inline space={2}>
+                <DocumentBadge
+                  label={workflowState.label}
+                  tone={workflowState.tone}
+                  title="Derived workflow state (display only)"
+                />
+                {actionBadge && (
+                  <DocumentBadge
+                    label={actionBadge.label}
+                    tone={actionBadge.tone}
+                    title={actionBadge.title}
+                  />
+                )}
+              </Inline>
+            </Flex>
+
+            {workflowBadges.length > 0 && (
+              <Inline space={2}>
+                {workflowBadges.map((badge) => (
+                  <DocumentBadge
+                    key={badge.key}
+                    label={badge.label}
+                    tone={badge.tone}
+                    title={badge.title}
+                  />
+                ))}
+              </Inline>
+            )}
+
+            <Inline space={2}>
+              <DocumentBadge
+                label={
+                  confirmationEmailSent ? 'Order confirmation sent' : 'Order confirmation pending'
+                }
+                tone={confirmationEmailSent ? 'positive' : 'caution'}
+                title="Order confirmation email status"
+              />
+              <DocumentBadge
+                label={trackingEmailSent ? 'Tracking email sent' : 'Tracking email not recorded'}
+                tone={trackingEmailSent ? 'positive' : 'default'}
+                title="Tracking email status (derived from shipping log)"
+              />
+            </Inline>
 
             {/* Order Items */}
             {cart && cart.length > 0 && (
@@ -362,7 +522,7 @@ export function OrderHeader(props: any) {
         <Card padding={4} border radius={2} shadow={1}>
           <Stack space={3}>
             <Text size={[2, 2, 3, 4]} weight="bold">
-              Internal Notes
+              Fulfillment Notes
             </Text>
             <TextArea
               fontSize={[2, 2, 3, 4]}
@@ -375,6 +535,45 @@ export function OrderHeader(props: any) {
             <Text size={1} muted>
               {isSaving ? 'Saving...' : 'Saved'}
             </Text>
+          </Stack>
+        </Card>
+      </Container>
+
+      <Container width={1}>
+        <Card padding={4} border radius={2} shadow={1}>
+          <Stack space={4}>
+            <Stack space={2}>
+              <Text size={[2, 2, 3, 4]} weight="bold">
+                Customer Instructions (Internal)
+              </Text>
+              <TextArea
+                fontSize={[2, 2, 3, 4]}
+                onChange={handleCustomerInstructionsChange}
+                padding={[3, 3, 4]}
+                placeholder="Delivery notes, gate codes, or drop-off requests..."
+                value={localCustomerInstructions}
+                rows={3}
+              />
+              <Text size={1} muted>
+                {isSavingCustomerInstructions ? 'Saving...' : 'Saved'}
+              </Text>
+            </Stack>
+            <Stack space={2}>
+              <Text size={[2, 2, 3, 4]} weight="bold">
+                Ops Notes (Internal)
+              </Text>
+              <TextArea
+                fontSize={[2, 2, 3, 4]}
+                onChange={handleOpsNotesChange}
+                padding={[3, 3, 4]}
+                placeholder="Internal ops/support context..."
+                value={localOpsNotes}
+                rows={4}
+              />
+              <Text size={1} muted>
+                {isSavingOpsNotes ? 'Saving...' : 'Saved'}
+              </Text>
+            </Stack>
           </Stack>
         </Card>
       </Container>

@@ -1,13 +1,14 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
 
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
 
 const projectId =

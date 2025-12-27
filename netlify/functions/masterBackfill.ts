@@ -2,6 +2,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {requireSanityCredentials} from '../lib/sanityEnv.js'
+import {parseStripeSummaryData} from '../lib/stripeSummary'
 
 const {projectId, dataset, token} = requireSanityCredentials()
 const sanity = createClient({
@@ -29,12 +30,13 @@ interface BackfillStats {
 // ============================================================================
 
 function extractCardDetails(doc: any): {brand?: string; last4?: string} | null {
-  const pm = doc?.stripeSummary?.paymentMethod
+  const stripeSummary = parseStripeSummaryData(doc?.stripeSummary)
+  const pm = stripeSummary?.paymentMethod
   if (pm?.brand && pm?.last4) {
     return {brand: pm.brand, last4: pm.last4}
   }
 
-  const metadata = doc?.stripeSummary?.metadata
+  const metadata = stripeSummary?.metadata
   if (Array.isArray(metadata)) {
     for (const entry of metadata) {
       if (entry.key === 'payment_method_brand' && entry.value) {
@@ -52,7 +54,7 @@ function extractCardDetails(doc: any): {brand?: string; last4?: string} | null {
 
 function extractCompleteShippingAddress(doc: any): any | null {
   const existing = doc?.shippingAddress
-  const stripeSummary = doc?.stripeSummary?.shippingAddress
+  const stripeSummary = parseStripeSummaryData(doc?.stripeSummary)?.shippingAddress
 
   if (existing?.addressLine1 && existing?.city && existing?.state && existing?.postalCode) {
     return null
@@ -78,7 +80,7 @@ function extractCompleteShippingAddress(doc: any): any | null {
 
 function extractCompleteBillingAddress(doc: any): any | null {
   const existing = doc?.billingAddress
-  const stripeSummary = doc?.stripeSummary?.billingAddress
+  const stripeSummary = parseStripeSummaryData(doc?.stripeSummary)?.billingAddress
 
   if (existing?.addressLine1 && existing?.city && existing?.state && existing?.postalCode) {
     return null

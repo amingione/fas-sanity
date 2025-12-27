@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
-import {buildStripeSummary} from '../netlify/lib/stripeSummary'
+import {buildStripeSummary, serializeStripeSummaryData} from '../netlify/lib/stripeSummary'
 
 dotenv.config()
 
@@ -48,7 +48,10 @@ async function main() {
     eventCreated: Date.now() / 1000,
   })
 
-  await sanity.patch(orderId).set({stripeSummary: summary}).commit({autoGenerateArrayKeys: true})
+  await sanity
+    .patch(orderId)
+    .set({stripeSummary: serializeStripeSummaryData(summary)})
+    .commit({autoGenerateArrayKeys: true})
   console.log('stripeSummary backfilled for order', orderId)
 }
 

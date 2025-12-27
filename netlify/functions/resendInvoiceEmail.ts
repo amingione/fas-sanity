@@ -6,6 +6,7 @@ import Stripe from 'stripe'
 import {renderInvoicePdf, computeInvoiceTotals} from '../lib/invoicePdf'
 import {fetchPrintSettings} from '../lib/printSettings'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 // --- CORS (more permissive localhost-aware)
 const DEFAULT_ORIGINS = (
@@ -31,7 +32,7 @@ function makeCORS(origin?: string) {
 
 const resend = new Resend(resolveResendApiKey()!)
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY as string)
+  ? new Stripe(process.env.STRIPE_SECRET_KEY as string, {apiVersion: STRIPE_API_VERSION})
   : (null as any)
 
 const sanity = createClient({

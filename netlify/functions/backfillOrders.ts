@@ -4,11 +4,12 @@ import {createClient} from '@sanity/client'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {randomUUID} from 'crypto'
 import Stripe from 'stripe'
-import {mapStripeLineItem} from '../lib/stripeCartItem'
+import {mapStripeLineItem, sanitizeOrderCartItem} from '../lib/stripeCartItem'
 import {enrichCartItemsFromSanity} from '../lib/cartEnrichment'
 import {normalizeMetadataEntries} from '@fas/sanity-config/utils/cartItemDetails'
 import {requireSanityCredentials} from '../lib/sanityEnv'
 import {resolveStripeSecretKey} from '../lib/stripeEnv'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 type MetadataNormalizationResult = {
   changed: boolean
@@ -160,7 +161,7 @@ const sanity = createClient({
 })
 
 const stripeSecret = resolveStripeSecretKey()
-const stripe = stripeSecret ? new Stripe(stripeSecret) : null
+const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
 
 function toOrderCartItem(it: any) {
   if (!it || typeof it !== 'object') return null
@@ -328,6 +329,7 @@ async function loadCartFromStripe(sessionId: string): Promise<any[] | null> {
     }))
     if (!mapped.length) return []
     mapped = await enrichCartItemsFromSanity(mapped, sanity)
+    mapped = mapped.map((item) => sanitizeOrderCartItem(item as Record<string, any>))
     return mapped
   } catch (err) {
     console.warn('backfillOrders: failed to load Stripe cart', err)

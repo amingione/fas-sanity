@@ -3,6 +3,7 @@ import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
 import {handleRefundWebhookEvent} from './stripeWebhook'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888'
@@ -28,7 +29,7 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
 
 const sanityToken = process.env.SANITY_API_TOKEN

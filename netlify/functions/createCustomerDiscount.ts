@@ -6,6 +6,7 @@ import {
   removeCustomerDiscountRecord,
   syncCustomerDiscountRecord,
 } from '../lib/customerDiscounts'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -25,7 +26,7 @@ function makeCORS(origin?: string) {
 }
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {apiVersion: STRIPE_API_VERSION}) : null
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,

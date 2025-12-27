@@ -114,7 +114,6 @@ type OrderCartItem = {
   _key: string
   id?: string
   name?: string
-  productName?: string
   productUrl?: string
   image?: string
   price?: number
@@ -125,7 +124,6 @@ type OrderCartItem = {
   optionDetails?: string[]
   upgrades?: string[]
   productRef?: {_type: 'reference'; _ref: string}
-  validationIssues?: string[]
   metadata?: {
     option_summary?: string
     upgrades?: string[]
@@ -222,12 +220,18 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
         changed = true
       }
     }
-    if (typeof normalizedItem.productName === 'string') {
-      const cleaned = sanitizeCartItemName(normalizedItem.productName)
-      if (cleaned && cleaned !== normalizedItem.productName) {
-        normalizedItem.productName = cleaned
+    if (typeof (normalizedItem as any).productName === 'string') {
+      const cleaned = sanitizeCartItemName((normalizedItem as any).productName)
+      if (cleaned && (!normalizedItem.name || normalizedItem.name !== cleaned)) {
+        normalizedItem.name = cleaned
         changed = true
       }
+      delete (normalizedItem as any).productName
+      changed = true
+    }
+    if (Array.isArray((normalizedItem as any).validationIssues)) {
+      delete (normalizedItem as any).validationIssues
+      changed = true
     }
 
     if (typeof record._key !== 'string' || !record._key) {
@@ -325,17 +329,6 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
     }
 
 
-    const validationIssues = coerceStringArray((record as any).validationIssues)
-    if (validationIssues.length) {
-      normalizedItem.validationIssues = validationIssues
-      if (!Array.isArray((record as any).validationIssues)) {
-        changed = true
-      }
-    } else if ((record as any).validationIssues) {
-      delete (normalizedItem as any).validationIssues
-      changed = true
-    }
-
     const metadataSummaryValue = normalizedItem.optionSummary?.trim()
     const metadataUpgradesValue = normalizedItem.upgrades
       ?.map((entry) => entry.trim())
@@ -425,9 +418,6 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
     consume(source, ['optionDetails', 'option_details', 'selected_options']),
   )
   const upgrades = toStringArray(consume(source, ['upgrades', 'upgrade_list']))
-  const validationIssues = toStringArray(
-    consume(source, ['validationIssues', 'validation_issues', 'validation_issues_list']),
-  )
   const productRefValue = toStringValue(
     consume(source, ['productRef', 'product_ref', 'sanity_product_ref']),
   )
@@ -452,7 +442,6 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
 
   if (id) cartItem.id = id
   if (name) cartItem.name = name
-  if (productName) cartItem.productName = productName
   if (productUrl) cartItem.productUrl = productUrl
   if (image) cartItem.image = image
   if (typeof price === 'number') cartItem.price = price
@@ -462,7 +451,6 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
   if (optionSummary) cartItem.optionSummary = optionSummary
   if (optionDetails?.length) cartItem.optionDetails = optionDetails
   if (upgrades?.length) cartItem.upgrades = upgrades
-  if (validationIssues?.length) cartItem.validationIssues = validationIssues
   if (productRefValue) {
     cartItem.productRef = {_type: 'reference', _ref: productRefValue}
   }

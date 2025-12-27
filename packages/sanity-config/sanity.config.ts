@@ -34,12 +34,12 @@ import {orderView} from './src/views/orderView'
 import CustomerDashboard from './src/components/studio/CustomerDashboard'
 import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
 import './src/runtimeEnvBootstrap'
-import {documentListWidget} from 'sanity-plugin-dashboard-widget-document-list'
 import {OrderFulfillmentWidget} from './src/plugins/orderFulfillmentWidget'
 import {AppointmentCalendarWidget} from './src/plugins/appointmentCalendarWidget'
 import StripeAnalyticsWidget from './src/components/StripeAnalyticsWidget'
 import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
 import {autoMapperPlugin} from './src/plugins/autoMapper'
+import {documentListWidget} from './src/plugins/documentListWidget'
 
 declare const __SANITY_STUDIO_RUNTIME_ENV__: Record<string, string | undefined> | undefined
 

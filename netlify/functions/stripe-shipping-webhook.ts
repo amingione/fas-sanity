@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const stripeSecret =
   process.env.STRIPE_SECRET_KEY ||
@@ -15,8 +16,6 @@ const sanityToken =
   process.env.SANITY_WRITE_TOKEN ||
   process.env.SANITY_ACCESS_TOKEN ||
   ''
-
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2024-06-20'
 
 const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
 

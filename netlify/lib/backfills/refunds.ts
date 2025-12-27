@@ -6,6 +6,7 @@ import {createClient, type SanityClient} from '@sanity/client'
 import Stripe from 'stripe'
 import {requireSanityCredentials} from '../sanityEnv'
 import {requireStripeSecretKey} from '../stripeEnv'
+import {STRIPE_API_VERSION} from '../stripeConfig'
 
 export type RefundBackfillOptions = {
   limit?: number
@@ -51,7 +52,7 @@ function getStripe(): Stripe {
   if (cachedStripe) return cachedStripe
   const stripeSecret = requireStripeSecretKey()
   cachedStripe = new Stripe(stripeSecret, {
-    apiVersion: '2024-06-20' as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
   return cachedStripe
 }
@@ -187,7 +188,7 @@ export async function runRefundBackfill(
     throw new Error('stripeWebhook handleRefundWebhookEvent is unavailable.')
   }
 
-  const apiVersion = '2024-06-20'
+  const apiVersion = STRIPE_API_VERSION
   let processedRefunds = 0
   let applied = 0
 

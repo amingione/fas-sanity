@@ -55,23 +55,21 @@ const stripe = new Stripe(stripeSecret, {
 type OrderDoc = {
   _id: string
   paymentIntentId?: string
+  stripePaymentIntentId?: string
   cardBrand?: string
   cardLast4?: string
-  stripeSummary?: {
-    paymentIntentId?: string
-  }
 }
 
 const ORDER_QUERY = `*[_type == "order" && (
-  paymentIntentId != null || stripeSummary.paymentIntentId != null
+  paymentIntentId != null || stripePaymentIntentId != null
 ) && (
   cardBrand == "" || !defined(cardBrand) || cardLast4 == "" || !defined(cardLast4)
 )][0...100]{
   _id,
   paymentIntentId,
+  stripePaymentIntentId,
   cardBrand,
-  cardLast4,
-  stripeSummary{paymentIntentId}
+  cardLast4
 }`
 
 const PAYMENT_INTENT_EXPANSIONS: Stripe.PaymentIntentRetrieveParams['expand'] = [
@@ -83,7 +81,7 @@ const PAYMENT_INTENT_EXPANSIONS: Stripe.PaymentIntentRetrieveParams['expand'] = 
 function resolvePaymentIntentId(order: OrderDoc): string | undefined {
   const candidates = [
     order.paymentIntentId,
-    order.stripeSummary?.paymentIntentId,
+    order.stripePaymentIntentId,
   ].map((value) => (typeof value === 'string' ? value.trim() : ''))
 
   return candidates.find((value) => Boolean(value)) || undefined

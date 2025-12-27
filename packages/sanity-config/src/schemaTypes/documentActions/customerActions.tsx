@@ -69,7 +69,7 @@ const uniqueId = () =>
     : Math.random().toString(36).slice(2)
 
 const CUSTOMER_HISTORY_QUERY = `{
-  "orders": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(orderDate, createdAt, _createdAt)) desc)[0...10]{
+  "orders": *[_type == "order" && customerRef._ref == $customerId] | order(dateTime(coalesce(createdAt, _createdAt)) desc)[0...10]{
     _id,
     orderNumber,
     status,

@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || ''
 const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
@@ -23,7 +24,7 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const stripe = new Stripe(stripeSecret, {apiVersion: '2024-06-20'})
+const stripe = new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION})
 
 const verifySignature = (body: string, signature?: string): boolean => {
   if (!webhookSecret) return true

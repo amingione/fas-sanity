@@ -44,6 +44,15 @@ const sanitizeNumber = (value: unknown): number | undefined => {
   return undefined
 }
 
+type TradeReference = {
+  _key: ReturnType<typeof randomUUID>
+  _type: string
+  companyName: string | undefined
+  contactName: string | undefined
+  phone: string | undefined
+  email: string | undefined
+}
+
 const sanitizeAddress = (value: any) => {
   if (!value || typeof value !== 'object') return undefined
   return {
@@ -74,7 +83,7 @@ const sanitizeReferences = (value: unknown) => {
         email,
       }
     })
-    .filter((entry): entry is Record<string, unknown> => Boolean(entry))
+    .filter((entry): entry is TradeReference => Boolean(entry))
   return entries.length ? entries : undefined
 }
 

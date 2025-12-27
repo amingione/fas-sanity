@@ -257,7 +257,7 @@ const handler: Handler = async (event) => {
     }
 
     try {
-      const html = render(
+      const html = await render(
         <AbandonedCartEmail
           customerName={checkout.customerName || 'Valued Customer'}
           cart={mapCartItems(checkout.cart)}

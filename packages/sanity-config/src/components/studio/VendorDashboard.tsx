@@ -4,14 +4,14 @@ import {useClient} from 'sanity'
 import type {ComponentType} from 'react'
 
 const DASHBOARD_QUERY = `{
-  "orders": *[_type == "order" && orderType == "wholesale" && wholesaleDetails.vendor._ref == $vendorId] | order(_createdAt desc)[0...5]{
+  "orders": *[_type == "order" && orderType == "wholesale" && customerRef._ref == $vendorId] | order(_createdAt desc)[0...5]{
     _id,
     orderNumber,
     status,
     totalAmount,
     _createdAt
   },
-  "invoices": *[_type == "invoice" && orderRef->wholesaleDetails.vendor._ref == $vendorId] | order(_createdAt desc)[0...5]{
+  "invoices": *[_type == "invoice" && orderRef->customerRef._ref == $vendorId] | order(_createdAt desc)[0...5]{
     _id,
     invoiceNumber,
     status,

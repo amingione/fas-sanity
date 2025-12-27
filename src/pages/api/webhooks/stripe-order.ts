@@ -3,7 +3,10 @@ import {randomUUID} from 'crypto'
 import type Stripe from 'stripe'
 import type {OrderCartItem} from '@fas/sanity-config/types/order'
 import {ORDER_NUMBER_PREFIX} from '../../../../netlify/lib/orderFormatting'
-import {buildStripeSummary as buildStripeSummaryRecord} from '../../../../netlify/lib/stripeSummary'
+import {
+  buildStripeSummary as buildStripeSummaryRecord,
+  serializeStripeSummaryData,
+} from '../../../../netlify/lib/stripeSummary'
 
 type StripeCheckoutSession = Stripe.Checkout.Session
 
@@ -124,7 +127,8 @@ function parseCartFromMetadata(metadata?: Stripe.Metadata | null): OrderCartItem
   ]
 }
 
-const buildStripeSummary = (session: StripeCheckoutSession) => buildStripeSummaryRecord({session})
+const buildStripeSummary = (session: StripeCheckoutSession) =>
+  serializeStripeSummaryData(buildStripeSummaryRecord({session}))
 
 export async function handleStripeCheckoutComplete(
   session: StripeCheckoutSession,
@@ -133,24 +137,6 @@ export async function handleStripeCheckoutComplete(
   const orderNumber = await generateOrderNumber(client)
 
   // Build shipping address text
-  const shippingAddressText = session.shipping_details
-    ? [
-        session.shipping_details.name,
-        session.shipping_details.address?.line1,
-        session.shipping_details.address?.line2,
-        session.shipping_details.address?.city &&
-          session.shipping_details.address?.state &&
-          session.shipping_details.address?.postal_code
-          ? `${session.shipping_details.address.city}, ${session.shipping_details.address.state} ${session.shipping_details.address.postal_code}`
-          : null,
-        session.shipping_details.address?.country,
-        session.customer_details?.phone,
-        session.customer_details?.email,
-      ]
-        .filter(Boolean)
-        .join('\n')
-    : ''
-
   const orderDoc = {
     _type: 'order',
     orderNumber,
@@ -179,7 +165,6 @@ export async function handleStripeCheckoutComplete(
     // Fulfillment details (visible)
     fulfillmentDetails: {
       status: 'unfulfilled',
-      shippingAddress: shippingAddressText,
       packageWeight: parseFloat(session.metadata?.shipping_total_weight_lbs || '2'),
       fulfillmentNotes: '',
     },

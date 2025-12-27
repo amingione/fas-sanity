@@ -1,7 +1,6 @@
 import {forwardRef, useCallback, useEffect, useMemo, useState} from 'react'
 import {useClient} from 'sanity'
 import {Box, Card, Flex, Heading, Select, Spinner, Stack, Text, useToast} from '@sanity/ui'
-import {DEFAULT_VENDOR_DISCOUNTS} from '../../../../../shared/vendorPricing'
 
 const API_VERSION = '2024-10-01'
 const WORKFLOW_OPTIONS = [
@@ -20,13 +19,9 @@ type WholesaleOrder = {
   status?: string
   totalAmount?: number
   currency?: string
-  wholesaleWorkflowStatus?: string
-  wholesaleDetails?: {
-    bulkQuantity?: number
-    pricingTier?: string
-    expectedShipDate?: string
-    vendor?: {companyName?: string; pricingTier?: string; customDiscountPercentage?: number}
-  }
+  wholesaleDetails?: {workflowStatus?: string | null} | null
+  customerName?: string
+  customerEmail?: string
   cart?: Array<{quantity?: number | null} | null>
 }
 
@@ -48,13 +43,11 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
           status,
           totalAmount,
           currency,
-          wholesaleWorkflowStatus,
           wholesaleDetails{
-            bulkQuantity,
-            pricingTier,
-            expectedShipDate,
-            vendor->{companyName, pricingTier, customDiscountPercentage}
+            workflowStatus
           },
+          customerName,
+          customerEmail,
           cart[]{quantity}
         }`,
       )
@@ -71,10 +64,7 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
   const filtered = useMemo(() => {
     return orders.filter((order) => {
       if (workflowFilter === 'all') return true
-      return (
-        order.wholesaleWorkflowStatus === workflowFilter ||
-        order.wholesaleDetails?.workflowStatus === workflowFilter
-      )
+      return order.wholesaleDetails?.workflowStatus === workflowFilter
     })
   }, [orders, workflowFilter])
 
@@ -84,7 +74,6 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
       await client
         .patch(id)
         .set({
-          wholesaleWorkflowStatus: status,
           'wholesaleDetails.workflowStatus': status,
         })
         .commit()
@@ -104,20 +93,8 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
   }
 
   const resolveQuantity = (order: WholesaleOrder) => {
-    if (order.wholesaleDetails?.bulkQuantity) return order.wholesaleDetails.bulkQuantity
     const total = order.cart?.reduce((sum, item) => sum + (item?.quantity ?? 0), 0) ?? 0
     return total || 0
-  }
-
-  const resolveDiscount = (order: WholesaleOrder) => {
-    const tier = order.wholesaleDetails?.pricingTier || order.wholesaleDetails?.vendor?.pricingTier
-    if (tier === 'custom' && typeof order.wholesaleDetails?.vendor?.customDiscountPercentage === 'number') {
-      return order.wholesaleDetails.vendor.customDiscountPercentage
-    }
-    if (tier && tier in DEFAULT_VENDOR_DISCOUNTS) {
-      return DEFAULT_VENDOR_DISCOUNTS[tier as keyof typeof DEFAULT_VENDOR_DISCOUNTS]
-    }
-    return 0
   }
 
   if (loading) {
@@ -147,8 +124,7 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
           <Stack space={3}>
             <Flex paddingY={2} paddingX={3} style={{fontWeight: 600}}>
               <Text style={{flex: 1}}>Order</Text>
-              <Text style={{flex: 1}}>Vendor</Text>
-              <Text style={{flex: 1}}>Pricing Tier</Text>
+              <Text style={{flex: 1}}>Customer</Text>
               <Text style={{flex: 1}}>Quantity</Text>
               <Text style={{flex: 1}}>Workflow Status</Text>
               <Text style={{flex: 1}}>Total</Text>
@@ -170,24 +146,16 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
                       </Stack>
                       <Stack flex={1} space={1}>
                         <Text weight="medium">
-                          {order.wholesaleDetails?.vendor?.companyName || 'Unassigned vendor'}
+                          {order.customerName || 'Wholesale customer'}
                         </Text>
                         <Text size={1} muted>
-                          Discount {resolveDiscount(order)}%
+                          {order.customerEmail || '—'}
                         </Text>
-                      </Stack>
-                      <Stack flex={1} space={1}>
-                        <Text>{order.wholesaleDetails?.pricingTier || 'Standard'}</Text>
-                        {order.wholesaleDetails?.expectedShipDate && (
-                          <Text size={1} muted>
-                            Ship {order.wholesaleDetails.expectedShipDate}
-                          </Text>
-                        )}
                       </Stack>
                       <Text style={{flex: 1}}>{resolveQuantity(order)}</Text>
                       <Stack flex={1} space={1}>
                         <Select
-                          value={order.wholesaleWorkflowStatus || order.wholesaleDetails?.workflowStatus || 'pending'}
+                          value={order.wholesaleDetails?.workflowStatus || 'pending'}
                           disabled={updatingId === order._id}
                           onChange={(event) => updateWorkflow(order._id, event.currentTarget.value)}
                         >

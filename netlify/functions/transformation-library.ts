@@ -47,7 +47,7 @@ const SNIPPETS: TransformSnippet[] = [
 
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'GET') {
-    const url = new URL(event.rawUrl || `http://localhost${event.rawPath || ''}`)
+    const url = new URL(event.rawUrl || `http://localhost${event.path || ''}`)
     const category = (url.searchParams.get('category') || '').toLowerCase()
     const filtered = category ? SNIPPETS.filter((s) => s.category === category) : SNIPPETS
     return {

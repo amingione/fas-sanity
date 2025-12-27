@@ -17,7 +17,11 @@ import {
   findProductForItem,
 } from '../lib/cartEnrichment'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
-import {buildStripeSummary} from '../lib/stripeSummary'
+import {
+  buildStripeSummary,
+  parseStripeSummaryData,
+  serializeStripeSummaryData,
+} from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
 import {
   normalizeMetadataEntries,
@@ -53,6 +57,7 @@ import {
   markAbandonedCheckoutRecovered,
 } from '../lib/abandonedCheckouts'
 import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {
   linkCheckoutSessionToCustomer,
@@ -155,12 +160,11 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
     _type: 'orderCartItem',
     _key: (item as any)._key || randomUUID(),
     name: cleanedName,
-    productName: cleanedName,
     productRef: (item as any).productRef,
+    id: (item as any).id,
     sku: item.sku,
     image: (item as any).image,
     productUrl: (item as any).productUrl,
-    lineItem: (item as any).lineItem || undefined,
     quantity,
     price: unitPrice,
     total: lineTotal,
@@ -174,6 +178,7 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
     productSlug: (item as any).productSlug,
     stripePriceId: (item as any).stripePriceId,
     stripeProductId: (item as any).stripeProductId,
+    metadataEntries: (item as any).metadataEntries || undefined,
     metadata:
       item.optionSummary || (item.upgrades && item.upgrades.length)
         ? {
@@ -637,8 +642,9 @@ function extractCompleteShippingAddress(
   stripeSummary?: any,
   fallbackEmail?: string | null,
 ): NormalizedContactAddress | undefined {
-  if (stripeSummary?.shippingAddress) {
-    const addr = stripeSummary.shippingAddress
+  const summary = parseStripeSummaryData(stripeSummary)
+  if (summary?.shippingAddress) {
+    const addr = summary.shippingAddress
     return {
       name: addr.name || session.customer_details?.name || '',
       email: addr.email || session.customer_details?.email || fallbackEmail || '',
@@ -1582,7 +1588,6 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   if (id) item.id = id
   if (sku) item.sku = sku
   if (productSlug) item.productSlug = productSlug
-  if (productName) item.productName = productName
   if (stripeProductId) item.stripeProductId = stripeProductId
   if (stripePriceId) item.stripePriceId = stripePriceId
   if (typeof quantity === 'number' && Number.isFinite(quantity)) {
@@ -1591,14 +1596,12 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   if (typeof price === 'number' && Number.isFinite(price)) {
     item.price = Number(price)
   }
-  if (resolvedDescription) item.description = resolvedDescription
   if (resolvedImage) item.image = resolvedImage
   if (resolvedProductUrl) item.productUrl = resolvedProductUrl
   if (normalizedSelections.optionSummary) item.optionSummary = normalizedSelections.optionSummary
   if (optionDetails.length) item.optionDetails = optionDetails
   if (upgrades.length) item.upgrades = upgrades
   if (upgradesTotal !== undefined) item.upgradesTotal = upgradesTotal
-  if (categories.length) item.categories = categories
   const resolvedQuantityValue =
     typeof item.quantity === 'number' && Number.isFinite(item.quantity) ? item.quantity : undefined
   const resolvedPriceValue =
@@ -1690,17 +1693,18 @@ function ensureRequiredPaymentDetails(
   details: PaymentDetailInput,
   contextLabel: string,
 ) {
+  const summary = parseStripeSummaryData(target?.stripeSummary)
   const brand =
     details.brand ||
     details.cardBrand ||
     (details as {paymentMethod?: {brand?: string | null}})?.paymentMethod?.brand ||
-    target?.stripeSummary?.paymentMethod?.brand ||
+    summary?.paymentMethod?.brand ||
     ''
   const last4 =
     details.last4 ||
     details.cardLast4 ||
     (details as {paymentMethod?: {last4?: string | null}})?.paymentMethod?.last4 ||
-    target?.stripeSummary?.paymentMethod?.last4 ||
+    summary?.paymentMethod?.last4 ||
     ''
   const receipt = (details.receiptUrl || '').toString().trim()
 
@@ -1787,10 +1791,6 @@ function enforceCartRequirements(
       normalized.sku = matchedProduct.sku
     }
 
-    if (!normalized.lineItem && typeof (item as any)?.lineItem === 'string') {
-      normalized.lineItem = (item as any).lineItem
-    }
-
     if (Array.isArray(normalized.addOns)) {
       normalized.addOns = normalized.addOns
         .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
@@ -1815,16 +1815,8 @@ function enforceCartRequirements(
     const missing: string[] = []
     if (!normalized.productRef?._ref) missing.push('productRef')
     if (!normalized.sku) missing.push('sku')
-    if (!normalized.lineItem) missing.push('lineItem')
 
     if (missing.length) {
-      const validationIssues = uniqueStrings([
-        ...(Array.isArray(normalized.validationIssues) ? normalized.validationIssues : []),
-        ...missing.map((field) => `Missing required cart field: ${field}`),
-      ])
-      if (validationIssues.length) {
-        normalized.validationIssues = validationIssues
-      }
       console.error(
         `stripeWebhook: cart item missing required fields [${missing.join(', ')}]${describeCartContext(context)}`,
         {index, item: normalized},
@@ -2384,7 +2376,7 @@ if (!stripeKey) {
     `stripeWebhook: missing Stripe secret (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')})`,
   )
 }
-const stripe = stripeKey ? new Stripe(stripeKey) : (null as any)
+const stripe = stripeKey ? new Stripe(stripeKey, {apiVersion: STRIPE_API_VERSION}) : (null as any)
 const RESEND_API_KEY = resolveResendApiKey() || ''
 const resendClient = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 const RESEND_ABANDONED_AUDIENCE =
@@ -3395,12 +3387,12 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
   applyPackageDimensions(baseOrderPayload, shippingMetrics, sessionWeight)
   applyShippingDetailsToDoc(baseOrderPayload, shippingDetails, currencyUpper)
 
-  baseOrderPayload.stripeSummary = preliminaryStripeSummary
-  if (!baseOrderPayload.cardBrand && baseOrderPayload.stripeSummary?.paymentMethod?.brand) {
-    baseOrderPayload.cardBrand = baseOrderPayload.stripeSummary.paymentMethod.brand
+  baseOrderPayload.stripeSummary = serializeStripeSummaryData(preliminaryStripeSummary)
+  if (!baseOrderPayload.cardBrand && preliminaryStripeSummary?.paymentMethod?.brand) {
+    baseOrderPayload.cardBrand = preliminaryStripeSummary.paymentMethod.brand
   }
-  if (!baseOrderPayload.cardLast4 && baseOrderPayload.stripeSummary?.paymentMethod?.last4) {
-    baseOrderPayload.cardLast4 = baseOrderPayload.stripeSummary.paymentMethod.last4
+  if (!baseOrderPayload.cardLast4 && preliminaryStripeSummary?.paymentMethod?.last4) {
+    baseOrderPayload.cardLast4 = preliminaryStripeSummary.paymentMethod.last4
   }
 
   const fulfillmentResult = deriveFulfillmentFromMetadata(
@@ -5332,7 +5324,7 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
       stripeLastSyncedAt: timestamp,
       paymentFailureCode: failureCode,
       paymentFailureMessage: failureMessage,
-      stripeSummary: summary,
+      stripeSummary: serializeStripeSummaryData(summary),
     }
     try {
       await sanity.patch(order._id).set(setOps).commit({autoGenerateArrayKeys: true})
@@ -5377,7 +5369,6 @@ async function markPaymentIntentFailure(pi: Stripe.PaymentIntent): Promise<void>
           stripeLastSyncedAt: timestamp,
           paymentFailureCode: failureCode,
           paymentFailureMessage: failureMessage,
-          stripeSummary: summary,
         })
         .commit({autoGenerateArrayKeys: true})
     } catch (err) {
@@ -5529,12 +5520,14 @@ const handleChargeEvent = async (input: HandleChargeEventInput) => {
     cardBrand: charge?.payment_method_details?.card?.brand || undefined,
     cardLast4: charge?.payment_method_details?.card?.last4 || undefined,
     receiptUrl: charge?.receipt_url || undefined,
-    stripeSummary: buildStripeSummary({
-      paymentIntent: resolvedPaymentIntent || undefined,
-      charge: charge || undefined,
-      eventType: event.type,
-      eventCreated: event.created,
-    }),
+    stripeSummary: serializeStripeSummaryData(
+      buildStripeSummary({
+        paymentIntent: resolvedPaymentIntent || undefined,
+        charge: charge || undefined,
+        eventType: event.type,
+        eventCreated: event.created,
+      }),
+    ),
   }
   if (additionalOrderFields && typeof additionalOrderFields === 'object') {
     Object.assign(orderFields, additionalOrderFields)
@@ -5804,12 +5797,14 @@ export async function handleRefundWebhookEvent(webhookEvent: Stripe.Event): Prom
         ...(typeof refund?.created === 'number'
           ? {lastRefundedAt: new Date(refund.created * 1000).toISOString()}
           : {}),
-        stripeSummary: buildStripeSummary({
-          paymentIntent: paymentIntent || undefined,
-          charge: charge || undefined,
-          eventType: webhookEvent.type,
-          eventCreated: webhookEvent.created,
-        }),
+        stripeSummary: serializeStripeSummaryData(
+          buildStripeSummary({
+            paymentIntent: paymentIntent || undefined,
+            charge: charge || undefined,
+            eventType: webhookEvent.type,
+            eventCreated: webhookEvent.created,
+          }),
+        ),
       },
       preserveExistingRefundedStatus: preserveRefundedStatus,
       metadata: combinedMetadata,
@@ -6172,10 +6167,10 @@ export async function handleCheckoutAsyncPaymentSucceeded(
     checkoutDraft: false,
     paymentFailureCode: null,
     paymentFailureMessage: null,
+    stripeSummary: serializeStripeSummaryData(summary),
   }
 
   const additionalInvoiceFields: Record<string, any> = {
-    stripeSummary: summary,
     paymentFailureCode: null,
     paymentFailureMessage: null,
   }
@@ -6258,12 +6253,12 @@ export async function handleCheckoutAsyncPaymentFailed(
 
   const additionalOrderFields: Record<string, any> = {
     checkoutDraft: orderStatus === 'paid' ? false : true,
+    stripeSummary: serializeStripeSummaryData(summary),
   }
   if (failureCode) additionalOrderFields.paymentFailureCode = failureCode
   if (failureMessage) additionalOrderFields.paymentFailureMessage = failureMessage
 
   const additionalInvoiceFields: Record<string, any> = {
-    stripeSummary: summary,
   }
   if (failureCode) additionalInvoiceFields.paymentFailureCode = failureCode
   if (failureMessage) additionalInvoiceFields.paymentFailureMessage = failureMessage
@@ -6524,7 +6519,6 @@ async function handleCheckoutExpired(
             stripeLastSyncedAt: timestamp,
             paymentFailureCode: failureCode,
             paymentFailureMessage: failureMessage,
-            stripeSummary: summary,
           })
           .commit({autoGenerateArrayKeys: true})
       } catch (err) {
@@ -7125,12 +7119,11 @@ export const handler: Handler = async (event) => {
                 eventCreated: webhookEvent.created,
               })
               const additionalOrderFields = {
-                stripeSummary: summary,
+                stripeSummary: serializeStripeSummaryData(summary),
                 paymentFailureCode: null,
                 paymentFailureMessage: null,
               }
               const additionalInvoiceFields = {
-                stripeSummary: summary,
                 paymentFailureCode: null,
                 paymentFailureMessage: null,
               }
@@ -7669,6 +7662,7 @@ export const handler: Handler = async (event) => {
             sessionId: checkoutSessionMeta || pi.id,
             orderId: normalizedOrderNumber,
           })
+          cart = cart.map(cleanCartItemForStorage)
 
           if (!cart.length) {
             throw new Error(
@@ -7837,11 +7831,13 @@ export const handler: Handler = async (event) => {
             shippingDetails,
             currency ? currency.toUpperCase() : undefined,
           )
-          baseDoc.stripeSummary = buildStripeSummary({
-            paymentIntent: pi,
-            eventType: webhookEvent.type,
-            eventCreated: webhookEvent.created,
-          })
+          baseDoc.stripeSummary = serializeStripeSummaryData(
+            buildStripeSummary({
+              paymentIntent: pi,
+              eventType: webhookEvent.type,
+              eventCreated: webhookEvent.created,
+            }),
+          )
           const fulfillmentResult = deriveFulfillmentFromMetadata(
             meta,
             shippingDetails,

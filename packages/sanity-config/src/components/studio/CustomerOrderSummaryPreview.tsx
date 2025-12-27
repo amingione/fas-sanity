@@ -49,7 +49,7 @@ const ORDER_LOOKUP_QUERY = `*[_type == "order" && (
   status,
   paymentStatus,
   stripePaymentIntentStatus,
-  "orderDate": coalesce(orderDate, createdAt, _createdAt),
+  "orderDate": coalesce(createdAt, _createdAt),
   "total": coalesce(totalAmount, amountSubtotal - coalesce(amountDiscount, 0) + amountTax + amountShipping, totalAmount, total)
 }`
 

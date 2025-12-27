@@ -372,11 +372,17 @@ const buildVariables = (
       recoveryUrl: url,
     }
   }
+  if ('email' in context) {
+    return {
+      customerName: [context.firstName, context.lastName].filter(Boolean).join(' ') || '',
+      lastOrderDate: context.lastOrderDate
+        ? new Date(context.lastOrderDate).toLocaleDateString()
+        : '',
+    }
+  }
   return {
-    customerName: [context.firstName, context.lastName].filter(Boolean).join(' ') || '',
-    lastOrderDate: context.lastOrderDate
-      ? new Date(context.lastOrderDate).toLocaleDateString()
-      : '',
+    customerName: '',
+    lastOrderDate: '',
   }
 }
 
@@ -384,8 +390,12 @@ const buildContextKey = (
   automationId: string,
   context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument,
 ) => {
-  const contextId =
-    context._id || ('stripeSessionId' in context ? context.stripeSessionId : context.email || '')
+  let contextId = context._id || ''
+  if (!contextId && 'stripeSessionId' in context) {
+    contextId = context.stripeSessionId || ''
+  } else if (!contextId && 'email' in context) {
+    contextId = context.email || ''
+  }
   return `${automationId}:${contextId}`
 }
 
@@ -410,7 +420,7 @@ const createEmailLog = async ({
   contextKey: string
   context: OrderDocument | AppointmentDocument | AbandonedCheckoutDocument | CustomerDocument
 }): Promise<string> => {
-  const doc: Record<string, any> = {
+  const doc: {_type: 'emailLog'; [key: string]: any} = {
     _type: 'emailLog',
     to,
     subject,

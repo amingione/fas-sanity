@@ -44,6 +44,9 @@ type OrderRowData = {
   currency?: string | null
   createdAt?: string | null
   shippingLabelUrl?: string | null
+  labelPurchased?: boolean | null
+  shippedAt?: string | null
+  deliveredAt?: string | null
   cardBrand?: string | null
   cartSummary?: string | null
 }
@@ -60,6 +63,9 @@ const ORDER_PROJECTION = `{
   customerEmail,
   "shippingName": shippingAddress.name,
   shippingLabelUrl,
+  labelPurchased,
+  shippedAt,
+  deliveredAt,
   totalAmount,
   amountRefunded,
   cardBrand,
@@ -935,6 +941,9 @@ export default function OrdersDocumentTable({
               const badges = buildOrderStatusBadges({
                 paymentStatus: data.paymentStatus,
                 orderStatus: data.status,
+                labelPurchased: data.labelPurchased,
+                shippedAt: data.shippedAt,
+                deliveredAt: data.deliveredAt,
               })
               if (!badges.length) {
                 return <Text size={1}>—</Text>

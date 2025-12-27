@@ -6,6 +6,11 @@ import {useClient} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import {formatOrderNumber} from '../../utils/orderNumber'
 import {resolveNetlifyBase} from '../../utils/netlifyBase'
+import {
+  buildWorkflowBadges,
+  deriveWorkflowState,
+  resolveWorkflowActionBadge,
+} from '../../utils/orderWorkflow'
 
 type DocumentViewProps = {
   document?: {
@@ -21,6 +26,12 @@ type OrderDocument = {
   customerRef?: {_ref: string}
   status?: string
   paymentStatus?: string
+  labelPurchased?: boolean
+  labelCost?: number
+  deliveryDays?: number
+  shippedAt?: string
+  deliveredAt?: string
+  confirmationEmailSent?: boolean
   totalAmount?: number
   amountShipping?: number
   currency?: string
@@ -270,6 +281,27 @@ export default function OrderShippingView(props: DocumentViewProps) {
   const orderRefLabel = formatOrderNumber(order.orderNumber) || 'Not assigned'
   const trackingNumber = order.trackingNumber || order.fulfillment?.trackingNumber || ''
   const trackingUrl = order.trackingUrl || order.fulfillment?.trackingUrl || ''
+  const workflowState = deriveWorkflowState({
+    paymentStatus: order.paymentStatus,
+    labelPurchased: order.labelPurchased,
+    shippedAt: order.shippedAt,
+    deliveredAt: order.deliveredAt,
+  })
+  const workflowBadges = buildWorkflowBadges({
+    paymentStatus: order.paymentStatus,
+    labelPurchased: order.labelPurchased,
+    shippedAt: order.shippedAt,
+    deliveredAt: order.deliveredAt,
+  })
+  const actionBadge = resolveWorkflowActionBadge({
+    paymentStatus: order.paymentStatus,
+    labelPurchased: order.labelPurchased,
+    shippedAt: order.shippedAt,
+    deliveredAt: order.deliveredAt,
+  })
+  const trackingEmailSent = shippingLog.some(
+    (entry) => (entry?.status || '').trim().toLowerCase() === 'notified',
+  )
 
   return (
     <Stack space={4} padding={4}>
@@ -284,11 +316,36 @@ export default function OrderShippingView(props: DocumentViewProps) {
               <Badge tone={paymentMeta.tone} mode="outline" fontSize={0}>
                 {paymentMeta.label}
               </Badge>
+              <Badge tone={workflowState.tone} mode="outline" fontSize={0}>
+                {workflowState.label}
+              </Badge>
               {trackingNumber && (
                 <Badge tone="positive" mode="outline" fontSize={0}>
                   Tracking ready
                 </Badge>
               )}
+            </Flex>
+            <Flex gap={2} wrap="wrap">
+              {workflowBadges.map((badge) => (
+                <Badge key={badge.key} tone={badge.tone} mode="outline" fontSize={0}>
+                  {badge.label}
+                </Badge>
+              ))}
+              {actionBadge && (
+                <Badge tone={actionBadge.tone} mode="outline" fontSize={0}>
+                  {actionBadge.label}
+                </Badge>
+              )}
+              <Badge
+                tone={order.confirmationEmailSent ? 'positive' : 'caution'}
+                mode="outline"
+                fontSize={0}
+              >
+                {order.confirmationEmailSent ? 'Order confirmation sent' : 'Order confirmation pending'}
+              </Badge>
+              <Badge tone={trackingEmailSent ? 'positive' : 'default'} mode="outline" fontSize={0}>
+                {trackingEmailSent ? 'Tracking email sent' : 'Tracking email not recorded'}
+              </Badge>
             </Flex>
             <Text muted size={1}>
               Created {formatDate(order.createdAt) || '—'}
@@ -311,6 +368,26 @@ export default function OrderShippingView(props: DocumentViewProps) {
                 loading={downloadingSlip}
                 disabled={downloadingSlip}
                 onClick={ensurePackingSlip}
+              />
+            </Tooltip>
+            <Tooltip
+              content={
+                <Card padding={2}>
+                  <Text size={1}>Print shipping label</Text>
+                </Card>
+              }
+            >
+              <Button
+                icon={DownloadIcon}
+                text="Shipping label"
+                mode="ghost"
+                tone="primary"
+                disabled={!order.shippingLabelUrl}
+                onClick={() => {
+                  if (order.shippingLabelUrl) {
+                    openUrl(order.shippingLabelUrl)
+                  }
+                }}
               />
             </Tooltip>
             <Tooltip
@@ -372,10 +449,18 @@ export default function OrderShippingView(props: DocumentViewProps) {
                       : '—'}
                 </Text>
               </Stack>
+              <Stack space={1}>
+                <Text muted size={1}>
+                  Label cost
+                </Text>
+                <Text>
+                  {formatCurrency(order.labelCost, order.currency || 'USD')}
+                </Text>
+              </Stack>
             </Grid>
             {order.shippingLabelUrl && (
               <Button
-                text="Open shipping label"
+                text="Print shipping label"
                 tone="primary"
                 mode="ghost"
                 onClick={() => openUrl(order.shippingLabelUrl!)}
@@ -413,6 +498,10 @@ export default function OrderShippingView(props: DocumentViewProps) {
                     }
                   }}
                 />
+                <Text muted size={1}>
+                  {order.carrier || order.fulfillment?.carrier || 'Carrier'} •{' '}
+                  {order.service || order.fulfillment?.service || 'Service'}
+                </Text>
               </Stack>
             )}
           </Stack>

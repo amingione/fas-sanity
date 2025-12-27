@@ -578,7 +578,7 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .schemaType('order')
                 .title('Pending Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "pending"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "pending"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
@@ -593,7 +593,7 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .schemaType('order')
                 .title('Approved Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "approved"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "approved"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
@@ -608,7 +608,7 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .schemaType('order')
                 .title('Paid Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "paid"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "paid"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
@@ -623,7 +623,7 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .schemaType('order')
                 .title('Partially Fulfilled Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "partial"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "partial"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
@@ -638,7 +638,7 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .schemaType('order')
                 .title('Fulfilled Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && coalesce(wholesaleWorkflowStatus, wholesaleDetails.workflowStatus) == "fulfilled"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "fulfilled"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
@@ -939,7 +939,7 @@ const createVendorPortalSection = (S: any) =>
                 .schemaType('purchaseOrder')
                 .title('Purchase Orders')
                 .filter('_type == "purchaseOrder"')
-                .defaultOrdering([{field: 'orderDate', direction: 'desc'}]),
+                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
             ),
           S.listItem()
             .id('vendor-portal-messages')

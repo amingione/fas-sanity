@@ -177,7 +177,7 @@ const WHOLESALE_PRODUCTS_BY_ID_QUERY = `
 export const WHOLESALE_ORDER_HISTORY_QUERY = `
 *[_type == "order" 
   && orderType == "wholesale" 
-  && (customerRef._ref == $vendorId || wholesaleDetails.vendor._ref == $vendorId)
+  && customerRef._ref == $vendorId
 ] | order(dateTime(coalesce(createdAt, _createdAt)) desc) {
   _id,
   orderNumber,
@@ -190,8 +190,7 @@ export const WHOLESALE_ORDER_HISTORY_QUERY = `
     quantity,
     price,
     total
-  },
-  wholesaleDetails
+  }
 }
 `
 

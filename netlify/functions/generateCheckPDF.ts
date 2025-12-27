@@ -4,6 +4,7 @@ import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
 import fs from 'fs'
 import path from 'path'
+import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const projectId =
   process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
@@ -24,7 +25,7 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
-    apiVersion: '2024-06-20' as unknown as Stripe.StripeConfig['apiVersion'],
+    apiVersion: STRIPE_API_VERSION,
   })
 
 const MICR_FONT_PATH = path.resolve(process.cwd(), 'public', 'fonts', 'micrenc.ttf')

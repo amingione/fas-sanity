@@ -1,5 +1,21 @@
 # FAS Motorsports Codex Master Prompt
 
+## DEFAULT MODE: Schema Enforcement (Fail‑Safe)
+
+**This is the default operating mode for all tasks.**
+
+- Sanity schemas are authoritative.
+- Code **must** change to match schemas.
+- Schemas **must not** be modified unless explicit approval is given using the phrase:
+  **"SCHEMA CHANGE APPROVED"**.
+- If schema compliance cannot be achieved without changing a schema, STOP and ask for approval.
+- Repo‑wide enforcement is allowed; file lists are not required.
+- Only files that violate schema truth may be modified.
+
+This rule overrides all other defaults unless explicitly superseded.
+
+# FAS Motorsports Codex Master Prompt
+
 **Version:** 1.2.1  
 **Last Updated:** 2025-12-23  
 **Repos:** fas-sanity, fas-cms (GitHub) / fas-cms-fresh (local)
@@ -20,6 +36,7 @@
 - Local path to fas-cms-fresh: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 
 **GraphQL tooling (language server / schema introspection):**
+
 - `graphql.config.cjs` defines the schema endpoint for editor tooling.
 - Optional env vars for authenticated introspection: `SANITY_GRAPHQL_TOKEN` (preferred), `SANITY_API_TOKEN`, or `SANITY_READ_TOKEN`.
 - If you have a dumped schema file, you can point the config at it to avoid network calls.

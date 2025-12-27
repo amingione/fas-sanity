@@ -134,6 +134,11 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
       fields: [
         {fieldName: 'customerName', label: 'Customer Name', type: 'string'},
         {fieldName: 'customerEmail', label: 'Email', type: 'string'},
+        {
+          fieldName: 'customerInstructions',
+          label: 'Customer Instructions (Internal)',
+          type: 'string',
+        },
       ],
     },
     {
@@ -198,6 +203,11 @@ const DEFAULT_ORDER_VIEW_CONFIG: OrderViewConfig = {
           label: 'Fulfillment Notes',
           type: 'string',
         },
+        {
+          fieldName: 'opsInternalNotes',
+          label: 'Ops Notes (Internal)',
+          type: 'string',
+        },
       ],
     },
     {
@@ -242,7 +252,13 @@ const SECTION_ICONS: Record<string, ComponentType> = {
   shipping: PinIcon,
 }
 
-const ORDER_STATUS_OPTIONS: OrderStatus[] = ['paid', 'fulfilled', 'delivered', 'canceled', 'refunded']
+const ORDER_STATUS_OPTIONS: OrderStatus[] = [
+  'paid',
+  'fulfilled',
+  'delivered',
+  'canceled',
+  'refunded',
+]
 const FULFILLMENT_STATUS_OPTIONS = ['unfulfilled', 'processing', 'shipped', 'delivered']
 
 const STRIPE_SYNC_FIELDS = new Set([
@@ -270,10 +286,7 @@ const REFERENCE_TARGETS: Record<string, string> = {
 
 const OrderViewComponent = (props: any) => {
   const {documentId, schemaType, document} = props
-  const order = useMemo(
-    () => (document?.displayed || {}) as OrderDocument,
-    [document?.displayed],
-  )
+  const order = useMemo(() => (document?.displayed || {}) as OrderDocument, [document?.displayed])
   const client = useClient({apiVersion: '2024-10-01'})
   const schemaTypeName = schemaType?.name || 'order'
   const {patch} = useDocumentOperation(documentId, schemaTypeName)
@@ -286,9 +299,7 @@ const OrderViewComponent = (props: any) => {
   const [fulfillmentStatusDraft, setFulfillmentStatusDraft] = useState<string>(
     order.fulfillmentDetails?.status ?? '',
   )
-  const [trackingDraft, setTrackingDraft] = useState(
-    order.trackingNumber ?? order.fulfillmentDetails?.trackingNumber ?? '',
-  )
+  const [trackingDraft, setTrackingDraft] = useState(order.trackingNumber ?? '')
 
   useEffect(() => {
     setStatusDraft(order.status ?? '')
@@ -299,8 +310,8 @@ const OrderViewComponent = (props: any) => {
   }, [order.fulfillmentDetails?.status])
 
   useEffect(() => {
-    setTrackingDraft(order.trackingNumber ?? order.fulfillmentDetails?.trackingNumber ?? '')
-  }, [order.fulfillmentDetails?.trackingNumber, order.trackingNumber])
+    setTrackingDraft(order.trackingNumber ?? '')
+  }, [order.trackingNumber])
 
   useEffect(() => {
     let cancelled = false
@@ -448,7 +459,7 @@ const OrderViewComponent = (props: any) => {
   const handleTrackingCommit = useCallback(() => {
     if (!editableFields.has('trackingNumber')) return
     const trimmed = trackingDraft.trim()
-    const current = order.trackingNumber || order.fulfillmentDetails?.trackingNumber || ''
+    const current = order.trackingNumber || ''
     if (!trimmed && !current) return
     if (trimmed === current) return
 
@@ -466,14 +477,7 @@ const OrderViewComponent = (props: any) => {
         title: 'Tracking number cleared',
       })
     }
-  }, [
-    editableFields,
-    order.fulfillmentDetails?.trackingNumber,
-    order.trackingNumber,
-    patch,
-    pushToast,
-    trackingDraft,
-  ])
+  }, [editableFields, order.trackingNumber, patch, pushToast, trackingDraft])
 
   const renderSection = (section: OrderViewSection) => {
     const sectionKey = section._key || section.title
@@ -667,7 +671,7 @@ const OrderViewComponent = (props: any) => {
           placeholder="Enter tracking number"
         />
       </EditableFieldWrapper>
-      {(order.trackingNumber || order.fulfillmentDetails?.trackingNumber) && (
+      {order.trackingNumber && (
         <Inline space={3} style={{alignItems: 'center'}}>
           <CheckmarkCircleIcon style={{color: 'var(--card-fg-color)', fontSize: 16}} />
           <Card paddingX={3} paddingY={2} radius={2} tone="positive" border>
