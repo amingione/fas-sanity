@@ -440,7 +440,7 @@ export default defineType({
           name: 'email',
           title: 'Portal Login Email',
           type: 'string',
-          validation: (Rule) => Rule.required().email(),
+          validation: (Rule) => Rule.email(),
           readOnly: true,
         }),
         defineField({
