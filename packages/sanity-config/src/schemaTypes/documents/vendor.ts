@@ -440,7 +440,7 @@ export default defineType({
           name: 'email',
           title: 'Portal Login Email',
           type: 'string',
-          validation: (Rule) => Rule.email(),
+          validation: (Rule) => Rule.required().email(),
           readOnly: true,
         }),
         defineField({
@@ -750,8 +750,9 @@ export default defineType({
       type: 'reference',
       to: [{type: 'customer'}],
       description: 'Associate this vendor with the matching customer account',
+      readOnly: true,
       validation: (Rule) =>
-        Rule.custom(async (value, context) => {
+        Rule.required().custom(async (value, context) => {
           if (!value?._ref) return true
           const client = context.getClient({apiVersion: API_VERSION})
           const customer = await client.fetch<{roles?: string[]; email?: string} | null>(
