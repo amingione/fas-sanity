@@ -62,6 +62,27 @@ ai-pipeline:
 	@echo "✔ AI governance pipeline complete."
 	@echo "========================================================"
 # =========================================================
+# Post-Enforcement Verification — Gemini
+# =========================================================
+
+.PHONY: verify-enforcement
+
+verify-enforcement:
+	@echo "🔍 POST-ENFORCEMENT VERIFICATION"
+	@echo ""
+	@echo "Run Gemini using the Post-Enforcement Verification prompt."
+	@echo "Source of truth:"
+	@echo "  docs/reports/cross-repo-contract-decisions.md"
+	@echo ""
+	@echo "Verification must confirm:"
+	@echo " - Codex changes map 1:1 to approved decisions"
+	@echo " - No unapproved schema or logic changes"
+	@echo " - No UX or data drift introduced"
+	@echo ""
+	@read -p "Press ENTER once Gemini returns PASS..."
+	@echo ""
+	@echo "✔ Post-enforcement verification recorded."
+# =========================================================
 # Fast Path — Trivial / Non-Contract Changes
 # Skips full AI pipeline but enforces safety checks
 # =========================================================
