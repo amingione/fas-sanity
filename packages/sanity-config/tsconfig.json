@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -15,6 +15,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "noEmit": true,
+    "types": ["react", "react-dom"],
     "paths": {
       "@fas/sanity-config/*": ["./src/*"]
     }

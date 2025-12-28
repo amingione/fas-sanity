@@ -1,0 +1,65 @@
+TASK: Produce authoritative contract decisions for fixing <ISSUE DESCRIPTION>.
+
+INPUTS (SOURCE OF TRUTH):
+1. docs/reports/<issue>-audit.md
+2. docs/reports/cross-repo-contract-decisions.md
+
+ROLE:
+You are the DECISION AUTHORITY.
+Your output will be consumed directly by Codex.
+Codex will implement ONLY what you approve here.
+
+SCOPE:
+- Repo: <REPO NAME>
+- Area affected: <SCHEMA / LOGIC / QUERY / DESK>
+
+YOU MUST USE THE FOLLOWING FORMAT EXACTLY:
+
+--------------------------------------------------
+EXECUTIVE SUMMARY
+(One short paragraph explaining the root cause)
+
+DECISIONS
+
+SCHEMA CHANGES
+- APPROVED or REJECTED
+- If approved:
+  - Field name
+  - Type
+  - Authority (system / user / read-only)
+  - Default behavior
+- If rejected: explain why schema must remain unchanged
+
+LOGIC CHANGES
+- APPROVED or REJECTED
+- If approved:
+  - Exact logic paths that must change
+  - Conditions under which the logic must execute
+- No pseudocode
+
+QUERY / DESK STRUCTURE CHANGES
+- APPROVED or REJECTED
+- If approved:
+  - Exact query behavior changes
+  - Explicit inclusion / exclusion rules
+
+DATA INTEGRITY RULES
+- Explicit invariants that must hold after the fix
+  (e.g. one customer per email, expired orders still link to customer)
+
+FORBIDDEN CHANGES
+- Explicit list of what Codex is NOT allowed to touch
+
+ROLLBACK SAFETY
+- Why this change cannot affect unrelated behavior
+--------------------------------------------------
+
+CRITICAL RULES:
+- Do NOT implement anything
+- Do NOT write code
+- Do NOT speculate beyond the audit
+- If something is unclear, state it explicitly
+
+OUTPUT REQUIREMENT:
+Save the document as:
+docs/reports/<issue>-contract-decisions.md

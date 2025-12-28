@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import React, {JSX, useState} from 'react'
 import {Button, Card, Code, Flex, Inline, Label, Select, Stack, Text, TextInput} from '@sanity/ui'
 import {definePlugin} from 'sanity'
 

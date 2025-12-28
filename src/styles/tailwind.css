@@ -5,18 +5,13 @@
 @layer base {
   :root,
   body.sanity-studio-theme {
-    --studio-body-background-light: radial-gradient(
-      circle at 20% -10%,
-      #e2e8f0 0%,
-      #cbd5f5 45%,
-      #94a3b8 100%
-    );
-    --studio-surface-light: rgba(255, 255, 255, 0.92);
-    --studio-surface-strong-light: #ffffff;
-    --studio-surface-soft-light: rgba(248, 250, 252, 0.7);
-    --studio-surface-overlay-light: rgba(248, 250, 252, 0.55);
-    --studio-border-light: rgba(148, 163, 184, 0.35);
-    --studio-border-strong-light: rgba(100, 116, 139, 0.4);
+    --studio-body-background-light: #f7f7f7 !important;
+    --studio-surface-light: #f7f7f7 !important;
+    --studio-surface-strong-light: #f7f7f7 !important;
+    --studio-surface-soft-light: #f7f7f7 !important;
+    --studio-surface-overlay-light: #f7f7f7 !important;
+    --studio-border-light: #e0e0e0 !important;
+    --studio-border-strong-light: #e0e0e0 !important;
     --studio-text-light: #000000;
     --studio-muted-light: #000000;
     --studio-accent-light: #2563eb;
@@ -30,18 +25,13 @@
     --card-muted-fg-color: var(--studio-text);
     --card-border-color: var(--studio-border);
 
-    --studio-body-background-dark: radial-gradient(
-      circle at 15% -10%,
-      #1e293b 0%,
-      #0f172a 45%,
-      #020617 100%
-    );
-    --studio-surface-dark: rgba(15, 23, 42, 0.85);
-    --studio-surface-strong-dark: rgba(15, 23, 42, 0.94);
-    --studio-surface-soft-dark: rgba(30, 41, 59, 0.55);
-    --studio-surface-overlay-dark: rgba(15, 23, 42, 0.6);
-    --studio-border-dark: rgba(148, 163, 184, 0.28);
-    --studio-border-strong-dark: rgba(148, 163, 184, 0.4);
+    --studio-body-background-dark: #1a1a1a !important;
+    --studio-surface-dark: #1a1a1a !important;
+    --studio-surface-strong-dark: #1a1a1a !important;
+    --studio-surface-soft-dark: #1a1a1a !important;
+    --studio-surface-overlay-dark: #1a1a1a !important;
+    --studio-border-dark: #333333 !important;
+    --studio-border-strong-dark: #333333 !important;
     --studio-text-dark: #ffffff;
     --studio-muted-dark: #ffffff;
     --studio-accent-dark: #60a5fa;
@@ -49,11 +39,11 @@
     --studio-accent-muted-dark: rgba(96, 165, 250, 0.22);
     --studio-shadow-dark: 0 22px 55px rgba(2, 6, 23, 0.55);
     --studio-backdrop-dark: rgba(2, 6, 23, 0.55);
-    --card-bg-color-dark: #050505;
+    --card-bg-color-dark: #1a1a1a !important;
     --card-fg-color-dark: #ffffff;
-    --card-muted-bg-color-dark: #050505;
+    --card-muted-bg-color-dark: #1a1a1a !important;
     --card-muted-fg-color-dark: #ffffff;
-    --card-border-color-dark: var(--studio-border-dark);
+    --card-border-color-dark: #333333 !important;
 
     --studio-body-background: var(--studio-body-background-light);
     --studio-surface: var(--studio-surface-light);

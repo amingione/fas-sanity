@@ -762,7 +762,7 @@ async function upsertOrder({
       shippingMode: metaValue('shipping_mode', 'shippingMode'),
     })
 
-    const abandonedCheckoutId = await upsertAbandonedCheckoutDocument(sanity, {
+    const baseDoc: Record<string, any> = {
       checkoutId: `ABANDONED-${Date.now()}`,
       stripeSessionId,
       status: 'expired',
@@ -784,7 +784,21 @@ async function upsertOrder({
       recoveryEmailSent: false,
       sessionCreatedAt: createdAtIso,
       sessionExpiredAt: expiredAtIso,
-    })
+    }
+
+    if (email) {
+      try {
+        const customerId = await sanity.fetch<string | null>(
+          `*[_type == "customer" && email == $email][0]._id`,
+          {email},
+        )
+        if (customerId) baseDoc.customerRef = {_type: 'reference', _ref: customerId}
+      } catch (err) {
+        console.warn('reprocessStripeSession: failed to lookup customer by email', err)
+      }
+    }
+
+    const abandonedCheckoutId = await upsertAbandonedCheckoutDocument(sanity, baseDoc)
 
     return {
       orderId: null,

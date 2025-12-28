@@ -79,6 +79,16 @@ const CUSTOMER_HISTORY_QUERY = `{
     amountShipping,
     _createdAt
   },
+  "abandonedCheckouts": *[_type == "abandonedCheckout" && references($customerId)] | order(dateTime(coalesce(sessionExpiredAt, _createdAt)) desc)[0...10]{
+    _id,
+    stripeSessionId,
+    status,
+    amountTotal,
+    amountSubtotal,
+    cartSummary,
+    sessionExpiredAt,
+    _createdAt
+  },
   "appointments": *[_type == "appointment" && customer._ref == $customerId] | order(scheduledDate desc)[0...5]{
     _id,
     appointmentNumber,
@@ -401,6 +411,38 @@ export const viewFullHistoryAction: DocumentActionComponent = (props) => {
                     ) : (
                       <Text size={1} muted>
                         No orders recorded.
+                      </Text>
+                    )}
+                  </Stack>
+
+                  <Stack space={2}>
+                    <Text weight="semibold">Abandoned Checkouts</Text>
+                    {history.abandonedCheckouts?.length ? (
+                      history.abandonedCheckouts.map((checkout: any) => (
+                        <Card key={checkout._id} padding={3} radius={2} border>
+                          <Flex justify="space-between" align={['flex-start', 'center']} wrap="wrap" gap={3}>
+                            <Stack space={1}>
+                              <Text weight="semibold">{checkout.cartSummary || checkout.stripeSessionId || 'Checkout'}</Text>
+                              <Text size={1} muted>
+                                {new Date(checkout.sessionExpiredAt || checkout._createdAt).toLocaleDateString()}
+                              </Text>
+                            </Stack>
+                            <Stack space={1} style={{textAlign: 'right'}}>
+                              <Text weight="semibold">
+                                {formatCurrency(
+                                  typeof checkout.amountTotal === 'number'
+                                    ? checkout.amountTotal
+                                    : checkout.amountSubtotal,
+                                )}
+                              </Text>
+                              <Badge mode="outline">{checkout.status || 'expired'}</Badge>
+                            </Stack>
+                          </Flex>
+                        </Card>
+                      ))
+                    ) : (
+                      <Text size={1} muted>
+                        No abandoned checkouts yet.
                       </Text>
                     )}
                   </Stack>
