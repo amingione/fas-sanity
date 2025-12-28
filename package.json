@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "main": "package.json",
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.19 <22 || >=22.12"
+  },
+  "engineStrict": true,
   "scripts": {
     "dev": "tsx scripts/ensure-sanity-cors.ts && tsx scripts/ensure-netlify-cjs.ts && sanity dev",
     "start": "sanity start",
