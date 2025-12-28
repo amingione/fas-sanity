@@ -1,0 +1,13 @@
+name: Governance Guard
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  governance-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run governance guard
+        run: ./scripts/check-governance.sh
