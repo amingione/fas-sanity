@@ -4,7 +4,6 @@ import {
   DiscountsListActive,
   DiscountsListAll,
   DiscountsListExpired,
-  DiscountsListScheduled,
 } from './discountsList'
 
 const discountsStructure = (S: StructureBuilder) =>
@@ -16,17 +15,14 @@ const discountsStructure = (S: StructureBuilder) =>
         .title('Customer Coupons (Stripe)')
         .items([
           S.listItem()
-            .title('All Stripe Coupons')
-            .child(S.component(DiscountsListAll).title('All Stripe Coupons')),
+            .title('All Coupons')
+            .child(S.component(DiscountsListAll).title('All Coupons')),
           S.listItem()
-            .title('Active Stripe Coupons')
-            .child(S.component(DiscountsListActive).title('Active Stripe Coupons')),
+            .title('Active Coupons')
+            .child(S.component(DiscountsListActive).title('Active Coupons')),
           S.listItem()
-            .title('Expired Stripe Coupons')
-            .child(S.component(DiscountsListExpired).title('Expired Stripe Coupons')),
-          S.listItem()
-            .title('Scheduled Stripe Coupons')
-            .child(S.component(DiscountsListScheduled).title('Scheduled Stripe Coupons')),
+            .title('Expired Coupons')
+            .child(S.component(DiscountsListExpired).title('Expired Coupons')),
         ]),
     )
 

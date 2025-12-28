@@ -66,6 +66,7 @@ import {
   linkOrderToCustomer,
   linkOrderToInvoice,
 } from '../lib/referenceIntegrity'
+import {markStripeCouponDeleted, syncStripeCouponById} from '../lib/stripeCoupons'
 
 function cleanCartItemForStorage(item: CartItem): CartItem {
   const normalizeAddOnLabel = (value: string): string | undefined => {
@@ -7067,6 +7068,43 @@ export const handler: Handler = async (event) => {
           }
         } catch (err) {
           console.warn('stripeWebhook: failed to handle product.deleted', err)
+        }
+        break
+      }
+
+      case 'coupon.created':
+      case 'coupon.updated': {
+        try {
+          const couponEvent = webhookEvent.data.object as Stripe.Coupon
+          const couponId = couponEvent?.id
+          if (!couponId) {
+            console.warn('stripeWebhook: coupon event missing id')
+            break
+          }
+          await syncStripeCouponById({
+            stripe,
+            sanity,
+            couponId,
+            syncedAt: new Date().toISOString(),
+            logger: console,
+          })
+        } catch (err) {
+          console.warn('stripeWebhook: failed to sync coupon event', err)
+        }
+        break
+      }
+
+      case 'coupon.deleted': {
+        try {
+          const couponEvent = webhookEvent.data.object as {id?: string | null}
+          const couponId = couponEvent?.id || ''
+          if (!couponId) {
+            console.warn('stripeWebhook: coupon.deleted missing id')
+            break
+          }
+          await markStripeCouponDeleted(sanity, couponId, new Date().toISOString(), console)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to mark coupon deleted', err)
         }
         break
       }

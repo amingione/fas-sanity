@@ -1,0 +1,12 @@
+Apply ONLY the approved changes in:
+docs/reports/stripe-coupons-contract-decisions.md
+
+CRITICAL RULES:
+- Implement stripeCoupon schema as READ-ONLY.
+- Add coupon.* webhook handlers.
+- Add scheduled reconciliation sync.
+- Add one-time backfill script.
+- Use UPSERT logic by stripeId.
+- Update Studio desk structure.
+- Do NOT modify fas-cms.
+- Do NOT modify checkout or pricing logic.
