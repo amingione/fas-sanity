@@ -1,0 +1,36 @@
+TASK: Investigate <ISSUE DESCRIPTION>.
+
+CONTEXT:
+- Repo: <REPO NAME>
+- Observed behavior:
+  - <OBSERVATION 1>
+  - <OBSERVATION 2>
+  - <OBSERVATION 3>
+
+KNOWN FACTS:
+- <FACT 1>
+- <FACT 2>
+
+Gemini MUST:
+- Inspect relevant schemas
+- Inspect logic paths that create or update affected documents
+- Inspect queries or Desk Structure involved
+- Identify where expected links or data should be created
+- Identify where logic diverges for edge cases (expired, failed, etc.)
+
+Gemini MUST NOT:
+- Propose fixes
+- Modify schemas
+- Modify code
+- Assume intent
+- Optimize unrelated behavior
+
+OUTPUT REQUIRED:
+docs/reports/sanity-studio-theme-wont-change-audit.md
+
+The report MUST answer:
+1. Where the data link is expected to be created
+2. Whether that logic runs in all cases
+3. Whether queries exclude affected records
+4. Whether display fallbacks hide missing data
+5. Whether duplicate records are created and why
