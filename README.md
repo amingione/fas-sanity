@@ -59,6 +59,10 @@ Make sure to run the tagged release! (`@sanity/cli`)
 
 ## Local Development
 
+### Node.js runtime
+
+This repo enforces Node 20.19.0 for local development. Use `nvm use` (reads `.nvmrc`), and ensure VS Code runs the "Sanity Dev" launch config so `sanity dev` always uses Node 20.
+
 ### Starting development server
 
 ```sh

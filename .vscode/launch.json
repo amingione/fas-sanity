@@ -8,6 +8,17 @@
       "url": "http://localhost:3333",
       "webRoot": "${workspaceFolder}",
       "runtimeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    },
+    {
+      "name": "Sanity Dev",
+      "type": "pwa-node",
+      "request": "launch",
+      "runtimeExecutable": "~/.nvm/versions/node/v20.19.0/bin/node",
+      "program": "${workspaceFolder}/node_modules/sanity/bin/sanity",
+      "args": [
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

@@ -228,3 +228,30 @@ codex-expired-orders-enforce:
 	@echo ""
 	@echo "✔ Codex enforcement finished."
 	@echo "Next: make verify-enforcement"
+
+# =========================================================
+# Codex Enforcement — codex-only-bootstrap
+# =========================================================
+
+.PHONY: codex-codex-only-bootstrap-enforce
+
+codex-codex-only-bootstrap-enforce:
+	@echo "🤖 CODEX ENFORCEMENT: codex-only-bootstrap"
+	@echo ""
+	@echo "CONTRACT SOURCE OF TRUTH:"
+	@echo "  docs/reports/codex-only-bootstrap-contract-decisions.md"
+	@echo ""
+	@echo "▶ Running Codex (non-interactive)"
+
+	@printf "%s\n" \
+	"Apply ONLY the approved changes in:" \
+	"docs/reports/codex-only-bootstrap-contract-decisions.md" \
+	"" \
+	"CRITICAL RULES:" \
+	"- Do NOT exceed the contract." \
+	"- Do NOT modify unapproved files." \
+	"- If no changes are required, state so explicitly." \
+	| codex || true
+
+	@echo ""
+	@echo "✔ Codex enforcement finished (codex-only-bootstrap)."
