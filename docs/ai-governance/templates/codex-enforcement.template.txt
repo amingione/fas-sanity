@@ -1,0 +1,22 @@
+TASK: Implement approved enforcement changes.
+
+SOURCE OF TRUTH:
+docs/reports/<issue>-contract-decisions.md
+
+RULES:
+- Implement ONLY what is explicitly approved
+- Do NOT refactor unrelated code
+- Do NOT modify schemas unless approved
+- Do NOT modify UX unless approved
+- Do NOT introduce new behavior
+
+FILES ALLOWED TO CHANGE:
+- <LIST EXACT FILES>
+
+FILES FORBIDDEN TO CHANGE:
+- All others
+
+VALIDATION REQUIRED:
+- Lint must pass
+- Existing governance rules must remain intact
+- No new warnings or errors introduced

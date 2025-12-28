@@ -685,24 +685,25 @@ function DiscountsList({statusFilter}: {statusFilter?: DiscountStatus | 'all'}) 
         padding={4}
         radius={3}
         shadow={1}
-        style={{backgroundColor: '#f0f7ff', border: '1px solid #d7e3ff'}}
+        style={{backgroundColor: '#1a1a1a', border: '1px solid #333333'}}
+        tone="default"
       >
         <Stack space={2}>
           <Text size={1} weight="semibold">
-            About Customer Coupons (Stripe)
+        About Customer Coupons (Stripe)
           </Text>
           <Text size={1}>
-            This view shows only Stripe customer account-level coupons synced into customer
-            records.
+        This view shows only Stripe customer account-level coupons synced into customer
+        records.
           </Text>
           <Text size={1}>
-            For other discounts, use:
-            <br />
-            - Products &gt; Product Sales
-            <br />
-            - Quotes &gt; Quote Discounts
-            <br />
-            - Invoices &gt; Invoice Discounts
+        For other discounts, use:
+        <br />
+        - Products &gt; Product Sales
+        <br />
+        - Quotes &gt; Quote Discounts
+        <br />
+        - Invoices &gt; Invoice Discounts
           </Text>
         </Stack>
       </Card>

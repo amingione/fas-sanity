@@ -42,6 +42,15 @@ export default defineType({
       description: 'Email if collected before expiration',
     }),
     defineField({
+      name: 'customerRef',
+      title: 'Customer',
+      type: 'reference',
+      to: [{type: 'customer'}],
+      description: 'Reference to customer who abandoned this checkout',
+      readOnly: true,
+      weak: true,
+    }),
+    defineField({
       name: 'customerName',
       title: 'Customer Name',
       type: 'string',
