@@ -111,6 +111,11 @@ const cleanMetadata = (current, updates) => {
 }
 
 async function run() {
+  console.log(
+    'Shipping metadata sync is disabled. Use syncStripeCatalog to update Stripe metadata from shippingConfig.',
+  )
+  return
+
   const products = await client.fetch(
     `*[_type == "product" && defined(stripeProductId)]{
       _id,

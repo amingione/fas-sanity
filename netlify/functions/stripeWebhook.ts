@@ -2434,6 +2434,11 @@ const normalizeString = (value?: string | null): string | undefined => {
   return trimmed || undefined
 }
 
+const normalizeEmail = (value?: string | null): string => {
+  const trimmed = (value || '').toString().trim()
+  return trimmed ? trimmed.toLowerCase() : ''
+}
+
 const metaValue = (meta: Record<string, unknown>, ...keys: string[]) => {
   for (const key of keys) {
     const value = meta[key]
@@ -2500,13 +2505,68 @@ async function resolveCheckoutCustomerContact(
   }
 }
 
+type IdentityCustomer = {
+  _id: string
+  name?: string
+  email?: string
+  stripeCustomerId?: string | null
+  stripeLastSyncedAt?: string | null
+  customerType?: string | null
+  roles?: string[] | null
+  firstName?: string | null
+  lastName?: string | null
+}
+
+type IdentityVendor = {
+  _id: string
+  customerRef?: {_ref?: string} | null
+}
+
+const CUSTOMER_IDENTITY_PROJECTION =
+  '{_id, name, email, stripeCustomerId, stripeLastSyncedAt, customerType, roles, firstName, lastName}'
+
+const normalizeDocId = (value?: string | null) =>
+  value ? value.toString().trim().replace(/^drafts\./, '') : ''
+
+const fetchCustomerByStripeId = async (stripeCustomerId: string) =>
+  webhookSanityClient.fetch<IdentityCustomer | null>(
+    `*[_type == "customer" && stripeCustomerId == $stripeId][0]${CUSTOMER_IDENTITY_PROJECTION}`,
+    {stripeId: stripeCustomerId},
+  )
+
+const fetchCustomerByEmail = async (email: string) =>
+  webhookSanityClient.fetch<IdentityCustomer | null>(
+    `*[_type == "customer" && lower(email) == $email][0]${CUSTOMER_IDENTITY_PROJECTION}`,
+    {email},
+  )
+
+const fetchCustomerById = async (id: string) =>
+  webhookSanityClient.fetch<IdentityCustomer | null>(
+    `*[_type == "customer" && _id == $id][0]${CUSTOMER_IDENTITY_PROJECTION}`,
+    {id},
+  )
+
+const fetchVendorByEmail = async (email: string) =>
+  webhookSanityClient.fetch<IdentityVendor | null>(
+    `*[_type == "vendor" && lower(primaryContact.email) == $email][0]{_id, customerRef}`,
+    {email},
+  )
+
 // ---------------------------------------------------------------------------
 // Strict order creation helpers (mandatory field enforcement)
 // ---------------------------------------------------------------------------
 
-async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Session) {
+async function strictFindOrCreateCustomer(
+  input: Stripe.Checkout.Session | Stripe.Customer,
+) {
+  if ((input as Stripe.Customer)?.object === 'customer') {
+    return strictFindOrCreateCustomerFromStripeCustomer(input as Stripe.Customer)
+  }
+
+  const checkoutSession = input as Stripe.Checkout.Session
   const contact = await resolveCheckoutCustomerContact(checkoutSession)
   const email = contact.email || ''
+  const normalizedEmail = normalizeEmail(email)
   const name = contact.name || ''
   const nameParts = splitFullName(name)
   const computedName = computeCustomerName({
@@ -2516,35 +2576,6 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     fallbackName: name,
   })
   const stripeCustomerId = contact.stripeCustomerId || null
-
-  const customerProjection =
-    '{_id, name, email, stripeCustomerId, customerType, roles, firstName, lastName}'
-
-  const fetchCustomerByEmail = async (value: string) =>
-    webhookSanityClient.fetch<{
-      _id: string
-      name?: string
-      email?: string
-      stripeCustomerId?: string | null
-      stripeLastSyncedAt?: string | null
-      customerType?: string | null
-      roles?: string[] | null
-      firstName?: string | null
-      lastName?: string | null
-    } | null>(`*[_type == "customer" && email == $email][0]${customerProjection}`, {email: value})
-
-  const fetchCustomerById = async (id: string) =>
-    webhookSanityClient.fetch<{
-      _id: string
-      name?: string
-      email?: string
-      stripeCustomerId?: string | null
-      stripeLastSyncedAt?: string | null
-      customerType?: string | null
-      roles?: string[] | null
-      firstName?: string | null
-      lastName?: string | null
-    } | null>(`*[_type == "customer" && _id == $id][0]${customerProjection}`, {id})
 
   const ensureNamePatch = (customer: {
     name?: string | null
@@ -2622,39 +2653,93 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     }
   }
 
-  const vendor = email
-    ? await webhookSanityClient.fetch<{
-        _id: string
-        customerRef?: {_ref?: string} | null
-      } | null>(
-        `*[_type == "vendor" && primaryContact.email == $email][0]{_id, customerRef}`,
-        {email},
-      )
-    : null
+  const vendor = normalizedEmail ? await fetchVendorByEmail(normalizedEmail) : null
+
+  if (stripeCustomerId) {
+    let customer = await fetchCustomerByStripeId(stripeCustomerId)
+    if (customer) {
+      if (vendor) {
+        const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
+        if (vendorCustomerId && vendorCustomerId !== customer._id) {
+          console.error(
+            'stripeWebhook: conflicting vendor/customer identity',
+            vendor._id,
+            vendorCustomerId,
+            customer._id,
+          )
+          throw new Error('Vendor/customer identity conflict')
+        }
+
+        const patch = {
+          ...ensureNamePatch(customer),
+          ...ensureStripePatch(customer),
+          ...ensureVendorRolePatch(customer),
+        }
+        customer = await applyCustomerPatch(customer, patch)
+
+        if (customer._id !== vendorCustomerId) {
+          try {
+            await webhookSanityClient
+              .patch(vendor._id)
+              .set({customerRef: {_type: 'reference', _ref: customer._id}})
+              .commit({autoGenerateArrayKeys: true})
+          } catch (err) {
+            console.warn('stripeWebhook: failed to link vendor to customer', err)
+          }
+        }
+
+        if (customer.email) {
+          try {
+            await syncVendorPortalEmail(webhookSanityClient, vendor._id, customer.email)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync vendor portal email', err)
+          }
+        }
+      } else {
+        const patch = {
+          ...ensureNamePatch(customer),
+          ...ensureStripePatch(customer),
+        }
+        customer = await applyCustomerPatch(customer, patch)
+      }
+
+      return customer
+    }
+  }
 
   if (vendor) {
-    const vendorCustomerId = vendor.customerRef?._ref
-      ? vendor.customerRef._ref.replace(/^drafts\\./, '')
-      : ''
+    const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     let customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
-    if (!customer && email) {
-      customer = await fetchCustomerByEmail(email)
+    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
+      console.error(
+        'stripeWebhook: conflicting vendor/customer stripe ids',
+        vendor._id,
+        customer._id,
+        customer.stripeCustomerId,
+        stripeCustomerId,
+      )
+      throw new Error('Vendor/customer identity conflict')
+    }
+
+    if (!customer && normalizedEmail) {
+      customer = await fetchCustomerByEmail(normalizedEmail)
+    }
+
+    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
+      console.error(
+        'stripeWebhook: conflicting customer stripe ids for vendor email',
+        vendor._id,
+        customer._id,
+        customer.stripeCustomerId,
+        stripeCustomerId,
+      )
+      throw new Error('Vendor/customer identity conflict')
     }
 
     if (!customer) {
       const newCustomerId = `customer.${randomUUID()}`
-      customer = await webhookSanityClient.create<{
-        _id: string
-        name?: string
-        email?: string
-        stripeCustomerId?: string | null
-        stripeLastSyncedAt?: string | null
-        customerType?: string | null
-        roles?: string[] | null
-        firstName?: string | null
-        lastName?: string | null
-      }>({
+      customer = await webhookSanityClient.create<IdentityCustomer>({
         _id: newCustomerId,
         _type: 'customer',
         email: email || undefined,
@@ -2664,7 +2749,7 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
         stripeCustomerId,
         stripeLastSyncedAt: new Date().toISOString(),
         customerType: 'vendor',
-        roles: ['vendor'],
+        roles: ['customer', 'vendor'],
       })
       console.log(`✅ Created new vendor customer: ${customer.name || email}`)
     } else {
@@ -2698,21 +2783,21 @@ async function strictFindOrCreateCustomer(checkoutSession: Stripe.Checkout.Sessi
     return customer
   }
 
-  let customer = email ? await fetchCustomerByEmail(email) : null
+  let customer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
+
+  if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
+    console.error(
+      'stripeWebhook: conflicting customer stripe ids',
+      customer._id,
+      customer.stripeCustomerId,
+      stripeCustomerId,
+    )
+    throw new Error('Customer identity conflict')
+  }
 
   if (!customer) {
     const newCustomerId = `customer.${randomUUID()}`
-    customer = await webhookSanityClient.create<{
-      _id: string
-      name?: string
-      email?: string
-      stripeCustomerId?: string | null
-      stripeLastSyncedAt?: string | null
-      customerType?: string | null
-      roles?: string[] | null
-      firstName?: string | null
-      lastName?: string | null
-    }>({
+    customer = await webhookSanityClient.create<IdentityCustomer>({
       _id: newCustomerId,
       _type: 'customer',
       email: email || undefined,
@@ -4142,25 +4227,10 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
     typeof product.default_price === 'string' ? product.default_price : product.default_price?.id
   const sku = skuCandidates.find(Boolean)
 
-  const shippingUpdates: Record<string, any> = {}
-  const shippingWeight = toPositiveNumber(metadata.shipping_weight || metadata.shipping_weight_lbs)
-  if (shippingWeight !== null) shippingUpdates.shippingWeight = shippingWeight
-  const handling = toNonNegativeNumber(metadata.handling_time)
-  if (handling !== null) shippingUpdates.handlingTime = handling
-  const shippingDims = metadata.shipping_dimensions || metadata.shipping_box_dimensions
-  if (shippingDims) shippingUpdates.boxDimensions = shippingDims
-  if (metadata.shipping_class) shippingUpdates.shippingClass = metadata.shipping_class
-  if ('ships_alone' in metadata) {
-    shippingUpdates.shipsAlone = ['true', '1', 'yes'].includes(
-      (metadata.ships_alone || '').toLowerCase(),
-    )
-  }
-
   const setOps: Record<string, any> = {
     stripeProductId: product.id,
     stripeActive: product.active,
     stripeUpdatedAt: updatedAt,
-    ...shippingUpdates,
   }
   if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
 
@@ -4192,7 +4262,6 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
     stripeProductId: product.id,
     stripeActive: product.active,
     stripeUpdatedAt: updatedAt,
-    ...shippingUpdates,
   }
   if (defaultPriceId) payload.stripeDefaultPriceId = defaultPriceId
   if (sku) payload.sku = sku
@@ -5251,82 +5320,209 @@ function buildBillingAddress(address?: Stripe.Address | null, name?: string | nu
   }
 }
 
-async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
+async function strictFindOrCreateCustomerFromStripeCustomer(
+  stripeCustomer: Stripe.Customer,
+): Promise<IdentityCustomer | null> {
   const emailRaw = (
-    customer.email ||
-    (customer.metadata as Record<string, string> | undefined)?.email ||
+    stripeCustomer.email ||
+    (stripeCustomer.metadata as Record<string, string> | undefined)?.email ||
     ''
   )
     .toString()
     .trim()
-  if (!emailRaw) return
-  const email = emailRaw.toLowerCase()
+  const email = emailRaw || ''
+  const normalizedEmail = normalizeEmail(email)
+  const stripeCustomerId = stripeCustomer.id
 
-  const existing = await sanity.fetch<{
-    _id: string
-    firstName?: string
-    lastName?: string
-    roles?: string[]
-  }>(
-    `*[_type == "customer" && defined(email) && lower(email) == $email][0]{_id, firstName, lastName, roles}`,
-    {email},
-  )
+  const ensureVendorRolePatch = (customer: {
+    roles?: string[] | null
+    customerType?: string | null
+  }) => {
+    const roles = Array.isArray(customer.roles) ? customer.roles.slice() : []
+    const hasCustomerRole = roles.includes('customer')
+    const hasVendorRole = roles.includes('vendor')
+    if (!hasVendorRole) roles.push('vendor')
 
-  const {firstName, lastName} = splitFullName(customer.name || customer.shipping?.name)
-  const shippingText = formatShippingAddress(customer.shipping)
-  const shippingAddress = buildShippingAddress(customer.shipping)
+    let customerType = customer.customerType || null
+    if (!customerType || customerType === 'retail' || customerType === 'in-store') {
+      customerType = hasCustomerRole ? 'both' : 'vendor'
+    }
+    if (customerType === 'vendor' && hasCustomerRole) customerType = 'both'
+
+    const patch: Record<string, any> = {}
+    if (!hasVendorRole) patch.roles = roles
+    if (customerType && customerType !== customer.customerType) patch.customerType = customerType
+    return patch
+  }
+
+  const applyCustomerPatch = async (customer: IdentityCustomer, patch: Record<string, any>) => {
+    if (!Object.keys(patch).length) return customer
+    try {
+      await webhookSanityClient
+        .patch(customer._id)
+        .set(patch)
+        .commit({autoGenerateArrayKeys: true})
+      return {...customer, ...patch}
+    } catch (err) {
+      console.warn('stripeWebhook: failed to update customer doc', err)
+      return customer
+    }
+  }
+
+  const vendor = normalizedEmail ? await fetchVendorByEmail(normalizedEmail) : null
+
+  let customer: IdentityCustomer | null = null
+  if (stripeCustomerId) {
+    customer = await fetchCustomerByStripeId(stripeCustomerId)
+  }
+
+  if (customer && vendor) {
+    const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
+    if (vendorCustomerId && vendorCustomerId !== customer._id) {
+      console.error(
+        'stripeWebhook: conflicting vendor/customer identity',
+        vendor._id,
+        vendorCustomerId,
+        customer._id,
+      )
+      throw new Error('Vendor/customer identity conflict')
+    }
+  }
+
+  if (!customer && vendor) {
+    const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
+    customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
+
+    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
+      console.error(
+        'stripeWebhook: conflicting vendor/customer stripe ids',
+        vendor._id,
+        customer._id,
+        customer.stripeCustomerId,
+        stripeCustomerId,
+      )
+      throw new Error('Vendor/customer identity conflict')
+    }
+
+    if (!customer && normalizedEmail) {
+      customer = await fetchCustomerByEmail(normalizedEmail)
+    }
+
+    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
+      console.error(
+        'stripeWebhook: conflicting customer stripe ids for vendor email',
+        vendor._id,
+        customer._id,
+        customer.stripeCustomerId,
+        stripeCustomerId,
+      )
+      throw new Error('Vendor/customer identity conflict')
+    }
+
+    if (!customer) {
+      const newCustomerId = `customer.${randomUUID()}`
+      customer = await webhookSanityClient.create<IdentityCustomer>({
+        _id: newCustomerId,
+        _type: 'customer',
+        email: email || undefined,
+        name: email || 'Customer',
+        stripeCustomerId,
+        stripeLastSyncedAt: new Date().toISOString(),
+        customerType: 'vendor',
+        roles: ['customer', 'vendor'],
+      })
+    }
+  }
+
+  if (!customer && normalizedEmail) {
+    customer = await fetchCustomerByEmail(normalizedEmail)
+  }
+
+  if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
+    console.error(
+      'stripeWebhook: conflicting customer stripe ids',
+      customer._id,
+      customer.stripeCustomerId,
+      stripeCustomerId,
+    )
+    throw new Error('Customer identity conflict')
+  }
+
+  if (!customer) {
+    const newCustomerId = `customer.${randomUUID()}`
+    customer = await webhookSanityClient.create<IdentityCustomer>({
+      _id: newCustomerId,
+      _type: 'customer',
+      email: email || undefined,
+      name: email || 'Customer',
+      stripeCustomerId,
+      stripeLastSyncedAt: new Date().toISOString(),
+      roles: ['customer'],
+    })
+  }
+
+  const {firstName, lastName} = splitFullName(stripeCustomer.name || stripeCustomer.shipping?.name)
+  const shippingText = formatShippingAddress(stripeCustomer.shipping)
+  const shippingAddress = buildShippingAddress(stripeCustomer.shipping)
   const billingAddress = buildBillingAddress(
-    customer.address,
-    customer.name || customer.shipping?.name,
+    stripeCustomer.address,
+    stripeCustomer.name || stripeCustomer.shipping?.name,
   )
 
   const setOps: Record<string, any> = {
-    stripeCustomerId: customer.id,
+    stripeCustomerId: stripeCustomer.id,
     stripeLastSyncedAt: new Date().toISOString(),
   }
 
   if (shippingText) setOps.address = shippingText
   if (shippingAddress) setOps.shippingAddress = shippingAddress
   if (billingAddress) setOps.billingAddress = billingAddress
-  if (customer.phone) setOps.phone = customer.phone
-  if (firstName && !existing?.firstName) setOps.firstName = firstName
-  if (lastName && !existing?.lastName) setOps.lastName = lastName
+  if (stripeCustomer.phone) setOps.phone = stripeCustomer.phone
+  if (firstName && !customer.firstName) setOps.firstName = firstName
+  if (lastName && !customer.lastName) setOps.lastName = lastName
+
   const computedName = computeCustomerName({
-    firstName: setOps.firstName ?? existing?.firstName ?? firstName,
-    lastName: setOps.lastName ?? existing?.lastName ?? lastName,
+    firstName: setOps.firstName ?? customer.firstName ?? firstName,
+    lastName: setOps.lastName ?? customer.lastName ?? lastName,
     email,
   })
   if (computedName) setOps.name = computedName
 
-  if (existing?._id) {
-    if (!Array.isArray(existing.roles) || existing.roles.length === 0) setOps.roles = ['customer']
-    try {
-      await sanity.patch(existing._id).set(setOps).commit({autoGenerateArrayKeys: true})
-    } catch (err) {
-      console.warn('stripeWebhook: failed to update customer doc', err)
-    }
-  } else {
-    const payload: Record<string, any> = {
-      _type: 'customer',
-      email,
-      roles: ['customer'],
-      name: computedName || email,
-      stripeCustomerId: customer.id,
-      stripeLastSyncedAt: new Date().toISOString(),
-    }
-    if (firstName) payload.firstName = firstName
-    if (lastName) payload.lastName = lastName
-    if (customer.phone) payload.phone = customer.phone
-    if (shippingText) payload.address = shippingText
-    if (shippingAddress) payload.shippingAddress = shippingAddress
-    if (billingAddress) payload.billingAddress = billingAddress
+  if (vendor) {
+    Object.assign(setOps, ensureVendorRolePatch(customer))
+  } else if (!Array.isArray(customer.roles) || customer.roles.length === 0) {
+    setOps.roles = ['customer']
+  }
 
-    try {
-      await sanity.create(payload as any, {autoGenerateArrayKeys: true})
-    } catch (err) {
-      console.warn('stripeWebhook: failed to create customer doc from Stripe customer', err)
+  customer = await applyCustomerPatch(customer, setOps)
+
+  if (vendor) {
+    const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
+    if (customer._id !== vendorCustomerId) {
+      try {
+        await webhookSanityClient
+          .patch(vendor._id)
+          .set({customerRef: {_type: 'reference', _ref: customer._id}})
+          .commit({autoGenerateArrayKeys: true})
+      } catch (err) {
+        console.warn('stripeWebhook: failed to link vendor to customer', err)
+      }
+    }
+
+    if (customer.email) {
+      try {
+        await syncVendorPortalEmail(webhookSanityClient, vendor._id, customer.email)
+      } catch (err) {
+        console.warn('stripeWebhook: failed to sync vendor portal email', err)
+      }
     }
   }
+
+  return customer
+}
+
+async function syncStripeCustomer(customer: Stripe.Customer): Promise<void> {
+  await strictFindOrCreateCustomerFromStripeCustomer(customer)
 }
 
 type PaymentFailureDiagnostics = {
@@ -7137,7 +7333,7 @@ export const handler: Handler = async (event) => {
         try {
           const customer = webhookEvent.data.object as Stripe.Customer
           if (!customer.deleted) {
-            await syncStripeCustomer(customer)
+            await strictFindOrCreateCustomer(customer)
           }
         } catch (err) {
           console.warn('stripeWebhook: failed to sync customer', err)

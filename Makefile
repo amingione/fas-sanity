@@ -197,6 +197,37 @@ codex-css-spacing-readability-audit:
 	"- Text appears too small or inconsistent" \
 	"- Buttons, headers, or metadata collide" \
 	"- Custom components ignore spacing conventions" \
+
+# =========================================================
+# Audit — Stripe Shipping Metadata Drift
+# =========================================================
+
+.PHONY: codex-stripe-shipping-metadata-audit
+codex-stripe-shipping-metadata-audit:
+	@echo "🔍 CODEX AUDIT: Stripe Shipping Metadata Drift"
+	@echo ""
+	@echo "Goal:"
+	@echo " - Identify where Stripe metadata is generated"
+	@echo " - Determine why it diverges from shippingConfig"
+	@echo " - Find stale or duplicated sync paths"
+	@echo ""
+	@echo "Output:"
+	@echo " - docs/reports/stripe-shipping-metadata-audit.md"
+	@echo ""
+	@read -p "Press ENTER once Codex audit is complete and saved..."
+
+.PHONY: claude-stripe-shipping-metadata-audit
+claude-stripe-shipping-metadata-audit:
+	@echo "🧠 CLAUDE AUDIT: Stripe Shipping Metadata System Contract"
+	@echo ""
+	@echo "Goal:"
+	@echo " - Determine authoritative source of truth"
+	@echo " - Identify invalid or competing data paths"
+	@echo ""
+	@echo "Output:"
+	@echo " - docs/reports/stripe-shipping-metadata-contract.md"
+	@echo ""
+	@read -p "Press ENTER once Claude audit is complete and saved..."
 	"" \
 	"FILES / AREAS TO INSPECT:" \
 	"- All custom React/TSX components" \

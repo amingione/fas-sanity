@@ -11,6 +11,8 @@ const CUSTOMER_GROUPS = [
   {name: 'discounts', title: 'Discounts'},
 ]
 
+const API_VERSION = '2024-10-01'
+
 export default defineType({
   name: 'customer',
   title: 'Customer',
@@ -84,9 +86,9 @@ export default defineType({
       options: {
         list: [
           {title: 'Customer', value: 'customer'},
-          {title: 'Guest (no account)', value: 'guest'},
           {title: 'Vendor', value: 'vendor'},
-          {title: 'Admin', value: 'admin'},
+          {title: 'Wholesale', value: 'wholesale'},
+          {title: 'Retail', value: 'retail'},
         ],
       },
       validation: (Rule) =>
@@ -98,19 +100,31 @@ export default defineType({
             const hasVendorRole = roles.includes('vendor')
             const documentId = context?.document?._id || ''
             const customerId = documentId.replace(/^drafts\./, '')
-            if (!customerId) return true
-            const client = context.getClient({apiVersion: '2024-10-01'})
-            const vendorCount = await client.fetch<number>(
-              'count(*[_type == "vendor" && customerRef._ref == $id])',
-              {id: customerId},
+            const client = context.getClient({apiVersion: API_VERSION})
+            if (customerId && !hasVendorRole) {
+              const vendorCount = await client.fetch<number>(
+                'count(*[_type == "vendor" && customerRef._ref == $id])',
+                {id: customerId},
+              )
+              if (vendorCount > 0) {
+                return 'Cannot remove vendor role while a vendor is linked to this customer.'
+              }
+            }
+            if (!hasVendorRole) return true
+
+            const email = context?.document?.email?.toString().trim().toLowerCase()
+            if (!email) return 'Vendor customers must have an email.'
+
+            const vendorCountByEmail = await client.fetch<number>(
+              'count(*[_type == "vendor" && lower(primaryContact.email) == $email])',
+              {email},
             )
-            if (vendorCount > 0 && !hasVendorRole) {
-              return 'Cannot remove vendor role while a vendor is linked to this customer.'
+            if (vendorCountByEmail === 0) {
+              return 'Customer with "vendor" role must have corresponding vendor document.'
             }
             return true
           }),
-      description:
-        'Used by FAS Auth to gate access to portals. Guests are imported from Stripe and do not have login access.',
+      description: 'Used by FAS Auth to gate access to portals.',
       group: 'profile',
     }),
     defineField({

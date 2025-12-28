@@ -53,7 +53,6 @@ import {
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
 import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
 import {syncVendorToStripeAction} from './schemaTypes/documentActions/syncVendorToStripeAction'
-import {linkVendorToCustomerAction} from './schemaTypes/documentActions/linkVendorToCustomerAction'
 import {
   GeneratePackingSlipAction,
   CreateShippingLabelAction,
@@ -132,7 +131,6 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(generateVendorNumberAction)
     list.push(sendVendorInviteAction)
     list.push(syncVendorToStripeAction)
-    list.push(linkVendorToCustomerAction)
   }
   return list
 }

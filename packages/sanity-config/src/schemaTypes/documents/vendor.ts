@@ -749,20 +749,26 @@ export default defineType({
       title: 'Linked Customer',
       type: 'reference',
       to: [{type: 'customer'}],
-      description: 'Associate this vendor with the matching customer account',
+      description: 'Auto-linked to customer document. DO NOT SET MANUALLY.',
       readOnly: true,
       validation: (Rule) =>
-        Rule.required().custom(async (value, context) => {
+        Rule.custom(async (value, context) => {
           if (!value?._ref) return true
           const client = context.getClient({apiVersion: API_VERSION})
           const customer = await client.fetch<{roles?: string[]; email?: string} | null>(
             `*[_type == "customer" && _id == $id][0]{roles, email}`,
             {id: value._ref},
           )
-          if (!customer) return 'Linked customer not found.'
-          if (!customer.email) return 'Linked customer must have an email.'
+          if (!customer) return 'Referenced customer does not exist.'
           if (!customer.roles?.includes('vendor')) {
-            return 'Linked customer must include the vendor role.'
+            return 'Linked customer must have "vendor" role.'
+          }
+          const vendorEmail = context?.document?.primaryContact?.email
+            ?.toString()
+            .trim()
+            .toLowerCase()
+          if (vendorEmail && customer.email?.trim().toLowerCase() !== vendorEmail) {
+            return 'Customer email must match vendor primary contact email.'
           }
           return true
         }),
