@@ -884,7 +884,7 @@ export default function OrdersDashboard() {
 
   return (
     <Flex height="fill">
-      <Box padding={4} style={{flex: '1 1 auto', overflow: 'auto'}}>
+      <Box padding={4} style={{flex: '1 1 auto', overflow: 'auto', minWidth: 0}}>
         <Stack space={5}>
           <Flex gap={4} justify="space-between" align="center" style={{flexWrap: 'wrap'}}>
             <Flex gap={4} align="center" style={{flexWrap: 'wrap'}}>
@@ -1063,7 +1063,13 @@ export default function OrdersDashboard() {
               <Text muted>No orders match the current filters.</Text>
             </Card>
           ) : (
-            <Card padding={0} radius={3} shadow={1} tone="transparent" style={{overflowX: 'auto'}}>
+            <Card
+              padding={0}
+              radius={3}
+              shadow={1}
+              tone="transparent"
+              style={{overflowX: 'auto', minWidth: 0}}
+            >
               <Box style={{borderBottom: '1px solid var(--card-border-color)'}}>
                 <Flex
                   style={{
@@ -1071,7 +1077,8 @@ export default function OrdersDashboard() {
                     display: 'grid',
                     gridTemplateColumns: GRID_TEMPLATE_COLUMNS,
                     gap: `${GRID_COLUMN_GAP}px`,
-                    fontSize: 12,
+                    fontSize: 14,
+                    lineHeight: 1.5,
                     textTransform: 'uppercase',
                     letterSpacing: '0.02em',
                     color: 'var(--card-muted-fg-color)',

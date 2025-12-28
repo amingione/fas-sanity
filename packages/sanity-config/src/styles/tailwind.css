@@ -6,182 +6,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root,
-  body.sanity-studio-theme {
-    --studio-body-background-light: #f7f7f7 !important;
-    --studio-surface-light: #f7f7f7 !important;
-    --studio-surface-strong-light: #f7f7f7 !important;
-    --studio-surface-soft-light: #f7f7f7 !important;
-    --studio-surface-overlay-light: #f7f7f7 !important;
-    --studio-border-light: #e0e0e0 !important;
-    --studio-border-strong-light: #e0e0e0 !important;
-    --studio-text-light: #000000;
-    --studio-muted-light: #000000;
-    --studio-accent-light: #2563eb;
-    --studio-accent-strong-light: #1e293b;
-    --studio-accent-muted-light: rgba(37, 99, 235, 0.12);
-    --studio-shadow-light: 0 18px 45px rgba(15, 23, 42, 0.18);
-    --studio-backdrop-light: rgba(148, 163, 184, 0.25);
-    --card-bg-color: var(--studio-surface);
-    --card-fg-color: var(--studio-text);
-    --card-muted-bg-color: var(--studio-surface);
-    --card-muted-fg-color: var(--studio-text);
-    --card-border-color: var(--studio-border);
-
-    --studio-body-background-dark: #1a1a1a !important;
-    --studio-surface-dark: #1a1a1a !important;
-    --studio-surface-strong-dark: #1a1a1a !important;
-    --studio-surface-soft-dark: #1a1a1a !important;
-    --studio-surface-overlay-dark: #1a1a1a !important;
-    --studio-border-dark: #333333 !important;
-    --studio-border-strong-dark: #333333 !important;
-    --studio-text-dark: #ffffff;
-    --studio-muted-dark: #ffffff;
-    --studio-accent-dark: #60a5fa;
-    --studio-accent-strong-dark: #e2e8f0;
-    --studio-accent-muted-dark: rgba(96, 165, 250, 0.22);
-    --studio-shadow-dark: 0 22px 55px rgba(2, 6, 23, 0.55);
-    --studio-backdrop-dark: rgba(2, 6, 23, 0.55);
-    --card-bg-color-dark: #1a1a1a !important;
-    --card-fg-color-dark: #ffffff;
-    --card-muted-bg-color-dark: #1a1a1a !important;
-    --card-muted-fg-color-dark: #ffffff;
-    --card-border-color-dark: #333333 !important;
-
-    --studio-body-background: var(--studio-body-background-light);
-    --studio-surface: var(--studio-surface-light);
-    --studio-surface-strong: var(--studio-surface-strong-light);
-    --studio-surface-soft: var(--studio-surface-soft-light);
-    --studio-surface-overlay: var(--studio-surface-overlay-light);
-    --studio-border: var(--studio-border-light);
-    --studio-border-strong: var(--studio-border-strong-light);
-    --studio-text: var(--studio-text-light);
-    --studio-muted: var(--studio-muted-light);
-    --studio-accent: var(--studio-accent-light);
-    --studio-accent-strong: var(--studio-accent-strong-light);
-    --studio-accent-muted: var(--studio-accent-muted-light);
-    --studio-shadow: var(--studio-shadow-light);
-    --studio-backdrop: var(--studio-backdrop-light);
-    --card-bg-color: var(--studio-surface);
-    --card-fg-color: var(--studio-text);
-    --card-muted-bg-color: var(--studio-surface);
-    --card-muted-fg-color: var(--studio-text);
-    --card-border-color: var(--studio-border);
-    color-scheme: light;
-  }
-
-  body.sanity-studio-theme,
-  body.sanity-studio-theme [data-ui] {
-    --card-muted-fg-color: var(--card-fg-color) !important;
-    --card-muted-bg-color: var(--card-bg-color) !important;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-studio-color-scheme='light']):not([data-sanity-color-scheme='light']):not(
-        [data-ui-color-scheme='light']
-      ):not([data-color-scheme='light']):not([data-theme='light']):not([data-mode='light']),
-    body.sanity-studio-theme:not([data-studio-color-scheme='light']):not(
-        [data-sanity-color-scheme='light']
-      ):not([data-ui-color-scheme='light']):not([data-color-scheme='light']):not(
-        [data-theme='light']
-      ):not([data-mode='light']) {
-      --studio-body-background: var(--studio-body-background-dark);
-      --studio-surface: var(--studio-surface-dark);
-      --studio-surface-strong: var(--studio-surface-strong-dark);
-      --studio-surface-soft: var(--studio-surface-soft-dark);
-      --studio-surface-overlay: var(--studio-surface-overlay-dark);
-      --studio-border: var(--studio-border-dark);
-      --studio-border-strong: var(--studio-border-strong-dark);
-      --studio-text: var(--studio-text-dark);
-      --studio-muted: var(--studio-muted-dark);
-      --studio-accent: var(--studio-accent-dark);
-      --studio-accent-strong: var(--studio-accent-strong-dark);
-      --studio-accent-muted: var(--studio-accent-muted-dark);
-      --studio-shadow: var(--studio-shadow-dark);
-      --studio-backdrop: var(--studio-backdrop-dark);
-      --card-bg-color: var(--card-bg-color-dark);
-      --card-fg-color: var(--card-fg-color-dark);
-      --card-muted-bg-color: var(--card-muted-bg-color-dark);
-      --card-muted-fg-color: var(--card-muted-fg-color-dark);
-      --card-border-color: var(--card-border-color-dark);
-      color-scheme: dark;
-    }
-  }
-
-  :root[data-studio-color-scheme='dark'],
-  :root[data-sanity-color-scheme='dark'],
-  :root[data-ui-color-scheme='dark'],
-  :root[data-color-scheme='dark'],
-  :root[data-theme='dark'],
-  :root[data-mode='dark'],
-  body[data-studio-color-scheme='dark'],
-  body[data-sanity-color-scheme='dark'],
-  body[data-ui-color-scheme='dark'],
-  body[data-color-scheme='dark'],
-  body[data-theme='dark'],
-  body[data-mode='dark'],
-  body.sanity-studio-theme[data-color-scheme='dark'],
-  body.sanity-studio-theme[data-theme='dark'],
-  body.sanity-studio-theme[data-mode='dark'] {
-    --studio-body-background: var(--studio-body-background-dark);
-    --studio-surface: var(--studio-surface-dark);
-    --studio-surface-strong: var(--studio-surface-strong-dark);
-    --studio-surface-soft: var(--studio-surface-soft-dark);
-    --studio-surface-overlay: var(--studio-surface-overlay-dark);
-    --studio-border: var(--studio-border-dark);
-    --studio-border-strong: var(--studio-border-strong-dark);
-    --studio-text: var(--studio-text-dark);
-    --studio-muted: var(--studio-muted-dark);
-    --studio-accent: var(--studio-accent-dark);
-    --studio-accent-strong: var(--studio-accent-strong-dark);
-    --studio-accent-muted: var(--studio-accent-muted-dark);
-    --studio-shadow: var(--studio-shadow-dark);
-    --studio-backdrop: var(--studio-backdrop-dark);
-    --card-bg-color: var(--card-bg-color-dark);
-    --card-fg-color: var(--card-fg-color-dark);
-    --card-muted-bg-color: var(--card-muted-bg-color-dark);
-    --card-muted-fg-color: var(--card-muted-fg-color-dark);
-    --card-border-color: var(--card-border-color-dark);
-    color-scheme: dark;
-  }
-
-  :root[data-studio-color-scheme='light'],
-  :root[data-sanity-color-scheme='light'],
-  :root[data-ui-color-scheme='light'],
-  :root[data-color-scheme='light'],
-  :root[data-theme='light'],
-  :root[data-mode='light'],
-  body[data-studio-color-scheme='light'],
-  body[data-sanity-color-scheme='light'],
-  body[data-ui-color-scheme='light'],
-  body[data-color-scheme='light'],
-  body[data-theme='light'],
-  body[data-mode='light'],
-  body.sanity-studio-theme[data-color-scheme='light'],
-  body.sanity-studio-theme[data-theme='light'],
-  body.sanity-studio-theme[data-mode='light'] {
-    --studio-body-background: var(--studio-body-background-light);
-    --studio-surface: var(--studio-surface-light);
-    --studio-surface-strong: var(--studio-surface-strong-light);
-    --studio-surface-soft: var(--studio-surface-soft-light);
-    --studio-surface-overlay: var(--studio-surface-overlay-light);
-    --studio-border: var(--studio-border-light);
-    --studio-border-strong: var(--studio-border-strong-light);
-    --studio-text: var(--studio-text-light);
-    --studio-muted: var(--studio-muted-light);
-    --studio-accent: var(--studio-accent-light);
-    --studio-accent-strong: var(--studio-accent-strong-light);
-    --studio-accent-muted: var(--studio-accent-muted-light);
-    --studio-shadow: var(--studio-shadow-light);
-    --studio-backdrop: var(--studio-backdrop-light);
-    --card-bg-color: var(--studio-surface);
-    --card-fg-color: var(--studio-text);
-    --card-muted-bg-color: var(--studio-surface);
-    --card-muted-fg-color: var(--studio-text);
-    --card-border-color: var(--studio-border);
-    color-scheme: light;
-  }
-
   *,
   *::before,
   *::after {
@@ -215,171 +39,95 @@
     flex: 1 1 auto;
     min-height: 100%;
   }
-}
-
-@layer components {
-  .studio-page {
-    @apply flex h-full min-h-0 flex-col overflow-hidden;
-    background: var(--studio-surface);
-    color: var(--studio-text);
-    border-radius: 1.75rem;
-    border: 1px solid var(--studio-border);
-    box-shadow: var(--studio-shadow);
-    backdrop-filter: blur(24px);
-  }
-
-  .studio-header {
-    border-bottom: 1px solid var(--studio-border);
-    background: var(--studio-surface-strong);
-    backdrop-filter: blur(24px);
-  }
-
-  .studio-header__inner {
-    @apply flex flex-col gap-4 px-6 py-6 lg:flex-row lg:items-center lg:justify-between;
-  }
-
-  .studio-header__titles {
-    @apply flex flex-col gap-1;
-  }
-
-  .studio-header__title {
-    @apply text-xl font-semibold tracking-tight;
-    color: var(--studio-text);
-  }
-
-  .studio-header__description {
-    @apply text-sm;
-    color: var(--studio-muted);
-  }
-
-  .studio-header__actions {
-    @apply flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6;
-  }
-
-  .studio-tablist {
-    @apply inline-flex items-center gap-1 rounded-full px-1 py-1 text-sm font-medium;
-    border: 1px solid var(--studio-border);
-    background: var(--studio-surface-soft);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  }
-
-  .studio-tablist__button {
-    @apply rounded-full px-4 py-2 transition;
-    color: var(--studio-muted);
-    background: transparent;
-  }
-
-  .studio-tablist__button:hover {
-    color: var(--studio-text);
-    box-shadow: inset 0 0 0 999px rgba(148, 163, 184, 0.1);
-  }
-
-  .studio-tablist__button--active {
-    color: var(--studio-accent-strong);
-    background: var(--studio-accent-muted);
-    box-shadow: 0 12px 28px rgba(37, 99, 235, 0.22);
-  }
-
-  .studio-content {
-    @apply flex flex-1 min-h-0 flex-col gap-6 overflow-hidden;
-    padding: clamp(1.5rem, 1.5vw + 1.25rem, 2.5rem);
-    background: transparent;
-  }
-
-  .studio-section-title {
-    @apply text-sm font-semibold uppercase tracking-[0.12em];
-    color: var(--studio-muted);
-  }
-
-  .studio-surface {
-    background: var(--studio-surface-strong);
-    border: 1px solid var(--studio-border);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  }
-
-  .studio-surface-soft {
-    background: var(--studio-surface-soft);
-    border: 1px solid var(--studio-border);
-  }
-
-  .studio-scroll-area {
-    @apply overflow-auto rounded-2xl;
-    border: 1px solid var(--studio-border);
-    background: var(--studio-surface-strong);
-  }
-
-  .studio-badge {
-    @apply inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold;
-    background: var(--studio-accent-muted);
-    color: var(--studio-accent-strong);
-  }
-}
-
-@layer base {
-  body.sanity-studio-theme {
-    --card-badge-default-bg-color: #e2e8f0 !important;
-    --card-badge-default-fg-color: #111827 !important;
-    --card-badge-primary-bg-color: #bfdbfe !important;
-    --card-badge-primary-fg-color: #111827 !important;
-    --card-badge-positive-bg-color: #bbf7d0 !important;
-    --card-badge-positive-fg-color: #111827 !important;
-    --card-badge-caution-bg-color: #fde68a !important;
-    --card-badge-caution-fg-color: #111827 !important;
-    --card-badge-critical-bg-color: #fecaca !important;
-    --card-badge-critical-fg-color: #111827 !important;
-    --card-badge-neutral-bg-color: #e5e7eb !important;
-    --card-badge-neutral-fg-color: #111827 !important;
-    --card-badge-suggest-bg-color: #c7d2fe !important;
-    --card-badge-suggest-fg-color: #111827 !important;
-    --card-badge-default-dot-color: transparent !important;
-    --card-badge-primary-dot-color: transparent !important;
-    --card-badge-positive-dot-color: transparent !important;
-    --card-badge-caution-dot-color: transparent !important;
-    --card-badge-critical-dot-color: transparent !important;
-    --card-badge-neutral-dot-color: transparent !important;
-    --card-badge-suggest-dot-color: transparent !important;
-    --card-badge-default-icon-color: #111827 !important;
-    --card-badge-primary-icon-color: #111827 !important;
-    --card-badge-positive-icon-color: #111827 !important;
-    --card-badge-caution-icon-color: #111827 !important;
-    --card-badge-critical-icon-color: #111827 !important;
-    --card-badge-neutral-icon-color: #111827 !important;
-    --card-badge-suggest-icon-color: #111827 !important;
-  }
-
-  body.sanity-studio-theme *,
-  body.sanity-studio-theme *::before,
-  body.sanity-studio-theme *::after {
-    box-sizing: border-box;
-  }
 
   body.sanity-studio-theme {
-    background: var(--studio-body-background);
-    color: var(--studio-text);
-    font-family:
-      'Inter',
-      'SF Pro Display',
-      'SF Pro Text',
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      sans-serif;
-    -webkit-font-smoothing: antialiased;
-    display: flex;
-    flex-direction: column;
-  }
+    --studio-body-background-light: #f7f7f7 !important;
+    --studio-surface-light: #f7f7f7 !important;
+    --studio-surface-strong-light: #f7f7f7 !important;
+    --studio-surface-soft-light: #f7f7f7 !important;
+    --studio-surface-overlay-light: #f7f7f7 !important;
+    --studio-border-light: #e0e0e0 !important;
+    --studio-border-strong-light: #e0e0e0 !important;
+    --studio-text-light: #000000;
+    --studio-muted-light: #000000;
+    --studio-accent-light: #2563eb;
+    --studio-accent-strong-light: #1e293b;
+    --studio-accent-muted-light: rgba(37, 99, 235, 0.12);
+    --studio-shadow-light: 0 18px 45px rgba(15, 23, 42, 0.18);
+    --studio-backdrop-light: rgba(148, 163, 184, 0.25);
 
-  body.sanity-studio-theme #__next,
-  body.sanity-studio-theme #sanity,
-  body.sanity-studio-theme #root {
-    flex: 1 1 auto;
-    min-height: 100%;
+    --studio-body-background-dark: #1a1a1a !important;
+    --studio-surface-dark: #1a1a1a !important;
+    --studio-surface-strong-dark: #1a1a1a !important;
+    --studio-surface-soft-dark: #1a1a1a !important;
+    --studio-surface-overlay-dark: #1a1a1a !important;
+    --studio-border-dark: #333333 !important;
+    --studio-border-strong-dark: #333333 !important;
+    --studio-text-dark: #ffffff;
+    --studio-muted-dark: #ffffff;
+    --studio-accent-dark: #60a5fa;
+    --studio-accent-strong-dark: #e2e8f0;
+    --studio-accent-muted-dark: rgba(96, 165, 250, 0.22);
+    --studio-shadow-dark: 0 22px 55px rgba(2, 6, 23, 0.55);
+    --studio-backdrop-dark: rgba(2, 6, 23, 0.55);
+
+    --studio-space-xs: 4px;
+    --studio-space-sm: 8px;
+    --studio-space-md: 12px;
+    --studio-space-lg: 16px;
+    --studio-space-xl: 24px;
+
+    --studio-body-background: light-dark(
+      var(--studio-body-background-light),
+      var(--studio-body-background-dark)
+    );
+    --studio-surface: light-dark(var(--studio-surface-light), var(--studio-surface-dark));
+    --studio-surface-strong: light-dark(
+      var(--studio-surface-strong-light),
+      var(--studio-surface-strong-dark)
+    );
+    --studio-surface-soft: light-dark(
+      var(--studio-surface-soft-light),
+      var(--studio-surface-soft-dark)
+    );
+    --studio-surface-overlay: light-dark(
+      var(--studio-surface-overlay-light),
+      var(--studio-surface-overlay-dark)
+    );
+    --studio-border: light-dark(var(--studio-border-light), var(--studio-border-dark));
+    --studio-border-strong: light-dark(
+      var(--studio-border-strong-light),
+      var(--studio-border-strong-dark)
+    );
+    --studio-text: light-dark(var(--studio-text-light), var(--studio-text-dark));
+    --studio-muted: light-dark(var(--studio-muted-light), var(--studio-muted-dark));
+    --studio-accent: light-dark(var(--studio-accent-light), var(--studio-accent-dark));
+    --studio-accent-strong: light-dark(
+      var(--studio-accent-strong-light),
+      var(--studio-accent-strong-dark)
+    );
+    --studio-accent-muted: light-dark(
+      var(--studio-accent-muted-light),
+      var(--studio-accent-muted-dark)
+    );
+    --studio-shadow: light-dark(var(--studio-shadow-light), var(--studio-shadow-dark));
+    --studio-backdrop: light-dark(var(--studio-backdrop-light), var(--studio-backdrop-dark));
+    --card-bg-color: var(--studio-surface);
+    --card-fg-color: var(--studio-text);
+    --card-muted-bg-color: var(--studio-surface);
+    --card-muted-fg-color: var(--studio-text);
+    --card-border-color: var(--studio-border);
+    color-scheme: light dark;
   }
 }
 
 @layer components {
   body.sanity-studio-theme .studio-page {
-    @apply flex h-full min-h-0 flex-col overflow-hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
     background: var(--studio-surface);
     color: var(--studio-text);
     border-radius: 1.75rem;
@@ -389,42 +137,62 @@
   }
 
   body.sanity-studio-theme .studio-header {
+    min-width: 0;
     border-bottom: 1px solid var(--studio-border);
     background: var(--studio-surface-strong);
     backdrop-filter: blur(24px);
   }
 
   body.sanity-studio-theme .studio-header__inner {
-    @apply flex flex-col gap-4 px-6 py-6 lg:flex-row lg:items-center lg:justify-between;
+    display: flex;
+    flex-direction: column;
+    gap: var(--studio-space-md);
+    padding: var(--studio-space-lg);
   }
 
   body.sanity-studio-theme .studio-header__titles {
-    @apply flex flex-col gap-1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--studio-space-xs);
+    min-width: 0;
   }
 
   body.sanity-studio-theme .studio-header__title {
-    @apply text-xl font-semibold tracking-tight;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
     color: var(--studio-text);
   }
 
   body.sanity-studio-theme .studio-header__description {
-    @apply text-sm;
+    font-size: 0.875rem;
     color: var(--studio-muted);
   }
 
   body.sanity-studio-theme .studio-header__actions {
-    @apply flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6;
+    display: flex;
+    flex-direction: column;
+    gap: var(--studio-space-md);
+    min-width: 0;
   }
 
   body.sanity-studio-theme .studio-tablist {
-    @apply inline-flex items-center gap-1 rounded-full px-1 py-1 text-sm font-medium;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--studio-space-xs);
+    padding: var(--studio-space-xs);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
     border: 1px solid var(--studio-border);
     background: var(--studio-surface-soft);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
   }
 
   body.sanity-studio-theme .studio-tablist__button {
-    @apply rounded-full px-4 py-2 transition;
+    border-radius: 999px;
+    padding: var(--studio-space-sm) var(--studio-space-lg);
+    transition: color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
     color: var(--studio-muted);
     background: transparent;
   }
@@ -441,88 +209,108 @@
   }
 
   body.sanity-studio-theme .studio-content {
-    @apply flex flex-1 min-h-0 flex-col gap-6 overflow-hidden;
-    padding: clamp(1.5rem, 1.5vw + 1.25rem, 2.5rem);
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    gap: var(--studio-space-lg);
+    overflow: hidden;
+    padding: var(--studio-space-xl);
     background: transparent;
   }
 
+  body.sanity-studio-theme .studio-content > * {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  body.sanity-studio-theme .studio-content > :not([data-ui]) {
+    line-height: 1.5;
+    padding: var(--studio-space-sm);
+    gap: var(--studio-space-sm);
+  }
+
   body.sanity-studio-theme .studio-section-title {
-    @apply text-sm font-semibold uppercase tracking-[0.12em];
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: var(--studio-muted);
   }
 
   body.sanity-studio-theme .studio-surface {
+    min-width: 0;
+    min-height: 0;
+    padding: var(--studio-space-md);
     background: var(--studio-surface-strong);
     border: 1px solid var(--studio-border);
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
   }
 
   body.sanity-studio-theme .studio-surface-soft {
+    min-width: 0;
+    min-height: 0;
+    padding: var(--studio-space-md);
     background: var(--studio-surface-soft);
     border: 1px solid var(--studio-border);
   }
 
   body.sanity-studio-theme .studio-scroll-area {
-    @apply overflow-auto rounded-2xl;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--studio-space-md);
+    border-radius: 1rem;
     border: 1px solid var(--studio-border);
     background: var(--studio-surface-strong);
   }
 
   body.sanity-studio-theme .studio-badge {
-    @apply inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-semibold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px var(--studio-space-sm);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
     background: var(--studio-accent-muted);
     color: var(--studio-accent-strong);
   }
 
-  body.sanity-studio-theme [data-ui='Card'] {
-    --card-badge-default-bg-color: #e2e8f0 !important;
-    --card-badge-default-fg-color: #111827 !important;
-    --card-badge-primary-bg-color: #bfdbfe !important;
-    --card-badge-primary-fg-color: #111827 !important;
-    --card-badge-positive-bg-color: #bbf7d0 !important;
-    --card-badge-positive-fg-color: #111827 !important;
-    --card-badge-caution-bg-color: #fde68a !important;
-    --card-badge-caution-fg-color: #111827 !important;
-    --card-badge-critical-bg-color: #fecaca !important;
-    --card-badge-critical-fg-color: #111827 !important;
-    --card-badge-neutral-bg-color: #e5e7eb !important;
-    --card-badge-neutral-fg-color: #111827 !important;
-    --card-badge-suggest-bg-color: #c7d2fe !important;
-    --card-badge-suggest-fg-color: #111827 !important;
-    --card-badge-default-dot-color: transparent !important;
-    --card-badge-primary-dot-color: transparent !important;
-    --card-badge-positive-dot-color: transparent !important;
-    --card-badge-caution-dot-color: transparent !important;
-    --card-badge-critical-dot-color: transparent !important;
-    --card-badge-neutral-dot-color: transparent !important;
-    --card-badge-suggest-dot-color: transparent !important;
-    --card-badge-default-icon-color: #111827 !important;
-    --card-badge-primary-icon-color: #111827 !important;
-    --card-badge-positive-icon-color: #111827 !important;
-    --card-badge-caution-icon-color: #111827 !important;
-    --card-badge-critical-icon-color: #111827 !important;
-    --card-badge-neutral-icon-color: #111827 !important;
-    --card-badge-suggest-icon-color: #111827 !important;
-  }
-
-  body.sanity-studio-theme [data-ui='Badge'] {
-    border-radius: 0.35rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.06em !important;
-    padding: 0.2rem 0.65rem !important;
-    background-color: var(--card-bg-color, #e5e7eb) !important;
-    color: #111827 !important;
-    box-shadow: none !important;
-  }
-
-  body.sanity-studio-theme [data-ui='Badge'] [data-ui='Text'] {
-    color: inherit !important;
-  }
-
   input::placeholder,
   textarea::placeholder {
-    color: #4b5563;
+    color: var(--studio-muted);
     opacity: 1;
+  }
+
+  body.sanity-studio-theme .studio-page input:not([data-ui]),
+  body.sanity-studio-theme .studio-page select:not([data-ui]),
+  body.sanity-studio-theme .studio-page textarea:not([data-ui]) {
+    background: var(--studio-surface-strong);
+    color: var(--studio-text);
+    border-color: var(--studio-border-strong);
+  }
+
+  body.sanity-studio-theme .studio-page input:not([data-ui]):focus,
+  body.sanity-studio-theme .studio-page select:not([data-ui]):focus,
+  body.sanity-studio-theme .studio-page textarea:not([data-ui]):focus {
+    outline: 2px solid var(--studio-accent);
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  @media (min-width: 1024px) {
+    body.sanity-studio-theme .studio-header__inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    body.sanity-studio-theme .studio-header__actions {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--studio-space-lg);
+    }
   }
 }

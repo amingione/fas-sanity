@@ -1158,15 +1158,9 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
   }, [])
 
   const headerCellStyle = {
-    padding: '6px 10px',
     border: '1px solid rgba(148, 163, 184, 0.35)',
     background: '#111827',
     color: '#f9fafb',
-    fontSize: 12,
-    fontWeight: 600,
-    whiteSpace: 'nowrap' as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
     position: 'sticky' as const,
     top: 0,
     zIndex: 2,
@@ -1174,7 +1168,6 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
 
   const bodyCellBaseStyle = {
     border: '1px solid rgba(148, 163, 184, 0.25)',
-    padding: 0,
     minWidth: 140,
     background: '#0f172a',
     position: 'relative' as const,
@@ -1185,21 +1178,13 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     border: 'none',
     outline: 'none',
     background: 'transparent',
-    padding: '6px 8px',
     color: '#e5e7eb',
-    fontSize: 13,
     fontFamily:
       'ui-monospace, SFMono-Regular, SFMono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
   }
 
-  const tableHeaderStyle: React.CSSProperties = {
-    textAlign: 'left',
-    padding: '12px 16px',
-    color: '#d1d5db',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  }
+  const tableHeaderClassName =
+    'px-space-4 py-space-3 text-text-caption font-semibold uppercase tracking-wide text-left text-slate-300'
 
   useEffect(() => {
     let cancelled = false
@@ -2118,6 +2103,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           return (
                             <th
                               key={`header-${columnIndex}`}
+                              className="px-space-3 py-space-2 text-text-caption font-semibold uppercase tracking-wide whitespace-nowrap"
                               style={{...headerCellStyle, ...stickyStyle}}
                             >
                               {header || activeSpreadsheetColumns[columnIndex]?.header || ''}
@@ -2170,6 +2156,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                             return (
                               <td
                                 key={`${rowKey}-${sheetColIndex}`}
+                                className="p-0 align-top"
                                 style={cellStyle}
                                 onPointerDown={(event) =>
                                   beginSelection(sheetRowIndex, sheetColIndex, event)
@@ -2190,16 +2177,14 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                                       handleCellPaste(event, sheetRowIndex, sheetColIndex)
                                     }
                                     onFocus={() => handleCellFocus(sheetRowIndex, sheetColIndex)}
+                                    className="p-space-2 text-text-meta font-mono"
                                     style={inputStyle}
                                   />
                                 ) : (
                                   <span
+                                    className="block px-space-3 py-space-2 text-text-meta font-mono"
                                     style={{
-                                      display: 'block',
-                                      padding: '6px 10px',
                                       color: '#cbd5f5',
-                                      fontFamily:
-                                        'ui-monospace, SFMono-Regular, SFMono, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
                                       background: '#0b1220',
                                     }}
                                   >
@@ -2247,88 +2232,88 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             <table style={{width: '100%', borderCollapse: 'collapse', minWidth: 960}}>
               <thead>
                 <tr style={{background: '#111827'}}>
-                  <th style={tableHeaderStyle}>ID / SKU</th>
-                  {visibleColumnKeys.has('title') && <th style={tableHeaderStyle}>Title</th>}
-                  {visibleColumnKeys.has('status') && <th style={tableHeaderStyle}>Status</th>}
+                  <th className={tableHeaderClassName}>ID / SKU</th>
+                  {visibleColumnKeys.has('title') && <th className={tableHeaderClassName}>Title</th>}
+                  {visibleColumnKeys.has('status') && <th className={tableHeaderClassName}>Status</th>}
                   {visibleColumnKeys.has('productType') && (
-                    <th style={tableHeaderStyle}>Product Type</th>
+                    <th className={tableHeaderClassName}>Product Type</th>
                   )}
-                  {visibleColumnKeys.has('price') && <th style={tableHeaderStyle}>Price</th>}
-                  {visibleColumnKeys.has('salePrice') && <th style={tableHeaderStyle}>Sale Price</th>}
-                  {visibleColumnKeys.has('onSale') && <th style={tableHeaderStyle}>On Sale?</th>}
+                  {visibleColumnKeys.has('price') && <th className={tableHeaderClassName}>Price</th>}
+                  {visibleColumnKeys.has('salePrice') && <th className={tableHeaderClassName}>Sale Price</th>}
+                  {visibleColumnKeys.has('onSale') && <th className={tableHeaderClassName}>On Sale?</th>}
                   {visibleColumnKeys.has('discountType') && (
-                    <th style={tableHeaderStyle}>Discount Type</th>
+                    <th className={tableHeaderClassName}>Discount Type</th>
                   )}
                   {visibleColumnKeys.has('discountValue') && (
-                    <th style={tableHeaderStyle}>Discount Value</th>
+                    <th className={tableHeaderClassName}>Discount Value</th>
                   )}
                   {visibleColumnKeys.has('saleStartDate') && (
-                    <th style={tableHeaderStyle}>Sale Start</th>
+                    <th className={tableHeaderClassName}>Sale Start</th>
                   )}
                   {visibleColumnKeys.has('saleEndDate') && (
-                    <th style={tableHeaderStyle}>Sale End</th>
+                    <th className={tableHeaderClassName}>Sale End</th>
                   )}
-                  {visibleColumnKeys.has('saleLabel') && <th style={tableHeaderStyle}>Sale Badge</th>}
+                  {visibleColumnKeys.has('saleLabel') && <th className={tableHeaderClassName}>Sale Badge</th>}
                   {visibleColumnKeys.has('availability') && (
-                    <th style={tableHeaderStyle}>Availability</th>
+                    <th className={tableHeaderClassName}>Availability</th>
                   )}
-                  {visibleColumnKeys.has('condition') && <th style={tableHeaderStyle}>Condition</th>}
+                  {visibleColumnKeys.has('condition') && <th className={tableHeaderClassName}>Condition</th>}
                   {visibleColumnKeys.has('manualInventoryCount') && (
-                    <th style={tableHeaderStyle}>Manual Inventory Count</th>
+                    <th className={tableHeaderClassName}>Manual Inventory Count</th>
                   )}
-                  {visibleColumnKeys.has('brand') && <th style={tableHeaderStyle}>Brand</th>}
-                  {visibleColumnKeys.has('mpn') && <th style={tableHeaderStyle}>MPN</th>}
+                  {visibleColumnKeys.has('brand') && <th className={tableHeaderClassName}>Brand</th>}
+                  {visibleColumnKeys.has('mpn') && <th className={tableHeaderClassName}>MPN</th>}
                   {visibleColumnKeys.has('taxBehavior') && (
-                    <th style={tableHeaderStyle}>Tax Behavior</th>
+                    <th className={tableHeaderClassName}>Tax Behavior</th>
                   )}
-                  {visibleColumnKeys.has('taxCode') && <th style={tableHeaderStyle}>Tax Code</th>}
+                  {visibleColumnKeys.has('taxCode') && <th className={tableHeaderClassName}>Tax Code</th>}
                   {visibleColumnKeys.has('shippingWeight') && (
-                    <th style={tableHeaderStyle}>Shipping Weight (lb)</th>
+                    <th className={tableHeaderClassName}>Shipping Weight (lb)</th>
                   )}
                   {visibleColumnKeys.has('boxDimensions') && (
-                    <th style={tableHeaderStyle}>Box Dimensions</th>
+                    <th className={tableHeaderClassName}>Box Dimensions</th>
                   )}
                   {visibleColumnKeys.has('shippingClass') && (
-                    <th style={tableHeaderStyle}>Shipping Class</th>
+                    <th className={tableHeaderClassName}>Shipping Class</th>
                   )}
                   {visibleColumnKeys.has('googleProductCategory') && (
-                    <th style={tableHeaderStyle}>Google Product Category</th>
+                    <th className={tableHeaderClassName}>Google Product Category</th>
                   )}
-                  {visibleColumnKeys.has('categories') && <th style={tableHeaderStyle}>Categories</th>}
+                  {visibleColumnKeys.has('categories') && <th className={tableHeaderClassName}>Categories</th>}
                   {visibleColumnKeys.has('compatibleVehicles') && (
-                    <th style={tableHeaderStyle}>Vehicles</th>
+                    <th className={tableHeaderClassName}>Vehicles</th>
                   )}
-                  {visibleColumnKeys.has('tags') && <th style={tableHeaderStyle}>Internal Tags</th>}
+                  {visibleColumnKeys.has('tags') && <th className={tableHeaderClassName}>Internal Tags</th>}
                   {visibleColumnKeys.has('availableForWholesale') && (
-                    <th style={tableHeaderStyle}>Wholesale?</th>
+                    <th className={tableHeaderClassName}>Wholesale?</th>
                   )}
                   {visibleColumnKeys.has('wholesalePriceStandard') && (
-                    <th style={tableHeaderStyle}>Wholesale Std</th>
+                    <th className={tableHeaderClassName}>Wholesale Std</th>
                   )}
                   {visibleColumnKeys.has('wholesalePricePreferred') && (
-                    <th style={tableHeaderStyle}>Wholesale Pref</th>
+                    <th className={tableHeaderClassName}>Wholesale Pref</th>
                   )}
                   {visibleColumnKeys.has('wholesalePricePlatinum') && (
-                    <th style={tableHeaderStyle}>Wholesale Plat</th>
+                    <th className={tableHeaderClassName}>Wholesale Plat</th>
                   )}
                   {visibleColumnKeys.has('minimumWholesaleQuantity') && (
-                    <th style={tableHeaderStyle}>Min Wholesale Qty</th>
+                    <th className={tableHeaderClassName}>Min Wholesale Qty</th>
                   )}
                   {visibleColumnKeys.has('manufacturingCost') && (
-                    <th style={tableHeaderStyle}>Manufacturing Cost</th>
+                    <th className={tableHeaderClassName}>Manufacturing Cost</th>
                   )}
-                  <th style={tableHeaderStyle}>Highlights</th>
-                  <th style={tableHeaderStyle}>Details</th>
-                  <th style={tableHeaderStyle}>Color</th>
-                  <th style={tableHeaderStyle}>Size</th>
-                  <th style={tableHeaderStyle}>Material</th>
-                  <th style={tableHeaderStyle}>Length</th>
-                  <th style={tableHeaderStyle}>Width</th>
-                  {visibleColumnKeys.has('installOnly') && <th style={tableHeaderStyle}>Install Only</th>}
+                  <th className={tableHeaderClassName}>Highlights</th>
+                  <th className={tableHeaderClassName}>Details</th>
+                  <th className={tableHeaderClassName}>Color</th>
+                  <th className={tableHeaderClassName}>Size</th>
+                  <th className={tableHeaderClassName}>Material</th>
+                  <th className={tableHeaderClassName}>Length</th>
+                  <th className={tableHeaderClassName}>Width</th>
+                  {visibleColumnKeys.has('installOnly') && <th className={tableHeaderClassName}>Install Only</th>}
                   {visibleColumnKeys.has('shippingLabel') && (
-                    <th style={tableHeaderStyle}>Shipping Label</th>
+                    <th className={tableHeaderClassName}>Shipping Label</th>
                   )}
-                  <th style={tableHeaderStyle}>Actions</th>
+                  <th className={tableHeaderClassName}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -2349,7 +2334,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                       key={product._key}
                       style={{borderTop: '1px solid rgba(148, 163, 184, 0.1)'}}
                     >
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={2}>
                           <Text size={1} style={{color: '#e5e7eb'}}>
                             {product.sku || '—'}
@@ -2360,7 +2345,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </Stack>
                       </td>
                       {visibleColumnKeys.has('title') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.title || ''}
                             onChange={(event) =>
@@ -2370,7 +2355,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('status') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={product.status || ''}
                             onChange={(event) =>
@@ -2392,7 +2377,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('productType') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={(product.productType as string) || ''}
                             onChange={(event) =>
@@ -2414,7 +2399,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('price') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.price?.toString() ?? ''}
                             onChange={(event) =>
@@ -2429,7 +2414,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('salePrice') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.salePrice?.toString() ?? ''}
                             onChange={(event) =>
@@ -2445,7 +2430,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                       )}
                       {visibleColumnKeys.has('onSale') && (
                         <td
-                          style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}
+                          className="px-space-4 py-space-3 align-top text-center"
                         >
                           <input
                             type="checkbox"
@@ -2457,7 +2442,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('discountType') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={(product.discountType as string) || ''}
                             onChange={(event) =>
@@ -2479,7 +2464,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('discountValue') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={
                               product.discountValue !== undefined && product.discountValue !== null
@@ -2498,7 +2483,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('saleStartDate') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <input
                             type="datetime-local"
                             value={toDateInputValue(product.saleStartDate)}
@@ -2512,7 +2497,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('saleEndDate') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <input
                             type="datetime-local"
                             value={toDateInputValue(product.saleEndDate)}
@@ -2526,7 +2511,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('saleLabel') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={(product.saleLabel as string) || ''}
                             onChange={(event) =>
@@ -2548,7 +2533,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('availability') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={product.availability || 'in_stock'}
                             onChange={(event) =>
@@ -2567,7 +2552,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('condition') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={product.condition || 'new'}
                             onChange={(event) =>
@@ -2585,7 +2570,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('manualInventoryCount') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={
                               product.manualInventoryCount !== undefined &&
@@ -2608,7 +2593,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('brand') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.brand || ''}
                             onChange={(event) =>
@@ -2618,7 +2603,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('mpn') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.mpn || ''}
                             onChange={(event) =>
@@ -2628,7 +2613,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('taxBehavior') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={product.taxBehavior || 'taxable'}
                             onChange={(event) =>
@@ -2645,7 +2630,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('taxCode') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.taxCode || ''}
                             onChange={(event) =>
@@ -2656,7 +2641,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('shippingWeight') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.shippingWeight?.toString() ?? ''}
                             onChange={(event) =>
@@ -2671,7 +2656,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('boxDimensions') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.boxDimensions || ''}
                             onChange={(event) =>
@@ -2686,7 +2671,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('shippingClass') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={product.shippingClass || ''}
                             onChange={(event) =>
@@ -2707,7 +2692,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('googleProductCategory') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             value={product.googleProductCategory || ''}
                             onChange={(event) =>
@@ -2728,7 +2713,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('categories') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             multiple
                             value={normalizeRefList(product.categories)
@@ -2760,7 +2745,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('compatibleVehicles') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <select
                             multiple
                             value={normalizeRefList(product.compatibleVehicles)
@@ -2792,7 +2777,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('tags') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <Stack space={1}>
                             <TextInput
                               value={formatTagsCell(product.tags)}
@@ -2811,7 +2796,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                       )}
                       {visibleColumnKeys.has('availableForWholesale') && (
                         <td
-                          style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}
+                          className="px-space-4 py-space-3 align-top text-center"
                         >
                           <input
                             type="checkbox"
@@ -2827,7 +2812,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('wholesalePriceStandard') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.wholesalePriceStandard?.toString() ?? ''}
                             onChange={(event) =>
@@ -2845,7 +2830,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('wholesalePricePreferred') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.wholesalePricePreferred?.toString() ?? ''}
                             onChange={(event) =>
@@ -2863,7 +2848,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('wholesalePricePlatinum') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.wholesalePricePlatinum?.toString() ?? ''}
                             onChange={(event) =>
@@ -2881,7 +2866,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('minimumWholesaleQuantity') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.minimumWholesaleQuantity?.toString() ?? ''}
                             onChange={(event) =>
@@ -2899,7 +2884,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('manufacturingCost') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.manufacturingCost?.toString() ?? ''}
                             onChange={(event) =>
@@ -2916,20 +2901,19 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           />
                         </td>
                       )}
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={2}>
                           <textarea
                             value={highlightLines.join('\n')}
                             readOnly
                             rows={3}
+                            className="w-full p-space-2 text-text-meta"
                             style={{
-                              width: '100%',
                               resize: 'vertical',
                               background: 'rgba(15, 23, 42, 0.6)',
                               color: '#e5e7eb',
                               border: '1px solid rgba(148, 163, 184, 0.3)',
                               borderRadius: 4,
-                              padding: 8,
                             }}
                           />
                           <Text size={0} style={{color: '#9ca3af'}}>
@@ -2937,20 +2921,19 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={2}>
                           <textarea
                             value={detailLines.join('\n')}
                             readOnly
                             rows={3}
+                            className="w-full p-space-2 text-text-meta"
                             style={{
-                              width: '100%',
                               resize: 'vertical',
                               background: 'rgba(15, 23, 42, 0.6)',
                               color: '#e5e7eb',
                               border: '1px solid rgba(148, 163, 184, 0.3)',
                               borderRadius: 4,
-                              padding: 8,
                             }}
                             placeholder="section: attribute: value"
                           />
@@ -2959,7 +2942,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={1}>
                           <Text size={1} style={{color: '#e5e7eb'}}>
                             {colorDisplay || '—'}
@@ -2969,7 +2952,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={1}>
                           <Text size={1} style={{color: '#e5e7eb'}}>
                             {sizeDisplay || '—'}
@@ -2979,7 +2962,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={1}>
                           <Text size={1} style={{color: '#e5e7eb'}}>
                             {materialDisplay || '—'}
@@ -2989,7 +2972,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={1}>
                           <Text size={1} style={{color: '#e5e7eb'}}>
                             {lengthDisplay || '—'}
@@ -2999,7 +2982,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           </Text>
                         </Stack>
                       </td>
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={1}>
                           <Text size={1} style={{color: '#e5e7eb'}}>
                             {widthDisplay || '—'}
@@ -3011,7 +2994,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                       </td>
                       {visibleColumnKeys.has('installOnly') && (
                         <td
-                          style={{textAlign: 'center', padding: '12px 16px', verticalAlign: 'top'}}
+                          className="px-space-4 py-space-3 align-top text-center"
                         >
                           <input
                             type="checkbox"
@@ -3027,7 +3010,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                         </td>
                       )}
                       {visibleColumnKeys.has('shippingLabel') && (
-                        <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                        <td className="px-space-4 py-space-3 align-top">
                           <TextInput
                             value={product.shippingLabel || ''}
                             onChange={(event) =>
@@ -3041,7 +3024,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
                           />
                         </td>
                       )}
-                      <td style={{padding: '12px 16px', verticalAlign: 'top'}}>
+                      <td className="px-space-4 py-space-3 align-top">
                         <Stack space={2}>
                           <Button
                             text={product.isSaving ? 'Saving…' : 'Save'}

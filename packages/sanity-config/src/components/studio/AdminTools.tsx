@@ -6,17 +6,14 @@ import {getNetlifyFunctionBaseCandidates, resolveNetlifyBase} from '../../utils/
 type BackfillResponse = Record<string, any>
 
 const cardStyle: React.CSSProperties = {
-  padding: 12,
   border: '1px solid var(--card-border-color)',
   borderRadius: 6,
-  marginBottom: 12,
   backgroundColor: 'var(--card-bg-color)',
   color: 'var(--card-fg-color)',
 }
 
 const inputBaseStyle: React.CSSProperties = {
   width: '100%',
-  padding: 8,
   border: '1px solid var(--input-border-color, var(--card-border-color))',
   borderRadius: 4,
   backgroundColor: 'var(--input-bg-color, var(--card-bg-color))',
@@ -33,7 +30,6 @@ const inlineInputStyle: React.CSSProperties = {
 }
 
 const fieldLabelStyle: React.CSSProperties = {
-  fontSize: 12,
   color: 'var(--card-muted-fg-color)',
 }
 
@@ -306,12 +302,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
     if (!value) return null
     return (
       <pre
+        className="mt-space-3 p-space-2 rounded-md text-text-meta"
         style={{
           background: 'var(--code-bg-color, var(--card-muted-bg-color))',
           border: '1px solid var(--card-border-color)',
-          padding: 8,
-          borderRadius: 6,
-          marginTop: 10,
           whiteSpace: 'pre-wrap',
           color: 'var(--code-fg-color, var(--card-fg-color))',
         }}
@@ -322,8 +316,8 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
   }
 
   const sharedSecretField = (id: string) => (
-    <div style={{marginBottom: 8}}>
-      <label style={{...fieldLabelStyle, display: 'block', marginBottom: 4}} htmlFor={id}>
+    <div className="mb-space-2">
+      <label className="block mb-space-1 text-text-caption" style={fieldLabelStyle} htmlFor={id}>
         Optional BACKFILL secret
       </label>
       <input
@@ -333,6 +327,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         value={secret}
         placeholder="Enter secret or leave blank"
         onChange={(event) => setSecret(event.target.value)}
+        className="w-full p-space-2 text-text-body"
         style={inputStyle}
       />
     </div>
@@ -354,21 +349,21 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
   )
 
   return (
-    <div ref={ref} style={{padding: 16, maxWidth: 880}}>
-      <h2 style={{margin: '8px 0'}}>Admin Tools</h2>
-      <Text size={1} style={{marginBottom: 12}}>
+    <div ref={ref} className="p-space-4" style={{maxWidth: 880}}>
+      <h2 className="my-space-2">Admin Tools</h2>
+      <Text size={1} className="mb-space-3">
         Netlify base: {activeBase}
       </Text>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Orders Backfill</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Orders Backfill</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Runs a cleanup across Order documents: normalises cart items, migrates legacy customer
           fields, and removes deprecated properties.
         </p>
-        <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
+        <div className="flex items-center gap-space-2 mb-space-2">
           <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            className="flex items-center gap-space-2"
             htmlFor="orders-global-dry-run"
           >
             <input
@@ -391,14 +386,14 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('orders')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Invoices Backfill</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Invoices Backfill</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Fixes invoice line items, migrates legacy references, and reconciles numbering.
         </p>
-        <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
+        <div className="flex items-center gap-space-2 mb-space-2">
           <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            className="flex items-center gap-space-2"
             htmlFor="invoices-global-dry-run"
           >
             <input
@@ -410,11 +405,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             />{' '}
             Dry run
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="invoices-limit"
-          >
-            <span style={fieldLabelStyle}>Limit</span>
+          <label className="flex flex-col gap-space-1" htmlFor="invoices-limit">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="invoices-limit"
               name="invoicesLimit"
@@ -422,6 +416,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={invoiceLimit}
               onChange={(event) => setInvoiceLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
@@ -442,14 +437,14 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('invoices')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Customers Backfill</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Customers Backfill</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Cleans up legacy auth provider IDs, defaults opt-in flags, and refreshes metadata.
         </p>
-        <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
+        <div className="flex items-center gap-space-2 mb-space-2">
           <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            className="flex items-center gap-space-2"
             htmlFor="customers-global-dry-run"
           >
             <input
@@ -472,15 +467,15 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('customers')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Checkout Async Payments</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Checkout Async Payments</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Replays async Stripe Checkout outcomes to reconcile orders stuck in pending or cancelled
           states.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            className="flex items-center gap-space-2"
             htmlFor="checkout-async-dry-run"
           >
             <input
@@ -492,11 +487,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             />{' '}
             Dry run
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="checkout-status-filter"
-          >
-            <span style={fieldLabelStyle}>Status filter</span>
+          <label className="flex flex-col gap-space-1" htmlFor="checkout-status-filter">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Status filter
+            </span>
             <select
               id="checkout-status-filter"
               name="checkoutStatus"
@@ -504,6 +498,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               onChange={(event) =>
                 setCheckoutStatus(event.target.value as 'all' | 'success' | 'failure')
               }
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             >
               <option value="all">All</option>
@@ -511,11 +506,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               <option value="failure">Failure only</option>
             </select>
           </label>
-          <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
-            htmlFor="checkout-limit"
-          >
-            <span style={fieldLabelStyle}>Limit</span>
+          <label className="flex flex-col gap-space-1" htmlFor="checkout-limit">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="checkout-limit"
               name="checkoutLimit"
@@ -523,16 +517,20 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={checkoutLimit}
               onChange={(event) => setCheckoutLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
         </div>
-        <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="checkout-session-id"
           >
-            <span style={fieldLabelStyle}>Checkout session ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Checkout session ID (optional)
+            </span>
             <input
               id="checkout-session-id"
               name="checkoutSessionId"
@@ -540,14 +538,18 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={checkoutSessionId}
               onChange={(event) => setCheckoutSessionId(event.target.value)}
               placeholder="cs_..."
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="checkout-order-id"
           >
-            <span style={fieldLabelStyle}>Order ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Order ID (optional)
+            </span>
             <input
               id="checkout-order-id"
               name="checkoutOrderId"
@@ -555,6 +557,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={checkoutOrderId}
               onChange={(event) => setCheckoutOrderId(event.target.value)}
               placeholder="order document ID"
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
@@ -573,14 +576,14 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('checkoutAsync')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Expired Checkout Sessions</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Expired Checkout Sessions</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Reprocesses Stripe checkout sessions that have expired to create the matching order and
           expired cart records in Sanity.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="expired-dry-run">
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
+          <label className="flex items-center gap-space-2" htmlFor="expired-dry-run">
             <input
               id="expired-dry-run"
               name="expiredDryRun"
@@ -590,8 +593,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             />{' '}
             Dry run
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="expired-limit">
-            <span style={fieldLabelStyle}>Limit</span>
+          <label className="flex flex-col gap-space-1" htmlFor="expired-limit">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="expired-limit"
               name="expiredLimit"
@@ -599,11 +604,14 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={expiredLimit}
               onChange={(event) => setExpiredLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="expired-since">
-            <span style={fieldLabelStyle}>Created since (ISO or Unix)</span>
+          <label className="flex flex-col gap-space-1" htmlFor="expired-since">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Created since (ISO or Unix)
+            </span>
             <input
               id="expired-since"
               name="expiredSince"
@@ -611,16 +619,20 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={expiredSince}
               onChange={(event) => setExpiredSince(event.target.value)}
               placeholder="2025-10-01 or 1730332800"
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
         </div>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 260px'}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 260px'}}
             htmlFor="expired-session-id"
           >
-            <span style={fieldLabelStyle}>Specific session ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Specific session ID (optional)
+            </span>
             <input
               id="expired-session-id"
               name="expiredSessionId"
@@ -628,6 +640,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={expiredSessionId}
               onChange={(event) => setExpiredSessionId(event.target.value)}
               placeholder="cs_..."
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
@@ -647,14 +660,14 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('expired-checkouts')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Order Shipping Backfill</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Order Shipping Backfill</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Replays checkout sessions to backfill packing slips, carrier data, and selected shipping
           services.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="shipping-dry-run">
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
+          <label className="flex items-center gap-space-2" htmlFor="shipping-dry-run">
             <input
               id="shipping-dry-run"
               name="shippingDryRun"
@@ -665,10 +678,12 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             Dry run
           </label>
           <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
             htmlFor="shipping-limit"
           >
-            <span style={fieldLabelStyle}>Limit</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="shipping-limit"
               name="shippingLimit"
@@ -676,36 +691,45 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={shippingLimit}
               onChange={(event) => setShippingLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
         </div>
-        <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="shipping-order-id"
           >
-            <span style={fieldLabelStyle}>Order ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Order ID (optional)
+            </span>
             <input
               id="shipping-order-id"
               name="shippingOrderId"
               type="text"
               value={shippingOrderId}
               onChange={(event) => setShippingOrderId(event.target.value)}
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="shipping-session-id"
           >
-            <span style={fieldLabelStyle}>Checkout session ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Checkout session ID (optional)
+            </span>
             <input
               id="shipping-session-id"
               name="shippingSessionId"
               type="text"
               value={shippingSessionId}
               onChange={(event) => setShippingSessionId(event.target.value)}
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
@@ -723,18 +747,20 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('orderShipping')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Stripe Order Sync</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Stripe Order Sync</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Replays Stripe data to fill in checkout sessions, payment intents, or charge metadata on
           orders.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
             htmlFor="stripe-sync-mode"
           >
-            <span style={fieldLabelStyle}>Mode</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Mode
+            </span>
             <select
               id="stripe-sync-mode"
               name="stripeKind"
@@ -748,6 +774,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
                       : 'paymentIntent',
                 )
               }
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             >
               <option value="checkout">Checkout session</option>
@@ -755,8 +782,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               <option value="charge">Charge</option>
             </select>
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="stripe-limit">
-            <span style={fieldLabelStyle}>Limit</span>
+          <label className="flex flex-col gap-space-1" htmlFor="stripe-limit">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="stripe-limit"
               name="stripeLimit"
@@ -764,10 +793,11 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={stripeLimit}
               onChange={(event) => setStripeLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="stripe-dry-run">
+          <label className="flex items-center gap-space-2" htmlFor="stripe-dry-run">
             <input
               id="stripe-dry-run"
               name="stripeDryRun"
@@ -779,10 +809,12 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
           </label>
         </div>
         <label
-          style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
+          className="flex flex-col gap-space-1 mb-space-2"
           htmlFor="stripe-specific-id"
         >
-          <span style={fieldLabelStyle}>Specific Stripe ID (optional)</span>
+          <span className="text-text-caption" style={fieldLabelStyle}>
+            Specific Stripe ID (optional)
+          </span>
           <input
             id="stripe-specific-id"
             name="stripeId"
@@ -790,10 +822,11 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             value={stripeId}
             onChange={(event) => setStripeId(event.target.value)}
             placeholder="cs_ / pi_ / ch_"
+            className="w-full p-space-2 text-text-body"
             style={inputStyle}
           />
         </label>
-        <div style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
+        <div className="flex flex-wrap gap-space-2">
           {renderActionButton('orderStripe', 'Run Stripe Sync', () => {
             invokeBackfill('orderStripe', 'backfillOrderStripe', {
               dryRun: stripeDryRun,
@@ -816,14 +849,14 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('orderStripe')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Payment Failure Diagnostics</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Payment Failure Diagnostics</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Pulls failure codes from Stripe and patches orders/invoices with reconciliation details.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{display: 'flex', alignItems: 'center', gap: 6}}
+            className="flex items-center gap-space-2"
             htmlFor="payment-failures-dry-run"
           >
             <input
@@ -836,10 +869,12 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             Dry run
           </label>
           <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
             htmlFor="payment-failures-limit"
           >
-            <span style={fieldLabelStyle}>Limit</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="payment-failures-limit"
               name="paymentFailuresLimit"
@@ -847,30 +882,38 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={paymentFailuresLimit}
               onChange={(event) => setPaymentFailuresLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
         </div>
-        <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="payment-failures-order-id"
           >
-            <span style={fieldLabelStyle}>Order ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Order ID (optional)
+            </span>
             <input
               id="payment-failures-order-id"
               name="paymentFailuresOrderId"
               type="text"
               value={paymentFailuresOrderId}
               onChange={(event) => setPaymentFailuresOrderId(event.target.value)}
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="payment-failures-order-number"
           >
-            <span style={fieldLabelStyle}>Order number (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Order number (optional)
+            </span>
             <input
               id="payment-failures-order-number"
               name="paymentFailuresOrderNumber"
@@ -878,14 +921,18 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={paymentFailuresOrderNumber}
               onChange={(event) => setPaymentFailuresOrderNumber(event.target.value)}
               placeholder="FAS-000123"
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="payment-failures-intent"
           >
-            <span style={fieldLabelStyle}>Payment intent ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Payment intent ID (optional)
+            </span>
             <input
               id="payment-failures-intent"
               name="paymentFailuresPaymentIntent"
@@ -893,6 +940,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={paymentFailuresPaymentIntent}
               onChange={(event) => setPaymentFailuresPaymentIntent(event.target.value)}
               placeholder="pi_..."
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
@@ -911,13 +959,13 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('paymentFailures')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Refund Reconciliation</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Refund Reconciliation</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Replays Stripe refund webhook events to ensure orders and invoices reflect refund status.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
-          <label style={{display: 'flex', alignItems: 'center', gap: 6}} htmlFor="refunds-dry-run">
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
+          <label className="flex items-center gap-space-2" htmlFor="refunds-dry-run">
             <input
               id="refunds-dry-run"
               name="refundsDryRun"
@@ -927,8 +975,10 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             />{' '}
             Dry run
           </label>
-          <label style={{display: 'flex', flexDirection: 'column', gap: 4}} htmlFor="refunds-limit">
-            <span style={fieldLabelStyle}>Limit</span>
+          <label className="flex flex-col gap-space-1" htmlFor="refunds-limit">
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="refunds-limit"
               name="refundsLimit"
@@ -936,30 +986,38 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               min={1}
               value={refundsLimit}
               onChange={(event) => setRefundsLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
         </div>
-        <div style={{display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="refunds-order-id"
           >
-            <span style={fieldLabelStyle}>Order ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Order ID (optional)
+            </span>
             <input
               id="refunds-order-id"
               name="refundsOrderId"
               type="text"
               value={refundsOrderId}
               onChange={(event) => setRefundsOrderId(event.target.value)}
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
           <label
-            style={{flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
+            style={{flex: '1 1 220px'}}
             htmlFor="refunds-payment-intent"
           >
-            <span style={fieldLabelStyle}>Payment intent ID (optional)</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Payment intent ID (optional)
+            </span>
             <input
               id="refunds-payment-intent"
               name="refundsPaymentIntent"
@@ -967,6 +1025,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               value={refundsPaymentIntent}
               onChange={(event) => setRefundsPaymentIntent(event.target.value)}
               placeholder="pi_..."
+              className="w-full p-space-2 text-text-body"
               style={inputStyle}
             />
           </label>
@@ -984,23 +1043,26 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('refunds')}
       </section>
 
-      <section style={cardStyle}>
-        <h3 style={{marginTop: 0}}>Stripe Products Sync</h3>
-        <p style={descriptionStyle}>
+      <section className="p-space-3 mb-space-3" style={cardStyle}>
+        <h3 className="mt-0">Stripe Products Sync</h3>
+        <p className="text-text-meta" style={descriptionStyle}>
           Invokes the catalog sync to ensure Sanity products are reflected in Stripe with current
           pricing.
         </p>
-        <div style={{display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8}}>
+        <div className="flex flex-wrap gap-space-3 mb-space-2">
           <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
             htmlFor="stripe-product-mode"
           >
-            <span style={fieldLabelStyle}>Mode</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Mode
+            </span>
             <select
               id="stripe-product-mode"
               name="productMode"
               value={productMode}
               onChange={(event) => setProductMode(event.target.value === 'all' ? 'all' : 'missing')}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             >
               <option value="missing">Missing only</option>
@@ -1008,10 +1070,12 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             </select>
           </label>
           <label
-            style={{display: 'flex', flexDirection: 'column', gap: 4}}
+            className="flex flex-col gap-space-1"
             htmlFor="stripe-product-limit"
           >
-            <span style={fieldLabelStyle}>Limit</span>
+            <span className="text-text-caption" style={fieldLabelStyle}>
+              Limit
+            </span>
             <input
               id="stripe-product-limit"
               name="productLimit"
@@ -1020,15 +1084,18 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
               max={100}
               value={productLimit}
               onChange={(event) => setProductLimit(event.target.value)}
+              className="p-space-2 text-text-body"
               style={inlineInputStyle}
             />
           </label>
         </div>
         <label
-          style={{display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8}}
+          className="flex flex-col gap-space-1 mb-space-2"
           htmlFor="stripe-product-ids"
         >
-          <span style={fieldLabelStyle}>Specific product IDs (optional, comma separated)</span>
+          <span className="text-text-caption" style={fieldLabelStyle}>
+            Specific product IDs (optional, comma separated)
+          </span>
           <input
             id="stripe-product-ids"
             name="productIds"
@@ -1036,6 +1103,7 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
             value={productIds}
             onChange={(event) => setProductIds(event.target.value)}
             placeholder="productId1,productId2"
+            className="w-full p-space-2 text-text-body"
             style={inputStyle}
           />
         </label>

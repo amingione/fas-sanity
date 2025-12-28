@@ -1,0 +1,32 @@
+TASK: Audit why Sanity Studio colors defined via CSS variables are not taking effect.
+
+REPO IN SCOPE:
+- fas-sanity ONLY
+
+PRIMARY SYMPTOM:
+- CSS variables under body.sanity-studio-theme are defined but UI colors do not change.
+
+AUDIT OBJECTIVES:
+1) Confirm whether body.sanity-studio-theme is present on <body> at runtime.
+2) Confirm CSS file load order relative to Sanity UI styles.
+3) Identify whether styled-components inject inline styles overriding variables.
+4) Identify whether Sanity UI components read JS theme tokens instead of CSS vars.
+5) Identify any remaining selectors redefining --studio-* after the authoritative block.
+
+FILES / AREAS TO INSPECT:
+- packages/sanity-config/src/components/studio/StudioLayout.tsx
+- packages/sanity-config/src/styles/tailwind.css
+- sanity.config.ts
+- styled-components usage (ThemeProvider, StyleSheetManager)
+- build pipeline for CSS inclusion
+
+RULES:
+- READ-ONLY audit
+- DO NOT modify files
+- DO NOT suggest fixes until root cause is proven
+
+OUTPUT REQUIREMENTS:
+- Write report to docs/reports/sanity-color-authority-audit.md
+- Explicitly state which layer is authoritative for colors
+- Explicitly state why CSS variables are ignored or overridden
+- Recommend ONE minimal fix (no alternatives)
