@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "20.19.1"
   MISE_DISABLE = "1"
   NODE_OPTIONS = "--require ./scripts/aws-secrets-shim.cjs"
   # Allow specific environment variable names to pass secret scanning since

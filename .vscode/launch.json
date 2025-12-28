@@ -13,7 +13,7 @@
       "name": "Sanity Dev",
       "type": "pwa-node",
       "request": "launch",
-      "runtimeExecutable": "~/.nvm/versions/node/v20.19.0/bin/node",
+      "runtimeExecutable": "~/.nvm/versions/node/v20.19.1/bin/node",
       "program": "${workspaceFolder}/node_modules/sanity/bin/sanity",
       "args": [
         "dev"

@@ -256,6 +256,16 @@ const product = defineType({
       group: 'basic',
     }),
     defineField({
+      name: 'displayTitle',
+      type: 'string',
+      title: 'Display Title',
+      description:
+        'Optional short name for cards and grids (e.g., "2.7L Billet Snout" instead of "2.7L Billet Supercharger Snout"). Leave empty to use the full title.',
+      group: 'basic',
+      validation: (Rule) =>
+        Rule.max(50).warning('Keep under 50 characters for optimal display in product cards'),
+    }),
+    defineField({
       name: 'slug',
       title: 'URL Slug',
       type: 'slug',
