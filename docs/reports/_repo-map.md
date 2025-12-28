@@ -1,7 +1,8 @@
 # Repo Map (fas-sanity + fas-cms-fresh)
 
 ## fas-sanity (Sanity Studio + schemas + Netlify functions)
-- Location: `/Users/ambermin/LocalStorm/Workspace/DevProjects/fas-sanity`
+
+- Location: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity`
 - Schema root: `packages/sanity-config/src/schemaTypes`
 - Key document schemas (audit scope):
   - Customers: `packages/sanity-config/src/schemaTypes/documents/customer.ts`
@@ -21,6 +22,7 @@
   - SMS (Twilio): `netlify/functions/notify-sms.ts`
 
 ## fas-cms-fresh (Astro frontend + API routes)
+
 - Location: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh`
 - Sanity clients:
   - Server: `src/server/sanity-client.ts`
@@ -37,6 +39,7 @@
   - Invite/reset + tokens: `src/server/vendor-portal/service.ts`
 
 ## Integration Points (Cross-Repo)
+
 - Stripe
   - Checkout + order creation: `src/pages/api/checkout.ts`, `src/pages/api/webhooks.ts`
   - Sanity-side Stripe syncing: `netlify/functions/stripeWebhook.ts`, `netlify/functions/syncStripeCatalog.ts`
