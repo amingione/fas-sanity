@@ -476,7 +476,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h1
-                className={`text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)] transition-all duration-200 ${
+                className={`text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)] transition-all duration-200 ${
                   compactHeader ? 'opacity-80' : ''
                 }`}
               >
@@ -487,7 +487,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
               <button
                 type="button"
                 onClick={createInvoice}
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-text-meta font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
               >
                 Create Invoice
               </button>
@@ -502,7 +502,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                   disabled={batchLoading}
                   aria-haspopup="menu"
                   aria-expanded={batchMenuOpen}
-                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-[var(--studio-border-strong)] px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 ${
+                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border border-[var(--studio-border-strong)] px-3 py-1.5 text-text-meta font-medium shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 ${
                     hasSelections
                       ? 'text-[var(--studio-muted)] hover:bg-[var(--studio-surface-soft)]'
                       : 'text-[rgba(148,163,184,0.7)] hover:bg-[var(--studio-surface-strong)]'
@@ -526,7 +526,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                     >
                       <span>Mark selected paid</span>
                       {hasSelections ? (
-                        <span className="text-xs text-[rgba(148,163,184,0.7)]">
+                        <span className="text-text-caption text-[rgba(148,163,184,0.7)]">
                           {selectedIds.size}
                         </span>
                       ) : null}
@@ -543,7 +543,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
         className="border-b border-[var(--studio-border)]"
         style={{background: 'var(--studio-surface-strong)'}}
       >
-        <div className="-mx-2 flex gap-3 overflow-x-auto px-4 pb-4 pt-4 sm:-mx-3 sm:px-6 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-visible lg:px-6 lg:pb-6 lg:pt-6">
+        <div className="flex gap-3 overflow-x-auto px-4 pb-4 pt-4 sm:px-6 lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-visible lg:px-6 lg:pb-6 lg:pt-6">
           <div className="min-w-[150px] flex-shrink-0 sm:min-w-[170px] lg:min-w-0 lg:flex-shrink">
             <SummaryCard title="Unpaid" subtitle="Last 12 months" amount={metrics.unpaidYear} />
           </div>
@@ -562,7 +562,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
               subtitle="Current balance"
               amount={metrics.overdue + metrics.notDue}
               footer={
-                <div className="mt-2 space-y-1 text-[11px] text-[var(--studio-muted)]">
+                <div className="mt-2 space-y-1 text-text-caption text-[var(--studio-muted)]">
                   <div>Overdue {currency.format(metrics.overdue)}</div>
                   <div>Not due {currency.format(metrics.notDue)}</div>
                 </div>
@@ -792,7 +792,7 @@ const InvoiceDashboard = React.forwardRef<HTMLDivElement, Record<string, never>>
                           </span>
                           <span>
                             <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClass(
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-text-caption font-semibold ${badgeClass(
                                 invoice,
                               )}`}
                             >
@@ -836,7 +836,7 @@ const SummaryCard: React.FC<{
   return (
     <div className="flex h-full min-h-[115px] flex-col justify-between rounded-md border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2.5 shadow-sm">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+        <p className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
           {subtitle}
         </p>
         <h3 className="mt-1 text-sm font-semibold text-[var(--studio-text)]">{title}</h3>

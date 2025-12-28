@@ -1,0 +1,44 @@
+TASK: Perform a read-only audit of CSS classes and layout usage across the repo
+to identify spacing, padding, margin, and text-size issues causing overlap,
+clutter, or unreadable UI — especially in custom components.
+
+REPO IN SCOPE:
+- fas-sanity ONLY
+
+PRIMARY SYMPTOMS:
+- Components visually overlap or feel cramped
+- Text appears too small or inconsistent
+- Buttons, headers, or metadata collide
+- Custom components ignore spacing conventions
+
+FILES / AREAS TO INSPECT:
+- All custom React/TSX components
+- Tailwind utility usage in JSX/TSX
+- packages/sanity-config/src/styles/tailwind.css
+- Any component-level CSS or inline styles
+
+AUDIT OBJECTIVES:
+1) Identify components lacking sufficient padding or margin.
+2) Identify inconsistent spacing scales (mixed px, rem, Tailwind sizes).
+3) Identify flex/grid containers missing safety rules:
+   - min-width: 0
+   - min-height: 0
+   - gap usage instead of margins
+4) Identify text sizes that reduce readability:
+   - text-xs overuse
+   - hardcoded font sizes
+5) Identify absolute positioning or negative margins causing collisions.
+6) Identify opportunities for a shared spacing & typography baseline.
+
+RULES:
+- READ-ONLY audit
+- DO NOT modify files
+- DO NOT suggest ad-hoc per-component hacks
+- Prefer systemic fixes over one-off tweaks
+
+OUTPUT REQUIREMENTS:
+- Write report to docs/reports/css-spacing-readability-audit.md
+- List problem areas grouped by category (spacing, text, layout)
+- Call out the WORST offenders explicitly
+- Recommend ONE minimal baseline spacing & typography system
+- Clearly separate 'systemic fixes' vs 'component-specific fixes'

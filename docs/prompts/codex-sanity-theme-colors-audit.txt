@@ -1,0 +1,35 @@
+TASK: Audit why Sanity Studio theme colors are not changing as expected.
+
+REPO IN SCOPE:
+- fas-sanity ONLY
+
+PROBLEM:
+- Theme color changes have been attempted but do not reflect in Studio UI.
+- Expected brand/theme colors are not applied.
+
+AUDIT OBJECTIVES:
+1) Identify how Studio theming is currently configured.
+2) Identify whether theme tokens are overridden or ignored.
+3) Identify whether Sanity v3 theming API is used correctly.
+4) Identify any CSS, plugin, or structure-level overrides.
+5) Identify build or cache issues preventing theme updates.
+
+FILES / AREAS TO INSPECT:
+- sanity.config.ts / sanity.config.js
+- Studio theme configuration (defineConfig, theme, studioTheme)
+- Desk structure components
+- Custom CSS or global styles
+- Sanity version compatibility with theming API
+- Any plugin that may inject styles
+
+RULES:
+- READ-ONLY audit
+- DO NOT modify files
+- DO NOT suggest fixes yet
+
+OUTPUT REQUIREMENTS:
+- Write findings to docs/reports/sanity-theme-colors-audit.md
+- Clearly explain WHY colors are not changing
+- Identify which layer is authoritative for theme colors
+
+STOP AFTER AUDIT.

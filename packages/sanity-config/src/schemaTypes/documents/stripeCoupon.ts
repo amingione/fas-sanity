@@ -16,10 +16,8 @@ export const stripeCouponType = defineType({
   title: 'Stripe Coupon',
   description: 'Coupons are managed in Stripe and synced automatically.',
   readOnly: true,
-  // @ts-expect-error Allow restricting document actions even though the type no longer declares it
-  __experimental_actions: [],
   components: {
-    preview: StripeCouponPreview,
+    preview: StripeCouponPreview as any,
   },
   fields: [
     defineField({
@@ -39,7 +37,12 @@ export const stripeCouponType = defineType({
           return match ? 'Stripe ID must be unique' : true
         }),
     }),
-    defineField({name: 'name', type: 'string', title: 'Coupon Name', validation: (Rule) => Rule.required()}),
+    defineField({
+      name: 'name',
+      type: 'string',
+      title: 'Coupon Name',
+      validation: (Rule) => Rule.required(),
+    }),
     defineField({
       name: 'duration',
       type: 'string',
@@ -127,10 +130,18 @@ export const stripeCouponType = defineType({
     defineField({name: 'deletedAt', type: 'datetime', title: 'Deleted At'}),
     defineField({
       name: 'metadata',
-      type: 'object',
       title: 'Stripe Metadata',
-      description: 'Raw Stripe metadata stored as a JSON object.',
-      fields: [],
+      type: 'object',
+      readOnly: true,
+      fields: [
+        {
+          name: 'raw',
+          title: 'Raw Metadata (JSON)',
+          type: 'string',
+          description: 'Raw Stripe metadata serialized as JSON.',
+          readOnly: true,
+        },
+      ],
     }),
   ],
   preview: {

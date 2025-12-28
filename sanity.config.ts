@@ -1,4 +1,9 @@
 import './src/styles/inter.css'
 import './src/styles/tailwind.css'
 
-export {default} from './packages/sanity-config/sanity.config'
+import config from './packages/sanity-config/sanity.config'
+
+export default {
+  ...config,
+  theme: config.theme,
+}

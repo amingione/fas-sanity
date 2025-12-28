@@ -1146,7 +1146,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                 )}
                 <div className="h-full overflow-x-auto overflow-y-auto">
                   <table className="min-w-full table-fixed divide-y divide-slate-200">
-                    <thead className="sticky top-0 z-10 bg-[var(--studio-surface-soft)] text-left text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                    <thead className="sticky top-0 z-10 bg-[var(--studio-surface-soft)] text-left text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                       <tr>
                         <th className="w-12 px-6 py-3">
                           <label className="inline-flex items-center">
@@ -1224,13 +1224,13 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                   {customer.displayName}
                                 </button>
                                 {customer.email && (
-                                  <div className="text-xs text-[var(--studio-muted)]">
+                                  <div className="text-text-meta text-[var(--studio-muted)]">
                                     {customer.email}
                                   </div>
                                 )}
                               </td>
                               <td className="px-3 py-4">
-                                <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
+                                <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-text-caption font-medium text-[var(--studio-muted)]">
                                   {getSubscriptionStatus(customer)}
                                 </span>
                               </td>
@@ -1384,7 +1384,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               className="flex min-w-[160px] flex-1 flex-col rounded-lg border border-[var(--studio-border)] p-4"
                               style={{background: 'var(--studio-surface-overlay)'}}
                             >
-                              <span className="text-xs font-medium uppercase tracking-wide text-[var(--studio-muted)]">
+                              <span className="text-text-caption font-medium uppercase tracking-wide text-[var(--studio-muted)]">
                                 {metric.label}
                               </span>
                               <span className="mt-2 text-lg font-semibold text-[var(--studio-text)]">
@@ -1414,14 +1414,14 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
-                                  className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-xs font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
+                                  className="rounded-lg border border-[var(--studio-border)] bg-[var(--studio-surface-strong)] px-3 py-2 text-text-meta font-medium text-[var(--studio-text)] shadow-sm transition hover:border-[var(--studio-border-strong)] hover:text-[var(--studio-text)]"
                                   onClick={handleOpenInStudio}
                                 >
                                   View all orders
                                 </button>
                                 <button
                                   type="button"
-                                  className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                                  className="rounded-lg bg-slate-900 px-3 py-2 text-text-meta font-semibold text-white shadow-sm transition hover:bg-slate-800"
                                   onClick={handleCreateOrder}
                                 >
                                   Create order
@@ -1443,12 +1443,12 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     </span>
                                   )}
                                   {latestOrder.status && (
-                                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-text-caption font-medium text-emerald-700">
                                       {latestOrder.status}
                                     </span>
                                   )}
                                   {latestOrderDate && (
-                                    <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
+                                    <span className="inline-flex items-center rounded-full border border-[var(--studio-border)] bg-[var(--studio-surface-soft)] px-2.5 py-1 text-text-caption font-medium text-[var(--studio-muted)]">
                                       {formatDistanceToNow(latestOrderDate, {addSuffix: true})}
                                     </span>
                                   )}
@@ -1487,7 +1487,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <div className="space-y-6">
                                 {timelineSections.map((section) => (
                                   <div key={section.dateLabel}>
-                                    <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                    <h4 className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                       {section.dateLabel}
                                     </h4>
                                     <ul className="mt-3 space-y-4 border-l border-[var(--studio-border)] pl-5">
@@ -1505,7 +1505,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                               {entry.description}
                                             </p>
                                             {entry.timeLabel && (
-                                              <p className="text-xs text-[rgba(148,163,184,0.7)]">
+                                              <p className="text-text-meta text-[rgba(148,163,184,0.7)]">
                                                 {entry.timeLabel}
                                               </p>
                                             )}
@@ -1547,7 +1547,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                           </div>
                           <div className="space-y-6 px-6 py-5 text-sm text-[var(--studio-text)]">
                             <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                              <h4 className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                 Contact information
                               </h4>
                               <div className="flex flex-wrap items-center gap-2">
@@ -1582,7 +1582,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                             </div>
 
                             <div className="space-y-2">
-                              <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                              <h4 className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                 Default address
                               </h4>
                               {shippingLines.length > 0 ? (
@@ -1600,7 +1600,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
 
                             {billingLines.length > 0 && (
                               <div className="space-y-2">
-                                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                <h4 className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                   Billing address
                                 </h4>
                                 <address className="not-italic leading-relaxed text-[var(--studio-text)]">
@@ -1662,13 +1662,13 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                           ? `${method.brand} •••• ${method.last4}`
                                           : method.brand}
                                       </div>
-                                      <div className="text-xs text-[var(--studio-muted)]">
+                                      <div className="text-text-meta text-[var(--studio-muted)]">
                                         {method.lastUsed
                                           ? `Last used ${formatDistanceToNow(method.lastUsed, {addSuffix: true})}`
                                           : 'Usage date unavailable'}
                                       </div>
                                     </div>
-                                    <span className="rounded-full bg-[var(--studio-surface-soft)] px-2.5 py-1 text-xs font-medium text-[var(--studio-muted)]">
+                                    <span className="rounded-full bg-[var(--studio-surface-soft)] px-2.5 py-1 text-text-caption font-medium text-[var(--studio-muted)]">
                                       {method.orderCount}{' '}
                                       {method.orderCount === 1 ? 'order' : 'orders'}
                                     </span>
@@ -1694,7 +1694,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                               <div className="space-y-4 text-[var(--studio-text)]">
                                 <div className="flex flex-wrap gap-6">
                                   <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                    <div className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                       Total redeemed
                                     </div>
                                     <div className="text-base font-semibold text-[var(--studio-text)]">
@@ -1702,7 +1702,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
+                                    <div className="text-text-caption font-semibold uppercase tracking-wide text-[var(--studio-muted)]">
                                       Transactions
                                     </div>
                                     <div className="text-base font-semibold text-[var(--studio-text)]">
@@ -1720,12 +1720,12 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                             Redeemed {formatCurrency(transaction.amount)}
                                           </span>
                                           {transaction.orderNumber ? (
-                                            <span className="text-xs text-[var(--studio-muted)]">
+                                            <span className="text-text-meta text-[var(--studio-muted)]">
                                               Order {transaction.orderNumber}
                                             </span>
                                           ) : null}
                                         </div>
-                                        <span className="text-xs text-[var(--studio-muted)]">
+                                        <span className="text-text-meta text-[var(--studio-muted)]">
                                           {transaction.occurredAt
                                             ? `${format(transaction.occurredAt, 'MMM d, yyyy')} • ${formatDistanceToNow(transaction.occurredAt, {addSuffix: true})}`
                                             : 'Date unavailable'}
@@ -1734,7 +1734,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                                     ))}
                                 </ul>
                                 {storeCreditSummary.transactions.length > 5 ? (
-                                  <p className="text-xs text-[var(--studio-muted)]">
+                                  <p className="text-text-meta text-[var(--studio-muted)]">
                                     Showing the 5 most recent credits out of{' '}
                                     {storeCreditSummary.transactions.length}.
                                   </p>
@@ -1775,7 +1775,7 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
                             {roleTags.map((tag) => (
                               <span
                                 key={tag}
-                                className="inline-flex items-center rounded-full bg-[var(--studio-surface-soft)] px-3 py-1 text-xs font-medium text-[var(--studio-muted)]"
+                                className="inline-flex items-center rounded-full bg-[var(--studio-surface-soft)] px-3 py-1 text-text-caption font-medium text-[var(--studio-muted)]"
                               >
                                 {tag}
                               </span>

@@ -1,9 +1,9 @@
 // NOTE: Removed @sanity/color-input to avoid peer-dependency conflict with Sanity v4 and fix Netlify build.
-import {defineConfig, type PluginOptions, type StudioTheme, type SchemaTypeDefinition} from 'sanity'
+import {defineConfig, type PluginOptions, type SchemaTypeDefinition} from 'sanity'
 import fs from 'fs'
 import {config as loadDotenv} from 'dotenv'
 import './src/styles/tailwind.css'
-import {studioTheme, Card, Text, Stack} from '@sanity/ui'
+import {Card, Text, Stack} from '@sanity/ui'
 import React from 'react'
 // Desk Tool import is different across Sanity versions; support both named and default
 import * as _desk from 'sanity/desk'
@@ -40,6 +40,7 @@ import StripeAnalyticsWidget from './src/components/StripeAnalyticsWidget'
 import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
 import {autoMapperPlugin} from './src/plugins/autoMapper'
 import {documentListWidget} from './src/plugins/documentListWidget'
+import {darkModernTheme} from './src/theme/darkModernTheme'
 
 declare const __SANITY_STUDIO_RUNTIME_ENV__: Record<string, string | undefined> | undefined
 
@@ -156,7 +157,6 @@ const getEnvFlag = (...names: string[]) => {
   return undefined
 }
 
-const resolvedTheme: StudioTheme = studioTheme
 const analyticsIframeUrl = readEnv('SANITY_STUDIO_ANALYTICS_IFRAME_URL')
 
 const IframeWidget = ({title, url}: {title: string; url?: string | null}) =>
@@ -215,10 +215,8 @@ const visionEnabled = disableVisionOverride === true ? false : true
 const visualEditingEnabled =
   disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true
 
-const autoMapperEnabled = getEnvFlag(
-  'SANITY_STUDIO_ENABLE_AUTO_MAPPER',
-  'VITE_SANITY_STUDIO_ENABLE_AUTO_MAPPER',
-) !== false
+const autoMapperEnabled =
+  getEnvFlag('SANITY_STUDIO_ENABLE_AUTO_MAPPER', 'VITE_SANITY_STUDIO_ENABLE_AUTO_MAPPER') !== false
 
 const deskStructureConfigured = typeof deskStructure === 'function'
 if (hasProcess && process.env.DEBUG_STUDIO_ENV) {
@@ -229,21 +227,28 @@ const defaultDocumentNode = (S: any, {schemaType}: {schemaType: string}) => {
   if (schemaType === 'order') {
     return S.document().views([
       S.view.form(),
-      S.view.component(orderView as any).title('Order Management').id('order-management-view'),
+      S.view
+        .component(orderView as any)
+        .title('Order Management')
+        .id('order-management-view'),
     ])
   }
 
   if (schemaType === 'customer') {
     return S.document().views([
       S.view.form(),
-      S.view.component(CustomerDashboard as any).title('Customer Dashboard').id('customer-dashboard'),
+      S.view
+        .component(CustomerDashboard as any)
+        .title('Customer Dashboard')
+        .id('customer-dashboard'),
     ])
   }
 
   if (schemaType === 'vehicle') {
     return S.document().views([
       S.view.form(),
-      S.view.component(VehicleServiceHistory as any)
+      S.view
+        .component(VehicleServiceHistory as any)
         .title('Vehicle Service History')
         .id('vehicle-history'),
     ])
@@ -373,7 +378,7 @@ export default defineConfig({
   schema: {
     types: schemaTypes as unknown as SchemaTypeDefinition[],
   },
-  theme: resolvedTheme,
+  theme: darkModernTheme,
   studio: {
     components: {
       layout: StudioLayout,
