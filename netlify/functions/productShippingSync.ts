@@ -161,24 +161,10 @@ async function syncProduct(productId: string) {
   if (!product?.stripeProductId) {
     return {skipped: true, reason: 'Missing stripeProductId'}
   }
-  if (product.productType === 'service' || product?.shippingConfig?.requiresShipping === false) {
-    const clearedMetadata = {
-      shipping_weight: undefined,
-      shipping_dimensions: undefined,
-      shipping_class: undefined,
-      handling_time: undefined,
-      ships_alone: undefined,
-    }
-    await updateStripeMetadata(product.stripeProductId, clearedMetadata)
-    await updateStripePriceMetadata(product.stripeProductId, clearedMetadata)
-    await sanity.patch(product._id).set({stripeLastSyncedAt: new Date().toISOString()}).commit()
-    return {updated: true}
+  return {
+    skipped: true,
+    reason: 'Shipping metadata sync disabled; use syncStripeCatalog',
   }
-  const metadata = buildMetadata(product)
-  await updateStripeMetadata(product.stripeProductId, metadata)
-  await updateStripePriceMetadata(product.stripeProductId, metadata)
-  await sanity.patch(product._id).set({stripeLastSyncedAt: new Date().toISOString()}).commit()
-  return {updated: true, metadata}
 }
 
 const handler: Handler = async (event) => {

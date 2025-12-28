@@ -62,7 +62,9 @@ export async function syncSKUToStripe(sku?: string | null, stripeProductId?: str
 
   try {
     const stripe = new Stripe(secret, {apiVersion: '2024-06-20'})
-    await stripe.products.update(stripeProductId, {metadata: {sku}})
+    const product = await stripe.products.retrieve(stripeProductId)
+    const merged = {...(product.metadata || {}), sku}
+    await stripe.products.update(stripeProductId, {metadata: merged})
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn('Failed to sync SKU to Stripe:', message)

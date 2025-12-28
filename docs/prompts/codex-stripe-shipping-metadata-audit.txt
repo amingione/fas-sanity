@@ -1,0 +1,93 @@
+TASK: Audit why Stripe shipping metadata is incorrect or stale even though
+shippingConfig contains correct values.
+
+THIS IS A READ-ONLY AUDIT.
+DO NOT MODIFY CODE.
+
+--------------------------------------------------
+SCOPE
+--------------------------------------------------
+
+Repository: fas-cms-fresh
+
+Primary concepts:
+- shippingConfig (authoritative?)
+- Stripe product metadata
+- Stripe Checkout session metadata
+- Product sync processes
+
+--------------------------------------------------
+QUESTIONS TO ANSWER (REQUIRED)
+--------------------------------------------------
+
+1. Where is Stripe shipping metadata generated?
+   - Product creation?
+   - Product update?
+   - Checkout session creation?
+   - Webhook processing?
+
+2. Is shippingConfig the source of truth?
+   - If yes, where is it read?
+   - If no, what overrides it?
+
+3. Are there multiple code paths generating Stripe metadata?
+   - Initial Stripe product creation
+   - Incremental update
+   - Admin sync script
+   - Background job
+   - Webhook repair logic
+
+4. Is Stripe metadata:
+   - Written once and never updated?
+   - Cached?
+   - Derived from an outdated product snapshot?
+
+5. Is there any function that:
+   - Syncs Sanity → Stripe?
+   - Syncs CMS → Stripe?
+   - Regenerates Stripe product metadata?
+
+--------------------------------------------------
+FILES TO SEARCH
+--------------------------------------------------
+
+Search broadly for:
+- stripe.products.create
+- stripe.products.update
+- metadata:
+- shipping
+- weight
+- dimensions
+- sync
+- backfill
+- regenerate
+
+Likely areas include:
+- netlify/functions/*
+- src/pages/api/*
+- src/lib/stripe*
+- src/lib/shipping*
+- src/lib/products*
+- scripts/*
+- admin or backfill scripts
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Write a report to:
+
+docs/reports/stripe-shipping-metadata-audit.md
+
+The report MUST include:
+
+- Exact file(s) responsible for writing Stripe metadata
+- Whether shippingConfig is used or ignored
+- Whether metadata is stale or duplicated
+- Whether a re-sync mechanism exists
+- A clear diagnosis of why values differ
+- A list of SAFE FIX OPTIONS (no code)
+
+DO NOT APPLY FIXES.
+DO NOT GUESS.
+STOP AFTER THE AUDIT.

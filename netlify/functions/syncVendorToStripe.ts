@@ -42,6 +42,7 @@ type VendorDoc = {
   status?: string
   primaryContact?: {name?: string; email?: string}
   customerRef?: {_ref?: string} | null
+  stripeCustomerId?: string | null
 }
 
 type CustomerDoc = {
@@ -147,7 +148,8 @@ export const handler: Handler = async (event) => {
     businessType,
     status,
     primaryContact,
-    customerRef
+    customerRef,
+    stripeCustomerId
   }`
   let vendor = await sanity.fetch<VendorDoc | null>(vendorQuery, {id: vendorId})
   if (!vendor) {
@@ -248,18 +250,6 @@ export const handler: Handler = async (event) => {
     })
   }
 
-  if (customer && customer._id !== linkedCustomerId) {
-    await sanity
-      .patch(vendor._id)
-      .set({
-        customerRef: {
-          _type: 'reference',
-          _ref: customer._id,
-        },
-      })
-      .commit()
-  }
-
   const metadata = buildStripeMetadata(vendor, customer._id, vendorId)
   const stripeName = buildStripeName(companyName, vendor.primaryContact?.name)
 
@@ -301,6 +291,17 @@ export const handler: Handler = async (event) => {
       stripeLastSyncedAt: now,
     })
     .commit()
+
+  const vendorPatch: Record<string, unknown> = {}
+  if (!linkedCustomerId || linkedCustomerId !== customer._id) {
+    vendorPatch.customerRef = {_type: 'reference', _ref: customer._id}
+  }
+  if (stripeCustomerId && vendor.stripeCustomerId !== stripeCustomerId) {
+    vendorPatch.stripeCustomerId = stripeCustomerId
+  }
+  if (Object.keys(vendorPatch).length > 0) {
+    await sanity.patch(vendor._id).set(vendorPatch).commit()
+  }
 
   const dashboardBase = stripeCustomer.livemode
     ? 'https://dashboard.stripe.com'
