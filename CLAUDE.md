@@ -22,7 +22,7 @@
 
 ### Local Paths
 
-- **fas-sanity:** `/Users/ambermin/LocalStorm/Workspace/DevProjects/fas-sanity`
+- **fas-sanity:** `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity`
 - **fas-cms-fresh:** `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh`
 
 ---

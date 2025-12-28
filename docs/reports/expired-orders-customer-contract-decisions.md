@@ -23,6 +23,7 @@ Expired checkout sessions create `abandonedCheckout` documents that exist in com
 Add `customerRef` field to `abandonedCheckout` schema to enable linking abandoned checkouts to customer documents.
 
 **Justification:**
+
 - The audit confirms that non-expired orders create `customerRef` via email lookup in `reprocessStripeSession.ts`
 - Expired orders use the same function but follow a different code path that omits customer lookup
 - `abandonedCheckout` already captures `customerEmail` as a string, providing the lookup key
@@ -45,6 +46,7 @@ defineField({
 ```
 
 **Field Specifications:**
+
 - **Name:** `customerRef`
 - **Type:** `reference` to `customer`
 - **Authority:** `reprocessStripeSession.ts` (server-side logic)
@@ -69,6 +71,7 @@ Extend expired checkout creation logic in `netlify/functions/reprocessStripeSess
 In `reprocessStripeSession.ts`, the expired checkout flow (currently lines 34-45 per audit) must add customer lookup logic BEFORE calling `upsertAbandonedCheckoutDocument`.
 
 **Exact Change Location:**
+
 - **File:** `netlify/functions/reprocessStripeSession.ts` (fas-cms-fresh repo)
 - **Function:** Main session handler (expired status branch)
 - **Insertion Point:** Before `upsertAbandonedCheckoutDocument` call
@@ -95,6 +98,7 @@ if (email) {
 This exact logic must be replicated in the expired checkout branch before passing `baseDoc` to `upsertAbandonedCheckoutDocument`.
 
 **Critical Requirements:**
+
 - Use the SAME email lookup query as non-expired orders (no variation in logic)
 - Use the SAME error handling pattern (warn and continue if lookup fails)
 - Set `customerRef` on the abandoned checkout document using the SAME reference structure
@@ -102,6 +106,7 @@ This exact logic must be replicated in the expired checkout branch before passin
 - If email is undefined or customer lookup fails, `customerRef` remains undefined (graceful degradation)
 
 **Why This Logic is Correct:**
+
 - Mirrors established pattern from order creation (consistency)
 - Uses existing customer records (no duplicate customer creation)
 - Fails gracefully if email missing or customer not found (no blocking errors)
@@ -147,6 +152,7 @@ Add abandoned checkouts section to customer detail view:
 ```
 
 **Critical Constraint:**
+
 - Do NOT modify the core "Carts" tab filter or projection in `OrdersDocumentTable.tsx`
 - The existing `CARTS_PROJECTION` already includes `customerName` and `customerEmail` as strings
 - Adding `customerRef` enhances linking without breaking existing display
@@ -289,12 +295,14 @@ If this change causes issues:
 4. Confirm reference validation works (can select customer documents)
 
 **Deployment Command:**
+
 ```bash
-cd /Users/ambermin/LocalStorm/Workspace/DevProjects/fas-sanity
+cd /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity
 npm run deploy
 ```
 
 **Validation:**
+
 - Open Studio
 - Navigate to Content → Orders → Carts tab
 - Select any abandoned checkout document
@@ -309,12 +317,14 @@ npm run deploy
 5. Test with Stripe test mode (create expired session, verify customer link)
 
 **Deployment Command:**
+
 ```bash
 cd /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 # Deploy to Netlify (command varies by setup)
 ```
 
 **Validation:**
+
 - Create test Stripe checkout session
 - Let session expire (or manually expire via Stripe Dashboard)
 - Trigger webhook reprocessing
@@ -344,22 +354,26 @@ cd /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 ### Testing Checklist
 
 **Pre-Deployment:**
+
 - [ ] Schema change reviewed and approved
 - [ ] Logic change mirrors existing order pattern exactly
 - [ ] No changes to non-expired order code path
 
 **Post-Schema Deployment:**
+
 - [ ] `customerRef` field visible in Studio
 - [ ] Field validation accepts customer references
 - [ ] Field is read-only (cannot be manually edited)
 
 **Post-Logic Deployment:**
+
 - [ ] New expired checkouts populate `customerRef` if customer exists
 - [ ] Expired checkouts without matching customer leave `customerRef` undefined
 - [ ] No errors in Netlify function logs during checkout expiration
 - [ ] Non-expired orders still create with `customerRef` (regression test)
 
 **End-to-End:**
+
 - [ ] Create customer account with email test@example.com
 - [ ] Create Stripe checkout session with same email
 - [ ] Let session expire
@@ -374,17 +388,20 @@ cd /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 **Audit Finding:** "Expired orders completely bypass [customer lookup logic]" (audit line 29)
 
 **Root Cause Confirmed:**
+
 - Audit line 34-45: Expired sessions create `abandonedCheckout` without customer logic
 - Audit line 12-22: Non-expired sessions create `order` with customer lookup
 - Schema inspection: `abandonedCheckout` has no `customerRef` field (line 1-220 of schema)
 
 **Decision Rationale:**
+
 - Add `customerRef` to schema: Enables referential integrity (same pattern as orders)
 - Replicate customer lookup logic: Mirrors existing pattern (consistency)
 - Weak reference: Prevents cascading deletes (preserves audit trail)
 - Optional field: Handles missing email gracefully (no breaking errors)
 
 **Cross-Reference:**
+
 - Pattern established in: `docs/reports/cross-repo-contract-decisions.md` (schema-first approach)
 - Similar fix: Decision #3 (vendor.userSub) and Decision #11 (EasyPost fields)
 - Governance model: Schema changes approved when fas-cms-fresh usage is confirmed
@@ -396,12 +413,14 @@ cd /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 This document is the authoritative contract for fixing expired checkout customer linking.
 
 **Codex MUST:**
+
 - Implement ONLY the approved schema and logic changes
 - Use EXACT patterns specified (no variations)
 - Deploy in the specified sequence (schema before logic)
 - Validate all success criteria before marking complete
 
 **Codex MUST NOT:**
+
 - Modify non-expired order logic
 - Create customers from abandoned checkouts
 - Change document type decision logic (expired → abandonedCheckout)

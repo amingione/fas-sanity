@@ -32,7 +32,7 @@ This rule overrides all other defaults unless explicitly superseded.
 - Use `fas-cms-fresh/` for all file paths
 - GitHub repo is named `fas-cms`
 - Documentation may reference `fas-cms` but local path is `fas-cms-fresh`
-- Local path to fas-sanity: /Users/ambermin/LocalStorm/Workspace/DevProjects/fas-sanity
+- Local path to fas-sanity: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity
 - Local path to fas-cms-fresh: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 
 **GraphQL tooling (language server / schema introspection):**
