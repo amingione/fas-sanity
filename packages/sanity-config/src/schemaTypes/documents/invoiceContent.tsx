@@ -10,10 +10,6 @@ function fmt(n?: number) {
   return typeof n === 'number' && !isNaN(n) ? Number(n).toFixed(2) : '0.00'
 }
 
-function toDateOnly(value?: string | null) {
-  return typeof value === 'string' ? value.slice(0, 10) : null
-}
-
 type FormValuePath = (string | number)[]
 
 function useMaybeFormValue<T = unknown>(path: FormValuePath): T | undefined {
@@ -426,22 +422,7 @@ export default defineType({
       title: 'Invoice Date',
       type: 'date',
       initialValue: () => new Date().toISOString().slice(0, 10),
-      validation: (Rule) =>
-        Rule.required().custom(async (value, context) => {
-          if (!value) return true
-          const orderRef = context?.document?.orderRef?._ref
-          if (!orderRef) return true
-          const client = context.getClient({apiVersion: '2024-10-01'})
-          const orderCreatedAt = await client.fetch<string | null>(
-            `*[_type == "order" && _id == $id][0].createdAt`,
-            {id: orderRef},
-          )
-          const orderCreatedDate = toDateOnly(orderCreatedAt)
-          if (!orderCreatedDate) return true
-          return value >= orderCreatedDate
-            ? true
-            : 'Invoice date must be on or after the order created date'
-        }),
+      validation: (Rule) => Rule.required(),
       fieldset: 'basicInfo',
     }),
     defineField({
@@ -452,7 +433,11 @@ export default defineType({
         Rule.custom((value, context) => {
           if (!value) return true
           const invoiceDate = context?.document?.invoiceDate
+          const paymentTerms = context?.document?.paymentTerms
           if (!invoiceDate) return true
+          if (paymentTerms === 'Due on receipt') {
+            return value >= invoiceDate ? true : 'Due date cannot be before invoice date'
+          }
           return value > invoiceDate ? true : 'Due date must be after invoice date'
         }),
       fieldset: 'basicInfo',

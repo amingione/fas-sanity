@@ -400,7 +400,17 @@ export default defineType({
       type: 'shipmentWeight',
       group: 'fulfillment',
       readOnly: true,
-      hidden: true,
+      hidden: false,
+      // ENFORCED: Order Shipping Snapshot Contract
+      description: 'Auto-populated from product catalog during checkout',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const status = (context.document as any)?.status
+          if (status === 'paid' && !value) {
+            return 'Missing weight snapshot - fulfillment may use defaults'
+          }
+          return true
+        }).warning(),
     }),
     defineField({
       name: 'dimensions',
@@ -408,7 +418,17 @@ export default defineType({
       type: 'packageDimensions',
       group: 'fulfillment',
       readOnly: true,
-      hidden: true,
+      hidden: false,
+      // ENFORCED: Order Shipping Snapshot Contract
+      description: 'Auto-populated from product catalog during checkout',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const status = (context.document as any)?.status
+          if (status === 'paid' && !value) {
+            return 'Missing dimensions snapshot - fulfillment may use defaults'
+          }
+          return true
+        }).warning(),
     }),
     defineField({
       name: 'shippingAddress',

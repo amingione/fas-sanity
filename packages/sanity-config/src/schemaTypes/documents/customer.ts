@@ -249,6 +249,13 @@ export default defineType({
       group: 'activity',
     }),
     defineField({
+      name: 'invoices',
+      title: 'Invoices',
+      type: 'array',
+      of: [{type: 'customerInvoiceSummary'}],
+      group: 'activity',
+    }),
+    defineField({
       name: 'quotes',
       title: 'Saved Quotes',
       type: 'array',

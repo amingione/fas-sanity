@@ -71,6 +71,7 @@ import {invoiceLineItemType} from './objects/invoiceLineItemType'
 import {checkLineItemType} from './objects/checkLineItemType'
 import {customerBillingAddressType} from './objects/customerBillingAddressType'
 import {customerOrderSummaryType} from './objects/customerOrderSummaryType'
+import {customerInvoiceSummaryType} from './objects/customerInvoiceSummaryType'
 import {customerQuoteSummaryType} from './objects/customerQuoteSummaryType'
 import {customerAddressType} from './objects/customerAddressType'
 import {customerDiscountType} from './objects/customerDiscountType'
@@ -164,6 +165,7 @@ const objects = [
   checkLineItemType,
   customerBillingAddressType,
   customerOrderSummaryType,
+  customerInvoiceSummaryType,
   customerQuoteSummaryType,
   customerAddressType,
   customerDiscountType,
