@@ -15,6 +15,7 @@ type OrderCartItem = {
 type OrderDoc = {
   _id: string
   orderNumber?: string | null
+  createdAt?: string | null
   status?: string | null
   customerEmail?: string | null
   shippingAddress?: {
@@ -60,13 +61,20 @@ const resendClient = resendApiKey ? new Resend(resendApiKey) : null
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(amount)
 
-function buildParcel(order: OrderDoc) {
-  const dimensions = resolveDimensions(order.packageDimensions ?? order.dimensions, {
-    length: 10,
-    width: 8,
-    height: 4,
-  })
-  const weight = resolveWeight(order.weight, {value: 1, unit: 'pound'})
+function buildParcel(order: OrderDoc, allowFallback: boolean) {
+  const dimensionsInput = order.packageDimensions ?? order.dimensions
+  const weightInput = order.weight
+  if (!allowFallback && !dimensionsInput) {
+    throw new Error('Order missing dimensions snapshot - check product catalog')
+  }
+  if (!allowFallback && !weightInput) {
+    throw new Error('Order missing weight snapshot - check product catalog')
+  }
+  const dimensions = resolveDimensions(
+    dimensionsInput,
+    allowFallback ? {length: 10, width: 8, height: 4} : null,
+  )
+  const weight = resolveWeight(weightInput, allowFallback ? {value: 1, unit: 'pound'} : null)
   return {
     length: dimensions.length,
     width: dimensions.width,
@@ -132,6 +140,7 @@ export const handler: Handler = async (event) => {
       `*[_type == "order" && _id == $orderId][0]{
         _id,
         orderNumber,
+        createdAt,
         status,
         customerEmail,
         shippingAddress,
@@ -159,6 +168,29 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    // ENFORCED: Order Shipping Snapshot Contract
+    const missingWeight = !order.weight
+    const missingDimensions = !(order.packageDimensions ?? order.dimensions)
+    const createdAt =
+      order.createdAt && !Number.isNaN(Date.parse(order.createdAt))
+        ? new Date(order.createdAt)
+        : null
+    const contractDate = new Date('2025-12-29T00:00:00Z')
+    const allowLegacyFallback = Boolean(
+      (missingWeight || missingDimensions) && createdAt && createdAt < contractDate,
+    )
+    if (allowLegacyFallback) {
+      console.warn(
+        `[fulfillOrder] Legacy order ${order._id} missing shipping data - using fallback`,
+      )
+    }
+    if (!allowLegacyFallback && missingWeight) {
+      throw new Error('Order missing weight snapshot - check product catalog')
+    }
+    if (!allowLegacyFallback && missingDimensions) {
+      throw new Error('Order missing dimensions snapshot - check product catalog')
+    }
+
     const toAddress = normalizeAddress(order.shippingAddress)
     if (!toAddress) {
       return {
@@ -171,7 +203,7 @@ export const handler: Handler = async (event) => {
     const shipmentPayload = {
       to_address: toAddress,
       from_address: getEasyPostFromAddress(),
-      parcel: buildParcel(order),
+      parcel: buildParcel(order, allowLegacyFallback),
     }
 
     const easypost = getEasyPostClient()
@@ -282,11 +314,19 @@ export const handler: Handler = async (event) => {
       }),
     }
   } catch (error: any) {
+    const message = error?.message || 'Unable to fulfill order'
+    if (message.startsWith('Order missing')) {
+      return {
+        statusCode: 400,
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: message}),
+      }
+    }
     console.error('fulfillOrder failed', error)
     return {
       statusCode: 500,
       headers: {...cors, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: error?.message || 'Unable to fulfill order'}),
+      body: JSON.stringify({error: message}),
     }
   }
 }

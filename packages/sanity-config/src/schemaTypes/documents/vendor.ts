@@ -763,7 +763,7 @@ export default defineType({
           if (!customer.roles?.includes('vendor')) {
             return 'Linked customer must have "vendor" role.'
           }
-          const vendorEmail = context?.document?.primaryContact?.email
+          const vendorEmail = (context?.document?.primaryContact as {email?: string} | undefined)?.email
             ?.toString()
             .trim()
             .toLowerCase()

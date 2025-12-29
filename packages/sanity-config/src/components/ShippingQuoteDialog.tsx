@@ -33,6 +33,18 @@ interface Product {
   weight?: number
 }
 
+interface Customer {
+  _id: string
+  name: string
+  shippingAddress?: {
+    street1?: string
+    street2?: string
+    city?: string
+    state?: string
+    postalCode?: string
+  }
+}
+
 interface Rate {
   rateId: string
   carrier: string
@@ -50,6 +62,13 @@ const parseManualNumber = (value: string) => {
 
 export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
   const client = useClient({apiVersion: '2024-01-01'})
+
+  // Customer search state
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false)
+
   const [shipToAddress, setShipToAddress] = useState('')
   const [manualDimensions, setManualDimensions] = useState(INITIAL_DIMENSIONS)
   const [productSearch, setProductSearch] = useState('')
@@ -58,8 +77,44 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [rates, setRates] = useState<Rate[]>([])
   const [isLoadingRates, setIsLoadingRates] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState('')
 
+  // Customer search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void (async () => {
+        if (!customerSearch.trim()) {
+          setCustomers([])
+          return
+        }
+        setIsLoadingCustomers(true)
+        try {
+          const search = customerSearch.trim().toLowerCase()
+          const results = await client.fetch<Customer[]>(
+            `*[_type == "customer" && (
+              lower(name) match $searchTerm ||
+              lower(email) match $searchTerm ||
+              lower(firstName) match $searchTerm ||
+              lower(lastName) match $searchTerm
+            )][0...10]{
+              _id,
+              name,
+              shippingAddress
+            }`,
+            {searchTerm: `*${search}*`},
+          )
+          setCustomers(results || [])
+        } catch (error) {
+          console.error('Error searching customers', error)
+          setCustomers([])
+        } finally {
+          setIsLoadingCustomers(false)
+        }
+      })()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [client, customerSearch])
+
+  // Product search effect
   useEffect(() => {
     const timer = setTimeout(() => {
       void (async () => {
@@ -69,19 +124,15 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
         }
         setIsLoadingProducts(true)
         try {
-          const search = `*${productSearch.trim()}*`
+          const search = productSearch.trim().toLowerCase()
           const results = await client.fetch<Product[]>(
-            `*[_type == "product" && defined(shippingConfig.dimensions.length) && defined(shippingConfig.weight.value) && title match $searchTerm][0...10]{
+            `*[_type == "product" && lower(title) match $searchTerm][0...20]{
               _id,
               title,
-              "dimensions": {
-                "length": shippingConfig.dimensions.length,
-                "width": shippingConfig.dimensions.width,
-                "height": shippingConfig.dimensions.height
-              },
+              "dimensions": shippingConfig.dimensions,
               "weight": coalesce(shippingConfig.weight.value, shippingWeight.value)
             }`,
-            {searchTerm: search},
+            {searchTerm: `*${search}*`},
           )
           setProducts(results || [])
         } catch (error) {
@@ -95,10 +146,29 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
     return () => clearTimeout(timer)
   }, [client, productSearch])
 
+  const selectedCustomer = useMemo(
+    () => customers.find((customer) => customer._id === selectedCustomerId),
+    [customers, selectedCustomerId],
+  )
+
   const selectedProduct = useMemo(
     () => products.find((product) => product._id === selectedProductId),
     [products, selectedProductId],
   )
+
+  // Auto-populate shipping address when customer is selected
+  useEffect(() => {
+    if (selectedCustomer?.shippingAddress) {
+      const addr = selectedCustomer.shippingAddress
+      const lines = [
+        selectedCustomer.name,
+        addr.street1,
+        addr.street2,
+        [addr.city, addr.state, addr.postalCode].filter(Boolean).join(', '),
+      ].filter(Boolean)
+      setShipToAddress(lines.join('\n'))
+    }
+  }, [selectedCustomer])
 
   const hasManualDimensions = useMemo(() => {
     return (
@@ -218,6 +288,36 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
     <Dialog id="shipping-quote-dialog" header="Shipping Quote" onClose={onClose} width={2}>
       <Box padding={4}>
         <Stack space={4}>
+          {/* Customer Search */}
+          <Stack space={2}>
+            <Label>Search Customer</Label>
+            <TextInput
+              icon={SearchIcon}
+              placeholder="Search by name or email..."
+              value={customerSearch}
+              onChange={(event) => setCustomerSearch(event.currentTarget.value)}
+            />
+            {isLoadingCustomers && (
+              <Flex align="center" justify="center" padding={2}>
+                <Spinner muted />
+              </Flex>
+            )}
+            {customers.length > 0 && (
+              <Select
+                value={selectedCustomerId}
+                onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
+              >
+                <option value="">Select a customer…</option>
+                {customers.map((customer) => (
+                  <option key={customer._id} value={customer._id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Stack>
+
+          {/* Ship To Address */}
           <Stack space={2}>
             <Label>Ship To Address *</Label>
             <TextArea
@@ -226,8 +326,14 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
               value={shipToAddress}
               onChange={(event) => setShipToAddress(event.currentTarget.value)}
             />
+            <Text size={1} muted>
+              {selectedCustomer
+                ? 'Auto-filled from customer record (editable)'
+                : 'Enter address manually or select a customer above'}
+            </Text>
           </Stack>
 
+          {/* Manual Dimensions */}
           <Stack space={2}>
             <Label>Manual Package Dimensions (inches / lbs)</Label>
             <Flex gap={2} align="center">
@@ -268,33 +374,41 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
             <Box flex={1} style={{height: 1, backgroundColor: '#E5E7EB'}} />
           </Flex>
 
+          {/* Product Search */}
           <Stack space={2}>
             <Label>Select Product</Label>
             <TextInput
               icon={SearchIcon}
-              placeholder="Search for products with saved dimensions..."
+              placeholder="Search for products..."
               value={productSearch}
               onChange={(event) => setProductSearch(event.currentTarget.value)}
             />
-            {isLoadingProducts ? (
-              <Flex align="center" justify="center">
+            {isLoadingProducts && (
+              <Flex align="center" justify="center" padding={2}>
                 <Spinner muted />
               </Flex>
-            ) : null}
-            {products.length > 0 ? (
-              <Select value={selectedProductId} onChange={(event) => setSelectedProductId(event.currentTarget.value)}>
+            )}
+            {products.length > 0 && (
+              <Select
+                value={selectedProductId}
+                onChange={(event) => setSelectedProductId(event.currentTarget.value)}
+              >
                 <option value="">Select a product…</option>
                 {products.map((product) => (
                   <option key={product._id} value={product._id}>
-                    {product.title} (
-                    {product.dimensions
-                      ? `${product.dimensions.length}×${product.dimensions.width}×${product.dimensions.height}"`
-                      : 'No dims'}
-                    , {product.weight ?? '—'} lbs)
+                    {product.title}
+                    {product.dimensions && product.weight
+                      ? ` (${product.dimensions.length}×${product.dimensions.width}×${product.dimensions.height}", ${product.weight} lbs)`
+                      : ' (no dimensions)'}
                   </option>
                 ))}
               </Select>
-            ) : null}
+            )}
+            {productSearch && !isLoadingProducts && products.length === 0 && (
+              <Text size={1} muted>
+                No products found with shipping dimensions
+              </Text>
+            )}
           </Stack>
 
           <Button
@@ -305,7 +419,8 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
             loading={isLoadingRates}
           />
 
-          {rates.length > 0 ? (
+          {/* Rates Display */}
+          {rates.length > 0 && (
             <Stack space={3}>
               <Text size={1} weight="semibold">
                 Available rates
@@ -322,11 +437,11 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
                       <Text weight="semibold">
                         {rate.carrier} — {rate.service}
                       </Text>
-                      {typeof rate.deliveryDays === 'number' ? (
+                      {typeof rate.deliveryDays === 'number' && (
                         <Text size={1} muted>
                           {rate.deliveryDays} day{rate.deliveryDays === 1 ? '' : 's'}
                         </Text>
-                      ) : null}
+                      )}
                     </Stack>
                     <Flex gap={3} align="center">
                       <Text weight="bold">${Number.parseFloat(rate.rate).toFixed(2)}</Text>
@@ -335,24 +450,14 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
                         mode="ghost"
                         tone="primary"
                         onClick={() => handleSaveQuote(rate)}
+                        disabled={!selectedCustomerId}
                       />
                     </Flex>
                   </Flex>
                 </Card>
               ))}
             </Stack>
-          ) : null}
-
-          {rates.length > 0 ? (
-            <Stack space={2}>
-              <Label>Customer ID</Label>
-              <TextInput
-                placeholder="customer document ID"
-                value={selectedCustomerId}
-                onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
-              />
-            </Stack>
-          ) : null}
+          )}
         </Stack>
       </Box>
     </Dialog>

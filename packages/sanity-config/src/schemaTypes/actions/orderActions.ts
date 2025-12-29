@@ -53,6 +53,15 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
   if (type !== 'order') return null
   const doc = draft || published
   const labelAlreadyPurchased = Boolean(doc?.labelPurchased)
+  const defaultDimensions = {weight: 2, length: 10, width: 8, height: 4}
+  const parseDimensionInput = (input: string) => {
+    const numbers = input.match(/[\d.]+/g)?.map((value) => Number(value)) || []
+    if (numbers.length !== 4 || numbers.some((value) => !Number.isFinite(value) || value <= 0)) {
+      return null
+    }
+    const [weight, length, width, height] = numbers
+    return {weight, length, width, height}
+  }
 
   return {
     label: 'Create shipping label',
@@ -78,16 +87,61 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
       }
 
       const packageDimensions = doc.packageDimensions || {}
-      const hasWeight = typeof packageDimensions.weight === 'number' && packageDimensions.weight > 0
-      if (!hasWeight) {
-        const confirmDefault = window.confirm(
-          'Package dimensions are missing. Default values will be used:\n\n' +
-            'Weight: 2 lbs\nDimensions: 10 x 8 x 4 inches\n\nContinue?',
+      const normalizedFromDoc = {
+        weight:
+          typeof packageDimensions.weight === 'number' && packageDimensions.weight > 0
+            ? packageDimensions.weight
+            : null,
+        length:
+          typeof packageDimensions.length === 'number' && packageDimensions.length > 0
+            ? packageDimensions.length
+            : null,
+        width:
+          typeof packageDimensions.width === 'number' && packageDimensions.width > 0
+            ? packageDimensions.width
+            : null,
+        height:
+          typeof packageDimensions.height === 'number' && packageDimensions.height > 0
+            ? packageDimensions.height
+            : null,
+      }
+      const hasCompleteDimensions =
+        normalizedFromDoc.weight &&
+        normalizedFromDoc.length &&
+        normalizedFromDoc.width &&
+        normalizedFromDoc.height
+      let normalizedDimensions = hasCompleteDimensions
+        ? {
+            weight: normalizedFromDoc.weight,
+            length: normalizedFromDoc.length,
+            width: normalizedFromDoc.width,
+            height: normalizedFromDoc.height,
+          }
+        : null
+      if (!normalizedDimensions) {
+        const promptDefaults = {
+          weight: normalizedFromDoc.weight ?? defaultDimensions.weight,
+          length: normalizedFromDoc.length ?? defaultDimensions.length,
+          width: normalizedFromDoc.width ?? defaultDimensions.width,
+          height: normalizedFromDoc.height ?? defaultDimensions.height,
+        }
+        const promptValue = window.prompt(
+          'Package dimensions are missing. Enter weight, length, width, height (lbs, inches).\n' +
+            'Example: 2, 10, 8, 4\n\n' +
+            'Leave as-is to use defaults.',
+          `${promptDefaults.weight}, ${promptDefaults.length}, ${promptDefaults.width}, ${promptDefaults.height}`,
         )
-        if (!confirmDefault) {
+        if (promptValue === null) {
           onComplete()
           return
         }
+        const parsed = parseDimensionInput(promptValue)
+        if (!parsed) {
+          alert('Please enter four positive numbers for weight, length, width, and height.')
+          onComplete()
+          return
+        }
+        normalizedDimensions = parsed
       }
 
       const confirmPurchase = window.confirm(
@@ -103,11 +157,8 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
         return
       }
 
-      const normalizedDimensions = {
-        weight: typeof packageDimensions.weight === 'number' ? packageDimensions.weight : 2,
-        length: typeof packageDimensions.length === 'number' ? packageDimensions.length : 10,
-        width: typeof packageDimensions.width === 'number' ? packageDimensions.width : 8,
-        height: typeof packageDimensions.height === 'number' ? packageDimensions.height : 4,
+      if (!normalizedDimensions) {
+        normalizedDimensions = defaultDimensions
       }
 
       const body = {
