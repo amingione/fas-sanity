@@ -776,9 +776,9 @@ const product = defineType({
         'Color, Size, or custom selectors customers must choose before adding to cart. Use the Required toggle on each option to enforce selection.',
       type: 'array',
       of: [
-        {type: 'customProductOption.color'},
-        {type: 'customProductOption.size'},
-        {type: 'customProductOption.custom'},
+        {type: 'customProductOptionColor'},
+        {type: 'customProductOptionSize'},
+        {type: 'customProductOptionCustom'},
       ],
       hidden: ({document, parent}) => {
         if (!isPhysicalOrBundle({document, parent})) return true

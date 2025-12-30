@@ -58,6 +58,7 @@ export default defineType({
       type: 'array',
       of: [
         defineField({
+          name: 'owner',
           type: 'object',
           fields: [
             {name: 'email', type: 'email', title: 'Email', validation: (Rule) => Rule.required()},

@@ -1,15 +1,15 @@
 import {TagIcon} from '@sanity/icons'
 import type {DocumentActionDescription, DocumentActionProps} from 'sanity'
 import {generateInitialVendorNumber} from '../../utils/generateVendorNumber'
+import {getClient} from '../../utils/sanityClient'
 
 const API_VERSION = '2024-10-01'
 
 export const generateVendorNumberAction = (
   props: DocumentActionProps,
 ): DocumentActionDescription | null => {
-  const {draft, published, getClient, id} = props
+  const {draft, published, id} = props
   const hasNumber = Boolean((draft as any)?.vendorNumber || (published as any)?.vendorNumber)
-  if (!getClient) return null
 
   if (hasNumber) {
     return {

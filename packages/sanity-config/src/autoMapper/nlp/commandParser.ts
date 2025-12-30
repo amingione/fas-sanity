@@ -37,7 +37,10 @@ export const parseCommand = (input: string): ParsedCommand | null => {
   return null
 }
 
-const findClosestSource = (name: string, sourceFields: SourceField[]) => {
+const findClosestSource = (
+  name: string,
+  sourceFields: SourceField[],
+): {field: SourceField; score: number} | null => {
   let best: {field: SourceField; score: number} | null = null
   sourceFields.forEach((field) => {
     const score = similarity(name, field.name)

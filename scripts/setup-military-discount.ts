@@ -6,7 +6,7 @@ if (!stripeSecret) {
   throw new Error('Missing Stripe secret key. Set STRIPE_SECRET_KEY (or compatible env).')
 }
 
-const stripe = new Stripe(stripeSecret, {apiVersion: '2024-06-20'})
+const stripe = new Stripe(stripeSecret, {apiVersion: '2025-08-27.basil'})
 
 async function setupMilitaryDiscount() {
   try {

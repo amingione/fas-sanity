@@ -96,6 +96,7 @@ export const linkVendorToCustomerAction: DocumentActionComponent = (props) => {
 
         customer = await client.create<CustomerDoc>({
           _type: 'customer',
+          _id: `customer-${Date.now()}`,
           email: vendorEmail,
           firstName: nameParts.firstName || undefined,
           lastName: nameParts.lastName || undefined,

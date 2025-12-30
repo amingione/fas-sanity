@@ -221,22 +221,22 @@ async function migrateProductShipping(batchSize: number, maxDocs?: number, dryRu
       const handlingTime =
         existing.handlingTime ?? parseNumber(product.handlingTime) ?? 2
       const requiresShipping =
-        existing.requiresShipping !== undefined
-          ? existing.requiresShipping
-          : (product.productType || '').toLowerCase() === 'service'
-            ? false
-            : true
-      const freeShippingEligible =
-        existing.freeShippingEligible !== undefined ? existing.freeShippingEligible : true
-      const separateShipment =
-        existing.separateShipment !== undefined
-          ? existing.separateShipment
-          : product.shipsAlone ?? false
+        existing.requiresShipping ??
+        ((product.productType || '').toLowerCase() === 'service' ? false : true)
+      const freeShippingEligible = existing.freeShippingEligible ?? true
+      const separateShipment = existing.separateShipment ?? (product.shipsAlone ?? false)
       const callForShippingQuote = existing.callForShippingQuote === true
 
       const shippingConfig: NormalizedShippingConfig = {
         weight,
-        dimensions,
+        dimensions:
+          dimensions && dimensions.length && dimensions.width && dimensions.height
+            ? {
+                length: dimensions.length,
+                width: dimensions.width,
+                height: dimensions.height,
+              }
+            : null,
         shippingClass,
         handlingTime,
         requiresShipping,

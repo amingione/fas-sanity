@@ -49,6 +49,7 @@ export default defineType({
       type: 'array',
       of: [
         defineField({
+          name: 'credentials',
           type: 'object',
           fields: [
             {name: 'name', type: 'string', title: 'Name'},

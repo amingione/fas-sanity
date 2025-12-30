@@ -56,7 +56,7 @@ export const POST: APIRoute = async ({request}) => {
       sanitizeFileToken(shipmentId || order.orderNumber || sanitizeOrderId(order._id)) || 'order'
     const filename = `shipment-${filenameToken}-merged.pdf`
 
-    return new Response(mergedPdfBuffer, {
+    return new Response(new Uint8Array(mergedPdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

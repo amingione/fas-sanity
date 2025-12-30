@@ -1,0 +1,853 @@
+CODEX ENFORCEMENT PROMPT: TypeScript Error Fix Implementation
+=============================================================
+
+EXECUTION MODE: STRICT IMPLEMENTATION ONLY
+GOVERNANCE: Gemini (Audit) → Claude (Decision) ✓ → Codex (Execute) ← YOU ARE HERE
+SOURCE CONTRACT: docs/reports/typescript-error-fix-contract-decisions.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## CRITICAL CONSTRAINTS (NON-NEGOTIABLE)
+
+You are Codex, the implementation agent. Your SOLE responsibility is to execute the decisions in the contract EXACTLY as written.
+
+FORBIDDEN ACTIONS:
+❌ Make decisions not in the contract
+❌ Refactor code beyond what's specified
+❌ "Improve" or "optimize" anything
+❌ Add features or functionality
+❌ Modify schemas
+❌ Change business logic
+❌ Skip verification steps
+❌ Deviate from the contract in any way
+
+REQUIRED ACTIONS:
+✅ Implement ONLY what's in the contract
+✅ Verify after EACH domain
+✅ Follow the phase order
+✅ Report any conflicts or unknowns
+✅ Test with `npx tsc --noEmit` after each phase
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## EXECUTION PLAN
+
+### Phase 1: Critical Blockers (Execute First)
+
+#### Task 1.1: Add SchemaIndex Import (D1.1)
+FILE: packages/sanity-config/src/autoMapper/core/mappingEngine.ts
+LOCATION: Line 1-7
+ACTION: Add SchemaIndex to import list
+
+BEFORE:
+```typescript
+import {
+  ConfidenceBreakdown,
+  MappingCandidate,
+  MappingSuggestion,
+  MappingConfidence,
+  SourceField,
+} from '../types'
+```
+
+AFTER:
+```typescript
+import {
+  ConfidenceBreakdown,
+  MappingCandidate,
+  MappingSuggestion,
+  MappingConfidence,
+  SourceField,
+  SchemaIndex,
+} from '../types'
+```
+
+VERIFICATION: Check that line 52 no longer shows TS2304 error
+
+---
+
+#### Task 1.2: Update Stripe API Versions (D5.1)
+FILES (4 total):
+- packages/sanity-config/src/utils/generateSKU.ts:64
+- scripts/inspect-checkout-session.ts:26
+- scripts/setup-military-discount.ts:9
+- src/lib/militaryVerification.ts:56
+
+ACTION: Update apiVersion in ALL files
+
+BEFORE (in each file):
+```typescript
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+})
+```
+
+AFTER (in each file):
+```typescript
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-08-27.basil',
+})
+```
+
+VERIFICATION: Confirm TS2322 errors on these lines are resolved
+
+---
+
+#### Task 1.3: Fix getClient Usage (D2.3)
+
+STEP 1: Check if sanityClient.ts utility exists
+FILE TO CHECK: packages/sanity-config/src/utils/sanityClient.ts
+
+IF FILE DOES NOT EXIST, CREATE IT:
+```typescript
+import {createClient} from '@sanity/client'
+
+export const getClient = (options: {apiVersion: string}) =>
+  createClient({
+    projectId: process.env.SANITY_STUDIO_PROJECT_ID || '',
+    dataset: process.env.SANITY_STUDIO_DATASET || 'production',
+    apiVersion: options.apiVersion,
+    useCdn: false,
+    token: process.env.SANITY_API_TOKEN,
+  })
+```
+
+STEP 2: Update generateVendorNumberAction.ts
+FILE: packages/sanity-config/src/schemaTypes/documentActions/generateVendorNumberAction.ts
+
+ADD IMPORT (top of file):
+```typescript
+import {getClient} from '../../utils/sanityClient'
+```
+
+UPDATE FUNCTION (lines 7-25):
+BEFORE:
+```typescript
+export const generateVendorNumberAction = (
+  props: DocumentActionProps,
+): DocumentActionDescription | null => {
+  const {draft, published, getClient, id} = props
+  const hasNumber = Boolean((draft as any)?.vendorNumber || (published as any)?.vendorNumber)
+  if (!getClient) return null
+
+  if (hasNumber) {
+    return {
+      label: 'Vendor Number Set',
+      icon: TagIcon,
+      tone: 'positive',
+      disabled: true,
+      title: 'Vendor number already generated.',
+      onHandle: props.onComplete,
+    }
+  }
+
+  const client = getClient({apiVersion: API_VERSION})
+```
+
+AFTER:
+```typescript
+export const generateVendorNumberAction = (
+  props: DocumentActionProps,
+): DocumentActionDescription | null => {
+  const {draft, published, id} = props
+  const hasNumber = Boolean((draft as any)?.vendorNumber || (published as any)?.vendorNumber)
+
+  if (hasNumber) {
+    return {
+      label: 'Vendor Number Set',
+      icon: TagIcon,
+      tone: 'positive',
+      disabled: true,
+      title: 'Vendor number already generated.',
+      onHandle: props.onComplete,
+    }
+  }
+
+  const client = getClient({apiVersion: API_VERSION})
+```
+
+VERIFICATION: TS2339 error on line 10 should be resolved
+
+---
+
+#### Task 1.4: Add _type to OrderCartItem (D7.3)
+
+STEP 1: Locate OrderCartItem type definition
+SEARCH FOR: "interface OrderCartItem" or "type OrderCartItem"
+LIKELY LOCATIONS:
+- packages/sanity-config/src/types/
+- src/types/
+- Any file with "order" in the name
+
+STEP 2: Add _type field
+BEFORE:
+```typescript
+export interface OrderCartItem {
+  _key: string
+  productId: string
+  productName: string
+  // ... other fields
+}
+```
+
+AFTER:
+```typescript
+export interface OrderCartItem {
+  _type: 'orderCartItem'
+  _key: string
+  productId: string
+  productName: string
+  // ... other fields
+}
+```
+
+VERIFICATION: TS2353 errors in src/pages/api/webhooks/stripe-order.ts (lines 61, 74, 120) should be resolved
+
+---
+
+CHECKPOINT 1: Run TypeScript Check
+COMMAND: npx tsc --noEmit
+EXPECTED: Errors should be reduced from 80 to approximately 60-65
+ACTION: If error count doesn't match, STOP and report discrepancy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### Phase 2: Type Safety Core
+
+#### Task 2.1: Add Explicit Parameter Types (D1.2)
+FILE: packages/sanity-config/src/autoMapper/core/mappingEngine.ts
+
+UPDATE Line 64:
+BEFORE: `.map((result) => result.field) ||`
+AFTER: `.map((result: SchemaSearchResult) => result.field) ||`
+
+UPDATE Line 72:
+BEFORE: `return candidates.map((target) => {`
+AFTER: `return candidates.map((target: SanitySchemaField) => {`
+
+UPDATE Line 78:
+BEFORE: `...targetVariants.map((tv) => similarity(variant, tv))`
+AFTER: `...targetVariants.map((tv: string) => similarity(variant, tv))`
+
+VERIFICATION: TS7006 errors on lines 64, 72, 78 should be resolved
+
+---
+
+#### Task 2.2: Fix Type Inference for findClosestSource (D1.3)
+FILE: packages/sanity-config/src/autoMapper/nlp/commandParser.ts
+
+UPDATE Function (lines 40-46):
+BEFORE:
+```typescript
+const findClosestSource = (name: string, sourceFields: SourceField[]) => {
+  let best: {field: SourceField; score: number} | null = null
+  sourceFields.forEach((field) => {
+    const score = similarity(name, field.name)
+    if (!best || score > best.score) best = {field, score}
+  })
+  return best
+}
+```
+
+AFTER:
+```typescript
+const findClosestSource = (name: string, sourceFields: SourceField[]): {field: SourceField; score: number} | null => {
+  let best: {field: SourceField; score: number} | null = null
+  sourceFields.forEach((field) => {
+    const score = similarity(name, field.name)
+    if (!best || score > best.score) best = {field, score}
+  })
+  return best
+}
+```
+
+VERIFICATION: TS2339 errors on lines 76, 85, 113 should be resolved
+
+---
+
+#### Task 2.3: Add Explicit any Type for Schema Field (D1.4)
+FILE: packages/sanity-config/src/autoMapper/core/schemaScanner.ts
+
+UPDATE Line 158:
+BEFORE: `.forEach((field) => {`
+AFTER: `.forEach((field: any) => {`
+
+VERIFICATION: TS7006 error on line 158 should be resolved
+
+---
+
+#### Task 2.4: Add Type Guards for Schema Fields (D2.1)
+FILE: packages/sanity-config/src/autoMapper/core/schemaScanner.ts
+
+UPDATE Lines 154-167:
+REPLACE:
+```typescript
+this.schemaTypes
+  .filter((type) => (type as any).type === 'document')
+  .forEach((docType) => {
+    if (!docType.fields) return
+    docType.fields.forEach((field) => {
+      const discovered = this.walkField(field as any, {
+        documentType: docType.name,
+        parentPath: [],
+        depth: 0,
+        parentType: docType.name,
+      })
+      fields.push(...discovered)
+    })
+  })
+```
+
+WITH:
+```typescript
+this.schemaTypes
+  .filter((type) => (type as any).type === 'document')
+  .forEach((docType) => {
+    if (!('fields' in docType) || !docType.fields) return
+    docType.fields.forEach((field: any) => {
+      const discovered = this.walkField(field as any, {
+        documentType: docType.name,
+        parentPath: [],
+        depth: 0,
+        parentType: docType.name,
+      })
+      fields.push(...discovered)
+    })
+  })
+```
+
+UPDATE Lines 233-258:
+FIND the section starting with `fieldDef.of.forEach((ofDef: any, index: number) => {`
+
+REPLACE:
+```typescript
+fieldDef.of.forEach((ofDef: any, index: number) => {
+  const typeDef = this.resolveType(ofDef)
+  if (typeDef?.fields) {
+    typeDef.fields.forEach((child: any) => {
+      collected.push(
+        ...this.walkField(child, {
+          documentType: context.documentType,
+          parentPath: [...context.parentPath, `${resolvedName}[${index}]`],
+          depth: nextDepth,
+          parentType: typeDef.name || 'arrayItem',
+        }),
+      )
+    })
+  } else if (ofDef.fields) {
+    ofDef.fields.forEach((child: any) => {
+      collected.push(
+        ...this.walkField(child, {
+          documentType: context.documentType,
+          parentPath: [...context.parentPath, `${resolvedName}[${index}]`],
+          depth: nextDepth,
+          parentType: ofDef.name || 'arrayItem',
+        }),
+      )
+    })
+  }
+})
+```
+
+WITH:
+```typescript
+fieldDef.of.forEach((ofDef: any, index: number) => {
+  const typeDef = this.resolveType(ofDef)
+  if (typeDef && 'fields' in typeDef && typeDef.fields) {
+    typeDef.fields.forEach((child: any) => {
+      collected.push(
+        ...this.walkField(child, {
+          documentType: context.documentType,
+          parentPath: [...context.parentPath, `${resolvedName}[${index}]`],
+          depth: nextDepth,
+          parentType: typeDef.name || 'arrayItem',
+        }),
+      )
+    })
+  } else if ('fields' in ofDef && ofDef.fields) {
+    ofDef.fields.forEach((child: any) => {
+      collected.push(
+        ...this.walkField(child, {
+          documentType: context.documentType,
+          parentPath: [...context.parentPath, `${resolvedName}[${index}]`],
+          depth: nextDepth,
+          parentType: ofDef.name || 'arrayItem',
+        }),
+      )
+    })
+  }
+})
+```
+
+UPDATE Lines 261-263:
+REPLACE:
+```typescript
+const resolvedType = this.resolveType(fieldDef)
+const nestedFields = resolvedType?.fields || fieldDef.fields
+if (nestedFields && Array.isArray(nestedFields)) {
+```
+
+WITH:
+```typescript
+const resolvedType = this.resolveType(fieldDef)
+const nestedFields = (resolvedType && 'fields' in resolvedType && resolvedType.fields) ||
+                     ('fields' in fieldDef && fieldDef.fields)
+if (nestedFields && Array.isArray(nestedFields)) {
+```
+
+VERIFICATION: TS2339 errors on lines 157, 158, 235, 236, 262 should be resolved
+
+---
+
+#### Task 2.5: Type Package Dimensions Object (D2.2)
+FILE: packages/sanity-config/src/schemaTypes/actions/orderActions.ts
+
+UPDATE Line 87:
+BEFORE: `const packageDimensions = doc.packageDimensions || {}`
+AFTER:
+```typescript
+const packageDimensions: {
+  weight?: number | null
+  length?: number | null
+  width?: number | null
+  height?: number | null
+} = doc.packageDimensions || {}
+```
+
+VERIFICATION: TS2339 errors on lines 90-103 (weight, length, width, height access) should be resolved
+
+---
+
+#### Task 2.6: Add Missing _id to Customer Creation (D2.4)
+FILE: packages/sanity-config/src/schemaTypes/documentActions/linkVendorToCustomerAction.tsx
+
+UPDATE Line 97 (add _id field):
+BEFORE:
+```typescript
+const newCustomer = await client.create<CustomerDoc>({
+  _type: 'customer',
+  email: vendor.email,
+```
+
+AFTER:
+```typescript
+const newCustomer = await client.create<CustomerDoc>({
+  _type: 'customer',
+  _id: `customer-${Date.now()}`,
+  email: vendor.email,
+```
+
+VERIFICATION: TS2345 error on line 97 should be resolved
+
+---
+
+#### Task 2.7: Add name to Object Fields (D2.5)
+
+FILE 1: packages/sanity-config/src/schemaTypes/documents/integrationPack.ts
+UPDATE Line 51:
+ADD `name: 'credentials',` to the defineField call
+
+FILE 2: packages/sanity-config/src/schemaTypes/documents/workspace.ts
+UPDATE Line 60:
+ADD `name: 'owner',` to the defineField call
+
+VERIFICATION: TS2345 errors on lines 51 (integrationPack) and 60 (workspace) should be resolved
+
+---
+
+#### Task 2.8: Remove Arguments from Zero-Parameter Functions (D2.6)
+FILE: packages/sanity-config/src/structure/discountsStructure.ts
+
+UPDATE Lines 19, 22, 25:
+BEFORE (all three instances):
+`.child(documentTypeListItem('activeDiscount').title('Active Discounts'), S)`
+
+AFTER (all three instances):
+`.child(documentTypeListItem('activeDiscount').title('Active Discounts'))`
+
+VERIFICATION: TS2554 errors on lines 19, 22, 25 should be resolved
+
+---
+
+#### Task 2.9: Locate and Update OrderDocument Type (D4.1)
+
+STEP 1: Search for OrderDocument type definition
+SEARCH: "interface OrderDocument" or "type OrderDocument"
+LIKELY LOCATIONS:
+- packages/sanity-config/src/types/
+- src/types/
+- Look for files with "order" in name
+
+STEP 2: Add missing properties
+ADD to interface:
+```typescript
+carrier?: string
+service?: string
+estimatedDeliveryDate?: string
+```
+
+IF OrderDocument type doesn't exist as an interface, you must:
+1. Create a types file for it
+2. Extract type from order schema
+3. Add the missing fields
+
+VERIFICATION: TS2339 errors in OrderShippingView.tsx (lines 422, 428, 445, 446, 502, 503) should be resolved
+
+---
+
+#### Task 2.10: Locate and Update InvoiceDocument Type (D4.2)
+
+STEP 1: Search for InvoiceDocument type definition
+SEARCH: "interface InvoiceDocument" or "type InvoiceDocument"
+
+STEP 2: Add missing property
+ADD to interface:
+```typescript
+carrier?: string
+```
+
+VERIFICATION: TS2339 errors in InvoiceVisualEditor.tsx (lines 382, 385, 387) should be resolved
+
+---
+
+CHECKPOINT 2: Run TypeScript Check
+COMMAND: npx tsc --noEmit
+EXPECTED: Errors should be reduced to approximately 25-30
+ACTION: If error count doesn't match, STOP and report discrepancy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### Phase 3: Component & UI Fixes
+
+#### Task 3.1: Type Assert React Element Props (D3.1)
+FILE: packages/sanity-config/src/components/hotspots/ProductTooltip.tsx
+
+UPDATE Lines 71-76:
+REPLACE:
+```typescript
+if (React.isValidElement(node)) {
+  const children = node.props.children
+  if (!children) return node
+  const nextChildren = React.Children.map(children, (child) => emphasizePreviewLabels(child))
+  return React.cloneElement(node, undefined, nextChildren)
+}
+```
+
+WITH:
+```typescript
+if (React.isValidElement(node)) {
+  const children = (node.props as any).children
+  if (!children) return node
+  const nextChildren = React.Children.map(children, (child) => emphasizePreviewLabels(child))
+  return React.cloneElement(node, undefined, nextChildren)
+}
+```
+
+VERIFICATION: TS18046 error on line 72 should be resolved
+
+---
+
+#### Task 3.2: Remove Invalid UI Component Props (D3.2)
+
+FILE 1: packages/sanity-config/src/components/media/ShipmentStatusIcon.tsx
+LINE 65:
+BEFORE: `<InTransitIcon style={{fontSize: '18px'}} />`
+AFTER: `<InTransitIcon />`
+
+FILE 2: packages/sanity-config/src/components/StripeAnalyticsWidget.tsx
+LINE 201:
+BEFORE: `<Text size={2} weight="semibold" tone="primary">`
+AFTER: `<Text size={2} weight="semibold">`
+
+FILE 3: packages/sanity-config/src/components/studio/documentTables/RecoveredCartBadge.tsx
+LINE 15:
+BEFORE: `<Badge tone="positive" mode="outline" icon={CheckmarkCircleIcon}>`
+AFTER:
+```tsx
+<Badge tone="positive" mode="outline">
+  <CheckmarkCircleIcon style={{marginRight: 4}} />
+  Recovered
+</Badge>
+```
+
+FILE 4: src/components/shop/ProductTypeBadge.tsx
+LINE 33:
+BEFORE: `<Inline space={2} align="center">`
+AFTER: `<Inline space={2}>`
+
+VERIFICATION: TS2769 and TS2322 errors in these files should be resolved
+
+---
+
+#### Task 3.3: Add JSX Namespace to React Shim (D3.3)
+FILE: packages/sanity-config/src/shims/react-refractor-shim.tsx
+
+ADD at the very top of the file (line 1):
+```typescript
+/// <reference types="react" />
+```
+
+VERIFICATION: TS2503 error on line 43 should be resolved
+
+---
+
+#### Task 3.4: Handle Nullable Strings in Scripts (D6.1)
+FILE: scripts/fix-order-number-format.ts
+
+UPDATE Lines 93-95:
+REPLACE:
+```typescript
+customerName: order.customerName,
+customerEmail: order.customerEmail,
+orderType: order.orderType,
+```
+
+WITH:
+```typescript
+customerName: order.customerName || 'Unknown',
+customerEmail: order.customerEmail || '',
+orderType: order.orderType || 'online',
+```
+
+VERIFICATION: TS2322 errors on lines 93, 94, 95 should be resolved
+
+---
+
+#### Task 3.5: Handle Nullable Dimensions (D6.2)
+FILE: scripts/migrateProductShipping.ts
+
+UPDATE Line 239:
+REPLACE:
+```typescript
+dimensions: dimensions,
+```
+
+WITH:
+```typescript
+dimensions: dimensions && dimensions.length && dimensions.width && dimensions.height
+  ? {
+      length: dimensions.length,
+      width: dimensions.width,
+      height: dimensions.height,
+    }
+  : null,
+```
+
+VERIFICATION: TS2322 error on line 239 should be resolved
+
+---
+
+#### Task 3.6: Handle Nullable Booleans (D6.3)
+FILE: scripts/migrateProductShipping.ts
+
+UPDATE Lines 242-244:
+REPLACE:
+```typescript
+freeShipping: product.freeShipping,
+oversized: product.oversized,
+hazardous: product.hazardous,
+```
+
+WITH:
+```typescript
+freeShipping: product.freeShipping ?? false,
+oversized: product.oversized ?? false,
+hazardous: product.hazardous ?? false,
+```
+
+VERIFICATION: TS2322 errors on lines 242, 243, 244 should be resolved
+
+---
+
+CHECKPOINT 3: Run TypeScript Check
+COMMAND: npx tsc --noEmit
+EXPECTED: Errors should be reduced to approximately 10-15
+ACTION: If error count doesn't match, STOP and report discrepancy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### Phase 4: External SDK Integration
+
+#### Task 4.1: Handle Nullable Stripe expires_at (D5.2)
+FILE: src/lib/militaryVerification.ts
+
+UPDATE Line 297:
+BEFORE: `if (promoCode.expires_at < Math.floor(Date.now() / 1000)) {`
+AFTER: `if (promoCode.expires_at && promoCode.expires_at < Math.floor(Date.now() / 1000)) {`
+
+UPDATE Line 304:
+BEFORE: `expires_at: promoCode.expires_at,`
+AFTER: `expires_at: promoCode.expires_at || undefined,`
+
+VERIFICATION: TS18047 and TS2345 errors on lines 297, 304 should be resolved
+
+---
+
+#### Task 4.2: Add shipping_details to Stripe Session Type (D5.3)
+FILE: src/pages/api/webhooks/stripe-order.ts
+
+ADD at top of file (after imports):
+```typescript
+interface SessionWithShipping extends Stripe.Checkout.Session {
+  shipping_details?: {
+    name?: string
+    address?: {
+      line1?: string
+      line2?: string | null
+      city?: string
+      state?: string
+      postal_code?: string
+      country?: string
+    }
+  }
+}
+```
+
+FIND where `session` is used with `shipping_details` (around line 173)
+CAST the session variable:
+```typescript
+const sessionWithShipping = session as SessionWithShipping
+```
+
+REPLACE all instances of `session.shipping_details` with `sessionWithShipping.shipping_details`
+
+VERIFICATION: TS2339 errors on lines 173, 175, 178-183 should be resolved
+
+---
+
+#### Task 4.3: Add Explicit Types for GMC SDK (D6.4)
+FILE: scripts/sync-gmc-status.ts
+
+UPDATE Line 82:
+BEFORE: `const issues = gmcProduct.productIssues?.map((issue) => ({`
+AFTER: `const issues = (gmcProduct as any).productIssues?.map((issue: any) => ({`
+
+UPDATE Lines 88-89:
+BEFORE:
+```typescript
+const destinationStatuses = gmcProduct.destinationStatuses?.map(
+  (dest) => ({
+```
+
+AFTER:
+```typescript
+const destinationStatuses = (gmcProduct as any).destinationStatuses?.map(
+  (dest: any) => ({
+```
+
+VERIFICATION: TS2339 and TS7006 errors on lines 82, 88, 89 should be resolved
+
+---
+
+#### Task 4.4: Use Static Method for EasyPost Shipment.buy (D7.1)
+FILE: src/pages/api/create-shipping-label.ts
+
+STEP 1: Check imports at top of file
+ENSURE Shipment is imported:
+```typescript
+import {Shipment} from '@easypost/api'
+```
+
+STEP 2: UPDATE Line 197:
+BEFORE: `const purchasedShipment = await shipment.buy({rate: {id: rateId}})`
+AFTER: `const purchasedShipment = await Shipment.buy(shipment.id, {rate: {id: rateId}})`
+
+VERIFICATION: TS2576 error on line 197 should be resolved
+
+---
+
+#### Task 4.5: Convert Buffer to Uint8Array for Fetch (D7.2)
+FILE: src/pages/api/merge-label-packing-slip.ts
+
+UPDATE Line 59:
+BEFORE: `body: pdfBuffer,`
+AFTER: `body: new Uint8Array(pdfBuffer),`
+
+VERIFICATION: TS2345 error on line 59 should be resolved
+
+---
+
+CHECKPOINT 4: Run TypeScript Check
+COMMAND: npx tsc --noEmit
+EXPECTED: Errors should be 0 or 1 (only CD1 if unresolved)
+ACTION: If error count doesn't match, STOP and report discrepancy
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## DEFERRED INVESTIGATION (Optional)
+
+### CD1: OrderViewFieldType Issue
+FILE: packages/sanity-config/src/views/orderView.tsx:200
+ERROR: Type '"date"' is not assignable to type 'OrderViewFieldType | undefined'
+
+INVESTIGATION REQUIRED:
+1. Locate OrderViewFieldType definition
+2. Check if 'date' should be added to the type union
+3. OR determine if the field type should be changed
+
+IF NOT RESOLVED: This error can be deferred to a separate task
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## FINAL VERIFICATION
+
+COMMAND: npx tsc --noEmit
+EXPECTED OUTPUT: Found 0 errors (or 1 if CD1 not resolved)
+
+IF ERRORS REMAIN:
+1. Review each remaining error
+2. Check if it was covered in the contract
+3. Report any errors not addressed in the contract
+
+IF ALL ERRORS RESOLVED:
+✅ Task complete
+✅ Proceed to Guard validation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## REPORTING TEMPLATE
+
+After completion, report using this format:
+
+```
+CODEX EXECUTION REPORT: TypeScript Error Fix
+===========================================
+
+Phase 1 (Critical Blockers):
+  ✓ D1.1 - SchemaIndex import added
+  ✓ D5.1 - Stripe API versions updated (4 files)
+  ✓ D2.3 - getClient usage fixed
+  ✓ D7.3 - _type added to OrderCartItem
+  Checkpoint: 80 errors → [X] errors
+
+Phase 2 (Type Safety Core):
+  ✓ D1.2, D1.3, D1.4 - Parameter types added
+  ✓ D2.1 - Schema type guards added
+  ✓ D2.2, D2.4, D2.5, D2.6 - Object typing fixed
+  ✓ D4.1, D4.2 - Document types updated
+  Checkpoint: [X] errors → [Y] errors
+
+Phase 3 (Components & UI):
+  ✓ D3.1, D3.2, D3.3 - Component fixes
+  ✓ D6.1, D6.2, D6.3 - Script nullable handling
+  Checkpoint: [Y] errors → [Z] errors
+
+Phase 4 (External SDKs):
+  ✓ D5.2, D5.3 - Stripe nullable handling
+  ✓ D6.4 - GMC typing
+  ✓ D7.1, D7.2 - EasyPost and fetch fixes
+  Checkpoint: [Z] errors → 0 errors
+
+FINAL: npx tsc --noEmit
+Result: Found 0 errors
+
+UNKNOWNS ENCOUNTERED:
+- [List any issues not covered in contract]
+
+FILES MODIFIED: [count]
+LINES CHANGED: [count]
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+END OF CODEX ENFORCEMENT PROMPT

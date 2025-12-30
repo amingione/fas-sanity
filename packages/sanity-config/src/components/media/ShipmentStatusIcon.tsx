@@ -62,7 +62,7 @@ export const ShipmentStatusIcon = ({status}: {status?: string | null}) => {
         textAlign: 'center',
       }}
     >
-      <Icon style={{fontSize: '1.5rem'}} />
+      <Icon />
       <Text size={0} muted>
         {formatStatus(status)}
       </Text>

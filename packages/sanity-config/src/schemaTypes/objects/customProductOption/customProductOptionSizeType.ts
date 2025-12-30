@@ -6,7 +6,7 @@ interface SizeOption {
 }
 
 export const customProductOptionSizeType = defineField({
-  name: 'customProductOption.size',
+  name: 'customProductOptionSize',
   title: 'Size',
   type: 'object',
   icon: false,
@@ -27,7 +27,7 @@ export const customProductOptionSizeType = defineField({
     defineField({
       name: 'sizes',
       type: 'array',
-      of: [{type: 'customProductOption.sizeObject'}],
+      of: [{type: 'customProductOptionSizeObject'}],
       validation: (Rule) =>
         Rule.min(1)
           .error('Add at least one size choice')

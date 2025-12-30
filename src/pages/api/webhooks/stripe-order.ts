@@ -10,6 +10,20 @@ import {
 
 type StripeCheckoutSession = Stripe.Checkout.Session
 
+interface SessionWithShipping extends Stripe.Checkout.Session {
+  shipping_details?: {
+    name?: string
+    address?: {
+      line1?: string
+      line2?: string | null
+      city?: string
+      state?: string
+      postal_code?: string
+      country?: string
+    }
+  }
+}
+
 async function generateOrderNumber(client: SanityClient): Promise<string> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const randomValue = Math.floor(Math.random() * 1_000_000)
@@ -135,6 +149,7 @@ export async function handleStripeCheckoutComplete(
   client: SanityClient,
 ) {
   const orderNumber = await generateOrderNumber(client)
+  const sessionWithShipping = session as SessionWithShipping
 
   // Build shipping address text
   const orderDoc = {
@@ -170,17 +185,17 @@ export async function handleStripeCheckoutComplete(
     },
 
     // Hidden data storage
-    shippingAddress: session.shipping_details
+    shippingAddress: sessionWithShipping.shipping_details
       ? {
-          name: session.shipping_details.name || undefined,
+          name: sessionWithShipping.shipping_details.name || undefined,
           phone: session.customer_details?.phone || undefined,
           email: session.customer_details?.email || undefined,
-          addressLine1: session.shipping_details.address?.line1 || undefined,
-          addressLine2: session.shipping_details.address?.line2 || undefined,
-          city: session.shipping_details.address?.city || undefined,
-          state: session.shipping_details.address?.state || undefined,
-          postalCode: session.shipping_details.address?.postal_code || undefined,
-          country: session.shipping_details.address?.country || undefined,
+          addressLine1: sessionWithShipping.shipping_details.address?.line1 || undefined,
+          addressLine2: sessionWithShipping.shipping_details.address?.line2 || undefined,
+          city: sessionWithShipping.shipping_details.address?.city || undefined,
+          state: sessionWithShipping.shipping_details.address?.state || undefined,
+          postalCode: sessionWithShipping.shipping_details.address?.postal_code || undefined,
+          country: sessionWithShipping.shipping_details.address?.country || undefined,
         }
       : null,
 

@@ -4,6 +4,9 @@ import {
   MappingSuggestion,
   MappingConfidence,
   SourceField,
+  SchemaIndex,
+  SchemaSearchResult,
+  SanitySchemaField,
 } from '../types'
 import {detectSemanticTags} from '../utils/semanticTags'
 import {createNameVariants, similarity} from '../utils/stringMetrics'
@@ -61,7 +64,9 @@ export class MappingEngine {
 
     // Use search to bias towards name matches, then fall back to the slice of fields.
     const searchResults =
-      this.index.search(source.name, options?.limit ?? 12).map((result) => result.field) ||
+      this.index
+        .search(source.name, options?.limit ?? 12)
+        .map((result: SchemaSearchResult) => result.field) ||
       targetFields.slice(0, options?.limit ?? 12)
 
     const candidates = (searchResults.length > 0 ? searchResults : targetFields).slice(
@@ -69,13 +74,16 @@ export class MappingEngine {
       options?.limit ?? 12,
     )
 
-    return candidates.map((target) => {
+    return candidates.map((target: SanitySchemaField) => {
       const nameVariants = createNameVariants(source.name)
       const targetVariants = target.metadata.nameVariants
       const nameSimilarity = Math.max(
         similarity(source.name, target.name),
         ...nameVariants.map((variant) =>
-          Math.max(similarity(variant, target.name), ...targetVariants.map((tv) => similarity(variant, tv))),
+          Math.max(
+            similarity(variant, target.name),
+            ...targetVariants.map((tv: string) => similarity(variant, tv)),
+          ),
         ),
       )
 

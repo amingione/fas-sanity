@@ -1757,6 +1757,7 @@ const employeeHubSection = (S: any) =>
                     .icon(FolderIcon)
                     .child(
                       S.documentTypeList('empPortal')
+                        .apiVersion(API_VERSION)
                         .title('Folders')
                         .filter('_type == "empPortal" && documentType == "folder"')
                         .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
@@ -1766,6 +1767,7 @@ const employeeHubSection = (S: any) =>
                     .icon(CodeIcon)
                     .child(
                       S.documentTypeList('empPortal')
+                        .apiVersion(API_VERSION)
                         .title('Root Pages')
                         .filter(
                           '_type == "empPortal" && !defined(parentFolder) && documentType != "folder"',
@@ -1783,6 +1785,7 @@ const employeeHubSection = (S: any) =>
                             .title('Announcements')
                             .child(
                               S.documentTypeList('empPortal')
+                                .apiVersion(API_VERSION)
                                 .title('Announcements')
                                 .filter('_type == "empPortal" && documentType == "announcement"')
                                 .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
@@ -1791,6 +1794,7 @@ const employeeHubSection = (S: any) =>
                             .title('Policies')
                             .child(
                               S.documentTypeList('empPortal')
+                                .apiVersion(API_VERSION)
                                 .title('Policies')
                                 .filter('_type == "empPortal" && documentType == "policy"')
                                 .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
@@ -1799,6 +1803,7 @@ const employeeHubSection = (S: any) =>
                             .title('Forms')
                             .child(
                               S.documentTypeList('empPortal')
+                                .apiVersion(API_VERSION)
                                 .title('Forms')
                                 .filter('_type == "empPortal" && documentType == "form"')
                                 .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
@@ -1807,6 +1812,7 @@ const employeeHubSection = (S: any) =>
                             .title('Blog Posts')
                             .child(
                               S.documentTypeList('empPortal')
+                                .apiVersion(API_VERSION)
                                 .title('Blog Posts')
                                 .filter('_type == "empPortal" && documentType == "blog"')
                                 .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
@@ -1815,6 +1821,7 @@ const employeeHubSection = (S: any) =>
                             .title('Updates')
                             .child(
                               S.documentTypeList('empPortal')
+                                .apiVersion(API_VERSION)
                                 .title('Updates')
                                 .filter('_type == "empPortal" && documentType == "update"')
                                 .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),

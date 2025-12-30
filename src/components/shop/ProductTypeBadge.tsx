@@ -30,7 +30,7 @@ export function ProductTypeBadge({productType, ...badgeProps}: ProductTypeBadgeP
       data-product-type={key}
       {...badgeProps}
     >
-      <Inline space={2} align="center">
+      <Inline space={2}>
         <Text aria-hidden size={1}>
           {config.icon}
         </Text>

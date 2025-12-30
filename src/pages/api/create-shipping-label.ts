@@ -1,4 +1,5 @@
 import type {APIRoute} from 'astro'
+import {Shipment} from '@easypost/api'
 import {createClient} from '@sanity/client'
 import {getEasyPostClient, resolveDimensions, resolveWeight} from '../../../netlify/lib/easypostClient'
 import {getEasyPostFromAddress} from '../../../netlify/lib/ship-from'
@@ -194,7 +195,7 @@ export const POST: APIRoute = async ({request}) => {
     if (!chosenRate) {
       throw new Error('No shipping rates available for this shipment')
     }
-    const purchasedShipment = await shipment.buy(chosenRate)
+    const purchasedShipment = await Shipment.buy(shipment.id, chosenRate)
     const tracker = purchasedShipment.tracker || null
     const postageLabel = purchasedShipment.postage_label || null
     const labelUrl =
@@ -240,8 +241,7 @@ export const POST: APIRoute = async ({request}) => {
           typeof selectedRate?.delivery_days === 'number'
             ? selectedRate.delivery_days
             : order.deliveryDays,
-        estimatedDeliveryDate:
-          selectedRate?.est_delivery_date || order.estimatedDeliveryDate || undefined,
+        estimatedDeliveryDate: selectedRate?.delivery_date || order.estimatedDeliveryDate || undefined,
         'fulfillment.status': 'processing',
       })
       .commit({autoGenerateArrayKeys: true})

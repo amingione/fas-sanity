@@ -6,7 +6,7 @@ interface ColorOption {
 }
 
 export const customProductOptionColorType = defineField({
-  name: 'customProductOption.color',
+  name: 'customProductOptionColor',
   title: 'Color options',
   type: 'object',
   options: {collapsible: true, collapsed: false},
@@ -27,7 +27,7 @@ export const customProductOptionColorType = defineField({
     defineField({
       name: 'colors',
       type: 'array',
-      of: [{type: 'customProductOption.colorObject'}],
+      of: [{type: 'customProductOptionColorObject'}],
       validation: (Rule) =>
         Rule.min(1)
           .error('Add at least one color choice')
