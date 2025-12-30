@@ -1,0 +1,459 @@
+TASK: Verify contract enforcement for separate-create-shipping-label-vs-fulfill-order issue.
+
+VERIFICATION MODE:
+You are operating in POST-ENFORCEMENT VERIFICATION MODE.
+You are validating that Codex implemented the contract exactly as specified.
+You are NOT implementing changes or writing code.
+
+SOURCE OF TRUTH (AUTHORITATIVE):
+docs/reports/separate-create-shipping-label-vs-fulfill-order-behavior-contract-decisions.md
+
+ENFORCEMENT PROMPT (REFERENCE):
+docs/prompts/codex-enf/codex-create-shipping-label-vs-fulfill-order-enforcement-prompt.txt
+
+AMENDMENT SUMMARY (REFERENCE):
+docs/reports/contract-amendment-summary.md
+
+--------------------------------------------------
+
+VERIFICATION RULES:
+
+- Compare implementation to contract decisions EXACTLY
+- Flag ANY deviation from approved changes
+- Verify ALL forbidden changes were NOT made
+- Check that REJECTED sections remain untouched
+- Validate runtime behavior matches contract
+- Report ALL discrepancies (no tolerance for "close enough")
+- If implementation is correct, confirm ALL success criteria
+
+--------------------------------------------------
+
+FILES TO VERIFY (EXACT LIST):
+
+1. packages/sanity-config/src/schemaTypes/actions/orderActions.ts
+   - Expected changes: Endpoint fix, confirm dialog, packageDetails wrapper
+   - Lines to check: 178 (endpoint), 200-202 (confirm dialog), 164-175 (payload)
+
+2. packages/sanity-config/src/schemaTypes/documents/order.actions.ts
+   - Expected changes: Removed fulfillOrder call, added prompts, direct Sanity patch
+   - Lines to check: 121-134 (prompts), 141-160 (direct patch), removed lines 130-136 (auto-open)
+
+--------------------------------------------------
+
+VERIFICATION CHECKLIST (SEQUENTIAL):
+
+## PHASE 1: FILE SCOPE VERIFICATION
+
+❏ ONLY the 2 approved files were modified
+❏ NO schema files were touched
+❏ NO backend Netlify functions were modified
+❏ NO additional action files were changed
+❏ NO new files were created (unless documentation)
+
+**If ANY file outside the approved list was modified:**
+- REPORT the file path immediately
+- CLASSIFY as CRITICAL VIOLATION
+- Do NOT proceed to Phase 2
+
+--------------------------------------------------
+
+## PHASE 2: CREATE SHIPPING LABEL ACTION VERIFICATION
+
+**File:** packages/sanity-config/src/schemaTypes/actions/orderActions.ts
+
+### A. Endpoint Invocation (CRITICAL)
+
+❏ Verify line ~178: fetch('/.netlify/functions/easypostCreateLabel', ...)
+❏ Verify NO reference to '/api/create-shipping-label' exists
+❏ Verify method is POST
+❏ Verify headers include 'Content-Type': 'application/json'
+
+**Expected Code:**
+```typescript
+const response = await fetch('/.netlify/functions/easypostCreateLabel', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify(body),
+})
+```
+
+### B. Payload Structure (CRITICAL)
+
+❏ Verify packageDetails wrapper exists (lines ~164-175)
+❏ Verify structure: {orderId, packageDetails: {weight, dimensions}, rateId?}
+❏ Verify orderId has drafts. prefix removed
+❏ Verify weight is a number (not string)
+❏ Verify dimensions include length, width, height
+
+**Expected Payload:**
+```typescript
+const body = {
+  orderId: (doc._id || '').replace(/^drafts\./, ''),
+  packageDetails: {
+    weight: normalizedDimensions.weight,
+    dimensions: {
+      length: normalizedDimensions.length,
+      width: normalizedDimensions.width,
+      height: normalizedDimensions.height,
+    },
+  },
+  rateId: doc.easypostRateId,
+}
+```
+
+### C. Response Handling - Print Label Confirmation (CRITICAL)
+
+❏ Verify success alert displays BEFORE confirm dialog (line ~193-199)
+❏ Verify window.confirm() dialog exists (line ~200)
+❏ Verify message: "Open shipping label for printing?"
+❏ Verify labelUrl opens ONLY if user clicks OK
+❏ Verify NO automatic openUrl() call without confirmation
+
+**Expected Code:**
+```typescript
+alert(
+  `✅ Shipping label created!\n\n` +
+  `Tracking: ${trackingNumber || 'Pending'}\n` +
+  `Carrier: ${carrier || 'n/a'}\n` +
+  `Service: ${service || 'n/a'}\n` +
+  (costLabel ? `Cost: $${costLabel}\n` : ''),
+)
+if (labelUrl && window.confirm('Open shipping label for printing?')) {
+  openUrl(labelUrl)
+}
+```
+
+### D. Forbidden Changes Verification
+
+❏ Verify NO status field changes (order.status remains 'paid')
+❏ Verify NO fulfillment.status changes
+❏ Verify NO shippedAt timestamp added
+❏ Verify NO customer email sending logic
+❏ Verify NO shippingLog append (handled by backend)
+
+--------------------------------------------------
+
+## PHASE 3: FULFILL ORDER ACTION VERIFICATION
+
+**File:** packages/sanity-config/src/schemaTypes/documents/order.actions.ts
+
+### A. Removed Logic Verification (CRITICAL)
+
+❏ Verify NO callFn('fulfillOrder', {orderId}) call exists
+❏ Verify NO import of fulfillOrder function
+❏ Verify NO automatic label URL opening (old lines 130-136 removed)
+❏ Verify NO label creation logic
+
+**Search for forbidden patterns:**
+- `callFn('fulfillOrder'`
+- `fulfillOrder(`
+- `window.open(data.labelUrl`
+- `easypost` (case-insensitive in this action only)
+
+### B. Fulfillment Prompts - Sequential Dialogs (CRITICAL)
+
+❏ Verify window.prompt() for tracking number exists (line ~121-124)
+❏ Verify message: "Enter tracking number (optional):\n\nLeave empty for manual/in-store fulfillment."
+❏ Verify pre-fill with doc.trackingNumber if exists
+❏ Verify abort on null (user clicked Cancel)
+❏ Verify window.confirm() for fulfillment status exists (line ~129-133)
+❏ Verify message: "Mark order as shipped?\n\nClick OK to mark as SHIPPED.\nClick Cancel to mark as PROCESSING."
+❏ Verify result mapping: OK → 'shipped', Cancel → 'processing'
+
+**Expected Code:**
+```typescript
+const trackingInput = window.prompt(
+  'Enter tracking number (optional):\n\nLeave empty for manual/in-store fulfillment.',
+  typeof doc.trackingNumber === 'string' ? doc.trackingNumber : '',
+)
+if (trackingInput === null) {
+  props.onComplete()
+  return
+}
+const fulfillmentStatus = window.confirm(
+  'Mark order as shipped?\n\nClick OK to mark as SHIPPED.\nClick Cancel to mark as PROCESSING.',
+)
+  ? 'shipped'
+  : 'processing'
+```
+
+### C. Direct Sanity Client Patch (CRITICAL)
+
+❏ Verify getClient() call exists (line ~141)
+❏ Verify apiVersion parameter: SANITY_API_VERSION
+❏ Verify client.patch(orderId) call exists
+❏ Verify .set() includes ALL required fields
+❏ Verify .append('shippingLog', [...]) exists
+❏ Verify .commit({autoGenerateArrayKeys: true}) exists
+
+**Expected Code:**
+```typescript
+const client = getClient({apiVersion: SANITY_API_VERSION})
+await client
+  .patch(orderId)
+  .set({
+    status: 'fulfilled',
+    'fulfillment.status': fulfillmentStatus,
+    shippedAt: timestamp,
+    trackingNumber: trackingNumber || existingTracking,
+    fulfillmentNotes: undefined,
+  })
+  .append('shippingLog', [
+    {
+      _type: 'shippingLogEntry',
+      status: 'fulfilled',
+      message: `Order marked as fulfilled by ${userLabel}`,
+      trackingNumber: trackingNumber || undefined,
+      createdAt: timestamp,
+    },
+  ])
+  .commit({autoGenerateArrayKeys: true})
+```
+
+### D. Order Patch Fields Verification
+
+❏ Verify status: 'fulfilled'
+❏ Verify 'fulfillment.status': fulfillmentStatus (quoted field name)
+❏ Verify shippedAt: timestamp (ISO string)
+❏ Verify trackingNumber: trackingNumber || existingTracking
+❏ Verify fulfillmentNotes: undefined (omitted for simplicity per amendment)
+
+### E. ShippingLog Entry Verification
+
+❏ Verify _type: 'shippingLogEntry'
+❏ Verify status: 'fulfilled'
+❏ Verify message includes user label
+❏ Verify trackingNumber: trackingNumber || undefined
+❏ Verify createdAt: timestamp
+
+### F. Customer Notification Verification (CRITICAL)
+
+❏ Verify NO email sending logic exists
+❏ Verify NO Resend API calls
+❏ Verify NO fetch to email endpoints
+❏ Verify NO notifyCustomer flag handling
+❏ Verify simple alert: "Order marked as fulfilled."
+
+**Search for forbidden patterns:**
+- `resend`
+- `email`
+- `sendShippingConfirmation`
+- `notifyCustomer`
+- `.send(`
+
+### G. Response Handling Verification
+
+❏ Verify alert: "Order marked as fulfilled." (exact text)
+❏ Verify props.onComplete() called in finally block
+❏ Verify NO additional success messages
+❏ Verify NO label URL handling
+
+--------------------------------------------------
+
+## PHASE 4: SCHEMA VERIFICATION
+
+**Expected:** NO SCHEMA CHANGES
+
+❏ Verify packages/sanity-config/src/schemaTypes/documents/order.tsx is UNCHANGED
+❏ Verify NO new fields added to order schema
+❏ Verify NO field type changes
+❏ Verify NO field renames
+❏ Verify packages/sanity-config/src/schemaTypes/objects/shippingLogEntryType.ts is UNCHANGED
+
+**If ANY schema file was modified:**
+- CLASSIFY as CRITICAL VIOLATION
+- Contract explicitly REJECTED schema changes
+
+--------------------------------------------------
+
+## PHASE 5: BACKEND VERIFICATION
+
+**Expected:** NO BACKEND CHANGES
+
+❏ Verify netlify/functions/easypostCreateLabel.ts is UNCHANGED
+❏ Verify netlify/functions/fulfillOrder.ts is UNCHANGED
+❏ Verify NO new Netlify functions created
+❏ Verify NO modifications to existing function signatures
+
+**If ANY backend file was modified:**
+- CLASSIFY as CRITICAL VIOLATION
+- Enforcement prompt forbids backend changes
+
+--------------------------------------------------
+
+## PHASE 6: BEHAVIORAL INDEPENDENCE VERIFICATION
+
+### A. Label Creation Independence
+
+❏ Verify "Create Shipping Label" does NOT:
+  - Change order.status from 'paid'
+  - Modify fulfillment.status
+  - Set shippedAt timestamp
+  - Send customer emails
+  - Trigger fulfillment workflow
+
+### B. Fulfillment Independence
+
+❏ Verify "Fulfill Order" does NOT:
+  - Call EasyPost API
+  - Create shipping labels
+  - Require tracking number (allows empty)
+  - Require label existence
+  - Send customer emails
+  - Open label URLs
+
+### C. Execution Order Independence
+
+❏ Verify actions can be performed in ANY order:
+  - Label THEN fulfill (valid)
+  - Fulfill THEN label (valid)
+  - Fulfill without label (valid)
+  - Label without fulfillment (valid)
+
+--------------------------------------------------
+
+## PHASE 7: DATA INTEGRITY INVARIANTS
+
+❏ Verify labelPurchased flag controlled by backend ONLY
+❏ Verify tracking number NOT overwritten if empty input
+❏ Verify shippingLog append does NOT modify existing entries
+❏ Verify order status lifecycle preserved:
+  - Label creation: status remains 'paid'
+  - Fulfillment: status changes to 'fulfilled'
+
+--------------------------------------------------
+
+## PHASE 8: SUCCESS CRITERIA VALIDATION
+
+Run through ALL 14 success criteria from enforcement prompt:
+
+✅ / ❌ "Create Shipping Label" successfully calls /.netlify/functions/easypostCreateLabel
+✅ / ❌ Label creation does NOT change order.status from 'paid'
+✅ / ❌ Label creation does NOT send customer emails
+✅ / ❌ Label URL requires user confirm() before opening (not automatic)
+✅ / ❌ "Fulfill Order" uses direct Sanity client patch (no Netlify function call)
+✅ / ❌ "Fulfill Order" uses browser prompts/confirms for user input
+✅ / ❌ "Fulfill Order" does NOT create labels
+✅ / ❌ "Fulfill Order" does NOT send emails
+✅ / ❌ "Fulfill Order" allows fulfillment without tracking numbers
+✅ / ❌ Fulfillment can be completed for orders without labels
+✅ / ❌ Both actions can be performed independently in any order
+✅ / ❌ No schema fields modified
+✅ / ❌ No new dependencies added
+✅ / ❌ TypeScript compiles without errors (if verifiable)
+
+--------------------------------------------------
+
+## PHASE 9: NEGATIVE ASSERTIONS
+
+Verify ALL forbidden changes were NOT made:
+
+### Schema (from enforcement prompt lines 236-245)
+❏ NO labelPurchased field added (already exists)
+❏ NO fulfillmentMethod or fulfillmentType added
+❏ NO top-level workflowStatus added
+❏ NO shippingStatus type changed (object to string)
+❏ NO shippingLog type changed (array to object)
+❏ NO labelPurchased renamed to labelCreated
+
+### Backend (from enforcement prompt lines 246-251)
+❏ NO createEasyPostLabel() signature changes
+❏ NO required parameters added to easypostCreateLabel.ts
+❏ NO metadata fields removed from EasyPost payloads
+❏ NO fulfillOrder.ts changes
+
+### Coupling (from enforcement prompt lines 252-256)
+❏ NO requirement for label before fulfillment
+❏ NO automatic fulfillment after label creation
+❏ NO fulfillment failure if EasyPost unavailable
+
+### UI (from enforcement prompt lines 262-266)
+❏ NO "EasyPost Settings" section added
+❏ NO EasyPost shipment IDs exposed in action labels
+❏ NO hardcoded carrier names in fulfillment dropdown
+
+--------------------------------------------------
+
+VIOLATION CLASSIFICATION:
+
+**CRITICAL VIOLATIONS** (Contract breach):
+- Files outside approved list modified
+- Schema changes made (REJECTED in contract)
+- Backend Netlify functions modified
+- Email sending added to Fulfill Order
+- Automatic label opening (no confirm dialog)
+- Fulfillment calls EasyPost or Netlify function
+
+**MAJOR VIOLATIONS** (Incorrect implementation):
+- Missing required fields in Sanity patch
+- Incorrect payload structure for label creation
+- Missing browser prompts/confirms
+- Wrong endpoint URL
+- Incorrect fulfillment status mapping
+
+**MINOR VIOLATIONS** (Cosmetic/non-breaking):
+- Different alert message wording
+- Different variable names
+- Additional console.log statements
+- Comment changes
+
+--------------------------------------------------
+
+REPORTING FORMAT:
+
+For EACH phase, report:
+
+### [PHASE NAME]
+**Status:** ✅ PASS / ⚠️ MINOR ISSUES / ❌ VIOLATIONS DETECTED
+
+**Findings:**
+- [List all checks performed]
+- [Flag any deviations]
+- [Provide line number references]
+
+**Violations (if any):**
+- [Classification: CRITICAL / MAJOR / MINOR]
+- [Description]
+- [Expected behavior]
+- [Actual behavior]
+- [Line numbers]
+
+--------------------------------------------------
+
+FINAL VERDICT:
+
+After completing all 9 phases, provide:
+
+**OVERALL STATUS:** ✅ ENFORCEMENT SUCCESSFUL / ⚠️ MINOR ISSUES / ❌ ENFORCEMENT FAILED
+
+**Summary:**
+- Total violations: [count by classification]
+- Critical violations: [count]
+- Major violations: [count]
+- Minor violations: [count]
+
+**Success Criteria Met:** [X/14]
+
+**Recommendation:**
+- If 14/14 criteria met AND no critical violations: APPROVE FOR PRODUCTION
+- If 13/14 criteria met OR minor violations only: APPROVE WITH NOTES
+- If critical or major violations: REJECT - REQUIRES REMEDIATION
+
+--------------------------------------------------
+
+BEGIN VERIFICATION:
+
+Read the two implementation files and compare against contract decisions.
+Report findings for each phase sequentially.
+Provide comprehensive line-by-line verification.
+Flag ALL deviations, no matter how small.
+
+If verification is complete and ALL criteria pass:
+- Provide final approval statement
+- Document enforcement completion
+- Confirm contract compliance
+
+If ANY critical or major violations are found:
+- STOP verification
+- Report violations immediately
+- Recommend remediation steps

@@ -1,4 +1,4 @@
-.PHONY: lint typecheck verify-enforcement fast-path new-ai-cycle
+.PHONY: lint typecheck verify-enforcement fast-path new-ai-cycle issue-%-pipeline
 
 include codex-enforce.mk
 include governance-guards.mk
@@ -330,3 +330,89 @@ new-ai-cycle:
 	@echo "1. Run: make gemini-$(ISSUE)-audit"
 	@echo "2. Run Gemini with the generated prompt"
 	@echo "3. Save report to docs/reports/$(ISSUE)-audit.md"
+
+# =========================================================
+# Full Governance Pipeline — Issue Wrapper
+# Runs Gemini → Claude → Codex with guards
+# =========================================================
+
+.PHONY: issue-%-pipeline
+
+issue-%-pipeline:
+	@echo "🧠 Running full governance pipeline for issue: $*"
+	@echo ""
+	@$(MAKE) new-ai-cycle ISSUE=$*
+	@echo ""
+
+	@echo "▶ STEP 1: Gemini Audit"
+	@$(MAKE) gemini-$*-audit
+	@echo ""
+	@echo "⏸ Run Gemini manually using:"
+	@echo "   docs/prompts/gemini-$*-audit.txt"
+	@echo ""
+	@echo "Gemini MUST generate:"
+	@echo " - docs/reports/$*-audit.md"
+	@echo " - docs/prompts/claude-dec/$*-decision-contract-prompt.txt"
+	@read -p "Press ENTER once BOTH files exist..."
+
+	@echo ""
+	@echo "▶ STEP 2: Claude Contract Decisions"
+	@$(MAKE) claude-$*-decide
+	@echo ""
+	@echo "⏸ Run Claude manually using:"
+	@echo "   docs/prompts/claude-dec/$*-decision-contract-prompt.txt"
+	@echo ""
+	@echo "Claude MUST generate:"
+	@echo " - docs/reports/$*-contract-decisions.md"
+	@echo " - docs/prompts/codex-enf/$*-prompt.txt"
+	@read -p "Press ENTER once BOTH files exist..."
+
+	@echo ""
+	@echo "▶ STEP 3: Codex Enforcement"
+	@$(MAKE) codex-$*-enforce
+	@echo ""
+	@$(MAKE) verify-enforcement
+
+# =========================================================
+# Preflight — Validate Generated AI Artifacts
+# =========================================================
+
+.PHONY: validate-ai-artifacts
+
+validate-ai-artifacts:
+	@test -f docs/prompts/claude-dec/$(ISSUE)-decision-contract-prompt.txt || \
+	 (echo "❌ Missing Claude decision prompt" && exit 1)
+	@test -f docs/prompts/codex-enf/$(ISSUE)-prompt.txt || \
+	 (echo "❌ Missing Codex enforcement prompt" && exit 1)
+
+# =========================================================
+# Override codex-%-enforce target to surface full enforcement prompt with header
+# =========================================================
+
+.PHONY: codex-%-enforce
+
+codex-%-enforce:
+	@echo "Writing prompt to docs/prompts/codex-$*-enforce.txt"
+	@mkdir -p docs/prompts
+	@cp docs/prompts/codex-enf/$*-prompt.txt docs/prompts/codex-$*-enforce.txt
+	@tmpfile=$$(mktemp); \
+	echo "# =========================================================" > $$tmpfile; \
+	echo "# CODEX ENFORCEMENT PROMPT (AUTO-GENERATED)" >> $$tmpfile; \
+	echo "# =========================================================" >> $$tmpfile; \
+	echo "#" >> $$tmpfile; \
+	echo "# AUTHORITY (SCOPE + CONSTRAINTS):" >> $$tmpfile; \
+	echo "#   docs/reports/$*-contract-decisions.md" >> $$tmpfile; \
+	echo "#" >> $$tmpfile; \
+	echo "# EXECUTION INSTRUCTIONS (PRIMARY):" >> $$tmpfile; \
+	echo "#   This file (copied verbatim from docs/prompts/codex-enf/$*-prompt.txt)" >> $$tmpfile; \
+	echo "#" >> $$tmpfile; \
+	echo "# PRECEDENCE RULES:" >> $$tmpfile; \
+	echo "# - The enforcement instructions in this file are the ONLY executable steps." >> $$tmpfile; \
+	echo "# - The contract decisions document defines scope and prohibitions only." >> $$tmpfile; \
+	echo "# - Codex MUST NOT infer steps from the contract." >> $$tmpfile; \
+	echo "# - If any conflict exists, STOP immediately." >> $$tmpfile; \
+	echo "#" >> $$tmpfile; \
+	echo "# =========================================================" >> $$tmpfile; \
+	cat docs/prompts/codex-$*-enforce.txt >> $$tmpfile; \
+	mv $$tmpfile docs/prompts/codex-$*-enforce.txt; \
+	echo "✔ Prompt docs/prompts/codex-$*-enforce.txt generated with full enforcement content and header."

@@ -1,3 +1,5 @@
+*OLD PROMPT*
+
 TASK: Investigate <ISSUE DESCRIPTION>.
 
 ROLE:
@@ -12,7 +14,7 @@ Your sole responsibility is to observe, trace, and document factual behavior.
 CONTEXT:
 - Repo scope:
   - Primary: <REPO NAME>
-  - Secondary: Any other repositories referenced by code paths, imports, or integrations
+  - Secondary (if referenced by code paths): other fas-* repos
 - Observed behavior:
   - <OBSERVATION 1>
   - <OBSERVATION 2>
@@ -23,16 +25,16 @@ KNOWN FACTS:
 - <FACT 2>
 
 SEARCH SCOPE (IMPORTANT):
-- You are NOT limited to specific files, directories, or modules.
-- You MUST search the repository (and any referenced repos) for all schemas,
-  logic paths, queries, configuration, and integrations that could influence
+- You are NOT limited to specific files or directories.
+- You MUST search the repository (and referenced fas-* repos if applicable)
+  for any schema, logic, query, config, or integration that could influence
   the observed behavior.
-- File lists and scope boundaries must be discovered from evidence, not assumed.
+- File lists must be discovered from evidence, not assumed.
 
 Gemini MUST:
 - Inspect any schemas related to the affected domain objects
-- Inspect logic paths that create, update, or derive affected data
-- Inspect queries, desk structure, UI layers, or consumers of the data
+- Inspect logic paths that create, update, or derive affected documents
+- Inspect queries, desk structure, or UI layers that read or filter the data
 - Inspect integration boundaries (APIs, webhooks, background jobs, sync tasks)
 - Identify where expected links or data SHOULD be created
 - Identify where logic diverges across states or edge cases
@@ -65,7 +67,7 @@ Using ONLY the findings from the audit you just produced, you MUST also generate
 a Claude decision contract prompt.
 
 Create a new file at:
-docs/prompts/claude-dec/<issue>-decision-contract-prompt.txt
+docs/prompts/claude-dec/<issue>-decision-prompt.txt
 
 To generate this file:
 - Use the template located at:
@@ -91,5 +93,3 @@ The report MUST answer:
 3. Whether queries exclude affected records
 4. Whether display fallbacks hide missing data
 5. Whether duplicate records are created and why
-
-STOP after producing BOTH files.

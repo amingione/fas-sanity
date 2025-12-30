@@ -1,0 +1,228 @@
+Workflow Prompt
+
+ISSUE: separate-create-shipping-label-vs-fulfill-order-behavior
+
+⸻
+
+Problem Statement (Authoritative)
+
+In fas-sanity, two Order document actions currently overlap incorrectly:
+	•	Create Shipping Label
+	•	Fulfill Order
+
+At present:
+	•	“Create Shipping Label” is broken due to an invalid /api/create-shipping-label call
+	•	“Fulfill Order” works, but does too much (creates label + opens it immediately)
+
+This coupling is incorrect.
+
+⸻
+
+Correct Intended Behavior (Authoritative)
+
+1. Create Shipping Label
+
+This action is responsible for shipping label creation only.
+
+It should:
+	•	Prompt for shipment data, using a mixed model of:
+	•	Derived defaults (from the order, when available)
+	•	User-editable inputs for:
+	•	Weight
+	•	Dimensions
+	•	Carrier / service selection
+	•	Render available carrier and service options for selection
+	•	Allow the user to override weight and dimensions before label creation
+	•	Call the authoritative backend label-creation path
+	•	Create and persist the shipping label and associated metadata
+	•	Store the resulting label URL, tracking number (if provided), and carrier metadata on the order
+	•	Provide a “Print Shipping Label” button that opens the label in a new window or tab
+
+It must not:
+	•	Mark the order as fulfilled
+	•	Modify fulfillment status
+	•	Require tracking for fulfillment
+	•	Trigger fulfillment dialogs
+	•	Assume fulfillment will occur as part of label creation
+
+
+⸻
+
+2. Fulfill Order
+
+This action is responsible for order fulfillment state only, not shipping label creation.
+
+When triggered, it should open a modal / popup that supports manual fulfillment workflows.
+
+Available (non-required) options:
+	•	Enter a tracking number manually (optional)
+	•	Select a fulfillment status manually when needed (e.g. unfulfilled, processing, shipped, delivered)
+	•	Fulfill the order without tracking (allowed)
+
+Note: Fulfillment status is normally updated automatically by system actions refer to order.tsx 'Fulfillment Status' for exact statuses available in repo (e.g. shipment, refund, cancellation).  
+This modal exists to support manual overrides and edge cases only.
+
+It should:
+	•	Allow manual updates to fulfillment status
+	•	Optionally associate an existing tracking number or label if present
+	•	Persist fulfillment state changes to the order document
+
+It must not:
+	•	Automatically create shipping labels
+	•	Assume EasyPost is involved
+	•	Fail or block fulfillment when no tracking exists
+
+3. Existing Routing Failure (Context for Audit)
+
+The Create Shipping Label action is currently broken due to a routing mismatch.
+
+	•	Shipping label creation logic lives in `create-label.ts` in a different application
+	•	In this repository, the Studio action calls `/api/create-shipping-label` (see `orderActions.ts`)
+	•	That route exists only as an Astro API route in `create-shipping-label.ts`
+	•	On the deployed Sanity Studio (`fassanity.fasmotorsports.com`), no `/api/*` server exists
+	•	As a result, the request returns 404, causing “Unable to create label”
+
+This section is diagnostic context only and does not prescribe a fix.
+
+⸻
+
+Goal
+
+Clearly separate concerns so that:
+	•	Create Shipping Label = logistics artifact creation
+	•	Fulfill Order = business workflow completion
+
+Both actions must:
+	•	Work independently
+	•	Share backend utilities where appropriate
+	•	Never depend on nonexistent /api/* routes
+
+⸻
+
+Phase 1 — Gemini Audit (Read-Only)
+
+Gemini Instructions
+
+Audit fas-sanity and determine:
+	1.	Where Create Shipping Label is implemented
+	2.	Where Fulfill Order is implemented
+	3.	What each action currently does (step-by-step)
+	4.	Which backend functions are used today
+	5.	How shipment data (weight, dimensions) is sourced or missing
+	6.	Where coupling exists that should not
+
+Do NOT:
+	•	Propose fixes
+	•	Write code
+	•	Assume desired behavior
+
+Produce:
+
+docs/reports/separate-create-shipping-label-vs-fulfill-order-audit.md
+
+The audit must include a behavior comparison table:
+	•	Current behavior vs Intended behavior
+
+⸻
+
+Phase 2 — Claude Contract Decisions (Authoritative)
+
+Claude Instructions
+
+Using the Gemini audit, define the binding contract for both actions.
+
+Claude must decide and document:
+
+For Create Shipping Label
+	•	Approved backend endpoint / function
+	•	Required vs optional shipment inputs (weight, dimensions, service)
+	•	Whether data is prompted, derived, or mixed
+	•	What document fields may be updated
+
+For Fulfill Order
+	•	Modal / popup behavior (required)
+	•	Approved fulfillment options
+	•	Whether tracking is optional (must be yes)
+	•	How existing labels or tracking numbers are associated
+
+Cross-cutting decisions
+	•	Which utilities may be shared
+	•	Which files Codex may modify
+	•	Explicit list of forbidden changes
+
+Claude must not:
+	•	Leave decisions open-ended
+	•	Allow automatic label creation during fulfillment
+	•	Collapse actions into one flow
+
+Produce:
+
+docs/reports/separate-create-shipping-label-vs-fulfill-order-contract-decisions.md
+
+This document is authoritative and binding.
+
+⸻
+
+Phase 3 — Codex Enforcement (Non-Interactive)
+
+Codex Instructions
+
+Implement only what is explicitly approved in the Claude contract.
+
+Allowed (only if approved):
+	•	Refactoring Studio document actions
+	•	Rewiring backend calls
+	•	Introducing a fulfillment modal
+	•	Separating shared utilities
+
+Forbidden:
+	•	Creating new shipping logic beyond contract
+	•	Modifying order schema unless explicitly approved
+	•	Auto-creating labels in fulfillment
+	•	Adding /api/* routes
+	•	UI polish outside functional requirements
+
+Invoke via:
+
+make codex-separate-create-shipping-label-vs-fulfill-order-enforce
+
+
+⸻
+
+Phase 4 — Verification
+
+make verify-enforcement
+
+Verification criteria:
+	•	“Create Shipping Label”:
+	•	Creates labels only
+	•	Uses correct weight/dimensions
+	•	Does not fulfill the order
+	•	“Fulfill Order”:
+	•	Opens a modal
+	•	Allows manual tracking OR no tracking
+	•	Updates fulfillment state correctly
+	•	Does not require a shipping label
+	•	No /api/* calls from Studio
+	•	No regressions to existing orders
+
+⸻
+
+Explicit Constraints
+	•	fas-sanity is the authority repo
+	•	No frontend (fas-cms) changes
+	•	No Astro server deployment
+	•	No silent schema changes
+	•	No coupling reintroduced
+
+⸻
+
+Expected Outcome
+
+After completion:
+	•	Shipping labels and fulfillment are decoupled
+	•	Each action does one thing well
+	•	Edge cases (pickup, no tracking, external shipping) are supported
+	•	Future automation is possible without rework
+
+⸻
