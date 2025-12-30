@@ -50,6 +50,7 @@
     "seed:email-channel": "tsx scripts/ensure-email-marketing-channel.ts",
     "migrate:email-marketing": "tsx scripts/backfill-email-marketing.ts",
     "repair:references": "tsx scripts/repair-references.ts",
+    "auto-mapper:audit": "tsx packages/sanity-config/src/autoMapper/cli/autoMapperAudit.ts",
     "mcp:sanity": "pnpm exec sanity-mcp-server"
   },
   "keywords": [
@@ -165,5 +166,8 @@
       "jsdom": "26.1.0"
     }
   },
-  "packageManager": "pnpm@10.15.1+sha512.34e538c329b5553014ca8e8f4535997f96180a1d0f614339357449935350d924e22f8614682191264ec33d1462ac21561aff97f6bb18065351c162c7e8f6de67"
+  "packageManager": "pnpm@10.15.1+sha512.34e538c329b5553014ca8e8f4535997f96180a1d0f614339357449935350d924e22f8614682191264ec33d1462ac21561aff97f6bb18065351c162c7e8f6de67",
+  "volta": {
+    "node": "20.19.6"
+  }
 }
