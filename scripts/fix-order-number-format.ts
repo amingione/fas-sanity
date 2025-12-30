@@ -90,9 +90,9 @@ async function main() {
             ? doc.slug.current
             : undefined
       const candidate = await pickUnique([
-        doc.orderNumber,
-        slugCurrent,
-        doc.stripeSessionId || undefined,
+        doc.orderNumber || '',
+        slugCurrent || '',
+        doc.stripeSessionId || '',
         doc._id,
       ])
       if (!candidate) {

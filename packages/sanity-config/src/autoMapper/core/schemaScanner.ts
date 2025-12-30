@@ -154,8 +154,8 @@ export class SchemaScanner {
     this.schemaTypes
       .filter((type) => (type as any).type === 'document')
       .forEach((docType) => {
-        if (!docType.fields) return
-        docType.fields.forEach((field) => {
+        if (!('fields' in docType) || !docType.fields) return
+        docType.fields.forEach((field: any) => {
           const discovered = this.walkField(field as any, {
             documentType: docType.name,
             parentPath: [],
@@ -232,7 +232,7 @@ export class SchemaScanner {
 
       fieldDef.of.forEach((ofDef: any, index: number) => {
         const typeDef = this.resolveType(ofDef)
-        if (typeDef?.fields) {
+        if (typeDef && 'fields' in typeDef && typeDef.fields) {
           typeDef.fields.forEach((child: any) => {
             collected.push(
               ...this.walkField(child, {
@@ -243,7 +243,7 @@ export class SchemaScanner {
               }),
             )
           })
-        } else if (ofDef.fields) {
+        } else if ('fields' in ofDef && ofDef.fields) {
           ofDef.fields.forEach((child: any) => {
             collected.push(
               ...this.walkField(child, {
@@ -259,7 +259,9 @@ export class SchemaScanner {
     }
 
     const resolvedType = this.resolveType(fieldDef)
-    const nestedFields = resolvedType?.fields || fieldDef.fields
+    const nestedFields =
+      (resolvedType && 'fields' in resolvedType && resolvedType.fields) ||
+      ('fields' in fieldDef && fieldDef.fields)
     if (nestedFields && Array.isArray(nestedFields)) {
       nestedFields.forEach((child: any) => {
         const childPath = joinPath([...context.parentPath, resolvedName, child.name || 'field'])

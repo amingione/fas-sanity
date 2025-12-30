@@ -79,14 +79,14 @@ async function fetchGmcProducts() {
     const items = res.data.resources || []
     items.forEach((item) => {
       const issues =
-        (item.productIssues || []).map((issue) => ({
+        (item as any).productIssues?.map((issue: any) => ({
           code: issue.code || null,
           description: issue.detail || issue.description || null,
           severity: issue.severity || null,
         })) || []
       const approved =
-        (item.destinationStatuses || []).some(
-          (dest) => (dest.approvalStatus || '').toLowerCase() === 'approved',
+        ((item as any).destinationStatuses || []).some(
+          (dest: any) => (dest.approvalStatus || '').toLowerCase() === 'approved',
         ) || false
       records.push({
         offerId: item.offerId,

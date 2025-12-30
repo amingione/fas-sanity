@@ -69,7 +69,7 @@ function emphasizePreviewLabels(node: ReactNode): ReactNode {
   }
 
   if (React.isValidElement(node)) {
-    const children = node.props.children
+    const children = (node.props as any).children
     if (!children) return node
     const nextChildren = React.Children.map(children, (child) => emphasizePreviewLabels(child))
     return React.cloneElement(node, undefined, nextChildren)

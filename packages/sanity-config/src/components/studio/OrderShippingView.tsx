@@ -49,6 +49,9 @@ type OrderDocument = {
   shippingLabelUrl?: string
   trackingNumber?: string
   trackingUrl?: string
+  carrier?: string
+  service?: string
+  estimatedDeliveryDate?: string
   shippingAddress?: {
     name?: string
     phone?: string

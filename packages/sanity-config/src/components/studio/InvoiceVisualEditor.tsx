@@ -80,6 +80,7 @@ type ShippingLogEntry = {
 
 type OrderShippingLike = {
   amountShipping?: number
+  carrier?: string
   shippingCarrier?: string
   trackingNumber?: string
   trackingUrl?: string
@@ -109,6 +110,7 @@ type InvoiceDocument = {
   subtotal?: number
   total?: number
   amountShipping?: number
+  carrier?: string
   shippingCarrier?: string
   trackingNumber?: string
   trackingUrl?: string

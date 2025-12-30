@@ -1,3 +1,4 @@
+/// <reference types="react" />
 import React from 'react'
 
 type Props = {
@@ -40,7 +41,7 @@ const registered = new Set<string>()
 ;(Refractor as any).hasLanguage = (name: string) => registered.has(name)
 
 export default Refractor as unknown as {
-  (props: Props): JSX.Element
+  (props: Props): React.ReactElement
   registerLanguage: (lang: any) => void
   hasLanguage: (name: string) => boolean
 }

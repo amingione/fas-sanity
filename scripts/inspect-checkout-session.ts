@@ -23,7 +23,7 @@ const sessionId = sessionIdArg
 const stripeSecret = secretEnv
 
 async function main() {
-  const stripe = new Stripe(stripeSecret, {apiVersion: '2024-06-20'})
+  const stripe = new Stripe(stripeSecret, {apiVersion: '2025-08-27.basil'})
   const sessionResponse = await stripe.checkout.sessions.retrieve(sessionId, {
     expand: ['customer', 'total_details.breakdown'],
   })

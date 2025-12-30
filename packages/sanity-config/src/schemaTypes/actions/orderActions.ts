@@ -84,7 +84,12 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
         return
       }
 
-      const packageDimensions = doc.packageDimensions || {}
+      const packageDimensions: {
+        weight?: number | null
+        length?: number | null
+        width?: number | null
+        height?: number | null
+      } = doc.packageDimensions || {}
       const normalizedFromDoc = {
         weight:
           typeof packageDimensions.weight === 'number' && packageDimensions.weight > 0
@@ -142,10 +147,11 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
         normalizedDimensions = parsed
       }
 
+      const shippingAddress = doc.shippingAddress as {city?: string; state?: string} | undefined
       const confirmPurchase = window.confirm(
         `Purchase shipping label for order ${doc.orderNumber || doc._id}?\n\n` +
           `Customer: ${doc.customerName || 'Customer'}\n` +
-          `Ship to: ${doc.shippingAddress.city || ''}, ${doc.shippingAddress.state || ''}\n` +
+          `Ship to: ${shippingAddress?.city || ''}, ${shippingAddress?.state || ''}\n` +
           `Carrier: ${doc.carrier || 'Selected at checkout'}\n` +
           `Service: ${doc.service || 'Selected at checkout'}\n\n` +
           'This will charge your EasyPost account.',

@@ -93,10 +93,20 @@ export default defineType({
           title: 'Additional Fields',
           type: 'object',
           description: 'Any other form fields submitted',
+          fields: [
+            {
+              name: 'raw',
+              title: 'Raw JSON',
+              type: 'text',
+              description: 'Arbitrary key/value payload captured as JSON string',
+              rows: 4,
+            },
+          ],
           options: {
             collapsible: true,
             collapsed: true,
           },
+          readOnly: true,
         },
       ],
     }),

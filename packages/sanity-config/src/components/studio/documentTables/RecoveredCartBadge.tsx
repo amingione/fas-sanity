@@ -12,7 +12,8 @@ export const RecoveredCartBadge: React.FC<RecoveredCartBadgeProps> = ({status}) 
   }
 
   return (
-    <Badge tone="positive" mode="outline" icon={CheckmarkCircleIcon}>
+    <Badge tone="positive" mode="outline">
+      <CheckmarkCircleIcon style={{marginRight: 4}} />
       Recovered
     </Badge>
   )

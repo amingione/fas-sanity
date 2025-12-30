@@ -48,6 +48,7 @@ export interface PackageDimensions {
 }
 
 export interface OrderCartItem {
+  _type: 'orderCartItem'
   _key?: string
   name?: string
   productName?: string
@@ -228,6 +229,7 @@ export interface OrderDocument {
 export type OrderViewFieldType =
   | 'string'
   | 'number'
+  | 'date'
   | 'datetime'
   | 'array'
   | 'object'

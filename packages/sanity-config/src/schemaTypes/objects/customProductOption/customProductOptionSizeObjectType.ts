@@ -1,7 +1,7 @@
 import {defineField} from 'sanity'
 
 export const customProductOptionSizeObjectType = defineField({
-  name: 'customProductOption.sizeObject',
+  name: 'customProductOptionSizeObject',
   title: 'Size',
   type: 'object',
   fields: [

@@ -53,7 +53,7 @@ const buildStripeClient = () => {
   if (!stripeKey) {
     throw new Error('Missing Stripe secret key for military discount verification.')
   }
-  return new Stripe(stripeKey, {apiVersion: '2024-06-20'})
+  return new Stripe(stripeKey, {apiVersion: '2025-08-27.basil'})
 }
 
 const normalizeBirthDate = (value: string) => {
@@ -170,12 +170,14 @@ const ensureStripeCouponId = () => {
 const buildExpiryTimestamp = () =>
   Math.floor(Date.now() / 1000) + MILITARY_DISCOUNT_DAYS * 24 * 60 * 60
 
-const buildDiscountEmailHtml = (code: string, expiresAt: number) => {
-  const expiryDate = new Date(expiresAt * 1000).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+const buildDiscountEmailHtml = (code: string, expiresAt: number | null) => {
+  const expiryDate = expiresAt
+    ? new Date(expiresAt * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : 'No expiration date'
   const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/shop`
   return `
     <!DOCTYPE html>
@@ -294,14 +296,16 @@ export const generateMilitaryPromoCode = async (
       promoCode: code,
       stripePromoCodeId: promoCode.id,
       verifiedAt: new Date().toISOString(),
-      expiresAt: new Date(promoCode.expires_at * 1000).toISOString(),
+      expiresAt: promoCode.expires_at
+        ? new Date(promoCode.expires_at * 1000).toISOString()
+        : undefined,
     })
     .commit()
 
   await sendEmail({
     to: email,
     subject: 'Your military discount code is ready',
-    html: buildDiscountEmailHtml(code, promoCode.expires_at),
+    html: buildDiscountEmailHtml(code, promoCode.expires_at ?? null),
   })
 
   return {code, promoCodeId: promoCode.id}

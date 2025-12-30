@@ -1,0 +1,156 @@
+TypeScript Error Governance Decision Contract Prompt
+
+Use only the factual findings below from the audit report. No fixes or approvals.
+
+Domain 1) AutoMapper & Schema Inference
+Observed root causes:
+- `packages/sanity-config/src/autoMapper/core/mappingEngine.ts` references `SchemaIndex` without a local import; `SchemaIndex` is defined in `packages/sanity-config/src/autoMapper/types.ts`.
+- `packages/sanity-config/src/autoMapper/nlp/commandParser.ts` has `sourceCandidate.field` usages that TypeScript reports as `never`.
+
+Affected files and logic paths:
+- `packages/sanity-config/src/autoMapper/core/mappingEngine.ts` constructor and `suggestForField` path.
+- `packages/sanity-config/src/autoMapper/nlp/commandParser.ts` `generateMappingFromCommand` path (source candidate selection and mapping suggestion build).
+
+Conflicting type expectations:
+- `SchemaIndex` exists in `types.ts` but is unresolved in `mappingEngine.ts`.
+- `findClosestSource` returns `{field: SourceField; score: number} | null`, but `sourceCandidate` is inferred as `never` at use sites.
+
+Unknowns requiring authoritative decisions:
+- Whether `SchemaIndex` should be imported or is expected to be in scope via another mechanism.
+- Why `sourceCandidate` resolves to `never` in the current compilation context.
+- Whether the current TypeScript configuration affects autoMapper type resolution.
+
+Domain 2) Sanity Schema Definitions vs Usage
+Observed root causes:
+- `packages/sanity-config/src/autoMapper/core/schemaScanner.ts` accesses `.fields` on `SchemaTypeDefinition` without type narrowing.
+- `packages/sanity-config/src/schemaTypes/documents/integrationPack.ts` and `packages/sanity-config/src/schemaTypes/documents/workspace.ts` define `defineField` objects missing `name`.
+- `packages/sanity-config/src/schemaTypes/documentActions/linkVendorToCustomerAction.tsx` calls `client.create<CustomerDoc>` without `_id` while the type requires it.
+
+Affected files and logic paths:
+- `packages/sanity-config/src/autoMapper/core/schemaScanner.ts` `scan` and `walkField` paths.
+- `packages/sanity-config/src/schemaTypes/documents/integrationPack.ts` `dependencies` field definition.
+- `packages/sanity-config/src/schemaTypes/documents/workspace.ts` `members` field definition.
+- `packages/sanity-config/src/schemaTypes/documentActions/linkVendorToCustomerAction.tsx` customer creation path.
+
+Conflicting type expectations:
+- Sanity `SchemaTypeDefinition` union includes members without `fields`, but schemaScanner assumes `fields`.
+- Sanity `defineField` typing requires `name` for field definitions, but some array item objects omit it.
+- `SanityDocumentStub<CustomerDoc>` requires `_id`, but `client.create` payload omits it.
+
+Unknowns requiring authoritative decisions:
+- Whether schema types are generated or manually maintained and which source is authoritative.
+- Whether `CustomerDoc` creation is expected to omit `_id` in this repository's Sanity client configuration.
+- Whether current Sanity type definitions align with the Studio/runtime version in use.
+
+Domain 3) Studio UI Component Contracts
+Observed root causes:
+- `@sanity/ui` and `@sanity/icons` prop types reject `tone`, `icon`, `align`, and `style` props used in several components.
+- `react-refractor-shim.tsx` uses `JSX.Element` without a visible `JSX` namespace.
+- `sanity/desk` `StructureBuilder` typing expects `component()` with no arguments while `discountsStructure.ts` passes a component.
+- `DocumentActionProps` typing lacks `getClient` in `generateVendorNumberAction.ts`.
+
+Affected files and logic paths:
+- `packages/sanity-config/src/components/hotspots/ProductTooltip.tsx` preview rendering path.
+- `packages/sanity-config/src/components/media/ShipmentStatusIcon.tsx` icon rendering path.
+- `packages/sanity-config/src/components/StripeAnalyticsWidget.tsx` `MetricCard` rendering path.
+- `packages/sanity-config/src/components/studio/documentTables/RecoveredCartBadge.tsx` badge render path.
+- `packages/sanity-config/src/shims/react-refractor-shim.tsx` export typing path.
+- `packages/sanity-config/src/structure/discountsStructure.ts` structure builder path.
+- `packages/sanity-config/src/schemaTypes/documentActions/generateVendorNumberAction.ts` action creation path.
+- `src/components/shop/ProductTypeBadge.tsx` badge layout path.
+
+Conflicting type expectations:
+- UI component props used in code do not exist in installed `@sanity/ui` or `@sanity/icons` typings.
+- `StructureBuilder.component` signature differs from usage in `discountsStructure.ts`.
+- `DocumentActionProps` typing lacks `getClient` in the current type definitions.
+- `ReactElement<unknown>` from `React.isValidElement` makes `node.props` typed as `unknown`.
+
+Unknowns requiring authoritative decisions:
+- Whether installed Sanity UI and Desk packages are the intended versions for these props.
+- Whether `JSX` namespace is expected to be provided by the project TypeScript configuration.
+- Whether `getClient` should be part of `DocumentActionProps` in this codebase.
+
+Domain 4) Domain Document Type Drift
+Observed root causes:
+- Local `OrderDocument` and `InvoiceDocument` types omit fields (`carrier`, `service`, `estimatedDeliveryDate`) used in UI logic.
+- `orderActions.ts` uses `doc.packageDimensions` and `doc.shippingAddress` but `doc` resolves to `{}` in typing.
+- `OrderCartItem` type in `packages/sanity-config/src/types/order.ts` does not include `_type`, but API route code supplies it.
+- `OrderViewFieldType` does not include `date`, but `orderView.tsx` uses `type: 'date'`.
+
+Affected files and logic paths:
+- `packages/sanity-config/src/components/studio/InvoiceVisualEditor.tsx` shipping normalization path.
+- `packages/sanity-config/src/components/studio/OrderShippingView.tsx` shipping display path.
+- `packages/sanity-config/src/schemaTypes/actions/orderActions.ts` create label action path.
+- `packages/sanity-config/src/views/orderView.tsx` order view configuration.
+- `src/pages/api/webhooks/stripe-order.ts` order creation and cart parsing path.
+
+Conflicting type expectations:
+- Order schema and shared order types include carrier/service fields, but local component types omit them.
+- `OrderCartItem` type omits `_type`, while code builds cart items with `_type`.
+- `OrderViewFieldType` excludes `date`, while view config uses it.
+
+Unknowns requiring authoritative decisions:
+- Whether local `OrderDocument` and `InvoiceDocument` types should mirror the shared type definitions.
+- Whether `orderRef` data in invoices is expected to be resolved with order fields at runtime.
+- Whether `_type` is required for cart items in persisted order data.
+
+Domain 5) Stripe SDK & API Versioning
+Observed root causes:
+- Stripe client instantiation uses `apiVersion: '2024-06-20'` while typings expect `"2025-08-27.basil"`.
+- `promoCode.expires_at` is nullable in typings but used without null checks.
+- `Stripe.Checkout.Session` typing lacks `shipping_details`, which is accessed in the webhook handler.
+
+Affected files and logic paths:
+- `packages/sanity-config/src/utils/generateSKU.ts` Stripe client setup.
+- `scripts/inspect-checkout-session.ts` Stripe client setup.
+- `scripts/setup-military-discount.ts` Stripe client setup.
+- `src/lib/militaryVerification.ts` Stripe client setup and promo code handling.
+- `src/pages/api/webhooks/stripe-order.ts` shipping address build path.
+
+Conflicting type expectations:
+- Stripe API version literal in code does not match the type-level expected literal.
+- `promoCode.expires_at` is treated as `number` but typed as `number | null`.
+- `shipping_details` is accessed but not present on `Stripe.Checkout.Session` type in current typings.
+
+Unknowns requiring authoritative decisions:
+- The authoritative Stripe API version for this repository.
+- Whether `shipping_details` is present in runtime sessions for the configured API version.
+- Whether `promoCode.expires_at` can be null in the runtime flows used here.
+
+Domain 6) Scripts & Migration Typing Assumptions
+Observed root causes:
+- `pickUnique` expects `string[]` but receives arrays containing `undefined` values.
+- `NormalizedShippingConfig` requires non-null dimensions and booleans, while source data can be nullable.
+
+Affected files and logic paths:
+- `scripts/fix-order-number-format.ts` candidate selection and patch path.
+- `scripts/migrateProductShipping.ts` shippingConfig normalization and patch path.
+
+Conflicting type expectations:
+- Script input arrays contain optional values but the helper signature is `string[]`.
+- Migration normalizes values into a config that requires non-null booleans and dimensions despite nullable input types.
+
+Unknowns requiring authoritative decisions:
+- Whether script helpers are intended to accept optional values.
+- Whether migration config should permit nullables during transformation.
+
+Domain 7) API Routes & External SDK Boundaries
+Observed root causes:
+- `googleapis` `Schema$Product` typing does not include `productIssues` or `destinationStatuses` used in `sync-gmc-status.ts`.
+- `@easypost/api` `Shipment` type does not include instance method `buy`, but `create-shipping-label.ts` calls `shipment.buy(...)`.
+- `Response` `BodyInit` typing does not accept `Buffer`, but `merge-label-packing-slip.ts` passes a `Buffer`.
+
+Affected files and logic paths:
+- `scripts/sync-gmc-status.ts` GMC product status mapping path.
+- `src/pages/api/create-shipping-label.ts` shipment purchase path.
+- `src/pages/api/merge-label-packing-slip.ts` merged PDF response path.
+
+Conflicting type expectations:
+- SDK response types lack properties accessed by code.
+- SDK type definitions for EasyPost differ from the instance API used.
+- Fetch `Response` body typing conflicts with Buffer usage.
+
+Unknowns requiring authoritative decisions:
+- Whether GMC API responses include `productIssues` and `destinationStatuses` at runtime for the configured API version.
+- Whether the EasyPost SDK version in production exposes `Shipment.buy` on instances.
+- Whether the runtime `Response` implementation accepts `Buffer` bodies without additional conversion.

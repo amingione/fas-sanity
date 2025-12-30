@@ -1,0 +1,401 @@
+TASK: Validate and remediate Employee Hub Phase 1 implementation.
+
+ENFORCEMENT MODE:
+You are operating in VALIDATION AND REMEDIATION MODE.
+You are auditing Phase 1 work against the approved contract.
+You will identify issues, report them, and fix them if authorized.
+
+--------------------------------------------------
+
+REQUIRED READING (READ FIRST):
+
+1. AUTHORITATIVE CONTRACT:
+   docs/prompts/employeeHub.md
+   - Section: "Schema Audit Results"
+   - Section: "Required Modifications"
+   - Section: "Schema Approval Matrix"
+   - Section: "Implementation Checklist > Phase 1"
+
+2. PROJECT GOVERNANCE:
+   CLAUDE.md
+   - Section: "Core Principles > Schema-First Development"
+   - Section: "Testing Checklist"
+
+3. IMPLEMENTATION INSTRUCTIONS:
+   docs/ai-governance/prompts/employee-hub-schema-implementation.txt
+   - Review all validation requirements
+   - Review all forbidden changes
+
+--------------------------------------------------
+
+VALIDATION OBJECTIVE:
+
+Perform a complete audit of Phase 1 (Schema Deployment) to ensure:
+✅ All CRITICAL schema modifications were applied correctly
+✅ All schemas are registered properly
+✅ Desk structure is configured correctly
+✅ No forbidden files were modified
+✅ TypeScript compilation passes
+✅ Sanity Studio loads without errors
+✅ All contract requirements are met
+
+--------------------------------------------------
+
+PHASE 1 VALIDATION CHECKLIST:
+
+CRITICAL VALIDATIONS (MUST PASS):
+
+[ ] 1. SCHEMA FILE INTEGRITY
+    File: packages/sanity-config/src/schemaTypes/documents/empProfile.ts
+
+    Verify the following 6 fields exist AFTER slackUsername:
+    [ ] status (string, required, 4 options: active/inactive/on_leave/terminated)
+    [ ] role (string, required, 3 options: employee/manager/admin)
+    [ ] department (string, optional, 6 options: sales/service/parts/wholesale/management/other)
+    [ ] authUserId (string, readOnly: true)
+    [ ] hireDate (date, optional)
+    [ ] position (string, optional)
+
+    Verify field properties match contract exactly:
+    [ ] status has initialValue: 'active'
+    [ ] status has validation: (Rule) => Rule.required()
+    [ ] role has initialValue: 'employee'
+    [ ] role has validation: (Rule) => Rule.required()
+    [ ] authUserId has readOnly: true
+    [ ] authUserId has description field
+    [ ] All fields use defineField() wrapper
+
+    Verify no unwanted changes:
+    [ ] No existing fields were removed
+    [ ] No existing fields were modified
+    [ ] No fields were reordered (except new insertions)
+    [ ] Preview function still exists and is unchanged
+
+[ ] 2. SCHEMA REGISTRATION
+    File: packages/sanity-config/src/schemaTypes/index.ts
+
+    Verify imports exist:
+    [ ] import empProfile from './documents/empProfile'
+    [ ] import empResources from './documents/empResources'
+    [ ] import empPortal from './documents/empPortal/empPortal'
+    [ ] import empFormSubmission from './documents/empFormSubmission'
+
+    Verify documents array includes:
+    [ ] empProfile
+    [ ] empResources
+    [ ] empPortal
+    [ ] empFormSubmission
+
+    Verify export:
+    [ ] All 4 schemas exported in schemaTypes array
+
+[ ] 3. DESK STRUCTURE CONFIGURATION
+    File: packages/sanity-config/src/desk/deskStructure.ts
+
+    Verify Employee Hub section exists (around line 1728):
+    [ ] employeeHubSection function defined
+    [ ] Section includes empProfile list item
+    [ ] Section includes empResources list item
+    [ ] Section includes empPortal (Pages) nested structure
+    [ ] Section is added to main desk structure
+
+    Verify structure patterns:
+    [ ] Uses correct icon imports (UserIcon, DocumentTextIcon, CodeIcon, etc.)
+    [ ] Uses correct filtering for empPortal by documentType
+    [ ] Uses correct ordering (sortOrder, publishedAt)
+
+[ ] 4. SCHEMA FILES INTEGRITY
+    Verify these files exist and are valid:
+    [ ] packages/sanity-config/src/schemaTypes/documents/empProfile.ts
+    [ ] packages/sanity-config/src/schemaTypes/documents/empResources.ts
+    [ ] packages/sanity-config/src/schemaTypes/documents/empPortal/empPortal.ts
+    [ ] packages/sanity-config/src/schemaTypes/documents/empFormSubmission.ts
+
+[ ] 5. FORBIDDEN FILES CHECK
+    Verify NO modifications to:
+    [ ] packages/sanity-config/src/schemaTypes/documents/portalDoc.ts
+    [ ] Any files in fas-cms-fresh repository
+    [ ] Any API route files
+    [ ] Any frontend page files
+    [ ] Any authentication files
+    [ ] Any other schema files not listed in contract
+
+--------------------------------------------------
+
+TECHNICAL VALIDATIONS (MUST PASS):
+
+[ ] 6. TYPESCRIPT COMPILATION
+    Run: pnpm exec tsc -p tsconfig.runtime.json
+
+    Expected result: No TypeScript errors
+
+    If errors found:
+    [ ] Document each error
+    [ ] Identify root cause
+    [ ] Fix if related to Employee Hub schemas
+    [ ] Report if unrelated to this task
+
+[ ] 6b. ESLINT VALIDATION
+    Run: pnpm --filter @fas/sanity-config lint
+
+    Expected result: No ESLint errors or warnings
+
+    If errors found:
+    [ ] Document each error
+    [ ] Fix if related to Employee Hub schemas
+    [ ] Report if unrelated to this task
+
+[ ] 7. SANITY STUDIO STARTUP
+    Run: pnpm --filter @fas/sanity-config dev
+
+    Expected result: Studio starts without errors
+
+    Verify:
+    [ ] No console errors during startup
+    [ ] Employee Hub section appears in navigation
+    [ ] Can navigate to Employee Profiles
+    [ ] Can navigate to Resources
+    [ ] Can navigate to Portal Pages
+
+[ ] 8. SCHEMA VALIDATION IN STUDIO
+    Open Sanity Studio and test:
+
+    [ ] Create new Employee Profile document
+    [ ] Verify all 6 new fields appear in form
+    [ ] Verify status dropdown has 4 options
+    [ ] Verify role dropdown has 3 options
+    [ ] Verify department dropdown has 6 options
+    [ ] Verify authUserId is read-only (grayed out)
+    [ ] Verify hireDate shows date picker
+    [ ] Verify position is text input
+    [ ] Save document successfully
+    [ ] Document preview shows firstName + lastName
+
+--------------------------------------------------
+
+OPTIONAL ENHANCEMENTS CHECK:
+
+[ ] 9. VERIFY OPTIONAL FIELDS NOT ADDED
+    File: packages/sanity-config/src/schemaTypes/documents/empResources.ts
+
+    Verify these fields DO NOT exist (unless explicitly approved):
+    [ ] visibility field - NOT PRESENT (unless approved)
+    [ ] requiresAcknowledgment field - NOT PRESENT (unless approved)
+    [ ] acknowledgedBy field - NOT PRESENT (unless approved)
+    [ ] effectiveDate field - NOT PRESENT (unless approved)
+    [ ] expirationDate field - NOT PRESENT (unless approved)
+
+    If any optional fields were added:
+    [ ] Verify user explicitly approved them
+    [ ] If not approved, flag as unauthorized change
+
+--------------------------------------------------
+
+CONTRACT COMPLIANCE AUDIT:
+
+[ ] 10. COMPARE AGAINST CONTRACT
+     Reference: docs/prompts/employeeHub.md
+
+     Section: "Required Modifications > CRITICAL: empProfile Schema Updates"
+     [ ] All 6 fields match contract exactly
+     [ ] Field placement matches contract (after slackUsername)
+     [ ] Field properties match contract (types, options, validation)
+
+     Section: "Schema Approval Matrix"
+     [ ] empProfile marked as APPROVED with modifications - IMPLEMENTED
+     [ ] empResources marked as APPROVED - no CRITICAL changes made
+     [ ] empPortal marked as APPROVED as-is - no changes made
+     [ ] empFormSubmission marked as APPROVED as-is - no changes made
+
+     Section: "Implementation Checklist > Phase 1"
+     [ ] Step 1.1: CRITICAL modifications applied ✅
+     [ ] Step 1.2: Optional enhancements (check if approved)
+     [ ] Step 1.3: Schemas deployed to Studio ✅
+     [ ] Step 1.4: Schemas appear in navigation - VERIFY
+     [ ] Step 1.5: Sample documents tested - VERIFY
+
+--------------------------------------------------
+
+ISSUE IDENTIFICATION:
+
+For each validation that FAILS, document:
+
+ISSUE #X:
+- Category: [Schema Error | TypeScript Error | Registration Error | Runtime Error]
+- Severity: [CRITICAL | HIGH | MEDIUM | LOW]
+- Location: [File path and line number]
+- Description: [What is wrong]
+- Expected: [What should be]
+- Actual: [What currently is]
+- Root Cause: [Why it happened]
+- Fix Required: [What needs to change]
+- Authorization: [Is fix approved by contract?]
+
+--------------------------------------------------
+
+REMEDIATION AUTHORIZATION:
+
+You are AUTHORIZED to fix the following issues:
+
+✅ AUTHORIZED FIXES:
+- Missing fields in empProfile.ts (add per contract)
+- Incorrect field properties (correct per contract)
+- TypeScript errors in Employee Hub schemas
+- Missing schema registrations in index.ts
+- Missing desk structure entries
+- Syntax errors in schema files
+- Import/export errors
+
+❌ UNAUTHORIZED FIXES (REQUIRE APPROVAL):
+- Adding optional fields not in contract
+- Modifying existing fields not specified in contract
+- Changing schema file structure
+- Modifying forbidden files
+- Adding new dependencies
+- Modifying API routes or frontend files
+- Changing authentication logic
+
+--------------------------------------------------
+
+REMEDIATION EXECUTION:
+
+IF issues are found that require fixes:
+
+1. REPORT FIRST:
+   - List all issues found
+   - Categorize by severity
+   - Identify which are authorized to fix
+   - Request approval for unauthorized fixes
+
+2. FIX AUTHORIZED ISSUES:
+   - Fix only issues explicitly authorized
+   - Make minimal changes to resolve issue
+   - Preserve all other code unchanged
+   - Follow contract specifications exactly
+
+3. RE-VALIDATE:
+   - Re-run all validation checks
+   - Confirm issues are resolved
+   - Verify no new issues introduced
+   - Document all changes made
+
+4. FINAL REPORT:
+   - Summary of issues found
+   - Summary of fixes applied
+   - Confirmation of validation status
+   - List any remaining issues requiring approval
+
+--------------------------------------------------
+
+EXECUTION SEQUENCE:
+
+STEP 1: READ CONTRACT
+[ ] Read docs/prompts/employeeHub.md completely
+[ ] Read docs/ai-governance/prompts/employee-hub-schema-implementation.txt
+[ ] Understand all validation requirements
+
+STEP 2: FILE INSPECTION
+[ ] Read empProfile.ts and verify all 6 fields present
+[ ] Read index.ts and verify all 4 schemas registered
+[ ] Read deskStructure.ts and verify Employee Hub section
+[ ] Read empResources.ts, empPortal.ts, empFormSubmission.ts
+
+STEP 3: RUN VALIDATIONS
+[ ] Execute all checks in PHASE 1 VALIDATION CHECKLIST
+[ ] Execute all checks in TECHNICAL VALIDATIONS
+[ ] Execute all checks in CONTRACT COMPLIANCE AUDIT
+[ ] Document results for each check
+
+STEP 4: ISSUE ANALYSIS
+[ ] For each failed validation, create issue report
+[ ] Categorize issues by severity
+[ ] Identify authorized vs unauthorized fixes
+[ ] Prioritize issues (CRITICAL first)
+
+STEP 5: REMEDIATION (if needed)
+[ ] Report all issues found
+[ ] Request approval for unauthorized fixes (if any)
+[ ] Fix authorized issues only
+[ ] Re-run validations to confirm fixes
+
+STEP 6: FINAL REPORT
+[ ] Provide validation status summary
+[ ] List all issues found and fixed
+[ ] Confirm Phase 1 ready for Phase 2 (or not)
+[ ] Provide recommendations for next steps
+
+--------------------------------------------------
+
+OUTPUT FORMAT:
+
+Provide results in this format:
+
+## PHASE 1 VALIDATION REPORT
+
+### VALIDATION SUMMARY
+- Total Checks: X
+- Passed: X
+- Failed: X
+- Phase 1 Status: [COMPLETE | INCOMPLETE | BLOCKED]
+
+### CRITICAL VALIDATIONS
+✅ Schema File Integrity: PASS/FAIL
+✅ Schema Registration: PASS/FAIL
+✅ Desk Structure: PASS/FAIL
+✅ Schema Files Integrity: PASS/FAIL
+✅ Forbidden Files Check: PASS/FAIL
+
+### TECHNICAL VALIDATIONS
+✅ TypeScript Compilation: PASS/FAIL
+✅ Sanity Studio Startup: PASS/FAIL (requires manual test)
+✅ Schema Validation in Studio: PENDING (requires manual test)
+
+### CONTRACT COMPLIANCE
+✅ empProfile modifications: PASS/FAIL
+✅ Optional enhancements check: PASS/FAIL
+✅ Implementation checklist: X/5 complete
+
+### ISSUES FOUND
+[List each issue with details]
+
+### FIXES APPLIED
+[List each fix made, if any]
+
+### PHASE 1 READINESS
+Status: [READY FOR PHASE 2 | REMEDIATION REQUIRED | BLOCKED]
+Reason: [Explanation]
+
+### RECOMMENDATIONS
+[Next steps or remaining work]
+
+--------------------------------------------------
+
+COMPLETION CRITERIA:
+
+Phase 1 is COMPLETE and ready for Phase 2 when:
+✅ All CRITICAL validations PASS
+✅ All TECHNICAL validations PASS (or flagged as manual tests)
+✅ All CONTRACT COMPLIANCE checks PASS
+✅ Zero CRITICAL or HIGH severity issues remain
+✅ All authorized fixes applied successfully
+✅ Sanity Studio loads without errors
+✅ All 4 Employee Hub schemas visible and functional
+
+--------------------------------------------------
+
+FINAL INSTRUCTION:
+
+1. Read the contract (docs/prompts/employeeHub.md) completely
+2. Execute all validation checks systematically
+3. Document results for each check (PASS/FAIL)
+4. Identify and categorize all issues
+5. Fix ONLY authorized issues
+6. Re-validate after fixes
+7. Provide PHASE 1 VALIDATION REPORT
+8. Confirm readiness for Phase 2 or report blockers
+
+DO NOT proceed to Phase 2 (API Routes) until Phase 1 validation is COMPLETE.
+DO NOT suggest improvements beyond contract scope.
+DO NOT modify files without authorization.
+
+Begin validation NOW.

@@ -198,7 +198,7 @@ function MetricCard({label, value, tone}: {label: string; value: string; tone: '
         <Text size={1} muted>
           {label}
         </Text>
-        <Text size={3} weight="semibold" tone={tone}>
+        <Text size={3} weight="semibold">
           {value}
         </Text>
       </Stack>

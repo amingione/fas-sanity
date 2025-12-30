@@ -15,7 +15,7 @@ const ColorPreview = ({color}: {color: string}) => {
 }
 
 export const customProductOptionColorObjectType = defineField({
-  name: 'customProductOption.colorObject',
+  name: 'customProductOptionColorObject',
   title: 'Color',
   type: 'object',
   fields: [

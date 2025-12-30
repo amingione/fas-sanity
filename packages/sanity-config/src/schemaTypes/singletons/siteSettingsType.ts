@@ -51,16 +51,16 @@ export const settingsType = defineType({
       group: 'productOptions',
       of: [
         {
-          name: 'customProductOption.color',
-          type: 'customProductOption.color',
+          name: 'customProductOptionColor',
+          type: 'customProductOptionColor',
         },
         {
-          name: 'customProductOption.size',
-          type: 'customProductOption.size',
+          name: 'customProductOptionSize',
+          type: 'customProductOptionSize',
         },
         {
-          name: 'customProductOption.custom',
-          type: 'customProductOption.custom',
+          name: 'customProductOptionCustom',
+          type: 'customProductOptionCustom',
         },
       ],
       validation: (Rule) =>

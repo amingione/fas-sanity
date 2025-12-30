@@ -1,7 +1,7 @@
 import {defineField} from 'sanity'
 
 export const customProductOptionCustomObjectType = defineField({
-  name: 'customProductOption.customObject',
+  name: 'customProductOptionCustomObject',
   title: 'Custom Option Choice',
   type: 'object',
   fields: [

@@ -7,7 +7,7 @@ interface CustomOptionValue {
 }
 
 export const customProductOptionCustomType = defineField({
-  name: 'customProductOption.custom',
+  name: 'customProductOptionCustom',
   title: 'Custom Option',
   type: 'object',
   options: {collapsible: true, collapsed: false},
@@ -29,7 +29,7 @@ export const customProductOptionCustomType = defineField({
       name: 'values',
       title: 'Choices',
       type: 'array',
-      of: [{type: 'customProductOption.customObject'}],
+      of: [{type: 'customProductOptionCustomObject'}],
       validation: (Rule) =>
         Rule.min(1)
           .error('Add at least one choice')
