@@ -2,7 +2,6 @@ import type {SanityClient} from '@sanity/client'
 import type Stripe from 'stripe'
 
 const STRIPE_COUPON_TYPE = 'stripeCoupon'
-const SANITY_API_VERSION = '2024-10-01'
 
 type SyncResult = {
   stripeId: string
@@ -19,6 +18,10 @@ type SyncSummary = {
   skipped: number
   errors: number
   errorDetails: Array<{stripeId: string; error: string}>
+}
+
+type StripeCouponDocument = Record<string, any> & {
+  _type: string
 }
 
 const toIsoFromUnix = (value?: number | null): string | undefined => {
@@ -43,7 +46,7 @@ const resolveStatus = (
 const buildStripeCouponFields = (
   coupon: Stripe.Coupon,
   syncedAt: string,
-): Record<string, any> | null => {
+): StripeCouponDocument | null => {
   const stripeId = normalizeId(coupon.id)
   if (!stripeId) return null
 

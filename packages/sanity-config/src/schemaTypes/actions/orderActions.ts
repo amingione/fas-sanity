@@ -1,5 +1,4 @@
 import type {DocumentActionComponent} from 'sanity'
-import {useCurrentUser} from 'sanity'
 import {PackageIcon, RocketIcon, EnvelopeIcon} from '@sanity/icons'
 import {callNetlifyFunction} from '../../utils/netlifyHelpers'
 
@@ -49,7 +48,6 @@ export const GeneratePackingSlipAction: DocumentActionComponent = (props) => {
 
 export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
   const {type, draft, published, onComplete} = props
-  const currentUser = useCurrentUser()
   if (type !== 'order') return null
   const doc = draft || published
   const labelAlreadyPurchased = Boolean(doc?.labelPurchased)
@@ -163,17 +161,19 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
 
       const body = {
         orderId: (doc._id || '').replace(/^drafts\./, ''),
-        orderNumber: doc.orderNumber,
-        shippingAddress: doc.shippingAddress,
-        packageDimensions: normalizedDimensions,
-        easypostRateId: doc.easypostRateId,
-        carrier: doc.carrier,
-        service: doc.service,
-        purchasedBy: currentUser?.email || currentUser?.name || 'Unknown',
+        packageDetails: {
+          weight: normalizedDimensions.weight,
+          dimensions: {
+            length: normalizedDimensions.length,
+            width: normalizedDimensions.width,
+            height: normalizedDimensions.height,
+          },
+        },
+        rateId: doc.easypostRateId,
       }
 
       try {
-        const response = await fetch('/api/create-shipping-label', {
+        const response = await fetch('/.netlify/functions/easypostCreateLabel', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(body),
@@ -197,8 +197,10 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
             `Service: ${service || 'n/a'}\n` +
             (costLabel ? `Cost: $${costLabel}\n` : ''),
         )
+        if (labelUrl && window.confirm('Open shipping label for printing?')) {
+          openUrl(labelUrl)
+        }
         onComplete()
-        if (labelUrl) openUrl(labelUrl)
       } catch (err) {
         console.error('CreateShippingLabelAction failed', err)
         alert((err as Error)?.message || 'Failed to create shipping label')

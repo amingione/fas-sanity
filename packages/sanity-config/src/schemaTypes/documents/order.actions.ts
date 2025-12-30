@@ -91,6 +91,7 @@ const detachInvoiceReferences = async (client: any, orderId: string) => {
 // ---------------------------
 export const orderActions: DocumentActionsResolver = (prev, context) => {
   const {schemaType, getClient} = context
+  const currentUser = (context as {currentUser?: {name?: string; email?: string}}).currentUser
   if (!ORDER_DOCUMENT_TYPES.has(schemaType)) return prev
 
   return [
@@ -111,31 +112,54 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
         hidden: !eligible,
         onHandle: async () => {
           const orderId = normalizeId(doc._id)
-          if (!orderId) {
+          if (!orderId || doc._id?.startsWith('drafts.')) {
             alert('Publish this order before fulfilling it.')
             props.onComplete()
             return
           }
 
           try {
-            const res = await callFn('fulfillOrder', {orderId})
-            const data = await res
-              .clone()
-              .json()
-              .catch(() => null)
-            if (!res.ok || data?.error) {
-              throw new Error(data?.error || (await readResponseMessage(res)))
+            const trackingInput = window.prompt(
+              'Enter tracking number (optional):\n\nLeave empty for manual/in-store fulfillment.',
+              typeof doc.trackingNumber === 'string' ? doc.trackingNumber : '',
+            )
+            if (trackingInput === null) {
+              props.onComplete()
+              return
             }
-
-            if (data?.labelUrl && typeof window !== 'undefined') {
-              try {
-                window.open(data.labelUrl, '_blank', 'noopener')
-              } catch {
-                window.location.href = data.labelUrl
-              }
-            }
-
-            alert('Order fulfilled and customer notified.')
+            const fulfillmentStatus = window.confirm(
+              'Mark order as shipped?\n\nClick OK to mark as SHIPPED.\nClick Cancel to mark as PROCESSING.',
+            )
+              ? 'shipped'
+              : 'processing'
+            const trackingNumber = trackingInput.trim() || undefined
+            const existingTracking =
+              typeof doc.trackingNumber === 'string' && doc.trackingNumber.trim()
+                ? doc.trackingNumber
+                : undefined
+            const timestamp = new Date().toISOString()
+            const userLabel = currentUser?.name || currentUser?.email || 'user'
+            const client = getClient({apiVersion: SANITY_API_VERSION})
+            await client
+              .patch(orderId)
+              .set({
+                status: 'fulfilled',
+                'fulfillment.status': fulfillmentStatus,
+                shippedAt: timestamp,
+                trackingNumber: trackingNumber || existingTracking,
+                fulfillmentNotes: undefined,
+              })
+              .append('shippingLog', [
+                {
+                  _type: 'shippingLogEntry',
+                  status: 'fulfilled',
+                  message: `Order marked as fulfilled by ${userLabel}`,
+                  trackingNumber: trackingNumber || undefined,
+                  createdAt: timestamp,
+                },
+              ])
+              .commit({autoGenerateArrayKeys: true})
+            alert('Order marked as fulfilled.')
           } catch (error: any) {
             console.error('fulfillOrder action failed', error)
             alert(error?.message || 'Unable to fulfill order')

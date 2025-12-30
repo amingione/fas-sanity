@@ -41,35 +41,20 @@
   }
 
   body.sanity-studio-theme {
-    --studio-body-background-light: #f7f7f7 !important;
-    --studio-surface-light: #f7f7f7 !important;
-    --studio-surface-strong-light: #f7f7f7 !important;
-    --studio-surface-soft-light: #f7f7f7 !important;
-    --studio-surface-overlay-light: #f7f7f7 !important;
-    --studio-border-light: #e0e0e0 !important;
-    --studio-border-strong-light: #e0e0e0 !important;
-    --studio-text-light: #000000;
-    --studio-muted-light: #000000;
-    --studio-accent-light: #2563eb;
-    --studio-accent-strong-light: #1e293b;
-    --studio-accent-muted-light: rgba(37, 99, 235, 0.12);
-    --studio-shadow-light: 0 18px 45px rgba(15, 23, 42, 0.18);
-    --studio-backdrop-light: rgba(148, 163, 184, 0.25);
-
-    --studio-body-background-dark: #1a1a1a !important;
-    --studio-surface-dark: #1a1a1a !important;
-    --studio-surface-strong-dark: #1a1a1a !important;
-    --studio-surface-soft-dark: #1a1a1a !important;
-    --studio-surface-overlay-dark: #1a1a1a !important;
-    --studio-border-dark: #333333 !important;
-    --studio-border-strong-dark: #333333 !important;
-    --studio-text-dark: #ffffff;
-    --studio-muted-dark: #ffffff;
-    --studio-accent-dark: #60a5fa;
-    --studio-accent-strong-dark: #e2e8f0;
-    --studio-accent-muted-dark: rgba(96, 165, 250, 0.22);
-    --studio-shadow-dark: 0 22px 55px rgba(2, 6, 23, 0.55);
-    --studio-backdrop-dark: rgba(2, 6, 23, 0.55);
+    --studio-body-background: var(--card-bg-color, #ffffff);
+    --studio-surface: var(--card-bg-color, #ffffff);
+    --studio-surface-strong: var(--card-bg-color, #ffffff);
+    --studio-surface-soft: var(--card-muted-bg-color, #f5f5f5);
+    --studio-surface-overlay: var(--card-bg-color, #ffffff);
+    --studio-border: var(--card-border-color, #e0e0e0);
+    --studio-border-strong: var(--card-border-color, #e0e0e0);
+    --studio-text: var(--card-fg-color, #111111);
+    --studio-muted: var(--card-muted-fg-color, #666666);
+    --studio-accent: var(--card-accent-fg-color, var(--card-fg-color, #111111));
+    --studio-accent-strong: var(--card-accent-fg-color, var(--card-fg-color, #111111));
+    --studio-accent-muted: var(--card-muted-bg-color, #f0f0f0);
+    --studio-shadow: 0 18px 45px var(--card-shadow-ambient-color, rgba(15, 23, 42, 0.18));
+    --studio-backdrop: var(--card-backdrop-color, rgba(148, 163, 184, 0.25));
 
     --studio-space-xs: 4px;
     --studio-space-sm: 8px;
@@ -77,46 +62,6 @@
     --studio-space-lg: 16px;
     --studio-space-xl: 24px;
 
-    --studio-body-background: light-dark(
-      var(--studio-body-background-light),
-      var(--studio-body-background-dark)
-    );
-    --studio-surface: light-dark(var(--studio-surface-light), var(--studio-surface-dark));
-    --studio-surface-strong: light-dark(
-      var(--studio-surface-strong-light),
-      var(--studio-surface-strong-dark)
-    );
-    --studio-surface-soft: light-dark(
-      var(--studio-surface-soft-light),
-      var(--studio-surface-soft-dark)
-    );
-    --studio-surface-overlay: light-dark(
-      var(--studio-surface-overlay-light),
-      var(--studio-surface-overlay-dark)
-    );
-    --studio-border: light-dark(var(--studio-border-light), var(--studio-border-dark));
-    --studio-border-strong: light-dark(
-      var(--studio-border-strong-light),
-      var(--studio-border-strong-dark)
-    );
-    --studio-text: light-dark(var(--studio-text-light), var(--studio-text-dark));
-    --studio-muted: light-dark(var(--studio-muted-light), var(--studio-muted-dark));
-    --studio-accent: light-dark(var(--studio-accent-light), var(--studio-accent-dark));
-    --studio-accent-strong: light-dark(
-      var(--studio-accent-strong-light),
-      var(--studio-accent-strong-dark)
-    );
-    --studio-accent-muted: light-dark(
-      var(--studio-accent-muted-light),
-      var(--studio-accent-muted-dark)
-    );
-    --studio-shadow: light-dark(var(--studio-shadow-light), var(--studio-shadow-dark));
-    --studio-backdrop: light-dark(var(--studio-backdrop-light), var(--studio-backdrop-dark));
-    --card-bg-color: var(--studio-surface);
-    --card-fg-color: var(--studio-text);
-    --card-muted-bg-color: var(--studio-surface);
-    --card-muted-fg-color: var(--studio-text);
-    --card-border-color: var(--studio-border);
     color-scheme: light dark;
   }
 }
