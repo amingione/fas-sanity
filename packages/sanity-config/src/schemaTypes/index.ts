@@ -299,6 +299,10 @@ import customerMessage from './documents/customerMessage'
 import quoteRequest from './documents/quoteRequest'
 import promotion from './documents/promotion'
 import vendorAuthToken from './documents/vendorAuthToken'
+import empProfile from './documents/empProfile'
+import empResources from './documents/empResources'
+import empPortal from './documents/empPortal/empPortal'
+import empFormSubmission from './documents/empFormSubmission'
 
 const documents = [
   collectionType,
@@ -382,6 +386,10 @@ const documents = [
   searchQueryType,
   promotion,
   vendorAuthToken,
+  empProfile,
+  empResources,
+  empPortal,
+  empFormSubmission,
 ]
 
 import {homeType} from './singletons/homeType'
