@@ -186,6 +186,20 @@ export default defineType({
       initialValue: 'internal',
     }),
     defineField({
+      name: 'formUrl',
+      title: 'Form URL',
+      type: 'url',
+      description: 'External URL to the form (e.g., Typeform, Google Forms, or direct PDF link)',
+      group: 'content',
+    }),
+    defineField({
+      name: 'externalUrl',
+      title: 'External URL',
+      type: 'url',
+      description: 'Alternative external link to resource or document',
+      group: 'content',
+    }),
+    defineField({
       name: 'tags',
       title: 'Tags',
       type: 'array',
@@ -214,14 +228,14 @@ export default defineType({
     }),
     defineField({
       name: 'file',
-      title: 'File',
+      title: 'File Upload',
       type: 'file',
       group: 'content',
       options: {
         storeOriginalFilename: true,
-        accept: 'application/pdf,.pdf,.zip',
+        accept: '.pdf,.doc,.docx,.xls,.xlsx',
       },
-      description: 'Upload PDF or ZIP assets. Hidden for guides and reference entries.',
+      description: 'Upload PDF or other document file. Hidden for guides and reference entries.',
       hidden: ({document}) => isContentFocusedType(toDocumentType(document?.documentType)),
     }),
     defineField({

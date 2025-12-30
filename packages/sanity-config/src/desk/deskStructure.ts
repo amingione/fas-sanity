@@ -7,10 +7,14 @@ import {
   CheckmarkCircleIcon,
   ClipboardIcon,
   ClockIcon,
+  CodeIcon,
   CreditCardIcon,
+  DatabaseIcon,
   DocumentIcon,
+  DocumentTextIcon,
   EnvelopeIcon,
   BellIcon,
+  FolderIcon,
   HomeIcon,
   BulbOutlineIcon,
   LinkIcon,
@@ -1721,6 +1725,107 @@ const createBlogSection = (S: any) =>
         ]),
     )
 
+const employeeHubSection = (S: any) =>
+  S.listItem()
+    .id('employee')
+    .title('Employees')
+    .icon(UserIcon)
+    .child(
+      S.list()
+        .title('Employees')
+        .items([
+          S.documentTypeListItem('empProfile').title('Employee Profiles').icon(DatabaseIcon),
+          S.documentTypeListItem('empResources').title('Resources').icon(DocumentTextIcon),
+          S.listItem()
+            .title('Pages')
+            .icon(CodeIcon)
+            .child(
+              S.list()
+                .title('Portal Pages')
+                .items([
+                  S.listItem()
+                    .title('All Pages & Folders')
+                    .icon(CodeIcon)
+                    .child(
+                      S.documentTypeList('empPortal')
+                        .title('All Pages & Folders')
+                        .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
+                    ),
+                  S.divider(),
+                  S.listItem()
+                    .title('📁 Folders')
+                    .icon(FolderIcon)
+                    .child(
+                      S.documentTypeList('empPortal')
+                        .title('Folders')
+                        .filter('_type == "empPortal" && documentType == "folder"')
+                        .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
+                    ),
+                  S.listItem()
+                    .title('📄 Root Pages')
+                    .icon(CodeIcon)
+                    .child(
+                      S.documentTypeList('empPortal')
+                        .title('Root Pages')
+                        .filter(
+                          '_type == "empPortal" && !defined(parentFolder) && documentType != "folder"',
+                        )
+                        .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
+                    ),
+                  S.divider(),
+                  S.listItem()
+                    .title('By Type')
+                    .child(
+                      S.list()
+                        .title('Pages by Type')
+                        .items([
+                          S.listItem()
+                            .title('Announcements')
+                            .child(
+                              S.documentTypeList('empPortal')
+                                .title('Announcements')
+                                .filter('_type == "empPortal" && documentType == "announcement"')
+                                .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
+                            ),
+                          S.listItem()
+                            .title('Policies')
+                            .child(
+                              S.documentTypeList('empPortal')
+                                .title('Policies')
+                                .filter('_type == "empPortal" && documentType == "policy"')
+                                .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
+                            ),
+                          S.listItem()
+                            .title('Forms')
+                            .child(
+                              S.documentTypeList('empPortal')
+                                .title('Forms')
+                                .filter('_type == "empPortal" && documentType == "form"')
+                                .defaultOrdering([{field: 'sortOrder', direction: 'asc'}]),
+                            ),
+                          S.listItem()
+                            .title('Blog Posts')
+                            .child(
+                              S.documentTypeList('empPortal')
+                                .title('Blog Posts')
+                                .filter('_type == "empPortal" && documentType == "blog"')
+                                .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
+                            ),
+                          S.listItem()
+                            .title('Updates')
+                            .child(
+                              S.documentTypeList('empPortal')
+                                .title('Updates')
+                                .filter('_type == "empPortal" && documentType == "update"')
+                                .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]),
+    )
+
 const buildReportsStructure = (S: any) =>
   S.listItem()
     .id('finance-reports')
@@ -1807,6 +1912,7 @@ export const deskStructure: StructureResolver = (S) =>
       createInStoreOperationsSection(S),
 
       S.divider().title('F.A.S. Resources'),
+      employeeHubSection(S),
       createBlogSection(S),
       downloadsStructure(S),
 

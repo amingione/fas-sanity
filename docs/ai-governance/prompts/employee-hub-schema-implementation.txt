@@ -1,0 +1,235 @@
+TASK: Implement Employee Hub schema modifications in strict enforcement mode.
+
+ENFORCEMENT MODE:
+You are operating in SCHEMA ENFORCEMENT MODE.
+You are implementing ONLY the approved schema modifications.
+You are NOT designing, refactoring, or improving beyond the approved scope.
+
+--------------------------------------------------
+
+REQUIRED READING (MUST READ BEFORE ANY CHANGES):
+
+1. AUTHORITATIVE CONTRACT:
+   docs/prompts/employeeHub.md
+   - Read Section: "Required Modifications"
+   - Read Section: "Schema Approval Matrix"
+   - Read Section: "Critical Issues (Must Fix Before Deployment)"
+
+2. PROJECT GOVERNANCE:
+   CLAUDE.md
+   - Section: "Core Principles > Schema-First Development"
+   - Section: "Change Control Rules"
+
+3. SCHEMA PATTERNS:
+   docs/codex.md
+   - Section: "Schema Patterns"
+   - Section: "Change Control Rules"
+
+--------------------------------------------------
+
+SOURCE OF TRUTH (AUTHORITATIVE):
+docs/prompts/employeeHub.md
+
+CONTRACT CONSUMPTION RULES:
+
+- The contract document (employeeHub.md) must be consumed top-to-bottom
+- ONLY implement changes in "Required Modifications" section
+- "Recommended" changes are OPTIONAL and require explicit approval
+- Schema fields marked CRITICAL must be added exactly as specified
+- Absence of explicit approval means DO NOT CHANGE
+
+This document is binding.
+No schema field may be added, modified, or removed unless explicitly approved in employeeHub.md.
+
+--------------------------------------------------
+
+APPROVED SCHEMA CHANGES (EXACT SCOPE):
+
+FILE: packages/sanity-config/src/schemaTypes/documents/empProfile.ts
+
+APPROVED MODIFICATIONS:
+✅ ADD the following fields AFTER line 43 (after 'slackUsername' field):
+   - status (string, required, options: active/inactive/on_leave/terminated)
+   - role (string, required, options: employee/manager/admin)
+   - department (string, optional, options: sales/service/parts/wholesale/management/other)
+   - authUserId (string, readOnly, for auth system linking)
+   - hireDate (date, optional)
+   - position (string, optional)
+
+EXACT INSERTION POINT: After defineField for 'slackUsername' (line 43)
+EXACT CODE: See employeeHub.md Section "Required Modifications > CRITICAL: empProfile Schema Updates"
+
+--------------------------------------------------
+
+OPTIONAL ENHANCEMENTS (REQUIRES EXPLICIT APPROVAL):
+
+FILE: packages/sanity-config/src/schemaTypes/documents/empResources.ts
+
+OPTIONAL MODIFICATIONS (DO NOT IMPLEMENT WITHOUT APPROVAL):
+⚠️ visibility field
+⚠️ requiresAcknowledgment field
+⚠️ acknowledgedBy field
+⚠️ effectiveDate field
+⚠️ expirationDate field
+
+RULE: Ask user for explicit approval before implementing optional enhancements.
+
+--------------------------------------------------
+
+FILES ALLOWED TO CHANGE (EXACT LIST):
+
+CRITICAL CHANGES (REQUIRED):
+- packages/sanity-config/src/schemaTypes/documents/empProfile.ts
+
+OPTIONAL CHANGES (REQUIRES APPROVAL):
+- packages/sanity-config/src/schemaTypes/documents/empResources.ts
+
+If any other file needs modification:
+- STOP execution
+- Report the file and reason
+- Do NOT modify any files
+
+--------------------------------------------------
+
+FILES FORBIDDEN TO CHANGE:
+
+❌ packages/sanity-config/src/schemaTypes/index.ts (already registered)
+❌ packages/sanity-config/src/desk/deskStructure.ts (already configured)
+❌ packages/sanity-config/src/schemaTypes/documents/empPortal/empPortal.ts (approved as-is)
+❌ packages/sanity-config/src/schemaTypes/documents/empFormSubmission.ts (approved as-is)
+❌ packages/sanity-config/src/schemaTypes/documents/portalDoc.ts (not part of this task)
+❌ All API routes in fas-cms-fresh (Phase 2 - separate task)
+❌ All frontend pages (Phase 3 - separate task)
+❌ All other schema files
+
+--------------------------------------------------
+
+STRICT IMPLEMENTATION RULES:
+
+1. EXACT FIELD PLACEMENT:
+   - Insert new fields EXACTLY where specified in employeeHub.md
+   - Preserve ALL existing fields unchanged
+   - Maintain existing field order
+   - Do NOT reorder or reorganize fields
+
+2. EXACT FIELD DEFINITIONS:
+   - Copy field definitions EXACTLY from employeeHub.md contract
+   - Do NOT modify field names, types, or validation rules
+   - Do NOT add additional fields not in the contract
+   - Do NOT remove or hide existing fields
+
+3. EXACT SYNTAX:
+   - Use defineField() wrapper for all new fields
+   - Maintain TypeScript syntax exactly as shown
+   - Preserve existing code formatting
+   - Do NOT refactor or optimize
+
+4. SCHEMA COMPLIANCE:
+   - Follow Sanity schema patterns from existing empProfile.ts
+   - Match validation patterns from existing fields
+   - Use consistent icon and preview patterns
+
+--------------------------------------------------
+
+VALIDATION REQUIREMENTS:
+
+BEFORE COMMITTING:
+✅ TypeScript compilation must pass (npm run type-check)
+✅ No new ESLint errors introduced
+✅ All new fields use defineField() wrapper
+✅ All new fields have proper TypeScript types
+✅ Validation rules match contract specifications
+✅ No existing fields modified or removed
+✅ Schema preview still renders correctly
+
+SCHEMA-SPECIFIC VALIDATION:
+✅ status field has exactly 4 options (active/inactive/on_leave/terminated)
+✅ role field has exactly 3 options (employee/manager/admin)
+✅ department field has exactly 6 options (sales/service/parts/wholesale/management/other)
+✅ authUserId field is readOnly: true
+✅ All required fields have validation: (Rule) => Rule.required()
+
+--------------------------------------------------
+
+BEHAVIORAL PARITY REQUIREMENT:
+
+- Existing empProfile documents must load without errors
+- Preview function must continue to work
+- Studio navigation must remain functional
+- No breaking changes to existing API queries
+- No migration scripts needed (new fields are optional by default)
+
+--------------------------------------------------
+
+EXECUTION CHECKLIST:
+
+PHASE 1: PRE-IMPLEMENTATION
+[ ] Read docs/prompts/employeeHub.md completely
+[ ] Identify exact insertion point in empProfile.ts
+[ ] Verify contract approval for each field
+[ ] Confirm no forbidden files will be touched
+
+PHASE 2: IMPLEMENTATION
+[ ] Open packages/sanity-config/src/schemaTypes/documents/empProfile.ts
+[ ] Locate line 43 (after slackUsername field)
+[ ] Insert CRITICAL fields exactly as specified in contract
+[ ] Preserve all existing code unchanged
+[ ] Save file
+
+PHASE 3: VALIDATION
+[ ] Run npm run type-check
+[ ] Verify no TypeScript errors
+[ ] Verify no ESLint errors
+[ ] Check field definitions match contract exactly
+
+PHASE 4: VERIFICATION
+[ ] Confirm only empProfile.ts was modified
+[ ] Confirm no other files were touched
+[ ] Confirm all 6 new fields are present
+[ ] Confirm all field properties match contract
+
+--------------------------------------------------
+
+COMPLETION RULE:
+
+When implementation is complete:
+✅ Confirm empProfile.ts has 6 new fields
+✅ Confirm all fields match contract exactly
+✅ Confirm no other files were modified
+✅ Stop execution
+❌ Do NOT implement optional enhancements without approval
+❌ Do NOT create API routes (Phase 2 - separate task)
+❌ Do NOT modify desk structure
+❌ Do NOT suggest improvements
+❌ Do NOT continue beyond approved scope
+
+--------------------------------------------------
+
+ERROR HANDLING:
+
+IF you encounter any of these situations:
+- Field definition unclear in contract → STOP, ask for clarification
+- Need to modify a forbidden file → STOP, report issue
+- TypeScript errors after changes → STOP, report errors
+- Existing functionality breaks → STOP, rollback changes
+- Contract contradicts itself → STOP, ask for resolution
+
+DO NOT attempt to fix, infer, or work around issues.
+STOP and report the specific problem.
+
+--------------------------------------------------
+
+APPROVED BY:
+✅ Contract: docs/prompts/employeeHub.md
+✅ Version: 1.0.0
+✅ Date: 2025-12-30
+✅ Status: CONDITIONAL APPROVAL - Schema modifications REQUIRED
+
+--------------------------------------------------
+
+FINAL INSTRUCTION:
+
+Read the contract (docs/prompts/employeeHub.md) NOW.
+Implement ONLY the CRITICAL modifications to empProfile.ts.
+Do NOT implement optional enhancements without explicit approval.
+Stop when complete. Do not suggest next steps.
