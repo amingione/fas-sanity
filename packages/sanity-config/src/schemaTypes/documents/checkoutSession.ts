@@ -127,6 +127,18 @@ export default defineType({
       ],
     }),
     defineField({
+      name: 'invalidCart',
+      type: 'boolean',
+      title: 'Invalid Cart',
+      readOnly: false,
+    }),
+    defineField({
+      name: 'failureReason',
+      type: 'string',
+      title: 'Failure Reason',
+      readOnly: false,
+    }),
+    defineField({
       name: 'amountSubtotal',
       type: 'number',
       title: 'Subtotal',

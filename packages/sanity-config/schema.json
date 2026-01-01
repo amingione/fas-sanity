@@ -1775,7 +1775,9 @@
           "type": "union",
           "of": [
             {"type": "string", "value": "processed"},
+            {"type": "string", "value": "processing"},
             {"type": "string", "value": "ignored"},
+            {"type": "string", "value": "failed_terminal"},
             {"type": "string", "value": "error"}
           ]
         },
@@ -2962,6 +2964,11 @@
       "stripeCustomerId": {
         "type": "objectAttribute",
         "value": {"type": "string"},
+        "optional": true
+      },
+      "stripeCustomerIds": {
+        "type": "objectAttribute",
+        "value": {"type": "array", "of": {"type": "string"}},
         "optional": true
       },
       "stripeLastSyncedAt": {

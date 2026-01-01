@@ -71,6 +71,15 @@ export default defineType({
       hidden: true,
     }),
     defineField({
+      name: 'stripeCustomerIds',
+      title: 'Stripe Customer IDs',
+      type: 'array',
+      of: [{type: 'string'}],
+      readOnly: true,
+      group: 'stripe',
+      hidden: true,
+    }),
+    defineField({
       name: 'stripeLastSyncedAt',
       title: 'Stripe Last Synced',
       type: 'datetime',

@@ -11,6 +11,7 @@ import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
 import {mapStripeLineItem, type CartMetadataEntry} from '../lib/stripeCartItem'
 import {syncVendorPortalEmail} from '../lib/vendorPortalEmail'
+import {buildStripeCustomerAliasPatch} from '../lib/stripeCustomerAliases'
 import {
   enrichCartItemsFromSanity,
   computeShippingMetrics,
@@ -204,6 +205,13 @@ function idVariants(id?: string): string[] {
   if (id.startsWith('drafts.')) ids.push(id.replace('drafts.', ''))
   else ids.push(`drafts.${id}`)
   return Array.from(new Set(ids))
+}
+
+const CHECKOUT_SESSION_ID_PATTERN = /^cs_(test|live)_/
+
+function isValidCheckoutSessionId(value?: string | null): boolean {
+  if (!value || typeof value !== 'string') return false
+  return CHECKOUT_SESSION_ID_PATTERN.test(value.trim())
 }
 
 function createOrderSlug(source?: string | null, fallback?: string | null): string | null {
@@ -714,7 +722,30 @@ async function ensureCustomerStripeDetails(options: {
   const customerId = options.customerId
   if (!customerId) return
   const patch: Record<string, any> = {}
-  if (options.stripeCustomerId) patch.stripeCustomerId = options.stripeCustomerId
+  if (options.stripeCustomerId) {
+    try {
+      const customer = await sanity.fetch<{
+        stripeCustomerId?: string | null
+        stripeCustomerIds?: string[] | null
+        email?: string | null
+      } | null>(`*[_id == $id][0]{stripeCustomerId, stripeCustomerIds, email}`, {id: customerId})
+      if (customer) {
+        const {patch: stripePatch} = buildStripeCustomerAliasPatch(
+          customer,
+          options.stripeCustomerId,
+          customer.email || undefined,
+        )
+        Object.assign(patch, stripePatch)
+      } else {
+        patch.stripeCustomerId = options.stripeCustomerId
+        patch.stripeCustomerIds = [options.stripeCustomerId]
+      }
+    } catch (err) {
+      console.warn('stripeWebhook: failed to load customer stripe details', err)
+      patch.stripeCustomerId = options.stripeCustomerId
+      patch.stripeCustomerIds = [options.stripeCustomerId]
+    }
+  }
   if (options.billingAddress) patch.billingAddress = options.billingAddress
   patch.stripeLastSyncedAt = new Date().toISOString()
   if (!options.stripeCustomerId && !options.billingAddress && Object.keys(patch).length <= 1) {
@@ -846,9 +877,11 @@ async function findOrderDocumentIdForEvent(input: {
   return null
 }
 
+type StripeWebhookStatus = 'processed' | 'processing' | 'ignored' | 'failed_terminal' | 'error'
+
 async function recordStripeWebhookEvent(options: {
   event: Stripe.Event
-  status: 'processed' | 'ignored' | 'error'
+  status: StripeWebhookStatus
   summary?: string
 }): Promise<void> {
   const {event, status, summary} = options
@@ -1643,7 +1676,10 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
   return item
 }
 
-function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
+function parseCartItemsFromMetadata(
+  metadata: Record<string, string>,
+  context?: {sessionId?: string | null},
+): {items: CartItem[]; parseError?: string} {
   const rawCandidates = [
     metadata['cart'],
     metadata['cart_items'],
@@ -1651,19 +1687,23 @@ function cartItemsFromMetadata(metadata: Record<string, string>): CartItem[] {
     metadata['line_items'],
   ]
   const raw = rawCandidates.find((candidate) => typeof candidate === 'string' && candidate.trim())
-  if (!raw) return []
+  if (!raw) return {items: []}
   try {
     const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
+    if (!Array.isArray(parsed)) return {items: []}
     const items: CartItem[] = []
     for (const entry of parsed) {
       const item = convertLegacyCartEntry(entry)
       if (item) items.push(item)
     }
-    return items
+    return {items}
   } catch (err) {
-    console.warn('stripeWebhook: failed to parse cart metadata', err)
-    return []
+    const reason = (err as {message?: string})?.message || String(err)
+    console.warn('stripeWebhook: cart metadata parse failed', {
+      sessionId: context?.sessionId || null,
+      reason,
+    })
+    return {items: [], parseError: reason}
   }
 }
 
@@ -1835,9 +1875,13 @@ async function buildCartFromSessionLineItems(
   options?: {lineItems?: Stripe.LineItem[] | null},
 ): Promise<{items: CartItem[]; products: CartProductSummary[]}> {
   if (!stripe) return {items: [], products: []}
+  if (!isValidCheckoutSessionId(sessionId)) {
+    console.warn('stripeWebhook: invalid checkout session id for line items', {sessionId})
+    return {items: [], products: []}
+  }
   try {
     const listResponse =
-      options?.lineItems && Array.isArray(options.lineItems)
+      options?.lineItems && Array.isArray(options.lineItems) && options.lineItems.length > 0
         ? {data: options.lineItems}
         : await stripe.checkout.sessions.listLineItems(sessionId, {
             limit: 100,
@@ -1849,9 +1893,6 @@ async function buildCartFromSessionLineItems(
       _key: randomUUID(),
       ...mapStripeLineItem(li, {sessionMetadata: metadata}),
     })) as CartItem[]
-    if (!cartItems.length) {
-      cartItems = cartItemsFromMetadata(metadata)
-    }
     if (!cartItems.length) return {items: [], products: []}
 
     let productSummaries: CartProductSummary[] = []
@@ -1894,7 +1935,7 @@ async function buildCartFromSessionLineItems(
     return {items: cleanedCart, products: productSummaries}
   } catch (err) {
     console.warn('stripeWebhook: listLineItems failed', err)
-    let fallback = cartItemsFromMetadata(metadata)
+    let fallback = parseCartItemsFromMetadata(metadata, {sessionId}).items
     if (!fallback.length) return {items: [], products: []}
     try {
       let productSummaries: CartProductSummary[] = []
@@ -2284,6 +2325,8 @@ async function upsertCheckoutSessionDocument(
     customerId?: string | null
     checkoutUrl?: string | null
     attribution?: AttributionParams | null
+    invalidCart?: boolean
+    failureReason?: string | null
   },
 ): Promise<string | null> {
   if (!sanity) return null
@@ -2316,6 +2359,8 @@ async function upsertCheckoutSessionDocument(
     customerPhone: session.customer_details?.phone || undefined,
     customerRef: opts.customerId ? {_type: 'reference', _ref: opts.customerId} : undefined,
     cart: cartForDoc.length ? cartForDoc : undefined,
+    invalidCart: opts.invalidCart ? true : undefined,
+    failureReason: opts.failureReason || undefined,
     amountSubtotal: opts.amountSubtotal,
     amountTax: opts.amountTax,
     amountShipping: opts.amountShipping,
@@ -2510,6 +2555,7 @@ type IdentityCustomer = {
   name?: string
   email?: string
   stripeCustomerId?: string | null
+  stripeCustomerIds?: string[] | null
   stripeLastSyncedAt?: string | null
   customerType?: string | null
   roles?: string[] | null
@@ -2523,14 +2569,14 @@ type IdentityVendor = {
 }
 
 const CUSTOMER_IDENTITY_PROJECTION =
-  '{_id, name, email, stripeCustomerId, stripeLastSyncedAt, customerType, roles, firstName, lastName}'
+  '{_id, name, email, stripeCustomerId, stripeCustomerIds, stripeLastSyncedAt, customerType, roles, firstName, lastName}'
 
 const normalizeDocId = (value?: string | null) =>
   value ? value.toString().trim().replace(/^drafts\./, '') : ''
 
 const fetchCustomerByStripeId = async (stripeCustomerId: string) =>
   webhookSanityClient.fetch<IdentityCustomer | null>(
-    `*[_type == "customer" && stripeCustomerId == $stripeId][0]${CUSTOMER_IDENTITY_PROJECTION}`,
+    `*[_type == "customer" && (stripeCustomerId == $stripeId || $stripeId in stripeCustomerIds)][0]${CUSTOMER_IDENTITY_PROJECTION}`,
     {stripeId: stripeCustomerId},
   )
 
@@ -2595,11 +2641,12 @@ async function strictFindOrCreateCustomer(
     return patch
   }
 
-  const ensureStripePatch = (customer: {stripeCustomerId?: string | null}) => {
-    const patch: Record<string, any> = {}
-    const needsStripeIdUpdate = stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId
-    if (needsStripeIdUpdate) patch.stripeCustomerId = stripeCustomerId
-    if (stripeCustomerId || needsStripeIdUpdate) {
+  const ensureStripePatch = (customer: {
+    stripeCustomerId?: string | null
+    stripeCustomerIds?: string[] | null
+  }) => {
+    const {patch} = buildStripeCustomerAliasPatch(customer, stripeCustomerId, normalizedEmail)
+    if (stripeCustomerId) {
       patch.stripeLastSyncedAt = new Date().toISOString()
     }
     return patch
@@ -2711,30 +2758,8 @@ async function strictFindOrCreateCustomer(
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     let customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
-    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
-      console.error(
-        'stripeWebhook: conflicting vendor/customer stripe ids',
-        vendor._id,
-        customer._id,
-        customer.stripeCustomerId,
-        stripeCustomerId,
-      )
-      throw new Error('Vendor/customer identity conflict')
-    }
-
     if (!customer && normalizedEmail) {
       customer = await fetchCustomerByEmail(normalizedEmail)
-    }
-
-    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
-      console.error(
-        'stripeWebhook: conflicting customer stripe ids for vendor email',
-        vendor._id,
-        customer._id,
-        customer.stripeCustomerId,
-        stripeCustomerId,
-      )
-      throw new Error('Vendor/customer identity conflict')
     }
 
     if (!customer) {
@@ -2747,6 +2772,7 @@ async function strictFindOrCreateCustomer(
         firstName: nameParts.firstName || undefined,
         lastName: nameParts.lastName || undefined,
         stripeCustomerId,
+        stripeCustomerIds: stripeCustomerId ? [stripeCustomerId] : undefined,
         stripeLastSyncedAt: new Date().toISOString(),
         customerType: 'vendor',
         roles: ['customer', 'vendor'],
@@ -2785,16 +2811,6 @@ async function strictFindOrCreateCustomer(
 
   let customer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
 
-  if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
-    console.error(
-      'stripeWebhook: conflicting customer stripe ids',
-      customer._id,
-      customer.stripeCustomerId,
-      stripeCustomerId,
-    )
-    throw new Error('Customer identity conflict')
-  }
-
   if (!customer) {
     const newCustomerId = `customer.${randomUUID()}`
     customer = await webhookSanityClient.create<IdentityCustomer>({
@@ -2805,6 +2821,7 @@ async function strictFindOrCreateCustomer(
       firstName: nameParts.firstName || undefined,
       lastName: nameParts.lastName || undefined,
       stripeCustomerId,
+      stripeCustomerIds: stripeCustomerId ? [stripeCustomerId] : undefined,
       stripeLastSyncedAt: new Date().toISOString(),
       customerType: 'retail',
       roles: ['customer'],
@@ -3233,7 +3250,15 @@ async function strictCreateInvoice(
   return invoice
 }
 
-async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session) {
+async function createOrderFromCheckout(
+  checkoutSession: Stripe.Checkout.Session,
+): Promise<{status: StripeWebhookStatus; summary?: string} | null> {
+  if (!isValidCheckoutSessionId(checkoutSession.id)) {
+    console.warn('stripeWebhook: invalid checkout session id for order creation', {
+      sessionId: checkoutSession.id,
+    })
+    return {status: 'ignored', summary: 'invalid checkout session id'}
+  }
   let expandedSession: Stripe.Checkout.Session | null = null
   try {
     expandedSession = await stripe.checkout.sessions.retrieve(checkoutSession.id, {
@@ -3260,7 +3285,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       sessionId: session.id,
       payment_status: session.payment_status,
     })
-    return
+    return {status: 'ignored', summary: 'payment not paid'}
   }
 
   const paymentIntentId =
@@ -3271,7 +3296,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     console.warn('stripeWebhook: skipping checkout order creation (missing payment_intent)', {
       sessionId: session.id,
     })
-    return
+    return {status: 'ignored', summary: 'missing payment_intent'}
   }
 
   const existingOrder = await webhookSanityClient.fetch<{
@@ -3312,7 +3337,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     console.log(
       `stripeWebhook: checkout.session.completed ignored for terminal order ${existingOrder.orderNumber}`,
     )
-    return
+    return {status: 'ignored', summary: 'terminal order'}
   }
 
   const customer = await strictFindOrCreateCustomer(session)
@@ -3410,6 +3435,41 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     sessionMeta,
     {lineItems: expandedLineItems},
   )
+  if (!cartItems.length) {
+    const createdAt = unixToIso(session.created) || new Date().toISOString()
+    const expiresAt = unixToIso(session.expires_at) || undefined
+    const amountSubtotal = toMajorUnits(session.amount_subtotal ?? undefined)
+    const amountTax = toMajorUnits(session.total_details?.amount_tax ?? undefined)
+    const amountShipping = toMajorUnits(
+      session.total_details?.amount_shipping ?? session.shipping_cost?.amount_total,
+    )
+    const amountTotal = toMajorUnits(session.amount_total ?? undefined)
+    const currency =
+      (session.currency || '').toString().toUpperCase() ||
+      (session.currency || '').toString().toLowerCase() ||
+      undefined
+    await upsertCheckoutSessionDocument(session, {
+      cart: [],
+      metadata: sessionMeta,
+      createdAt,
+      expiresAt,
+      amountSubtotal,
+      amountTax,
+      amountShipping,
+      amountTotal,
+      currency,
+      customerName: session.customer_details?.name || session.customer_email || undefined,
+      customerId: customer?._id || undefined,
+      checkoutUrl: (session as any)?.url || undefined,
+      attribution: extractAttributionFromMetadata(
+        sessionMeta,
+        session?.id ? {session_id: session.id} : undefined,
+      ),
+      invalidCart: true,
+      failureReason: 'empty_cart_line_items',
+    })
+    return {status: 'failed_terminal', summary: 'invalid cart (empty line items)'}
+  }
 
   const normalizedCart = cartItems.map((item) => ({
     ...item,
@@ -3545,7 +3605,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     console.warn('stripeWebhook: skipping checkout order creation (missing shipping address)', {
       sessionId: session.id,
     })
-    return
+    return {status: 'ignored', summary: 'missing shipping address'}
   }
   const customerName =
     customer?.name ||
@@ -3723,7 +3783,27 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
       issues: validationIssues,
     })
     if (validationIssues.includes('Cart is empty')) {
-      throw new Error('stripeWebhook: cannot create order without cart items')
+      await upsertCheckoutSessionDocument(session, {
+        cart: [],
+        metadata: sessionMeta,
+        createdAt: nowIso,
+        expiresAt: unixToIso(session.expires_at) || undefined,
+        amountSubtotal,
+        amountTax,
+        amountShipping: resolvedShippingAmount ?? undefined,
+        amountTotal: totalAmount,
+        currency: currencyUpper || currencyLower,
+        customerName,
+        customerId: customer?._id || undefined,
+        checkoutUrl: (session as any)?.url || undefined,
+        attribution: extractAttributionFromMetadata(
+          sessionMeta,
+          session?.id ? {session_id: session.id} : undefined,
+        ),
+        invalidCart: true,
+        failureReason: 'empty_cart_validation',
+      })
+      return {status: 'failed_terminal', summary: 'invalid cart (validation empty)'}
     }
   }
 
@@ -3818,7 +3898,7 @@ async function createOrderFromCheckout(checkoutSession: Stripe.Checkout.Session)
     }
   }
 
-  return order
+  return {status: 'processed'}
 }
 
 const PRODUCT_METADATA_ID_KEYS = [
@@ -4373,7 +4453,7 @@ async function findCustomerDocIdByStripeCustomerId(
   if (!stripeCustomerId) return null
   try {
     const docId = await sanity.fetch<string | null>(
-      `*[_type == "customer" && stripeCustomerId == $id][0]._id`,
+      `*[_type == "customer" && (stripeCustomerId == $id || $id in stripeCustomerIds)][0]._id`,
       {id: stripeCustomerId},
     )
     return docId || null
@@ -5393,30 +5473,8 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
-    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
-      console.error(
-        'stripeWebhook: conflicting vendor/customer stripe ids',
-        vendor._id,
-        customer._id,
-        customer.stripeCustomerId,
-        stripeCustomerId,
-      )
-      throw new Error('Vendor/customer identity conflict')
-    }
-
     if (!customer && normalizedEmail) {
       customer = await fetchCustomerByEmail(normalizedEmail)
-    }
-
-    if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
-      console.error(
-        'stripeWebhook: conflicting customer stripe ids for vendor email',
-        vendor._id,
-        customer._id,
-        customer.stripeCustomerId,
-        stripeCustomerId,
-      )
-      throw new Error('Vendor/customer identity conflict')
     }
 
     if (!customer) {
@@ -5427,6 +5485,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
         email: email || undefined,
         name: email || 'Customer',
         stripeCustomerId,
+        stripeCustomerIds: stripeCustomerId ? [stripeCustomerId] : undefined,
         stripeLastSyncedAt: new Date().toISOString(),
         customerType: 'vendor',
         roles: ['customer', 'vendor'],
@@ -5438,16 +5497,6 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
     customer = await fetchCustomerByEmail(normalizedEmail)
   }
 
-  if (customer && stripeCustomerId && customer.stripeCustomerId && customer.stripeCustomerId !== stripeCustomerId) {
-    console.error(
-      'stripeWebhook: conflicting customer stripe ids',
-      customer._id,
-      customer.stripeCustomerId,
-      stripeCustomerId,
-    )
-    throw new Error('Customer identity conflict')
-  }
-
   if (!customer) {
     const newCustomerId = `customer.${randomUUID()}`
     customer = await webhookSanityClient.create<IdentityCustomer>({
@@ -5456,6 +5505,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
       email: email || undefined,
       name: email || 'Customer',
       stripeCustomerId,
+      stripeCustomerIds: stripeCustomerId ? [stripeCustomerId] : undefined,
       stripeLastSyncedAt: new Date().toISOString(),
       roles: ['customer'],
     })
@@ -5469,8 +5519,9 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
     stripeCustomer.name || stripeCustomer.shipping?.name,
   )
 
+  const stripeAliasPatch = buildStripeCustomerAliasPatch(customer, stripeCustomer.id, normalizedEmail)
   const setOps: Record<string, any> = {
-    stripeCustomerId: stripeCustomer.id,
+    ...stripeAliasPatch.patch,
     stripeLastSyncedAt: new Date().toISOString(),
   }
 
@@ -6644,7 +6695,7 @@ async function handleCheckoutCreated(session: Stripe.Checkout.Session): Promise<
     cartItems = result.items
   } catch (err) {
     console.warn('stripeWebhook: failed to load cart for created session', err)
-    cartItems = cartItemsFromMetadata(metadata)
+    cartItems = parseCartItemsFromMetadata(metadata, {sessionId: session.id}).items
   }
 
   const createdAt = unixToIso(session.created) || new Date().toISOString()
@@ -6698,32 +6749,38 @@ async function handleCheckoutExpired(
     cartItems = result.items
   } catch (err) {
     console.warn('stripeWebhook: failed to load cart for expired session', err)
-    cartItems = cartItemsFromMetadata(metadata)
+    cartItems = parseCartItemsFromMetadata(metadata, {sessionId: session.id}).items
   }
   let contact = await resolveCheckoutCustomerContact(session)
   let expandedSession: Stripe.Checkout.Session | null = null
   if ((!contact.email || !contact.name || !contact.phone) && stripe) {
-    try {
-      expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
-        expand: ['customer', 'customer_details', 'line_items', 'total_details'],
+    if (!isValidCheckoutSessionId(session.id)) {
+      console.warn('stripeWebhook: invalid checkout session id for expiration lookup', {
+        sessionId: session.id,
       })
-      if (expandedSession) {
-        contact = await resolveCheckoutCustomerContact(expandedSession)
-      }
-      // If we successfully fetched line items, prefer them for cart reconstruction
-      if (!cartItems.length && expandedSession?.line_items) {
-        try {
-          const mapped = (expandedSession.line_items.data || []) as Stripe.LineItem[]
-          const result = await buildCartFromSessionLineItems(session.id, metadata, {
-            lineItems: mapped,
-          })
-          cartItems = result.items
-        } catch (err) {
-          console.warn('stripeWebhook: failed to load cart from expanded expired session', err)
+    } else {
+      try {
+        expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+          expand: ['customer', 'customer_details', 'line_items', 'total_details'],
+        })
+        if (expandedSession) {
+          contact = await resolveCheckoutCustomerContact(expandedSession)
         }
+        // If we successfully fetched line items, prefer them for cart reconstruction
+        if (!cartItems.length && expandedSession?.line_items) {
+          try {
+            const mapped = (expandedSession.line_items.data || []) as Stripe.LineItem[]
+            const result = await buildCartFromSessionLineItems(session.id, metadata, {
+              lineItems: mapped,
+            })
+            cartItems = result.items
+          } catch (err) {
+            console.warn('stripeWebhook: failed to load cart from expanded expired session', err)
+          }
+        }
+      } catch (err) {
+        console.warn('stripeWebhook: failed to expand checkout session on expiration', err)
       }
-    } catch (err) {
-      console.warn('stripeWebhook: failed to expand checkout session on expiration', err)
     }
   }
   const simplifiedCart = simplifyCartForAbandonedCheckout(cartItems)
@@ -7084,10 +7141,16 @@ async function sendOrderConfirmationEmail(opts: {
   })
 }
 
+// Manual checklist:
+// - checkout.session.completed with valid cs_* id creates order with line-items cart
+// - checkout.session.expired records abandoned checkout without order creation
+// - payment_intent.succeeded without session mapping logs and exits 200
+// - customer with existing email but new stripe customer id appends alias rather than throwing
+// - invalid cart metadata does not break; line-items still works; if cart cannot be built, invalidCart recorded and 200 returned
 export const handler: Handler = async (event) => {
   const startTime = Date.now()
   let webhookEvent: Stripe.Event | null = null
-  let webhookStatus: 'processed' | 'ignored' | 'error' = 'processed'
+  let webhookStatus: StripeWebhookStatus = 'processed'
   let webhookSummary = ''
 
   const finalize = async (
@@ -7175,6 +7238,35 @@ export const handler: Handler = async (event) => {
     }
 
     webhookSummary = summarizeEventType(webhookEvent.type || '')
+
+    const webhookDocId = `${WEBHOOK_DOCUMENT_PREFIX}${webhookEvent.id}`
+    try {
+      const existing = await webhookSanityClient.fetch<{status?: string} | null>(
+        '*[_id == $id][0]{status}',
+        {id: webhookDocId},
+      )
+      if (existing?.status) {
+        webhookStatus = 'ignored'
+        webhookSummary = `Duplicate webhook event (${existing.status})`
+        return await finalize(
+          {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})},
+          'success',
+          {webhookStatus, summary: webhookSummary},
+        )
+      }
+      await webhookSanityClient.createIfNotExists({
+        _id: webhookDocId,
+        _type: 'stripeWebhook',
+        stripeEventId: webhookEvent.id,
+        eventType: webhookEvent.type,
+        status: 'processing',
+        summary: `Processing ${webhookEvent.type}`,
+        occurredAt: toIsoTimestamp(webhookEvent.created),
+        processedAt: new Date().toISOString(),
+      })
+    } catch (err) {
+      console.warn('stripeWebhook: failed to record processing event', err)
+    }
 
   try {
     type ExtendedStripeEventType = Stripe.Event.Type | string
@@ -7345,7 +7437,7 @@ export const handler: Handler = async (event) => {
         try {
           const deleted = webhookEvent.data.object as {id: string}
           const docId = await sanity.fetch<string | null>(
-            `*[_type == "customer" && stripeCustomerId == $id][0]._id`,
+            `*[_type == "customer" && (stripeCustomerId == $id || $id in stripeCustomerIds)][0]._id`,
             {id: deleted.id},
           )
           if (docId) {
@@ -7881,9 +7973,21 @@ export const handler: Handler = async (event) => {
 
       case 'checkout.session.completed': {
         const session = webhookEvent.data.object as Stripe.Checkout.Session
+        if (!isValidCheckoutSessionId(session.id)) {
+          console.warn('stripeWebhook: invalid checkout session id for completion', {
+            sessionId: session.id,
+          })
+          webhookStatus = 'ignored'
+          webhookSummary = 'checkout.session.completed ignored (invalid session id)'
+          break
+        }
         try {
-          await createOrderFromCheckout(session)
+          const result = await createOrderFromCheckout(session)
+          if (result?.status) webhookStatus = result.status
+          if (result?.summary) webhookSummary = result.summary
         } catch (err) {
+          webhookStatus = 'error'
+          webhookSummary = 'checkout.session.completed processing error'
           console.error('stripeWebhook: strict checkout order creation failed', err)
         }
         break
@@ -7891,6 +7995,14 @@ export const handler: Handler = async (event) => {
 
       case 'checkout.session.expired': {
         const session = webhookEvent.data.object as Stripe.Checkout.Session
+        if (!isValidCheckoutSessionId(session.id)) {
+          console.warn('stripeWebhook: invalid checkout session id for expiration', {
+            sessionId: session.id,
+          })
+          webhookStatus = 'ignored'
+          webhookSummary = 'checkout.session.expired ignored (invalid session id)'
+          break
+        }
         try {
           await handleCheckoutExpired(session, {
             stripeEventId: webhookEvent.id,
@@ -7922,8 +8034,22 @@ export const handler: Handler = async (event) => {
           )
             .toString()
             .trim() || undefined
+        const normalizedSessionId =
+          checkoutSessionMeta && isValidCheckoutSessionId(checkoutSessionMeta)
+            ? checkoutSessionMeta
+            : undefined
 
-        // Create a minimal Order if none exists yet
+        if (!normalizedSessionId) {
+          console.warn('stripeWebhook: payment_intent.succeeded ignored (no checkout session)', {
+            paymentIntentId: pi.id,
+            checkoutSessionId: checkoutSessionMeta || null,
+          })
+          webhookStatus = 'ignored'
+          webhookSummary = 'payment_intent.succeeded ignored (no checkout session)'
+          break
+        }
+
+        // Update existing order records tied to the checkout session.
         try {
           const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
           const email =
@@ -8003,17 +8129,12 @@ export const handler: Handler = async (event) => {
 
           let cart: CartItem[] = []
           let cartProducts: CartProductSummary[] = []
-          if (checkoutSessionMeta) {
-            try {
-              const cartResult = await buildCartFromSessionLineItems(checkoutSessionMeta, meta)
-              cart = cartResult.items
-              cartProducts = cartResult.products
-            } catch (err) {
-              console.warn('stripeWebhook: failed to load cart from checkout metadata', err)
-            }
-          }
-          if (!cart.length) {
-            cart = cartItemsFromMetadata(meta)
+          try {
+            const cartResult = await buildCartFromSessionLineItems(normalizedSessionId, meta)
+            cart = cartResult.items
+            cartProducts = cartResult.products
+          } catch (err) {
+            console.warn('stripeWebhook: failed to load cart from checkout metadata', err)
           }
           if (cart.length && !cartProducts.length) {
             try {
@@ -8039,15 +8160,33 @@ export const handler: Handler = async (event) => {
           }
           cart = enforceCartRequirements(cart, cartProducts, {
             source: 'payment_intent',
-            sessionId: checkoutSessionMeta || pi.id,
+            sessionId: normalizedSessionId,
             orderId: normalizedOrderNumber,
           })
           cart = cart.map(cleanCartItemForStorage)
 
           if (!cart.length) {
-            throw new Error(
-              `stripeWebhook: cannot create payment_intent order without cart items (${normalizedOrderNumber || pi.id})`,
-            )
+            console.warn('stripeWebhook: payment_intent.succeeded ignored (empty cart)', {
+              paymentIntentId: pi.id,
+              checkoutSessionId: normalizedSessionId,
+            })
+            try {
+              const checkoutDocId = await sanity.fetch<string | null>(
+                `*[_type == "checkoutSession" && sessionId == $sid][0]._id`,
+                {sid: normalizedSessionId},
+              )
+              if (checkoutDocId) {
+                await sanity
+                  .patch(checkoutDocId)
+                  .set({invalidCart: true, failureReason: 'empty_cart_payment_intent'})
+                  .commit({autoGenerateArrayKeys: true})
+              }
+            } catch (err) {
+              console.warn('stripeWebhook: failed to mark invalid cart for payment intent', err)
+            }
+            webhookStatus = 'failed_terminal'
+            webhookSummary = 'payment_intent.succeeded ignored (empty cart)'
+            break
           }
 
           let shippingMetrics = ensureShippingMetricsFromProducts(
@@ -8107,7 +8246,7 @@ export const handler: Handler = async (event) => {
             (await findOrderDocumentIdForEvent({
               metadata: meta,
               paymentIntentId: pi.id,
-              sessionId: checkoutSessionMeta || pi.id,
+              sessionId: normalizedSessionId,
               invoiceDocId,
               invoiceNumber: metadataInvoiceNumber || null,
             })) || null
@@ -8136,7 +8275,7 @@ export const handler: Handler = async (event) => {
               'stripeWebhook: payment_intent.succeeded skipped (no checkout order found)',
               {
                 paymentIntentId: pi.id,
-                checkoutSessionId: checkoutSessionMeta,
+                checkoutSessionId: normalizedSessionId,
               },
             )
             break
@@ -8144,8 +8283,7 @@ export const handler: Handler = async (event) => {
           const normalizedEmail = typeof email === 'string' ? email.trim() : ''
           const shouldSendConfirmation =
             !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
-          const resolvedStripeSessionId =
-            existingOrder?.stripeSessionId || checkoutSessionMeta || pi.id
+          const resolvedStripeSessionId = existingOrder?.stripeSessionId || normalizedSessionId
           if (existingOrder && isTerminalOrderStatus(existingOrder.status)) {
             console.log(
               `stripeWebhook: payment_intent.succeeded ignored for terminal order ${
