@@ -1,0 +1,39 @@
+{
+  "repos": [
+    {
+      "name": "fas-sanity",
+      "path": "../fas-sanity"
+    },
+    {
+      "name": "fas-cms",
+      "path": "../fas-cms"
+    }
+  ],
+  "maxDocsPerType": 50,
+  "envFiles": [
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.production"
+  ],
+  "sanityEnvKeys": {
+    "projectId": [
+      "SANITY_PROJECT_ID",
+      "NEXT_PUBLIC_SANITY_PROJECT_ID",
+      "SANITY_STUDIO_PROJECT_ID",
+      "PUBLIC_SANITY_PROJECT_ID"
+    ],
+    "dataset": [
+      "SANITY_DATASET",
+      "NEXT_PUBLIC_SANITY_DATASET",
+      "SANITY_STUDIO_DATASET",
+      "PUBLIC_SANITY_DATASET"
+    ],
+    "readToken": [
+      "SANITY_READ_TOKEN",
+      "SANITY_TOKEN",
+      "SANITY_API_TOKEN",
+      "SANITY_STUDIO_API_TOKEN"
+    ]
+  }
+}

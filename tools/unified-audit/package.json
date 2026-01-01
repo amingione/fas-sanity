@@ -1,0 +1,17 @@
+{
+  "name": "unified-audit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "audit": "./cli.mjs"
+  },
+  "dependencies": {
+    "@sanity/client": "^6.12.1",
+    "dotenv": "^16.4.5",
+    "fast-glob": "^3.3.2",
+    "groq-js": "^1.11.0",
+    "minimist": "^1.2.8",
+    "ts-morph": "^22.0.0"
+  }
+}

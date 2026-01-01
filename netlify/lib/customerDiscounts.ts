@@ -91,7 +91,7 @@ async function fetchCustomerDoc(
   stripeCustomerId: string,
 ): Promise<{_id: string; discounts?: Array<{_key?: string; stripeDiscountId?: string}>} | null> {
   return sanity.fetch(
-    `*[_type == "customer" && stripeCustomerId == $cid][0]{_id, discounts[]{_key, stripeDiscountId}}`,
+    `*[_type == "customer" && (stripeCustomerId == $cid || $cid in stripeCustomerIds)][0]{_id, discounts[]{_key, stripeDiscountId}}`,
     {cid: stripeCustomerId},
   )
 }

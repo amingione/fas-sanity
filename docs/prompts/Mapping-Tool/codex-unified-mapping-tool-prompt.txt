@@ -1,0 +1,271 @@
+read codex.md - you hav access to all fas-* repos this is intended to use with repos: fas-cms-fresh and fas-sanity 
+
+
+CODEX BUILD PROMPT — Unified Mapping Audit Tool (Schema ↔ API ↔ Data) + CLI + Enforcement Prompts
+
+SYSTEM DIRECTIVE
+You are Codex.
+You will BUILD a runnable mapping audit tool inside this repo. The tool must be accurate, deterministic, and fail-closed.
+Do not ask questions. Make reasonable defaults. Do not add optional “nice-to-haves” unless they materially improve accuracy.
+Do not modify business logic in the application. This is a tooling-only change.
+
+AUTHORITATIVE INPUTS (READ-ONLY)
+1) docs/codex.md
+2) Repo code as-is (all packages/ workspaces)
+No web browsing. No external services beyond read-only API calls to Sanity / EasyPost / Resend ONLY if env tokens are present.
+
+PRIMARY OUTCOME
+Create a “mapping tool” that can be run from terminal to:
+A) Discover and index ALL Sanity schema fields (and requiredness where statically detectable)
+B) Discover and index ALL Sanity queries / projections (GROQ usage)
+C) Compare schema ↔ query (flag missing/unknown/dead fields)
+D) Runtime-scan the Sanity dataset (flag null/missing/unknown fields per _type)
+E) Discover and inventory ALL API integrations in the repo that touch Sanity and/or order fulfillment flows (Stripe/EasyPost/ShipEngine/Resend/Twilio/etc) and all env vars referenced
+F) Validate API mapping contracts for EasyPost + Resend (request payload ↔ response ↔ persisted fields in Sanity)
+G) Emit service-scoped, repo-scoped Codex enforcement prompts that are STRICTLY tied to the audit outputs (fail-closed unless enforcementApproved: true is present)
+
+UNIVERSAL MAPPING AUTHORITY (NON-NEGOTIABLE)
+
+This tool is NOT repo-local and NOT single-directional.
+
+It is a UNIVERSAL mapping authority between:
+- fas-sanity (schemas, stored documents, integration persistence)
+- fas-cms-fresh (queries, API routes, frontend/backend consumption)
+
+The tool MUST treat fas-sanity as the SOURCE OF TRUTH for:
+- data shape
+- required fields
+- persistence contracts
+
+The tool MUST treat fas-cms-fresh as the SOURCE OF TRUTH for:
+- data consumption
+- query expectations
+- API payload construction
+
+The mapping logic MUST be BI-DIRECTIONAL:
+- schema → query → API → persisted data
+- persisted data → schema → query safety → API correctness
+
+The tool MUST be capable of:
+- recalling mappings across BOTH repos in a single run
+- correlating fields even when names differ but intent is inferable
+- producing a single, consistent mapping index used by ALL audit steps
+
+This mapping index is the authoritative internal model and MUST be reused
+by all steps (schema scan, runtime scan, API contract checks, enforcement generation).
+
+At no point may the tool assume that one repo is independent of the other.
+
+NON-NEGOTIABLE REQUIREMENTS
+1) MUST be runnable via a single CLI command from repo root:
+   - `audit run` (full baseline scan)
+   - `audit contracts` (EasyPost + Resend checks only)
+   - `audit schema` (schema + query + Sanity runtime dataset scan only)
+   - `audit env` (env resolution audit only)
+   - `audit enforcement` (generate service-scoped prompts only)
+2) MUST run without depending on whether repos use yarn or pnpm; the tool has its own isolated dependencies.
+3) MUST write all outputs to a timestamped folder under:
+   - `tools/unified-audit/out/<STAMP>/...`
+4) MUST be deterministic: same inputs → same outputs (ordering stable, sorted keys).
+5) MUST be safe: read-only. NO writes to Sanity, EasyPost, Resend. (No create/update/delete.)
+6) MUST be accurate enough to drive enforcement: outputs must include file paths + line numbers whenever possible.
+7) MUST fail-closed: if required env/config is missing, the step should:
+   - mark that sub-step “SKIPPED” with an explicit reason
+   - still produce an output file
+   - overall command exits non-zero ONLY if an integrity error occurs (e.g., tool files missing, parse crash)
+8) MUST include a CI verdict command:
+   - `audit ci` exits 1 if any output indicates status FAIL or requiresEnforcement true.
+
+IMPLEMENTATION PLAN (DO, DON’T DISCUSS)
+
+A) Create tool directory
+- Add: `tools/unified-audit/`
+  - package.json (type: module, bin: audit)
+  - cli.mjs (dispatch commands)
+  - config.json (repos list and env key names)
+  - lib/ (shared helpers)
+  - steps/ (each audit step)
+  - out/ (generated)
+
+B) Dependencies (keep minimal + stable)
+- @sanity/client
+- dotenv
+- fast-glob
+- groq-js
+- ts-morph
+- minimist (for CLI flags; optional but acceptable)
+No eslint/prettier changes; keep formatting minimal.
+
+C) Configuration rules
+- `tools/unified-audit/config.json` must default to scanning BOTH:
+  - ../fas-sanity
+  - ../fas-cms
+- Must allow overriding repos via env:
+  - AUDIT_REPOS="fas-sanity,fas-cms" (optional convenience)
+- Must read env from:
+  - each repo’s .env / .env.local / .env.development / .env.production if present (read-only)
+  - process.env
+- Must recognize these key families:
+  - SANITY_PROJECT_ID / NEXT_PUBLIC_SANITY_PROJECT_ID
+  - SANITY_DATASET / NEXT_PUBLIC_SANITY_DATASET
+  - SANITY_READ_TOKEN / SANITY_TOKEN
+  - and inventory all process.env.* uses in code.
+
+D) Step outputs (MANDATORY FILES)
+For each run, create a folder:
+  tools/unified-audit/out/<STAMP>/
+Write at least these JSON files (even if SKIPPED):
+1) schema-index.json
+2) query-index.json
+3) schema-vs-query.json
+4) sanity-runtime-scan.json
+5) integrations-inventory.json
+6) env-resolution-matrix.json
+7) api-contract-violations.json
+8) external-id-integrity.json
+9) webhook-drift-report.json  (static scan; runtime fetch not required)
+10) CODEX-PROMPTS/ (folder)
+    - fas-cms/easypost.txt
+    - fas-cms/resend.txt
+    - fas-cms/schemas.txt
+    - fas-cms/env.txt
+    - fas-sanity/schemas.txt
+    - fas-sanity/env.txt
+11) SUMMARY.json
+12) SUMMARY.md
+Also write `ci-verdict.json` summarizing PASS/FAIL and requiresEnforcement flags.
+
+E) Accuracy rules for schema extraction
+- Use ts-morph to parse schema files and extract:
+  - type name
+  - top-level field names
+  - required fields where detectible via Rule.required()
+- Recognize both defineType/defineField patterns and plain schema objects.
+- If nested field parsing is ambiguous, record as “partial” and rely on runtime scan for truth.
+- Output must include `sources` listing schema file paths.
+
+F) Accuracy rules for query extraction
+- Scan JS/TS/TSX for:
+  - groq`...`
+  - client.fetch("...") and fetch(`...`)
+- Parse GROQ using groq-js; if parse fails, record parseError and still store the query + file.
+- Extract projected field identifiers conservatively:
+  - high-confidence top-level identifiers from projections/objects
+  - always record files and query string
+- Output must include `fieldsUsed` mapping field → files[].
+
+G) Runtime scan rules (Sanity dataset truth)
+- Only run if projectId+dataset exists (token optional)
+- useCdn=false, apiVersion pinned
+- For each _type:
+  - fetch up to maxDocsPerType docs
+  - compute:
+    - missingRequired (from schema-index required fields)
+    - nullCounts for schema fields
+    - unknownFields (present in doc but not in schema top-level fields)
+  - store sample doc IDs for missingRequired (cap 25 per field)
+- If runtime scan cannot run, output status SKIPPED with reason.
+
+H) Integration inventory rules
+- Scan repo for known integration signatures and env usage:
+  - Sanity client usage
+  - EasyPost usage (import easypost, EasyPostClient, api.easypost.com, EASYPOST_)
+  - Resend usage (resend, RESEND_)
+  - ShipEngine, Stripe, Twilio, Netlify functions, Vercel api routes
+- Output must include for each hit:
+  - category, file, lineNo, snippet
+- Output must include envKeys: KEY → files[].
+
+I) Env resolution matrix rules
+- Build a table:
+  - referenced env keys in code
+  - defined env keys in each repo’s .env* files
+  - mark missing definitions
+- Output must include:
+  - missingInRepo: {repo: [KEYS]}
+  - unusedInRepo: {repo: [KEYS]} (optional but helpful)
+- This step is pure static; never fails hard.
+
+J) API contract validation (EasyPost + Resend) — highest value
+- Static-first:
+  - find code paths that create EasyPost shipments/labels (or equivalent)
+  - find code paths that send Resend emails
+  - extract the “persisted fields” written to Sanity (e.g., easypostShipmentId, tracking code, postageLabel url, resendMessageId, etc.)
+- Runtime optional:
+  - If EASYPOST_API_KEY exists, DO NOT create shipments. Only validate:
+    - request payload shape (required fields present before call)
+    - response fields accessed safely (guards)
+  - If RESEND_API_KEY exists, DO NOT send emails. Only validate:
+    - payload required fields present
+    - response fields persisted/handled
+- For each violation, output:
+  - service (easypost|resend)
+  - type (missingField|unsafeAccess|notPersisted|schemaMismatch|idDrift)
+  - file + lineNo
+  - exact field path involved
+  - recommended fix description (short, non-speculative)
+- Output must set:
+  - status: PASS|FAIL
+  - requiresEnforcement: boolean
+  - enforcementApproved: false (default)
+(Enforcement approval is a separate governance step; tool should not self-approve.)
+
+K) External ID integrity (read-only)
+- Identify fields ending with Id / IDs in schema index and integration code.
+- If runtime Sanity scan ran, compute:
+  - duplicates for ids across docs (same id used multiple docs)
+  - null rates for these id fields
+- Output PASS|FAIL based on hard checks (duplicates, missing required id fields if required).
+
+L) Webhook drift report (static)
+- Find webhook handlers in repo (stripe webhook, shipengine webhook, easypost/resend if any)
+- Report:
+  - whether handlers are idempotent (presence of dedupe key or guard)
+  - whether payload fields are accessed without guards
+- Output PASS|WARN/FAIL as appropriate.
+
+M) Service-scoped Codex prompts generation (repo+service)
+- Generate prompts into:
+  tools/unified-audit/out/<STAMP>/CODEX-PROMPTS/<repo>/<service>.txt
+- Each prompt MUST:
+  - specify REPO SCOPE
+  - specify SERVICE SCOPE
+  - list authoritative inputs (the specific JSON outputs relevant to that service)
+  - include authorization gate:
+      Proceed only if those JSON inputs contain enforcementApproved: true
+      Else STOP
+  - include strict rules: patch-only, no refactors, no unrelated changes.
+- Do NOT generate a “mega prompt” that touches everything.
+
+N) CLI commands
+Implement `tools/unified-audit/cli.mjs` providing:
+- audit run
+- audit schema
+- audit contracts
+- audit env
+- audit enforcement
+- audit ci
+Also allow:
+- AUDIT_BASE=... for future diff-aware; but DO NOT implement diff-aware now unless trivial.
+Fast turnaround > complexity.
+
+O) Documentation
+Add `tools/unified-audit/README.md` with:
+- exact commands to run
+- required env exports example:
+  set -a; source .env; set +a
+- where outputs are written
+- how to approve enforcement (manually edit enforcementApproved true in outputs after governance)
+
+DELIVERABLES (MUST COMMIT)
+1) tools/unified-audit/** (all files)
+2) No changes outside tools/ unless absolutely required for build/run
+3) Verify by running locally (simulate): ensure commands don’t crash when env missing
+4) Ensure all outputs are created even when steps are skipped
+
+EXECUTION NOW
+Implement the tool exactly as specified.
+When done, print:
+- list of files created
+- exact CLI commands to run from repo root
+- where to find the generated Codex prompts

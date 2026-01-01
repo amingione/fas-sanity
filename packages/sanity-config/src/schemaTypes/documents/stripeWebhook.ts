@@ -2,9 +2,14 @@
 import {defineField, defineType} from 'sanity'
 import {PlugIcon} from '@sanity/icons'
 
-const STATUS_OPTIONS: Array<{title: string; value: 'processed' | 'ignored' | 'error'}> = [
+const STATUS_OPTIONS: Array<{
+  title: string
+  value: 'processed' | 'processing' | 'ignored' | 'failed_terminal' | 'error'
+}> = [
   {title: 'Processed', value: 'processed'},
+  {title: 'Processing', value: 'processing'},
   {title: 'Ignored', value: 'ignored'},
+  {title: 'Failed (Terminal)', value: 'failed_terminal'},
   {title: 'Error', value: 'error'},
 ]
 
