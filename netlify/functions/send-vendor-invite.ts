@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {triggerOnboardingCampaign} from '../lib/vendorOnboardingCampaign'
-import {resolveResendApiKey} from '../../shared/resendEnv'
+import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -185,6 +185,7 @@ const handler: Handler = async (event) => {
   }
 
   if (!resendClient) {
+    logMissingResendApiKey('send-vendor-invite')
     return {
       statusCode: 500,
       headers: JSON_HEADERS,

@@ -4,7 +4,7 @@ import {render} from '@react-email/render'
 import {Resend} from 'resend'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import AbandonedCartEmail, {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
-import {resolveResendApiKey} from '../../shared/resendEnv'
+import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 
 type CheckoutSessionDoc = {
   _id: string
@@ -172,6 +172,7 @@ const handler: Handler = async (event) => {
   }
 
   if (!resendClient) {
+    logMissingResendApiKey('sendAbandonedCartEmails')
     return await finalize(
       {
         statusCode: 500,

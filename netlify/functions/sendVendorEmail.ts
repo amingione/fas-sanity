@@ -1,6 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {Resend} from 'resend'
-import {resolveResendApiKey} from '../../shared/resendEnv'
+import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {buildVendorEmail, type VendorEmailTemplateInput} from '../lib/emailTemplates/vendorEmails'
 
 const corsHeaders = {
@@ -22,6 +22,7 @@ const handler: Handler = async (event) => {
   }
 
   if (!resend) {
+    logMissingResendApiKey('sendVendorEmail')
     return {statusCode: 500, headers: corsHeaders, body: JSON.stringify({error: 'Missing RESEND_API_KEY'})}
   }
 

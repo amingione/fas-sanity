@@ -405,34 +405,12 @@ export default defineType({
       hidden: false,
     }),
     defineField({
-      name: 'fulfillmentStatus',
-      title: 'Fulfillment Status',
-      type: 'string',
-      options: {
-        list: [
-          {title: 'Pending', value: 'pending'},
-          {title: 'Processing', value: 'processing'},
-          {title: 'Creating Label', value: 'creating_label'},
-          {title: 'Label Created', value: 'label_created'},
-          {title: 'Label Creation Failed', value: 'label_creation_failed'},
-          {title: 'Shipped', value: 'shipped'},
-          {title: 'Delivered', value: 'delivered'},
-          {title: 'Failed', value: 'failed'},
-        ],
-        layout: 'radio',
-      },
-      initialValue: 'pending',
-      validation: (Rule) => Rule.required(),
-      group: 'fulfillment',
-    }),
-    defineField({
       name: 'fulfillmentError',
       title: 'Fulfillment Error',
       type: 'text',
       description: 'Error message if label creation or shipment failed',
       readOnly: true,
-      hidden: ({document}) =>
-        !['label_creation_failed', 'failed'].includes(document?.fulfillmentStatus as string),
+      hidden: ({document}) => document?.shippingStatus !== 'failure',
       group: 'fulfillment',
     }),
     defineField({
