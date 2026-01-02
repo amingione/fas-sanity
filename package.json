@@ -23,6 +23,7 @@
     "ai:enforce": "echo 'Run Codex enforcement prompt'",
     "ai:check": "pnpm lint && pnpm exec tsc -p tsconfig.runtime.json",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
+    "netlify:functions": "tsx scripts/netlify-functions-serve.ts",
     "test:email-local": "tsx scripts/trigger-test-emails-local.ts",
     "test:email-http": "tsx scripts/trigger-test-emails.ts",
     "test:email-combined": "tsx scripts/trigger-test-emails-combined.ts",
