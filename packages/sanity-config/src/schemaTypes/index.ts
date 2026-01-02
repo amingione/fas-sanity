@@ -271,6 +271,7 @@ import expense from './documents/expense'
 import profitLoss from './documents/profitLoss'
 import cashFlow from './documents/cashFlow'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
+import easypostWebhookEvent from './documents/easypostWebhookEvent'
 import emailCampaign from './documents/emailCampaign'
 import emailTemplate from './documents/emailTemplate'
 import emailAutomation from './documents/emailAutomation'
@@ -369,6 +370,7 @@ const documents = [
   profitLoss,
   cashFlow,
   stripeWebhookEvent,
+  easypostWebhookEvent,
   emailCampaign,
   emailTemplate,
   emailAutomation,

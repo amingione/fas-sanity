@@ -129,6 +129,56 @@ export default defineType({
       type: 'datetime',
       readOnly: false,
     }),
+    defineField({
+      name: 'processed',
+      title: 'Processed',
+      type: 'boolean',
+      description: 'Whether this event was successfully processed',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'processingStatus',
+      title: 'Processing Status',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Pending', value: 'pending'},
+          {title: 'Processing', value: 'processing'},
+          {title: 'Completed', value: 'completed'},
+          {title: 'Failed (Retrying)', value: 'failed_retrying'},
+          {title: 'Failed (Permanent)', value: 'failed_permanent'},
+        ],
+      },
+      initialValue: 'pending',
+    }),
+    defineField({
+      name: 'error',
+      title: 'Error',
+      type: 'text',
+      description: 'Error message if processing failed',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'errorStack',
+      title: 'Error Stack',
+      type: 'text',
+      description: 'Full error stack trace for debugging',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'retryCount',
+      title: 'Retry Count',
+      type: 'number',
+      description: 'Number of processing attempts',
+      initialValue: 0,
+    }),
+    defineField({
+      name: 'lastRetryAt',
+      title: 'Last Retry At',
+      type: 'datetime',
+      description: 'Timestamp of last retry attempt',
+      readOnly: true,
+    }),
   ],
   orderings: [
     {

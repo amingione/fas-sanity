@@ -55,10 +55,36 @@ export function ShippingDetails() {
   // Get fulfillment status for label badge
   const fulfillmentStatus = fulfillmentDetails?.status || oldFulfillment?.status || 'unfulfilled'
 
-  // Get package dimensions from either location
+  // Get package dimensions from either location (prefer modern fields)
+  const modernWeight = useFormValue(['weight']) as {value?: number; unit?: string} | undefined
+  const modernDimensions = useFormValue(['dimensions']) as
+    | {length?: number; width?: number; height?: number}
+    | undefined
   const packageDimensionsValue = useFormValue(['packageDimensions']) as any
-  const packageDims =
+  const legacyDims =
     fulfillmentDetails?.packageDimensions || oldFulfillment?.packageDimensions || packageDimensionsValue
+  const hasModernWeight = typeof modernWeight?.value === 'number' && modernWeight.value > 0
+  const hasModernDims = Boolean(
+    modernDimensions?.length || modernDimensions?.width || modernDimensions?.height,
+  )
+  const hasLegacy =
+    Boolean(legacyDims?.weight) ||
+    Boolean(legacyDims?.weightDisplay) ||
+    Boolean(legacyDims?.dimensionsDisplay) ||
+    (legacyDims?.length && legacyDims?.width && legacyDims?.height)
+
+  const packageDims = hasModernWeight || hasModernDims
+    ? {
+        weight: modernWeight?.value,
+        weightUnit: modernWeight?.unit || 'pound',
+        length: modernDimensions?.length,
+        width: modernDimensions?.width,
+        height: modernDimensions?.height,
+        dimensionUnit: 'in',
+      }
+    : hasLegacy
+      ? legacyDims
+      : null
 
   // Format label created date
   const formattedLabelDate = labelCreatedAt
