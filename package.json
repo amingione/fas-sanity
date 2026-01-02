@@ -24,6 +24,7 @@
     "ai:check": "pnpm lint && pnpm exec tsc -p tsconfig.runtime.json",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
     "netlify:functions": "tsx scripts/netlify-functions-serve.ts",
+    "netlify:functions-local": "tsx scripts/local-functions-server.ts",
     "test:email-local": "tsx scripts/trigger-test-emails-local.ts",
     "test:email-http": "tsx scripts/trigger-test-emails.ts",
     "test:email-combined": "tsx scripts/trigger-test-emails-combined.ts",
