@@ -37,15 +37,37 @@ export async function runExternalIdIntegrity(context) {
   const schemaFields = mappingIndex?.allSchemaFields
     ? mappingIndex.allSchemaFields
     : uniqueSorted((schemaIndex?.types || []).flatMap((type) => type.fields || []))
+  const requiredByType = mappingIndex?.requiredByType
+    ? mappingIndex.requiredByType
+    : Object.fromEntries(
+      (schemaIndex?.types || []).map((type) => [type.name, type.required || []])
+    )
   const schemaIdFields = schemaFields.filter(isIdField)
   const codeIdFields = collectIdFieldsFromCode(files)
   const idFields = uniqueSorted(schemaIdFields.concat(codeIdFields))
 
   const duplicates = {}
   const nullRates = {}
+  const missingRequired = {}
 
   if (runtimeDocsByType) {
     for (const [typeName, docs] of Object.entries(runtimeDocsByType)) {
+      const requiredIds = (requiredByType[typeName] || []).filter(isIdField)
+      if (requiredIds.length && docs.length) {
+        const missingForType = {}
+        for (const field of requiredIds) {
+          for (const doc of docs) {
+            if (doc[field] === undefined || doc[field] === null || doc[field] === '') {
+              if (!missingForType[field]) missingForType[field] = 0
+              missingForType[field] += 1
+            }
+          }
+        }
+        if (Object.keys(missingForType).length) {
+          missingRequired[typeName] = missingForType
+        }
+      }
+
       for (const field of idFields) {
         const values = new Map()
         let nullCount = 0
@@ -74,13 +96,15 @@ export async function runExternalIdIntegrity(context) {
   }
 
   const hasDupes = Object.keys(duplicates).length > 0
+  const hasMissingRequired = Object.keys(missingRequired).length > 0
   const output = {
-    status: hasDupes ? 'FAIL' : 'PASS',
+    status: hasDupes || hasMissingRequired ? 'FAIL' : 'PASS',
     generatedAt: new Date().toISOString(),
     idFields,
     duplicates,
     nullRates,
-    notes: runtimeDocsByType ? null : 'Runtime scan unavailable; duplicates not computed.',
+    missingRequired,
+    notes: runtimeDocsByType ? null : 'Runtime scan unavailable; duplicates and missing required ids not computed.',
   }
 
   writeJson(path.join(outputDir, 'external-id-integrity.json'), output)

@@ -12,6 +12,7 @@ export async function runSchemaVsQuery(context) {
       generatedAt: new Date().toISOString(),
       missingInSchema: [],
       unusedSchemaFields: [],
+      inferredMatches: [],
     }
     writeJson(path.join(outputDir, 'schema-vs-query.json'), output)
     return output
@@ -32,6 +33,7 @@ export async function runSchemaVsQuery(context) {
     generatedAt: new Date().toISOString(),
     missingInSchema,
     unusedSchemaFields,
+    inferredMatches: mappingIndex?.inferredMatches || [],
   }
 
   writeJson(path.join(outputDir, 'schema-vs-query.json'), output)

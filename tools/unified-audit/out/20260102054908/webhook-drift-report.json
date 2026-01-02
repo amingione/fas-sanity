@@ -1,0 +1,348 @@
+{
+  "findings": [
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/aws-secrets-shim.cjs",
+      "lineNo": 164,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/_easypost.ts",
+      "lineNo": 5,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/ai-insights.ts",
+      "lineNo": 26,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/analytics-dashboard.ts",
+      "lineNo": 38,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/api-docs.ts",
+      "lineNo": 17,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/autoRelatedProducts.ts",
+      "lineNo": 10,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/createCustomerDiscount.ts",
+      "lineNo": 215,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/createRefund.ts",
+      "lineNo": 5,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypost-webhook.ts",
+      "lineNo": 1,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostWebhook.ts",
+      "lineNo": 17,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/emailEvents.ts",
+      "lineNo": 3,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/enterprise-connectors.ts",
+      "lineNo": 19,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/marketplace.ts",
+      "lineNo": 20,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/notify-sms.ts",
+      "lineNo": 28,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/productShippingSync.ts",
+      "lineNo": 8,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/reprocessStripeSession.ts",
+      "lineNo": 916,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sanity-resend-sync.ts",
+      "lineNo": 16,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/selfCheck.ts",
+      "lineNo": 7,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripe-shipping-webhook.ts",
+      "lineNo": 11,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/webhook-test.ts",
+      "lineNo": 30,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/stripeCustomerAliases.ts",
+      "lineNo": 36,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/stripe-maintenance/test-webhook.js",
+      "lineNo": 10,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/stripe-maintenance/webhook-handler-fixed.js",
+      "lineNo": 12,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/cli.mjs",
+      "lineNo": 16,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook/stripeWebhook.mjs",
+      "lineNo": 1,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/backfills/checkoutAsyncPayments.ts",
+      "lineNo": 81,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/backfills/refunds.ts",
+      "lineNo": 183,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/desk/deskStructure.ts",
+      "lineNo": 1432,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/index.ts",
+      "lineNo": 251,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/types/order.ts",
+      "lineNo": 225,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/utils/emailService.ts",
+      "lineNo": 26,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/views/orderView.tsx",
+      "lineNo": 55,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/webhooks/stripe-order.ts",
+      "lineNo": 213,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/autoMapper/platforms/stripeKnowledge.ts",
+      "lineNo": 180,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/autoMapper/ui/AnalyticsDashboardTool.tsx",
+      "lineNo": 11,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/autoMapper/ui/AutoMapperSuiteTool.tsx",
+      "lineNo": 14,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/autoMapper/ui/WebhookTesterTool.tsx",
+      "lineNo": 9,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/AdminTools.tsx",
+      "lineNo": 965,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/EnvSelfCheck.tsx",
+      "lineNo": 144,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/easypostWebhookEvent.ts",
+      "lineNo": 4,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/functionLog.ts",
+      "lineNo": 31,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx",
+      "lineNo": 155,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/order.tsx",
+      "lineNo": 559,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/shipment.tsx",
+      "lineNo": 271,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts",
+      "lineNo": 17,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts",
+      "lineNo": 19,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/workspace.ts",
+      "lineNo": 92,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/singletons/shippingSettings.ts",
+      "lineNo": 206,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/marketing/campaigns/campaign.ts",
+      "lineNo": 7,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/tracking-update.ts",
+      "lineNo": 30,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 64,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/lib/validators/stripe.ts",
+      "lineNo": 71,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/generate-blog.ts",
+      "lineNo": 4,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/status.ts",
+      "lineNo": 26,
+      "type": "idempotency"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/webhooks.ts",
+      "lineNo": 135,
+      "type": "idempotency"
+    },
+    {
+      "detail": "Webhook payload fields accessed without guard.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/webhooks.ts",
+      "lineNo": 162,
+      "type": "payloadAccess"
+    },
+    {
+      "detail": "No idempotency guard detected for webhook handler.",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/calcom/webhook.ts",
+      "lineNo": 4,
+      "type": "idempotency"
+    }
+  ],
+  "generatedAt": "2026-01-02T10:49:12.080Z",
+  "status": "WARN"
+}

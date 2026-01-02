@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { createClient } from '@sanity/client'
-import config from '../config.json' assert { type: 'json' }
+import config from '../config.json' with { type: 'json' }
 import { getSanityEnv, readEnvFiles } from '../lib/env.mjs'
 import { writeJson } from '../lib/utils.mjs'
 

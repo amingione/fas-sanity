@@ -1,0 +1,8 @@
+{
+  "generatedAt": "2026-01-02T10:41:10.163Z",
+  "inferredMatches": [],
+  "missingInSchema": [],
+  "reason": "Schema or query index missing",
+  "status": "SKIPPED",
+  "unusedSchemaFields": []
+}

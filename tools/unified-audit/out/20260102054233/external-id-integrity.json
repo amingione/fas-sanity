@@ -1,0 +1,9 @@
+{
+  "duplicates": {},
+  "generatedAt": "2026-01-02T10:42:33.303Z",
+  "idFields": [],
+  "missingRequired": {},
+  "notes": "Runtime scan unavailable; duplicates and missing required ids not computed.",
+  "nullRates": {},
+  "status": "PASS"
+}

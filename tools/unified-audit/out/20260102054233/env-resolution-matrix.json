@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-01-02T10:42:33.301Z",
+  "missingInRepo": {},
+  "referencedKeys": [],
+  "repos": {
+    "fas-cms-fresh": {
+      "definedKeys": [],
+      "envFiles": [],
+      "reason": "Repo path not found",
+      "status": "MISSING"
+    },
+    "fas-sanity": {
+      "definedKeys": [],
+      "envFiles": [],
+      "reason": "Repo path not found",
+      "status": "MISSING"
+    }
+  },
+  "status": "OK",
+  "unusedInRepo": {}
+}

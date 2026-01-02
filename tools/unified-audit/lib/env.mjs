@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
-import config from '../config.json' assert { type: 'json' }
+import config from '../config.json' with { type: 'json' }
 import { uniqueSorted } from './utils.mjs'
 
 export function readEnvFiles(repoPath) {

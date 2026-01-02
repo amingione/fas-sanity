@@ -41,6 +41,10 @@ This rule overrides all other defaults unless explicitly superseded.
 - Optional env vars for authenticated introspection: `SANITY_GRAPHQL_TOKEN` (preferred), `SANITY_API_TOKEN`, or `SANITY_READ_TOKEN`.
 - If you have a dumped schema file, you can point the config at it to avoid network calls.
 
+## Runbooks
+
+- Phase 7 local workflow (shim-free): `docs/phase-7-local.md`
+
 ## Overview
 
 You have trusted read/write access to the following repositories:

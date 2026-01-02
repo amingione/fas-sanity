@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import config from '../config.json' assert { type: 'json' }
+import config from '../config.json' with { type: 'json' }
 
 export function resolveRepos() {
   const override = process.env.AUDIT_REPOS
@@ -11,6 +11,8 @@ export function resolveRepos() {
 
   const repoMap = new Map(config.repos.map((repo) => [repo.name, repo]))
   const resolved = []
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url))
+  const repoRoot = path.resolve(moduleDir, '..', '..', '..')
 
   for (const name of names) {
     const repo = repoMap.get(name)
@@ -19,12 +21,11 @@ export function resolveRepos() {
       continue
     }
 
-    const baseDir = path.dirname(fileURLToPath(import.meta.url))
-    const basePath = path.resolve(baseDir, '..', repo.path)
+    const basePath = path.resolve(repoRoot, repo.path)
     const candidates = [basePath]
 
     if (name === 'fas-cms') {
-      const fallback = path.resolve(baseDir, '..', '../fas-cms-fresh')
+      const fallback = path.resolve(repoRoot, '../fas-cms-fresh')
       candidates.push(fallback)
     }
 
