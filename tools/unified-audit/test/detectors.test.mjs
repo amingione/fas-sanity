@@ -187,7 +187,8 @@ test('payload access detection', () => {
   const base = `
 export default async function handler(req, res) {
   const signature = req.headers['stripe-signature']
-  const event = stripe.webhooks.constructEvent(req.body, signature, secret)
+  const event = verifySignature(req.body, signature)
+  console.log(event.id, event.type)
 }
 `
 
@@ -211,7 +212,7 @@ export default async function handler(req, res) {
 
   const safeByConstruct = detectUnsafePayloadAccess(
     'netlify/functions/stripe-webhook.ts',
-    `${base}\nconst obj = event.data.object`,
+    `${base}\nstripe.webhooks.constructEvent(req.body, signature, secret)\nconst obj = event.data.object`,
     null,
   )
   assert.equal(safeByConstruct, null)

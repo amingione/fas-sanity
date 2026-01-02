@@ -55,9 +55,9 @@ export function isWebhookHandler(filePath, fileContent = '') {
   const normalized = normalizePath(filePath)
   const pathPatterns = [
     /src\/pages\/api\/webhooks\.ts$/,
-    /src\/pages\/api\/.*webhook.*\.ts$/,
+    /src\/pages\/api\/.*webhook.*\.ts$/i,
     /src\/pages\/api\/webhooks\//,
-    /netlify\/functions\/.*webhook.*\.(ts|mjs)$/,
+    /netlify\/functions\/.*webhook.*\.(ts|mjs)$/i,
     /netlify\/functions\/stripe.*\.ts$/,
     /netlify\/functions\/easypost.*\.ts$/,
     /netlify\/functions\/.*Events\.ts$/,

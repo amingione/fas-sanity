@@ -1,0 +1,825 @@
+{
+  "counts": {
+    "error": 0,
+    "ok": 74,
+    "skipped": 0,
+    "total": 82,
+    "warn": 8
+  },
+  "generatedAt": "2026-01-02T12:07:49.673Z",
+  "results": [
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_debug-auth-env.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_inventory.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/auth-logout.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-delete.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-list.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-upsert.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/clean-reserved-inventory.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/collection-counts-cron.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-detail.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-invoice-create.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-list.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-get.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-list.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-upsert.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-check.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-sync.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoice-send.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoices-list.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/merchant-feed-upload-cron.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-detail.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-reply.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/messages-list.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-detail.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-update-status.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-delete.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-detail.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-duplicate.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-upsert.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/promotion-status-cron.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-convert-to-invoice.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-list.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-send.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-upsert.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/review-aggregation.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/sale-status-cron.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/seo-maintenance.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/tracking-update.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/upload-image.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/vendor-application.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/admin/orders/[id].ts",
+      "handlers": [
+        "OPTIONS",
+        "PATCH"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/admin/orders/index.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/forgot-password.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/password-reset/confirm.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/reset-password.ts",
+      "handlers": [
+        "GET",
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/[slug].ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/featured.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/menu.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[productId]/reviews.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[slug].ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/[slug].ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/apply.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/validate.ts",
+      "handlers": [
+        "GET",
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/reviews/[reviewId]/vote.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/site-search.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/dashboard.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices/[id].ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/login.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/logout.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/me.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/messages/[id].ts",
+      "handlers": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/messages/index.ts",
+      "handlers": [
+        "GET",
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/index.ts",
+      "handlers": [
+        "GET",
+        "PUT"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/[id].ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/submit.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/password-reset/confirm.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/returns/index.ts",
+      "handlers": [
+        "GET",
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/create-order.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/invite.ts",
+      "handlers": [
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/setup.ts",
+      "handlers": [
+        "GET",
+        "POST"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quotes.ts",
+      "handlers": [
+        "GET"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/config.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/email.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/passwords.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/emailEvents.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fixCardDetails.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/referenceHealth.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/runEmailAutomations.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncStripeCoupons.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-onboarding-cron.ts",
+      "handlers": [],
+      "mode": "static",
+      "reason": "No handler export detected (static scan)",
+      "status": "WARN"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-cart.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    },
+    {
+      "classification": "OBSOLETE",
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-catalog.ts",
+      "handlers": [
+        "handler"
+      ],
+      "mode": "static",
+      "reason": "TypeScript file inspected (static handler detection)",
+      "status": "OK"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "enforcementPhase": "WARN",
+  "findings": [
+    {
+      "detail": "Webhook handler performs side-effects without idempotency guard",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/webhooks.ts",
+      "lineNo": 876,
+      "severity": "HIGH",
+      "type": "idempotency"
+    },
+    {
+      "detail": "Webhook handler performs side-effects without idempotency guard",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/calcom/webhook.ts",
+      "lineNo": 27,
+      "severity": "HIGH",
+      "type": "idempotency"
+    }
+  ],
+  "generatedAt": "2026-01-02T12:04:26.850Z",
+  "requiresEnforcement": false,
+  "status": "WARN"
+}

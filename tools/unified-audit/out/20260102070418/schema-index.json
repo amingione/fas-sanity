@@ -1,0 +1,234 @@
+{
+  "generatedAt": "2026-01-02T12:04:18.627Z",
+  "status": "OK",
+  "types": [
+    {
+      "fields": [
+        "address",
+        "email",
+        "name",
+        "notes",
+        "phone"
+      ],
+      "name": "customer",
+      "partial": false,
+      "required": [
+        "email"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/customer.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "body",
+        "from",
+        "previewText",
+        "slug",
+        "subject",
+        "title"
+      ],
+      "name": "emailCampaign",
+      "partial": false,
+      "required": [
+        "slug",
+        "subject",
+        "title"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/emailCampaign.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "email",
+        "fields",
+        "formName",
+        "name",
+        "pageUrl",
+        "source",
+        "submittedAt",
+        "tags"
+      ],
+      "name": "marketingOptIn",
+      "partial": false,
+      "required": [
+        "email",
+        "formName",
+        "submittedAt"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/marketingOptIn.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "customerEmail",
+        "customerName",
+        "customerPhone",
+        "internalNotes",
+        "items",
+        "linkedQuote",
+        "meta",
+        "notes",
+        "source",
+        "status",
+        "submittedAt",
+        "subtotal",
+        "summary",
+        "vehicle"
+      ],
+      "name": "quoteRequest",
+      "partial": false,
+      "required": [
+        "source",
+        "submittedAt"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/quoteRequest.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "email",
+        "name",
+        "notificationPreferences",
+        "passwordHash",
+        "portalAccess",
+        "shippingAddresses",
+        "status"
+      ],
+      "name": "vendor",
+      "partial": true,
+      "required": [
+        "email",
+        "name"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/vendor.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "createdAt",
+        "expiresAt",
+        "invitedBy",
+        "tokenHash",
+        "tokenType",
+        "usedAt",
+        "vendor"
+      ],
+      "name": "vendorAuthToken",
+      "partial": false,
+      "required": [
+        "tokenHash",
+        "tokenType",
+        "vendor"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/vendorAuthToken.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "category",
+        "description",
+        "file",
+        "sharedWithAllVendors",
+        "title",
+        "uploadedAt",
+        "uploadedBy",
+        "vendor",
+        "version"
+      ],
+      "name": "vendorDocument",
+      "partial": false,
+      "required": [
+        "file",
+        "title"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/vendorDocument.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "attachments",
+        "category",
+        "createdAt",
+        "lastReplyAt",
+        "priority",
+        "relatedInvoice",
+        "relatedOrder",
+        "replies",
+        "status",
+        "subject",
+        "vendor"
+      ],
+      "name": "vendorMessage",
+      "partial": false,
+      "required": [
+        "subject",
+        "vendor"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/vendorMessage.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "createdAt",
+        "link",
+        "message",
+        "read",
+        "title",
+        "type",
+        "vendor"
+      ],
+      "name": "vendorNotification",
+      "partial": false,
+      "required": [
+        "title",
+        "vendor"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/vendorNotification.ts"
+      ],
+      "type": "document"
+    },
+    {
+      "fields": [
+        "createdAt",
+        "description",
+        "items",
+        "order",
+        "photos",
+        "reason",
+        "refundAmount",
+        "refundMethod",
+        "resolvedAt",
+        "rmaNumber",
+        "status",
+        "vendor"
+      ],
+      "name": "vendorReturn",
+      "partial": false,
+      "required": [
+        "rmaNumber",
+        "vendor"
+      ],
+      "sources": [
+        "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/sanity/schemas/vendorReturn.ts"
+      ],
+      "type": "document"
+    }
+  ]
+}
