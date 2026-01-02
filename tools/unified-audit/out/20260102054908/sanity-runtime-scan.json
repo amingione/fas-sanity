@@ -1,0 +1,292 @@
+{
+  "dataset": "production",
+  "generatedAt": "2026-01-02T10:49:11.752Z",
+  "projectId": "r4og35qd",
+  "status": "OK",
+  "types": {
+    "customer": {
+      "documentCount": 50,
+      "missingRequired": {},
+      "nullCounts": {
+        "address": 0,
+        "email": 0,
+        "name": 0,
+        "notes": 0,
+        "phone": 0
+      },
+      "status": "OK",
+      "unknownFields": {
+        "addresses": 22,
+        "averageOrderValue": 22,
+        "billingAddress": 15,
+        "communicationPreferences": 1,
+        "customerType": 1,
+        "daysSinceLastOrder": 22,
+        "emailMarketing": 27,
+        "emailOptIn": 30,
+        "firstName": 28,
+        "firstOrderDate": 22,
+        "hasVisitedStore": 1,
+        "invoices": 19,
+        "lastName": 25,
+        "lastOrderDate": 22,
+        "lifetimeSpend": 22,
+        "lifetimeValue": 22,
+        "marketingOptIn": 30,
+        "orderCount": 30,
+        "orders": 22,
+        "passwordHash": 28,
+        "passwordResetExpires": 13,
+        "passwordResetToken": 13,
+        "preferredContactMethod": 1,
+        "quoteCount": 22,
+        "quotes": 22,
+        "roles": 50,
+        "shippingAddress": 22,
+        "status": 9,
+        "stripeCustomerId": 5,
+        "stripeLastSyncedAt": 23,
+        "stripeMetadata": 21,
+        "textOptIn": 30,
+        "totalOrders": 22,
+        "updatedAt": 27,
+        "vehicles": 1
+      }
+    },
+    "emailCampaign": {
+      "documentCount": 14,
+      "missingRequired": {
+        "slug": [
+          "209cf303-6d1c-4379-bbd2-7cb497fbda17",
+          "2227c7f3-37c2-4120-91d0-eec9111aa80e",
+          "54c1a9e4-d0d0-4922-a84b-56f161c9ed4b",
+          "72dd79eb-5279-4c86-a375-cd3e3b42ef57",
+          "c99179d3-7807-46a2-9a60-043d0d523306",
+          "drafts.026e3e2e-c088-496c-a483-8ea96b123358",
+          "drafts.3c1f90a1-4274-4404-9620-4aca7123b707",
+          "drafts.48ee4514-d36b-46c7-aa40-7a93eca5eef3",
+          "drafts.8cde6a34-c13b-4d83-b8ec-4c8c76441ddd",
+          "drafts.a3fa3bf5-28b4-4e95-aa56-cdc56cfd3a37",
+          "drafts.b1ff6887-0522-4a8c-8c4e-54eb3bd57f2a",
+          "drafts.c0c49a9d-967e-44e3-bf0c-a8880e92c0db",
+          "e8a04376-0b4d-4b78-aea0-625d9a34f7a4",
+          "mpritJ7W0T286mfwxnGOfE"
+        ],
+        "subject": [
+          "mpritJ7W0T286mfwxnGOfE"
+        ]
+      },
+      "nullCounts": {
+        "body": 0,
+        "from": 0,
+        "previewText": 0,
+        "slug": 0,
+        "subject": 0,
+        "title": 0
+      },
+      "status": "OK",
+      "unknownFields": {
+        "active": 9,
+        "campaignType": 9,
+        "content": 13,
+        "createdAt": 1,
+        "ctaButton": 12,
+        "customQuery": 2,
+        "emails": 1,
+        "fromEmail": 13,
+        "fromName": 13,
+        "replyTo": 13,
+        "scheduledSendDate": 1,
+        "segment": 13,
+        "status": 10,
+        "testEmail": 5,
+        "trackingSlug": 5
+      }
+    },
+    "marketingOptIn": {
+      "documentCount": 0,
+      "missingRequired": {},
+      "nullCounts": {
+        "email": 0,
+        "fields": 0,
+        "formName": 0,
+        "name": 0,
+        "pageUrl": 0,
+        "source": 0,
+        "submittedAt": 0,
+        "tags": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    },
+    "quoteRequest": {
+      "documentCount": 3,
+      "missingRequired": {},
+      "nullCounts": {
+        "customerEmail": 0,
+        "customerName": 0,
+        "customerPhone": 0,
+        "internalNotes": 0,
+        "items": 0,
+        "linkedQuote": 0,
+        "meta": 0,
+        "notes": 0,
+        "source": 0,
+        "status": 0,
+        "submittedAt": 0,
+        "subtotal": 0,
+        "summary": 0,
+        "vehicle": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    },
+    "vendor": {
+      "documentCount": 2,
+      "missingRequired": {
+        "email": [
+          "1a38e652-8075-4157-9cdf-148fa2bebeac",
+          "73831935-4be7-4352-abe5-2a810f559aa1"
+        ],
+        "name": [
+          "1a38e652-8075-4157-9cdf-148fa2bebeac",
+          "73831935-4be7-4352-abe5-2a810f559aa1"
+        ]
+      },
+      "nullCounts": {
+        "email": 0,
+        "name": 0,
+        "notificationPreferences": 0,
+        "passwordHash": 0,
+        "portalAccess": 0,
+        "shippingAddresses": 0,
+        "status": 0
+      },
+      "status": "OK",
+      "unknownFields": {
+        "accountManager": 2,
+        "accountingContact": 2,
+        "active": 2,
+        "allowBackorders": 2,
+        "autoApproveOrders": 2,
+        "businessAddress": 2,
+        "businessType": 2,
+        "companyName": 2,
+        "creditLimit": 1,
+        "currentBalance": 1,
+        "customerRef": 1,
+        "description": 2,
+        "displayName": 2,
+        "featured": 1,
+        "internalNotes": 1,
+        "logo": 2,
+        "onboardedAt": 1,
+        "passwordResetExpires": 1,
+        "passwordResetToken": 1,
+        "paymentTerms": 2,
+        "portalEnabled": 2,
+        "portalUsers": 2,
+        "preferredVendor": 2,
+        "pricingTier": 2,
+        "primaryContact": 2,
+        "rating": 1,
+        "roles": 2,
+        "shippingAddress": 2,
+        "slug": 2,
+        "tags": 1,
+        "taxExempt": 2,
+        "totalOrders": 1,
+        "totalRevenue": 1,
+        "vendorNumber": 2,
+        "website": 2,
+        "yearsInBusiness": 1
+      }
+    },
+    "vendorAuthToken": {
+      "documentCount": 6,
+      "missingRequired": {},
+      "nullCounts": {
+        "createdAt": 0,
+        "expiresAt": 0,
+        "invitedBy": 6,
+        "tokenHash": 0,
+        "tokenType": 0,
+        "usedAt": 3,
+        "vendor": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    },
+    "vendorDocument": {
+      "documentCount": 2,
+      "missingRequired": {},
+      "nullCounts": {
+        "category": 0,
+        "description": 0,
+        "file": 0,
+        "sharedWithAllVendors": 0,
+        "title": 0,
+        "uploadedAt": 0,
+        "uploadedBy": 0,
+        "vendor": 0,
+        "version": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    },
+    "vendorMessage": {
+      "documentCount": 2,
+      "missingRequired": {},
+      "nullCounts": {
+        "attachments": 0,
+        "category": 0,
+        "createdAt": 0,
+        "lastReplyAt": 0,
+        "priority": 0,
+        "relatedInvoice": 0,
+        "relatedOrder": 0,
+        "replies": 0,
+        "status": 0,
+        "subject": 0,
+        "vendor": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    },
+    "vendorNotification": {
+      "documentCount": 0,
+      "missingRequired": {},
+      "nullCounts": {
+        "createdAt": 0,
+        "link": 0,
+        "message": 0,
+        "read": 0,
+        "title": 0,
+        "type": 0,
+        "vendor": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    },
+    "vendorReturn": {
+      "documentCount": 0,
+      "missingRequired": {},
+      "nullCounts": {
+        "createdAt": 0,
+        "description": 0,
+        "items": 0,
+        "order": 0,
+        "photos": 0,
+        "reason": 0,
+        "refundAmount": 0,
+        "refundMethod": 0,
+        "resolvedAt": 0,
+        "rmaNumber": 0,
+        "status": 0,
+        "vendor": 0
+      },
+      "status": "OK",
+      "unknownFields": {}
+    }
+  }
+}

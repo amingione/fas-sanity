@@ -1,0 +1,1355 @@
+stripe checkout sessions list
+
+stripe cli run:
+stripe checkout sessions list 
+
+
+
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "cs_test_a16eiwioaSIZRQAPJ8GLkh2MK20JCKC99kRH2jk1PuTmJ9A9i17wCS6DN1",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": true,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767344168,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767430568,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl49WP1CiCjkLwl1ItydbZw",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1NtOJEMSL8NA2Xr2xX1KTuXjh8iQvQSPLQQ53cw08Smugu2Y7cEeuXhyD",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767343859,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767430259,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl44WP1CiCjkLwl0hw8MNyb",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1kIAKxC2MKqfsNgYjcWyLdNlN9qAXYvbrvImWRMagMnFgmBgz4NTL5wgk",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767341272,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767427672,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl3OnP1CiCjkLwl1BLRNquw",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1njAcBiJywTl5EaEfTphW58CktaaJwp1Oid3syEZDfQCqmeWloBT7bVsx",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767340784,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767427184,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl3GwP1CiCjkLwl14K3dfuT",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1nm4PaHPz9NBR029PQgpmDlEc0kGCUvUwRMA8fxOLyrdvLoNSpRuu2AWT",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767339434,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767425833,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl2v9P1CiCjkLwl1zW4RnJf",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1fuvaaMIgV5Q2X3pjNtyOlTxdZoC73QC5N9whPLtRhRpCoPGaJFAzF8Pg",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767339387,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767425787,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl2uOP1CiCjkLwl0wTKIWba",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1R6Wi3BHdGFJnIQMvkBwymn17KKqZQcTLCLEHQpiDoKIqNfQg2wtTElEz",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767339283,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767425683,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl2siP1CiCjkLwl1msm5IF4",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1PvsdittVtE1W0zYNrtrOKduNwENjaP3Z7qd4KwMGm2XeL2Xa0ZTYSXiE",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1767339130,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1767425529,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3Sl2qFP1CiCjkLwl0SZy8rvr",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1lBFs8pLAzTzxF4beu1E4TFDrgHP9eh1XkJ2AzZBcSlfH61XpTg3uHpDB",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1765599602,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1765686002,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3SdkJLP1CiCjkLwl0yKYeHnB",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    },
+    {
+      "id": "cs_test_a1WlJUWcKEpmPqzxlz98izAO8GBnoWf1vpVGEEpGSV2CtSzG2m0IuUogyH",
+      "object": "checkout.session",
+      "adaptive_pricing": {
+        "enabled": true
+      },
+      "after_expiration": null,
+      "allow_promotion_codes": null,
+      "amount_subtotal": 3000,
+      "amount_total": 3000,
+      "automatic_tax": {
+        "enabled": false,
+        "liability": null,
+        "provider": null,
+        "status": null
+      },
+      "billing_address_collection": null,
+      "branding_settings": {
+        "background_color": "#616161",
+        "border_style": "rounded",
+        "button_color": "#ca0f07",
+        "display_name": "F.A.S. Motorsports",
+        "font_family": "default",
+        "icon": {
+          "file": "file_1SDqB8P1CiCjkLwlHrqE5glg",
+          "type": "file"
+        },
+        "logo": {
+          "file": "file_1SDqBGP1CiCjkLwlPwZ4nlwj",
+          "type": "file"
+        }
+      },
+      "cancel_url": "https://httpbin.org/post",
+      "client_reference_id": null,
+      "client_secret": null,
+      "collected_information": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1765598125,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "after_submit": null,
+        "shipping_address": null,
+        "submit": null,
+        "terms_of_service_acceptance": null
+      },
+      "customer": null,
+      "customer_account": null,
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": "South San Francisco",
+          "country": "US",
+          "line1": "354 Oyster Point Blvd",
+          "line2": null,
+          "postal_code": "94080",
+          "state": "CA"
+        },
+        "business_name": null,
+        "email": "stripe@example.com",
+        "individual_name": null,
+        "name": "Jenny Rosen",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "discounts": [],
+      "expires_at": 1765684524,
+      "invoice": null,
+      "invoice_creation": {
+        "enabled": false,
+        "invoice_data": {
+          "account_tax_ids": null,
+          "custom_fields": null,
+          "description": null,
+          "footer": null,
+          "issuer": null,
+          "metadata": {},
+          "rendering_options": null
+        }
+      },
+      "livemode": false,
+      "locale": null,
+      "metadata": {},
+      "mode": "payment",
+      "origin_context": null,
+      "payment_intent": "pi_3SdjvWP1CiCjkLwl05VouIjI",
+      "payment_link": null,
+      "payment_method_collection": "if_required",
+      "payment_method_configuration_details": {
+        "id": "pmc_1RCVrwP1CiCjkLwlvZAx9uUo",
+        "parent": null
+      },
+      "payment_method_options": {
+        "card": {
+          "request_three_d_secure": "automatic"
+        }
+      },
+      "payment_method_types": [
+        "card",
+        "afterpay_clearpay",
+        "klarna",
+        "link",
+        "us_bank_account",
+        "cashapp",
+        "amazon_pay"
+      ],
+      "payment_status": "paid",
+      "permissions": null,
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "saved_payment_method_options": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": null,
+      "subscription": null,
+      "success_url": "https://httpbin.org/post",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "ui_mode": "hosted",
+      "url": null,
+      "wallet_options": null
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/checkout/sessions"
+}
+

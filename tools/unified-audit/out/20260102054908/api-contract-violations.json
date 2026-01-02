@@ -1,0 +1,176 @@
+{
+  "enforcementApproved": false,
+  "generatedAt": "2026-01-02T10:49:11.873Z",
+  "requiresEnforcement": true,
+  "status": "FAIL",
+  "violations": [
+    {
+      "fieldPath": "to_address",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fulfillOrder.ts",
+      "lineNo": 210,
+      "recommendedFix": "Ensure required EasyPost shipment field is set before create call.",
+      "service": "easypost",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "from_address",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fulfillOrder.ts",
+      "lineNo": 210,
+      "recommendedFix": "Ensure required EasyPost shipment field is set before create call.",
+      "service": "easypost",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "parcel",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fulfillOrder.ts",
+      "lineNo": 210,
+      "recommendedFix": "Ensure required EasyPost shipment field is set before create call.",
+      "service": "easypost",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "to",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/requestFreightQuote.ts",
+      "lineNo": 324,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "from",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/requestFreightQuote.ts",
+      "lineNo": 324,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "to",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/send-email-test.ts",
+      "lineNo": 94,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "from",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/send-email-test.ts",
+      "lineNo": 94,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "to",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendCustomerEmail.ts",
+      "lineNo": 59,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "subject",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendCustomerEmail.ts",
+      "lineNo": 59,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "to",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendVendorEmail.ts",
+      "lineNo": 48,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "parcel",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/create-shipping-label.ts",
+      "lineNo": 183,
+      "recommendedFix": "Ensure required EasyPost shipment field is set before create call.",
+      "service": "easypost",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "to",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/submission-created.ts",
+      "lineNo": 42,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "from",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/submission-created.ts",
+      "lineNo": 42,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "subject",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/submission-created.ts",
+      "lineNo": 42,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "subject",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quote-belak.ts",
+      "lineNo": 152,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "subject",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quote-jtx.ts",
+      "lineNo": 125,
+      "recommendedFix": "Ensure required Resend email field is set before send call.",
+      "service": "resend",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "easyPostShipmentId",
+      "file": null,
+      "lineNo": null,
+      "recommendedFix": "Align persisted EasyPost fields with Sanity schema fields.",
+      "service": "easypost",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "trackingNumber",
+      "file": null,
+      "lineNo": null,
+      "recommendedFix": "Align persisted EasyPost fields with Sanity schema fields.",
+      "service": "easypost",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "shippingLabelUrl",
+      "file": null,
+      "lineNo": null,
+      "recommendedFix": "Align persisted EasyPost fields with Sanity schema fields.",
+      "service": "easypost",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "resendMessageId",
+      "file": null,
+      "lineNo": null,
+      "recommendedFix": "Align persisted Resend fields with Sanity schema fields.",
+      "service": "resend",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "messageId",
+      "file": null,
+      "lineNo": null,
+      "recommendedFix": "Align persisted Resend fields with Sanity schema fields.",
+      "service": "resend",
+      "type": "schemaMismatch"
+    }
+  ]
+}

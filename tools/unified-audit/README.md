@@ -3,6 +3,17 @@
 Commands (run from repo root):
 
 ```sh
+audit run
+audit schema
+audit contracts
+audit env
+audit enforcement
+audit ci
+```
+
+Direct invocation (if `audit` is not on your PATH):
+
+```sh
 node tools/unified-audit/cli.mjs run
 node tools/unified-audit/cli.mjs schema
 node tools/unified-audit/cli.mjs contracts

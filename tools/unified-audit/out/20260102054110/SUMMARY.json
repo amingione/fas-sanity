@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-01-02T10:41:10.165Z",
+  "steps": {
+    "api-contract-violations": {
+      "enforcementApproved": false,
+      "generatedAt": "2026-01-02T10:41:10.163Z",
+      "requiresEnforcement": false,
+      "status": "PASS",
+      "violations": []
+    },
+    "codex-prompts": {
+      "generatedAt": "2026-01-02T10:41:10.165Z",
+      "status": "OK"
+    },
+    "env-resolution-matrix": {
+      "generatedAt": "2026-01-02T10:41:10.163Z",
+      "missingInRepo": {},
+      "referencedKeys": [],
+      "repos": {
+        "fas-cms": {
+          "definedKeys": [],
+          "envFiles": [],
+          "reason": "Repo path not found",
+          "status": "MISSING"
+        },
+        "fas-sanity": {
+          "definedKeys": [],
+          "envFiles": [],
+          "reason": "Repo path not found",
+          "status": "MISSING"
+        }
+      },
+      "status": "OK",
+      "unusedInRepo": {}
+    },
+    "external-id-integrity": {
+      "duplicates": {},
+      "generatedAt": "2026-01-02T10:41:10.164Z",
+      "idFields": [],
+      "missingRequired": {},
+      "notes": "Runtime scan unavailable; duplicates and missing required ids not computed.",
+      "nullRates": {},
+      "status": "PASS"
+    },
+    "integrations-inventory": {
+      "envKeys": {},
+      "generatedAt": "2026-01-02T10:41:10.163Z",
+      "hits": [],
+      "reason": "No code files found",
+      "status": "SKIPPED"
+    },
+    "query-index": {
+      "fieldsUsed": {},
+      "generatedAt": "2026-01-02T10:41:10.162Z",
+      "queries": [],
+      "reason": "No code files found",
+      "status": "SKIPPED"
+    },
+    "sanity-runtime-scan": {
+      "generatedAt": "2026-01-02T10:41:10.163Z",
+      "reason": "Schema index unavailable",
+      "status": "SKIPPED",
+      "types": {}
+    },
+    "schema-index": {
+      "generatedAt": "2026-01-02T10:41:10.162Z",
+      "reason": "No schema files found",
+      "status": "SKIPPED",
+      "types": []
+    },
+    "schema-vs-query": {
+      "generatedAt": "2026-01-02T10:41:10.163Z",
+      "inferredMatches": [],
+      "missingInSchema": [],
+      "reason": "Schema or query index missing",
+      "status": "SKIPPED",
+      "unusedSchemaFields": []
+    },
+    "webhook-drift-report": {
+      "findings": [],
+      "generatedAt": "2026-01-02T10:41:10.164Z",
+      "status": "PASS"
+    }
+  }
+}

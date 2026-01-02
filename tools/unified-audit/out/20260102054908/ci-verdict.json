@@ -1,0 +1,8 @@
+{
+  "generatedAt": "2026-01-02T10:49:12.086Z",
+  "reasons": [
+    "api-contract-violations status FAIL",
+    "api-contract-violations requiresEnforcement true"
+  ],
+  "status": "FAIL"
+}

@@ -1,0 +1,474 @@
+{
+  "generatedAt": "2026-01-02T10:49:09.384Z",
+  "inferredMatches": [
+    {
+      "normalized": "address",
+      "queryFields": [
+        "address"
+      ],
+      "schemaFields": [
+        "address"
+      ]
+    },
+    {
+      "normalized": "category",
+      "queryFields": [
+        "category"
+      ],
+      "schemaFields": [
+        "category"
+      ]
+    },
+    {
+      "normalized": "createdat",
+      "queryFields": [
+        "_createdAt",
+        "createdAt"
+      ],
+      "schemaFields": [
+        "createdAt"
+      ]
+    },
+    {
+      "normalized": "customeremail",
+      "queryFields": [
+        "customerEmail"
+      ],
+      "schemaFields": [
+        "customerEmail"
+      ]
+    },
+    {
+      "normalized": "customername",
+      "queryFields": [
+        "customerName"
+      ],
+      "schemaFields": [
+        "customerName"
+      ]
+    },
+    {
+      "normalized": "description",
+      "queryFields": [
+        "description"
+      ],
+      "schemaFields": [
+        "description"
+      ]
+    },
+    {
+      "normalized": "email",
+      "queryFields": [
+        "email"
+      ],
+      "schemaFields": [
+        "email"
+      ]
+    },
+    {
+      "normalized": "file",
+      "queryFields": [
+        "file"
+      ],
+      "schemaFields": [
+        "file"
+      ]
+    },
+    {
+      "normalized": "items",
+      "queryFields": [
+        "items"
+      ],
+      "schemaFields": [
+        "items"
+      ]
+    },
+    {
+      "normalized": "link",
+      "queryFields": [
+        "link"
+      ],
+      "schemaFields": [
+        "link"
+      ]
+    },
+    {
+      "normalized": "name",
+      "queryFields": [
+        "name"
+      ],
+      "schemaFields": [
+        "name"
+      ]
+    },
+    {
+      "normalized": "notificationpreferences",
+      "queryFields": [
+        "notificationPreferences"
+      ],
+      "schemaFields": [
+        "notificationPreferences"
+      ]
+    },
+    {
+      "normalized": "order",
+      "queryFields": [
+        "order"
+      ],
+      "schemaFields": [
+        "order"
+      ]
+    },
+    {
+      "normalized": "phone",
+      "queryFields": [
+        "phone"
+      ],
+      "schemaFields": [
+        "phone"
+      ]
+    },
+    {
+      "normalized": "portalaccess",
+      "queryFields": [
+        "portalAccess"
+      ],
+      "schemaFields": [
+        "portalAccess"
+      ]
+    },
+    {
+      "normalized": "previewtext",
+      "queryFields": [
+        "previewText"
+      ],
+      "schemaFields": [
+        "previewText"
+      ]
+    },
+    {
+      "normalized": "shippingaddresses",
+      "queryFields": [
+        "shippingAddresses"
+      ],
+      "schemaFields": [
+        "shippingAddresses"
+      ]
+    },
+    {
+      "normalized": "slug",
+      "queryFields": [
+        "slug"
+      ],
+      "schemaFields": [
+        "slug"
+      ]
+    },
+    {
+      "normalized": "status",
+      "queryFields": [
+        "status"
+      ],
+      "schemaFields": [
+        "status"
+      ]
+    },
+    {
+      "normalized": "subject",
+      "queryFields": [
+        "subject"
+      ],
+      "schemaFields": [
+        "subject"
+      ]
+    },
+    {
+      "normalized": "submittedat",
+      "queryFields": [
+        "submittedAt"
+      ],
+      "schemaFields": [
+        "submittedAt"
+      ]
+    },
+    {
+      "normalized": "tags",
+      "queryFields": [
+        "tags"
+      ],
+      "schemaFields": [
+        "tags"
+      ]
+    },
+    {
+      "normalized": "title",
+      "queryFields": [
+        "title"
+      ],
+      "schemaFields": [
+        "title"
+      ]
+    },
+    {
+      "normalized": "type",
+      "queryFields": [
+        "_type",
+        "type"
+      ],
+      "schemaFields": [
+        "type"
+      ]
+    },
+    {
+      "normalized": "version",
+      "queryFields": [
+        "version"
+      ],
+      "schemaFields": [
+        "version"
+      ]
+    }
+  ],
+  "missingInSchema": [
+    "HIBP_ENDPOINT",
+    "INVENTORY_FIELDS",
+    "PACKING_SLIP_FUNCTION",
+    "SHEERID_API_BASE",
+    "_createdAt",
+    "_id",
+    "_rev",
+    "_type",
+    "_updatedAt",
+    "accountLast4",
+    "address_line1",
+    "address_line2",
+    "addresses",
+    "amountShipping",
+    "amountSubtotal",
+    "amountTax",
+    "analyticsEndpoint",
+    "analyticsUrl",
+    "appliesTo",
+    "attribution",
+    "authId",
+    "availability",
+    "base",
+    "baseUrl",
+    "beginningBalance",
+    "billTo",
+    "billingAddress",
+    "boxDimensions",
+    "brand",
+    "canonicalUrl",
+    "cardBrand",
+    "cardLast4",
+    "carrier",
+    "cart",
+    "city_locality",
+    "coalesce",
+    "code",
+    "collectionType",
+    "color",
+    "combinability",
+    "companyName",
+    "content",
+    "coreRequired",
+    "count",
+    "country_code",
+    "ctaButton",
+    "customQuery",
+    "customer",
+    "customerEligibility",
+    "customerNotes",
+    "customerRef",
+    "dataset",
+    "date",
+    "defaultForChecks",
+    "deliveredAt",
+    "dimensions",
+    "discountType",
+    "discountValue",
+    "displayName",
+    "displayTitle",
+    "documentation",
+    "dueDate",
+    "eligibleCategories",
+    "eligibleCollections",
+    "eligibleProducts",
+    "emailMarketing",
+    "emailOptIn",
+    "emails",
+    "encodeURIComponent",
+    "endpoint",
+    "endpoints",
+    "estimatedDeliveryDate",
+    "excerpt",
+    "filters",
+    "firstName",
+    "fitmentYears",
+    "fn",
+    "fromEmail",
+    "fromName",
+    "fulfillment",
+    "getNetlifyFnBase",
+    "googleProductCategory",
+    "google_product_category",
+    "gtin",
+    "holderName",
+    "id",
+    "image_link",
+    "images",
+    "import",
+    "installOnly",
+    "institutionName",
+    "inventory",
+    "invoiceDate",
+    "invoiceNumber",
+    "invoiceRef",
+    "label",
+    "lastName",
+    "lineItems",
+    "marketingOptIn",
+    "material",
+    "merchantData",
+    "minimumRequirements",
+    "mpn",
+    "netlifyBase",
+    "normalized",
+    "number",
+    "offset",
+    "onSale",
+    "or",
+    "orderId",
+    "orderNumber",
+    "orderRef",
+    "orderType",
+    "otherIncome",
+    "packageDimensions",
+    "packageWeight",
+    "packingSlipUrl",
+    "params",
+    "path",
+    "paymentIntentId",
+    "paymentLinkUrl",
+    "postType",
+    "postal_code",
+    "prefix",
+    "price",
+    "pricing",
+    "primaryContact",
+    "productId",
+    "productLength",
+    "productType",
+    "productWidth",
+    "projectId",
+    "promotionTagline",
+    "promotionType",
+    "qs",
+    "query",
+    "rating",
+    "replyTo",
+    "repository",
+    "reviews",
+    "roles",
+    "routingLast4",
+    "salePrice",
+    "sale_price",
+    "schedule",
+    "segment",
+    "selected",
+    "selectedShippingAmount",
+    "selectedShippingCurrency",
+    "service",
+    "serviceSelection",
+    "shipTo",
+    "ship_from",
+    "ship_to",
+    "shippedAt",
+    "shippingAddress",
+    "shippingCarrier",
+    "shippingClass",
+    "shippingDeliveryDays",
+    "shippingEstimatedDeliveryDate",
+    "shippingLabelFile",
+    "shippingLabelUrl",
+    "shippingMetadata",
+    "shippingServiceCode",
+    "shippingServiceName",
+    "shippingWeight",
+    "shipsAlone",
+    "shortDescription",
+    "siteId",
+    "size",
+    "sku",
+    "sortBy",
+    "state_province",
+    "stripeCustomerId",
+    "stripeDefaultPriceId",
+    "stripeInvoiceId",
+    "stripePaymentIntentId",
+    "stripePaymentMethods",
+    "stripePrices",
+    "stripeProductId",
+    "stripeSessionId",
+    "stripeSummary",
+    "taxBehavior",
+    "taxRate",
+    "terms",
+    "testEmail",
+    "textOptIn",
+    "total",
+    "totalAmount",
+    "trackingNumber",
+    "trackingSlug",
+    "true",
+    "updatedAt",
+    "usageLimits",
+    "userId",
+    "username",
+    "variantStrategy",
+    "verificationId",
+    "weight"
+  ],
+  "status": "OK",
+  "unusedSchemaFields": [
+    "attachments",
+    "body",
+    "customerPhone",
+    "expiresAt",
+    "fields",
+    "formName",
+    "from",
+    "internalNotes",
+    "invitedBy",
+    "lastReplyAt",
+    "linkedQuote",
+    "message",
+    "meta",
+    "notes",
+    "pageUrl",
+    "passwordHash",
+    "photos",
+    "priority",
+    "read",
+    "reason",
+    "refundAmount",
+    "refundMethod",
+    "relatedInvoice",
+    "relatedOrder",
+    "replies",
+    "resolvedAt",
+    "rmaNumber",
+    "sharedWithAllVendors",
+    "source",
+    "subtotal",
+    "summary",
+    "tokenHash",
+    "tokenType",
+    "uploadedAt",
+    "uploadedBy",
+    "usedAt",
+    "vehicle",
+    "vendor"
+  ]
+}

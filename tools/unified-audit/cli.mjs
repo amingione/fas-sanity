@@ -106,7 +106,7 @@ async function runCommand() {
     })
     context.results['sanity-runtime-scan'] = context.runtimeScan
   } else {
-    context.schemaVsQuery = skipOutput(outputDir, 'schema-vs-query.json', `Command ${command} skips schema steps`, { missingInSchema: [], unusedSchemaFields: [] })
+    context.schemaVsQuery = skipOutput(outputDir, 'schema-vs-query.json', `Command ${command} skips schema steps`, { missingInSchema: [], unusedSchemaFields: [], inferredMatches: [] })
     context.runtimeScan = skipOutput(outputDir, 'sanity-runtime-scan.json', `Command ${command} skips schema steps`, { types: {} })
     context.results['schema-vs-query'] = context.schemaVsQuery
     context.results['sanity-runtime-scan'] = context.runtimeScan
@@ -136,6 +136,7 @@ async function runCommand() {
       idFields: [],
       duplicates: {},
       nullRates: {},
+      missingRequired: {},
     })
     context.results['external-id-integrity'] = context.externalId
   }

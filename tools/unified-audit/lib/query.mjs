@@ -3,6 +3,7 @@ import { lineNumberForIndex, uniqueSorted } from './utils.mjs'
 
 const GROQ_TEMPLATE = /groq`([\s\S]*?)`/g
 const FETCH_CALL = /(client|sanityClient|sanity)\.fetch\s*\(\s*([`'"])([\s\S]*?)\2/g
+const FETCH_DIRECT = /\bfetch\s*\(\s*([`'"])([\s\S]*?)\1/g
 
 function extractProjectionFields(query) {
   const fields = new Set()
@@ -75,17 +76,15 @@ export function buildQueryIndex(files) {
     const text = file.contents
     let match
 
-    GROQ_TEMPLATE.lastIndex = 0
-    while ((match = GROQ_TEMPLATE.exec(text))) {
-      const query = match[1]
-      const lineNo = lineNumberForIndex(text, match.index)
+    const addQuery = (queryText, index) => {
+      const lineNo = lineNumberForIndex(text, index)
       let parseError = null
       try {
-        parse(query)
+        parse(queryText)
       } catch (error) {
         parseError = error?.message || String(error)
       }
-      const fields = extractProjectionFields(query)
+      const fields = extractProjectionFields(queryText)
       for (const field of fields) {
         const existing = fieldsUsed.get(field) || []
         existing.push({ file: file.path, lineNo })
@@ -94,35 +93,27 @@ export function buildQueryIndex(files) {
       queries.push({
         file: file.path,
         lineNo,
-        query,
+        query: queryText,
         parseError,
         fields: fields.sort(),
       })
     }
 
+    GROQ_TEMPLATE.lastIndex = 0
+    while ((match = GROQ_TEMPLATE.exec(text))) {
+      addQuery(match[1], match.index)
+    }
+
     FETCH_CALL.lastIndex = 0
     while ((match = FETCH_CALL.exec(text))) {
-      const query = match[3]
-      const lineNo = lineNumberForIndex(text, match.index)
-      let parseError = null
-      try {
-        parse(query)
-      } catch (error) {
-        parseError = error?.message || String(error)
-      }
-      const fields = extractProjectionFields(query)
-      for (const field of fields) {
-        const existing = fieldsUsed.get(field) || []
-        existing.push({ file: file.path, lineNo })
-        fieldsUsed.set(field, existing)
-      }
-      queries.push({
-        file: file.path,
-        lineNo,
-        query,
-        parseError,
-        fields: fields.sort(),
-      })
+      addQuery(match[3], match.index)
+    }
+
+    FETCH_DIRECT.lastIndex = 0
+    while ((match = FETCH_DIRECT.exec(text))) {
+      const prevChar = match.index > 0 ? text[match.index - 1] : ''
+      if (prevChar === '.') continue
+      addQuery(match[2], match.index)
     }
   }
 

@@ -12,17 +12,35 @@ function getStringLiteral(node) {
   return null
 }
 
+function resolveFieldObject(element) {
+  if (!element) return null
+  if (element.getKind() === SyntaxKind.ObjectLiteralExpression) {
+    return element
+  }
+  if (element.getKind() === SyntaxKind.CallExpression) {
+    const callExpr = element
+    const exprText = callExpr.getExpression().getText()
+    if (exprText === 'defineField') {
+      const arg = callExpr.getArguments()[0]
+      if (arg && arg.getKind() === SyntaxKind.ObjectLiteralExpression) {
+        return arg
+      }
+    }
+  }
+  return null
+}
+
 function extractFields(fieldArray) {
   const fields = []
   const required = []
   let partial = false
 
   for (const element of fieldArray.getElements()) {
-    if (!element || element.getKind() !== SyntaxKind.ObjectLiteralExpression) {
+    const obj = resolveFieldObject(element)
+    if (!obj) {
       partial = true
       continue
     }
-    const obj = element
     const nameProp = obj.getProperty('name')
     const nameValue = nameProp?.getFirstDescendantByKind(SyntaxKind.StringLiteral)
     const name = getStringLiteral(nameValue)

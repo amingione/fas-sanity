@@ -1,0 +1,19 @@
+REPO SCOPE: fas-sanity
+SERVICE SCOPE: schemas
+
+AUTHORITATIVE INPUTS (READ-ONLY):
+- schema-index.json
+- sanity-runtime-scan.json
+- schema-vs-query.json
+
+AUTHORIZATION GATE:
+Proceed only if ALL authoritative JSON inputs contain enforcementApproved: true.
+Else STOP.
+
+STRICT RULES:
+- Patch-only changes; no refactors, no reformatting, no unrelated edits.
+- Use the audit outputs to resolve only the cited violations.
+- Preserve existing business logic; do not change schema unless explicitly approved.
+
+TASK:
+Apply the minimal code changes required to remediate the audit findings for this service scope.

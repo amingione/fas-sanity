@@ -1,3 +1,5 @@
+✅ sent to codex 
+
 CODEX BUILD PROMPT — Unified Mapping Audit Tool (Schema ↔ API ↔ Data) + CLI + Enforcement Prompts
 
 SYSTEM DIRECTIVE
@@ -266,3 +268,4 @@ This mapping index is the authoritative internal model and MUST be reused
 by all steps (schema scan, runtime scan, API contract checks, enforcement generation).
 
 At no point may the tool assume that one repo is independent of the other.
+
