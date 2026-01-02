@@ -9,6 +9,7 @@ import {
   type DimensionsInput,
   type WeightInput,
 } from '../lib/easypostClient'
+import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 import {sanityClient} from '../lib/sanityClient'
 
 const DEFAULT_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3333'
@@ -315,7 +316,7 @@ async function createWizardLabel(payload: {
   const fromDefaults = getEasyPostFromAddress()
   const weightValue = typeof parcel.weight === 'number' && parcel.weight > 0 ? parcel.weight : 1
 
-  const shipment = await epClient.Shipment.create({
+  const shipmentPayload = {
     to_address: {
       street1: address.street1,
       street2: address.street2 || undefined,
@@ -342,7 +343,20 @@ async function createWizardLabel(payload: {
       width: parcel.width,
       height: parcel.height,
     },
-  } as any)
+  } as any
+  const missingTo = getEasyPostAddressMissingFields(shipmentPayload.to_address)
+  if (missingTo.length) {
+    throw new Error(`Missing to_address fields: ${missingTo.join(', ')}`)
+  }
+  const missingFrom = getEasyPostAddressMissingFields(shipmentPayload.from_address)
+  if (missingFrom.length) {
+    throw new Error(`Missing from_address fields: ${missingFrom.join(', ')}`)
+  }
+  const missingParcel = getEasyPostParcelMissingFields(shipmentPayload.parcel)
+  if (missingParcel.length) {
+    throw new Error(`Missing parcel fields: ${missingParcel.join(', ')}`)
+  }
+  const shipment = await epClient.Shipment.create(shipmentPayload)
 
   let updatedShipment: any
   if (typeof (shipment as any).buy === 'function') {
@@ -531,7 +545,7 @@ export async function createEasyPostLabel(
 
   const client = getEasyPostClient()
 
-  const shipment = await client.Shipment.create({
+  const shipmentPayload = {
     to_address: toAddress,
     from_address: fromAddress,
     reference: shipmentReference,
@@ -553,7 +567,20 @@ export async function createEasyPostLabel(
       height: dimensions.height,
       weight: Math.max(1, Number(ounces.toFixed(2))),
     },
-  } as any)
+  } as any
+  const missingTo = getEasyPostAddressMissingFields(shipmentPayload.to_address)
+  if (missingTo.length) {
+    throw new Error(`Missing to_address fields: ${missingTo.join(', ')}`)
+  }
+  const missingFrom = getEasyPostAddressMissingFields(shipmentPayload.from_address)
+  if (missingFrom.length) {
+    throw new Error(`Missing from_address fields: ${missingFrom.join(', ')}`)
+  }
+  const missingParcel = getEasyPostParcelMissingFields(shipmentPayload.parcel)
+  if (missingParcel.length) {
+    throw new Error(`Missing parcel fields: ${missingParcel.join(', ')}`)
+  }
+  const shipment = await client.Shipment.create(shipmentPayload)
 
   const rates = Array.isArray(shipment?.rates) ? shipment.rates : []
   if (!rates.length) {

@@ -77,6 +77,36 @@ export default defineType({
       type: 'url',
       readOnly: true,
     }),
+    defineField({
+      name: 'carrier',
+      title: 'Carrier',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'service',
+      title: 'Service',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'shipmentId',
+      title: 'EasyPost Shipment ID',
+      type: 'string',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'rate',
+      title: 'Rate',
+      type: 'number',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'createdAt',
+      title: 'Created At',
+      type: 'datetime',
+      readOnly: true,
+    }),
   ],
   preview: {
     select: {title: 'name', subtitle: 'trackingNumber'},

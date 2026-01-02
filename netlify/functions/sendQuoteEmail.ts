@@ -3,6 +3,7 @@ import {resolveResendApiKey} from '../../shared/resendEnv'
 import {createClient} from '@sanity/client'
 import type {Handler} from '@netlify/functions'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const resend = new Resend(resolveResendApiKey()!)
 
@@ -270,11 +271,20 @@ export const handler: Handler = async (event) => {
 
     // Attach generated PDF
     const pdfBytes = await buildPdf(quote)
+    const from = 'FAS Motorsports <quotes@updates.fasmotorsports.com>'
+    const subject = `Your Quote #${safe(quote.quoteNumber || quote._id)}`
+    const missing = getMissingResendFields({to: toEmail, from, subject})
+    if (missing.length) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
+      }
+    }
 
     await resend.emails.send({
-      from: 'FAS Motorsports <quotes@updates.fasmotorsports.com>',
+      from,
       to: toEmail,
-      subject: `Your Quote #${safe(quote.quoteNumber || quote._id)}`,
+      subject,
       html,
       attachments: [
         {

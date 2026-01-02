@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,6 +56,15 @@ const handler: Handler = async (event) => {
       .split('\n')
       .map((line: string) => line.trim() || '<br />')
       .join('<br />')
+
+    const missing = getMissingResendFields({to, from: fromAddress, subject})
+    if (missing.length) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
+      }
+    }
 
     await resend.emails.send({
       from: fromAddress,

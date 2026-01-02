@@ -4,6 +4,7 @@ import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {randomUUID} from 'crypto'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -321,10 +322,15 @@ export const handler: Handler = async (event) => {
       const addr = doc?.destination
         ? `${doc.destination.addressLine1 || ''} ${doc.destination.city || ''}, ${doc.destination.state || ''} ${doc.destination.postalCode || ''} ${doc.destination.country || ''}`
         : ''
+      const subject = `Freight Quote Opened${contact ? ` — ${contact}` : ''}`
+      const missing = getMissingResendFields({to, from, subject})
+      if (missing.length) {
+        throw new Error(`Missing email fields: ${missing.join(', ')}`)
+      }
       await resend.emails.send({
         from,
         to,
-        subject: `Freight Quote Opened${contact ? ` — ${contact}` : ''}`,
+        subject,
         html: `
           <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111">
             <p>A freight quote task has been opened.</p>

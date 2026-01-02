@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -105,10 +106,16 @@ export const handler: Handler = async (event) => {
 
     // Send confirmation email to applicant
     try {
+      const from = 'FAS Motorsports <info@fasmotorsports.com>'
+      const subject = 'Vendor Application Received - FAS Motorsports'
+      const missing = getMissingResendFields({to: data.contactEmail, from, subject})
+      if (missing.length) {
+        throw new Error(`Missing email fields: ${missing.join(', ')}`)
+      }
       await resend.emails.send({
-        from: 'FAS Motorsports <info@fasmotorsports.com>',
+        from,
         to: data.contactEmail,
-        subject: 'Vendor Application Received - FAS Motorsports',
+        subject,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1>Application Received!</h1>
@@ -141,10 +148,16 @@ export const handler: Handler = async (event) => {
 
     // Send notification to FAS team
     try {
+      const from = 'FAS Motorsports <info@fasmotorsports.com>'
+      const subject = `New Vendor Application: ${data.companyName}`
+      const missing = getMissingResendFields({to: 'amber@fasmotorsports.com', from, subject})
+      if (missing.length) {
+        throw new Error(`Missing email fields: ${missing.join(', ')}`)
+      }
       await resend.emails.send({
-        from: 'FAS Motorsports <info@fasmotorsports.com>',
+        from,
         to: 'amber@fasmotorsports.com',
-        subject: `New Vendor Application: ${data.companyName}`,
+        subject,
         html: `
           <div style="font-family: Arial, sans-serif;">
             <h1>New Vendor Application</h1>

@@ -4,6 +4,7 @@ import {Resend} from 'resend'
 import {syncContact} from '../lib/resend/contacts'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -133,10 +134,20 @@ export const handler: Handler = async (event) => {
     }
 
     // === EXISTING: SEND WELCOME EMAIL (keep your existing code) ===
+    const from = 'FAS Motorsports <info@fasmotorsports.com>'
+    const subject = 'Welcome to FAS Motorsports!'
+    const missing = getMissingResendFields({to: emailLower, from, subject})
+    if (missing.length) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
+      }
+    }
     await resend.emails.send({
-      from: 'FAS Motorsports <info@fasmotorsports.com>',
+      from,
       to: emailLower,
-      subject: 'Welcome to FAS Motorsports!',
+      subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #000;">Thanks for subscribing!</h1>

@@ -5,6 +5,7 @@ import {sanityClient} from '../lib/sanityClient'
 import {easypostRequest} from '../lib/easypostClient'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 type OrderDoc = {
   _id: string
@@ -172,10 +173,20 @@ export const handler: Handler = async (event) => {
 
     if (resendClient && order.customerEmail) {
       try {
+        const subject = `Refund processed for ${order.orderNumber || 'your order'}`
+        const missing = getMissingResendFields({
+          to: order.customerEmail,
+          from: resendFrom,
+          subject,
+        })
+        if (missing.length) {
+          console.warn('refundOrder: missing Resend fields', {missing, orderId: order._id})
+          throw new Error(`Missing email fields: ${missing.join(', ')}`)
+        }
         await resendClient.emails.send({
           from: resendFrom,
           to: order.customerEmail,
-          subject: `Refund processed for ${order.orderNumber || 'your order'}`,
+          subject,
           html: buildRefundEmail(order),
         })
       } catch (emailError) {

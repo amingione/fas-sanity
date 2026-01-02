@@ -4,6 +4,7 @@ import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {triggerOnboardingCampaign} from '../lib/vendorOnboardingCampaign'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -282,6 +283,10 @@ const handler: Handler = async (event) => {
   const invitedAt = new Date().toISOString()
 
   try {
+    const missing = getMissingResendFields({to: email, from: fromAddress, subject})
+    if (missing.length) {
+      throw new Error(`Missing email fields: ${missing.join(', ')}`)
+    }
     const result = await resendClient.emails.send({
       from: fromAddress,
       to: email,

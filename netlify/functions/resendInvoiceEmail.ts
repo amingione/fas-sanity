@@ -7,6 +7,7 @@ import {renderInvoicePdf, computeInvoiceTotals} from '../lib/invoicePdf'
 import {fetchPrintSettings} from '../lib/printSettings'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 // --- CORS (more permissive localhost-aware)
 const DEFAULT_ORIGINS = (
@@ -352,10 +353,21 @@ const handler: Handler = async (event) => {
       </div>
     `
 
+    const from = 'FAS Motorsports <billing@updates.fasmotorsports.com>'
+    const subject = `Your Invoice${invoice.invoiceNumber ? ' #' + invoice.invoiceNumber : ''}`
+    const missing = getMissingResendFields({to: email, from, subject})
+    if (missing.length) {
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
+      }
+    }
+
     await resend.emails.send({
-      from: 'FAS Motorsports <billing@updates.fasmotorsports.com>',
+      from,
       to: email,
-      subject: `Your Invoice${invoice.invoiceNumber ? ' #' + invoice.invoiceNumber : ''}`,
+      subject,
       html,
       text: `Your invoice${invoice.invoiceNumber ? ' #' + invoice.invoiceNumber : ''} is attached. ${payUrl ? 'Pay securely: ' + payUrl : ''}`,
       attachments: [

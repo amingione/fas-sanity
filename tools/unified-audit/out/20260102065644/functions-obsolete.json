@@ -1,0 +1,580 @@
+{
+  "findings": [
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_debug-auth-env.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_inventory.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/auth-logout.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-delete.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-list.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-upsert.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/clean-reserved-inventory.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/collection-counts-cron.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-detail.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-invoice-create.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-list.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-get.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-list.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-upsert.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-check.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-sync.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoice-send.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoices-list.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/merchant-feed-upload-cron.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-detail.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-reply.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/messages-list.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-detail.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-update-status.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-delete.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-detail.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-duplicate.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-upsert.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/promotion-status-cron.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-convert-to-invoice.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-list.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-send.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-upsert.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/review-aggregation.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/sale-status-cron.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/seo-maintenance.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/tracking-update.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/upload-image.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/vendor-application.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/admin/orders/[id].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/admin/orders/index.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/forgot-password.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/password-reset/confirm.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/reset-password.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/[slug].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/featured.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/menu.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[productId]/reviews.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[slug].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/[slug].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/apply.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/validate.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/reviews/[reviewId]/vote.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/site-search.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/dashboard.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices/[id].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/login.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/logout.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/me.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/messages/[id].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/messages/index.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/index.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/[id].ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/submit.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/password-reset/confirm.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/returns/index.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/create-order.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/invite.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/setup.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quotes.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/config.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/email.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/passwords.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/emailEvents.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fixCardDetails.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/referenceHealth.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/runEmailAutomations.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncStripeCoupons.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-onboarding-cron.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-cart.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    },
+    {
+      "classification": "OBSOLETE",
+      "evidence": [],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-catalog.ts",
+      "lineNumbers": [],
+      "reason": "No usage, contract requirement, schedule, webhook, or env dependency detected"
+    }
+  ],
+  "generatedAt": "2026-01-02T11:56:45.114Z",
+  "status": "WARN"
+}

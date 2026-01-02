@@ -1,6 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {getEasyPostFromAddress} from '../lib/ship-from'
+import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 import {easypostRequest, getEasyPostClient} from '../lib/easypostClient'
 
 // CORS helper (uses CORS_ALLOW like other functions)
@@ -495,16 +496,42 @@ export const handler: Handler = async (event) => {
       email: fromAddress.email,
     }
 
+    const missingTo = getEasyPostAddressMissingFields(easyPostToAddress)
+    if (missingTo.length) {
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Missing ship_to fields: ${missingTo.join(', ')}`}),
+      }
+    }
+    const missingFrom = getEasyPostAddressMissingFields(easyPostFromAddress)
+    if (missingFrom.length) {
+      return {
+        statusCode: 500,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Missing ship_from fields: ${missingFrom.join(', ')}`}),
+      }
+    }
+    const parcel = {
+      length: Number(primaryPackage.dimensions.length.toFixed(2)),
+      width: Number(primaryPackage.dimensions.width.toFixed(2)),
+      height: Number(primaryPackage.dimensions.height.toFixed(2)),
+      weight: Math.max(1, Math.round(primaryPackage.weight.value * 16)),
+    }
+    const missingParcel = getEasyPostParcelMissingFields(parcel)
+    if (missingParcel.length) {
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Missing parcel fields: ${missingParcel.join(', ')}`}),
+      }
+    }
+
     const client = getEasyPostClient()
     const shipment = await client.Shipment.create({
       to_address: easyPostToAddress,
       from_address: easyPostFromAddress,
-      parcel: {
-        length: Number(primaryPackage.dimensions.length.toFixed(2)),
-        width: Number(primaryPackage.dimensions.width.toFixed(2)),
-        height: Number(primaryPackage.dimensions.height.toFixed(2)),
-        weight: Math.max(1, Math.round(primaryPackage.weight.value * 16)),
-      },
+      parcel,
     } as any)
 
     // Fetch SmartRates for accurate delivery predictions

@@ -3,6 +3,7 @@ import {Shipment} from '@easypost/api'
 import {createClient} from '@sanity/client'
 import {getEasyPostClient, resolveDimensions, resolveWeight} from '../../../netlify/lib/easypostClient'
 import {getEasyPostFromAddress} from '../../../netlify/lib/ship-from'
+import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../../../netlify/lib/easypostValidation'
 
 type ShippingAddress = {
   name?: string | null
@@ -180,8 +181,22 @@ export const POST: APIRoute = async ({request}) => {
     }
 
     const fromAddress = await resolveSenderAddress()
+    const toAddress = mapToEasyPostAddress(destination)
+    const missingTo = getEasyPostAddressMissingFields(toAddress)
+    if (missingTo.length) {
+      return jsonResponse({error: `Missing to_address fields: ${missingTo.join(', ')}`}, 400)
+    }
+    const missingFrom = getEasyPostAddressMissingFields(fromAddress)
+    if (missingFrom.length) {
+      return jsonResponse({error: `Missing from_address fields: ${missingFrom.join(', ')}`}, 500)
+    }
+    const missingParcel = getEasyPostParcelMissingFields(parcel)
+    if (missingParcel.length) {
+      return jsonResponse({error: `Missing parcel fields: ${missingParcel.join(', ')}`}, 400)
+    }
+
     const shipment = await getEasyPostClient().Shipment.create({
-      to_address: mapToEasyPostAddress(destination),
+      to_address: toAddress,
       from_address: fromAddress,
       options: {
         label_format: 'PDF',
