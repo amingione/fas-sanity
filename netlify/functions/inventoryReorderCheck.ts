@@ -5,6 +5,7 @@ import {resolveResendApiKey} from '../../shared/resendEnv'
 import {generateReferenceCode} from '../../shared/referenceCodes'
 import {applyInventoryChanges} from '../../shared/inventory'
 import {INVENTORY_DOCUMENT_TYPE} from '../../shared/docTypes'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const resendApiKey = resolveResendApiKey()
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
@@ -158,12 +159,18 @@ const handler = schedule('0 9 * * *', async () => {
       sections.push(`Purchase alerts:\n- ${purchasedAlerts.join('\n- ')}`)
     }
 
-    await resendClient.emails.send({
-      from: alertSender,
-      to: alertRecipient,
-      subject: 'Inventory reorder alerts',
-      text: sections.join('\n\n'),
-    })
+    const subject = 'Inventory reorder alerts'
+    const missing = getMissingResendFields({to: alertRecipient, from: alertSender, subject})
+    if (missing.length) {
+      console.warn('inventoryReorderCheck: missing Resend fields', {missing})
+    } else {
+      await resendClient.emails.send({
+        from: alertSender,
+        to: alertRecipient,
+        subject,
+        text: sections.join('\n\n'),
+      })
+    }
   }
 
   return {

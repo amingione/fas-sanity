@@ -4,6 +4,7 @@ import {Resend} from 'resend'
 import {syncContact} from '../lib/resend/contacts'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
@@ -128,10 +129,16 @@ export const handler: Handler = async (event) => {
 
     // Send welcome email
     try {
+      const from = 'FAS Motorsports <info@fasmotorsports.com>'
+      const subject = 'Welcome to FAS Motorsports!'
+      const missing = getMissingResendFields({to: emailLower, from, subject})
+      if (missing.length) {
+        throw new Error(`Missing email fields: ${missing.join(', ')}`)
+      }
       await resend.emails.send({
-        from: 'FAS Motorsports <info@fasmotorsports.com>',
+        from,
         to: emailLower,
-        subject: 'Welcome to FAS Motorsports!',
+        subject,
         html: `
           <h1>Thanks for subscribing!</h1>
           <p>Hi ${name || 'there'},</p>

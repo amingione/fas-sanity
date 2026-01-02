@@ -18,30 +18,3 @@ export async function runSummary(context) {
 
   return summary
 }
-
-export async function runCiVerdict(context) {
-  const { outputDir, results } = context
-  let status = 'PASS'
-  const reasons = []
-
-  for (const [name, result] of Object.entries(results)) {
-    if (!result) continue
-    if (result.status === 'FAIL') {
-      status = 'FAIL'
-      reasons.push(`${name} status FAIL`)
-    }
-    if (result.requiresEnforcement) {
-      status = 'FAIL'
-      reasons.push(`${name} requiresEnforcement true`)
-    }
-  }
-
-  const verdict = {
-    status,
-    generatedAt: new Date().toISOString(),
-    reasons,
-  }
-
-  writeJson(path.join(outputDir, 'ci-verdict.json'), verdict)
-  return verdict
-}

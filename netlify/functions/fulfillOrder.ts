@@ -6,6 +6,8 @@ import {resolveResendApiKey} from '../../shared/resendEnv'
 import {sanityClient} from '../lib/sanityClient'
 import {getEasyPostClient, resolveDimensions, resolveWeight} from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
+import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 type OrderCartItem = {
   name?: string | null
@@ -205,6 +207,30 @@ export const handler: Handler = async (event) => {
       from_address: getEasyPostFromAddress(),
       parcel: buildParcel(order, allowLegacyFallback),
     }
+    const missingTo = getEasyPostAddressMissingFields(shipmentPayload.to_address)
+    if (missingTo.length) {
+      return {
+        statusCode: 400,
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Shipping address missing fields: ${missingTo.join(', ')}`}),
+      }
+    }
+    const missingFrom = getEasyPostAddressMissingFields(shipmentPayload.from_address)
+    if (missingFrom.length) {
+      return {
+        statusCode: 500,
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Ship-from address missing fields: ${missingFrom.join(', ')}`}),
+      }
+    }
+    const missingParcel = getEasyPostParcelMissingFields(shipmentPayload.parcel)
+    if (missingParcel.length) {
+      return {
+        statusCode: 400,
+        headers: {...cors, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: `Parcel missing fields: ${missingParcel.join(', ')}`}),
+      }
+    }
 
     const easypost = getEasyPostClient()
     const shipment = await easypost.Shipment.create(shipmentPayload)
@@ -285,10 +311,20 @@ export const handler: Handler = async (event) => {
 
     if (resendClient && order.customerEmail) {
       try {
+        const subject = `Your order ${order.orderNumber || ''} has shipped`
+        const missing = getMissingResendFields({
+          to: order.customerEmail,
+          from: resendFrom,
+          subject,
+        })
+        if (missing.length) {
+          console.warn('fulfillOrder: missing Resend fields', {missing, orderId: order._id})
+          throw new Error(`Missing email fields: ${missing.join(', ')}`)
+        }
         await resendClient.emails.send({
           from: resendFrom,
           to: order.customerEmail,
-          subject: `Your order ${order.orderNumber || ''} has shipped`,
+          subject,
           html: buildTrackingEmailHtml(order, {
             trackingUrl,
             trackingCode: trackingCode || undefined,

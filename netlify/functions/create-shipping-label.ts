@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {z} from 'zod'
 import {easypost, getWarehouseAddress} from './_easypost'
 import {sanityClient} from '../lib/sanityClient'
+import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 
 const requestSchema = z.object({
   orderId: z.string().min(1),
@@ -80,7 +81,7 @@ export const handler: Handler = async (event) => {
         throw new Error('Missing package weight or dimensions')
       }
 
-      const shipment = await easypost.Shipment.create({
+      const shipmentPayload = {
         to_address: {
           name: order.shippingAddress.name || 'Customer',
           street1: order.shippingAddress.addressLine1,
@@ -100,7 +101,20 @@ export const handler: Handler = async (event) => {
           height: order.dimensions.height,
         },
         reference: order.orderNumber || orderId,
-      })
+      }
+      const missingTo = getEasyPostAddressMissingFields(shipmentPayload.to_address)
+      if (missingTo.length) {
+        throw new Error(`Missing to_address fields: ${missingTo.join(', ')}`)
+      }
+      const missingFrom = getEasyPostAddressMissingFields(shipmentPayload.from_address)
+      if (missingFrom.length) {
+        throw new Error(`Missing from_address fields: ${missingFrom.join(', ')}`)
+      }
+      const missingParcel = getEasyPostParcelMissingFields(shipmentPayload.parcel)
+      if (missingParcel.length) {
+        throw new Error(`Missing parcel fields: ${missingParcel.join(', ')}`)
+      }
+      const shipment = await easypost.Shipment.create(shipmentPayload)
 
       const rates = Array.isArray(shipment?.rates) ? shipment.rates : []
       let selectedRate: any = null

@@ -217,6 +217,39 @@ const handler: Handler = async (event) => {
     }
   }
 
+  let eventLogId: string | null = null
+  if (sanity) {
+    eventLogId = `stripeWebhookEvent.${stripeEvent.id}`
+    try {
+      const existing = await sanity.fetch<{processingStatus?: string; processed?: boolean} | null>(
+        '*[_id == $id][0]{processingStatus, processed}',
+        {id: eventLogId},
+      )
+      if (existing?.processed || existing?.processingStatus === 'completed') {
+        return {
+          statusCode: 200,
+          headers: JSON_HEADERS,
+          body: JSON.stringify({received: true, duplicate: true}),
+        }
+      }
+      await sanity.createIfNotExists({
+        _id: eventLogId,
+        _type: 'stripeWebhookEvent',
+        eventId: stripeEvent.id,
+        eventType: stripeEvent.type,
+        createdAt: new Date(stripeEvent.created * 1000).toISOString(),
+        payload: JSON.stringify(stripeEvent),
+        processingStatus: 'processing',
+        retryCount: 0,
+        processed: false,
+        receivedAt: new Date().toISOString(),
+      })
+      await sanity.patch(eventLogId).set({processingStatus: 'processing'}).commit()
+    } catch (err) {
+      console.warn('[stripe-shipping-webhook] failed to initialize event log', err)
+    }
+  }
+
   const object: any = stripeEvent.data?.object || {}
   const labelData = extractLabelPayload(object)
   const paymentIntentId =
@@ -260,10 +293,38 @@ const handler: Handler = async (event) => {
 
   const ok = await patchOrderFulfillment(orderId, labelData)
   if (!ok) {
+    if (eventLogId && sanity) {
+      try {
+        const retryCount =
+          (await sanity.fetch<number | null>('*[_id == $id][0].retryCount', {id: eventLogId})) || 0
+        await sanity
+          .patch(eventLogId)
+          .set({
+            processingStatus: 'failed_retrying',
+            retryCount: retryCount + 1,
+            lastRetryAt: new Date().toISOString(),
+            error: 'Failed to update order',
+          })
+          .commit()
+      } catch (err) {
+        console.warn('[stripe-shipping-webhook] failed to update event log after error', err)
+      }
+    }
     return {
       statusCode: 500,
       headers: JSON_HEADERS,
       body: JSON.stringify({error: 'Failed to update order'}),
+    }
+  }
+
+  if (eventLogId && sanity) {
+    try {
+      await sanity
+        .patch(eventLogId)
+        .set({processingStatus: 'completed', processed: true})
+        .commit()
+    } catch (err) {
+      console.warn('[stripe-shipping-webhook] failed to mark event completed', err)
     }
   }
 

@@ -5,6 +5,7 @@ import {Resend} from 'resend'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import AbandonedCartEmail, {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 type CheckoutSessionDoc = {
   _id: string
@@ -258,6 +259,11 @@ const handler: Handler = async (event) => {
     }
 
     try {
+      const subject = '🛒 Your cart is waiting at FAS Motorsports'
+      const missing = getMissingResendFields({to, from: FROM_EMAIL, subject})
+      if (missing.length) {
+        throw new Error(`Missing email fields: ${missing.join(', ')}`)
+      }
       const html = await render(
         <AbandonedCartEmail
           customerName={checkout.customerName || 'Valued Customer'}
@@ -273,7 +279,7 @@ const handler: Handler = async (event) => {
       const {data, error} = await resendClient.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: '🛒 Your cart is waiting at FAS Motorsports',
+        subject,
         html,
         tags: [
           {name: 'type', value: 'abandoned_cart'},

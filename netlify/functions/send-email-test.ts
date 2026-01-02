@@ -3,6 +3,7 @@ import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID,
@@ -90,6 +91,13 @@ const handler: Handler = async (event) => {
       },
     )
     const text = htmlToText(html)
+    const missing = getMissingResendFields({to, from, subject: campaign.subject})
+    if (missing.length) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
+      }
+    }
 
     const result = await resend.emails.send({
       from,

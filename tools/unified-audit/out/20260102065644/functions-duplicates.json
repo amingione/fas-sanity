@@ -1,0 +1,2890 @@
+{
+  "findings": [
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_auth.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_auth.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_debug-auth-env.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_debug-auth-env.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:easypost|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_inventory.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_inventory.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:easypost|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:api.resend.com,resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_resend.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_resend.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:api.resend.com,resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_sanity.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_sanity.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_stripe.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/_stripe.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/auth-logout.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/auth-logout.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-delete.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-delete.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-upsert.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-upsert.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/clean-reserved-inventory.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/clean-reserved-inventory.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/collection-counts-cron.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/collection-counts-cron.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-detail.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-detail.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-get.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-get.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-upsert.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-upsert.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-check.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-check.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-sync.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-sync.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoice-send.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoice-send.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoices-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/invoices-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/merchant-feed-upload-cron.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/merchant-feed-upload-cron.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-detail.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-detail.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-reply.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/message-reply.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/messages-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/messages-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-detail.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-detail.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-update-status.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/order-update-status.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/orders-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/orders-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-create.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-create.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-delete.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-delete.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-detail.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-detail.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-duplicate.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-duplicate.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-upsert.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-upsert.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/promotion-status-cron.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/promotion-status-cron.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-convert-to-invoice.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-convert-to-invoice.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-list.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-list.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-send.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-send.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-upsert.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-upsert.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/review-aggregation.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/review-aggregation.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/sale-status-cron.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/sale-status-cron.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/seo-maintenance.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/seo-maintenance.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/submission-created.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/submission-created.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/tracking-update.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/tracking-update.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/upload-image.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/upload-image.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/vendor-application.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/vendor-application.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/admin/orders/index.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/admin/orders/index.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/forgot-password.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/forgot-password.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/login.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/login.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/logout.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/logout.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/password-reset/confirm.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/password-reset/confirm.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/password-reset/request.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/password-reset/request.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/reset-password.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/reset-password.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/session.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/session.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/signup.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/auth/signup.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/booking.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/booking.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/bookings/create.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/bookings/create.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/build-quote.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/build-quote.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/cart.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/cart.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/[slug].ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/[slug].ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/featured.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/featured.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/menu.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/collections/menu.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/contact.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/contact.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/customer/get.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/customer/get.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/customer/update.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/customer/update.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/debug.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/debug.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/form-submission.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/form-submission.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/generate-blog.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/generate-blog.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-customer-profile.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-customer-profile.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-user-appointments.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-user-appointments.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-user-order.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-user-order.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-user-quotes.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/get-user-quotes.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/hello.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/hello.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[productId]/reviews.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[productId]/reviews.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[slug].ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/products/[slug].ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/[slug].ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/[slug].ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/active.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/active.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/apply.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/apply.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/validate.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/promotions/validate.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/reviews/[reviewId]/vote.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/reviews/[reviewId]/vote.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/reviews/submit.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/reviews/submit.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/sales-lead.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/sales-lead.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/sanity/categories.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/sanity/categories.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-order.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-order.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/search.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/search.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/site-search.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/site-search.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/tunes.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/tunes.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/upload-wheel-asset.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/upload-wheel-asset.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vehicles.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vehicles.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor-application.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor-application.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/analytics.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/analytics.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/auth/setup.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/auth/setup.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/blog.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/blog.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/dashboard.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/dashboard.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/documents.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/documents.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/documents/upload.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/documents/upload.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,PUT|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/inventory.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/inventory.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,PUT|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices/[id].ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices/[id].ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices/[id]/pay.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/invoices/[id]/pay.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/login.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/login.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/logout.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/logout.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/me.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/me.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/messages/index.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/messages/index.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,PUT|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/index.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/index.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,PUT|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/unread-count.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/unread-count.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/[id].ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/[id].ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/submit.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/orders/submit.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/password-reset/confirm.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/password-reset/confirm.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/password-reset/request.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/password-reset/request.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/payments.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/payments.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,PUT|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/products.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/products.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,PUT|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/returns/index.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/returns/index.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,PUT|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/settings/notifications.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/settings/notifications.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,PUT|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,PUT|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/settings/profile.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/settings/profile.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,PUT|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/create-order.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/create-order.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/invite.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/invite.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/setup.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendors/setup.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quote-belak.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quote-belak.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quote-jtx.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quote-jtx.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quotes.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/wheel-quotes.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/auth/session.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/auth/session.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/http/responses.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/http/responses.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity-client.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity-client.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/collections.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/collections.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/promotions.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/promotions.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/quote-requests.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/quote-requests.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/reviews.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/reviews.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-application-handler.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-application-handler.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/auth.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/auth.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/config.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/config.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/data.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/data.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/email.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/email.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/rateLimit.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/rateLimit.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/service.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/service.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/tokens.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/vendor-portal/tokens.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/archive/netlify/functions/create-parcelcraft-label.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/archive/netlify/functions/create-parcelcraft-label.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:easypost|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/_easypost.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/_easypost.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:easypost|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/ai-insights.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/ai-insights.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/analytics-dashboard.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/analytics-dashboard.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/autoRelatedProducts.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/autoRelatedProducts.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillCheckoutAsyncPayments.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillCheckoutAsyncPayments.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillExpiredCheckouts.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillExpiredCheckouts.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillInvoices.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillInvoices.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillOrderShipping.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillOrderShipping.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillOrderStripe.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillOrderStripe.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillPaymentFailures.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillPaymentFailures.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillRefunds.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillRefunds.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillStripeProducts.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillStripeProducts.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/calculate-profit-loss.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/calculate-profit-loss.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/cancelOrder.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/cancelOrder.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/cleanupFunctionLogs.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/cleanupFunctionLogs.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/connector-install.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/connector-install.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/createRefund.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/createRefund.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:easypost|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypost-webhook.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypost-webhook.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:easypost|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:easypost|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostGetRates.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostGetRates.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:easypost|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-health.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-health.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/emailEvents.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/emailEvents.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/enterprise-connectors.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/enterprise-connectors.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fetchStripePayouts.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fetchStripePayouts.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/finalizeFinancialConnection.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/finalizeFinancialConnection.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fixCardDetails.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fixCardDetails.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:easypost,localhost:3333,localhost:8888|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fulfill-order.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/fulfill-order.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:easypost,localhost:3333,localhost:8888|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateCheckPDF.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateCheckPDF.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateQuotePDF.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateQuotePDF.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateShippingQuotePDF.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateShippingQuotePDF.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:easypost,localhost:3333,localhost:8888|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/getShippingQuoteBySkus.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/getShippingQuoteBySkus.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:easypost,localhost:3333,localhost:8888|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/inventoryReorderCheck.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/inventoryReorderCheck.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/merchantFeed.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/merchantFeed.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/notify-sms.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/notify-sms.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/productMetrics.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/productMetrics.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/productShippingSync.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/productShippingSync.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/referenceHealth.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/referenceHealth.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:easypost,localhost:3333,localhost:8888|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/refund-shipping-label.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/refund-shipping-label.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:easypost,localhost:3333,localhost:8888|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/reprocessStripeSession.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/reprocessStripeSession.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:localhost:3333,localhost:8888,stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/runEmailAutomations.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/runEmailAutomations.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sanity-resend-sync.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sanity-resend-sync.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/security-status.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/security-status.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:fasmotorsports.com,resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/send-email-test.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/send-email-test.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:fasmotorsports.com,resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/send-vendor-invite.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/send-vendor-invite.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendCustomerEmail.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendCustomerEmail.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:api.resend.com,resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendEmail.js",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendEmail.js",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:api.resend.com,resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:fasmotorsports.com,resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendEmailCampaign.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendEmailCampaign.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:fasmotorsports.com,resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendVendorEmail.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendVendorEmail.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripe-shipping-webhook.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripe-shipping-webhook.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook/stripeWebhook.mjs",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook/stripeWebhook.mjs",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/submitVendorApplication.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/submitVendorApplication.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncStripeCoupons.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncStripeCoupons.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/update-customer-segments.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/update-customer-segments.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/userData.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/userData.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-onboarding-cron.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-onboarding-cron.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/webhook-test.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/webhook-test.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:OPTIONS,POST|external:resend|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:OPTIONS,POST|external:resend|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-catalog.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-catalog.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:GET,OPTIONS,POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-orders.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-orders.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:GET,OPTIONS,POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/api/stripe-analytics.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/api/stripe-analytics.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:ANY|external:stripe|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/server/stripe-analytics.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/server/stripe-analytics.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:ANY|external:stripe|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/merge-label-packing-slip.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/merge-label-packing-slip.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:sanity"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/military-verify/check-status.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/military-verify/check-status.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/military-verify/start.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/military-verify/start.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:"
+    },
+    {
+      "classification": "DUPLICATE",
+      "evidence": [
+        {
+          "detail": "methods:POST|external:|persistence:sanity",
+          "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/send-shipping-confirmation.ts",
+          "lineNumber": null,
+          "type": "fingerprint"
+        }
+      ],
+      "filePath": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/send-shipping-confirmation.ts",
+      "lineNumbers": [],
+      "reason": "Duplicate behavior fingerprint methods:POST|external:|persistence:sanity"
+    }
+  ],
+  "generatedAt": "2026-01-02T11:56:45.114Z",
+  "status": "WARN"
+}

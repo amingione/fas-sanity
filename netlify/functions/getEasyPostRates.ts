@@ -8,6 +8,7 @@ import {
   easypostRequest,
 } from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
+import {getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 
 const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333')
   .split(',')
@@ -136,18 +137,27 @@ export const handler: Handler = async (event) => {
 
   const weight = resolveWeight(packageDetails.weight, null)
   const dimensions = resolveDimensions(packageDetails.dimensions, null)
+  const parcel = {
+    length: dimensions.length,
+    width: dimensions.width,
+    height: dimensions.height,
+    weight: Math.max(1, Number(weight.ounces.toFixed(2))),
+  }
+  const missingParcel = getEasyPostParcelMissingFields(parcel)
+  if (missingParcel.length) {
+    return {
+      statusCode: 400,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: `Missing parcel fields: ${missingParcel.join(', ')}`}),
+    }
+  }
 
   try {
     const client = getEasyPostClient()
     const shipment = await client.Shipment.create({
       to_address: shipTo,
       from_address: shipFrom,
-      parcel: {
-        length: dimensions.length,
-        width: dimensions.width,
-        height: dimensions.height,
-        weight: Math.max(1, Number(weight.ounces.toFixed(2))),
-      },
+      parcel,
     } as any)
 
     // Attempt SmartRate for richer delivery predictions

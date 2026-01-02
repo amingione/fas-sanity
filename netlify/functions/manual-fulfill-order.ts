@@ -13,6 +13,7 @@ import {canonicalizeTrackingNumber, validateTrackingNumber} from '../../shared/t
 import {consumeInventoryForItems} from '../../shared/inventory'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -441,10 +442,20 @@ export const handler: Handler = async (event) => {
   } else if (resend && emailTo) {
     try {
       const emailTimestamp = new Date().toISOString()
+      const subject = `Your order ${displayOrderNumber} has shipped`
+      const missing = getMissingResendFields({
+        to: emailTo,
+        from: resendFrom,
+        subject,
+      })
+      if (missing.length) {
+        log('warn', 'missing Resend fields', {orderId: baseId, missing})
+        throw new Error(`Missing email fields: ${missing.join(', ')}`)
+      }
       const sendResult: any = await resend.emails.send({
         from: resendFrom,
         to: emailTo,
-        subject: `Your order ${displayOrderNumber} has shipped`,
+        subject,
         html: htmlBody,
         text: textBody,
       })

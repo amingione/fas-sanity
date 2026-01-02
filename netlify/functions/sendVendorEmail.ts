@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {buildVendorEmail, type VendorEmailTemplateInput} from '../lib/emailTemplates/vendorEmails'
+import {getMissingResendFields} from '../lib/resendValidation'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +45,18 @@ const handler: Handler = async (event) => {
     }
 
     const emailConfig = buildVendorEmail({template, data} as VendorEmailTemplateInput)
+    const missing = getMissingResendFields({
+      to,
+      from: 'FAS Motorsports <support@updates.fasmotorsports.com>',
+      subject: emailConfig.subject,
+    })
+    if (missing.length) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
+      }
+    }
 
     await resend.emails.send({
       from: 'FAS Motorsports <support@updates.fasmotorsports.com>',

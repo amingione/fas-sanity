@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import EasyPost from '@easypost/api'
+import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 
 const API_KEY = process.env.EASYPOST_API_KEY
 const easyPostClient = API_KEY ? new EasyPost(API_KEY) : null
@@ -26,8 +27,17 @@ const handler: Handler = async (event) => {
     }
 
     const normalizedParcel = normalizeParcel(parcel)
+    const toAddressParsed = parseAddress(toAddress)
+    const missingTo = getEasyPostAddressMissingFields(toAddressParsed)
+    if (missingTo.length) {
+      return jsonResponse(400, {error: `Missing to_address fields: ${missingTo.join(', ')}`})
+    }
+    const missingParcel = getEasyPostParcelMissingFields(normalizedParcel)
+    if (missingParcel.length) {
+      return jsonResponse(400, {error: `Missing parcel fields: ${missingParcel.join(', ')}`})
+    }
     const shipment = await easyPostClient.Shipment.create({
-      to_address: parseAddress(toAddress),
+      to_address: toAddressParsed,
       from_address: {
         company: 'F.A.S. Motorsports LLC',
         street1: '6161 Riverside Dr',

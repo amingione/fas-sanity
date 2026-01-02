@@ -1018,6 +1018,21 @@ export const handler: Handler = async (event) => {
 
     eventLogId = `easypostWebhookEvent.${payload.id || randomUUID()}`
     try {
+      const existing = await sanity.fetch<{processingStatus?: string} | null>(
+        '*[_id == $id][0]{processingStatus}',
+        {id: eventLogId},
+      )
+      if (existing?.processingStatus === 'completed') {
+        return await finalize(
+          {
+            statusCode: 200,
+            headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+            body: JSON.stringify({ok: true, duplicate: true}),
+          },
+          'success',
+          {duplicate: true},
+        )
+      }
       await sanity.createIfNotExists({
         _id: eventLogId,
         _type: 'easypostWebhookEvent',

@@ -97,6 +97,16 @@ export default defineType({
       description: 'ID from email service (SendGrid, etc.)',
     }),
     defineField({
+      name: 'resendMessageId',
+      type: 'string',
+      description: 'Message ID returned by Resend.',
+    }),
+    defineField({
+      name: 'messageId',
+      type: 'string',
+      description: 'Generic message ID returned by email providers.',
+    }),
+    defineField({
       name: 'error',
       type: 'text',
     }),

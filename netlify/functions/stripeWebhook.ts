@@ -12,6 +12,7 @@ import {generatePackingSlipAsset} from '../lib/packingSlip'
 import {mapStripeLineItem, type CartMetadataEntry} from '../lib/stripeCartItem'
 import {syncVendorPortalEmail} from '../lib/vendorPortalEmail'
 import {buildStripeCustomerAliasPatch} from '../lib/stripeCustomerAliases'
+import {getMissingResendFields} from '../lib/resendValidation'
 import {
   enrichCartItemsFromSanity,
   computeShippingMetrics,
@@ -7140,6 +7141,13 @@ async function sendOrderConfirmationEmail(opts: {
     ? `Order Confirmation #${displayOrderNumber} – F.A.S. Motorsports`
     : 'Order Confirmation – F.A.S. Motorsports'
 
+  const from = 'orders@fasmotorsports.com'
+  const missing = getMissingResendFields({to, from, subject})
+  if (missing.length) {
+    console.warn('stripeWebhook: missing Resend fields', {missing, to})
+    return
+  }
+
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -7147,7 +7155,7 @@ async function sendOrderConfirmationEmail(opts: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'orders@fasmotorsports.com',
+      from,
       to,
       subject,
       html,

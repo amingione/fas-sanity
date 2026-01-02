@@ -1,22 +1,26 @@
 #!/usr/bin/env node
+/* eslint-env node */
+/* global process, console */
 import fs from 'node:fs'
 import path from 'node:path'
 import minimist from 'minimist'
-import { fileURLToPath } from 'node:url'
-import { resolveRepos, resolveOutDir } from './lib/paths.mjs'
-import { nowStamp, writeJson } from './lib/utils.mjs'
-import { runSchemaIndex } from './steps/schema-index.mjs'
-import { runQueryIndex } from './steps/query-index.mjs'
-import { runSchemaVsQuery } from './steps/schema-vs-query.mjs'
-import { runSanityRuntimeScan } from './steps/sanity-runtime-scan.mjs'
-import { runIntegrationsInventory } from './steps/integrations-inventory.mjs'
-import { runEnvResolutionMatrix } from './steps/env-resolution-matrix.mjs'
-import { runApiContractViolations } from './steps/api-contract-violations.mjs'
-import { runExternalIdIntegrity } from './steps/external-id-integrity.mjs'
-import { runWebhookDriftReport } from './steps/webhook-drift-report.mjs'
-import { runEnforcementPrompts } from './steps/enforcement-prompts.mjs'
-import { runSummary, runCiVerdict } from './steps/summary.mjs'
-import { buildMappingIndex } from './lib/mapping-index.mjs'
+import {fileURLToPath} from 'node:url'
+import {resolveRepos, resolveOutDir} from './lib/paths.mjs'
+import {nowStamp, writeJson} from './lib/utils.mjs'
+import {runSchemaIndex} from './steps/schema-index.mjs'
+import {runQueryIndex} from './steps/query-index.mjs'
+import {runSchemaVsQuery} from './steps/schema-vs-query.mjs'
+import {runSanityRuntimeScan} from './steps/sanity-runtime-scan.mjs'
+import {runIntegrationsInventory} from './steps/integrations-inventory.mjs'
+import {runEnvResolutionMatrix} from './steps/env-resolution-matrix.mjs'
+import {runApiContractViolations} from './steps/api-contract-violations.mjs'
+import {runExternalIdIntegrity} from './steps/external-id-integrity.mjs'
+import {runWebhookDriftReport} from './steps/webhook-drift-report.mjs'
+import {runFunctionsAudit} from './steps/functions-audit.mjs'
+import {runEnforcementPrompts} from './steps/enforcement-prompts.mjs'
+import {runSummary} from './steps/summary.mjs'
+import {runCiVerdict} from './steps/ci-verdict.mjs'
+import {buildMappingIndex} from './lib/mapping-index.mjs'
 
 const argv = minimist(process.argv.slice(2))
 const command = argv._[0] || 'run'
@@ -42,18 +46,35 @@ async function runCommand() {
     return
   }
 
+  if (command === 'functions') {
+    const stamp = nowStamp()
+    const outputDir = resolveOutDir(stamp)
+    fs.mkdirSync(outputDir, {recursive: true})
+
+    const repos = resolveRepos()
+    const context = {repos, outputDir, results: {}, runtimeDocsByType: null}
+
+    context.functionsAudit = await runFunctionsAudit(context)
+    context.results['functions-audit'] = context.functionsAudit
+
+    await runSummary({outputDir, results: context.results})
+    await runCiVerdict({outputDir, results: context.results})
+
+    console.log(`Audit outputs written to ${outputDir}`)
+    return
+  }
+
   const stamp = nowStamp()
   const outputDir = resolveOutDir(stamp)
-  fs.mkdirSync(outputDir, { recursive: true })
+  fs.mkdirSync(outputDir, {recursive: true})
 
   const repos = resolveRepos()
-  const context = { repos, outputDir, results: {}, runtimeDocsByType: null }
+  const context = {repos, outputDir, results: {}, runtimeDocsByType: null}
 
   const runAll = command === 'run'
   const runSchemaOnly = command === 'schema'
   const runContractsOnly = command === 'contracts'
   const runEnvOnly = command === 'env'
-  const runEnforcementOnly = command === 'enforcement'
 
   if (runAll || runSchemaOnly) {
     context.schemaIndex = await runSchemaIndex(context)
@@ -62,8 +83,18 @@ async function runCommand() {
     context.queryIndex = await runQueryIndex(context)
     context.results['query-index'] = context.queryIndex
   } else {
-    context.schemaIndex = skipOutput(outputDir, 'schema-index.json', `Command ${command} skips schema steps`, { types: [] })
-    context.queryIndex = skipOutput(outputDir, 'query-index.json', `Command ${command} skips schema steps`, { queries: [], fieldsUsed: {} })
+    context.schemaIndex = skipOutput(
+      outputDir,
+      'schema-index.json',
+      `Command ${command} skips schema steps`,
+      {types: []},
+    )
+    context.queryIndex = skipOutput(
+      outputDir,
+      'query-index.json',
+      `Command ${command} skips schema steps`,
+      {queries: [], fieldsUsed: {}},
+    )
     context.results['schema-index'] = context.schemaIndex
     context.results['query-index'] = context.queryIndex
   }
@@ -78,16 +109,26 @@ async function runCommand() {
     })
     context.results['env-resolution-matrix'] = context.envResolution
   } else {
-    context.integrationsInventory = skipOutput(outputDir, 'integrations-inventory.json', `Command ${command} skips env steps`, { hits: [], envKeys: {} })
-    context.envResolution = skipOutput(outputDir, 'env-resolution-matrix.json', `Command ${command} skips env steps`, { repos: {}, referencedKeys: [], missingInRepo: {}, unusedInRepo: {} })
+    context.integrationsInventory = skipOutput(
+      outputDir,
+      'integrations-inventory.json',
+      `Command ${command} skips env steps`,
+      {hits: [], envKeys: {}},
+    )
+    context.envResolution = skipOutput(
+      outputDir,
+      'env-resolution-matrix.json',
+      `Command ${command} skips env steps`,
+      {repos: {}, referencedKeys: [], missingInRepo: {}, unusedInRepo: {}},
+    )
     context.results['integrations-inventory'] = context.integrationsInventory
     context.results['env-resolution-matrix'] = context.envResolution
   }
 
   context.mappingIndex = buildMappingIndex(
-    context.schemaIndex || { types: [] },
-    context.queryIndex || { fieldsUsed: {} },
-    context.integrationsInventory || { hits: [], envKeys: {} }
+    context.schemaIndex || {types: []},
+    context.queryIndex || {fieldsUsed: {}},
+    context.integrationsInventory || {hits: [], envKeys: {}},
   )
 
   if (runAll || runSchemaOnly) {
@@ -106,8 +147,18 @@ async function runCommand() {
     })
     context.results['sanity-runtime-scan'] = context.runtimeScan
   } else {
-    context.schemaVsQuery = skipOutput(outputDir, 'schema-vs-query.json', `Command ${command} skips schema steps`, { missingInSchema: [], unusedSchemaFields: [], inferredMatches: [] })
-    context.runtimeScan = skipOutput(outputDir, 'sanity-runtime-scan.json', `Command ${command} skips schema steps`, { types: {} })
+    context.schemaVsQuery = skipOutput(
+      outputDir,
+      'schema-vs-query.json',
+      `Command ${command} skips schema steps`,
+      {missingInSchema: [], unusedSchemaFields: [], inferredMatches: []},
+    )
+    context.runtimeScan = skipOutput(
+      outputDir,
+      'sanity-runtime-scan.json',
+      `Command ${command} skips schema steps`,
+      {types: {}},
+    )
     context.results['schema-vs-query'] = context.schemaVsQuery
     context.results['sanity-runtime-scan'] = context.runtimeScan
   }
@@ -116,11 +167,16 @@ async function runCommand() {
     context.apiContracts = await runApiContractViolations(context)
     context.results['api-contract-violations'] = context.apiContracts
   } else {
-    context.apiContracts = skipOutput(outputDir, 'api-contract-violations.json', `Command ${command} skips contract checks`, {
-      violations: [],
-      requiresEnforcement: false,
-      enforcementApproved: false,
-    })
+    context.apiContracts = skipOutput(
+      outputDir,
+      'api-contract-violations.json',
+      `Command ${command} skips contract checks`,
+      {
+        violations: [],
+        requiresEnforcement: false,
+        enforcementApproved: false,
+      },
+    )
     context.results['api-contract-violations'] = context.apiContracts
   }
 
@@ -132,12 +188,17 @@ async function runCommand() {
     })
     context.results['external-id-integrity'] = context.externalId
   } else {
-    context.externalId = skipOutput(outputDir, 'external-id-integrity.json', `Command ${command} skips external id integrity`, {
-      idFields: [],
-      duplicates: {},
-      nullRates: {},
-      missingRequired: {},
-    })
+    context.externalId = skipOutput(
+      outputDir,
+      'external-id-integrity.json',
+      `Command ${command} skips external id integrity`,
+      {
+        idFields: [],
+        duplicates: {},
+        nullRates: {},
+        missingRequired: {},
+      },
+    )
     context.results['external-id-integrity'] = context.externalId
   }
 
@@ -145,17 +206,22 @@ async function runCommand() {
     context.webhookDrift = await runWebhookDriftReport(context)
     context.results['webhook-drift-report'] = context.webhookDrift
   } else {
-    context.webhookDrift = skipOutput(outputDir, 'webhook-drift-report.json', `Command ${command} skips webhook drift report`, {
-      findings: [],
-    })
+    context.webhookDrift = skipOutput(
+      outputDir,
+      'webhook-drift-report.json',
+      `Command ${command} skips webhook drift report`,
+      {
+        findings: [],
+      },
+    )
     context.results['webhook-drift-report'] = context.webhookDrift
   }
 
   context.enforcement = await runEnforcementPrompts(context)
   context.results['codex-prompts'] = context.enforcement
 
-  await runSummary({ outputDir, results: context.results })
-  await runCiVerdict({ outputDir, results: context.results })
+  await runSummary({outputDir, results: context.results})
+  await runCiVerdict({outputDir, results: context.results})
 
   console.log(`Audit outputs written to ${outputDir}`)
 }
