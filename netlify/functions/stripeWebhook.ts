@@ -1001,8 +1001,11 @@ async function recordStripeWebhookEvent(options: {
   })
 
   try {
+    console.log(`💾 Writing webhook event to Sanity: ${event.type} (${document._id})`)
     await webhookSanityClient.createOrReplace(document, {autoGenerateArrayKeys: true})
+    console.log(`✅ Webhook event written to Sanity: ${event.type}`)
   } catch (err) {
+    console.error(`❌ Sanity write FAILED for ${event.type}:`, err)
     console.warn('stripeWebhook: failed to record webhook event', err)
   }
 }
@@ -7239,6 +7242,8 @@ export const handler: Handler = async (event) => {
 
     webhookSummary = summarizeEventType(webhookEvent.type || '')
 
+    console.log(`📥 Webhook received: ${webhookEvent.type} (ID: ${webhookEvent.id})`)
+
     const webhookDocId = `${WEBHOOK_DOCUMENT_PREFIX}${webhookEvent.id}`
     try {
       const existing = await webhookSanityClient.fetch<{status?: string} | null>(
@@ -7248,12 +7253,14 @@ export const handler: Handler = async (event) => {
       if (existing?.status) {
         webhookStatus = 'ignored'
         webhookSummary = `Duplicate webhook event (${existing.status})`
+        console.log(`⏭️  Duplicate event ignored: ${webhookEvent.type}`)
         return await finalize(
           {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})},
           'success',
           {webhookStatus, summary: webhookSummary},
         )
       }
+      console.log(`📝 Creating webhook document for ${webhookEvent.type}...`)
       await webhookSanityClient.createIfNotExists({
         _id: webhookDocId,
         _type: 'stripeWebhook',
@@ -7264,7 +7271,9 @@ export const handler: Handler = async (event) => {
         occurredAt: toIsoTimestamp(webhookEvent.created),
         processedAt: new Date().toISOString(),
       })
+      console.log(`✅ Initial webhook document created for ${webhookEvent.type}`)
     } catch (err) {
+      console.error(`❌ FAILED to create webhook document for ${webhookEvent.type}:`, err)
       console.warn('stripeWebhook: failed to record processing event', err)
     }
 
@@ -8565,13 +8574,16 @@ export const handler: Handler = async (event) => {
     console.error('stripeWebhook handler error:', err)
   }
 
+  console.log(`🔄 Finalizing webhook record for ${webhookEvent.type} with status: ${webhookStatus}`)
   try {
     await recordStripeWebhookEvent({
       event: webhookEvent!,
       status: webhookStatus,
       summary: webhookSummary,
     })
+    console.log(`✅ Webhook event recorded successfully: ${webhookEvent.type}`)
   } catch (err) {
+    console.error(`❌ FAILED to record final webhook event for ${webhookEvent.type}:`, err)
     console.warn('stripeWebhook: failed to log webhook event', err)
   }
 
