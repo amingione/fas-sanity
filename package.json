@@ -57,7 +57,7 @@
     "sanity"
   ],
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.676.0",
+    "@aws-sdk/client-secrets-manager": "^3.940.0",
     "@easypost/api": "^8.2.0",
     "@netlify/functions": "^3.0.4",
     "@portabletext/react": "^4.0.3",

@@ -40,7 +40,7 @@ import StripeAnalyticsWidget from './src/components/StripeAnalyticsWidget'
 import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
 import {autoMapperPlugin} from './src/plugins/autoMapper'
 import {documentListWidget} from './src/plugins/documentListWidget'
-import {darkModernTheme} from './src/theme/darkModernTheme'
+import './src/styles/studio.css'
 
 declare const __SANITY_STUDIO_RUNTIME_ENV__: Record<string, string | undefined> | undefined
 
@@ -378,7 +378,6 @@ export default defineConfig({
   schema: {
     types: schemaTypes as unknown as SchemaTypeDefinition[],
   },
-  theme: darkModernTheme,
   studio: {
     components: {
       layout: StudioLayout,
