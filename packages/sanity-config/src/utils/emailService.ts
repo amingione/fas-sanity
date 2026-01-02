@@ -63,6 +63,12 @@ const emailLogClient =
       })
     : null
 
+if (!emailLogClient) {
+  console.warn(
+    'emailService: SANITY_STUDIO_PROJECT_ID/SANITY_STUDIO_DATASET/SANITY_API_TOKEN missing; email logs disabled.',
+  )
+}
+
 const nowIso = () => new Date().toISOString()
 
 const sanitizeFrom = (from?: string) => from?.trim() || DEFAULT_FROM

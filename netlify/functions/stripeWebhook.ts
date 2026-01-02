@@ -3836,6 +3836,10 @@ async function createOrderFromCheckout(
       })
       linkedInvoiceId = invoice._id
       await linkOrderToInvoice(webhookSanityClient, order._id, invoice._id)
+      await webhookSanityClient
+        .patch(order._id)
+        .setIfMissing({sourceInvoice: {_type: 'reference', _ref: invoice._id}})
+        .commit()
       if (orderCustomerId) {
         await linkInvoiceToCustomer(webhookSanityClient, invoice._id, orderCustomerId)
       }
@@ -3851,6 +3855,10 @@ async function createOrderFromCheckout(
         )) || null
       if (linkedInvoiceId) {
         await linkOrderToInvoice(webhookSanityClient, order._id, linkedInvoiceId)
+        await webhookSanityClient
+          .patch(order._id)
+          .setIfMissing({sourceInvoice: {_type: 'reference', _ref: linkedInvoiceId}})
+          .commit()
         if (orderCustomerId) {
           await linkInvoiceToCustomer(webhookSanityClient, linkedInvoiceId, orderCustomerId)
         }
@@ -3872,6 +3880,10 @@ async function createOrderFromCheckout(
   if (existingInvoiceRef && order?._id) {
     try {
       await linkOrderToInvoice(webhookSanityClient, order._id, existingInvoiceRef)
+      await webhookSanityClient
+        .patch(order._id)
+        .setIfMissing({sourceInvoice: {_type: 'reference', _ref: existingInvoiceRef}})
+        .commit()
     } catch (err) {
       console.warn('stripeWebhook: failed to ensure order <-> invoice linkage', err)
     }
@@ -7155,6 +7167,9 @@ export const handler: Handler = async (event) => {
   let webhookEvent: Stripe.Event | null = null
   let webhookStatus: StripeWebhookStatus = 'processed'
   let webhookSummary = ''
+  let eventLogId: string | null = null
+  let processingError: Error | null = null
+  let isFinalFailure = false
 
   const finalize = async (
     response: {statusCode: number; body: string},
@@ -7244,6 +7259,25 @@ export const handler: Handler = async (event) => {
 
     console.log(`📥 Webhook received: ${webhookEvent.type} (ID: ${webhookEvent.id})`)
 
+    eventLogId = `stripeWebhookEvent.${webhookEvent.id}`
+    try {
+      await webhookSanityClient.createIfNotExists({
+        _id: eventLogId,
+        _type: 'stripeWebhookEvent',
+        eventId: webhookEvent.id,
+        eventType: webhookEvent.type,
+        createdAt: toIsoTimestamp(webhookEvent.created),
+        payload: safeJsonStringify(webhookEvent, 15000),
+        processingStatus: 'processing',
+        retryCount: 0,
+        processed: false,
+        receivedAt: new Date().toISOString(),
+      })
+      await webhookSanityClient.patch(eventLogId).set({processingStatus: 'processing'}).commit()
+    } catch (err) {
+      console.warn('stripeWebhook: failed to initialize stripeWebhookEvent log', err)
+    }
+
     const webhookDocId = `${WEBHOOK_DOCUMENT_PREFIX}${webhookEvent.id}`
     try {
       const existing = await webhookSanityClient.fetch<{status?: string} | null>(
@@ -7254,6 +7288,16 @@ export const handler: Handler = async (event) => {
         webhookStatus = 'ignored'
         webhookSummary = `Duplicate webhook event (${existing.status})`
         console.log(`⏭️  Duplicate event ignored: ${webhookEvent.type}`)
+        if (eventLogId) {
+          try {
+            await webhookSanityClient
+              .patch(eventLogId)
+              .set({processingStatus: 'completed', processed: true})
+              .commit()
+          } catch (err) {
+            console.warn('stripeWebhook: failed to mark duplicate event completed', err)
+          }
+        }
         return await finalize(
           {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})},
           'success',
@@ -8572,6 +8616,31 @@ export const handler: Handler = async (event) => {
       ? `Error processing ${webhookEvent.type}: ${err.message}`
       : `Error processing ${webhookEvent.type}`
     console.error('stripeWebhook handler error:', err)
+    processingError = err instanceof Error ? err : new Error(err?.message || 'Processing error')
+    if (eventLogId) {
+      try {
+        const retryCount =
+          (await webhookSanityClient.fetch<number | null>(
+            '*[_id == $id][0].retryCount',
+            {id: eventLogId},
+          )) || 0
+        const newRetryCount = retryCount + 1
+        const maxRetries = 3
+        isFinalFailure = newRetryCount >= maxRetries
+        await webhookSanityClient
+          .patch(eventLogId)
+          .set({
+            processingStatus: isFinalFailure ? 'failed_permanent' : 'failed_retrying',
+            error: processingError.message,
+            errorStack: processingError.stack,
+            retryCount: newRetryCount,
+            lastRetryAt: new Date().toISOString(),
+          })
+          .commit()
+      } catch (logErr) {
+        console.warn('stripeWebhook: failed to record processing error', logErr)
+      }
+    }
   }
 
   console.log(`🔄 Finalizing webhook record for ${webhookEvent.type} with status: ${webhookStatus}`)
@@ -8587,10 +8656,29 @@ export const handler: Handler = async (event) => {
     console.warn('stripeWebhook: failed to log webhook event', err)
   }
 
-  const response =
-    webhookStatus === 'error'
-      ? {statusCode: 200, body: JSON.stringify({received: true, hint: 'internal error logged'})}
-      : {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
+  if (eventLogId && !processingError) {
+    try {
+      await webhookSanityClient
+        .patch(eventLogId)
+        .set({processingStatus: 'completed', processed: true})
+        .commit()
+    } catch (err) {
+      console.warn('stripeWebhook: failed to mark event completed', err)
+    }
+  }
+
+  const response = processingError
+    ? isFinalFailure
+      ? {
+          statusCode: 200,
+          body: JSON.stringify({
+            received: true,
+            hint: 'processing failed permanently after retries',
+            eventLogId,
+          }),
+        }
+      : {statusCode: 500, body: JSON.stringify({error: 'Processing failed, will retry'})}
+    : {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
 
   return await finalize(response, webhookStatus === 'error' ? 'error' : 'success', {
     webhookStatus,
