@@ -43,7 +43,7 @@ const hasResendKey = hasResendApiKey()
 const EMAIL_PROVIDER: EmailProvider =
   (SUPPORTED_PROVIDERS.includes(providerEnv as EmailProvider)
     ? (providerEnv as EmailProvider)
-    : undefined) || (hasResendKey ? 'resend' : 'sendgrid')
+    : undefined) || 'resend'
 const DEFAULT_FROM =
   process.env.EMAIL_FROM || process.env.RESEND_FROM || 'FAS Motorsports <info@fasmotorsports.com>'
 

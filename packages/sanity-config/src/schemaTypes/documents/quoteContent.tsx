@@ -586,6 +586,13 @@ export default defineType({
         }),
     }),
     defineField({
+      name: 'acceptedAt',
+      title: 'Accepted At',
+      type: 'datetime',
+      description: 'When customer accepted the quote',
+      readOnly: true,
+    }),
+    defineField({
       name: 'acceptedBy',
       title: 'Accepted By',
       type: 'string',
@@ -699,6 +706,22 @@ export default defineType({
       title: 'Conversion Status',
       type: 'string',
       description: 'Tracks whether the quote has been converted to an invoice or order.',
+    }),
+    defineField({
+      name: 'generatedInvoice',
+      title: 'Generated Invoice',
+      type: 'reference',
+      to: [{type: 'invoice'}],
+      description: 'Invoice created from this quote',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'generatedOrder',
+      title: 'Generated Order',
+      type: 'reference',
+      to: [{type: 'order'}],
+      description: 'Order created from this quote',
+      readOnly: true,
     }),
     defineField({
       name: 'timeline',
