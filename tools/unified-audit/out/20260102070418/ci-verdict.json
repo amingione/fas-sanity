@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-01-02T12:04:26.855Z",
+  "phasedEnforcement": {
+    "api-contract-violations": "FAIL",
+    "webhook-drift-report": "WARN"
+  },
+  "reasons": [
+    "api-contract-violations status FAIL",
+    "api-contract-violations requiresEnforcement true"
+  ],
+  "status": "FAIL"
+}

@@ -1,0 +1,1872 @@
+{
+  "enforcementApproved": false,
+  "enforcementPhase": "FAIL",
+  "generatedAt": "2026-01-02T12:04:26.629Z",
+  "requiresEnforcement": true,
+  "status": "FAIL",
+  "violations": [
+    {
+      "fieldPath": "to_address",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 230,
+      "recommendedFix": "Ensure required easypost field 'to_address' is set before Shipment.create call.",
+      "service": "easypost",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "from_address",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 230,
+      "recommendedFix": "Ensure required easypost field 'from_address' is set before Shipment.create call.",
+      "service": "easypost",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "parcel",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 230,
+      "recommendedFix": "Ensure required easypost field 'parcel' is set before Shipment.create call.",
+      "service": "easypost",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "to_address",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 235,
+      "recommendedFix": "Ensure required easypost field 'to_address' is set before Shipment.create call.",
+      "service": "easypost",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "from_address",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 235,
+      "recommendedFix": "Ensure required easypost field 'from_address' is set before Shipment.create call.",
+      "service": "easypost",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "parcel",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 235,
+      "recommendedFix": "Ensure required easypost field 'parcel' is set before Shipment.create call.",
+      "service": "easypost",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "subject",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/tools/unified-audit/test/detectors.test.mjs",
+      "lineNo": 238,
+      "recommendedFix": "Ensure required resend field 'subject' is set before emails.send call.",
+      "service": "resend",
+      "severity": "FAIL",
+      "type": "missingField"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/add-product-type.js",
+      "lineNo": 54,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-cart-product-references.js",
+      "lineNo": 61,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-clean-cart-items.ts",
+      "lineNo": 240,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoiceNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoiceDate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "dueDate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "paymentTerms",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customerRef",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderRef",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "billTo",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lineItems",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "tax",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "shipping",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "total",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-create-invoices.js",
+      "lineNo": 28,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoices",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-customer-invoices.mjs",
+      "lineNo": 88,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-customers.js",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-fulfillment-package.ts",
+      "lineNo": 176,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-order-card-data.ts",
+      "lineNo": 333,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-order-shipping-snapshot.ts",
+      "lineNo": 387,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-order-type-online.ts",
+      "lineNo": 44,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "vendorNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-vendor-numbers.ts",
+      "lineNo": 108,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-vendor-portal-email.ts",
+      "lineNo": 157,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "portalAccess.enabled",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-vendor-portal-enabled.ts",
+      "lineNo": 63,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/backfill-wholesale-pricing.ts",
+      "lineNo": 47,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "apiKey",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/ensure-email-marketing-channel.ts",
+      "lineNo": 52,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "endpoint",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/ensure-email-marketing-channel.ts",
+      "lineNo": 52,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "active",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/ensure-email-marketing-channel.ts",
+      "lineNo": 52,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "accountId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/ensure-email-marketing-channel.ts",
+      "lineNo": 52,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/fix-all-draft-refs.mjs",
+      "lineNo": 53,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/fix-and-migrate.mjs",
+      "lineNo": 52,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoices",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/fix-and-migrate.mjs",
+      "lineNo": 127,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/fix-order-cart-item-fields.js",
+      "lineNo": 312,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/fix-order-number-format.ts",
+      "lineNo": 108,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/initialize-inventory.ts",
+      "lineNo": 65,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "mpnPrefix",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-category-mpn-prefixes.ts",
+      "lineNo": 100,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "filters",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-filters-to-refs.js",
+      "lineNo": 78,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "filters",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-filters-to-strings.ts",
+      "lineNo": 58,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-order-cart-items.js",
+      "lineNo": 87,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-service-workflows.ts",
+      "lineNo": 95,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customerType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-service-workflows.ts",
+      "lineNo": 112,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-service-workflows.ts",
+      "lineNo": 126,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "availableForWholesale",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-service-workflows.ts",
+      "lineNo": 140,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/migrate-vendors.ts",
+      "lineNo": 158,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "filters",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/normalize-product-filters.js",
+      "lineNo": 43,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "campaignType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/seed-vendor-onboarding-campaign.ts",
+      "lineNo": 307,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "active",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/seed-vendor-onboarding-campaign.ts",
+      "lineNo": 307,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emails",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/seed-vendor-onboarding-campaign.ts",
+      "lineNo": 307,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "cart",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/standardize-order-cart-items.js",
+      "lineNo": 77,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/sync-shipping-to-stripe.js",
+      "lineNo": 96,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/shared/inventory.ts",
+      "lineNo": 284,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/functions/doc-mapping/index.ts",
+      "lineNo": 812,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoiceId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/functions/doc-mapping/index.ts",
+      "lineNo": 812,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "shippingLabelId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/functions/doc-mapping/index.ts",
+      "lineNo": 959,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "productId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/functions/doc-mapping/index.ts",
+      "lineNo": 1051,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "mapId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/functions/doc-mapping/index.ts",
+      "lineNo": 1051,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/functions/doc-mapping/index.ts",
+      "lineNo": 847,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "relatedProducts",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/autoRelatedProducts.ts",
+      "lineNo": 95,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/backfillCustomers.ts",
+      "lineNo": 146,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "connectorName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/connector-install.ts",
+      "lineNo": 41,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "workspace",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/connector-install.ts",
+      "lineNo": 41,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "installedAt",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/connector-install.ts",
+      "lineNo": 41,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderRef",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "trackingNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "labelUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "carrier",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "service",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "shipmentId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "rate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/create-shipping-label.ts",
+      "lineNo": 172,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "paymentLinkUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/createCheckout.ts",
+      "lineNo": 724,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostWebhook.ts",
+      "lineNo": 533,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "processingStatus",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostWebhook.ts",
+      "lineNo": 1046,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "firstName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lastName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "roles",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customerType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emailOptIn",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "marketingOptIn",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emailMarketing",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
+      "lineNo": 90,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "packingSlipUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/reprocessStripeSession.ts",
+      "lineNo": 936,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "paymentLinkUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/resendInvoiceEmail.ts",
+      "lineNo": 96,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendEmailCampaign.ts",
+      "lineNo": 56,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "processingStatus",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripe-shipping-webhook.ts",
+      "lineNo": 247,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "orderType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook.ts",
+      "lineNo": 294,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook.ts",
+      "lineNo": 756,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "sku",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook.ts",
+      "lineNo": 4338,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "processingStatus",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripeWebhook.ts",
+      "lineNo": 7284,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncStripeCatalog.ts",
+      "lineNo": 425,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "statusCode",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncVendorToStripe.ts",
+      "lineNo": 303,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "headers",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/syncVendorToStripe.ts",
+      "lineNo": 303,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/updateVendorProfile.ts",
+      "lineNo": 217,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "applicationNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "businessType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "website",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "yearsInBusiness",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "taxId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "productsInterested",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "currentSuppliers",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "taxExempt",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "additionalInfo",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "referralSource",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/vendor-application.ts",
+      "lineNo": 68,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "firstName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lastName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "roles",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customerType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emailOptIn",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "marketingOptIn",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emailMarketing",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/welcome-subscriber.ts",
+      "lineNo": 92,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/wholesale-orders.ts",
+      "lineNo": 126,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "checkoutId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/abandonedCheckouts.ts",
+      "lineNo": 104,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/abandonedCheckouts.ts",
+      "lineNo": 137,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/customerSnapshot.ts",
+      "lineNo": 457,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/stripeCoupons.ts",
+      "lineNo": 131,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "campaign",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/vendorOnboardingCampaign.ts",
+      "lineNo": 79,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emailNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/vendorOnboardingCampaign.ts",
+      "lineNo": 79,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "sentAt",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/vendorOnboardingCampaign.ts",
+      "lineNo": 79,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "resendId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/vendorOnboardingCampaign.ts",
+      "lineNo": 79,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/scripts/stripe-maintenance/backfill-missing-fields.js",
+      "lineNo": 170,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "firstName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/lib/militaryVerification.ts",
+      "lineNo": 238,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lastName",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/lib/militaryVerification.ts",
+      "lineNo": 238,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "sheerIdVerificationId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/lib/militaryVerification.ts",
+      "lineNo": 238,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "documentUploadUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/lib/militaryVerification.ts",
+      "lineNo": 238,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "metadata",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/lib/militaryVerification.ts",
+      "lineNo": 238,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/lib/backfills/paymentFailures.ts",
+      "lineNo": 454,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/send-shipping-confirmation.ts",
+      "lineNo": 181,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/documentActions/downloadDocumentActions.ts",
+      "lineNo": 213,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "log",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/documentActions/productDocumentActions.ts",
+      "lineNo": 201,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/src/pages/api/webhooks/stripe-order.ts",
+      "lineNo": 217,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "text",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/inputs/ProductImageAltReferenceInput.tsx",
+      "lineNo": 263,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "quote",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ConvertToInvoiceButton.tsx",
+      "lineNo": 30,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customerRef",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ConvertToInvoiceButton.tsx",
+      "lineNo": 30,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lineItems",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ConvertToInvoiceButton.tsx",
+      "lineNo": 30,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "total",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ConvertToInvoiceButton.tsx",
+      "lineNo": 30,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoiceDate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ConvertToInvoiceButton.tsx",
+      "lineNo": 30,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "paidDate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ExpenseManager.tsx",
+      "lineNo": 273,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "packingSlipUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/OrderShippingView.tsx",
+      "lineNo": 235,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/ProductBulkEditor.tsx",
+      "lineNo": 1741,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "quote",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customerRef",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "billTo",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lineItems",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "total",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "amountSubtotal",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "amountTax",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "invoiceDate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/QuotesDashboard.tsx",
+      "lineNo": 271,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "workOrder",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/WorkOrderManagementPane.tsx",
+      "lineNo": 161,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "bay",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/WorkOrderManagementPane.tsx",
+      "lineNo": 123,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "vendorNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/generateVendorNumberAction.ts",
+      "lineNo": 42,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/inStoreOperationsActions.tsx",
+      "lineNo": 259,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "technicianNotes",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/inStoreOperationsActions.tsx",
+      "lineNo": 605,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/inventoryActions.tsx",
+      "lineNo": 401,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/linkVendorToCustomerAction.tsx",
+      "lineNo": 116,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/vendorApplicationActions.tsx",
+      "lineNo": 162,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "autoGenerateArrayKeys",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documentActions/vendorQuoteActions.tsx",
+      "lineNo": 224,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "trackingNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/shippingLabelComponents.tsx",
+      "lineNo": 298,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "labelUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/schemaTypes/documents/shippingLabelComponents.tsx",
+      "lineNo": 298,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "packingSlipUrl",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/documentTables/OrdersDocumentTable.tsx",
+      "lineNo": 477,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "documentType",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/downloads/DownloadsQuickCreatePane.tsx",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "accessLevel",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/downloads/DownloadsQuickCreatePane.tsx",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "isTemplate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/downloads/DownloadsQuickCreatePane.tsx",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "lastUpdated",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/packages/sanity-config/src/components/studio/downloads/DownloadsQuickCreatePane.tsx",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "statusCode",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/categories-upsert.ts",
+      "lineNo": 22,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "statusCode",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/customers-profile-upsert.ts",
+      "lineNo": 13,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "formId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/employee-sms-consent.ts",
+      "lineNo": 45,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "formTitle",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/employee-sms-consent.ts",
+      "lineNo": 45,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "ipAddress",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/employee-sms-consent.ts",
+      "lineNo": 45,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "userAgent",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/employee-sms-consent.ts",
+      "lineNo": 45,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "formData",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/employee-sms-consent.ts",
+      "lineNo": 45,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "inventory.quantityAvailable",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/inventory-sync.ts",
+      "lineNo": 21,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "categories",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/products-upsert.ts",
+      "lineNo": 78,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "schedule.isActive",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/promotion-status-cron.ts",
+      "lineNo": 20,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "stripeInvoiceId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-convert-to-invoice.ts",
+      "lineNo": 44,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "statusCode",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/quotes-upsert.ts",
+      "lineNo": 45,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "pricing.saleActive",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/sale-status-cron.ts",
+      "lineNo": 23,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "confirmationEmailSent",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/netlify/functions/stripe-webhook.ts",
+      "lineNo": 1045,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "campaign",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/lib/emailService.ts",
+      "lineNo": 56,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "emailNumber",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/lib/emailService.ts",
+      "lineNo": 56,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "sentAt",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/lib/emailService.ts",
+      "lineNo": 56,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "resendId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/lib/emailService.ts",
+      "lineNo": 56,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "portalAccess.lastLogin",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity-client.ts",
+      "lineNo": 136,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "vehicleModel",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "modifications",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "horsepower",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "price",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customer",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/save-quote.ts",
+      "lineNo": 72,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "confirmationEmailSent",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/webhooks.ts",
+      "lineNo": 876,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "performance.averageOrderValue",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/server/sanity/promotions.ts",
+      "lineNo": 110,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "sessionId",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "utmSource",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "utmMedium",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "utmCampaign",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "utmTerm",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "utmContent",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "timestamp",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/attribution/track.ts",
+      "lineNo": 32,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "customer",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/bookings/create.ts",
+      "lineNo": 11,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "bookingDate",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/bookings/create.ts",
+      "lineNo": 11,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "service",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/bookings/create.ts",
+      "lineNo": 11,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "portalAccess.email",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/customer/update.ts",
+      "lineNo": 149,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "query",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/index.ts",
+      "lineNo": 50,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "params",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/notifications/index.ts",
+      "lineNo": 50,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    },
+    {
+      "fieldPath": "ok",
+      "file": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/src/pages/api/vendor/settings/profile.ts",
+      "lineNo": 56,
+      "recommendedFix": "Align persisted fields with Sanity schema or remove the write.",
+      "service": "sanity",
+      "severity": "INFO",
+      "type": "schemaMismatch"
+    }
+  ]
+}
