@@ -4,6 +4,11 @@ export async function handler(event) {
     const RESEND_API_KEY = process.env.RESEND_API_KEY
 
     if (!RESEND_API_KEY) {
+      console.error('[sendEmail] RESEND_API_KEY is missing or empty', {
+        hasEnvVar: Boolean(process.env.RESEND_API_KEY),
+        availableResendVars: Object.keys(process.env).filter((key) => key.includes('RESEND')),
+        timestamp: new Date().toISOString(),
+      })
       throw new Error('Missing RESEND_API_KEY in environment variables.')
     }
 

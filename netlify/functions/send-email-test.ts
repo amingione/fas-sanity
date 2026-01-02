@@ -1,7 +1,7 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
-import {resolveResendApiKey} from '../../shared/resendEnv'
+import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
 
 const sanity = createClient({
@@ -24,6 +24,7 @@ const handler: Handler = async (event) => {
   }
 
   if (!resend) {
+    logMissingResendApiKey('send-email-test')
     return {statusCode: 400, body: JSON.stringify({error: 'RESEND_API_KEY missing'})}
   }
 

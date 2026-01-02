@@ -1,6 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {Resend} from 'resend'
-import {resolveResendApiKey} from '../../shared/resendEnv'
+import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +25,7 @@ const handler: Handler = async (event) => {
     }
   }
   if (!resend) {
+    logMissingResendApiKey('sendCustomerEmail')
     return {
       statusCode: 500,
       headers: corsHeaders,
