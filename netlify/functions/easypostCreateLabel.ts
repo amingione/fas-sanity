@@ -126,6 +126,7 @@ type OrderDoc = {
   orderNumber?: string
   paymentIntentId?: string | null
   stripePaymentIntentId?: string | null
+  fulfillmentAttempts?: number | null
   cart?: Array<{
     quantity?: number
     name?: string
@@ -443,7 +444,8 @@ async function fetchOrder(orderId: string): Promise<OrderDoc | null> {
       customerName,
       orderNumber,
       paymentIntentId,
-      stripePaymentIntentId
+      stripePaymentIntentId,
+      fulfillmentAttempts
     }`,
     {id: orderId},
   )
@@ -471,6 +473,17 @@ export async function createEasyPostLabel(
   const order = orderId ? await fetchOrder(orderId) : null
   if (orderId && (!order || !order.shippingAddress)) {
     throw new Error('Order not found or missing shipping address')
+  }
+
+  if (orderId) {
+    const nextAttempts = (order?.fulfillmentAttempts || 0) + 1
+    await sanity
+      .patch(orderId)
+      .set({
+        fulfillmentStatus: 'creating_label',
+        fulfillmentAttempts: nextAttempts,
+      })
+      .commit({autoGenerateArrayKeys: true})
   }
 
   const defaultFrom = getEasyPostFromAddress()
@@ -718,6 +731,8 @@ export async function createEasyPostLabel(
         labelCost: amount,
         labelPurchasedFrom: resolvedCarrier || 'EasyPost',
         'fulfillment.status': 'label_created',
+        fulfillmentStatus: 'label_created',
+        fulfillmentError: null,
         carrier: resolvedCarrier,
         service: shippingStatus.service || undefined,
         shippedAt: shippingStatus.lastEventAt,
@@ -925,6 +940,19 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify(result),
     }
   } catch (err: any) {
+    if (orderId) {
+      try {
+        await sanity
+          .patch(orderId)
+          .set({
+            fulfillmentStatus: 'label_creation_failed',
+            fulfillmentError: err?.message || 'Label creation failed',
+          })
+          .commit({autoGenerateArrayKeys: true})
+      } catch (patchErr) {
+        console.warn('easypostCreateLabel: failed to record fulfillment error', patchErr)
+      }
+    }
     const {statusCode, message} = formatEasyPostError(err)
     const detail = (err?.body as any)?.error || err?.message || err
     console.error('easypostCreateLabel error', detail)

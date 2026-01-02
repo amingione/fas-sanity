@@ -606,6 +606,12 @@ async function handleTracker(tracker: any, rawPayload?: any) {
       'shippingStatus.status': tracker?.status || undefined,
       'shippingStatus.lastEventAt': lastEventAt ? new Date(lastEventAt).toISOString() : undefined,
       'fulfillment.status': tracker?.status || undefined,
+      fulfillmentStatus:
+        tracker?.status === 'delivered'
+          ? 'delivered'
+          : tracker?.status
+            ? 'shipped'
+            : undefined,
       ...(tracker?.status === 'delivered' && lastEventAt
         ? {deliveredAt: new Date(lastEventAt).toISOString().slice(0, 10)}
         : {}),
@@ -779,6 +785,8 @@ async function handleShipment(shipment: any, rawPayload?: any) {
     setOps.service = selectedRate.service
   }
   setOps['fulfillment.status'] = shippingStatus.status || 'label_created'
+  setOps.fulfillmentStatus =
+    shippingStatus.status === 'delivered' ? 'delivered' : 'label_created'
   setOps.shippedAt = shippingStatus.lastEventAt
   if (typeof selectedRate?.delivery_days === 'number') {
     setOps.deliveryDays = selectedRate.delivery_days
@@ -886,6 +894,9 @@ async function handleRefund(refund: any) {
 export const handler: Handler = async (event) => {
   const startTime = Date.now()
   let payload: EasyPostEvent | null = null
+  let eventLogId: string | null = null
+  let processingError: Error | null = null
+  let isFinalFailure = false
 
   const finalize = async (
     response: {statusCode: number; headers?: Record<string, string>; body: string},
@@ -1005,6 +1016,23 @@ export const handler: Handler = async (event) => {
       )
     }
 
+    eventLogId = `easypostWebhookEvent.${payload.id || randomUUID()}`
+    try {
+      await sanity.createIfNotExists({
+        _id: eventLogId,
+        _type: 'easypostWebhookEvent',
+        eventId: payload.id || `event-${Date.now()}`,
+        eventType: payload.description || payload.result?.object || 'unknown',
+        createdAt: payload.created_at || new Date().toISOString(),
+        payload: JSON.stringify(payload),
+        processingStatus: 'processing',
+        retryCount: 0,
+      })
+      await sanity.patch(eventLogId).set({processingStatus: 'processing'}).commit()
+    } catch (err) {
+      console.warn('easypostWebhook failed to create event log', err)
+    }
+
     try {
       const result = payload.result || {}
       if (result?.object === 'Tracker') {
@@ -1016,13 +1044,36 @@ export const handler: Handler = async (event) => {
       }
     } catch (err) {
       console.error('easypostWebhook processing error', err)
+      processingError = err instanceof Error ? err : new Error(String(err))
+      if (eventLogId) {
+        try {
+          const retryCount =
+            (await sanity.fetch<number | null>(
+              '*[_id == $id][0].retryCount',
+              {id: eventLogId},
+            )) || 0
+          const newRetryCount = retryCount + 1
+          const maxRetries = 3
+          isFinalFailure = newRetryCount >= maxRetries
+          await sanity
+            .patch(eventLogId)
+            .set({
+              processingStatus: isFinalFailure ? 'failed_permanent' : 'failed_retrying',
+              error: processingError.message,
+              retryCount: newRetryCount,
+            })
+            .commit()
+        } catch (logErr) {
+          console.warn('easypostWebhook failed to update event log after error', logErr)
+        }
+      }
       const message =
         err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string'
           ? (err as any).message
           : String(err)
       return await finalize(
         {
-          statusCode: 500,
+          statusCode: isFinalFailure ? 200 : 500,
           headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
           body: JSON.stringify({error: message || 'Webhook processing failed'}),
         },
@@ -1030,6 +1081,17 @@ export const handler: Handler = async (event) => {
         undefined,
         err,
       )
+    }
+
+    if (eventLogId) {
+      try {
+        await sanity
+          .patch(eventLogId)
+          .set({processingStatus: 'completed'})
+          .commit()
+      } catch (err) {
+        console.warn('easypostWebhook failed to mark event completed', err)
+      }
     }
 
     return await finalize(

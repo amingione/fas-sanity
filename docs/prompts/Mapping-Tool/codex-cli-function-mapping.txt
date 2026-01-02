@@ -1,0 +1,111 @@
+CODEX BUILD PROMPT — Function Usage & Integrity Audit CLI
+
+SYSTEM DIRECTIVE
+You are Codex.
+You will BUILD a deterministic CLI tool that audits serverless / API functions across the entire repo.
+Do not ask questions. Do not add optional features. Do not refactor application logic.
+This is a tooling-only addition.
+
+AUTHORITATIVE INPUTS (READ-ONLY)
+1) docs/codex.md
+2) Entire repo (all workspaces)
+No external web access.
+
+PRIMARY OUTCOME
+Create a CLI-accessible audit tool that:
+- Discovers all serverless/API functions
+- Determines which functions are IN USE, SHOULD BE USED, BROKEN, DUPLICATE, or OBSOLETE
+- Produces machine-readable outputs and human summaries
+- Is accurate enough to drive deletion or enforcement decisions
+
+NON-NEGOTIABLE BEHAVIOR
+
+1) Function Discovery
+Discover functions in:
+- /netlify/functions/**
+- /functions/**
+- /api/**
+- /server/**
+Index each function with:
+- file path
+- export/handler name
+- HTTP method(s)
+- inferred route
+- env vars referenced
+- external API usage
+
+2) Usage Detection (AUTHORITATIVE)
+A function is IN USE only if:
+- A static call-site reference exists (fetch/axios/import/webhook/schedule)
+OR
+- A contract requires it (Stripe, EasyPost, Resend webhook, etc.)
+
+No reference = not used.
+
+3) SHOULD BE USED
+Mark SHOULD BE USED if:
+- Integration contracts exist (env/config)
+- No handler wired
+This indicates missing plumbing, not dead code.
+
+4) BROKEN
+Mark BROKEN if:
+- Missing env vars
+- Missing dependencies
+- Unsafe external API access
+- Schema field references invalid
+- Invalid handler signature
+
+5) DUPLICATE
+Detect duplicates via behavior fingerprint:
+- Same method
+- Same external API interaction
+- Same persistence logic
+Different names do NOT mean different functions.
+
+6) OBSOLETE
+Mark OBSOLETE only if:
+- No usage
+- No contract requirement
+- No webhook
+- No schedule
+- No env dependency
+
+7) CLI Interface
+Expose via existing audit CLI:
+- audit functions
+- audit functions --used
+- audit functions --broken
+- audit functions --duplicate
+- audit functions --obsolete
+- audit functions --summary
+
+8) Outputs
+Write to tools/unified-audit/out/<STAMP>/:
+- functions-index.json
+- functions-usage.json
+- functions-broken.json
+- functions-duplicates.json
+- functions-obsolete.json
+- functions-summary.json
+- functions-summary.md
+
+Each finding MUST include:
+- classification
+- reason
+- file path
+- line numbers
+- evidence (call-sites, env keys, contracts)
+
+9) Safety
+- Read-only
+- Deterministic output
+- Sorted keys
+- Never delete or modify functions
+
+EXECUTE NOW
+Implement the tool fully.
+When finished, print:
+- Exact CLI commands to run
+- Where outputs are written
+- Confirmation that no application logic was changed
