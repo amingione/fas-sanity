@@ -25,6 +25,7 @@
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
     "netlify:functions": "tsx scripts/netlify-functions-serve.ts",
     "netlify:functions-local": "env -u NODE_OPTIONS -u NETLIFY_AUTH_TOKEN tsx scripts/local-functions-server.ts",
+    "stripe:audit": "tsx scripts/stripe/run-stripe-audit.ts",
     "test:email-local": "NODE_OPTIONS= tsx scripts/trigger-test-emails-local.ts",
     "test:email-http": "NODE_OPTIONS= tsx scripts/trigger-test-emails.ts",
     "test:email-combined": "NODE_OPTIONS= tsx scripts/trigger-test-emails-combined.ts",
