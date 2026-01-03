@@ -10,8 +10,13 @@
   # their values are required during builds but are not written to the public build output.
   SECRETS_SCAN_OMIT_KEYS = "CHECK_PRINTER_SANITY_TOKEN,CORS_ALLOW,CORS_ORIGIN"
 
-[[plugins]]
-package = "@netlify/plugin-secrets-manager"
+[context.production]
+  [[context.production.plugins]]
+    package = "@netlify/plugin-secrets-manager"
+
+[context.deploy-preview]
+  [[context.deploy-preview.plugins]]
+    package = "@netlify/plugin-secrets-manager"
 
 [context.production.environment]
   NODE_ENV = "production"
@@ -38,6 +43,9 @@ package = "@netlify/plugin-secrets-manager"
 
 [dev.environment]
   SANITY_STUDIO_PORT = "3333"
+
+[context.dev.environment]
+  NODE_OPTIONS = "" # Clear preload locally; production NODE_OPTIONS stays in functions.environment.
 
 [[scheduled_function]]
   name = "syncMarketingAttribution"
