@@ -7081,6 +7081,46 @@ async function sendOrderConfirmationEmail(opts: {
  * Any regression MUST fail CI.
  */
 export const handler: Handler = async (event) => {
+  // --- STRIPE WEBHOOK ENTRY GUARD ---
+  // Reject non-POST requests immediately (browser hits, crawlers, etc.)
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: 'Method Not Allowed',
+    }
+  }
+
+  const sig = event.headers['stripe-signature']
+  if (!sig) {
+    return {
+      statusCode: 400,
+      body: 'Missing Stripe signature',
+    }
+  }
+
+  // IMPORTANT:
+  // Netlify may base64-encode webhook bodies.
+  // Stripe signature verification MUST use the exact raw bytes Stripe sent.
+  const rawBody = event.isBase64Encoded
+    ? Buffer.from(event.body || '', 'base64')
+    : Buffer.from(event.body || '', 'utf8')
+
+  let stripeEvent: Stripe.Event
+  try {
+    stripeEvent = stripe.webhooks.constructEvent(
+      rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET as string,
+    )
+  } catch (err) {
+    console.error('❌ Stripe signature verification failed', err)
+    return {
+      statusCode: 400,
+      body: 'Invalid Stripe signature',
+    }
+  }
+  // --- END STRIPE WEBHOOK ENTRY GUARD ---
+
   console.log('🔔 stripeWebhook: handler invoked', {
     method: event?.httpMethod,
     hasBody: Boolean(event?.body),
@@ -7104,7 +7144,6 @@ export const handler: Handler = async (event) => {
     resendApiKeySet: Boolean(RESEND_API_KEY),
   })
   const startTime = Date.now()
-  let webhookEvent: Stripe.Event | null = null
   let webhookStatus: StripeWebhookStatus = 'processed'
   let webhookSummary = ''
   let eventLogId: string | null = null
@@ -7125,8 +7164,8 @@ export const handler: Handler = async (event) => {
       result,
       error,
       metadata: {
-        stripeEventId: webhookEvent?.id,
-        eventType: webhookEvent?.type,
+        stripeEventId: stripeEvent?.id,
+        eventType: stripeEvent?.type,
         webhookStatus,
       },
     })
@@ -7160,86 +7199,23 @@ export const handler: Handler = async (event) => {
       )
     }
 
-    if (event.httpMethod === 'OPTIONS') {
-      console.warn('⚠️ stripeWebhook: exiting early', {reason: 'preflight options'})
-      return await finalize({statusCode: 200, body: ''}, 'success')
-    }
-    if (event.httpMethod !== 'POST') {
-      console.warn('⚠️ stripeWebhook: exiting early', {reason: 'method not allowed'})
-      return await finalize({statusCode: 405, body: 'Method Not Allowed'}, 'error')
+    if (stripeEvent.type === 'checkout.session.expired') {
+      return await handleCheckoutSessionExpired(stripeEvent)
     }
 
-    const skipSignature = process.env.STRIPE_WEBHOOK_NO_VERIFY === '1'
-    const sig = (event.headers['stripe-signature'] || event.headers['Stripe-Signature']) as string
-    if (!sig && !skipSignature) {
-      console.warn('⚠️ stripeWebhook: exiting early', {reason: 'missing stripe signature'})
-      return await finalize(
-        {statusCode: 400, body: 'Missing Stripe-Signature header'},
-        'error',
-        {message: 'Missing Stripe-Signature header'},
-      )
-    }
+    webhookSummary = summarizeEventType(stripeEvent.type || '')
 
-    try {
-      const raw = getRawBody(event)
-      console.log('📦 stripeWebhook: raw body extracted', {
-        length: raw?.length,
-      })
-      if (skipSignature) {
-        webhookEvent = JSON.parse(raw.toString('utf8')) as Stripe.Event
-      } else {
-        webhookEvent = stripe.webhooks.constructEvent(raw, sig, endpointSecret)
-        console.log('🔐 stripeWebhook: signature verified', {
-          stripeEventId: webhookEvent?.id,
-          eventType: webhookEvent?.type,
-        })
-      }
-    } catch (err: any) {
-      const label = skipSignature
-        ? 'stripeWebhook payload parse failed'
-        : 'stripeWebhook signature verification failed'
-      console.error('❌ stripeWebhook: signature verification FAILED', {
-        error: (err as Error)?.message,
-      })
-      console.error(`${label}:`, err?.message || err)
-      console.warn('⚠️ stripeWebhook: exiting early', {
-        reason: skipSignature ? 'payload parse failed' : 'signature verification failed',
-      })
-      return await finalize(
-        {statusCode: 400, body: `Webhook Error: ${err?.message || 'invalid signature'}`},
-        'error',
-        undefined,
-        err,
-      )
-    }
+    console.log(`📥 Webhook received: ${stripeEvent.type} (ID: ${stripeEvent.id})`)
 
-    if (!webhookEvent) {
-      webhookSummary = 'Missing Stripe event'
-      console.warn('⚠️ stripeWebhook: exiting early', {reason: 'missing stripe event'})
-      return await finalize(
-        {statusCode: 400, body: 'Invalid webhook event payload'},
-        'error',
-        {message: 'Stripe event missing from payload'},
-      )
-    }
-
-    if (webhookEvent.type === 'checkout.session.expired') {
-      return await handleCheckoutSessionExpired(webhookEvent)
-    }
-
-    webhookSummary = summarizeEventType(webhookEvent.type || '')
-
-    console.log(`📥 Webhook received: ${webhookEvent.type} (ID: ${webhookEvent.id})`)
-
-    eventLogId = `stripeWebhookEvent.${webhookEvent.id}`
+    eventLogId = `stripeWebhookEvent.${stripeEvent.id}`
     try {
       await webhookSanityClient.createIfNotExists({
         _id: eventLogId,
         _type: 'stripeWebhookEvent',
-        eventId: webhookEvent.id,
-        eventType: webhookEvent.type,
-        createdAt: toIsoTimestamp(webhookEvent.created),
-        payload: safeJsonStringify(webhookEvent, 15000),
+        eventId: stripeEvent.id,
+        eventType: stripeEvent.type,
+        createdAt: toIsoTimestamp(stripeEvent.created),
+        payload: safeJsonStringify(stripeEvent, 15000),
         processingStatus: 'processing',
         retryCount: 0,
         processed: false,
@@ -7250,7 +7226,7 @@ export const handler: Handler = async (event) => {
       console.warn('stripeWebhook: failed to initialize stripeWebhookEvent log', err)
     }
 
-    const webhookDocId = `${WEBHOOK_DOCUMENT_PREFIX}${webhookEvent.id}`
+    const webhookDocId = `${WEBHOOK_DOCUMENT_PREFIX}${stripeEvent.id}`
     try {
       const existing = await webhookSanityClient.fetch<{status?: string} | null>(
         '*[_id == $id][0]{status}',
@@ -7259,7 +7235,7 @@ export const handler: Handler = async (event) => {
       if (existing?.status) {
         webhookStatus = 'ignored'
         webhookSummary = `Duplicate webhook event (${existing.status})`
-        console.log(`⏭️  Duplicate event ignored: ${webhookEvent.type}`)
+        console.log(`⏭️  Duplicate event ignored: ${stripeEvent.type}`)
         if (eventLogId) {
           try {
             await webhookSanityClient
@@ -7271,7 +7247,7 @@ export const handler: Handler = async (event) => {
           }
         }
         await recordStripeWebhookEvent({
-          event: webhookEvent,
+          event: stripeEvent,
           status: webhookStatus,
           summary: webhookSummary,
         })
@@ -7282,26 +7258,26 @@ export const handler: Handler = async (event) => {
           {webhookStatus, summary: webhookSummary},
         )
       }
-      console.log(`📝 Creating webhook document for ${webhookEvent.type}...`)
+      console.log(`📝 Creating webhook document for ${stripeEvent.type}...`)
       await webhookSanityClient.createIfNotExists({
         _id: webhookDocId,
         _type: 'stripeWebhook',
-        stripeEventId: webhookEvent.id,
-        eventType: webhookEvent.type,
+        stripeEventId: stripeEvent.id,
+        eventType: stripeEvent.type,
         status: 'processing',
-        summary: `Processing ${webhookEvent.type}`,
-        occurredAt: toIsoTimestamp(webhookEvent.created),
+        summary: `Processing ${stripeEvent.type}`,
+        occurredAt: toIsoTimestamp(stripeEvent.created),
         processedAt: new Date().toISOString(),
       })
-      console.log(`✅ Initial webhook document created for ${webhookEvent.type}`)
+      console.log(`✅ Initial webhook document created for ${stripeEvent.type}`)
     } catch (err) {
-      console.error(`❌ FAILED to create webhook document for ${webhookEvent.type}:`, err)
+      console.error(`❌ FAILED to create webhook document for ${stripeEvent.type}:`, err)
       console.warn('stripeWebhook: failed to record processing event', err)
     }
 
   try {
     type ExtendedStripeEventType = Stripe.Event.Type | string
-    const eventType = webhookEvent.type as ExtendedStripeEventType
+    const eventType = stripeEvent.type as ExtendedStripeEventType
 
     switch (eventType) {
       case 'quote.created':
@@ -7311,11 +7287,11 @@ export const handler: Handler = async (event) => {
       case 'quote.canceled':
       case 'quote.will_expire': {
         try {
-          const quoteObject = webhookEvent.data.object as Stripe.Quote
+          const quoteObject = stripeEvent.data.object as Stripe.Quote
           const quote = (await fetchQuoteResource(quoteObject)) || quoteObject
           await syncStripeQuote(quote, {
-            eventType: webhookEvent.type,
-            eventCreated: webhookEvent.created,
+            eventType: stripeEvent.type,
+            eventCreated: stripeEvent.created,
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to sync quote event', err)
@@ -7326,12 +7302,12 @@ export const handler: Handler = async (event) => {
       case 'payment_link.created':
       case 'payment_link.updated': {
         try {
-          const paymentLinkObject = webhookEvent.data.object as Stripe.PaymentLink
+          const paymentLinkObject = stripeEvent.data.object as Stripe.PaymentLink
           const paymentLink =
             (await fetchPaymentLinkResource(paymentLinkObject)) || paymentLinkObject
           await syncStripePaymentLink(paymentLink, {
-            eventType: webhookEvent.type,
-            eventCreated: webhookEvent.created,
+            eventType: stripeEvent.type,
+            eventCreated: stripeEvent.created,
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to sync payment link event', err)
@@ -7343,7 +7319,7 @@ export const handler: Handler = async (event) => {
       case 'payment_method.updated':
       case 'payment_method.automatically_updated': {
         try {
-          const paymentMethod = webhookEvent.data.object as Stripe.PaymentMethod
+          const paymentMethod = stripeEvent.data.object as Stripe.PaymentMethod
           await syncCustomerPaymentMethod(paymentMethod)
         } catch (err) {
           console.warn('stripeWebhook: failed to sync payment method', err)
@@ -7353,7 +7329,7 @@ export const handler: Handler = async (event) => {
 
       case 'payment_method.detached': {
         try {
-          const paymentMethod = webhookEvent.data.object as Stripe.PaymentMethod
+          const paymentMethod = stripeEvent.data.object as Stripe.PaymentMethod
           await removeCustomerPaymentMethod(paymentMethod.id)
         } catch (err) {
           console.warn('stripeWebhook: failed to remove payment method', err)
@@ -7364,7 +7340,7 @@ export const handler: Handler = async (event) => {
       case 'product.created':
       case 'product.updated': {
         try {
-          const product = webhookEvent.data.object as Stripe.Product
+          const product = stripeEvent.data.object as Stripe.Product
           await syncStripeProduct(product)
         } catch (err) {
           console.warn('stripeWebhook: failed to sync product event', err)
@@ -7374,7 +7350,7 @@ export const handler: Handler = async (event) => {
 
       case 'product.deleted': {
         try {
-          const product = webhookEvent.data.object as {id: string}
+          const product = stripeEvent.data.object as {id: string}
           const docId = await findProductDocumentId({stripeProductId: product.id})
           if (docId) {
             await sanity
@@ -7394,7 +7370,7 @@ export const handler: Handler = async (event) => {
       case 'coupon.created':
       case 'coupon.updated': {
         try {
-          const couponEvent = webhookEvent.data.object as Stripe.Coupon
+          const couponEvent = stripeEvent.data.object as Stripe.Coupon
           const couponId = couponEvent?.id
           if (!couponId) {
             console.warn('stripeWebhook: coupon event missing id')
@@ -7415,7 +7391,7 @@ export const handler: Handler = async (event) => {
 
       case 'coupon.deleted': {
         try {
-          const couponEvent = webhookEvent.data.object as {id?: string | null}
+          const couponEvent = stripeEvent.data.object as {id?: string | null}
           const couponId = couponEvent?.id || ''
           if (!couponId) {
             console.warn('stripeWebhook: coupon.deleted missing id')
@@ -7431,7 +7407,7 @@ export const handler: Handler = async (event) => {
       case 'price.created':
       case 'price.updated': {
         try {
-          const price = webhookEvent.data.object as Stripe.Price
+          const price = stripeEvent.data.object as Stripe.Price
           await syncStripePrice(price)
         } catch (err) {
           console.warn('stripeWebhook: failed to sync price event', err)
@@ -7441,7 +7417,7 @@ export const handler: Handler = async (event) => {
 
       case 'price.deleted': {
         try {
-          const deleted = webhookEvent.data.object as {id: string; product?: string | {id?: string}}
+          const deleted = stripeEvent.data.object as {id: string; product?: string | {id?: string}}
           const productId =
             typeof deleted.product === 'string' ? deleted.product : deleted.product?.id
           await removeStripePrice(deleted.id, productId)
@@ -7454,7 +7430,7 @@ export const handler: Handler = async (event) => {
       case 'customer.created':
       case 'customer.updated': {
         try {
-          const customer = webhookEvent.data.object as Stripe.Customer
+          const customer = stripeEvent.data.object as Stripe.Customer
           if (!customer.deleted) {
             await strictFindOrCreateCustomer(customer)
           }
@@ -7466,7 +7442,7 @@ export const handler: Handler = async (event) => {
 
       case 'customer.deleted': {
         try {
-          const deleted = webhookEvent.data.object as {id: string}
+          const deleted = stripeEvent.data.object as {id: string}
           const docId = await sanity.fetch<string | null>(
             `*[_type == "customer" && (stripeCustomerId == $id || $id in stripeCustomerIds)][0]._id`,
             {id: deleted.id},
@@ -7486,7 +7462,7 @@ export const handler: Handler = async (event) => {
       case 'customer.discount.created':
       case 'customer.discount.updated': {
         try {
-          const discount = webhookEvent.data.object as Stripe.Discount
+          const discount = stripeEvent.data.object as Stripe.Discount
           const {coupon, promotion} = await hydrateDiscountResources(stripe, discount)
           await syncCustomerDiscountRecord({
             sanity,
@@ -7503,7 +7479,7 @@ export const handler: Handler = async (event) => {
 
       case 'customer.discount.deleted': {
         try {
-          const discount = webhookEvent.data.object as Stripe.Discount
+          const discount = stripeEvent.data.object as Stripe.Discount
           const stripeCustomerId =
             typeof discount.customer === 'string'
               ? discount.customer
@@ -7523,11 +7499,11 @@ export const handler: Handler = async (event) => {
       case 'shipping.label.updated':
       case 'shipping.tracking.updated': {
         try {
-          const payload = webhookEvent.data.object as Record<string, any>
+          const payload = stripeEvent.data.object as Record<string, any>
           await handleShippingStatusSync(payload, {
-            eventType: webhookEvent.type,
-            stripeEventId: webhookEvent.id,
-            eventCreated: webhookEvent.created,
+            eventType: stripeEvent.type,
+            stripeEventId: stripeEvent.id,
+            eventCreated: stripeEvent.created,
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to handle shipping status event', err)
@@ -7552,7 +7528,7 @@ export const handler: Handler = async (event) => {
       case 'invoice.updated':
       case 'invoice.will_be_due': {
         try {
-          const invoice = webhookEvent.data.object as Stripe.Invoice
+          const invoice = stripeEvent.data.object as Stripe.Invoice
           await syncStripeInvoice(invoice)
 
           const invoiceStatus = (invoice.status || '').toString().toLowerCase()
@@ -7561,14 +7537,14 @@ export const handler: Handler = async (event) => {
             return raw ? raw.toString().trim() : ''
           })()
           const shouldRecordFailure =
-            webhookEvent.type === 'invoice.payment_failed' || invoiceStatus === 'uncollectible'
+            stripeEvent.type === 'invoice.payment_failed' || invoiceStatus === 'uncollectible'
 
           if (shouldRecordFailure) {
             const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
             if (paymentIntent) {
               await markPaymentIntentFailure(paymentIntent)
             }
-          } else if (webhookEvent.type === 'invoice.payment_action_required') {
+          } else if (stripeEvent.type === 'invoice.payment_action_required') {
             const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
             const paymentIntentId =
               paymentIntent?.id ||
@@ -7579,24 +7555,24 @@ export const handler: Handler = async (event) => {
               await updateOrderPaymentStatus({
                 paymentIntentId,
                 paymentStatus: 'requires_action',
-                invoiceStripeStatus: webhookEvent.type,
+                invoiceStripeStatus: stripeEvent.type,
                 metadata: (invoice.metadata || {}) as Record<string, unknown>,
                 preserveExistingFailureDiagnostics: true,
                 event: {
-                  eventType: webhookEvent.type,
+                  eventType: stripeEvent.type,
                   label: 'Invoice requires payment action',
                   message: invoiceIdentifier
                     ? `Invoice ${invoiceIdentifier} requires customer action`
                     : 'Invoice requires customer action',
-                  stripeEventId: webhookEvent.id,
-                  occurredAt: webhookEvent.created,
+                  stripeEventId: stripeEvent.id,
+                  occurredAt: stripeEvent.created,
                   metadata: (invoice.metadata || {}) as Record<string, unknown>,
                 },
               })
             }
           } else if (
-            webhookEvent.type === 'invoice.payment_succeeded' ||
-            webhookEvent.type === 'invoice.paid'
+            stripeEvent.type === 'invoice.payment_succeeded' ||
+            stripeEvent.type === 'invoice.paid'
           ) {
             const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
             const paymentIntentId =
@@ -7618,8 +7594,8 @@ export const handler: Handler = async (event) => {
                     : undefined
               const summary = buildStripeSummary({
                 paymentIntent: paymentIntent || undefined,
-                eventType: webhookEvent.type,
-                eventCreated: webhookEvent.created,
+                eventType: stripeEvent.type,
+                eventCreated: stripeEvent.created,
               })
               const additionalOrderFields = {
                 stripeSummary: serializeStripeSummaryData(summary),
@@ -7636,18 +7612,18 @@ export const handler: Handler = async (event) => {
                 paymentStatus: 'paid',
                 orderStatus: 'paid',
                 invoiceStatus: 'paid',
-                invoiceStripeStatus: webhookEvent.type,
+                invoiceStripeStatus: stripeEvent.type,
                 metadata: (invoice.metadata || {}) as Record<string, unknown>,
                 additionalOrderFields,
                 additionalInvoiceFields,
                 event: {
-                  eventType: webhookEvent.type,
+                  eventType: stripeEvent.type,
                   label: 'Invoice payment succeeded',
                   message: invoiceIdentifier
                     ? `Invoice ${invoiceIdentifier} payment succeeded`
                     : 'Invoice payment succeeded',
-                  stripeEventId: webhookEvent.id,
-                  occurredAt: webhookEvent.created,
+                  stripeEventId: stripeEvent.id,
+                  occurredAt: stripeEvent.created,
                   metadata: (invoice.metadata || {}) as Record<string, unknown>,
                 },
               })
@@ -7663,7 +7639,7 @@ export const handler: Handler = async (event) => {
       case 'invoiceitem.deleted':
       case 'invoiceitem.updated': {
         try {
-          const invoiceItem = webhookEvent.data.object as Stripe.InvoiceItem
+          const invoiceItem = stripeEvent.data.object as Stripe.InvoiceItem
           await syncStripeInvoiceById(
             invoiceItem.invoice as string | Stripe.Invoice | null | undefined,
           )
@@ -7675,7 +7651,7 @@ export const handler: Handler = async (event) => {
 
       case 'payment_intent.payment_failed': {
         try {
-          const pi = webhookEvent.data.object as Stripe.PaymentIntent
+          const pi = stripeEvent.data.object as Stripe.PaymentIntent
           await markPaymentIntentFailure(pi)
         } catch (err) {
           console.warn('stripeWebhook: failed to mark payment failure', err)
@@ -7685,7 +7661,7 @@ export const handler: Handler = async (event) => {
 
       case 'payment_intent.canceled': {
         try {
-          const pi = webhookEvent.data.object as Stripe.PaymentIntent
+          const pi = stripeEvent.data.object as Stripe.PaymentIntent
           const diagnostics = await resolvePaymentFailureDiagnostics(pi)
           await updateOrderPaymentStatus({
             paymentIntentId: pi.id,
@@ -7717,19 +7693,19 @@ export const handler: Handler = async (event) => {
       case 'charge.captured':
       case 'charge.succeeded': {
         try {
-          const charge = webhookEvent.data.object as Stripe.Charge
+          const charge = stripeEvent.data.object as Stripe.Charge
           const amountCaptured =
-            webhookEvent.type === 'charge.captured'
+            stripeEvent.type === 'charge.captured'
               ? toMajorUnits(charge.amount_captured)
               : toMajorUnits(charge.amount || undefined)
           const amountLabel = formatMajorAmount(amountCaptured, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'paid',
             orderStatus: 'paid',
             invoiceStatus: 'paid',
-            label: webhookEvent.type === 'charge.captured' ? 'Charge captured' : 'Charge succeeded',
+            label: stripeEvent.type === 'charge.captured' ? 'Charge captured' : 'Charge succeeded',
             messageParts: [
               charge.id ? `Charge ${charge.id}` : null,
               amountCaptured !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
@@ -7746,12 +7722,12 @@ export const handler: Handler = async (event) => {
 
       case 'charge.pending': {
         try {
-          const charge = webhookEvent.data.object as Stripe.Charge
+          const charge = stripeEvent.data.object as Stripe.Charge
           const amountPending = toMajorUnits(charge.amount || undefined)
           const amountLabel = formatMajorAmount(amountPending, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'pending',
             invoiceStatus: 'pending',
             label: 'Charge pending',
@@ -7771,12 +7747,12 @@ export const handler: Handler = async (event) => {
 
       case 'charge.failed': {
         try {
-          const charge = webhookEvent.data.object as Stripe.Charge
+          const charge = stripeEvent.data.object as Stripe.Charge
           const amountFailed = toMajorUnits(charge.amount || undefined)
           const amountLabel = formatMajorAmount(amountFailed, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'failed',
             orderStatus: 'cancelled',
             invoiceStatus: 'cancelled',
@@ -7809,12 +7785,12 @@ export const handler: Handler = async (event) => {
 
       case 'charge.expired': {
         try {
-          const charge = webhookEvent.data.object as Stripe.Charge
+          const charge = stripeEvent.data.object as Stripe.Charge
           const amount = toMajorUnits(charge.amount || undefined)
           const amountLabel = formatMajorAmount(amount, charge.currency)
           await handleChargeEvent({
             charge,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'expired',
             orderStatus: 'expired',
             invoiceStatus: 'cancelled',
@@ -7834,11 +7810,11 @@ export const handler: Handler = async (event) => {
 
       case 'charge.dispute.created': {
         try {
-          const dispute = webhookEvent.data.object as Stripe.Dispute
+          const dispute = stripeEvent.data.object as Stripe.Dispute
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'disputed',
             label: 'Dispute opened',
             messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
@@ -7851,11 +7827,11 @@ export const handler: Handler = async (event) => {
 
       case 'charge.dispute.updated': {
         try {
-          const dispute = webhookEvent.data.object as Stripe.Dispute
+          const dispute = stripeEvent.data.object as Stripe.Dispute
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'disputed',
             label: 'Dispute updated',
             messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
@@ -7868,7 +7844,7 @@ export const handler: Handler = async (event) => {
 
       case 'charge.dispute.closed': {
         try {
-          const dispute = webhookEvent.data.object as Stripe.Dispute
+          const dispute = stripeEvent.data.object as Stripe.Dispute
           const status = (dispute.status || '').toLowerCase()
           let paymentStatus: string = 'dispute_closed'
           let orderStatus: OrderPaymentStatusInput['orderStatus'] | undefined = undefined
@@ -7887,7 +7863,7 @@ export const handler: Handler = async (event) => {
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus,
             orderStatus,
             invoiceStatus,
@@ -7903,11 +7879,11 @@ export const handler: Handler = async (event) => {
 
       case 'charge.dispute.funds_withdrawn': {
         try {
-          const dispute = webhookEvent.data.object as Stripe.Dispute
+          const dispute = stripeEvent.data.object as Stripe.Dispute
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'dispute_funds_withdrawn',
             label: 'Dispute funds withdrawn',
             messageParts: [
@@ -7924,11 +7900,11 @@ export const handler: Handler = async (event) => {
 
       case 'charge.dispute.funds_reinstated': {
         try {
-          const dispute = webhookEvent.data.object as Stripe.Dispute
+          const dispute = stripeEvent.data.object as Stripe.Dispute
           await handleDisputeEvent({
             dispute,
             charge: null,
-            event: webhookEvent!,
+            event: stripeEvent!,
             paymentStatus: 'dispute_funds_reinstated',
             orderStatus: 'paid',
             invoiceStatus: 'paid',
@@ -7948,25 +7924,25 @@ export const handler: Handler = async (event) => {
       case 'charge.refunded':
       case 'charge.refund.created':
       case 'charge.refund.updated': {
-        await handleRefundWebhookEvent(webhookEvent!)
+        await handleRefundWebhookEvent(stripeEvent!)
         break
       }
 
       case 'refund.created':
       case 'refund.updated':
       case 'refund.failed': {
-        await handleRefundWebhookEvent(webhookEvent!)
+        await handleRefundWebhookEvent(stripeEvent!)
         break
       }
 
       case 'checkout.session.async_payment_succeeded': {
         try {
-          const session = webhookEvent.data.object as Stripe.Checkout.Session
+          const session = stripeEvent.data.object as Stripe.Checkout.Session
           await handleCheckoutAsyncPaymentSucceeded(session, {
-            eventType: webhookEvent.type,
-            invoiceStripeStatus: webhookEvent.type,
-            stripeEventId: webhookEvent.id,
-            eventCreated: webhookEvent.created,
+            eventType: stripeEvent.type,
+            invoiceStripeStatus: stripeEvent.type,
+            stripeEventId: stripeEvent.id,
+            eventCreated: stripeEvent.created,
           })
         } catch (err) {
           console.warn(
@@ -7979,12 +7955,12 @@ export const handler: Handler = async (event) => {
 
       case 'checkout.session.async_payment_failed': {
         try {
-          const session = webhookEvent.data.object as Stripe.Checkout.Session
+          const session = stripeEvent.data.object as Stripe.Checkout.Session
           await handleCheckoutAsyncPaymentFailed(session, {
-            eventType: webhookEvent.type,
-            invoiceStripeStatus: webhookEvent.type,
-            stripeEventId: webhookEvent.id,
-            eventCreated: webhookEvent.created,
+            eventType: stripeEvent.type,
+            invoiceStripeStatus: stripeEvent.type,
+            stripeEventId: stripeEvent.id,
+            eventCreated: stripeEvent.created,
           })
         } catch (err) {
           console.warn('stripeWebhook: failed to handle checkout.session.async_payment_failed', err)
@@ -7993,7 +7969,7 @@ export const handler: Handler = async (event) => {
       }
 
       case 'checkout.session.created': {
-        const session = webhookEvent.data.object as Stripe.Checkout.Session
+        const session = stripeEvent.data.object as Stripe.Checkout.Session
         try {
           await handleCheckoutCreated(session)
         } catch (err) {
@@ -8003,7 +7979,7 @@ export const handler: Handler = async (event) => {
       }
 
       case 'checkout.session.completed': {
-        const session = webhookEvent.data.object as Stripe.Checkout.Session
+        const session = stripeEvent.data.object as Stripe.Checkout.Session
         if (!isValidCheckoutSessionId(session.id)) {
           console.warn('stripeWebhook: invalid checkout session id for completion', {
             sessionId: session.id,
@@ -8032,7 +8008,7 @@ export const handler: Handler = async (event) => {
       }
 
       case 'payment_intent.succeeded': {
-        const pi = webhookEvent.data.object as Stripe.PaymentIntent
+        const pi = stripeEvent.data.object as Stripe.PaymentIntent
         const meta = (pi.metadata || {}) as Record<string, string>
         const userIdMeta =
           (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
@@ -8128,7 +8104,7 @@ export const handler: Handler = async (event) => {
             stripe,
           })
           console.log('🧾 stripeWebhook: entering order persistence phase', {
-            stripeEventId: webhookEvent?.id,
+            stripeEventId: stripeEvent?.id,
             sessionId: normalizedSessionId,
             paymentIntentId: pi.id,
           })
@@ -8374,8 +8350,8 @@ export const handler: Handler = async (event) => {
           baseDoc.stripeSummary = serializeStripeSummaryData(
             buildStripeSummary({
               paymentIntent: pi,
-              eventType: webhookEvent.type,
-              eventCreated: webhookEvent.created,
+              eventType: stripeEvent.type,
+              eventCreated: stripeEvent.created,
             }),
           )
           const fulfillmentResult = deriveFulfillmentFromMetadata(
@@ -8430,20 +8406,20 @@ export const handler: Handler = async (event) => {
           await sanity.patch(existingId).set(baseDoc).commit({autoGenerateArrayKeys: true})
           console.log('✅ stripeWebhook: Sanity order write confirmed', {
             orderId: existingId,
-            stripeEventId: webhookEvent?.id,
+            stripeEventId: stripeEvent?.id,
             paymentIntentId: pi.id,
           })
 
           if (orderId) {
             await appendOrderEvent(orderId, {
-              eventType: webhookEvent.type,
+              eventType: stripeEvent.type,
               status: paymentStatus,
               label: 'Payment intent succeeded',
               message: `Payment intent ${pi.id} succeeded`,
               amount: totalAmount,
               currency: currency ? currency.toUpperCase() : undefined,
-              stripeEventId: webhookEvent.id,
-              occurredAt: webhookEvent.created,
+              stripeEventId: stripeEvent.id,
+              occurredAt: stripeEvent.created,
               metadata: meta,
             })
             await markAbandonedCheckoutRecovered(sanity, resolvedStripeSessionId, orderId)
@@ -8576,13 +8552,13 @@ export const handler: Handler = async (event) => {
         break
       }
       default: {
-        const type = webhookEvent.type || ''
+        const type = stripeEvent.type || ''
         if (type.startsWith('source.')) {
-          await recordStripeWebhookResourceEvent(webhookEvent, 'source')
+          await recordStripeWebhookResourceEvent(stripeEvent, 'source')
         } else if (type.startsWith('person.')) {
-          await recordStripeWebhookResourceEvent(webhookEvent, 'person')
+          await recordStripeWebhookResourceEvent(stripeEvent, 'person')
         } else if (type.startsWith('issuing_dispute.')) {
-          await recordStripeWebhookResourceEvent(webhookEvent, 'issuing_dispute')
+          await recordStripeWebhookResourceEvent(stripeEvent, 'issuing_dispute')
         }
         break
       }
@@ -8590,8 +8566,8 @@ export const handler: Handler = async (event) => {
   } catch (err: any) {
     webhookStatus = 'error'
     webhookSummary = err?.message
-      ? `Error processing ${webhookEvent.type}: ${err.message}`
-      : `Error processing ${webhookEvent.type}`
+      ? `Error processing ${stripeEvent.type}: ${err.message}`
+      : `Error processing ${stripeEvent.type}`
     console.error('stripeWebhook handler error:', err)
     processingError = err instanceof Error ? err : new Error(err?.message || 'Processing error')
     if (eventLogId) {
@@ -8620,16 +8596,16 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  console.log(`🔄 Finalizing webhook record for ${webhookEvent.type} with status: ${webhookStatus}`)
+  console.log(`🔄 Finalizing webhook record for ${stripeEvent.type} with status: ${webhookStatus}`)
   try {
     await recordStripeWebhookEvent({
-      event: webhookEvent!,
+      event: stripeEvent!,
       status: webhookStatus,
       summary: webhookSummary,
     })
-    console.log(`✅ Webhook event recorded successfully: ${webhookEvent.type}`)
+    console.log(`✅ Webhook event recorded successfully: ${stripeEvent.type}`)
   } catch (err) {
-    console.error(`❌ FAILED to record final webhook event for ${webhookEvent.type}:`, err)
+    console.error(`❌ FAILED to record final webhook event for ${stripeEvent.type}:`, err)
     console.warn('stripeWebhook: failed to log webhook event', err)
   }
 
@@ -8659,8 +8635,8 @@ export const handler: Handler = async (event) => {
 
   if (!processingError) {
     console.log('✅ stripeWebhook: handler completed successfully', {
-      stripeEventId: webhookEvent?.id,
-      eventType: webhookEvent?.type,
+      stripeEventId: stripeEvent?.id,
+      eventType: stripeEvent?.type,
     })
   }
   return await finalize(response, webhookStatus === 'error' ? 'error' : 'success', {
