@@ -235,6 +235,7 @@ import {collectionType} from './documents/collection'
 import {colorThemeType} from './documents/colorTheme'
 import {pageType} from './documents/page'
 import expiredCart from './documents/expiredCart'
+import productTable from './documents/productTable'
 import {productVariantType} from './documents/productVariant'
 import vehicleModel from './documents/vehicleModel'
 import {productBundle} from './documents/productBundle'
@@ -347,6 +348,7 @@ const documents = [
   inventory,
   inventoryTransaction,
   expiredCart,
+  productTable,
   category,
   blogCategory,
   productBundle,

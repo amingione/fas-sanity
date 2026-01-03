@@ -149,7 +149,6 @@ const ABANDONED_CHECKOUT_QUERY = `*[
   _type == "abandonedCheckout" &&
   status == "expired" &&
   recoveryEmailSent != true &&
-  !defined(recoveredOrderId._ref) &&
   dateTime(coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)) >= $start &&
   dateTime(coalesce(sessionExpiredAt, sessionCreatedAt, _createdAt)) <= $end
 ]{
