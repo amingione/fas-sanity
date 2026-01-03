@@ -2649,13 +2649,23 @@ async function strictFindOrCreateCustomer(
   const stripeCustomerId = contact.stripeCustomerId || null
   const emailCustomer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
   const stripeCustomerRecord = stripeCustomerId ? await fetchCustomerByStripeId(stripeCustomerId) : null
-  // Prefer the explicit Stripe customer from the event when it conflicts with email lookup.
+  const observedStripeIds = new Set<string>()
+  // NOTE: Stripe customer identity ambiguity is recoverable.
+  // Do NOT throw. Continue with canonical Stripe customer selection.
+  if (stripeCustomerId) observedStripeIds.add(stripeCustomerId)
+  if (stripeCustomerRecord?.stripeCustomerId) observedStripeIds.add(stripeCustomerRecord.stripeCustomerId)
+  if (emailCustomer?.stripeCustomerId) observedStripeIds.add(emailCustomer.stripeCustomerId)
+  ;(stripeCustomerRecord?.stripeCustomerIds || []).forEach((id) => observedStripeIds.add(id))
+  ;(emailCustomer?.stripeCustomerIds || []).forEach((id) => observedStripeIds.add(id))
+
+  // Prefer the explicit Stripe customer from the event/session when it conflicts with email lookup.
   if (stripeCustomerRecord && emailCustomer && stripeCustomerRecord._id !== emailCustomer._id) {
     console.warn('stripeWebhook: customer identity conflict; preferring Stripe customer id', {
       stripeCustomerId,
       email: normalizedEmail,
       stripeCustomerDocId: stripeCustomerRecord._id,
       emailCustomerDocId: emailCustomer._id,
+      observedStripeIds: Array.from(observedStripeIds),
       action: 'preferStripeCustomerId',
     })
   }
@@ -5493,6 +5503,12 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   const normalizedEmail = normalizeEmail(email)
   const stripeCustomerId = stripeCustomer.id
   const emailCustomer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
+  const observedStripeIds = new Set<string>()
+  // NOTE: Stripe customer identity ambiguity is recoverable.
+  // Do NOT throw. Continue with canonical Stripe customer selection.
+  if (stripeCustomerId) observedStripeIds.add(stripeCustomerId)
+  if (emailCustomer?.stripeCustomerId) observedStripeIds.add(emailCustomer.stripeCustomerId)
+  ;(emailCustomer?.stripeCustomerIds || []).forEach((id) => observedStripeIds.add(id))
 
   const ensureVendorRolePatch = (customer: {
     roles?: string[] | null
@@ -5543,6 +5559,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
       email: normalizedEmail,
       stripeCustomerDocId: customer._id,
       emailCustomerDocId: emailCustomer._id,
+      observedStripeIds: Array.from(observedStripeIds),
       action: 'preferStripeCustomerId',
     })
   }
