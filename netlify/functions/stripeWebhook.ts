@@ -4,7 +4,6 @@ import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import type {CartItem, CartProductSummary} from '../lib/cartEnrichment'
 import {createClient} from '@sanity/client'
-import {Resend} from 'resend'
 import {randomUUID} from 'crypto'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
@@ -59,12 +58,7 @@ import {
   applyShippingDetailsToDoc,
   deriveFulfillmentFromMetadata,
 } from '../lib/fulfillmentFromMetadata'
-import {
-  simplifyCartForAbandonedCheckout,
-  buildAbandonedCartSummary,
-  upsertAbandonedCheckoutDocument,
-  markAbandonedCheckoutRecovered,
-} from '../lib/abandonedCheckouts'
+import {markAbandonedCheckoutRecovered} from '../lib/abandonedCheckouts'
 import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {resolveResendApiKey} from '../../shared/resendEnv'
@@ -75,6 +69,7 @@ import {
   linkOrderToInvoice,
 } from '../lib/referenceIntegrity'
 import {markStripeCouponDeleted, syncStripeCouponById} from '../lib/stripeCoupons'
+import {handleCheckoutSessionExpired} from './handlers/checkoutSessionExpired'
 
 function cleanCartItemForStorage(item: CartItem): CartItem {
   const normalizeAddOnLabel = (value: string): string | undefined => {
@@ -2421,27 +2416,6 @@ async function upsertCheckoutSessionDocument(
   }
 }
 
-async function addToAbandonedCartAudience(email?: string | null, customerName?: string | null) {
-  if (!email || !RESEND_ABANDONED_AUDIENCE || !resendClient) return
-  const trimmed = email.trim()
-  if (!trimmed) return
-  const [firstName, ...rest] = (customerName || '').trim().split(/\s+/).filter(Boolean)
-  try {
-    await resendClient.contacts.create({
-      audienceId: RESEND_ABANDONED_AUDIENCE,
-      email: trimmed,
-      firstName: firstName || undefined,
-      lastName: rest.join(' ') || undefined,
-      unsubscribed: false,
-    })
-  } catch (err: any) {
-    const message = err?.message || ''
-    if (!message.toLowerCase().includes('already exists')) {
-      console.warn('stripeWebhook: failed to add abandoned cart contact', err)
-    }
-  }
-}
-
 const stripeKey = resolveStripeSecretKey()
 if (!stripeKey) {
   console.error(
@@ -2450,9 +2424,6 @@ if (!stripeKey) {
 }
 const stripe = stripeKey ? new Stripe(stripeKey, {apiVersion: STRIPE_API_VERSION}) : (null as any)
 const RESEND_API_KEY = resolveResendApiKey() || ''
-const resendClient = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
-const RESEND_ABANDONED_AUDIENCE =
-  process.env.RESEND_AUDIENCE_ABANDONED_CART || process.env.RESEND_AUDIENCE_ABANDONED_CART_ID || ''
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -2461,6 +2432,46 @@ const sanity = createClient({
   token: process.env.SANITY_API_TOKEN as string,
   useCdn: false,
 })
+const sanityClient = sanity
+
+const markCartRecovered = async (
+  cartId?: string | null,
+  recoveredSessionId?: string | null,
+): Promise<void> => {
+  if (!cartId) return
+  const trimmed = cartId.trim()
+  if (!trimmed) return
+
+  const productTable = await sanityClient.fetch<{_id: string; carts?: any[]} | null>(
+    `*[_id == "productTable"][0]{_id, carts}`,
+  )
+  if (!productTable?._id || !Array.isArray(productTable.carts)) return
+
+  const index = productTable.carts.findIndex(
+    (cart) => cart.cartId === trimmed || cart._key === trimmed,
+  )
+  if (index < 0) return
+
+  const now = new Date().toISOString()
+  const existing = productTable.carts[index]
+  const updated = {
+    ...existing,
+    status: 'recovered',
+    recovery: {
+      recovered: true,
+      recoveredAt: now,
+      recoveredSessionId: recoveredSessionId || null,
+    },
+  }
+
+  const nextCarts = [...productTable.carts]
+  nextCarts[index] = updated
+
+  await sanityClient
+    .patch(productTable._id)
+    .set({carts: nextCarts})
+    .commit({autoGenerateArrayKeys: true})
+}
 
 // Dedicated client for strict order creation + backfill requirements.
 const webhookSanityClient = createClient({
@@ -6856,222 +6867,6 @@ async function handleCheckoutCreated(session: Stripe.Checkout.Session): Promise<
   }
 }
 
-async function handleCheckoutExpired(
-  session: Stripe.Checkout.Session,
-  context: {stripeEventId?: string; eventCreated?: number | null} = {},
-): Promise<void> {
-  const timestamp = new Date().toISOString()
-  const failureCode = 'checkout.session.expired'
-  const metadata = (session.metadata || {}) as Record<string, string>
-  let cartItems: CartItem[] = []
-  try {
-    const result = await buildCartFromSessionLineItems(session.id, metadata)
-    cartItems = result.items
-  } catch (err) {
-    console.warn('stripeWebhook: failed to load cart for expired session', err)
-    cartItems = parseCartItemsFromMetadata(metadata, {sessionId: session.id}).items
-  }
-  let contact = await resolveCheckoutCustomerContact(session)
-  let expandedSession: Stripe.Checkout.Session | null = null
-  if ((!contact.email || !contact.name || !contact.phone) && stripe) {
-    if (!isValidCheckoutSessionId(session.id)) {
-      console.warn('stripeWebhook: invalid checkout session id for expiration lookup', {
-        sessionId: session.id,
-      })
-    } else {
-      try {
-        expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
-          expand: ['customer', 'customer_details', 'line_items', 'total_details'],
-        })
-        if (expandedSession) {
-          contact = await resolveCheckoutCustomerContact(expandedSession)
-        }
-        // If we successfully fetched line items, prefer them for cart reconstruction
-        if (!cartItems.length && expandedSession?.line_items) {
-          try {
-            const mapped = (expandedSession.line_items.data || []) as Stripe.LineItem[]
-            const result = await buildCartFromSessionLineItems(session.id, metadata, {
-              lineItems: mapped,
-            })
-            cartItems = result.items
-          } catch (err) {
-            console.warn('stripeWebhook: failed to load cart from expanded expired session', err)
-          }
-        }
-      } catch (err) {
-        console.warn('stripeWebhook: failed to expand checkout session on expiration', err)
-      }
-    }
-  }
-  const simplifiedCart = simplifyCartForAbandonedCheckout(cartItems)
-  const cartSummary =
-    metadata['cart_summary'] ||
-    metadata['cartSummary'] ||
-    (simplifiedCart.length ? buildAbandonedCartSummary(simplifiedCart) : '') ||
-    ''
-  const email = contact.email || ''
-  const customerPhone =
-    contact.phone ||
-    session.customer_details?.phone ||
-    (session.metadata?.customer_phone as string | undefined) ||
-    undefined
-  const expiresAt =
-    typeof session.expires_at === 'number'
-      ? new Date(session.expires_at * 1000).toISOString()
-      : null
-  const expiredAt = expiresAt || timestamp
-  const createdAt =
-    typeof session.created === 'number' ? new Date(session.created * 1000).toISOString() : timestamp
-  let failureMessage = 'Checkout session expired before payment was completed.'
-  if (email) failureMessage = `${failureMessage} Customer: ${email}.`
-  if (expiresAt) failureMessage = `${failureMessage} Expired at ${expiresAt}.`
-  failureMessage = `${failureMessage} (session ${session.id})`
-  const amountTotal = toMajorUnits(session.amount_total ?? undefined)
-  const amountSubtotal = toMajorUnits((session as any)?.amount_subtotal ?? undefined)
-  const amountTax = toMajorUnits((session as any)?.total_details?.amount_tax ?? undefined)
-  const shippingRaw = Number((session as any)?.shipping_cost?.amount_total)
-  const altShipping = Number((session as any)?.total_details?.amount_shipping)
-  const shippingCost = Number.isFinite(shippingRaw)
-    ? shippingRaw / 100
-    : Number.isFinite(altShipping)
-      ? altShipping / 100
-      : undefined
-  const currencyLower = (session.currency || '').toString().toLowerCase() || undefined
-  const currencyUpper = currencyLower ? currencyLower.toUpperCase() : undefined
-  const summary = buildStripeSummary({
-    session: expandedSession || session,
-    failureCode,
-    failureMessage,
-    eventType: 'checkout.session.expired',
-    eventCreated: session.created || null,
-  })
-  const attribution = extractAttributionFromMetadata(
-    metadata,
-    session?.id ? {session_id: session.id} : undefined,
-  )
-  const checkoutRecoveryUrl =
-    ((session as any)?.after_expiration as any)?.recovery?.url ||
-    (typeof (session as any)?.url === 'string' ? (session as any).url : undefined) ||
-    metadata['checkout_url'] ||
-    metadata['checkoutUrl'] ||
-    metadata['recovery_url'] ||
-    metadata['recoveryUrl'] ||
-    metadata['stripe_checkout_url']
-
-  const addressSource =
-    (session.customer_details?.address as Stripe.Address | undefined) ||
-    ((session as any)?.shipping_details?.address as Stripe.Address | undefined)
-  const shippingName =
-    session.customer_details?.name || (session as any)?.shipping_details?.name || undefined
-  const shippingAddress =
-    addressSource && Object.keys(addressSource).length
-      ? pruneUndefined({
-          name: shippingName || undefined,
-          line1: addressSource.line1,
-          line2: addressSource.line2,
-          city: addressSource.city,
-          state: addressSource.state,
-          postalCode: addressSource.postal_code,
-          country: addressSource.country,
-        })
-      : undefined
-
-  const customerName =
-    (contact.name ||
-      shippingName ||
-      metaValue(metadata, 'customer_name', 'bill_to_name') ||
-      session.customer_details?.name ||
-      email ||
-      '')
-      .toString()
-      .trim() || undefined
-
-  const sessionMetadataDoc = pruneUndefined({
-    browser: metaValue(metadata, 'browser', 'Browser'),
-    device: metaValue(metadata, 'device', 'Device'),
-    os: metaValue(metadata, 'os', 'OS'),
-    landingPage: metaValue(metadata, 'landing_page', 'landingPage'),
-    referrer: metaValue(metadata, 'referrer', 'referrer_url', 'referrerUrl'),
-    shippingMode: metaValue(metadata, 'shipping_mode', 'shippingMode'),
-  })
-
-  try {
-    const docId = await upsertAbandonedCheckoutDocument(sanity, {
-      checkoutId: `ABANDONED-${Date.now()}`,
-      stripeSessionId: session.id,
-      status: 'expired',
-      customerEmail: email || undefined,
-      customerName,
-      customerPhone: customerPhone || undefined,
-      cart: simplifiedCart.length ? simplifiedCart : undefined,
-      cartSummary: cartSummary || undefined,
-      amountSubtotal,
-      amountTotal,
-      shippingCost,
-      shippingAddress: shippingAddress && Object.keys(shippingAddress).length ? shippingAddress : undefined,
-      sessionMetadata: Object.keys(sessionMetadataDoc).length
-        ? sessionMetadataDoc
-        : undefined,
-      recoveryEmailSent: false,
-      sessionCreatedAt: createdAt,
-      sessionExpiredAt: expiredAt,
-    })
-    if (docId) {
-      console.log('stripeWebhook: recorded abandoned checkout', docId)
-    }
-  } catch (err) {
-    console.warn('stripeWebhook: failed to upsert abandoned checkout document', err)
-  }
-
-  const invoiceMetaId = normalizeSanityId(metadata['sanity_invoice_id'])
-  if (invoiceMetaId) {
-    const invoiceId = await sanity.fetch<string | null>(
-      `*[_type == "invoice" && _id in $ids][0]._id`,
-      {ids: idVariants(invoiceMetaId)},
-    )
-    if (invoiceId) {
-      try {
-        await sanity
-          .patch(invoiceId)
-          .set({
-            status: 'expired',
-            stripeInvoiceStatus: 'checkout.session.expired',
-            stripeLastSyncedAt: timestamp,
-            paymentFailureCode: failureCode,
-            paymentFailureMessage: failureMessage,
-          })
-          .commit({autoGenerateArrayKeys: true})
-      } catch (err) {
-        console.warn('stripeWebhook: failed to update invoice after checkout expiration', err)
-      }
-    }
-  }
-
-  try {
-    const expiredCustomer = await strictFindOrCreateCustomer(session)
-    await upsertCheckoutSessionDocument(session, {
-      cart: cartItems,
-      metadata,
-      createdAt,
-      expiresAt,
-      expiredAt,
-      amountSubtotal,
-      amountTax,
-      amountShipping: shippingCost,
-      amountTotal,
-      currency: currencyUpper || currencyLower,
-      customerName,
-      customerId: expiredCustomer?._id || undefined,
-      checkoutUrl: checkoutRecoveryUrl,
-      attribution,
-    })
-  } catch (err) {
-    console.warn('stripeWebhook: failed to upsert checkoutSession document', err)
-  }
-
-  await addToAbandonedCartAudience(email, customerName)
-}
-
 async function sendOrderConfirmationEmail(opts: {
   to: string
   orderNumber: string
@@ -7274,6 +7069,17 @@ async function sendOrderConfirmationEmail(opts: {
 // - payment_intent.succeeded without session mapping logs and exits 200
 // - customer with existing email but new stripe customer id appends alias rather than throwing
 // - invalid cart metadata does not break; line-items still works; if cart cannot be built, invalidCart recorded and 200 returned
+/**
+ * 🔒 CART-ONLY EVENT — ENFORCED BY CI + SCHEMA
+ *
+ * checkout.session.expired MUST NOT:
+ * - create orders
+ * - create invoices
+ * - touch payments
+ * - trigger fulfillment
+ *
+ * Any regression MUST fail CI.
+ */
 export const handler: Handler = async (event) => {
   console.log('🔔 stripeWebhook: handler invoked', {
     method: event?.httpMethod,
@@ -7296,7 +7102,6 @@ export const handler: Handler = async (event) => {
     sanityWriteTokenSet: Boolean(process.env.SANITY_WRITE_TOKEN),
     sanityApiTokenSet: Boolean(process.env.SANITY_API_TOKEN),
     resendApiKeySet: Boolean(RESEND_API_KEY),
-    resendAbandonedAudience: RESEND_ABANDONED_AUDIENCE || null,
   })
   const startTime = Date.now()
   let webhookEvent: Stripe.Event | null = null
@@ -7416,6 +7221,10 @@ export const handler: Handler = async (event) => {
         'error',
         {message: 'Stripe event missing from payload'},
       )
+    }
+
+    if (webhookEvent.type === 'checkout.session.expired') {
+      return await handleCheckoutSessionExpired(webhookEvent)
     }
 
     webhookSummary = summarizeEventType(webhookEvent.type || '')
@@ -8207,31 +8016,17 @@ export const handler: Handler = async (event) => {
           const result = await createOrderFromCheckout(session)
           if (result?.status) webhookStatus = result.status
           if (result?.summary) webhookSummary = result.summary
+          if (result?.status === 'processed' && session.metadata?.cart_id) {
+            try {
+              await markCartRecovered(session.metadata.cart_id, session.id)
+            } catch (err) {
+              console.warn('stripeWebhook: failed to mark cart recovered', err)
+            }
+          }
         } catch (err) {
           webhookStatus = 'error'
           webhookSummary = 'checkout.session.completed processing error'
           console.error('stripeWebhook: strict checkout order creation failed', err)
-        }
-        break
-      }
-
-      case 'checkout.session.expired': {
-        const session = webhookEvent.data.object as Stripe.Checkout.Session
-        if (!isValidCheckoutSessionId(session.id)) {
-          console.warn('stripeWebhook: invalid checkout session id for expiration', {
-            sessionId: session.id,
-          })
-          webhookStatus = 'ignored'
-          webhookSummary = 'checkout.session.expired ignored (invalid session id)'
-          break
-        }
-        try {
-          await handleCheckoutExpired(session, {
-            stripeEventId: webhookEvent.id,
-            eventCreated: webhookEvent.created,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle checkout.session.expired', err)
         }
         break
       }

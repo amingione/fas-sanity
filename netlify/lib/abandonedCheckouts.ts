@@ -119,7 +119,7 @@ export async function upsertAbandonedCheckoutDocument(
 export async function markAbandonedCheckoutRecovered(
   client: SanityClient,
   stripeSessionId?: string,
-  orderId?: string | null,
+  _orderId?: string | null,
 ): Promise<void> {
   if (!client || !stripeSessionId) return
   const doc = await client.fetch<{_id: string} | null>(
@@ -129,9 +129,6 @@ export async function markAbandonedCheckoutRecovered(
   if (!doc?._id) return
   const patch: Record<string, any> = {
     status: 'recovered',
-  }
-  if (orderId) {
-    patch.recoveredOrderId = {_type: 'reference', _ref: orderId}
   }
   try {
     await client.patch(doc._id).set(patch).commit({autoGenerateArrayKeys: true})

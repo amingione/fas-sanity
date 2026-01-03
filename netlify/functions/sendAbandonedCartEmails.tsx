@@ -3,9 +3,10 @@ import {createClient} from '@sanity/client'
 import {render} from '@react-email/render'
 import {Resend} from 'resend'
 import {logFunctionExecution} from '../../utils/functionLogger'
-import AbandonedCartEmail, {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
+import type {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {buildAbandonedCartEmail} from '../lib/abandonedCartEmail'
 
 type CheckoutSessionDoc = {
   _id: string
@@ -42,18 +43,6 @@ const sanity =
 
 const resendApiKey = resolveResendApiKey() || ''
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
-const FROM_EMAIL =
-  process.env.FROM_EMAIL ||
-  process.env.RESEND_FROM ||
-  process.env.NOTIFY_FROM ||
-  'orders@fasmotorsports.com'
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.NOTIFY_EMAIL || 'support@fasmotorsports.com'
-const SUPPORT_PHONE = process.env.SUPPORT_PHONE || process.env.SHIP_FROM_PHONE || '(812) 200-9012'
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.PUBLIC_SITE_URL ||
-  process.env.SANITY_STUDIO_NETLIFY_BASE ||
-  ''
 const ABANDONED_AUDIENCE =
   process.env.RESEND_AUDIENCE_ABANDONED_CART ||
   process.env.RESEND_AUDIENCE_ABANDONED_CART_ID ||
@@ -259,27 +248,26 @@ const handler: Handler = async (event) => {
     }
 
     try {
-      const subject = '🛒 Your cart is waiting at FAS Motorsports'
-      const missing = getMissingResendFields({to, from: FROM_EMAIL, subject})
+      const emailPayload = buildAbandonedCartEmail({
+        customerName: checkout.customerName || 'Valued Customer',
+        cart: mapCartItems(checkout.cart),
+        totalAmount: Number(checkout.totalAmount || 0),
+        checkoutUrl,
+      })
+      const missing = getMissingResendFields({
+        to,
+        from: emailPayload.from,
+        subject: emailPayload.subject,
+      })
       if (missing.length) {
         throw new Error(`Missing email fields: ${missing.join(', ')}`)
       }
-      const html = await render(
-        <AbandonedCartEmail
-          customerName={checkout.customerName || 'Valued Customer'}
-          cart={mapCartItems(checkout.cart)}
-          totalAmount={Number(checkout.totalAmount || 0)}
-          checkoutUrl={checkoutUrl}
-          supportEmail={SUPPORT_EMAIL}
-          supportPhone={SUPPORT_PHONE}
-          siteUrl={SITE_URL}
-        />,
-      )
+      const html = await render(emailPayload.react)
 
       const {data, error} = await resendClient.emails.send({
-        from: FROM_EMAIL,
+        from: emailPayload.from,
         to,
-        subject,
+        subject: emailPayload.subject,
         html,
         tags: [
           {name: 'type', value: 'abandoned_cart'},

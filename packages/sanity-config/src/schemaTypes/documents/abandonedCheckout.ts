@@ -155,11 +155,14 @@ export default defineType({
       type: 'datetime',
     }),
     defineField({
-      name: 'recoveredOrderId',
-      title: 'Recovered Order ID',
+      name: 'forbiddenOrderRef',
+      title: 'Order Reference (Forbidden)',
       type: 'reference',
       to: [{type: 'order'}],
-      description: 'Link to order if customer completed checkout after recovery email',
+      hidden: true,
+      readOnly: true,
+      validation: (Rule) =>
+        Rule.custom((value) => (value ? 'Abandoned checkouts must never reference orders.' : true)),
     }),
     defineField({
       name: 'sessionCreatedAt',

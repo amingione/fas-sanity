@@ -255,11 +255,14 @@ export default defineType({
       initialValue: false,
     }),
     defineField({
-      name: 'recoveredOrderRef',
+      name: 'forbiddenOrderRef',
       type: 'reference',
-      title: 'Recovered Order',
-      description: 'Link to the order if customer completed purchase',
+      title: 'Order Reference (Forbidden)',
       to: [{type: 'order'}],
+      hidden: true,
+      readOnly: true,
+      validation: (Rule) =>
+        Rule.custom((value) => (value ? 'Checkout sessions must never reference orders.' : true)),
     }),
     defineField({
       name: 'stripeCheckoutUrl',
