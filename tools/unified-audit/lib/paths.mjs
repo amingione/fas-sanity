@@ -43,5 +43,15 @@ export function resolveRepos() {
 
 export function resolveOutDir(stamp) {
   const baseDir = path.dirname(fileURLToPath(import.meta.url))
-  return path.resolve(baseDir, '..', 'out', stamp)
+  const outBase = path.resolve(baseDir, '..', 'out')
+  let candidate = path.join(outBase, stamp)
+  if (!fs.existsSync(candidate)) return candidate
+
+  let counter = 2
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(outBase, `${stamp}-${counter}`)
+    counter += 1
+  }
+
+  return candidate
 }

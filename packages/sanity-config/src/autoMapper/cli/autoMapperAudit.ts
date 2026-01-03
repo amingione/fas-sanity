@@ -42,8 +42,22 @@ function parseDiagnostics(filePath: string, source: string): string[] {
   const ext = path.extname(filePath)
   const isTsx = ext === '.tsx'
   const kind = isTsx ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-  const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.ES2020, true, kind)
-  return sourceFile.parseDiagnostics.map((diag) => ts.flattenDiagnosticMessageText(diag.messageText, '\n'))
+  const options: ts.CompilerOptions = {
+    allowJs: true,
+    jsx: ts.JsxEmit.Preserve,
+  }
+  const host = ts.createCompilerHost(options, true)
+  host.readFile = (fileName) => (fileName === filePath ? source : undefined)
+  host.fileExists = (fileName) => fileName === filePath
+  host.getSourceFile = (fileName, languageVersion) => {
+    if (fileName !== filePath) return undefined
+    return ts.createSourceFile(fileName, source, languageVersion, true, kind)
+  }
+
+  const program = ts.createProgram([filePath], options, host)
+  return ts
+    .getPreEmitDiagnostics(program)
+    .map((diag) => ts.flattenDiagnosticMessageText(diag.messageText, '\n'))
 }
 
 export function runAutoMapperAudit(root: string): AuditReport {

@@ -3,12 +3,14 @@
 /* global process, console */
 import fs from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
+import {pathToFileURL} from 'node:url'
 import minimist from 'minimist'
-import { sortBy, writeJson } from '../lib/utils.mjs'
+import {sortBy, writeJson} from '../lib/utils.mjs'
 
 function usage() {
-  console.log('Usage: node tools/unified-audit/scripts/obsolete-functions-smoke.mjs --input <functions-summary.json> [--out <output.json>]')
+  console.log(
+    'Usage: node tools/unified-audit/scripts/obsolete-functions-smoke.mjs --input <functions-summary.json> [--out <output.json>]',
+  )
 }
 
 function detectHandlersFromSource(contents) {
@@ -81,9 +83,10 @@ async function run() {
 
     if (ext === '.ts' || ext === '.tsx') {
       record.status = sourceHandlers.length > 0 ? 'OK' : 'WARN'
-      record.reason = sourceHandlers.length > 0
-        ? 'TypeScript file inspected (static handler detection)'
-        : 'No handler export detected (static scan)'
+      record.reason =
+        sourceHandlers.length > 0
+          ? 'TypeScript file inspected (static handler detection)'
+          : 'No handler export detected (static scan)'
       record.handlers = sourceHandlers
       record.mode = 'static'
       results.push(record)
@@ -93,9 +96,10 @@ async function run() {
     try {
       const handlers = await detectHandlersFromModule(filePath)
       record.status = handlers.length > 0 ? 'OK' : 'WARN'
-      record.reason = handlers.length > 0
-        ? 'Module loaded (export scan)'
-        : 'No handler export detected (module scan)'
+      record.reason =
+        handlers.length > 0
+          ? 'Module loaded (export scan)'
+          : 'No handler export detected (module scan)'
       record.handlers = handlers
       record.mode = 'import'
     } catch (error) {
