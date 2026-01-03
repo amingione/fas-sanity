@@ -4,14 +4,10 @@ import path from 'node:path'
 export function nowStamp() {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
-  return [
-    d.getFullYear(),
-    pad(d.getMonth() + 1),
-    pad(d.getDate()),
-    pad(d.getHours()),
-    pad(d.getMinutes()),
-    pad(d.getSeconds()),
-  ].join('')
+  const year = String(d.getFullYear()).slice(-2)
+  const month = pad(d.getMonth() + 1)
+  const day = pad(d.getDate())
+  return `audit-${month}-${day}-${year}`
 }
 
 export function ensureDir(dirPath) {
