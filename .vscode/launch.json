@@ -11,13 +11,11 @@
     },
     {
       "name": "Sanity Dev",
-      "type": "pwa-node",
+      "type": "node",
       "request": "launch",
-      "runtimeExecutable": "~/.nvm/versions/node/v20.19.1/bin/node",
+      "runtimeExecutable": "node",
       "program": "${workspaceFolder}/node_modules/sanity/bin/sanity",
-      "args": [
-        "dev"
-      ],
+      "args": ["dev"],
       "cwd": "${workspaceFolder}"
     }
   ]
