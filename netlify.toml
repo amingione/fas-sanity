@@ -1,3 +1,7 @@
+# Secrets handling policy:
+# - Local dev (netlify dev): uses env vars only; no AWS secrets or shims
+# - CI/Production: may use @netlify/plugin-secrets-manager + aws-secrets-shim
+# - Plugins must be scoped by context (not conditional)
 [build]
   command = "pnpm run build:ci"
   publish = "dist"
@@ -5,7 +9,7 @@
 [build.environment]
   NODE_VERSION = "20.19.1"
   MISE_DISABLE = "1"
-  NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs"
+  NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs" # CI/prod shim preload only.
   # Allow specific environment variable names to pass secret scanning since
   # their values are required during builds but are not written to the public build output.
   SECRETS_SCAN_OMIT_KEYS = "CHECK_PRINTER_SANITY_TOKEN,CORS_ALLOW,CORS_ORIGIN"
@@ -30,7 +34,7 @@
   external_node_modules = ["get-stream", "@aws-sdk/client-secrets-manager"]
 
 [functions.environment]
-  NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs"
+  NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs" # CI/prod runtime preload only.
 
 [functions.masterBackfill]
   node_module_format = "esm"
@@ -45,7 +49,7 @@
   SANITY_STUDIO_PORT = "3333"
 
 [context.dev.environment]
-  NODE_OPTIONS = "" # Clear preload locally; production NODE_OPTIONS stays in functions.environment.
+  NODE_OPTIONS = "" # Local dev: no AWS secrets shim.
 
 [[scheduled_function]]
   name = "syncMarketingAttribution"

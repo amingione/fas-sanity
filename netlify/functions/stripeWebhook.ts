@@ -2627,6 +2627,8 @@ const fetchVendorByEmail = async (email: string) =>
 // Strict order creation helpers (mandatory field enforcement)
 // ---------------------------------------------------------------------------
 
+// INVARIANT: This function must never throw due to Stripe customer identity ambiguity.
+// CI GUARD: Do not introduce `throw` statements for identity conflicts.
 async function strictFindOrCreateCustomer(
   input: Stripe.Checkout.Session | Stripe.Customer,
 ) {
@@ -5489,6 +5491,8 @@ function buildBillingAddress(address?: Stripe.Address | null, name?: string | nu
   }
 }
 
+// INVARIANT: This function must never throw due to Stripe customer identity ambiguity.
+// CI GUARD: Do not introduce `throw` statements for identity conflicts.
 async function strictFindOrCreateCustomerFromStripeCustomer(
   stripeCustomer: Stripe.Customer,
 ): Promise<IdentityCustomer | null> {
