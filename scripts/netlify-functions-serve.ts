@@ -5,7 +5,10 @@ import {spawn} from 'node:child_process'
 const args = process.argv.slice(2)
 
 const env = {...process.env}
-delete env.NODE_OPTIONS
+const isDevContext = env.CONTEXT === 'dev' || env.NETLIFY_LOCAL === 'true'
+if (isDevContext) {
+  delete env.NODE_OPTIONS // Prevent local aws-secrets-shim preload.
+}
 delete env.NETLIFY_AUTH_TOKEN
 
 const child = spawn(

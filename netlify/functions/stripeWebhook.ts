@@ -27,6 +27,12 @@ import {
 } from '../lib/stripeSummary'
 import {resolveStripeShippingDetails} from '../lib/stripeShipping'
 import {
+  CUSTOMER_METRICS_QUERY,
+  buildCustomerMetricsPatch,
+  metricsChanged,
+  type CustomerMetricsSource,
+} from '../lib/customerSegments'
+import {
   normalizeMetadataEntries,
   deriveOptionsFromMetadata,
   remainingMetadataEntries,
@@ -2641,6 +2647,18 @@ async function strictFindOrCreateCustomer(
     fallbackName: name,
   })
   const stripeCustomerId = contact.stripeCustomerId || null
+  const emailCustomer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
+  const stripeCustomerRecord = stripeCustomerId ? await fetchCustomerByStripeId(stripeCustomerId) : null
+  // Prefer the explicit Stripe customer from the event when it conflicts with email lookup.
+  if (stripeCustomerRecord && emailCustomer && stripeCustomerRecord._id !== emailCustomer._id) {
+    console.warn('stripeWebhook: customer identity conflict; preferring Stripe customer id', {
+      stripeCustomerId,
+      email: normalizedEmail,
+      stripeCustomerDocId: stripeCustomerRecord._id,
+      emailCustomerDocId: emailCustomer._id,
+      action: 'preferStripeCustomerId',
+    })
+  }
 
   const ensureNamePatch = (customer: {
     name?: string | null
@@ -2725,7 +2743,7 @@ async function strictFindOrCreateCustomer(
   let allowVendorLink = true
 
   if (stripeCustomerId) {
-    let customer = await fetchCustomerByStripeId(stripeCustomerId)
+    let customer = stripeCustomerRecord
     if (customer) {
       if (vendor) {
         const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
@@ -2783,7 +2801,7 @@ async function strictFindOrCreateCustomer(
     let customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
     if (!customer && normalizedEmail) {
-      customer = await fetchCustomerByEmail(normalizedEmail)
+      customer = emailCustomer
     }
 
     if (!customer) {
@@ -2833,7 +2851,7 @@ async function strictFindOrCreateCustomer(
     return customer
   }
 
-  let customer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
+  let customer = emailCustomer
 
   if (!customer) {
     const newCustomerId = `customer.${randomUUID()}`
@@ -3911,8 +3929,9 @@ async function createOrderFromCheckout(
   }
 
   if (order?._id) {
+    let updatedCustomerId: string | null = null
     try {
-      await updateCustomerProfileForOrder({
+      updatedCustomerId = await updateCustomerProfileForOrder({
         sanity: webhookSanityClient,
         orderId: order._id,
         customerId: orderCustomerId || undefined,
@@ -3931,6 +3950,10 @@ async function createOrderFromCheckout(
       })
     } catch (err) {
       console.warn('stripeWebhook: failed to sync customer profile after checkout', err)
+    }
+    const metricsCustomerId = updatedCustomerId || orderCustomerId || undefined
+    if (metricsCustomerId) {
+      await updateCustomerMetricsForId(webhookSanityClient, metricsCustomerId)
     }
   }
 
@@ -4015,6 +4038,26 @@ const mergeMetadata = (
     }
   }
   return Object.keys(merged).length ? merged : undefined
+}
+
+async function updateCustomerMetricsForId(
+  client: ReturnType<typeof createClient>,
+  customerId?: string | null,
+): Promise<void> {
+  if (!customerId) return
+  try {
+    const customers = await client.fetch<CustomerMetricsSource[]>(CUSTOMER_METRICS_QUERY, {
+      customerId,
+      limit: 1,
+    })
+    const customer = customers?.[0]
+    if (!customer?._id) return
+    const patch = buildCustomerMetricsPatch(customer, new Date())
+    if (!metricsChanged(patch, customer.current)) return
+    await client.patch(customer._id).set(patch).commit()
+  } catch (err) {
+    console.warn('stripeWebhook: failed to refresh customer metrics', err)
+  }
 }
 
 function isStripeProduct(
@@ -5449,6 +5492,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   const email = emailRaw || ''
   const normalizedEmail = normalizeEmail(email)
   const stripeCustomerId = stripeCustomer.id
+  const emailCustomer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
 
   const ensureVendorRolePatch = (customer: {
     roles?: string[] | null
@@ -5492,6 +5536,16 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   if (stripeCustomerId) {
     customer = await fetchCustomerByStripeId(stripeCustomerId)
   }
+  // Prefer the Stripe customer on the event over email-based lookup conflicts.
+  if (customer && emailCustomer && customer._id !== emailCustomer._id) {
+    console.warn('stripeWebhook: customer identity conflict; preferring Stripe customer id', {
+      stripeCustomerId,
+      email: normalizedEmail,
+      stripeCustomerDocId: customer._id,
+      emailCustomerDocId: emailCustomer._id,
+      action: 'preferStripeCustomerId',
+    })
+  }
 
   if (customer && vendor) {
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
@@ -5510,7 +5564,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
     customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
     if (!customer && normalizedEmail) {
-      customer = await fetchCustomerByEmail(normalizedEmail)
+      customer = emailCustomer
     }
 
     if (!customer) {
@@ -5530,7 +5584,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   }
 
   if (!customer && normalizedEmail) {
-    customer = await fetchCustomerByEmail(normalizedEmail)
+    customer = emailCustomer
   }
 
   if (!customer) {
@@ -6511,8 +6565,9 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     }
   }
 
+  let updatedCustomerId: string | null = null
   try {
-    await updateCustomerProfileForOrder({
+    updatedCustomerId = await updateCustomerProfileForOrder({
       sanity,
       orderId: order?._id,
       customerId: order?.customerRef?._ref,
@@ -6523,6 +6578,12 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       'stripeWebhook: failed to refresh customer profile after payment status update',
       err,
     )
+  }
+  if (nowPaid) {
+    const metricsCustomerId = updatedCustomerId || order?.customerRef?._ref || undefined
+    if (metricsCustomerId) {
+      await updateCustomerMetricsForId(sanity, metricsCustomerId)
+    }
   }
 
   if (event) {
@@ -8619,6 +8680,9 @@ export const handler: Handler = async (event) => {
               stripeCustomerId: stripeCustomerIdValue,
               billingAddress,
             })
+            if (paymentStatus === 'paid' && customerDocIdForPatch) {
+              await updateCustomerMetricsForId(sanity, customerDocIdForPatch)
+            }
           }
 
           if (orderId) {
