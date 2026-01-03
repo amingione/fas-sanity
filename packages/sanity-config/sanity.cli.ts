@@ -37,6 +37,6 @@ export default defineCliConfig({
       nonNullDocumentFields: false,
     },
   ],
-  vite: (config) => config,
+  vite: (config: any) => config,
   deployment: undefined,
 })
