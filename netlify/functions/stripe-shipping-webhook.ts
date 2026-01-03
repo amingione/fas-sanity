@@ -178,11 +178,11 @@ const patchOrderFulfillment = async (orderId: string, update: FulfillmentUpdate)
 
 const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
-    return {statusCode: 204, headers: JSON_HEADERS}
+    return {statusCode: 200, headers: JSON_HEADERS}
   }
   if (event.httpMethod !== 'POST') {
     return {
-      statusCode: 405,
+      statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({error: 'Method not allowed'}),
     }
@@ -190,7 +190,7 @@ const handler: Handler = async (event) => {
   if (!stripe || !webhookSecret) {
     console.error('[stripe-shipping-webhook] missing stripe key or webhook secret')
     return {
-      statusCode: 500,
+      statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({error: 'Server not configured'}),
     }
@@ -199,7 +199,7 @@ const handler: Handler = async (event) => {
   const sig = event.headers['stripe-signature'] || event.headers['Stripe-Signature']
   if (!sig) {
     return {
-      statusCode: 400,
+      statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({error: 'Missing signature'}),
     }
@@ -211,7 +211,7 @@ const handler: Handler = async (event) => {
   } catch (err: any) {
     console.error('[stripe-shipping-webhook] invalid signature', err?.message)
     return {
-      statusCode: 400,
+      statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({error: 'Invalid signature'}),
     }
@@ -311,7 +311,7 @@ const handler: Handler = async (event) => {
       }
     }
     return {
-      statusCode: 500,
+      statusCode: 200,
       headers: JSON_HEADERS,
       body: JSON.stringify({error: 'Failed to update order'}),
     }

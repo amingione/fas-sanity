@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import process from 'node:process'
 import dotenv from 'dotenv'
 import config from '../config.json' with { type: 'json' }
 import { uniqueSorted } from './utils.mjs'

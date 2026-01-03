@@ -13,6 +13,8 @@ export function buildStripeCustomerAliasPatch(
   incomingId?: string | null,
   customerEmail?: string,
 ): {patch: Record<string, any>; didAppend: boolean} {
+  // Multiple Stripe customer IDs per Sanity customer are REQUIRED and EXPECTED.
+  // Throwing on Stripe customer ID mismatch is forbidden.
   const normalizedIncoming = normalizeStripeCustomerId(incomingId)
   if (!normalizedIncoming) return {patch: {}, didAppend: false}
 

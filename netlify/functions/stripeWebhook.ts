@@ -743,8 +743,23 @@ async function ensureCustomerStripeDetails(options: {
       }
     } catch (err) {
       console.warn('stripeWebhook: failed to load customer stripe details', err)
-      patch.stripeCustomerId = options.stripeCustomerId
-      patch.stripeCustomerIds = [options.stripeCustomerId]
+      try {
+        const fallbackPatch = sanity
+          .patch(customerId)
+          .setIfMissing({
+            stripeCustomerId: options.stripeCustomerId,
+            stripeCustomerIds: [],
+          })
+          .insert('after', 'stripeCustomerIds[-1]', [options.stripeCustomerId])
+          .set({
+            stripeLastSyncedAt: new Date().toISOString(),
+            ...(options.billingAddress ? {billingAddress: options.billingAddress} : {}),
+          })
+        await fallbackPatch.commit({autoGenerateArrayKeys: true})
+      } catch (patchErr) {
+        console.warn('stripeWebhook: failed to append stripe customer alias fallback', patchErr)
+      }
+      return
     }
   }
   if (options.billingAddress) patch.billingAddress = options.billingAddress
@@ -2649,6 +2664,8 @@ async function strictFindOrCreateCustomer(
     stripeCustomerId?: string | null
     stripeCustomerIds?: string[] | null
   }) => {
+    // Multiple Stripe customer IDs per Sanity customer are REQUIRED and EXPECTED.
+    // Throwing on Stripe customer ID mismatch is forbidden.
     const {patch} = buildStripeCustomerAliasPatch(customer, stripeCustomerId, normalizedEmail)
     if (stripeCustomerId) {
       patch.stripeLastSyncedAt = new Date().toISOString()
@@ -2705,6 +2722,7 @@ async function strictFindOrCreateCustomer(
   }
 
   const vendor = normalizedEmail ? await fetchVendorByEmail(normalizedEmail) : null
+  let allowVendorLink = true
 
   if (stripeCustomerId) {
     let customer = await fetchCustomerByStripeId(stripeCustomerId)
@@ -2712,15 +2730,17 @@ async function strictFindOrCreateCustomer(
       if (vendor) {
         const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
         if (vendorCustomerId && vendorCustomerId !== customer._id) {
-          console.error(
-            'stripeWebhook: conflicting vendor/customer identity',
-            vendor._id,
+          console.warn('stripeWebhook: vendor/customer identity conflict; skipping vendor link', {
+            vendorId: vendor._id,
             vendorCustomerId,
-            customer._id,
-          )
-          throw new Error('Vendor/customer identity conflict')
+            customerId: customer._id,
+          })
+          allowVendorLink = false
         }
+      }
 
+      if (vendor && allowVendorLink) {
+        const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
         const patch = {
           ...ensureNamePatch(customer),
           ...ensureStripePatch(customer),
@@ -2758,7 +2778,7 @@ async function strictFindOrCreateCustomer(
     }
   }
 
-  if (vendor) {
+  if (vendor && allowVendorLink) {
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     let customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
@@ -5466,6 +5486,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   }
 
   const vendor = normalizedEmail ? await fetchVendorByEmail(normalizedEmail) : null
+  let allowVendorLink = true
 
   let customer: IdentityCustomer | null = null
   if (stripeCustomerId) {
@@ -5475,17 +5496,16 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   if (customer && vendor) {
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     if (vendorCustomerId && vendorCustomerId !== customer._id) {
-      console.error(
-        'stripeWebhook: conflicting vendor/customer identity',
-        vendor._id,
+      console.warn('stripeWebhook: vendor/customer identity conflict; skipping vendor link', {
+        vendorId: vendor._id,
         vendorCustomerId,
-        customer._id,
-      )
-      throw new Error('Vendor/customer identity conflict')
+        customerId: customer._id,
+      })
+      allowVendorLink = false
     }
   }
 
-  if (!customer && vendor) {
+  if (!customer && vendor && allowVendorLink) {
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     customer = vendorCustomerId ? await fetchCustomerById(vendorCustomerId) : null
 
@@ -5535,6 +5555,8 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
     stripeCustomer.name || stripeCustomer.shipping?.name,
   )
 
+  // Multiple Stripe customer IDs per Sanity customer are REQUIRED and EXPECTED.
+  // Throwing on Stripe customer ID mismatch is forbidden.
   const stripeAliasPatch = buildStripeCustomerAliasPatch(customer, stripeCustomer.id, normalizedEmail)
   const setOps: Record<string, any> = {
     ...stripeAliasPatch.patch,
@@ -5555,7 +5577,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   })
   if (computedName) setOps.name = computedName
 
-  if (vendor) {
+  if (vendor && allowVendorLink) {
     Object.assign(setOps, ensureVendorRolePatch(customer))
   } else if (!Array.isArray(customer.roles) || customer.roles.length === 0) {
     setOps.roles = ['customer']
@@ -5563,7 +5585,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
 
   customer = await applyCustomerPatch(customer, setOps)
 
-  if (vendor) {
+  if (vendor && allowVendorLink) {
     const vendorCustomerId = normalizeDocId(vendor.customerRef?._ref)
     if (customer._id !== vendorCustomerId) {
       try {
@@ -7177,6 +7199,9 @@ export const handler: Handler = async (event) => {
     isBase64Encoded: Boolean(event?.isBase64Encoded),
     hasHeaders: Boolean(event?.headers),
   })
+  console.log('🧷 stripeWebhook: customer alias guardrail enabled', {
+    aliasPatternVersion: 'stripe-customer-aliases-v1',
+  })
   console.log('🧪 stripeWebhook: resolved env vars', {
     stripeSecretKeySet: Boolean(stripeKey),
     stripeSecretEnvKeys: STRIPE_SECRET_ENV_KEYS,
@@ -7218,6 +7243,9 @@ export const handler: Handler = async (event) => {
         webhookStatus,
       },
     })
+    if (response.statusCode !== 200) {
+      return {statusCode: 200, body: response.body}
+    }
     return response
   }
 
