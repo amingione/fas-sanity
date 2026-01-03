@@ -3,7 +3,7 @@ import {buildStripeCustomerAliasPatch} from '../stripeCustomerAliases'
 
 describe('buildStripeCustomerAliasPatch', () => {
   it('appends alias without overriding primary', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const result = buildStripeCustomerAliasPatch(
       {stripeCustomerId: 'cus_primary', stripeCustomerIds: ['cus_primary']},
       'cus_alias',

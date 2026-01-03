@@ -145,7 +145,7 @@ export const handler: Handler = async (event) => {
 
       let purchasedShipment: any
       try {
-        purchasedShipment = await shipment.buy(selectedRate)
+        purchasedShipment = await (shipment as any).buy(selectedRate)
       } catch (err) {
         if (selectedRate?.id && typeof (shipment as any).buy === 'function') {
           purchasedShipment = await (shipment as any).buy({rate: selectedRate.id})
