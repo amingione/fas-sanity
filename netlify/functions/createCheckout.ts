@@ -489,9 +489,23 @@ export const handler: Handler = async (event) => {
       .toString()
       .trim() || undefined
 
+  const cartId = invoiceId
+  const cartType = 'invoice'
+  const itemCount = Array.isArray(invoice?.lineItems)
+    ? invoice.lineItems.reduce(
+        (sum: number, item: any) => sum + (Number(item?.quantity) > 0 ? Number(item.quantity) : 1),
+        0,
+      )
+    : 1
+  const estimatedTotal = Number(total || amountForStripe || 0)
+
   const metadata: Stripe.MetadataParam = {
     sanity_invoice_id: invoiceId,
     sanity_invoice_number: String(invoice.invoiceNumber || ''),
+    cart_id: cartId,
+    cart_type: cartType,
+    item_count: String(Math.max(1, itemCount)),
+    est_total: estimatedTotal.toFixed(2),
   }
     appendAttributionMetadata(metadata as Record<string, string>, utmParams)
   if (customerName) metadata.bill_to_name = customerName
@@ -578,6 +592,7 @@ export const handler: Handler = async (event) => {
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
         payment_method_types: paymentMethodTypes,
+        client_reference_id: cartId,
         line_items: [
           {
             price_data: {
@@ -603,6 +618,7 @@ export const handler: Handler = async (event) => {
             sanity_invoice_id: invoiceId,
             sanity_invoice_number: String(invoice.invoiceNumber || ''),
             ...(invoice?.invoiceNumber ? {order_number: String(invoice.invoiceNumber)} : {}),
+            cart_id: cartId,
           },
         },
         success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,

@@ -8,7 +8,7 @@ import {randomUUID} from 'crypto'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
-import {mapStripeLineItem, type CartMetadataEntry} from '../lib/stripeCartItem'
+import {mapStripeLineItem, sanitizeOrderCartItem, type CartMetadataEntry} from '../lib/stripeCartItem'
 import {syncVendorPortalEmail} from '../lib/vendorPortalEmail'
 import {buildStripeCustomerAliasPatch} from '../lib/stripeCustomerAliases'
 import {getMissingResendFields} from '../lib/resendValidation'
@@ -2436,6 +2436,37 @@ const sanity = createClient({
 })
 const sanityClient = sanity
 
+const resolveCartIdFromSession = (session: Stripe.Checkout.Session): string | null => {
+  const meta = (session.metadata || {}) as Record<string, string>
+  const metaCartId = typeof meta.cart_id === 'string' ? meta.cart_id.trim() : ''
+  if (metaCartId) return metaCartId
+  const ref =
+    typeof session.client_reference_id === 'string' ? session.client_reference_id.trim() : ''
+  return ref || null
+}
+
+const fetchCheckoutCartSnapshot = async (
+  cartId?: string | null,
+): Promise<CheckoutCartSnapshot | null> => {
+  if (!cartId) return null
+  try {
+    return await sanityClient.fetch<CheckoutCartSnapshot | null>(
+      `*[_type == "checkoutSession" && _id == $id][0]{
+        _id,
+        cart,
+        customerEmail,
+        customerName,
+        customerPhone,
+        stripeCheckoutUrl
+      }`,
+      {id: cartId},
+    )
+  } catch (err) {
+    console.warn('stripeWebhook: failed to load checkout cart snapshot', err)
+    return null
+  }
+}
+
 const markCartRecovered = async (
   cartId?: string | null,
   recoveredSessionId?: string | null,
@@ -2528,6 +2559,15 @@ const metaValue = (meta: Record<string, unknown>, ...keys: string[]) => {
     if (typeof value === 'string' && value.trim()) return value.trim()
   }
   return undefined
+}
+
+type CheckoutCartSnapshot = {
+  _id: string
+  cart?: Array<Record<string, unknown>> | null
+  customerEmail?: string | null
+  customerName?: string | null
+  customerPhone?: string | null
+  stripeCheckoutUrl?: string | null
 }
 
 async function resolveCheckoutCustomerContact(
@@ -3496,12 +3536,76 @@ async function createOrderFromCheckout(
     }
   }
   const sessionMeta = (session.metadata || {}) as Record<string, string>
+  const cartId = resolveCartIdFromSession(session)
+  const cartSnapshot = await fetchCheckoutCartSnapshot(cartId)
   const expandedLineItems = expandedSession?.line_items?.data as Stripe.LineItem[] | undefined
-  const {items: cartItems, products: cartProducts} = await buildCartFromSessionLineItems(
-    session.id,
-    sessionMeta,
-    {lineItems: expandedLineItems},
-  )
+  let cartItems: CartItem[] = []
+  let cartProducts: CartProductSummary[] = []
+
+  if (Array.isArray(cartSnapshot?.cart) && cartSnapshot?.cart.length) {
+    const mapped = cartSnapshot.cart
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const quantity =
+          typeof (item as any).quantity === 'number' && (item as any).quantity > 0
+            ? (item as any).quantity
+            : 1
+        const mappedItem = sanitizeOrderCartItem({
+          _type: 'orderCartItem',
+          _key: randomUUID(),
+          name:
+            (item as any).name ||
+            (item as any).title ||
+            (item as any).sku ||
+            (item as any).id ||
+            'Item',
+          productRef: (item as any).productRef?._ref ? (item as any).productRef : undefined,
+          sku: (item as any).sku,
+          id: (item as any).id || (item as any).productId,
+          productSlug: (item as any).productSlug,
+          image: (item as any).image,
+          productUrl: (item as any).productUrl,
+          optionDetails: Array.isArray((item as any).optionDetails)
+            ? (item as any).optionDetails
+            : undefined,
+          upgrades: Array.isArray((item as any).upgrades) ? (item as any).upgrades : undefined,
+          price: typeof (item as any).price === 'number' ? (item as any).price : undefined,
+          quantity,
+          total: typeof (item as any).total === 'number' ? (item as any).total : undefined,
+          lineTotal: typeof (item as any).total === 'number' ? (item as any).total : undefined,
+        })
+        return mappedItem
+      })
+      .filter(Boolean) as CartItem[]
+
+    if (mapped.length) {
+      cartItems = mapped
+      try {
+        cartItems = await enrichCartItemsFromSanity(cartItems, sanity, {
+          onProducts: (list: CartProductSummary[]) => {
+            cartProducts = list
+          },
+        })
+      } catch (err) {
+        console.warn('stripeWebhook: failed to enrich Sanity cart snapshot', err)
+      }
+      if (cartItems.length && !cartProducts.length) {
+        try {
+          cartProducts = await fetchProductsForCart(cartItems, sanity)
+        } catch (err) {
+          console.warn('stripeWebhook: failed to fetch cart products for snapshot', err)
+        }
+      }
+    }
+  }
+
+  if (!cartItems.length) {
+    const fallback = await buildCartFromSessionLineItems(session.id, sessionMeta, {
+      lineItems: expandedLineItems,
+    })
+    cartItems = fallback.items
+    cartProducts = fallback.products
+  }
   if (!cartItems.length) {
     const createdAt = unixToIso(session.created) || new Date().toISOString()
     const expiresAt = unixToIso(session.expires_at) || undefined
@@ -3525,9 +3629,10 @@ async function createOrderFromCheckout(
       amountShipping,
       amountTotal,
       currency,
-      customerName: session.customer_details?.name || session.customer_email || undefined,
+      customerName:
+        cartSnapshot?.customerName || cartSnapshot?.customerEmail || session.customer_email || undefined,
       customerId: customer?._id || undefined,
-      checkoutUrl: (session as any)?.url || undefined,
+      checkoutUrl: cartSnapshot?.stripeCheckoutUrl || (session as any)?.url || undefined,
       attribution: extractAttributionFromMetadata(
         sessionMeta,
         session?.id ? {session_id: session.id} : undefined,
@@ -3628,7 +3733,12 @@ async function createOrderFromCheckout(
 
   const orderNumber = existingOrder?.orderNumber || (await generateRandomOrderNumber())
   const nowIso = new Date().toISOString()
-  const customerEmail = (session.customer_details?.email || session.customer_email || '')
+  const customerEmail = (
+    cartSnapshot?.customerEmail ||
+    session.customer_details?.email ||
+    session.customer_email ||
+    ''
+  )
     .toString()
     .trim()
   const preliminaryStripeSummary = buildStripeSummary({
@@ -3676,6 +3786,7 @@ async function createOrderFromCheckout(
   }
   const customerName =
     customer?.name ||
+    cartSnapshot?.customerName ||
     shippingAddress?.name ||
     session.customer_details?.name ||
     (session as any)?.shipping_details?.name ||
@@ -8020,9 +8131,10 @@ export const handler: Handler = async (event) => {
           const result = await createOrderFromCheckout(session)
           if (result?.status) webhookStatus = result.status
           if (result?.summary) webhookSummary = result.summary
-          if (result?.status === 'processed' && session.metadata?.cart_id) {
+          const cartId = resolveCartIdFromSession(session)
+          if (result?.status === 'processed' && cartId) {
             try {
-              await markCartRecovered(session.metadata.cart_id, session.id)
+              await markCartRecovered(cartId, session.id)
             } catch (err) {
               console.warn('stripeWebhook: failed to mark cart recovered', err)
             }

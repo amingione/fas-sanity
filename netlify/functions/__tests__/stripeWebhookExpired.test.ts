@@ -1,14 +1,16 @@
 import {describe, expect, it, vi, beforeEach, afterEach} from 'vitest'
 
 const patchChain = {
+  set: vi.fn().mockReturnThis(),
   setIfMissing: vi.fn().mockReturnThis(),
   append: vi.fn().mockReturnThis(),
   commit: vi.fn().mockResolvedValue({}),
 }
 const patchMock = vi.fn(() => patchChain)
+const fetchMock = vi.fn()
 const createClientMock = vi.fn(() => ({
   patch: patchMock,
-  fetch: vi.fn(),
+  fetch: fetchMock,
   create: vi.fn(),
   createIfNotExists: vi.fn(),
   createOrReplace: vi.fn(),
@@ -63,6 +65,8 @@ describe('stripeWebhook checkout.session.expired', () => {
       RESEND_API_KEY: 're_test',
     }
     patchMock.mockClear()
+    fetchMock.mockClear()
+    patchChain.set.mockClear()
     patchChain.setIfMissing.mockClear()
     patchChain.append.mockClear()
     patchChain.commit.mockClear()
@@ -79,6 +83,12 @@ describe('stripeWebhook checkout.session.expired', () => {
 
   it('records cart-only data and never touches order helpers', async () => {
     vi.resetModules()
+    fetchMock.mockResolvedValue({
+      _id: 'cart_123',
+      customerEmail: 'customer@example.com',
+      customerName: 'Test Customer',
+      customerPhone: '555-0100',
+    })
     const {handler} = await import('../stripeWebhook')
 
     const event = {
@@ -113,9 +123,10 @@ describe('stripeWebhook checkout.session.expired', () => {
       received: true,
       event: 'checkout.session.expired',
     })
+    expect(patchMock).toHaveBeenCalledWith('cart_123')
     expect(patchMock).toHaveBeenCalledWith('productTable')
     expect(patchChain.append).toHaveBeenCalledTimes(1)
-    expect(patchChain.commit).toHaveBeenCalledTimes(1)
+    expect(patchChain.commit).toHaveBeenCalledTimes(2)
 
     expect(linkOrderToCustomerMock).not.toHaveBeenCalled()
     expect(linkOrderToInvoiceMock).not.toHaveBeenCalled()

@@ -124,6 +124,11 @@ function normalizeOrigin(value?: string | null): string {
   return value.trim().replace(/\/+$/, '')
 }
 
+function isCheckoutSessionId(sessionId?: string | null): boolean {
+  if (!sessionId) return false
+  return sessionId.startsWith('cs_')
+}
+
 const DEFAULT_ORIGINS = (() => {
   const entries = (process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333')
     .split(',')
@@ -316,7 +321,7 @@ function cartNeedsEnrichment(cart: any[]): boolean {
 }
 
 async function loadCartFromStripe(sessionId: string): Promise<any[] | null> {
-  if (!stripe || !sessionId) return null
+  if (!stripe || !sessionId || !isCheckoutSessionId(sessionId)) return null
   try {
     const result = await stripe.checkout.sessions.listLineItems(sessionId, {
       limit: 100,
@@ -384,7 +389,7 @@ function calculatePackageDimensions(
 }
 
 async function fetchShippingDetailsFromStripe(sessionId: string): Promise<any> {
-  if (!stripe || !sessionId) return null
+  if (!stripe || !sessionId || !isCheckoutSessionId(sessionId)) return null
 
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
