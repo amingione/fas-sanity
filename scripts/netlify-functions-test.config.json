@@ -1,0 +1,49 @@
+{
+  "defaults": {
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "okStatusRanges": ["2xx"]
+  },
+  "functions": {
+    "createFinancialConnectionSession": {
+      "payload": {
+        "returnUrl": "https://example.com"
+      },
+      "requiredEnv": ["STRIPE_SECRET_KEY"]
+    },
+    "sendEmail": {
+      "payload": {
+        "email": "test@example.com",
+        "name": "Local Test",
+        "message": "Smoke test from Netlify functions runner."
+      },
+      "requiredEnv": ["RESEND_API_KEY"],
+      "sideEffect": true
+    },
+    "syncMerchantProducts": {
+      "headers": {
+        "x-merchant-sync-secret": "$ENV:MERCHANT_SYNC_SECRET"
+      },
+      "requiredEnv": [
+        "GOOGLE_MERCHANT_ID",
+        "GOOGLE_SERVICE_ACCOUNT_EMAIL",
+        "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
+        "SITE_BASE_URL"
+      ]
+    },
+    "update-customer-segments": {
+      "method": "GET",
+      "query": {
+        "limit": "1"
+      },
+      "requiredEnv": ["SANITY_STUDIO_PROJECT_ID", "SANITY_API_TOKEN"]
+    },
+    "easypostWebhook": {
+      "headers": {
+        "x-easypost-signature": "$ENV:EASYPOST_WEBHOOK_SECRET"
+      }
+    }
+  }
+}

@@ -4560,6 +4560,15 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
     } catch (err) {
       console.warn('stripeWebhook: failed to patch product', err)
     }
+    if (!existing?.sku || !existing?.mpn) {
+      try {
+        await ensureProductCodes(existingId, sanity, {
+          log: (...args: unknown[]) => console.log('[stripeWebhook:product-codes]', ...args),
+        })
+      } catch (err) {
+        console.warn('stripeWebhook: failed to ensure product codes', err)
+      }
+    }
     return existingId
   }
 

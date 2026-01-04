@@ -7,6 +7,7 @@ All UI development in this repository must follow the Sanity UI Enforcement Poli
 ### Sanity UI Enforcement Policy
 
 #### Core Principle
+
 Treat the Sanity UI library (Figma + @sanity/ui for React) as the single source of truth for all UI in this repository.
 
 #### Rules for Every UI Change
@@ -30,6 +31,7 @@ For every UI-related change in any file, you must:
    - If a Sanity UI component exists for the use case, use it instead of building custom
 
 #### Scope
+
 This applies to the entire codebase, not just the current file or feature.
 
 #### Safety Protocol
@@ -48,6 +50,7 @@ Before making any UI changes:
 #### When to Stop and Ask
 
 If a change would:
+
 - Introduce UI that doesn't match Sanity UI patterns: Stop and propose a Sanity UI alternative
 - Break existing functionality: Stop and explain the conflict
 - Require refactoring more than 5 files: Stop and present a migration plan
@@ -63,6 +66,7 @@ If a change would:
 #### Proactive Behavior
 
 When you see existing UI not following these rules:
+
 1. Flag it in your response
 2. Suggest a specific Sanity UI refactor
 3. Show before/after code snippets
@@ -71,18 +75,21 @@ When you see existing UI not following these rules:
 #### Example Refactor Pattern
 
 Non-compliant (before):
+
 ```tsx
-<div style={{ padding: '16px', backgroundColor: '#f0f0f0' }}>
+<div style={{padding: '16px', backgroundColor: '#f0f0f0'}}>
   <span className="custom-badge">Active</span>
 </div>
 ```
 
 Compliant (after):
-```tsx
-import { Box, Badge } from '@sanity/ui'
 
-<Box padding={4} tone="default">
-  <Badge tone="positive" mode="outline">Active</Badge>
+```tsx
+import {Box, Badge} from '@sanity/ui'
+;<Box padding={4} tone="default">
+  <Badge tone="positive" mode="outline">
+    Active
+  </Badge>
 </Box>
 ```
 
@@ -104,3 +111,8 @@ Consistency and safety over speed. When in doubt, propose and discuss before imp
 ## Additional Standards
 
 Add any other coding standards, architecture decisions, or process notes here as needed.
+
+| MPN auto-generation broken for Stripe webhooks | `syncStripeProduct()` creates product docs without calling `generateInitialMpn()` or `ensureProductCodes()` | [stripeWebhook.ts:4394-4459](netlify/functions/stripeWebhook.ts#L4394-L4459) |
+| SKU generation has multiple paths | **Path 1 (Correct):** `FAS-${prefix}-${serial}A` (Studio-derived from MPN)
+
+##
