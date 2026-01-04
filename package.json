@@ -21,6 +21,8 @@
     "ai:verify": "echo 'Run Gemini verification prompt'",
     "ai:decide": "echo 'Run Claude decision prompt'",
     "ai:enforce": "echo 'Run Codex enforcement prompt'",
+    "ai:gated": "node scripts/ai-gated/run.mjs",
+    "ai:rollback": "node scripts/ai-gated/rollback.mjs",
     "ai:check": "pnpm lint && pnpm exec tsc -p tsconfig.runtime.json",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
     "netlify:functions": "tsx scripts/netlify-functions-serve.ts",
