@@ -17,7 +17,6 @@ type Payload = {
 
 const endpoint =
   process.env.SANITY_STUDIO_AI_INSIGHTS_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_AI_INSIGHTS_ENDPOINT ||
   '/.netlify/functions/ai-insights'
 
 export function AiInsightsTool() {

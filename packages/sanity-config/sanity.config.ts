@@ -77,7 +77,7 @@ loadEnvFiles()
 const aliasFromNodeModules = (specifier: string) =>
   hasProcess ? joinSegments(projectRoot, 'node_modules', ...specifier.split('/')) : specifier
 
-const ALLOWED_STUDIO_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_']
+const ALLOWED_STUDIO_PREFIXES = ['SANITY_STUDIO_', 'PUBLIC_']
 
 const workspaceModuleAliases = hasProcess
   ? {
@@ -132,8 +132,7 @@ const runtimeEnvInlineScript = `
 const readEnv = (name: string) => studioRuntimeEnv[name] ?? getEnv(name)
 
 const DEFAULT_API_VERSION = '2024-10-01'
-const SANITY_API_VERSION =
-  readEnv('SANITY_STUDIO_API_VERSION') || readEnv('SANITY_API_VERSION') || DEFAULT_API_VERSION
+const SANITY_API_VERSION = readEnv('SANITY_STUDIO_API_VERSION') || DEFAULT_API_VERSION
 
 const envFlag = (value?: string | null) => {
   if (!value) return undefined
@@ -196,18 +195,9 @@ const TeamNotesWidget = () =>
     ),
   )
 
-const disableVisionOverride = getEnvFlag(
-  'SANITY_STUDIO_DISABLE_VISION',
-  'VITE_SANITY_STUDIO_DISABLE_VISION',
-)
-const enableVisualEditingOverride = getEnvFlag(
-  'SANITY_STUDIO_ENABLE_VISUAL_EDITING',
-  'VITE_SANITY_STUDIO_ENABLE_VISUAL_EDITING',
-)
-const disableVisualEditingOverride = getEnvFlag(
-  'SANITY_STUDIO_DISABLE_VISUAL_EDITING',
-  'VITE_SANITY_STUDIO_DISABLE_VISUAL_EDITING',
-)
+const disableVisionOverride = getEnvFlag('SANITY_STUDIO_DISABLE_VISION')
+const enableVisualEditingOverride = getEnvFlag('SANITY_STUDIO_ENABLE_VISUAL_EDITING')
+const disableVisualEditingOverride = getEnvFlag('SANITY_STUDIO_DISABLE_VISUAL_EDITING')
 // Preview tool removed; all related URL/target resolvers deleted
 
 const visionEnabled = disableVisionOverride === true ? false : true
@@ -215,8 +205,7 @@ const visionEnabled = disableVisionOverride === true ? false : true
 const visualEditingEnabled =
   disableVisualEditingOverride === true ? false : enableVisualEditingOverride === true
 
-const autoMapperEnabled =
-  getEnvFlag('SANITY_STUDIO_ENABLE_AUTO_MAPPER', 'VITE_SANITY_STUDIO_ENABLE_AUTO_MAPPER') !== false
+const autoMapperEnabled = getEnvFlag('SANITY_STUDIO_ENABLE_AUTO_MAPPER') !== false
 
 const deskStructureConfigured = typeof deskStructure === 'function'
 if (hasProcess && process.env.DEBUG_STUDIO_ENV) {
@@ -345,8 +334,8 @@ export default defineConfig({
   name: 'default',
   title: 'FAS Motorsports',
 
-  projectId: readEnv('SANITY_STUDIO_PROJECT_ID') || readEnv('SANITY_PROJECT_ID') || 'r4og35qd',
-  dataset: readEnv('SANITY_STUDIO_DATASET') || readEnv('SANITY_DATASET') || 'production',
+  projectId: readEnv('SANITY_STUDIO_PROJECT_ID') || readEnv('SANITY_STUDIO_PROJECT_ID') || 'r4og35qd',
+  dataset: readEnv('SANITY_STUDIO_DATASET') || readEnv('SANITY_STUDIO_DATASET') || 'production',
   /**
    * CORS origins must include:
    *   http://localhost:8888
@@ -384,7 +373,7 @@ export default defineConfig({
     },
   },
   vite: {
-    envPrefix: ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_'],
+    envPrefix: ['SANITY_STUDIO_', 'PUBLIC_'],
     resolve: {
       // Ensure only a single instance of these packages end up in the bundle.
       // With pnpm, multiple peer variants can otherwise create duplicate contexts.

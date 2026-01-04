@@ -92,15 +92,11 @@ function parseCliOptions(argv: string[]): CliOptions {
 function createSanityClient() {
   const projectId =
     process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
     ''
   const dataset =
     process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    process.env.NEXT_PUBLIC_SANITY_DATASET ||
     'production'
-  const token = process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN || ''
+  const token = process.env.SANITY_API_TOKEN || ''
   if (!projectId || !dataset || !token) {
     throw new Error('Missing Sanity credentials (projectId/dataset/token).')
   }

@@ -52,9 +52,9 @@ function ensureStudioHeaders(headers: Headers) {
   const projectHeader = headers.get('x-sanity-project-id')?.trim()
   const datasetHeader = headers.get('x-sanity-dataset')?.trim()
   const expectedProject =
-    process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || null
+    process.env.SANITY_STUDIO_PROJECT_ID || null
   const expectedDataset =
-    process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || null
+    process.env.SANITY_STUDIO_DATASET || null
 
   if (expectedProject && projectHeader && projectHeader !== expectedProject) {
     throw new Error('Invalid project header')

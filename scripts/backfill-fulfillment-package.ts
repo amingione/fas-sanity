@@ -26,14 +26,10 @@ for (const filename of ENV_FILES) {
 
 const client = createClient({
   projectId:
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+    process.env.SANITY_STUDIO_PROJECT_ID,
   dataset:
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.SANITY_DATASET ||
-    process.env.NEXT_PUBLIC_SANITY_DATASET,
-  token: process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN,
+    process.env.SANITY_STUDIO_DATASET,
+  token: process.env.SANITY_API_TOKEN,
   apiVersion: '2024-04-10',
   useCdn: false,
 })
@@ -93,7 +89,7 @@ function buildDisplays(input: {
 
 async function main() {
   if (!client.config().token) {
-    throw new Error('Missing SANITY_API_TOKEN / SANITY_WRITE_TOKEN for backfill.')
+    throw new Error('Missing SANITY_API_TOKEN / SANITY_API_TOKEN for backfill.')
   }
 
   const orders = await client.fetch<OrderDoc[]>(

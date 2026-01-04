@@ -1,10 +1,10 @@
 import {createClient} from '@sanity/client'
 
-const {SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_TOKEN} = process.env
+const {SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, SANITY_API_TOKEN} = process.env
 
-if (!SANITY_PROJECT_ID || !SANITY_DATASET || !SANITY_API_TOKEN) {
+if (!SANITY_STUDIO_PROJECT_ID || !SANITY_STUDIO_DATASET || !SANITY_API_TOKEN) {
   console.error(
-    'Missing SANITY_PROJECT_ID, SANITY_DATASET, or SANITY_API_TOKEN. Load .env before running.',
+    'Missing SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, or SANITY_API_TOKEN. Load .env before running.',
   )
   process.exit(1)
 }
@@ -24,8 +24,8 @@ const pageSize = Number(getArgValue('pageSize') || getArgValue('page-size') || 2
 const maxCount = Number(getArgValue('limit') || getArgValue('max') || 0)
 
 const client = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset: SANITY_DATASET,
+  projectId: SANITY_STUDIO_PROJECT_ID,
+  dataset: SANITY_STUDIO_DATASET,
   token: SANITY_API_TOKEN,
   apiVersion: '2024-01-01',
   useCdn: false,

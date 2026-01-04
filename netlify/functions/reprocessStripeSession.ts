@@ -175,8 +175,8 @@ const stripe = stripeKey
 
 const sanityToken = process.env.SANITY_API_TOKEN
 const sanityProjectId =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || undefined
-const sanityDataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || undefined
+  process.env.SANITY_STUDIO_PROJECT_ID || undefined
+const sanityDataset = process.env.SANITY_STUDIO_DATASET || undefined
 
 if (!sanityToken || !sanityProjectId || !sanityDataset) {
   throw new Error('Sanity credentials are not configured for reprocessStripeSession.')

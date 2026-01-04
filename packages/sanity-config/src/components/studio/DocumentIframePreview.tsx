@@ -22,7 +22,6 @@ const DocumentIframePreview: React.FC<Props> = ({basePath, document}) => {
     typeof window !== 'undefined'
       ? window.location.origin
       : process.env.SANITY_STUDIO_SITE_URL ||
-        process.env.VITE_SITE_URL ||
         'https://fasmotorsports.com'
 
   const iframeUrl = `${baseUrl}${basePath}/${slug}`

@@ -3,19 +3,11 @@ import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
-const stripeSecret =
-  process.env.STRIPE_SECRET_KEY ||
-  process.env.STRIPE_API_KEY ||
-  process.env.STRIPE_SK ||
-  process.env.VITE_STRIPE_SECRET_KEY
+const stripeSecret = process.env.STRIPE_SECRET_KEY
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_SHIPPING
-const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const sanityDataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
-const sanityToken =
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
-  ''
+const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID
+const sanityDataset = process.env.SANITY_STUDIO_DATASET
+const sanityToken = process.env.SANITY_API_TOKEN || ''
 
 const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
 

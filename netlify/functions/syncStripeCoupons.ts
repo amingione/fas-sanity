@@ -1,7 +1,7 @@
 import {schedule} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
-import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
+import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../lib/stripeEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {requireSanityCredentials} from '../lib/sanityEnv'
 import {syncStripeCoupons} from '../lib/stripeCoupons'
@@ -12,7 +12,7 @@ const handler = schedule('0 3 * * *', async () => {
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: `Missing Stripe secret (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')})`,
+        error: `Missing Stripe secret (set ${STRIPE_SECRET_ENV_KEY})`,
       }),
     }
   }

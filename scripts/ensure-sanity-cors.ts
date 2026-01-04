@@ -1,13 +1,8 @@
 import 'dotenv/config'
 import fetch from 'node-fetch'
 
-const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
-const token =
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_AUTH_TOKEN ||
-  process.env.SANITY_DEPLOY_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
+const token = process.env.SANITY_API_TOKEN || process.env.SANITY_DEPLOY_TOKEN
 
 class SanityCorsPermissionError extends Error {
   constructor(status: number, body: string) {
@@ -17,21 +12,13 @@ class SanityCorsPermissionError extends Error {
 }
 
 async function getRequiredOrigins() {
-  const configured = (process.env.SANITY_REQUIRED_CORS_ORIGINS || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-
   const defaults = [
     'http://localhost:3333',
     'http://localhost:8888',
     'http://localhost:48752',
     'https://fassanity.fasmotorsports.com',
   ]
-
-  const fusionOrigin = process.env.FUSION_ENV_ORIGIN || ''
-
-  return Array.from(new Set([...defaults, ...configured, fusionOrigin].filter(Boolean)))
+  return defaults
 }
 
 async function fetchExistingOrigins() {
@@ -82,7 +69,7 @@ async function addOrigin(origin: string) {
 async function ensureCors() {
   if (!token) {
     console.warn(
-      'Skipping Sanity CORS configuration: set SANITY_API_TOKEN (or SANITY_AUTH_TOKEN / SANITY_DEPLOY_TOKEN / SANITY_WRITE_TOKEN).',
+      'Skipping Sanity CORS configuration: set SANITY_API_TOKEN (or SANITY_DEPLOY_TOKEN).',
     )
     return
   }

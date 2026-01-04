@@ -39,14 +39,14 @@ describe('checkout.session.expired — cart-only enforcement', () => {
 
   it('logs expired cart and does NOT create order', async () => {
     process.env.STRIPE_SECRET_KEY = 'test'
-    process.env.STRIPE_API_KEY = 'test'
+    process.env.STRIPE_SECRET_KEY = 'test'
     process.env.STRIPE_WEBHOOK_SECRET = 'test'
     process.env.STRIPE_WEBHOOK_NO_VERIFY = '1'
     process.env.STRIPE_SECRET_KEY = 'sk_test_123'
     process.env.SANITY_STUDIO_PROJECT_ID = 'test'
     process.env.SANITY_STUDIO_DATASET = 'test'
     process.env.SANITY_API_TOKEN = 'test'
-    process.env.SANITY_WRITE_TOKEN = 'test'
+    process.env.SANITY_API_TOKEN = 'test'
 
     const event = {
       type: 'checkout.session.expired',

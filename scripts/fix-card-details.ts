@@ -16,19 +16,12 @@ for (const filename of ENV_FILES) {
 
 const projectId =
   process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
   'r4og35qd'
 const dataset =
   process.env.SANITY_STUDIO_DATASET ||
-  process.env.SANITY_DATASET ||
-  process.env.NEXT_PUBLIC_SANITY_DATASET ||
   'production'
 const token =
-  process.env.SANITY_AUTH_TOKEN ||
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_TOKEN
+  process.env.SANITY_API_TOKEN
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 
 if (!token) {

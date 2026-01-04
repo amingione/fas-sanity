@@ -14,10 +14,7 @@ type BankAccountDocument = {
   defaultForChecks?: boolean
 }
 
-const publishableKey =
-  process.env.SANITY_STUDIO_STRIPE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-  ''
+const publishableKey = process.env.SANITY_STUDIO_STRIPE_PUBLISHABLE_KEY || ''
 
 const BankAccountsTool = React.forwardRef<HTMLDivElement, Record<string, never>>((_props, ref) => {
   const client = useClient({apiVersion: '2024-10-01'})

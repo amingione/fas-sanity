@@ -33,6 +33,7 @@ export default [
       'scripts/**/*.{js,ts,cjs}',
       '*.cjs',
       '*.js',
+      'tools/unified-audit/**/*.{js,mjs}',
       'netlify/**/*.{js,ts}',
       'shared/**/*.{js,ts,tsx}',
       'packages/sanity-config/src/**/*.{js,ts,tsx}',

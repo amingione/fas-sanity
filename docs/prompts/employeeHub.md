@@ -614,8 +614,8 @@ import { createClient } from '@sanity/client'
 import { readSession } from '@/lib/session'
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false,
@@ -726,8 +726,8 @@ import { createClient } from '@sanity/client'
 import { readSession } from '@/lib/session'
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   apiVersion: '2024-01-01',
   useCdn: true, // Can use CDN for read-only
 })
@@ -776,8 +776,8 @@ import { createClient } from '@sanity/client'
 import { readSession } from '@/lib/session'
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false,
@@ -846,8 +846,8 @@ import { createClient } from '@sanity/client'
 import { readSession } from '@/lib/session'
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false,
@@ -949,8 +949,8 @@ import { readSession } from '@/lib/session'
 import { createClient } from '@sanity/client'
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   apiVersion: '2024-01-01',
   useCdn: true,
 })
@@ -1261,8 +1261,8 @@ SANITY_API_TOKEN=skxxx  # Write token for server-side operations
 
 ```bash
 # Sanity
-PUBLIC_SANITY_PROJECT_ID=your_project_id
-PUBLIC_SANITY_DATASET=production
+SANITY_STUDIO_PROJECT_ID=your_project_id
+SANITY_STUDIO_DATASET=production
 SANITY_API_TOKEN=skxxx  # Write token for mutations
 
 # Authentication (existing)

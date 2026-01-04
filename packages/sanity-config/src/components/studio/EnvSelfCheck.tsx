@@ -156,13 +156,12 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(
                 'SHIP_FROM_COUNTRY',
               ]}
             />
-            <Section title="CORS" keys={['CORS_ALLOW', 'CORS_ORIGIN']} />
+            <Section title="CORS" keys={['CORS_ALLOW']} />
             <Section title="Base URL" keys={['SANITY_STUDIO_NETLIFY_BASE']} />
             {data?.extras && (
               <div style={{marginTop: 12, fontSize: 12, color: '#333'}}>
                 <div>Extras:</div>
                 <div>PUBLIC_SITE_URL: {data.extras.PUBLIC_SITE_URL || '(unset)'}</div>
-                <div>AUTH0_BASE_URL: {data.extras.AUTH0_BASE_URL || '(unset)'}</div>
               </div>
             )}
             {!data.ok && (

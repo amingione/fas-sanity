@@ -18,7 +18,7 @@ Configure these in your Netlify/CI environment (and locally through `.env.develo
 | `GOOGLE_MERCHANT_FEED_BASE_URL` / `GMC_FEED_BASE_URL`      | `https://www.fasmotorsports.com` | Optional; falls back to `SITE_BASE_URL`/`PUBLIC_SITE_URL`.      |
 | `GOOGLE_MERCHANT_FEED_OUTPUT_DIR` / `GMC_FEED_OUTPUT_DIR`  | `./tmp`                          | Optional; where the local feed file is written.                 |
 
-Make sure the standard Sanity environment variables (`SANITY_PROJECT_ID`, `SANITY_DATASET`, etc.) are also configured so the script can pull product data.
+Make sure the standard Sanity environment variables (`SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET`, etc.) are also configured so the script can pull product data.
 
 ## 2. Fingerprint Verification
 

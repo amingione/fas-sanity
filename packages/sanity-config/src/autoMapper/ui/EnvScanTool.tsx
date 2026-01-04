@@ -11,7 +11,6 @@ type Snapshot = {
 
 const endpoint =
   process.env.SANITY_STUDIO_REPO_SCAN_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_REPO_SCAN_ENDPOINT ||
   '/.netlify/functions/repo-scan'
 
 export function EnvScanTool() {

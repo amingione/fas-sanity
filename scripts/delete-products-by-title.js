@@ -25,8 +25,8 @@ for (const f of ['.env.local', '.env.development', '.env']) {
   if (fs.existsSync(p)) dotenv.config({path: p, override: false})
 }
 
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
 const token = process.env.SANITY_API_TOKEN
 if (!projectId || !dataset || !token) {
   console.error(

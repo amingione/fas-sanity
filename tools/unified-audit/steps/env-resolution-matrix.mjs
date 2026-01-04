@@ -1,20 +1,29 @@
-import path from 'node:path'
-import { buildEnvMatrix } from '../lib/env.mjs'
-import { writeJson } from '../lib/utils.mjs'
+import { stableSort } from '../lib/utils.mjs'
 
-export async function runEnvResolutionMatrix(context) {
-  const { repos, outputDir, integrationInventory } = context
-
-  const envKeys = integrationInventory?.envKeys
-    ? Object.keys(integrationInventory.envKeys)
-    : []
-
-  const output = {
-    status: 'OK',
-    generatedAt: new Date().toISOString(),
-    ...buildEnvMatrix(repos, envKeys),
+export async function runEnvResolutionMatrix({ repos, repoEnvs, integrations }) {
+  const result = {
+    status: 'PASS',
+    requiresEnforcement: false,
+    enforcementApproved: false,
+    referencedKeys: [],
+    definedKeys: {},
+    missingInRepo: {},
+    unusedInRepo: {}
   }
 
-  writeJson(path.join(outputDir, 'env-resolution-matrix.json'), output)
-  return output
+  const referenced = new Set(Object.keys(integrations.envKeys || {}))
+  result.referencedKeys = stableSort([...referenced])
+
+  for (const repo of repos) {
+    const envEntry = repoEnvs.find(entry => entry.name === repo.name)
+    const definedKeys = envEntry ? Object.keys(envEntry.env) : []
+    result.definedKeys[repo.name] = stableSort(definedKeys)
+    const missing = result.referencedKeys.filter(key => !definedKeys.includes(key))
+    result.missingInRepo[repo.name] = missing
+    const unused = definedKeys.filter(key => !referenced.has(key))
+    result.unusedInRepo[repo.name] = stableSort(unused)
+    if (missing.length > 0) result.requiresEnforcement = true
+  }
+
+  return result
 }

@@ -1,137 +1,130 @@
-import path from 'node:path'
 import { createClient } from '@sanity/client'
-import config from '../config.json' with { type: 'json' }
-import { getSanityEnv, readEnvFiles } from '../lib/env.mjs'
-import { writeJson } from '../lib/utils.mjs'
+import { stableSort } from '../lib/utils.mjs'
 
-const API_VERSION = '2024-01-01'
-
-function collectEnvEntries(repos) {
-  const entries = []
-  for (const repo of repos) {
-    if (repo.status !== 'OK') continue
-    entries.push(...readEnvFiles(repo.path))
+function resolveSanityConfig(env) {
+  return {
+    projectId: env.SANITY_STUDIO_PROJECT_ID || env.NEXT_PUBLIC_SANITY_PROJECT_ID || env.SANITY_STUDIO_PROJECT_ID,
+    dataset: env.SANITY_STUDIO_DATASET || env.NEXT_PUBLIC_SANITY_DATASET || env.SANITY_STUDIO_DATASET,
+    token: env.SANITY_API_TOKEN || env.SANITY_API_TOKEN || env.SANITY_API_TOKEN
   }
-  return entries
 }
 
-function isSystemField(field) {
-  return field.startsWith('_')
-}
-
-export async function runSanityRuntimeScan(context) {
-  const { repos, outputDir, schemaIndex, mappingIndex } = context
-
-  if (!schemaIndex || schemaIndex.status !== 'OK') {
-    const output = {
-      status: 'SKIPPED',
-      reason: 'Schema index unavailable',
-      generatedAt: new Date().toISOString(),
-      types: {},
-    }
-    writeJson(path.join(outputDir, 'sanity-runtime-scan.json'), output)
-    return output
+export async function runSanityRuntimeScan({ schemaIndex, repoEnvs, maxDocsPerType }) {
+  const result = {
+    status: 'PASS',
+    requiresEnforcement: false,
+    enforcementApproved: false,
+    scannedTypes: {},
+    skippedTypes: [],
+    reason: null
   }
 
-  const envEntries = collectEnvEntries(repos)
-  const { projectId, dataset, token } = getSanityEnv(envEntries)
-
-  if (!projectId || !dataset) {
-    const output = {
-      status: 'SKIPPED',
-      reason: 'Missing Sanity projectId or dataset',
-      generatedAt: new Date().toISOString(),
-      types: {},
-    }
-    writeJson(path.join(outputDir, 'sanity-runtime-scan.json'), output)
-    return output
+  const env = repoEnvs.find(entry => entry.role === 'sanity')?.env || {}
+  const config = resolveSanityConfig(env)
+  if (!config.projectId || !config.dataset) {
+    result.status = 'SKIPPED'
+    result.reason = 'Missing SANITY projectId or dataset'
+    return result
   }
 
   const client = createClient({
-    projectId,
-    dataset,
-    token: token || undefined,
-    apiVersion: API_VERSION,
+    projectId: config.projectId,
+    dataset: config.dataset,
+    token: config.token,
     useCdn: false,
+    apiVersion: '2024-01-01'
   })
 
-  const typesOutput = {}
-  const docsByType = {}
+  let types = []
+  try {
+    types = await client.fetch('array::unique(*[]._type)')
+  } catch (error) {
+    result.status = 'SKIPPED'
+    result.reason = `Sanity fetch failed: ${error instanceof Error ? error.message : String(error)}`
+    return result
+  }
+  const schemaTypes = schemaIndex.schemas || {}
 
-  for (const type of schemaIndex.types || []) {
-    const typeName = type.name
-    const maxDocs = config.maxDocsPerType
+  for (const type of types) {
+    if (!type) continue
+    const schema = schemaTypes[type]
+    if (!schema) {
+      result.skippedTypes.push({ type, reason: 'No schema definition found' })
+      continue
+    }
 
     let docs = []
     try {
-      docs = await client.fetch('*[_type == $type][0...$limit]', {
-        type: typeName,
-        limit: maxDocs,
-      })
+      docs = await client.fetch(
+        `*[_type == $type][0...$limit]`,
+        { type, limit: maxDocsPerType }
+      )
     } catch (error) {
-      typesOutput[typeName] = {
-        status: 'ERROR',
-        error: error?.message || String(error),
+      result.scannedTypes[type] = {
+        totalDocs: 0,
+        missingRequired: {},
+        nullCounts: {},
+        unknownFields: {},
+        sampleDocs: [],
+        error: error instanceof Error ? error.message : String(error)
       }
       continue
     }
 
-    docsByType[typeName] = docs
-
-    const missingRequired = {}
-    const nullCounts = {}
     const unknownFields = {}
-    const schemaFields = mappingIndex?.schemaFields?.[typeName] || type.fields || []
-    const requiredFields = mappingIndex?.requiredByType?.[typeName] || type.required || []
+    const nullCounts = {}
+    const missingRequired = {}
+    const requiredFields = new Set(schema.required || [])
+    const knownFields = new Set(schema.fields || [])
 
-    for (const field of schemaFields) {
+    for (const field of schema.fields || []) {
       nullCounts[field] = 0
     }
 
     for (const doc of docs) {
+      for (const field of Object.keys(doc)) {
+        if (field.startsWith('_')) continue
+        if (!knownFields.has(field)) {
+          if (!unknownFields[field]) unknownFields[field] = 0
+          unknownFields[field] += 1
+        }
+      }
+
+      for (const field of knownFields) {
+        if (!(field in doc)) continue
+        if (doc[field] === null) {
+          nullCounts[field] += 1
+        }
+      }
+
       for (const field of requiredFields) {
         if (doc[field] === undefined || doc[field] === null) {
-          if (!missingRequired[field]) {
-            missingRequired[field] = []
-          }
+          if (!missingRequired[field]) missingRequired[field] = []
           if (missingRequired[field].length < 25) {
             missingRequired[field].push(doc._id)
           }
         }
       }
-
-      for (const field of schemaFields) {
-        if (doc[field] === null) {
-          nullCounts[field] = (nullCounts[field] || 0) + 1
-        }
-      }
-
-      for (const key of Object.keys(doc)) {
-        if (isSystemField(key)) continue
-        if (!schemaFields.includes(key)) {
-          unknownFields[key] = (unknownFields[key] || 0) + 1
-        }
-      }
     }
 
-    typesOutput[typeName] = {
-      status: 'OK',
-      documentCount: docs.length,
+    const idFields = (schema.fields || []).filter(field => /id(s)?$/i.test(field))
+    const sampleDocs = docs.map(doc => {
+      const slim = { _id: doc._id }
+      for (const field of idFields) {
+        if (field in doc) slim[field] = doc[field]
+      }
+      return slim
+    })
+
+    result.scannedTypes[type] = {
+      totalDocs: docs.length,
       missingRequired,
       nullCounts,
       unknownFields,
+      sampleDocs
     }
   }
 
-  const output = {
-    status: 'OK',
-    generatedAt: new Date().toISOString(),
-    projectId,
-    dataset,
-    types: typesOutput,
-  }
-
-  writeJson(path.join(outputDir, 'sanity-runtime-scan.json'), output)
-  context.runtimeDocsByType = docsByType
-  return output
+  result.skippedTypes = stableSort(result.skippedTypes.map(entry => entry.type))
+  return result
 }

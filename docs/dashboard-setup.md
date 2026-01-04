@@ -135,7 +135,7 @@ If you deploy your studio as part of an automated workflow, you will need to add
 **Terminal**
 
 ```sh
-SANITY_AUTH_TOKEN=<deploy_token> npx sanity schema deploy
+SANITY_API_TOKEN=<deploy_token> npx sanity schema deploy
 ```
 
 A deploy token can be obtained by navigating to the API section of your [project management dashboard](https://sanity.io/manage).

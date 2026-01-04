@@ -59,7 +59,7 @@ const buildCopySlug = (source?: ProductDocument | null) => {
 const buildPreviewBaseUrl = () => {
   const envSite =
     (typeof process !== 'undefined' &&
-      (process.env.SANITY_STUDIO_SITE_URL || process.env.VITE_SITE_URL)) ||
+      process.env.SANITY_STUDIO_SITE_URL) ||
     ''
   const isDev =
     typeof window !== 'undefined' &&

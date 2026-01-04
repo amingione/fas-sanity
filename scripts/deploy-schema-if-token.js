@@ -5,12 +5,11 @@ dotenv.config()
 
 const {spawn} = require('node:child_process')
 
-const token =
-  process.env.SANITY_AUTH_TOKEN || process.env.SANITY_DEPLOY_TOKEN || process.env.SANITY_WRITE_TOKEN
+const token = process.env.SANITY_API_TOKEN || process.env.SANITY_DEPLOY_TOKEN
 
 if (!token) {
   console.log(
-    '[sanity] Skipping `sanity schema deploy` – set SANITY_AUTH_TOKEN (or SANITY_DEPLOY_TOKEN / SANITY_WRITE_TOKEN) to enable this step in CI.',
+    '[sanity] Skipping `sanity schema deploy` – set SANITY_API_TOKEN (or SANITY_DEPLOY_TOKEN) to enable this step in CI.',
   )
   process.exit(0)
 }
@@ -30,7 +29,7 @@ const child = spawn(pnpmCmd, args, {
   stdio: 'inherit',
   env: {
     ...process.env,
-    SANITY_AUTH_TOKEN: token,
+    SANITY_API_TOKEN: token,
   },
 })
 

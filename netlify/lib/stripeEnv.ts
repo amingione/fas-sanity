@@ -1,28 +1,16 @@
-const STRIPE_SECRET_ENV_KEYS = [
-  'STRIPE_SECRET_KEY',
-  'STRIPE_API_KEY',
-  'SANITY_STUDIO_STRIPE_SECRET_KEY',
-  'VITE_STRIPE_SECRET_KEY',
-] as const
+const STRIPE_SECRET_ENV_KEY = 'STRIPE_SECRET_KEY'
 
 function resolveStripeSecretKey(): string | undefined {
-  for (const key of STRIPE_SECRET_ENV_KEYS) {
-    const value = process.env[key]
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim()
-    }
-  }
-  return undefined
+  const value = process.env[STRIPE_SECRET_ENV_KEY]
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
 function requireStripeSecretKey(): string {
   const secret = resolveStripeSecretKey()
   if (!secret) {
-    throw new Error(
-      `Missing Stripe secret key (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')}).`,
-    )
+    throw new Error(`Missing Stripe secret key (set ${STRIPE_SECRET_ENV_KEY}).`)
   }
   return secret
 }
 
-export {STRIPE_SECRET_ENV_KEYS, resolveStripeSecretKey, requireStripeSecretKey}
+export {STRIPE_SECRET_ENV_KEY, resolveStripeSecretKey, requireStripeSecretKey}

@@ -33,25 +33,25 @@ const PRODUCT_METADATA_ID_KEYS = [
   'productDocumentId',
 ]
 
-const SANITY_PROJECT_ID = process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID
+const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
 
-const SANITY_DATASET =
-  process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET || 'production'
+const SANITY_STUDIO_DATASET =
+  process.env.SANITY_STUDIO_DATASET || 'production'
 
-const SANITY_TOKEN =
-  process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN || process.env.SANITY_ACCESS_TOKEN
+const SANITY_API_TOKEN =
+  process.env.SANITY_API_TOKEN
 
-const SANITY_API_VERSION = process.env.SANITY_API_VERSION || '2024-04-10'
+const SANITY_API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-04-10'
 
-const canInitSanity = Boolean(SANITY_PROJECT_ID && SANITY_DATASET)
+const canInitSanity = Boolean(SANITY_STUDIO_PROJECT_ID && SANITY_STUDIO_DATASET)
 
 const sanityClient: SanityClient | null = canInitSanity
   ? createClient({
-      projectId: SANITY_PROJECT_ID as string,
-      dataset: SANITY_DATASET,
-      token: SANITY_TOKEN || undefined,
+      projectId: SANITY_STUDIO_PROJECT_ID as string,
+      dataset: SANITY_STUDIO_DATASET,
+      token: SANITY_API_TOKEN || undefined,
       apiVersion: SANITY_API_VERSION,
-      useCdn: !SANITY_TOKEN,
+      useCdn: !SANITY_API_TOKEN,
     })
   : null
 
@@ -59,7 +59,7 @@ if (!canInitSanity) {
   console.warn(
     'Sanity project ID or dataset is missing. Products without metadata.sanity_slug will be skipped.',
   )
-} else if (!SANITY_TOKEN) {
+} else if (!SANITY_API_TOKEN) {
   console.warn(
     'No Sanity token found; attempting unauthenticated reads. Ensure the dataset is public if slugs still fail to resolve.',
   )

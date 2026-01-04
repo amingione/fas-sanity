@@ -7,9 +7,9 @@ import type {SourceClientOptions} from 'sanity'
 type UseClientOptions = (SourceClientOptions & Partial<ClientConfig>) | undefined
 
 const DEFAULT_PROJECT_ID =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
 const DEFAULT_DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+  process.env.SANITY_STUDIO_DATASET || 'production'
 const FALLBACK_API_VERSION = '2024-10-01'
 
 export function useWorkspaceClient(options?: UseClientOptions) {

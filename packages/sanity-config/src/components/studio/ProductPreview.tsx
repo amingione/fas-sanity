@@ -11,7 +11,7 @@ export default function ProductPreview({document}: any) {
   const isDev = typeof process !== 'undefined' ? process.env?.NODE_ENV === 'development' : false
   const baseSite =
     (typeof process !== 'undefined'
-      ? process.env.SANITY_STUDIO_SITE_URL || process.env.VITE_SITE_URL
+      ? process.env.SANITY_STUDIO_SITE_URL
       : undefined) || 'https://fasmotorsports.com'
   const baseUrl = `${isDev ? 'http://localhost:3000' : baseSite}/product`
 

@@ -11,9 +11,9 @@ dotenvPaths.forEach((configPath) => {
 })
 
 const REQUIRED_ENV = {
-  SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
-  SANITY_DATASET: process.env.SANITY_DATASET,
-  SANITY_WRITE_TOKEN: process.env.SANITY_WRITE_TOKEN,
+  SANITY_STUDIO_PROJECT_ID: process.env.SANITY_STUDIO_PROJECT_ID,
+  SANITY_STUDIO_DATASET: process.env.SANITY_STUDIO_DATASET,
+  SANITY_API_TOKEN: process.env.SANITY_API_TOKEN,
   GOOGLE_ADS_CLIENT_ID: process.env.GOOGLE_ADS_CLIENT_ID,
   GOOGLE_ADS_CLIENT_SECRET: process.env.GOOGLE_ADS_CLIENT_SECRET,
   GOOGLE_ADS_DEVELOPER_TOKEN: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
@@ -124,9 +124,9 @@ async function fetchSanityProducts(client: ReturnType<typeof createClient>) {
 async function syncAdsPerformance() {
   assertEnv()
   const client = createClient({
-    projectId: REQUIRED_ENV.SANITY_PROJECT_ID,
-    dataset: REQUIRED_ENV.SANITY_DATASET,
-    token: REQUIRED_ENV.SANITY_WRITE_TOKEN,
+    projectId: REQUIRED_ENV.SANITY_STUDIO_PROJECT_ID,
+    dataset: REQUIRED_ENV.SANITY_STUDIO_DATASET,
+    token: REQUIRED_ENV.SANITY_API_TOKEN,
     apiVersion: '2024-10-01',
     useCdn: false,
   })

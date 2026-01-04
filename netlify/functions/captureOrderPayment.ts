@@ -24,7 +24,7 @@ const makeCors = (origin?: string) => {
   }
 }
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {
@@ -37,7 +37,7 @@ const sanity =
   createClient({
     projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
     dataset: process.env.SANITY_STUDIO_DATASET!,
-    apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
+    apiVersion: process.env.SANITY_STUDIO_API_VERSION || '2024-04-10',
     token: sanityToken,
     useCdn: false,
   })

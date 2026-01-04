@@ -25,7 +25,7 @@ function makeCORS(origin?: string) {
   }
 }
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {apiVersion: STRIPE_API_VERSION}) : null
 
 const sanity = createClient({

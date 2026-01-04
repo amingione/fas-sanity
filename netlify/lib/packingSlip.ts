@@ -5,7 +5,6 @@ export function resolveNetlifyBase(): string | null {
   const raw =
     process.env.SANITY_STUDIO_NETLIFY_BASE ||
     process.env.PUBLIC_SITE_URL ||
-    process.env.AUTH0_BASE_URL ||
     ''
   const trimmed = raw.trim()
   if (!trimmed) return null

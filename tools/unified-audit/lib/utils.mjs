@@ -1,68 +1,84 @@
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 
-export function nowStamp() {
-  const d = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  const year = String(d.getFullYear()).slice(-2)
-  const month = pad(d.getMonth() + 1)
-  const day = pad(d.getDate())
-  return `audit-${month}-${day}-${year}`
+export async function ensureDir(dirPath) {
+  await fs.mkdir(dirPath, { recursive: true })
 }
 
-export function ensureDir(dirPath) {
-  fs.mkdirSync(dirPath, { recursive: true })
+export function toPosixPath(filePath) {
+  return filePath.split(path.sep).join('/')
 }
 
-export function stableStringify(value) {
-  return JSON.stringify(sortKeys(value), null, 2)
+export function stableSort(arr) {
+  return [...arr].sort((a, b) => String(a).localeCompare(String(b)))
 }
 
-function sortKeys(value) {
+export function stableSortBy(arr, getter) {
+  return [...arr].sort((a, b) => {
+    const av = getter(a)
+    const bv = getter(b)
+    return String(av).localeCompare(String(bv))
+  })
+}
+
+export function sortObjectDeep(value) {
   if (Array.isArray(value)) {
-    return value.map(sortKeys)
+    return value.map(sortObjectDeep)
   }
   if (value && typeof value === 'object') {
-    const out = {}
-    for (const key of Object.keys(value).sort()) {
-      out[key] = sortKeys(value[key])
+    const sorted = {}
+    const keys = Object.keys(value).sort()
+    for (const key of keys) {
+      sorted[key] = sortObjectDeep(value[key])
     }
-    return out
+    return sorted
   }
   return value
 }
 
-export function writeJson(filePath, data) {
-  ensureDir(path.dirname(filePath))
-  fs.writeFileSync(filePath, stableStringify(data) + '\n')
+export async function writeJson(filePath, data) {
+  const sorted = sortObjectDeep(data)
+  const json = JSON.stringify(sorted, null, 2)
+  await fs.writeFile(filePath, json + '\n', 'utf8')
 }
 
-export function writeText(filePath, text) {
-  ensureDir(path.dirname(filePath))
-  fs.writeFileSync(filePath, text)
+export async function writeText(filePath, text) {
+  await fs.writeFile(filePath, text, 'utf8')
 }
 
-export function readText(filePath) {
-  return fs.readFileSync(filePath, 'utf8')
+export async function fileExists(filePath) {
+  try {
+    await fs.access(filePath)
+    return true
+  } catch {
+    return false
+  }
 }
 
-export function lineNumberForIndex(text, index) {
-  if (index <= 0) return 1
-  return text.slice(0, index).split('\n').length
+export function normalizeKey(name) {
+  return String(name).replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
 }
 
-export function uniqueSorted(values) {
-  return Array.from(new Set(values)).sort()
+export function nowStamp() {
+  const iso = new Date().toISOString()
+  return iso.replace(/[:.]/g, '-').replace('T', '_').replace('Z', 'Z')
 }
 
-export function sortBy(values, keyFn) {
-  return [...values].sort((a, b) => {
-    const ak = keyFn(a)
-    const bk = keyFn(b)
-    return ak < bk ? -1 : ak > bk ? 1 : 0
-  })
+export function uniqueArray(values) {
+  return [...new Set(values)]
 }
 
-export function safeJson(value) {
-  return value === undefined ? null : value
+export function mergeSets(target, values) {
+  for (const value of values) {
+    target.add(value)
+  }
+}
+
+export function cleanSnippet(line, max = 180) {
+  const trimmed = line.trim().replace(/\s+/g, ' ')
+  return trimmed.length > max ? trimmed.slice(0, max - 3) + '...' : trimmed
+}
+
+export function toLineMap(content) {
+  return content.split(/\r?\n/)
 }

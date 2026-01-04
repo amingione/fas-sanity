@@ -3,15 +3,11 @@ import {createClient} from '@sanity/client'
 
 const PROJECT_ID =
   process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID ||
-  process.env.SANITY_PROJECT ||
   ''
 const DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || process.env.SANITY_DB || ''
+  process.env.SANITY_STUDIO_DATASET || ''
 const TOKEN =
   process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_STUDIO_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
   ''
 
 if (!PROJECT_ID || !DATASET || !TOKEN) {

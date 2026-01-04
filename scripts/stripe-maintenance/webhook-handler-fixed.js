@@ -33,7 +33,7 @@ async function main() {
     throw new Error('Unable to load stripeWebhook handler')
   }
 
-  const fakeSignature = process.env.STRIPE_SIGNATURE || 't=0,v1=fake'
+  const fakeSignature = 't=0,v1=fake'
   const response = await handler(
     {
       httpMethod: 'POST',

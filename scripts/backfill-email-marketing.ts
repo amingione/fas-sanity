@@ -36,9 +36,9 @@ function getEnv(...names: string[]): string {
 }
 
 function createSanityClient() {
-  const projectId = getEnv('SANITY_STUDIO_PROJECT_ID', 'SANITY_PROJECT_ID')
-  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
-  const token = getEnv('SANITY_API_WRITE_TOKEN', 'SANITY_API_TOKEN', 'SANITY_WRITE_TOKEN')
+  const projectId = getEnv('SANITY_STUDIO_PROJECT_ID', 'SANITY_STUDIO_PROJECT_ID')
+  const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
+  const token = getEnv('SANITY_API_WRITE_TOKEN', 'SANITY_API_TOKEN', 'SANITY_API_TOKEN')
 
   return createClient({
     projectId,

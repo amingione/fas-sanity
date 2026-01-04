@@ -17,12 +17,12 @@ function requireEnv(name) {
 
 function createSanityClient() {
   const projectId =
-    process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
-  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
-  const token = process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN
+    process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
+  const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
+  const token = process.env.SANITY_API_TOKEN
   if (!token) {
     throw new Error(
-      'Missing SANITY_WRITE_TOKEN (or SANITY_API_TOKEN) for scripts/stripe-maintenance tools',
+      'Missing SANITY_API_TOKEN (or SANITY_API_TOKEN) for scripts/stripe-maintenance tools',
     )
   }
   return createClient({
@@ -36,7 +36,7 @@ function createSanityClient() {
 }
 
 function createStripeClient() {
-  const secret = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+  const secret = process.env.STRIPE_SECRET_KEY
   if (!secret) {
     throw new Error('Missing STRIPE_SECRET_KEY for Stripe maintenance scripts')
   }

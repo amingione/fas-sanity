@@ -1,43 +1,24 @@
 import path from 'node:path'
 import { writeJson } from '../lib/utils.mjs'
 
-const DEFAULT_PHASES = {
-  'webhook-drift-report': 'WARN',
-  'api-contract-violations': 'FAIL',
-}
-
-export async function runCiVerdict(context) {
-  const { outputDir, results } = context
+export async function runCiVerdict({ outputDir, stepResults }) {
   let status = 'PASS'
-  const reasons = []
-  const phasedEnforcement = {}
+  const failures = []
 
-  for (const [name, result] of Object.entries(results)) {
-    if (!result) continue
-
-    const phase = result.enforcementPhase || DEFAULT_PHASES[name] || null
-    if (phase) phasedEnforcement[name] = phase
-
-    if (result.status === 'FAIL') {
+  for (const [name, result] of Object.entries(stepResults)) {
+    const stepStatus = result.status || 'UNKNOWN'
+    const requiresEnforcement = result.requiresEnforcement || false
+    if (stepStatus === 'FAIL' || requiresEnforcement) {
       status = 'FAIL'
-      reasons.push(`${name} status FAIL`)
-    }
-
-    if (result.requiresEnforcement) {
-      if (phase !== 'WARN') {
-        status = 'FAIL'
-        reasons.push(`${name} requiresEnforcement true`)
-      }
+      failures.push({ step: name, status: stepStatus, requiresEnforcement })
     }
   }
 
   const verdict = {
     status,
-    generatedAt: new Date().toISOString(),
-    reasons,
-    phasedEnforcement,
+    failures
   }
 
-  writeJson(path.join(outputDir, 'ci-verdict.json'), verdict)
+  await writeJson(path.join(outputDir, 'ci-verdict.json'), verdict)
   return verdict
 }

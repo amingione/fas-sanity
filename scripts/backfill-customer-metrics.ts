@@ -69,11 +69,10 @@ function getEnv(name: string, fallback?: string): string {
 
 async function main() {
   const options = parseArgs()
-  const projectId = getEnv('SANITY_STUDIO_PROJECT_ID', process.env.SANITY_PROJECT_ID)
-  const dataset = getEnv('SANITY_STUDIO_DATASET', process.env.SANITY_DATASET || 'production')
-  const token = getEnv('SANITY_API_TOKEN', process.env.SANITY_WRITE_TOKEN)
-  const apiVersion =
-    process.env.SANITY_STUDIO_API_VERSION || process.env.SANITY_API_VERSION || '2024-10-01'
+  const projectId = getEnv('SANITY_STUDIO_PROJECT_ID', process.env.SANITY_STUDIO_PROJECT_ID)
+  const dataset = getEnv('SANITY_STUDIO_DATASET', process.env.SANITY_STUDIO_DATASET || 'production')
+  const token = getEnv('SANITY_API_TOKEN', process.env.SANITY_API_TOKEN)
+  const apiVersion = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 
   const client = createClient({
     projectId,

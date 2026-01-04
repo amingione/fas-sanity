@@ -7,22 +7,18 @@ import {
   type CustomerMetricsSource,
 } from '../lib/customerSegments'
 
-const SANITY_PROJECT_ID =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || ''
-const SANITY_DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
-const SANITY_TOKEN =
-  process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN || ''
-const API_VERSION =
-  process.env.SANITY_STUDIO_API_VERSION || process.env.SANITY_API_VERSION || '2024-10-01'
+const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
+const SANITY_STUDIO_DATASET = process.env.SANITY_STUDIO_DATASET || 'production'
+const SANITY_API_TOKEN = process.env.SANITY_API_TOKEN || ''
+const API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 
 const client =
-  SANITY_PROJECT_ID && SANITY_TOKEN
+  SANITY_STUDIO_PROJECT_ID && SANITY_API_TOKEN
     ? createClient({
-        projectId: SANITY_PROJECT_ID,
-        dataset: SANITY_DATASET,
+        projectId: SANITY_STUDIO_PROJECT_ID,
+        dataset: SANITY_STUDIO_DATASET,
         apiVersion: API_VERSION,
-        token: SANITY_TOKEN,
+        token: SANITY_API_TOKEN,
         useCdn: false,
       })
     : null

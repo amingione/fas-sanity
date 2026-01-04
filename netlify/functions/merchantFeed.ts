@@ -7,15 +7,15 @@ import {
   type MerchantFeedRow,
 } from '../../shared/merchantFeed'
 
-const SANITY_PROJECT_ID =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
-const SANITY_DATASET = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const SANITY_STUDIO_PROJECT_ID =
+  process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
+const SANITY_STUDIO_DATASET = process.env.SANITY_STUDIO_DATASET || 'production'
 const SANITY_API_TOKEN = process.env.SANITY_API_TOKEN
 const MERCHANT_FEED_SECRET = process.env.MERCHANT_FEED_API_SECRET
 
 const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset: SANITY_DATASET,
+  projectId: SANITY_STUDIO_PROJECT_ID,
+  dataset: SANITY_STUDIO_DATASET,
   apiVersion: '2024-04-10',
   useCdn: false,
   token: SANITY_API_TOKEN,

@@ -8,9 +8,7 @@ import ShippingLabelActions from './ShippingLabelActions'
 
 const SANITY_API_VERSION =
   (typeof process !== 'undefined'
-    ? (((process as any)?.env?.SANITY_STUDIO_API_VERSION ||
-        (process as any)?.env?.SANITY_API_VERSION) ??
-      null)
+    ? ((process as any)?.env?.SANITY_STUDIO_API_VERSION ?? null)
     : null) || '2024-10-01'
 
 function resolvePatchTargets(rawId?: string | null): string[] {

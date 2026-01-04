@@ -159,7 +159,7 @@ if (disableShim) {
 
     const requiredKeys = [
       'RESEND_API_KEY',
-      'SANITY_WRITE_TOKEN',
+      'SANITY_API_TOKEN',
       'STRIPE_SECRET_KEY',
       'STRIPE_WEBHOOK_SECRET',
       'EASYPOST_API_KEY',

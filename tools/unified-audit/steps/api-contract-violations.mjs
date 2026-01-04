@@ -1,117 +1,177 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { scanCodeFiles } from '../lib/scan.mjs'
-import { lineNumberForIndex } from '../lib/utils.mjs'
-import { writeJson } from '../lib/utils.mjs'
-import {
-  detectApiContractViolation,
-  extractInlineObjectFields,
-} from '../lib/detectors/api-contract.mjs'
+import fs from 'node:fs/promises'
+import { listRepoFiles, relativeToRepo } from '../lib/file-scan.mjs'
 
-const SANITY_CREATE = /\b(?:sanityClient|client)\.create\s*\(/g
-const SANITY_PATCH_SET = /\.patch\([^)]*\)\.set\s*\(/g
-
-function collectSanityWriteFields(filePath, fileContent) {
-  const writes = []
-
-  SANITY_CREATE.lastIndex = 0
-  let match
-  while ((match = SANITY_CREATE.exec(fileContent))) {
-    const fields = extractInlineObjectFields(match.index, fileContent)
-    for (const field of fields) {
-      writes.push({
-        field,
-        lineNo: lineNumberForIndex(fileContent, match.index),
-      })
-    }
-  }
-
-  SANITY_PATCH_SET.lastIndex = 0
-  while ((match = SANITY_PATCH_SET.exec(fileContent))) {
-    const fields = extractInlineObjectFields(match.index, fileContent)
-    for (const field of fields) {
-      writes.push({
-        field,
-        lineNo: lineNumberForIndex(fileContent, match.index),
-      })
-    }
-  }
-
-  return writes.map((entry) => ({ ...entry, file: filePath }))
+function findLineNumber(content, search) {
+  const idx = content.indexOf(search)
+  if (idx === -1) return null
+  return content.slice(0, idx).split(/\r?\n/).length
 }
 
-function addSchemaMismatchViolations(files, schemaFields) {
+function checkEasyPostPayload(content) {
   const violations = []
-  const knownFields = new Set(schemaFields || [])
-  const ignoreFields = new Set(['_id', '_type', '_rev'])
-  const seen = new Set()
-
-  for (const file of files) {
-    const writes = collectSanityWriteFields(file.path, file.contents)
-    for (const write of writes) {
-      if (!write.field || write.field.startsWith('_')) continue
-      if (ignoreFields.has(write.field)) continue
-      if (knownFields.has(write.field)) continue
-      const key = `${write.file}:${write.field}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      violations.push({
-        service: 'sanity',
-        type: 'schemaMismatch',
-        severity: 'INFO',
-        file: write.file,
-        lineNo: write.lineNo,
-        fieldPath: write.field,
-        recommendedFix: 'Align persisted fields with Sanity schema or remove the write.',
-      })
+  const shipmentCall = content.match(/Shipment\.create\(([\s\S]*?)\)/)
+  if (shipmentCall) {
+    const body = shipmentCall[1]
+    const required = ['to_address', 'from_address', 'parcel']
+    for (const field of required) {
+      if (!body.includes(field)) {
+        violations.push({
+          type: 'missingField',
+          fieldPath: field,
+          message: `EasyPost payload missing ${field}`
+        })
+      }
     }
   }
-
   return violations
 }
 
-export async function runApiContractViolations(context) {
-  const { repos, outputDir, mappingIndex } = context
-  const files = []
-
-  for (const repo of repos) {
-    if (repo.status !== 'OK') continue
-    const filePaths = scanCodeFiles(repo.path)
-    for (const filePath of filePaths) {
-      const contents = fs.readFileSync(filePath, 'utf8')
-      files.push({ path: filePath, contents })
-    }
-  }
-
+function checkResendPayload(content) {
   const violations = []
+  const sendCall = content.match(/emails\.send\(([\s\S]*?)\)/)
+  if (sendCall) {
+    const body = sendCall[1]
+    const required = ['to', 'from', 'subject']
+    for (const field of required) {
+      if (!body.includes(field)) {
+        violations.push({
+          type: 'missingField',
+          fieldPath: field,
+          message: `Resend payload missing ${field}`
+        })
+      }
+    }
+  }
+  return violations
+}
 
-  for (const file of files) {
-    const fileViolations = detectApiContractViolation(file.path, file.contents, null)
-    for (const violation of fileViolations) {
-      violations.push({
-        ...violation,
-        severity: 'FAIL',
-      })
+export async function runApiContractViolations({ repos }) {
+  const result = {
+    status: 'PASS',
+    requiresEnforcement: false,
+    enforcementApproved: false,
+    violations: []
+  }
+
+  const files = []
+  for (const repo of repos) {
+    const repoFiles = await listRepoFiles(repo.path, ['**/*.{ts,tsx,js,jsx,mjs,cjs}'])
+    for (const file of repoFiles) files.push({ repo, file })
+  }
+
+  const easypostPersistFields = ['easyPostShipmentId', 'shippingLabelUrl', 'trackingNumber']
+  const resendPersistFields = ['resendMessageId', 'resendId']
+
+  let hasEasyPost = false
+  let hasResend = false
+  let persistEasyPost = false
+  let persistResend = false
+
+  for (const { repo, file } of files) {
+    const content = await fs.readFile(file, 'utf8')
+    const rel = relativeToRepo(repo.path, file)
+
+    if (/easypost|EasyPost/i.test(content)) {
+      hasEasyPost = true
+      const payloadViolations = checkEasyPostPayload(content)
+      for (const violation of payloadViolations) {
+        result.violations.push({
+          service: 'easypost',
+          type: violation.type,
+          file: rel,
+          repo: repo.name,
+          lineNo: findLineNumber(content, violation.fieldPath),
+          fieldPath: violation.fieldPath,
+          recommendedFix: violation.message
+        })
+      }
+      for (const field of easypostPersistFields) {
+        if (content.includes(`${field}:`)) persistEasyPost = true
+      }
+      if (content.includes('.tracking_code') && !content.includes('?.tracking_code')) {
+        result.violations.push({
+          service: 'easypost',
+          type: 'unsafeAccess',
+          file: rel,
+          repo: repo.name,
+          lineNo: findLineNumber(content, '.tracking_code'),
+          fieldPath: 'tracking_code',
+          recommendedFix: 'Guard tracking_code access with optional chaining or presence checks.'
+        })
+      }
+    }
+
+    if (/resend|RESEND_/i.test(content)) {
+      hasResend = true
+      const payloadViolations = checkResendPayload(content)
+      for (const violation of payloadViolations) {
+        result.violations.push({
+          service: 'resend',
+          type: violation.type,
+          file: rel,
+          repo: repo.name,
+          lineNo: findLineNumber(content, violation.fieldPath),
+          fieldPath: violation.fieldPath,
+          recommendedFix: violation.message
+        })
+      }
+      for (const field of resendPersistFields) {
+        if (content.includes(`${field}:`)) persistResend = true
+      }
+      if (content.includes('.id') && content.includes('resend')) {
+        const lineNo = findLineNumber(content, '.id')
+        if (lineNo) {
+          result.violations.push({
+            service: 'resend',
+            type: 'unsafeAccess',
+            file: rel,
+            repo: repo.name,
+            lineNo,
+            fieldPath: 'id',
+            recommendedFix: 'Guard Resend response id access and handle missing responses.'
+          })
+        }
+      }
     }
   }
 
-  const schemaViolations = addSchemaMismatchViolations(
-    files,
-    mappingIndex?.allSchemaFields || [],
-  )
-  violations.push(...schemaViolations)
-
-  const hasBlocking = violations.some((item) => item.severity !== 'INFO')
-
-  const output = {
-    status: hasBlocking ? 'FAIL' : 'PASS',
-    generatedAt: new Date().toISOString(),
-    requiresEnforcement: hasBlocking,
-    enforcementApproved: false,
-    enforcementPhase: 'FAIL',
-    violations,
+  if (hasEasyPost && !persistEasyPost) {
+    result.violations.push({
+      service: 'easypost',
+      type: 'notPersisted',
+      file: null,
+      repo: null,
+      lineNo: null,
+      fieldPath: easypostPersistFields.join(', '),
+      recommendedFix: 'Persist EasyPost shipment id, label URL, and tracking number to Sanity.'
+    })
   }
 
-  writeJson(path.join(outputDir, 'api-contract-violations.json'), output)
-  return output
+  if (hasResend && !persistResend) {
+    result.violations.push({
+      service: 'resend',
+      type: 'notPersisted',
+      file: null,
+      repo: null,
+      lineNo: null,
+      fieldPath: resendPersistFields.join(', '),
+      recommendedFix: 'Persist Resend message id to Sanity for traceability.'
+    })
+  }
+
+  if (result.violations.length > 0) {
+    result.status = 'FAIL'
+    result.requiresEnforcement = true
+  }
+
+  result.violations = result.violations.map(v => ({
+    ...v,
+    file: v.file || null
+  })).sort((a, b) => {
+    const aKey = `${a.service}:${a.repo || ''}:${a.file || ''}:${a.lineNo || 0}:${a.fieldPath}`
+    const bKey = `${b.service}:${b.repo || ''}:${b.file || ''}:${b.lineNo || 0}:${b.fieldPath}`
+    return aKey.localeCompare(bKey)
+  })
+
+  return result
 }

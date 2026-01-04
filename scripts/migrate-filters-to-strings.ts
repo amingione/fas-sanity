@@ -6,8 +6,8 @@ dotenv.config()
 import {createClient} from '@sanity/client'
 
 const client = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID,
-  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID,
+  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
   apiVersion: '2024-04-10',
   token: process.env.SANITY_API_TOKEN, // needs write token
   useCdn: false,

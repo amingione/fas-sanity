@@ -68,10 +68,8 @@ function normalizeId(id?: string): string {
 
 function resolveNetlifyBase(): string {
   const candidates = [
-    process.env.NETLIFY_FUNCTIONS_BASE,
-    process.env.NETLIFY_BASE_URL,
     process.env.SANITY_STUDIO_NETLIFY_BASE,
-    process.env.AUTH0_BASE_URL,
+    process.env.NETLIFY_BASE_URL,
   ]
 
   for (const candidate of candidates) {
@@ -452,7 +450,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3333'
+    const baseUrl = process.env.PUBLIC_SITE_URL || 'http://localhost:3333'
 
     if (!process.env.STRIPE_SECRET_KEY) {
       console.error('createCheckout: missing STRIPE_SECRET_KEY')
@@ -537,7 +535,7 @@ export const handler: Handler = async (event) => {
       total,
       unitAmount,
       hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-      baseUrl: process.env.AUTH0_BASE_URL || 'http://localhost:3333',
+      baseUrl: process.env.PUBLIC_SITE_URL || 'http://localhost:3333',
       subtotal,
       discountAmt,
       taxableBase,

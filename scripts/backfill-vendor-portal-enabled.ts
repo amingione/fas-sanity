@@ -20,13 +20,13 @@ function parseCliOptions(): CliOptions {
   return opts
 }
 
-const projectId = process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID
-const dataset = process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET
-const token = process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
+const token = process.env.SANITY_API_TOKEN
 
 if (!projectId || !dataset || !token) {
   console.error(
-    'Missing Sanity configuration. Set SANITY_PROJECT_ID, SANITY_DATASET, and SANITY_WRITE_TOKEN.',
+    'Missing Sanity configuration. Set SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, and SANITY_API_TOKEN.',
   )
   process.exit(1)
 }

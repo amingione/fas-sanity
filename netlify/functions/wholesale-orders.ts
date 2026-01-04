@@ -84,13 +84,12 @@ export const handler: Handler = async (event) => {
       return {statusCode: 400, headers: corsHeaders, body: JSON.stringify({error: 'Cart is empty'})}
     }
 
-    const hasWriteToken =
-      process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN || process.env.SANITY_ACCESS_TOKEN
+    const hasWriteToken = process.env.SANITY_API_TOKEN
     if (!hasWriteToken) {
       return {
         statusCode: 503,
         headers: corsHeaders,
-        body: JSON.stringify({error: 'Server missing Sanity write token'}),
+        body: JSON.stringify({error: 'Server missing SANITY_API_TOKEN'}),
       }
     }
 

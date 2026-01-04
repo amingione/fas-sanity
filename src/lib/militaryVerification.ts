@@ -43,7 +43,7 @@ const buildSanityClient = (): SanityClient => {
     projectId,
     dataset,
     token,
-    apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
+    apiVersion: process.env.SANITY_STUDIO_API_VERSION || '2024-04-10',
     useCdn: false,
   })
 }
@@ -178,7 +178,7 @@ const buildDiscountEmailHtml = (code: string, expiresAt: number | null) => {
         day: 'numeric',
       })
     : 'No expiration date'
-  const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/shop`
+  const shopUrl = `${process.env.PUBLIC_SITE_URL || ''}/shop`
   return `
     <!DOCTYPE html>
     <html>

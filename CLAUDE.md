@@ -350,11 +350,11 @@ SANITY_API_TOKEN=skxxx
 ### fas-cms-fresh (.env.local)
 
 ```bash
-PUBLIC_SANITY_PROJECT_ID=your_project_id
-PUBLIC_SANITY_DATASET=production
+SANITY_STUDIO_PROJECT_ID=your_project_id
+SANITY_STUDIO_DATASET=production
 SANITY_API_TOKEN=skxxx
 STRIPE_SECRET_KEY=<real_api_key>
-PUBLIC_STRIPE_PUBLISHABLE_KEY=<real_api_key>
+SANITY_STUDIO_STRIPE_PUBLISHABLE_KEY=<publishable_key>
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 EASYPOST_API_KEY=EZAK_xxx
 ```

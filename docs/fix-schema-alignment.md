@@ -249,8 +249,8 @@ Update all Sanity clients to use 2024-01-01:
 
 // All Sanity client configs
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false
@@ -380,8 +380,8 @@ import type { APIRoute } from 'astro'
 
 const easypost = new EasyPost(import.meta.env.EASYPOST_API_KEY!)
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false
@@ -426,8 +426,8 @@ import { createClient } from '@sanity/client'
 import type { APIRoute } from 'astro'
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false

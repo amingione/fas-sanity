@@ -67,14 +67,8 @@ async function main() {
   bootstrapEnv()
 
   const {default: handler} = await import('../netlify/functions/syncStripeCatalog')
-  const secret = (process.env.STRIPE_SYNC_SECRET || '').trim()
-
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error('Missing STRIPE_SECRET_KEY environment variable.')
-  }
-
-  if (!secret && options.mode === 'missing') {
-    console.warn('Warning: STRIPE_SYNC_SECRET is not set; continuing without Authorization header.')
   }
 
   const body: Record<string, unknown> = {
@@ -91,8 +85,8 @@ async function main() {
 
   const event: HandlerEvent = {
     httpMethod: 'POST',
-    headers: secret ? {authorization: `Bearer ${secret}`} : {},
-    multiValueHeaders: secret ? {authorization: [`Bearer ${secret}`]} : {},
+    headers: {},
+    multiValueHeaders: {},
     body: JSON.stringify(body),
     isBase64Encoded: false,
     queryStringParameters: {},

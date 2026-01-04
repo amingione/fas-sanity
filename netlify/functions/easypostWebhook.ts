@@ -5,7 +5,7 @@ import {logFunctionExecution} from '../../utils/functionLogger'
 import {sanityClient} from '../lib/sanityClient'
 import {linkShipmentToOrder} from '../lib/referenceIntegrity'
 
-const DEFAULT_ORIGIN = process.env.CORS_ALLOW || process.env.CORS_ORIGIN || 'http://localhost:3333'
+const DEFAULT_ORIGIN = process.env.CORS_ALLOW || 'http://localhost:3333'
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': DEFAULT_ORIGIN,
   'Access-Control-Allow-Headers':
@@ -13,10 +13,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST,OPTIONS',
 }
 
-const SHIPPING_PROVIDER = (process.env.SHIPPING_PROVIDER || 'easypost').toLowerCase()
 const WEBHOOK_SECRET = (process.env.EASYPOST_WEBHOOK_SECRET || '').trim()
-const EASYPOST_API_KEY =
-  process.env.EASYPOST_API_KEY || process.env.EASYPOST_PROD_API_KEY || process.env.EASYPOST_TEST_API_KEY || ''
+const EASYPOST_API_KEY = process.env.EASYPOST_API_KEY || ''
 
 const sanity = sanityClient
 
@@ -933,28 +931,6 @@ export const handler: Handler = async (event) => {
         },
         'error',
       )
-    }
-
-    const providerEnabled =
-      SHIPPING_PROVIDER === 'easypost' || SHIPPING_PROVIDER === 'parcelcraft' // allow legacy value
-
-    if (!providerEnabled) {
-      console.warn('easypostWebhook received event but shipping provider is disabled', {
-        SHIPPING_PROVIDER,
-      })
-      return await finalize(
-        {
-          statusCode: 200,
-          headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
-          body: JSON.stringify({ok: true, ignored: true, reason: 'EasyPost integration disabled'}),
-        },
-        'warning',
-        {ignored: true},
-      )
-    }
-
-    if (SHIPPING_PROVIDER === 'parcelcraft') {
-      console.warn('easypostWebhook: SHIPPING_PROVIDER=parcelcraft (legacy) — proceed as EasyPost')
     }
 
     if (!WEBHOOK_SECRET) {

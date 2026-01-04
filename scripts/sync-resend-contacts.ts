@@ -3,14 +3,11 @@ import {createClient} from '@sanity/client'
 import {syncContact} from '../netlify/lib/resend/contacts'
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || process.env.SANITY_PROJECT
+  process.env.SANITY_STUDIO_PROJECT_ID
 const dataset =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || process.env.SANITY_DB
+  process.env.SANITY_STUDIO_DATASET
 const token =
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_STUDIO_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_AUTH_TOKEN
+  process.env.SANITY_API_TOKEN
 
 if (!projectId || !dataset || !token) {
   console.error(

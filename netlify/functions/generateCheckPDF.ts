@@ -7,9 +7,9 @@ import path from 'path'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
+  process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
 
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
 
 const sanityToken = process.env.SANITY_API_TOKEN
 
@@ -21,7 +21,7 @@ const client = createClient({
   token: sanityToken,
 })
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {

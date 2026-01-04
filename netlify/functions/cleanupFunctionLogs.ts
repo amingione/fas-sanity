@@ -2,13 +2,11 @@ import {schedule} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {logFunctionExecution} from '../../utils/functionLogger'
 
-const PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const DATASET = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
-const API_VERSION = process.env.SANITY_API_VERSION || '2024-10-01'
+const PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
+const DATASET = process.env.SANITY_STUDIO_DATASET
+const API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 const TOKEN =
   process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
   ''
 
 const sanity =

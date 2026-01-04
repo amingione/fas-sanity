@@ -26,7 +26,6 @@ type MarketplaceResponse = {
 
 const defaultEndpoint =
   process.env.SANITY_STUDIO_MARKETPLACE_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_MARKETPLACE_ENDPOINT ||
   '/.netlify/functions/marketplace'
 
 export function MarketplaceTool() {

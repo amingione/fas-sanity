@@ -22,8 +22,8 @@ const resolvedPort =
   parsePort(process.env.SANITY_STUDIO_PORT) || parsePort(process.env.PORT) || 3333
 export default defineCliConfig({
   api: {
-    projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd',
-    dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production',
+    projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
+    dataset: process.env.SANITY_STUDIO_DATASET || 'production',
   },
   server: {
     hostname: resolvedHostname,

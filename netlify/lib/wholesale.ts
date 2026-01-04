@@ -63,7 +63,7 @@ export type WholesaleTotals = {
   total: number
 }
 
-const API_VERSION = process.env.SANITY_API_VERSION || '2024-10-01'
+const API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 const ORDER_NUMBER_PREFIX = 'FAS'
 
 const sanity =
@@ -71,19 +71,13 @@ const sanity =
     ? createClient({
         projectId:
           process.env.SANITY_STUDIO_PROJECT_ID ||
-          process.env.SANITY_PROJECT_ID ||
-          process.env.SANITY_PROJECT ||
           '',
         dataset:
           process.env.SANITY_STUDIO_DATASET ||
-          process.env.SANITY_DATASET ||
-          process.env.SANITY_DB ||
           '',
         apiVersion: API_VERSION,
         token:
           process.env.SANITY_API_TOKEN ||
-          process.env.SANITY_WRITE_TOKEN ||
-          process.env.SANITY_ACCESS_TOKEN ||
           '',
         useCdn: false,
       })

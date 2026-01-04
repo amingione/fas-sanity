@@ -280,7 +280,7 @@ const handler: Handler = async (event) => {
       }
 
     // Ensure there is a payment link (reuse stored URL or create & patch it)
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3333'
+    const baseUrl = process.env.PUBLIC_SITE_URL || 'http://localhost:3333'
     const payUrl =
       String(invoice?.paymentLinkUrl || '') ||
       (await ensureCheckoutUrl(invoiceId, invoice, baseUrl))

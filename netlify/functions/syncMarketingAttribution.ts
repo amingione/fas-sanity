@@ -7,7 +7,7 @@ type DateRange = {
 }
 
 type NormalizedMetric = {
-  source: 'google_ads' | 'facebook' | 'email' | 'affiliate' | 'organic'
+  source: 'google_ads' | 'facebook' | 'affiliate' | 'organic'
   externalId?: string
   campaign?: string
   adGroup?: string
@@ -49,17 +49,6 @@ type MarketingSecrets = {
   meta?: {
     accessToken?: string
     adAccountId?: string
-  }
-  email?: {
-    provider?: 'sendgrid' | 'klaviyo'
-    sendgrid?: {
-      apiKey?: string
-      category?: string
-    }
-    klaviyo?: {
-      privateKey?: string
-      metricId?: string
-    }
   }
   affiliate?: {
     endpoint?: string
@@ -106,23 +95,8 @@ function loadSecrets(): MarketingSecrets {
       accessToken: process.env.GOOGLE_ADS_ACCESS_TOKEN,
     },
     meta: {
-      accessToken: process.env.FACEBOOK_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN,
-      adAccountId: process.env.FACEBOOK_AD_ACCOUNT_ID || process.env.META_AD_ACCOUNT_ID,
-    },
-    email: {
-      provider: process.env.SENDGRID_API_KEY
-        ? 'sendgrid'
-        : process.env.KLAVIYO_PRIVATE_KEY
-          ? 'klaviyo'
-          : undefined,
-      sendgrid: {
-        apiKey: process.env.SENDGRID_API_KEY,
-        category: process.env.SENDGRID_CATEGORY,
-      },
-      klaviyo: {
-        privateKey: process.env.KLAVIYO_PRIVATE_KEY,
-        metricId: process.env.KLAVIYO_CAMPAIGN_METRIC_ID,
-      },
+      accessToken: process.env.META_ACCESS_TOKEN,
+      adAccountId: process.env.META_AD_ACCOUNT_ID,
     },
     affiliate: {
       endpoint: process.env.AFFILIATE_API_ENDPOINT,
@@ -134,38 +108,36 @@ function loadSecrets(): MarketingSecrets {
       token: process.env.DIRECT_ANALYTICS_TOKEN,
     },
     sanity: {
-      projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID,
-      dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET,
-      token: process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN,
+      projectId: process.env.SANITY_STUDIO_PROJECT_ID,
+      dataset: process.env.SANITY_STUDIO_DATASET,
+      token: process.env.SANITY_API_TOKEN,
     },
   }
 }
 
 const marketingSecrets = loadSecrets()
 
-const SANITY_PROJECT_ID =
+const SANITY_STUDIO_PROJECT_ID =
   marketingSecrets?.sanity?.projectId ||
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID
-const SANITY_DATASET =
+  process.env.SANITY_STUDIO_PROJECT_ID
+const SANITY_STUDIO_DATASET =
   marketingSecrets?.sanity?.dataset ||
   process.env.SANITY_STUDIO_DATASET ||
-  process.env.SANITY_DATASET ||
   'production'
-const SANITY_TOKEN =
-  marketingSecrets?.sanity?.token || process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN
+const SANITY_API_TOKEN =
+  marketingSecrets?.sanity?.token || process.env.SANITY_API_TOKEN
 
-if (!SANITY_PROJECT_ID || !SANITY_TOKEN) {
+if (!SANITY_STUDIO_PROJECT_ID || !SANITY_API_TOKEN) {
   console.warn(
     '[syncMarketingAttribution] Missing Sanity credentials. Set SANITY_STUDIO_PROJECT_ID and SANITY_API_TOKEN (or include them in MARKETING_API_BLOB).',
   )
 }
 
-const sanity = SANITY_PROJECT_ID
+const sanity = SANITY_STUDIO_PROJECT_ID
   ? createClient({
-      projectId: SANITY_PROJECT_ID,
-      dataset: SANITY_DATASET,
-      token: SANITY_TOKEN,
+      projectId: SANITY_STUDIO_PROJECT_ID,
+      dataset: SANITY_STUDIO_DATASET,
+      token: SANITY_API_TOKEN,
       apiVersion: '2024-10-01',
       useCdn: false,
     })
@@ -193,37 +165,27 @@ export const handler: Handler = async (event) => {
   const range = resolveDateRange(event.queryStringParameters)
 
   try {
-    const [googleMetrics, facebookMetrics, emailMetrics, affiliateMetrics, organicMetrics] =
-      await Promise.all([
-        fetchGoogleAdsMetrics(range, marketingSecrets.google).catch((err) => {
-          console.error('[syncMarketingAttribution] Google Ads fetch failed', err)
-          return []
-        }),
-        fetchMetaAdsMetrics(range, marketingSecrets.meta).catch((err) => {
-          console.error('[syncMarketingAttribution] Facebook Graph fetch failed', err)
-          return []
-        }),
-        fetchEmailMetrics(range, marketingSecrets.email).catch((err) => {
-          console.error('[syncMarketingAttribution] Email metrics fetch failed', err)
-          return []
-        }),
-        fetchAffiliateMetrics(range, marketingSecrets.affiliate).catch((err) => {
-          console.error('[syncMarketingAttribution] Affiliate metrics fetch failed', err)
-          return []
-        }),
-        fetchOrganicMetrics(range, marketingSecrets.organic).catch((err) => {
-          console.error('[syncMarketingAttribution] Organic metrics fetch failed', err)
-          return []
-        }),
-      ])
+    const [googleMetrics, facebookMetrics, affiliateMetrics, organicMetrics] = await Promise.all([
+      fetchGoogleAdsMetrics(range, marketingSecrets.google).catch((err) => {
+        console.error('[syncMarketingAttribution] Google Ads fetch failed', err)
+        return []
+      }),
+      fetchMetaAdsMetrics(range, marketingSecrets.meta).catch((err) => {
+        console.error('[syncMarketingAttribution] Facebook Graph fetch failed', err)
+        return []
+      }),
+      fetchAffiliateMetrics(range, marketingSecrets.affiliate).catch((err) => {
+        console.error('[syncMarketingAttribution] Affiliate metrics fetch failed', err)
+        return []
+      }),
+      fetchOrganicMetrics(range, marketingSecrets.organic).catch((err) => {
+        console.error('[syncMarketingAttribution] Organic metrics fetch failed', err)
+        return []
+      }),
+    ])
 
-    const records = [
-      ...googleMetrics,
-      ...facebookMetrics,
-      ...emailMetrics,
-      ...affiliateMetrics,
-      ...organicMetrics,
-    ].filter((record) => Boolean(record.metrics))
+    const records = [...googleMetrics, ...facebookMetrics, ...affiliateMetrics, ...organicMetrics]
+      .filter((record) => Boolean(record.metrics))
 
     if (!records.length) {
       return {
@@ -461,115 +423,6 @@ async function fetchMetaAdsMetrics(
       dateRange: range,
     }
   })
-}
-
-async function fetchEmailMetrics(
-  range: DateRange,
-  config: MarketingSecrets['email'],
-): Promise<NormalizedMetric[]> {
-  if (!config) return []
-
-  if (config.provider === 'sendgrid' && config.sendgrid?.apiKey) {
-    return fetchSendgridMetrics(range, config.sendgrid)
-  }
-  if (config.provider === 'klaviyo' && config.klaviyo?.privateKey && config.klaviyo.metricId) {
-    return fetchKlaviyoMetrics(range, config.klaviyo)
-  }
-  return []
-}
-
-async function fetchSendgridMetrics(
-  range: DateRange,
-  config: NonNullable<MarketingSecrets['email']>['sendgrid'],
-): Promise<NormalizedMetric[]> {
-  const apiKey = config?.apiKey
-  const category = config?.category || undefined
-  if (!apiKey) return []
-
-  const params = new URLSearchParams({
-    start_date: range.start,
-    end_date: range.end,
-  })
-  if (category) params.set('aggregated_by', 'day')
-
-  const response = await fetch(`https://api.sendgrid.com/v3/stats?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-  })
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '')
-    throw new Error(`SendGrid metrics error: ${response.status} ${detail}`)
-  }
-
-  const data = await response.json()
-  const rows: any[] = Array.isArray(data) ? data : []
-
-  return rows.map((row) => {
-    const metrics = row?.stats?.[0]?.metrics || {}
-    return {
-      source: 'email' as const,
-      externalId: `${row.date}-${category || 'all'}`,
-      campaign: category || 'All Email',
-      medium: 'email',
-      dateRange: {start: row.date, end: row.date},
-      metrics: {
-        opens: coerceNumber(metrics.opens),
-        clickThroughs: coerceNumber(metrics.clicks),
-        orders: coerceNumber(metrics.unique_clicks),
-        sessions: coerceNumber(metrics.unique_opens),
-      },
-    }
-  })
-}
-
-async function fetchKlaviyoMetrics(
-  range: DateRange,
-  config: NonNullable<MarketingSecrets['email']>['klaviyo'],
-): Promise<NormalizedMetric[]> {
-  const apiKey = config?.privateKey
-  const metricId = config?.metricId
-  if (!apiKey || !metricId) return []
-
-  const params = new URLSearchParams({
-    since: `${range.start}T00:00:00Z`,
-    until: `${range.end}T23:59:59Z`,
-  })
-
-  const response = await fetch(
-    `https://a.klaviyo.com/api/metrics/${encodeURIComponent(metricId)}/timeline?${params.toString()}`,
-    {
-      headers: {
-        Authorization: `Klaviyo-API-Key ${apiKey}`,
-        Accept: 'application/json',
-      },
-    },
-  )
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '')
-    throw new Error(`Klaviyo metrics error: ${response.status} ${detail}`)
-  }
-
-  const data = await response.json()
-  const rows: any[] = Array.isArray(data?.data) ? data.data : []
-
-  return rows.map((row) => ({
-    source: 'email' as const,
-    externalId: row?.id,
-    campaign: row?.attributes?.metric_name,
-    medium: 'email',
-    dateRange: {start: range.start, end: range.end},
-    metrics: {
-      opens: coerceNumber(
-        row?.attributes?.statistic?.total_open ?? row?.attributes?.statistics?.opens,
-      ),
-      clickThroughs: coerceNumber(
-        row?.attributes?.statistic?.total_click ?? row?.attributes?.statistics?.clicks,
-      ),
-    },
-  }))
 }
 
 async function fetchAffiliateMetrics(

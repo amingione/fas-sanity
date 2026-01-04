@@ -227,7 +227,6 @@ export function AutoMapperTool() {
 
       const endpoint =
         process.env.SANITY_STUDIO_AI_SUGGEST_ENDPOINT ||
-        process.env.VITE_SANITY_STUDIO_AI_SUGGEST_ENDPOINT ||
         '/.netlify/functions/ai-suggest-mappings'
 
       const response = await fetch(endpoint, {
@@ -311,7 +310,6 @@ export function AutoMapperTool() {
     try {
       const endpoint =
         process.env.SANITY_STUDIO_AI_SUGGEST_ENDPOINT ||
-        process.env.VITE_SANITY_STUDIO_AI_SUGGEST_ENDPOINT ||
         '/.netlify/functions/ai-suggest-mappings'
 
       const res = await fetch(endpoint, {

@@ -31,11 +31,11 @@ for (const filename of ENV_FILES) {
 }
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || ''
+  process.env.SANITY_STUDIO_PROJECT_ID || ''
 const dataset =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+  process.env.SANITY_STUDIO_DATASET || 'production'
 const token =
-  process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN || ''
+  process.env.SANITY_API_TOKEN || ''
 
 if (!projectId || !dataset || !token) {
   console.error(

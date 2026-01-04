@@ -7,10 +7,10 @@
     "audit": "./cli.mjs"
   },
   "dependencies": {
-    "@sanity/client": "^6.12.1",
+    "@sanity/client": "^6.21.0",
     "dotenv": "^16.4.5",
     "fast-glob": "^3.3.2",
-    "groq-js": "^1.11.0",
+    "groq-js": "^1.10.4",
     "minimist": "^1.2.8",
     "ts-morph": "^22.0.0"
   }

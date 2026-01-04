@@ -15,7 +15,6 @@ type Payload = {snippets: Snippet[]}
 
 const endpoint =
   process.env.SANITY_STUDIO_TRANSFORM_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_TRANSFORM_ENDPOINT ||
   '/.netlify/functions/transformation-library'
 
 const categories = ['all', 'string', 'number', 'date']
