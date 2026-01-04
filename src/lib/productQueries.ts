@@ -1,5 +1,10 @@
 export const PHYSICAL_PRODUCTS_QUERY = `
-  *[_type == "product" && status != "archived"]|order(_updatedAt desc){
+  *[_type == "product" && status == "active" && (
+    productType == "service" ||
+    productType == "bundle" ||
+    productType == "physical" ||
+    featured == true
+  )]|order(_updatedAt desc){
     _id,
     title,
     "slug": slug.current,
@@ -19,7 +24,7 @@ export const PHYSICAL_PRODUCTS_QUERY = `
 `
 
 export const SERVICE_PRODUCTS_QUERY = `
-  *[_type == "product" && productType == "service" && status != "archived"]|order(title asc){
+  *[_type == "product" && productType == "service" && status == "active"]|order(title asc){
     _id,
     title,
     "slug": slug.current,
@@ -38,7 +43,7 @@ export const SERVICE_PRODUCTS_QUERY = `
 `
 
 export const BUNDLE_PRODUCTS_QUERY = `
-  *[_type == "product" && productType == "bundle" && status != "archived"]|order(title asc){
+  *[_type == "product" && productType == "bundle" && status == "active"]|order(title asc){
     _id,
     title,
     "slug": slug.current,
