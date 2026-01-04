@@ -1,6 +1,22 @@
 export async function handler(event) {
   try {
-    const {email, name, message} = JSON.parse(event.body)
+    let payload = {}
+    try {
+      payload = event.body ? JSON.parse(event.body) : {}
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({error: 'Invalid JSON payload'}),
+      }
+    }
+
+    const {email, name, message} = payload || {}
+    if (!email || !name || !message) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({error: 'Missing required fields: email, name, message'}),
+      }
+    }
     const RESEND_API_KEY = process.env.RESEND_API_KEY
 
     if (!RESEND_API_KEY) {

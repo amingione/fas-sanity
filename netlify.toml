@@ -35,7 +35,7 @@
   external_node_modules = ["get-stream", "@aws-sdk/client-secrets-manager"]
 
 [functions.environment]
-  NODE_OPTIONS = "--require=./scripts/aws-secrets-shim.cjs" # CI/prod runtime preload only.
+  NODE_OPTIONS = "--require=/var/task/scripts/aws-secrets-shim.cjs" # CI/prod runtime preload only.
 
 [functions.masterBackfill]
   node_module_format = "esm"

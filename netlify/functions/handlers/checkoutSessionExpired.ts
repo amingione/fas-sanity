@@ -11,6 +11,11 @@ const sanityClient = createClient({
 
 const patchProductTable = async (carts: Array<Record<string, unknown>>): Promise<void> => {
   if (!Array.isArray(carts) || carts.length === 0) return
+  await sanityClient.createIfNotExists({
+    _id: 'productTable',
+    _type: 'productTable',
+    carts: [],
+  })
   await sanityClient
     .patch('productTable')
     .setIfMissing({carts: []})

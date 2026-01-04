@@ -14,6 +14,7 @@ import {generateInitialMpn} from '../../utils/generateProductCodes'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 const PRODUCT_API_VERSION = '2024-10-01'
+const SKU_PATTERN = /^FAS-[A-Z0-9]+-\d{3,}A$/
 
 type CanonicalFieldProps = StringInputProps<StringSchemaType> & {document?: any}
 
@@ -316,6 +317,15 @@ const product = defineType({
       type: 'string',
       description: 'Auto-generated on product creation.',
       readOnly: true,
+      validation: (Rule) =>
+        Rule.custom((value) => {
+          if (!value) return true
+          const normalized = value.toString().trim().toUpperCase()
+          if (!SKU_PATTERN.test(normalized)) {
+            return 'SKU must match FAS-<PREFIX>-<SERIAL>A (example: FAS-ABC-001A).'
+          }
+          return true
+        }),
       group: 'basic',
     }),
     defineField({

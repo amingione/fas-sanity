@@ -6,7 +6,7 @@ import {useClient} from 'sanity'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 import {calculateVendorItemSubtotal} from '../../../../../shared/vendorPricing'
 import {getNetlifyFnBase} from './netlifyFnBase'
-import {formatInvoiceNumberFromOrder} from '../../utils/orderNumber'
+import {formatInvoiceNumberFromOrder, formatOrderNumber} from '../../utils/orderNumber'
 
 const API_VERSION = '2024-10-01'
 
@@ -200,9 +200,10 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       const total = Number.isFinite(Number(quote.total)) ? Number(quote.total) : subtotal + shipping + tax
 
       const nowIso = new Date().toISOString()
+      const normalizedOrderNumber = formatOrderNumber(quote.quoteNumber) || quote.quoteNumber
       const orderDoc: DocumentStub<Record<string, any>> = {
         _type: 'order',
-        orderNumber: quote.quoteNumber || undefined,
+        orderNumber: normalizedOrderNumber || undefined,
         orderType: 'wholesale',
         status: 'paid',
         currency: 'USD',

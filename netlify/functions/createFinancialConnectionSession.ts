@@ -53,7 +53,6 @@ export const handler: Handler = async (event) => {
       filters: {
         account_subtypes: ['checking', 'savings'],
       },
-      payment_method_types: ['us_bank_account'],
       return_url: returnUrl,
     } as any)
 
