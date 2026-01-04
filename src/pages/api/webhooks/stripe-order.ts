@@ -1,3 +1,19 @@
+/**
+ * FIELD MAPPING CONTRACT
+ * Canonical source:
+ *   .docs/reports/field-to-api-map.md
+ *
+ * Expected Sanity fields:
+ * - order.cart
+ * - orderCartItem.productName
+ * - order.shippingAddress.addressLine1
+ * - order.customerEmail
+ *
+ * If incoming payload uses alternate keys
+ * (e.g. cartItems, shipToAddress),
+ * normalization MUST occur explicitly
+ * and be documented.
+ */
 import type {SanityClient} from '@sanity/client'
 import {randomUUID} from 'crypto'
 import type Stripe from 'stripe'

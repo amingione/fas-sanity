@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * FIELD MAPPING NOTE
+ * This file must conform to:
+ * .docs/reports/field-to-api-map.md
+ *
+ * Do not introduce new field names or mappings
+ * without updating and authorizing changes
+ * to the canonical field-to-API map.
+ */
 /*
   migrate-order-cart-items
   - Finds orders whose cart items still use `_type: "orderCartItem"`

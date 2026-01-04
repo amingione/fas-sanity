@@ -1,3 +1,19 @@
+/**
+ * FIELD MAPPING CONTRACT
+ * Canonical source:
+ *   .docs/reports/field-to-api-map.md
+ *
+ * Expected Sanity fields:
+ * - order.cart
+ * - orderCartItem.productName
+ * - order.shippingAddress.addressLine1
+ * - order.customerEmail
+ *
+ * If incoming payload uses alternate keys
+ * (e.g. cartItems, shipToAddress),
+ * normalization MUST occur explicitly
+ * and be documented.
+ */
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
 /* eslint-disable typescript/no-unused-vars */
 import type {Handler} from '@netlify/functions'
@@ -18,6 +34,7 @@ import {
   fetchProductsForCart,
   findProductForItem,
 } from '../lib/cartEnrichment'
+import {normalizeStripeOrderToSanityOrder} from '../../src/lib/normalize/normalizeStripeOrderToSanityOrder'
 import {updateCustomerProfileForOrder} from '../lib/customerSnapshot'
 import {
   buildStripeSummary,
@@ -3954,7 +3971,8 @@ async function createOrderFromCheckout(
     baseOrderPayload.fulfillment = {status: desiredFulfillmentStatus}
   }
 
-  const validationIssues = validateOrderData(baseOrderPayload)
+  const orderPayload = normalizeStripeOrderToSanityOrder(baseOrderPayload) as typeof baseOrderPayload
+  const validationIssues = validateOrderData(orderPayload)
   if (validationIssues.length) {
     console.warn('stripeWebhook: order validation issues', {
       sessionId: session.id,
@@ -3988,10 +4006,10 @@ async function createOrderFromCheckout(
   const order = existingOrder
     ? await webhookSanityClient
         .patch(existingOrder._id)
-        .set(baseOrderPayload)
+        .set(orderPayload)
         .setIfMissing({orderNumber})
         .commit({autoGenerateArrayKeys: true})
-    : await webhookSanityClient.create(baseOrderPayload, {autoGenerateArrayKeys: true})
+    : await webhookSanityClient.create(orderPayload, {autoGenerateArrayKeys: true})
 
   const orderCustomerId = (order as any)?.customerRef?._ref || customer?._id || null
   if (order?._id && orderCustomerId) {
@@ -4072,7 +4090,7 @@ async function createOrderFromCheckout(
         orderId: order._id,
         customerId: orderCustomerId || undefined,
         email: order.customerEmail,
-        shippingAddress: (baseOrderPayload as any)?.shippingAddress,
+        shippingAddress: (orderPayload as any)?.shippingAddress,
         billingAddress,
         stripeCustomerId: customer?.stripeCustomerId || undefined,
         stripeSyncTimestamp: nowIso,
@@ -8565,8 +8583,9 @@ export const handler: Handler = async (event) => {
             }
           }
 
+          const normalizedBaseDoc = normalizeStripeOrderToSanityOrder(baseDoc) as typeof baseDoc
           const orderId = existingId
-          await sanity.patch(existingId).set(baseDoc).commit({autoGenerateArrayKeys: true})
+          await sanity.patch(existingId).set(normalizedBaseDoc).commit({autoGenerateArrayKeys: true})
           console.log('✅ stripeWebhook: Sanity order write confirmed', {
             orderId: existingId,
             stripeEventId: stripeEvent?.id,
@@ -8610,7 +8629,7 @@ export const handler: Handler = async (event) => {
           }
 
           let customerDocIdForPatch =
-            ((baseDoc as any)?.customerRef?._ref as string | undefined) || null
+            ((normalizedBaseDoc as any)?.customerRef?._ref as string | undefined) || null
 
           if (orderId) {
             try {
@@ -8619,7 +8638,7 @@ export const handler: Handler = async (event) => {
                 orderId,
                 customerId: customerDocIdForPatch,
                 email: normalizedEmail || email || undefined,
-                shippingAddress: (baseDoc as any)?.shippingAddress,
+                shippingAddress: (normalizedBaseDoc as any)?.shippingAddress,
                 billingAddress,
                 stripeCustomerId: stripeCustomerIdValue,
                 stripeSyncTimestamp: new Date().toISOString(),
@@ -8650,7 +8669,7 @@ export const handler: Handler = async (event) => {
                 try {
                   const invoice = await strictCreateInvoice(
                     {
-                      ...baseDoc,
+                      ...normalizedBaseDoc,
                       _id: orderId,
                       orderNumber: normalizedOrderNumber,
                       cart,

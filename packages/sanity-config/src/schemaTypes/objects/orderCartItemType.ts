@@ -134,6 +134,13 @@ export const orderCartItemType = defineType({
     // Visible
     defineField({name: 'name', type: 'string', title: 'Product Name', readOnly: false}),
     defineField({
+      name: 'productName',
+      type: 'string',
+      title: 'Product Name Snapshot',
+      readOnly: true,
+      description: 'Snapshot of product title at time of order. Required for invoices, PDFs, and historical accuracy.',
+    }),
+    defineField({
       name: 'productRef',
       type: 'reference',
       title: 'Sanity Product',
