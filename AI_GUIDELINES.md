@@ -111,8 +111,3 @@ Consistency and safety over speed. When in doubt, propose and discuss before imp
 ## Additional Standards
 
 Add any other coding standards, architecture decisions, or process notes here as needed.
-
-| MPN auto-generation broken for Stripe webhooks | `syncStripeProduct()` creates product docs without calling `generateInitialMpn()` or `ensureProductCodes()` | [stripeWebhook.ts:4394-4459](netlify/functions/stripeWebhook.ts#L4394-L4459) |
-| SKU generation has multiple paths | **Path 1 (Correct):** `FAS-${prefix}-${serial}A` (Studio-derived from MPN)
-
-##

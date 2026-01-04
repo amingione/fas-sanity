@@ -1,0 +1,1843 @@
+{
+  "id": "43b3d2f9-45f1-444a-8672-48a8694cba5b",
+  "site_id": "43b3d2f9-45f1-444a-8672-48a8694cba5b",
+  "plan": "nf_team_pro",
+  "ssl_plan": null,
+  "premium": false,
+  "claimed": true,
+  "name": "fassanity",
+  "custom_domain": "fassanity.fasmotorsports.com",
+  "branch_deploy_custom_domain": null,
+  "deploy_preview_custom_domain": null,
+  "domain_aliases": [],
+  "sso_login": false,
+  "sso_login_context": "all",
+  "notification_email": null,
+  "url": "https://fassanity.fasmotorsports.com",
+  "admin_url": "https://app.netlify.com/projects/fassanity",
+  "deploy_id": "695a256c791c8000084e3f03",
+  "build_id": "",
+  "deploy_url": "http://main--fassanity.netlify.app",
+  "state": "current",
+  "screenshot_url": "https://d33wubrfki0l68.cloudfront.net/695a256c791c8000084e3f03/screenshot_2026-01-04-08-33-03-0000.webp",
+  "created_at": "2025-04-08T22:48:19.776Z",
+  "updated_at": "2026-01-04T08:33:16.411Z",
+  "user_id": "67982e0715fb11b798ce4f2d",
+  "error_message": null,
+  "ssl": true,
+  "ssl_url": "https://fassanity.fasmotorsports.com",
+  "force_ssl": true,
+  "ssl_status": null,
+  "max_domain_aliases": 100,
+  "build_settings": {
+    "cmd": "npm run build",
+    "dir": "dist",
+    "build_filter": null,
+    "created_at": "2025-04-08T22:48:21.067Z",
+    "updated_at": "2026-01-03T08:17:11.101Z",
+    "private_logs": null,
+    "allowed_branches": [
+      "main"
+    ],
+    "functions_dir": null,
+    "installation_id": 60597528,
+    "installation_coding_id": null,
+    "skip_prs": null,
+    "untrusted_flow": "redact",
+    "base_rel_dir": true,
+    "stop_builds": false,
+    "public_repo": true,
+    "skip_automatic_builds": null,
+    "configuration_file_path": null,
+    "package_path": null,
+    "provider": "github",
+    "env": {
+      "DEPRECATED": "Please use the new environment variable endpoints outlined here: https://docs.netlify.com/api/get-started/#environment-variables"
+    },
+    "repo_type": "git",
+    "repo_url": "https://github.com/amingione/fas-sanity",
+    "repo_branch": "main",
+    "repo_path": "amingione/fas-sanity",
+    "repo_owner_type": "User",
+    "repo_visual_editor_template": null,
+    "repo_template_required_extensions": null,
+    "repo_template_usage_url": null,
+    "repo_template_created_from_git_host": null,
+    "repo_template_created_from_slug": null,
+    "base": "",
+    "deploy_key_id": null
+  },
+  "dev_server_settings": {},
+  "processing_settings": {
+    "html": {
+      "pretty_urls": true
+    },
+    "ignore_html_forms": true
+  },
+  "prerender": null,
+  "prerender_headers": null,
+  "deploy_hook": "https://api.netlify.com/hooks/github",
+  "published_deploy": {
+    "id": "695a256c791c8000084e3f03",
+    "site_id": "43b3d2f9-45f1-444a-8672-48a8694cba5b",
+    "build_id": "695a256c791c8000084e3f01",
+    "state": "ready",
+    "name": "fassanity",
+    "url": "https://fassanity.fasmotorsports.com",
+    "ssl_url": "https://fassanity.fasmotorsports.com",
+    "admin_url": "https://app.netlify.com/projects/fassanity",
+    "deploy_url": "http://main--fassanity.netlify.app",
+    "deploy_ssl_url": "https://main--fassanity.netlify.app",
+    "created_at": "2026-01-04T08:31:40.624Z",
+    "updated_at": "2026-01-04T08:33:16.395Z",
+    "user_id": "67982e0715fb11b798ce4f2d",
+    "error_message": null,
+    "required": [],
+    "required_functions": [],
+    "commit_ref": "723390f8e154b5ecc58cc1b4bf29f3cfcb28e495",
+    "review_id": null,
+    "branch": "main",
+    "commit_url": "https://github.com/amingione/fas-sanity/commit/723390f8e154b5ecc58cc1b4bf29f3cfcb28e495",
+    "skipped": null,
+    "locked": null,
+    "title": "feat: update Netlify functions and enhance error handling in sendEmail function",
+    "commit_message": null,
+    "review_url": null,
+    "published_at": "2026-01-04T08:33:03.195Z",
+    "context": "production",
+    "deploy_time": 80,
+    "available_functions": [
+      {
+        "n": "_easypost",
+        "d": "7c1c3ed98f72c9f643f0e966316bc775c02977ab0f1c8d16ceee0da7a6636744",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "38be68fdd89dd12bf20abc476302c36b01f335cb37824ebcd74ddbf65db13182",
+        "s": 414407,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.288Z",
+        "a": "242038277235",
+        "oid": "c99334bfddbff76bd6f423463924c1ba80c41ff46fc1a7df48b847126a443234"
+      },
+      {
+        "n": "ai-insights",
+        "d": "59d4c24fcc06c46082bca682dffdaf0789ee0012dc170f849abe70a5c0a1c72a",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "3338593b9a031d7ef50789a67205a922385917bba8c07cdd3be2b7aa3e75f279",
+        "s": 436810,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:21.043Z",
+        "a": "016005051599",
+        "oid": "e3224c0981057db16c208c297d9840aa8768849b6a78db801d45786c105063a4"
+      },
+      {
+        "n": "ai-suggest-mappings",
+        "d": "2cb25383cd3cf1318c67baf7bb67b8d41762da1a311dc48638803e6bd253255e",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "9692ff09ac596aacc4c09dfafdb2de5e5741d80cdbce38245fb7d95e7382faf2",
+        "s": 439099,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.331Z",
+        "a": "786465436847",
+        "oid": "2ec7b88d78f4455d461ed80d22897ad9aa3b404626a3893f7949fca8ab3434b0"
+      },
+      {
+        "n": "analytics-dashboard",
+        "d": "a15cb793b01d1bf888366820135a671fc40e6c1af5926c7aa6fc75efcb36d144",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d548dde57263661e8143b1bffc236a3ce4ff9e50796d2a340857b3e9f0d40b37",
+        "s": 279787,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.308Z",
+        "a": "372992463200",
+        "oid": "16c59cf7e38daf9a8619a5a9866dd6d8bb9746f515149153658172fab7250f5c"
+      },
+      {
+        "n": "api-docs",
+        "d": "ade826d792cc5e69f57d7da03d6920fdfb4bdd3308ab76334efd908a7064419e",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "c390453c93514f0eff5127b3443346110c6dfef9a858debdab89651187c6d09a",
+        "s": 279555,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.428Z",
+        "a": "070800196974",
+        "oid": "387594d8a5943dae4afbb168688f3d597c75818fcc71d61a85676697a43675b6"
+      },
+      {
+        "n": "autoRelatedProducts",
+        "d": "1ad82575ace0d3eed09b6eed090eac9f26bb29357d1f0a98f803fc3f92f440ec",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "b66b228eefac2671b76f9c28ea518136a9550c0a5dbab7e2021d7ea4e2c00814",
+        "s": 436562,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.352Z",
+        "a": "828341494297",
+        "oid": "792b40a4cf48da1a8cfbacebcde8b463882301c0514971c4c66a5620da116682"
+      },
+      {
+        "n": "backfillCheckoutAsyncPayments",
+        "d": "7bc473ccb2c80603f25896ba34e89a448f43e4690236215025b8e6e0260bac23",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "05ae810000f4b549e5ba21c418c1eb23d32592a721344ab9b8d42b27fa9dde9a",
+        "a": "837451400009",
+        "c": "2026-01-04T08:33:02.466Z",
+        "m": 1024,
+        "obl": "netlify-observability-extension",
+        "oblv": 34,
+        "oid": "b354daeafedf24e121ac119d99dbf228a0cab20bf04e8283666a1f82e34c80a9",
+        "r": "nodejs20.x",
+        "rg": "us-east-2",
+        "s": 1116849
+      },
+      {
+        "n": "backfillCustomers",
+        "d": "683b0c8300f2b7e70979e0196306321042cdb4e662e830d64b6d0de4c7ee7fb5",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5329031cde403c0572297cf89ee7f8159aaa97ca4ba4e481b8f2c81fc5c4fab4",
+        "s": 437808,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.302Z",
+        "a": "403869937646",
+        "oid": "0f19167e1038781cb32cc30a0124daa36f707e5735bbb891b448e092a54fcb0d"
+      },
+      {
+        "n": "backfillExpiredCheckouts",
+        "d": "126b6de0dd8f2806784099321bb7b5e4d741281523b266a1fbb1d5d4b768e16a",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "3350153cdd4ebea554309399fcea5742d4a733c74517db79e5079144ba1ccddc",
+        "s": 539888,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.389Z",
+        "a": "022731369924",
+        "oid": "521975c20dbf5a6797369041d0b9704a140bdce1b273fea7d0a4c87889dce76e"
+      },
+      {
+        "n": "backfillInvoices",
+        "d": "a8e86a602c6bcb5654ebd29defe514db631bc83669a9bba21af7d81420f84cc4",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "7f680c6133f99cea188e5a20961fb3d6f9139d90ed508e7ac355e6ad01a9c48f",
+        "s": 440491,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.411Z",
+        "a": "042287751506",
+        "oid": "1927bce26382e77f69d706b9223ec952cb17516e99e92ffcf19359149df6c99e"
+      },
+      {
+        "n": "backfillOrderShipping",
+        "d": "85a7d6172677f360550ea0180a44784c638ad71d6187e5ef1d3f2d455da173bb",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "8095ab9a2f282ed718c75a687a7dc6394ffdab0c39c91b8213e42d5ceb8c0de6",
+        "s": 539718,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.329Z",
+        "a": "719837505512",
+        "oid": "3b2f76106bdf0471a9b6367273e37e1b1bf624cb591baa91c0f7e025fd369953"
+      },
+      {
+        "n": "backfillOrderStripe",
+        "d": "f96ad5f0063641a700f9b4ebc3e9662ac8f66f0e9383d648f9ff75ac64e74a42",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5b5756e2037cefe76c960be58f233267465ea53952452d2d31312292f0ac69d3",
+        "s": 539698,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.417Z",
+        "a": "368064623203",
+        "oid": "63f07292a186315129735093823372f9c9d7a6438b5e2b24c425ef40ca133a71"
+      },
+      {
+        "n": "backfillOrders",
+        "d": "37c962df78d6fee9d376d8d59e42ff8256d1cbb14235fb710ff1a325f207c2a6",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "01a146811527dcfe436e9e1ad897afefe098456a2246f8b8a0d02d9d19ca3850",
+        "s": 519799,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T04:52:58.430Z",
+        "a": "851959233922",
+        "oid": "3b6d5334afdcc408112d102e3698dca12bf919273afab37f2738fd85f9863a79"
+      },
+      {
+        "n": "backfillPaymentFailures",
+        "d": "c6f3524fff2828c7758282a707932c05435dfd246d9f5b23b802a3a72524f948",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "915951b063195c1f26e81a302516d99b147b0739534c98bdba387a3a9e8eacd7",
+        "s": 506378,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.217Z",
+        "a": "449440118093",
+        "oid": "560110fc7e535f4798c85823fd58c810af31dd18f812416dacdfd905685cbf6c"
+      },
+      {
+        "n": "backfillRefunds",
+        "d": "5d660b04f0694874c2c182ed387927be216480d70e70af29fedeac18412cc9c7",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "22e2b49885cee1e76fdd9957e5e5584ff17b770d792cb82bc7383b16bf39601d",
+        "a": "622137718745",
+        "c": "2026-01-04T08:33:02.506Z",
+        "m": 1024,
+        "obl": "netlify-observability-extension",
+        "oblv": 34,
+        "oid": "e29b6b5eec22a10fec9904108de5b068a1c4e95e38c0c07ab42ad815b8a2fdfa",
+        "r": "nodejs20.x",
+        "rg": "us-east-2",
+        "s": 1119780
+      },
+      {
+        "n": "backfillStripeProducts",
+        "d": "6d570176e0ef38f0977c4da7a01f3509b12ade1350bc7c17f32ce79d40770797",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d31c899ffb8a4983dc610c93bc1e68e3d7b36f863b1cde4db09faf61efb1a08a",
+        "s": 502080,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.367Z",
+        "a": "432846551745",
+        "oid": "71ccaf738335fe39abdbfc82df41ef2213d68316c267c1911056e2872f791af3"
+      },
+      {
+        "n": "calculate-profit-loss",
+        "d": "83a1f4c20b1a52aa59ed9f830782524affe90236702af50906f3d61cdce846b7",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "407db449080468adaed13ace75a090275e5e24edd52f4669b5ed62748ea4bb73",
+        "s": 438982,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.426Z",
+        "a": "831147333159",
+        "oid": "e01dfcdd09df3c42b3bd9ffe7a0e88b9f347f7e7494f1c7c1beb82e18c3e682b"
+      },
+      {
+        "n": "cancelOrder",
+        "d": "a8bcda44118d167283475d70c926b8bbfb8a972ef0400fde383a5af0cf463ffa",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5c08f3392f1456181a274eb6a54ec62500217645f467bae6c67f0f4fa27e88f8",
+        "s": 500925,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.357Z",
+        "a": "554605863837",
+        "oid": "6246d4dee3206bd54275837bcea6b736a1fd2c594d335b0bf233e47b0e492d4c"
+      },
+      {
+        "n": "captureOrderPayment",
+        "d": "1a85b0658e616eccd67996fd8fd8ec1a68113b9e51ddf37f55357f79c14d6437",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "c9645850ba0ddbcce1df648b0a8539cd4bccab33596b1127d90d5301d8cef119",
+        "s": 494767,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.334Z",
+        "a": "250705260819",
+        "oid": "bc9b06b8e284bcb0fd7af150a2492247215d1c9aaf8fa8cd100261f6d637c093"
+      },
+      {
+        "n": "cleanupFunctionLogs",
+        "d": "d18c2ed84c8e1db8116841b8ccec5432ff96f0793a7deac6e7b10c0726945d79",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "7188f227eff926c6694fd442d13cd139e8791b7ec8a0329514f42f0b14de193e",
+        "s": 436506,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:20.365Z",
+        "a": "672624023363",
+        "oid": "7de18fb337417e0afb08999bac6cf7252907cd8194428e5148417e1630e0749a"
+      },
+      {
+        "n": "connector-install",
+        "d": "85797846a07fa507428d9564212a117e45aa0322f92c4d87ac4b525aa1389c48",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "3c90217f1fb9bd4bce7939e167cdabc58c9777e4a645b84e652641a8eef6a393",
+        "s": 435949,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.283Z",
+        "a": "449440118093",
+        "oid": "423d711aa89b82c3375710946cb608b2563a228e5b801b7313c808ef6476fd84"
+      },
+      {
+        "n": "create-shipping-label",
+        "d": "23008b820f8b5bda5babddd7aed430283f7c45a878f774ab8d1056e641c9ef00",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "01b357826d8d5c0255d1aaad69ec34435438103441d5446d427895890b3f3f9e",
+        "s": 651597,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.363Z",
+        "a": "836076848574",
+        "oid": "71a86ad5686e89dbba781c58dfb66dad459e5710e0979b080b0f8ea8cf60f065"
+      },
+      {
+        "n": "create-wholesale-payment-link",
+        "d": "f8e7848599953da535daa722ceee5eabd523038e8a2f69b741b3627124a9c1fa",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "036a2f204a17127ba1aa90444a058ee667cfd9ead2c446afce8b7953c7cd494e",
+        "s": 496393,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.431Z",
+        "a": "414361165742",
+        "oid": "0300d1a929059f19a7f6a29bb7207e684a1f72a4ca56582cf05b714551faf86b"
+      },
+      {
+        "n": "createCheckout",
+        "d": "862e999d19785994e592625ecb68b1d8d78de61949bbb8b13d7f9b9f13cd3492",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5dce5eb4751b2b2f29f0748ad8857f49f93bb006856ed65b5cc48aff3865853a",
+        "s": 501404,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T04:52:58.522Z",
+        "a": "169879185114",
+        "oid": "3342a28efe0e4eed3cb9bb67c51841db13db54530d4f4d68cb650d122ae0ec0d"
+      },
+      {
+        "n": "createCheckoutSession",
+        "d": "48f0cccc783326e7100a70bd127b5b39b90722b745103e3a07647b55b0c6cc05",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5b21b61eddbc312783dbf35a6528867d72816903f8cc18179ab1b0b433cb07e5",
+        "s": 498071,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T04:52:58.480Z",
+        "a": "029622199099",
+        "oid": "f5cb3f9719042e9fe4a3fdc58873d16046f6167d50061a6c50d31e46a9dff688"
+      },
+      {
+        "n": "createCustomerDiscount",
+        "d": "7ab8a15165cd8258f21f70ba34ae10fd878e27835b09b0f94bc48cb5c5543842",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "247e5ead8529ea02fc46221703faffe4c39d5b1243bcfac0d10c2e497d2a846c",
+        "s": 497201,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.491Z",
+        "a": "105186839156",
+        "oid": "97469cc7da11cd4bfdb1f7ec7fb091384ad0c552c8c32016cf60aead508cf69b"
+      },
+      {
+        "n": "createFinancialConnectionSession",
+        "d": "34e51396bedb7c4be821dd72758c535ba1629eafe675fb8eae75fa27cfb98ded",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "723241cca23e2b6aafa7ee5188d28ca964f342c84257a7bbd197fdd2306e8362",
+        "a": "385216822393",
+        "c": "2026-01-04T08:33:02.413Z",
+        "m": 1024,
+        "obl": "netlify-observability-extension",
+        "oblv": 34,
+        "oid": "7384f7e7784cfc4caf2729d8bee5099f18126e4ce9a1e2581c530bc5e9417e8a",
+        "r": "nodejs20.x",
+        "rg": "us-east-2",
+        "s": 338708
+      },
+      {
+        "n": "createRefund",
+        "d": "72a12638f10b206b1d02f98dfd90108abf36d0a55ec6935e92b24e278a8f8a07",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d1ea1a29a8fa985134e3e3355bc1cfc0c864516c56c8bb78b1ba0ff902351438",
+        "s": 1016841,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.529Z",
+        "a": "432846551745",
+        "oid": "aeed4c3ad2c19cae28d526e0dd2c7f0fce55eac1ac64354fc842fe515723f8ec"
+      },
+      {
+        "n": "easypost-webhook",
+        "d": "166a14ccec5b9c7e73896403b14aa89ab0356988775be17b7cf71b594322d00b",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "2e54bcd513803896fdb2780708f3baca7e4683d545a802aa7f5c89f20f0a8409",
+        "s": 573151,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.430Z",
+        "a": "517870325001",
+        "oid": "f59183585e79c34f3c518a2f354e6e8f87f2c7f528dc5e3f967d1043f9ed94c2"
+      },
+      {
+        "n": "easypostCreateLabel",
+        "d": "31911ed896d58999477440c2c7730fa6173ab693207781302bf957e7a95bdec4",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "ab617068420ba9c094be9499d8c9f8fa828579d4c5ca18ef84d534a0e65da83d",
+        "s": 573328,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.574Z",
+        "a": "948273276571",
+        "oid": "3f4629abb48feffaf73c12b0dc9e905617b12f2cd33849f17ae89054cd3c674f"
+      },
+      {
+        "n": "easypostGetRates",
+        "d": "e78a13fcdb037fb27038e239824efaece0a72b782b0417938e5bad3e0f7b728a",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "b308b37f95751c5b90ca0d50b148c507fa41d1390e66372b7bb53ee34712c9c1",
+        "s": 415655,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.448Z",
+        "a": "924105187622",
+        "oid": "cd61b0ffbfbb0e48d2b1de06b08fb5fa08e844b3ae08d6ef676eb174207031c4"
+      },
+      {
+        "n": "easypostWebhook",
+        "d": "549d952cc8389469806835adf45e5181e3ed6c6d8b381157ba2dbb49d573608e",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5432466ac985f42f6bb5a725d86b55a9445f39925bd4c7b19111afb874490368",
+        "s": 573083,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.421Z",
+        "a": "073635757191",
+        "oid": "0d2cadd694223ba806e3d9e143572b50285b31d72c991e49e8fd7c5f771f0b66"
+      },
+      {
+        "n": "email-health",
+        "d": "b82f883bb5b4144dfa96e056469ae48971eedf0bbe3b62016f96e12567ed1ac8",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "9e17695b3da365f59ffc4f07a3114b29caa7524a85063faf154098a4ee534867",
+        "s": 279545,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.497Z",
+        "a": "053016921062",
+        "oid": "e1dcb7e5b6b602729d88c220f5be199c736040400974f7a92cc9dd23d6a97d43"
+      },
+      {
+        "n": "email-subscribe",
+        "d": "e097ac7a17ed036ef19b8bfc71829b19313fce90c38eeee984524747bf25a5c2",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "cafd818e1f9bfd0447fedb82db30edcf82eed9d2e1b8569af06a7825b8fbfc43",
+        "s": 939810,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.438Z",
+        "a": "300064178725",
+        "oid": "c8d55507b09252cdfa8f00425f77ffb620bad15c0ff5362f8f059069f843759f"
+      },
+      {
+        "n": "emailEvents",
+        "d": "5997f88fa714ef3d1039a377156a14805663bf006a4abf74ad38dea742e6fba5",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "03d247bd8612523242cc2ad690a1eb00ffa3c34d6edee18e258a2e2f733ec485",
+        "s": 937914,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.626Z",
+        "a": "516657626948",
+        "oid": "3c1fd4ee9dc646eda0446d9c778c8828836bb6b4dc7dd20394e990372e688b4c"
+      },
+      {
+        "n": "emails",
+        "d": "54c3bd1db13a2c87fdf87b15d4924ee63f1567871bf2d4109f1a369f8cfcd8de",
+        "dn": null,
+        "g": "internalFunc",
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "id": "fb8901f00f6f162b0f65c2853d40d71354a8e47a115a99160282c8f96936aebe",
+        "s": 282403,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:27.208Z",
+        "a": "313674474033",
+        "oid": "514f8cba19780a2fcc7edc6ae93f7b03619bc83486f06009b2e7da2e67cc4445"
+      },
+      {
+        "n": "enterprise-connectors",
+        "d": "fc2edc8cc2b3a3f863c270bc30d624d39b46f8c129c3e6267d7d7e26aa6d92f5",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "83cfb6f3f6d106255aa510969ff7c3d9049b3c86a8a29574089a46d31883fe01",
+        "s": 436095,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.587Z",
+        "a": "355294401520",
+        "oid": "cb2e0a6b5c7e0def050be0cc6a51e7965a6c3273acf8f5c3c216f663e872e37c"
+      },
+      {
+        "n": "fetchSiteTraffic",
+        "d": "19bebff6fe215602071ff3a11bf3c7e08cdc39d89355e70a1f929d92239d3928",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5274321c956241fc8c9e483eca72223654b8a84bd91e1b73ebf2b2d34607889d",
+        "s": 280484,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.638Z",
+        "a": "693192995752",
+        "oid": "21de2029c3391cc3b3dd7d249302352a7717d9b5a14e4b505957c2d54b6760cb"
+      },
+      {
+        "n": "fetchStripePayouts",
+        "d": "6a14bd5159fe98ac654e4961bc209dec407a3c090c1ea6a70fb04e52ec5008ba",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "0eee787d9299bcca5a37b5348e17ce3ef5ce19342dd7f00938a8590cd87c6a7d",
+        "s": 338961,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:26.602Z",
+        "a": "375708248955",
+        "oid": "4081eb7bfa5ccbcefe3495f6d42c897873c80a10b98cf7a107357d9594dbe8e6"
+      },
+      {
+        "n": "finalizeFinancialConnection",
+        "d": "7fcd761c6dc0930f162fb515ce813c894f1c70d327a19842e2cdfea57dc6eb98",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "43f610bffce81583de558e9bbbf475d78ec16a3c4be7227777b22ff871e489be",
+        "s": 494551,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:27.221Z",
+        "a": "851959233922",
+        "oid": "157fa6b93706ad92edd81a4bc699506b95e2f601c5869f37b38725a90da4ca69"
+      },
+      {
+        "n": "fixCardDetails",
+        "d": "f2d96ea2d3a6d1b00da9cddf9da5f6d462ee6a23c8cc5e2f5fbe085e2f6aa680",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "364b212536286f67eac5e1f6d2b109767e559b9326389aed09060334d0bb3d8f",
+        "s": 436003,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.396Z",
+        "a": "995560814037",
+        "oid": "fa34d56188ff036043106340cd6155ec50dee27bb4fa0317a06a466a0a64c241"
+      },
+      {
+        "n": "fulfill-order",
+        "d": "30f2f47e00398adb3161a0fea248ea04221866ffce25d2333156f6cfa2cac1d6",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "729a9eaea9f20fcf9b34b42f4ca9914c55379dcd4f5439737db379808709a5f3",
+        "s": 575013,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.505Z",
+        "a": "564250524218",
+        "oid": "f33114b15f18317adc4f364c60d50389730ad2d1faae7e2bba3bbb11631e597b"
+      },
+      {
+        "n": "fulfillOrder",
+        "d": "8e2a93f954d366bc0f851de9cc97cdd5de566dfd602444cf0889852f6dbfbc1c",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d18cbabf6e35197d05a8346202b1a7fe3de786420d59aca8e13781324928e317",
+        "s": 1070556,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.566Z",
+        "a": "123818897194",
+        "oid": "1149e99d08ef08abbd7f0113b3a9e01b60ec3cb96564b70b3307ca3a34d5cfac"
+      },
+      {
+        "n": "generateCheckPDF",
+        "d": "7ef6dfe577b6b045af9bc8a7bc4b8ce4bfa1ba4befd7cf94212e9f14907495c1",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "939ed1d8a6c001e8f220ff557b03fa531c74e33ea59ccc4d9fead2f461b4d5ca",
+        "s": 960692,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.643Z",
+        "a": "576197671174",
+        "oid": "187c7abb8accb97ec5bc3aed9a730d702d4b2ae61b65516e04adac2760d53230"
+      },
+      {
+        "n": "generateInvoicePDF",
+        "d": "fa1758df57298fd81a55893ac84480320f6700cbc5e7d9545b182f4fc6684608",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "bd080870362dde217a3bed3eb5bdcbbaa13b17f23d65274aaa7ef61b6b1de915",
+        "s": 725261,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.653Z",
+        "a": "922855128030",
+        "oid": "5598787c27061994855e74205e4c7f49795686c2305243d5258aa39f6be9287a"
+      },
+      {
+        "n": "generatePackingSlips",
+        "d": "6b0d16ad8188d621bc6125629c4eb95a97f72006893336c9e6e63c1a769d0c0b",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "52fb56f3f84c3eed0b9fad1c0b277de1dde40be85b67c6df475c2b7fd49d17f8",
+        "s": 719796,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.557Z",
+        "a": "746848447824",
+        "oid": "bdc4e208464e053843ee8d79b20ac352d2030ce16a2eae82bec123b5df47fa8b"
+      },
+      {
+        "n": "generateQuotePDF",
+        "d": "b0edb445356385362d4f4b24a7dfedcef08dfc868729902d7efdc52aea59649a",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "46e02389bfdf60aa98788d8f64087d987b2d9dde588250acb862459d15bc9bc5",
+        "s": 712560,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.525Z",
+        "a": "042287751506",
+        "oid": "4e30eb503fea4bd3f4fcbd95b12ef85b49df1bf7fa55e01f651cdbdfb390baef"
+      },
+      {
+        "n": "generateShippingQuotePDF",
+        "d": "c2332960bf8900cae5442bb0e00c9e04299b2e09b5f0a5838eb2df24d6b22b86",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "7247465c9ba4c659c793dfb16c346eab9132b99bb2248318600169cc7ae4119f",
+        "s": 703811,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.659Z",
+        "a": "791439993187",
+        "oid": "0cab0c3ac952ad00a6242dcec871fbfc9be37406a87e1f5e1c894d87a181717e"
+      },
+      {
+        "n": "getEasyPostRates",
+        "d": "9c104cdc4b1aa37f5d60cea42c160010063d255b5bb917f5339326e3f30eb526",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "f7f9c351b0eaada87f32449dd3fef377dce7e652dac794afe9eaf1b1f8308f15",
+        "s": 417713,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.552Z",
+        "a": "016005051599",
+        "oid": "1f2e8abad5a3ca1957df54279a9f1269cacd2f0e2aabdae212838cd18c7daf3c"
+      },
+      {
+        "n": "getShippingQuoteBySkus",
+        "d": "20aba06b4c21ade3a6ba6b20eef4b633ea494afa98c066c113bcd90a3e528979",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "8a8f218ff3b59f3671d4a6af05ce73bb2d78c11daea9beae89cfdfcdcd8c6a79",
+        "s": 569958,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.624Z",
+        "a": "022731369924",
+        "oid": "1f6c65b77ff39aee051f823dfeb473d39db5046a57cc58c78f629798d817c109"
+      },
+      {
+        "n": "ha-health",
+        "d": "88cde94a2d53480044d79458e5ac66ecf0f55088a99213a61e5fec7b8a6f05c2",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "8e669bf0a5890b38929abfe4c2ed5b456453d07472fe3f33fb26bf9b82851d95",
+        "s": 279875,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.646Z",
+        "a": "022731369924",
+        "oid": "f2c63ddc1cae9f9c5938a7b382cc39d6300b9b6876495edc2051c05b327b44c5"
+      },
+      {
+        "n": "inventoryReorderCheck",
+        "d": "bf0e0f5b9d95837dc74ca0379c3153b4dae477109b224e24c142bb2debd0240e",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "2f5b730bbca06da19f2fd8e7792ba7d3d211eda950570216970bb6c09e07f382",
+        "s": 940230,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.641Z",
+        "a": "672624023363",
+        "oid": "c63f038f761f816edbf3a4c359f33fa0a4eedf23d5ac266dcc8bfdf692e4b13f"
+      },
+      {
+        "n": "manual-fulfill-order",
+        "d": "401468f1ce9e4dd8e7222cb71939e52f88d0c3713bfb60fc634b393b526f51d1",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "0c6efdf0ebd64ea25a23b27969f61c4785f4fcdfdf12768da936b5568ba84753",
+        "s": 947060,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.656Z",
+        "a": "496498411776",
+        "oid": "4f5071338bc60fd6898857857f16b3b81edf0ff0a650e87f8bbfb422ce972d76"
+      },
+      {
+        "n": "marketplace",
+        "d": "131143362feb1bced326ae5d93271c89673ac25132e75eae826b9ecc2816d6ed",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "9101f1c3fa33d1be4df8d262a1d9583a7b880150185feb9cfa60314303f6fefd",
+        "s": 280044,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.681Z",
+        "a": "169879185114",
+        "oid": "032007fa27b372097cd07ec9f8caf23d72978a5ae2111edb16012f9a4616f7be"
+      },
+      {
+        "n": "masterBackfill",
+        "d": "bb8ad5bbaa4e5b96a77af37268a3a5ccfe59218f81181f486ca67edc921f7ff3",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "641c856266e21d3a4070b904e74b06007000da705b8afd45d81cc3edb6870871",
+        "s": 438494,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.743Z",
+        "a": "744462750083",
+        "oid": "35a980eb41d79b3efb2ba9c03b915d66b587877b8cee717a8cb047336135716f"
+      },
+      {
+        "n": "merchantFeed",
+        "d": "533ab205a86407c9ed1286af3fdde70858a4e5101d3f08fb10b825802e389976",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "bcc37640822d26695807357294f42919017a8bbcdb572e7a214b67e396a9fb8b",
+        "s": 436995,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.627Z",
+        "a": "099096387579",
+        "oid": "728e9cc5081595f6f8ebb06e690b50673b977501ef084eb64b90f13f9f3296e3"
+      },
+      {
+        "n": "notify-sms",
+        "d": "389c8679daaa97f586a2353c9bbb048ff7f1aa6d87bf887bd4458000fbd7a9b1",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "ce6474dc1bc12d29a2f573f04b9e363a2e2902be5c11e3e9a4b94f00bbd82e35",
+        "s": 944756,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.748Z",
+        "a": "576197671174",
+        "oid": "55e686db199619693aa529348835d54247ed9b1f85f87bde27f997ec8c0921d5"
+      },
+      {
+        "n": "productMetrics",
+        "d": "599b8cbac7603dda9b454cceaaea10c803873e9b329fa825d59ce883969db291",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "f7b4bfb4886db9fbd2951f565ef9c1e1b52e4d4e43404cd2a89ed2ceca0539ff",
+        "s": 437122,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:32.834Z",
+        "a": "998805804580",
+        "oid": "6fc188df40291faac44e7256386bf1a113a6302543a468cd7e89929657bac86d"
+      },
+      {
+        "n": "productShippingSync",
+        "d": "017290911614f1b4fe6d1a4ad20b215c80cb8407b7665f1957a96fc189e5dcd2",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "f3f58e99a26ff80f27daa18bd75306127b7e5a7d7c2f6b00b6b4fb7450ef09e8",
+        "s": 436193,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:33.275Z",
+        "a": "872000283772",
+        "oid": "c5e275856943452e130f6da990a057abf7913053cfff99dde09690469ab11716"
+      },
+      {
+        "n": "referenceHealth",
+        "d": "7d90a496bc5fc7d0ef9cf23f9816df83accd84089e56bd33a60f13a41200db3a",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "9a8f37fc65994f9afeb751ab08b72f1745c6ac5978cec894679a1cf054e94002",
+        "s": 436039,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:33.310Z",
+        "a": "697151303520",
+        "oid": "0b8b675226ea10c5c8c9c89f43fb4e09a72e6dd24a1f1545dbe978dddb58c9ab"
+      },
+      {
+        "n": "refund-shipping-label",
+        "d": "ded42365983ec813f2d55fd8d9864744814c89594293420f1d94c0d84286a012",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "aeb42b77aba04e825074082ae4061b6b51d5466061ae6f1dfcf77c616ff424cd",
+        "s": 565848,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.494Z",
+        "a": "755834921685",
+        "oid": "8aa23c6e921fd96af8a3c7b858167b2655143760dd673de6d102008cb31336bb"
+      },
+      {
+        "n": "refundOrder",
+        "d": "9dfc657d9ca3caaf03ee13c95b4bece183a4433b38ca5ea670aec091eee44fae",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d6bebcfc38f01a93de5ab36eca126bf7a992350dc22435c8ae84717fa1b17f10",
+        "s": 1103716,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.602Z",
+        "a": "194385697179",
+        "oid": "cd62aa355e3e1444c67b6201c692d1f7d901350cfc86d99a13b5170b4d98e1ce"
+      },
+      {
+        "n": "repo-scan",
+        "d": "ec7a89453e79e1a00ab186028e2fec1c883f3dade8b234e9aae2db45e161f250",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "21d50b4433d9978bbcbf1db585baaebffe9efa019fb01b0b91fd837ec8cf38b3",
+        "a": "012004486566",
+        "c": "2026-01-04T08:33:02.410Z",
+        "m": 1024,
+        "obl": "netlify-observability-extension",
+        "oblv": 34,
+        "oid": "3910dc03c622ab6d5362cd114ae048023e9554eaa654d1454bb5c001fc07f44b",
+        "r": "nodejs20.x",
+        "rg": "us-east-2",
+        "s": 285136
+      },
+      {
+        "n": "reprocessStripeSession",
+        "d": "cfb65499aeb5de34e85cd31a7e0fe08752f7abf6ea7a2a82e65910f59b667e91",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "8e0c0a9e0eb2a64a02969db2112e9dd9212fbb6617b144c9fce035fa658a7ec7",
+        "s": 527702,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.687Z",
+        "a": "828341494297",
+        "oid": "1ec0c0a8b6f611b696b5e440cb05a7ee5e48d95af7565a865b5512381dddf4cf"
+      },
+      {
+        "n": "requestFreightQuote",
+        "d": "d9148137d7951e3a31845f16416ad580b809970a57c8f6485d975af364c45e1a",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "7e29897fda37720a062f406a807ae7ba7de9797c44b8768e2d7fbd430d2088ae",
+        "s": 940600,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.633Z",
+        "a": "673769985865",
+        "oid": "b724c798158814708c7b9afe98a00a77d5f7fd5c723c2646aec644ddbe07d8bd"
+      },
+      {
+        "n": "resendInvoiceEmail",
+        "d": "50023afb78e63e206c7d3aad60d76a59473567dd66c6e741c88b918d19c24471",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "dbd59f57343bcba91606320ffc4eb14e6290ddc88c219221634480e0072f6ca1",
+        "s": 1286570,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T04:52:58.659Z",
+        "a": "775206496707",
+        "oid": "2f4ae5883d4ccb9697323c4ece2c1a6ed3b3784c636743ac59111b580b95ca59"
+      },
+      {
+        "n": "runEmailAutomations",
+        "d": "835ed14d4a0cd4468c0398bd57dc21d3dab4ac5152b629b22883a741c842b2d4",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d5e01f60c10ea4721bd48e49a0226e15fab6c069ba8f402996241193eba6de98",
+        "s": 940772,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.635Z",
+        "a": "672624023363",
+        "oid": "3169b861c937f1c1a8209f2bb0583fae45357628ec90bc1aaec54f02a9aa355e"
+      },
+      {
+        "n": "sanity-resend-sync",
+        "d": "e85c487926ff897beb412290c63eceb0481816367eb24cd5f83750dd090eb9b4",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "51c1c8e827f4e2a5bd6ab985ccb49475a0d3b9f0817f93fa4875f5204d58aa45",
+        "s": 939085,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.849Z",
+        "a": "432846551745",
+        "oid": "fe315498f8d69dafd388851695787009cedb4d11954d5b51b6d8dcf6118e89c7"
+      },
+      {
+        "n": "security-status",
+        "d": "aa62bf3e7a8445849c04e6f9f2842f3d3b1b0a2ebeb3dcf82ba8c4efef98fd7b",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "edf15861ebd890fdd65633abf5140e75537b5af91f5f74a9afa8541a3b6f55b9",
+        "s": 279583,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.793Z",
+        "a": "892891066531",
+        "oid": "3919be1a6870e6076d1c4bd0914ce5e4f621eb2bec5b4c483cb289d250e342e6"
+      },
+      {
+        "n": "selfCheck",
+        "d": "57f145ab3a577709dd0b0a68fa8db79af62d5d66df295ee5605aa6cc82416f0c",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "e9f693029cbc05d20e62d06e48a8c8cd93606ab026549fd1cdda628db18549e6",
+        "s": 280412,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.746Z",
+        "a": "045365653326",
+        "oid": "26a1d43aa729cd68e4549b9d4b2a7222ccf9a65a4869715ca7a315a14c85a05a"
+      },
+      {
+        "n": "send-email-test",
+        "d": "4754aa1c01067660cedcc68aecc94d6b7b4314dd73ad835dcd04e346e9a4d644",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "2e49a3e1d4d440ff2c8c25a93bed6f957a0623f38467c72a33f9ff71ca00794a",
+        "s": 944794,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.718Z",
+        "a": "414361165742",
+        "oid": "2d0a67ba88348022d9ea1a0d713e87a8831a3cec7ad9da801580d0ba3c986bb5"
+      },
+      {
+        "n": "send-vendor-invite",
+        "d": "618b1ff014331efa0151c9befda76ea9fd97b5780b72c964bb50a90285cf5fde",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "19ba6d00d7e341e12d18d4019fe3e52c9248a5950c0106e6264ea0c16599d6d1",
+        "s": 941127,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.753Z",
+        "a": "256666722258",
+        "oid": "36668ac6299f120dc63b7ff01426f9a6dac81020552c7574daa614f4dc84fa78"
+      },
+      {
+        "n": "sendAbandonedCartEmails",
+        "d": "170f1d83a79c732458554c943fde5ff215598dfb17b11abdd153a623b0a8b704",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "c0b32b7694bc88d23ada2a37aebe2d80e554372ca9039af8e1edd5a460821ace",
+        "s": 944289,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.872Z",
+        "a": "365020585580",
+        "oid": "5c053930d885405405d9f792d708db7d23ad0a6aeda4793f15e5ca98dae223a4"
+      },
+      {
+        "n": "sendCustomerEmail",
+        "d": "6f014a7789636c10c24cd0611f93f1a1a0ddc11391c497d5052396a1e9ea29f9",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "578079e188293b7dbb862151bc709a695b6fdb1e3b0e5334bdfc7add025665c0",
+        "s": 780331,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.877Z",
+        "a": "681352277317",
+        "oid": "c910ca4f52120367ca67d9ac2d95872d3e806a55af2f020073ba2279081172f3"
+      },
+      {
+        "n": "sendEmail",
+        "d": "ca2beceb2ba857535d2d88a20fa546642012d61e052ac7b80dae2ece2c963a0d",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "812d94ff3c0897e41064884f1ff80ca4894cada7537f9d8701450ed11b3c6749",
+        "a": "280498193797",
+        "c": "2026-01-04T08:33:02.424Z",
+        "m": 1024,
+        "obl": "netlify-observability-extension",
+        "oblv": 34,
+        "oid": "6a92c54ae6827c82eac22b7a4f096e125cc56357b1f53238836abeac7a1b327d",
+        "r": "nodejs20.x",
+        "rg": "us-east-2",
+        "s": 279977
+      },
+      {
+        "n": "sendEmailCampaign",
+        "d": "f8827a48319eedc34eecf3cce51b31135a44fdd72695e1e88d140dd1b14310cb",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "5d7dfb12f7285d0b16e1ef5a869667b6abfa4848118239bb46c97022d602cee2",
+        "s": 947067,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.875Z",
+        "a": "073635757191",
+        "oid": "30327023e032244ef0047b1a011fcfb75ac0fd872b5a6d42005ccaf26f85a82a"
+      },
+      {
+        "n": "sendQuoteEmail",
+        "d": "f99ab66dc6c9326264f03ea75c48d1c3a3576bcab15253f09282746287c35635",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "739f799885c238c3f4239f95acf9acafcb132682e1e0b4e7a2d9456c3548116f",
+        "s": 1207266,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.908Z",
+        "a": "191106063332",
+        "oid": "0fb8f222c48e5700d5c21e49619adad57aacdfec01ab79da4c934ad22ae30ab7"
+      },
+      {
+        "n": "sendVendorEmail",
+        "d": "5e98c4129e77344266fd6f335d64b5a519ea36da62796b73c3a586b2ae6d5713",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "66b8b9cdf312017ff6a2e2ea3a82546a3eb3e20558e360ee46e2c5aa116efd99",
+        "s": 782098,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:38.990Z",
+        "a": "505538967386",
+        "oid": "df08ddb35ab9597c2a5d19110c33fd7d4bfe131b56a0fad6e9dd0af981ed90ff"
+      },
+      {
+        "n": "stripe-shipping-webhook",
+        "d": "9f28c8b639788c609e7f256c46e138ecfc409386ae8f6a6724777349c2d11e93",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "99a560d47fabf5caa7d98d003d9257b3dd39e628e0c54899f6a9ab4b3c81f42f",
+        "s": 495715,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:39.368Z",
+        "a": "643318452420",
+        "oid": "e72b0f11d525469e977f696e68591314025d20de0cf73df1dfdfc301b289c595"
+      },
+      {
+        "n": "stripeWebhook",
+        "d": "2fd229c12d47c594821796611ff2711a8b7d870b267ddcb52e4d1987ed434389",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "f0387b0780ffc1866809de92b6fe31b3b28790388d745312c4e0efdfe8fa1dfb",
+        "a": "177933589360",
+        "c": "2026-01-04T08:33:02.348Z",
+        "m": 1024,
+        "obl": "netlify-observability-extension",
+        "oblv": 34,
+        "oid": "ebfcae1b01c86d96f78e0ba833aa01c5130e74c56a706c50d13915dbf7bdf5f6",
+        "r": "nodejs20.x",
+        "rg": "us-east-2",
+        "s": 1101971
+      },
+      {
+        "n": "submitVendorApplication",
+        "d": "10c144395626c149a7d8918bccf5ff4432d498ca59495c04eed5ec9ac8b39e53",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "a295a5f393ecdb288838018ddf7d40f44cf4230e21ff35763366210b148bbb72",
+        "s": 437195,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.602Z",
+        "a": "131853488294",
+        "oid": "02baa174cfb91ac28fab41d33e7ec6d641371b0e821a586fba39194a503c32cc"
+      },
+      {
+        "n": "syncMarketingAttribution",
+        "d": "e1034033e45d59398e8c131da3da66706a4bb9ef68cbc6fa1866471c712f5e15",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "0a41ce2cb56687fefffb6fa4af60b4de83751dfaa0b727c5e04d9d74cec7f2dc",
+        "s": 438765,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.714Z",
+        "a": "770208316574",
+        "oid": "6cd6936f9c549c3ce6cf59279b64744ef4e555cd2a11cbdf78e3622685de404f"
+      },
+      {
+        "n": "syncMerchantProducts",
+        "d": "f2cbee6f0739828dee4d7ff82db059dbff32eabd1f8e95b04e8e0efc85c729f9",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "e56f41250f859d79b25b5868fd0233541f86370366a815f3676153f0890d6321",
+        "s": 1563088,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.877Z",
+        "a": "372992463200",
+        "oid": "99c478ea5b25681c995e98141b21af68a34d591ebd7d3a6c1cd5eabb347282e6"
+      },
+      {
+        "n": "syncStripeCatalog",
+        "d": "2cf9f1d23e36fdb60013ff818752a37a16c8ad1023a8a2a1126c95cedaff5482",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "3165de5fef5c509157ca6b2471097cf494c897e7b19c1b291b43674e5930598f",
+        "s": 500849,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.750Z",
+        "a": "719837505512",
+        "oid": "1eca4f5e16bbd8162ea4df41ecd48dc8555aa27f9fdf2b211a8879f8f04fb048"
+      },
+      {
+        "n": "syncStripeCoupons",
+        "d": "0ae31a024f570b86c7dad65549ffe17519e442c9b296b5b3b6a7c900bc142ded",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "14660b27f49296fd2e3c41e6c5db6ca36cc6e87ed7ad5fc46c86af1c896fe90b",
+        "s": 496240,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.705Z",
+        "a": "517870325001",
+        "oid": "9c60c9fe77fd52cdda1f1ba3bd9ad26954fbb897332c33a59d1104434f94b684"
+      },
+      {
+        "n": "syncVendorToStripe",
+        "d": "43b6905e724aca3e967aa70b22030922f242441d4298d685f4a55e6e06b8ef29",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "e18ea8b8cb21b29b71e6afa2b1c580e5db513565abffb219e8359ec6f4cf4cdb",
+        "s": 496195,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.712Z",
+        "a": "720546724483",
+        "oid": "bb59a8ab36e440989497d1f7b3261c0e0d191f56a5b9ad28ce9d0936c22e7302"
+      },
+      {
+        "n": "transformation-library",
+        "d": "3e0f72f41729e6a8f51e8d899b9ce3d99d6a37552ce56e7fe54cd70d237c4197",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "fab880dcb32b42a76ddd588ce3d4dfdd2145268098441e5b7876f56f4082b74e",
+        "s": 279816,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.874Z",
+        "a": "967142903211",
+        "oid": "d5ddad39a8b78ccfc716ecc6122ebfc816029a3e372c5bdeb20b97841c14bf57"
+      },
+      {
+        "n": "update-customer-segments",
+        "d": "7a0923e6d2a5a6595528d0d19fb88cf17ef950cd2e1d6ea7582474457d584751",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "b944d06f196e2c614b528c736f9f5b9ee88a919f0eb7c9532efebf19db0f1193",
+        "s": 437164,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.769Z",
+        "a": "105186839156",
+        "oid": "45cf832dbd09b60b7c1a537edca979ec592c900f780bdff5ff3aa6ea47c97e77"
+      },
+      {
+        "n": "updateVendorProfile",
+        "d": "73f37765208c74697e56eebf7ef1dadba0fea454db7b62ca204f7be06034d023",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "3c47cdc9576a9b5295f52482e5f2341e2953bad04441cacf554250c1ccb6fa85",
+        "s": 438182,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.905Z",
+        "a": "554605863837",
+        "oid": "ac75c31b11a0ea5a7c5f725d302e7740333f2df65e684cbeabab10df68733d8b"
+      },
+      {
+        "n": "uploadCustomerMatch",
+        "d": "530e684c25d735e34c94d9f2653fc07229eaff483244308c431c6d79eb40ecab",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "d65d7d9d639dc3685faf77346e06230c4bfaa7f45dedf921d15001f046148e8e",
+        "s": 336426,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.814Z",
+        "a": "849272951165",
+        "oid": "e830b8df4cea5ccf0a598bec9889be008eff8f9a8b451019463a7dcba9a667e7"
+      },
+      {
+        "n": "userData",
+        "d": "ebee07ae4a03ce3a642e640cba049e7981867ebef631a265e103a99000a0e9fd",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "8a1cc7368703398d31a2256f0168f86b080959889e7be093af830cfe4a07aa33",
+        "s": 436416,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.813Z",
+        "a": "948273276571",
+        "oid": "746d433b180cec4dbbc8e48fcdec17ae3fc447f13e0fea61b8c0a0a6d1a791cd"
+      },
+      {
+        "n": "vendor-application",
+        "d": "11988754fb0800d3ef053b65db324803cd2b7c971bbfb875aa9b93367931105e",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "c8a4618b05d468bc30bbf18cf264a4e6452e2634328ef54a37e6d5813bab3e6e",
+        "s": 939171,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.878Z",
+        "a": "085473816981",
+        "oid": "e9a5e1cd4994cf4f7bce061ba740200003c45ec4033b4dd69fe5d75051f3d516"
+      },
+      {
+        "n": "vendor-onboarding-cron",
+        "d": "941a04615283097eeeaaeaa3852b0898c6627462ef6ed10f62d127f0309cf20f",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "c0a7cd8df35f0b0bb9878d3894755b3b2bd8fca741778c2e64260dc930768b3f",
+        "s": 938369,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.973Z",
+        "a": "437982900386",
+        "oid": "845715a4d070eacfabbcdb86a104bccb86a09a0128da0b08120300324f408536"
+      },
+      {
+        "n": "webhook-test",
+        "d": "5e73e04ceb73a548b660ac104ea4af01d1f8b1588225b9bfb5f5aded1cc99ea3",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "b60a1b7b4b2022f96dadbb237679cdf8d4cbbb7ab1038fbcd7271921e6e3799a",
+        "s": 436250,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:45.017Z",
+        "a": "547386967757",
+        "oid": "379e4ae8f58625bc829f300ec28b7b45f853e2654a4d5ab45934e6fc6e62fa4a"
+      },
+      {
+        "n": "welcome-subscriber",
+        "d": "575a86adefa3d9b2e92c23bf630d7e45f218f3171da155a6ac239f483b431c7e",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "db19438f3c3fe4f65f969c337171641057a3806ce3f48f6e1892da410d5c0247",
+        "s": 940030,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:44.997Z",
+        "a": "355294401520",
+        "oid": "2308b4f7bdde9593dd8146cdfd3e133e3917819e646e8e24545d2d30db46301c"
+      },
+      {
+        "n": "wholesale-cart",
+        "d": "96442e3ce4a4005f4a92f3bf5be287d1f05dce4e20530741b5635589819a8b96",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "ad1ad47ac750e5b5d249cf5f01089d1d2193d75a70ed8d352f82d58b42b4d2ac",
+        "s": 438244,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:45.027Z",
+        "a": "998805804580",
+        "oid": "0adc329bebbaec6bc01cc62f62b5cc5aae08655b474cfe83d0323e021aad7e90"
+      },
+      {
+        "n": "wholesale-catalog",
+        "d": "9f799bf8d5053ed998c2b6bd6c6a952b69802b0fbabc6c55c4769fe411048662",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "4a78046859253b8f8962264bd4a848bdaafed7f042f659369640cb129cb14639",
+        "s": 438066,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:45.043Z",
+        "a": "123818897194",
+        "oid": "71ca53dc67965f5db36e71ce44bd797d4baf6c7647f12e0d3bfc805ef0433efb"
+      },
+      {
+        "n": "wholesale-orders",
+        "d": "1a39e367907fce452fae3e0c92d731109d69982e28d57860982fcdaceb493f24",
+        "dn": null,
+        "g": null,
+        "bd": {
+          "runtimeAPIVersion": 1
+        },
+        "p": 10,
+        "id": "da75b94552abcd3277d5006834b5861b96967d0a8eb9de40ec924863b650f0f6",
+        "s": 439380,
+        "r": "nodejs20.x",
+        "c": "2026-01-04T02:58:45.075Z",
+        "a": "224833515367",
+        "oid": "cf278edfa89d86caf8e747a413ebdd91fc124d4f86cf1bb0c1abc91527e59420"
+      }
+    ],
+    "screenshot_url": "https://d33wubrfki0l68.cloudfront.net/695a256c791c8000084e3f03/screenshot_2026-01-04-08-33-03-0000.webp",
+    "committer": "amingione",
+    "skipped_log": null,
+    "manual_deploy": false,
+    "plugin_state": "success",
+    "lighthouse_plugin_scores": null,
+    "links": {
+      "permalink": "https://695a256c791c8000084e3f03--fassanity.netlify.app",
+      "alias": "https://fassanity.fasmotorsports.com",
+      "branch": null
+    },
+    "framework": "astro",
+    "entry_path": null,
+    "views_count": null,
+    "function_schedules": [
+      {
+        "cron": "0 5 * * *",
+        "name": "cleanupFunctionLogs"
+      },
+      {
+        "cron": "0 9 * * *",
+        "name": "inventoryReorderCheck"
+      },
+      {
+        "cron": "0 3 * * *",
+        "name": "syncStripeCoupons"
+      }
+    ],
+    "public_repo": true,
+    "pending_review_reason": null,
+    "lighthouse": null,
+    "edge_functions_present": null,
+    "expires_at": null,
+    "blobs_region": "us-east-2",
+    "deploy_validations_report": {
+      "id": "695a25b7c793d86d4fa09a8b",
+      "deploy_id": "695a256c791c8000084e3f03",
+      "secret_scan_result": {
+        "scannedFilesCount": 1208,
+        "secretsScanMatches": [],
+        "enhancedSecretsScanMatches": []
+      }
+    },
+    "strict_contributor_verification_failure": false,
+    "agent_runner_id": null,
+    "skew_protection_token": "c8dbd754cfc8517ab851b7ca5d644528da552908e5e339159ef3e2c5bf4850cc363935613235366337393163383030303038346533663033"
+  },
+  "managed_dns": true,
+  "jwt_secret": null,
+  "jwt_roles_path": "app_metadata.authorization.roles",
+  "account_id": "67982e0715fb11b798ce4f30",
+  "account_slug": "ambermingione",
+  "account_name": "Amber",
+  "account_type": "Pro",
+  "capabilities": {
+    "cdn_tier": "reg",
+    "deploy_diagnostics": true,
+    "ai_usage_enabled": true,
+    "dev_server_enabled": true,
+    "functions": {
+      "invocations": {
+        "included": 125000,
+        "unit": "requests"
+      },
+      "runtime": {
+        "included": 360000,
+        "unit": "seconds"
+      }
+    }
+  },
+  "dns_zone_id": "67982f96fe0318c3028e21a0",
+  "identity_instance_id": null,
+  "primary_create_project": null,
+  "use_functions": true,
+  "use_edge_handlers": null,
+  "use_forms": null,
+  "parent_user_id": null,
+  "automatic_tls_provisioning": null,
+  "disabled": null,
+  "disabled_reason": null,
+  "lifecycle_state": "active",
+  "id_domain": "43b3d2f9-45f1-444a-8672-48a8694cba5b.netlify.app",
+  "use_lm": null,
+  "build_image": "noble",
+  "automatic_tls_provisioning_expired": false,
+  "analytics_instance_id": null,
+  "functions_region": "us-east-2",
+  "functions_timeout": null,
+  "plugins": [
+    {
+      "package": "@netlify/plugin-emails",
+      "pinned_version": "1"
+    }
+  ],
+  "account_subdomain": null,
+  "cdp_enabled_contexts": [
+    "deploy-preview"
+  ],
+  "deploy_retention_in_days": 90,
+  "build_timelimit": null,
+  "password_context": "all",
+  "hud_enabled": true,
+  "labels": [],
+  "traffic_rules_config_per_scope": {},
+  "visual_editor_active": false,
+  "description": null,
+  "description_hidden": null,
+  "dev_server_resources": null,
+  "created_via": "",
+  "deploy_origin": {},
+  "session_id": null,
+  "quick_setup_in_progress": false,
+  "has_zip_build": false,
+  "prevent_non_git_prod_deploys": false,
+  "cover_url": null,
+  "feature_flags": {},
+  "versions": {
+    "go": {
+      "active": "1.19.x",
+      "default": "1.19.x"
+    },
+    "node": {
+      "active": "22",
+      "default": "22"
+    },
+    "python": {
+      "active": "3.13",
+      "default": "3.13"
+    },
+    "ruby": {
+      "active": "2.7.2",
+      "default": "2.7.2"
+    },
+    "yarn": {
+      "active": "1.22.19",
+      "default": "1.22.19"
+    }
+  },
+  "has_password": false,
+  "default_domain": "fassanity.netlify.app",
+  "use_envelope": true
+}

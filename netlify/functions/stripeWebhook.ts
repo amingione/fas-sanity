@@ -7348,7 +7348,21 @@ export const handler: Handler = async (event) => {
     }
 
     if (stripeEvent.type === 'checkout.session.expired') {
-      return await handleCheckoutSessionExpired(stripeEvent)
+      webhookSummary = summarizeEventType(stripeEvent.type)
+      try {
+        const response = await handleCheckoutSessionExpired(stripeEvent)
+        return await finalize(response, 'success', {eventType: stripeEvent.type})
+      } catch (err) {
+        webhookStatus = 'error'
+        webhookSummary = 'checkout.session.expired handler failed'
+        console.error('stripeWebhook: checkout.session.expired handler failed', err)
+        return await finalize(
+          {statusCode: 500, body: 'checkout.session.expired handler failed'},
+          'error',
+          undefined,
+          err,
+        )
+      }
     }
 
     webhookSummary = summarizeEventType(stripeEvent.type || '')
@@ -8793,7 +8807,11 @@ export const handler: Handler = async (event) => {
     summary: webhookSummary,
   })
   } catch (error) {
-    console.warn('⚠️ stripeWebhook: exiting early', {reason: 'internal error'})
+    console.error('stripeWebhook: internal error', error)
+    console.warn('⚠️ stripeWebhook: exiting early', {
+      reason: 'internal error',
+      eventType: stripeEvent?.type || null,
+    })
     return await finalize(
       {statusCode: 500, body: 'Internal error'},
       'error',
