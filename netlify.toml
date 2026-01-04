@@ -8,8 +8,9 @@
 
 [build.environment]
   NODE_VERSION = "20.19.1"
+  # Disable mise so Netlify's configured Node/toolchain is used instead of any mise-managed runtime.
   MISE_DISABLE = "1"
-  NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs" # CI/prod shim preload only.
+  NODE_OPTIONS = "--require=./scripts/aws-secrets-shim.cjs" # CI/prod shim preload only.
   # Allow specific environment variable names to pass secret scanning since
   # their values are required during builds but are not written to the public build output.
   SECRETS_SCAN_OMIT_KEYS = "CORS_ALLOW"
@@ -34,7 +35,7 @@
   external_node_modules = ["get-stream", "@aws-sdk/client-secrets-manager"]
 
 [functions.environment]
-  NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs" # CI/prod runtime preload only.
+  NODE_OPTIONS = "--require=./scripts/aws-secrets-shim.cjs" # CI/prod runtime preload only.
 
 [functions.masterBackfill]
   node_module_format = "esm"
