@@ -38,7 +38,7 @@ This rule overrides all other defaults unless explicitly superseded.
 **GraphQL tooling (language server / schema introspection):**
 
 - `graphql.config.cjs` defines the schema endpoint for editor tooling.
-- Optional env vars for authenticated introspection: `SANITY_GRAPHQL_TOKEN` (preferred), `SANITY_API_TOKEN`, or `SANITY_READ_TOKEN`.
+- Optional env vars for authenticated introspection: `SANITY_GRAPHQL_TOKEN` (preferred), `SANITY_API_TOKEN`, or `SANITY_API_TOKEN`.
 - If you have a dumped schema file, you can point the config at it to avoid network calls.
 
 ## Runbooks
@@ -1116,8 +1116,8 @@ fas-cms-fresh (.env.local)
 
 # Sanity
 
-PUBLIC_SANITY_PROJECT_ID=your_project_id
-PUBLIC_SANITY_DATASET=production
+SANITY_STUDIO_PROJECT_ID=your_project_id
+SANITY_STUDIO_DATASET=production
 SANITY_API_TOKEN=skxxx # Write token for server-side
 
 # Stripe
@@ -1498,8 +1498,8 @@ const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY!, {
 })
 
 const sanityClient = createClient({
-  projectId: import.meta.env.PUBLIC_SANITY_PROJECT_ID!,
-  dataset: import.meta.env.PUBLIC_SANITY_DATASET!,
+  projectId: import.meta.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: import.meta.env.SANITY_STUDIO_DATASET!,
   token: import.meta.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false,
@@ -2283,8 +2283,8 @@ SANITY_STUDIO_EASYPOST_API_KEY=EZAK_xxx
 
 ```bash
 # Sanity
-PUBLIC_SANITY_PROJECT_ID=your_project_id
-PUBLIC_SANITY_DATASET=production
+SANITY_STUDIO_PROJECT_ID=your_project_id
+SANITY_STUDIO_DATASET=production
 SANITY_API_TOKEN=skxxx  # Write token for server-side
 
 # Stripe

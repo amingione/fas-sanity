@@ -8,9 +8,9 @@ import {
 } from '../../shared/finance/calculateMonthlyFinancials'
 
 const API_VERSION = '2024-10-01'
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
-const token = process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
+const token = process.env.SANITY_API_TOKEN
 
 if (!projectId || !dataset) {
   throw new Error('Missing Sanity configuration for calculate-profit-loss function')

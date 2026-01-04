@@ -17,20 +17,13 @@ type BaseFetchOptions = {
 const DEFAULT_API_VERSION = '2024-04-10'
 
 const resolveProjectId = (explicit?: string): string | undefined =>
-  explicit ||
-  process.env.SANITY_STUDIO_PROJECT_ID ||
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
-  process.env.SANITY_PROJECT_ID
+  explicit || process.env.SANITY_STUDIO_PROJECT_ID
 
 const resolveDataset = (explicit?: string): string | undefined =>
-  explicit ||
-  process.env.SANITY_STUDIO_DATASET ||
-  process.env.NEXT_PUBLIC_SANITY_DATASET ||
-  process.env.SANITY_DATASET
+  explicit || process.env.SANITY_STUDIO_DATASET
 
 const resolveApiVersion = (explicit?: string): string =>
   explicit ||
-  process.env.NEXT_PUBLIC_SANITY_API_VERSION ||
   process.env.SANITY_STUDIO_API_VERSION ||
   DEFAULT_API_VERSION
 

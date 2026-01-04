@@ -18,15 +18,13 @@ const API_VERSION = '2024-10-01'
 
 async function main() {
   const projectId =
-    process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
-  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+    process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
+  const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
   const token =
-    process.env.SANITY_API_TOKEN ||
-    process.env.SANITY_WRITE_TOKEN ||
-    process.env.SANITY_STUDIO_API_TOKEN
+    process.env.SANITY_API_TOKEN
 
   if (!token) {
-    throw new Error('Set SANITY_API_TOKEN (or SANITY_WRITE_TOKEN) before running this script.')
+    throw new Error('Set SANITY_API_TOKEN (or SANITY_API_TOKEN) before running this script.')
   }
 
   const client = createClient({

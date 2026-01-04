@@ -11,7 +11,7 @@ import {createClient} from '@sanity/client'
  */
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || ''
 
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
 
 const token = process.env.SANITY_API_TOKEN || ''
 const secret = process.env.SANITY_WEBHOOK_SECRET // optional but recommended

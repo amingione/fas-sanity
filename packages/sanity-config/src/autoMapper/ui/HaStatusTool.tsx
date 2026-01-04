@@ -13,7 +13,6 @@ type Payload = {
 
 const endpoint =
   process.env.SANITY_STUDIO_HA_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_HA_ENDPOINT ||
   '/.netlify/functions/ha-health'
 
 export function HaStatusTool() {

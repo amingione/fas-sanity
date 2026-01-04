@@ -6,9 +6,9 @@ dotenv.config()
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const client = createClient({
-  projectId: process.env.SANITY_PROJECT_ID,
-  dataset: process.env.SANITY_DATASET,
-  token: process.env.SANITY_WRITE_TOKEN,
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID,
+  dataset: process.env.SANITY_STUDIO_DATASET,
+  token: process.env.SANITY_API_TOKEN,
   apiVersion: '2024-01-01',
   useCdn: false,
 })

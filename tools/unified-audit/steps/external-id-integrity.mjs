@@ -1,112 +1,75 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { scanCodeFiles } from '../lib/scan.mjs'
-import { uniqueSorted } from '../lib/utils.mjs'
-import { writeJson } from '../lib/utils.mjs'
-
 function isIdField(field) {
-  return /Id(s)?$/.test(field)
+  return /id(s)?$/i.test(field)
 }
 
-function collectIdFieldsFromCode(files) {
-  const ids = new Set()
-  const regex = /\b([A-Za-z0-9_]+Id[s]?)\b/g
-  for (const file of files) {
-    let match
-    regex.lastIndex = 0
-    while ((match = regex.exec(file.contents))) {
-      ids.add(match[1])
-    }
-  }
-  return uniqueSorted(Array.from(ids))
-}
-
-export async function runExternalIdIntegrity(context) {
-  const { repos, outputDir, schemaIndex, runtimeDocsByType, mappingIndex } = context
-  const files = []
-
-  for (const repo of repos) {
-    if (repo.status !== 'OK') continue
-    const filePaths = scanCodeFiles(repo.path)
-    for (const filePath of filePaths) {
-      const contents = fs.readFileSync(filePath, 'utf8')
-      files.push({ path: filePath, contents })
-    }
+export async function runExternalIdIntegrity({ schemaIndex, runtimeScan }) {
+  const result = {
+    status: 'PASS',
+    idFields: {},
+    duplicates: {},
+    nullRates: {}
   }
 
-  const schemaFields = mappingIndex?.allSchemaFields
-    ? mappingIndex.allSchemaFields
-    : uniqueSorted((schemaIndex?.types || []).flatMap((type) => type.fields || []))
-  const requiredByType = mappingIndex?.requiredByType
-    ? mappingIndex.requiredByType
-    : Object.fromEntries(
-      (schemaIndex?.types || []).map((type) => [type.name, type.required || []])
-    )
-  const schemaIdFields = schemaFields.filter(isIdField)
-  const codeIdFields = collectIdFieldsFromCode(files)
-  const idFields = uniqueSorted(schemaIdFields.concat(codeIdFields))
+  const schemaTypes = schemaIndex.schemas || {}
+  for (const [type, schema] of Object.entries(schemaTypes)) {
+    result.idFields[type] = (schema.fields || []).filter(isIdField)
+  }
 
-  const duplicates = {}
-  const nullRates = {}
-  const missingRequired = {}
+  if (!runtimeScan || runtimeScan.status !== 'PASS') {
+    result.status = 'SKIPPED'
+    result.reason = 'Runtime scan unavailable'
+    return result
+  }
 
-  if (runtimeDocsByType) {
-    for (const [typeName, docs] of Object.entries(runtimeDocsByType)) {
-      const requiredIds = (requiredByType[typeName] || []).filter(isIdField)
-      if (requiredIds.length && docs.length) {
-        const missingForType = {}
-        for (const field of requiredIds) {
-          for (const doc of docs) {
-            if (doc[field] === undefined || doc[field] === null || doc[field] === '') {
-              if (!missingForType[field]) missingForType[field] = 0
-              missingForType[field] += 1
-            }
-          }
-        }
-        if (Object.keys(missingForType).length) {
-          missingRequired[typeName] = missingForType
-        }
+  for (const [type, scan] of Object.entries(runtimeScan.scannedTypes || {})) {
+    const idFields = result.idFields[type] || []
+    for (const field of idFields) {
+      const fieldNulls = scan.nullCounts?.[field] || 0
+      result.nullRates[`${type}.${field}`] = {
+        nulls: fieldNulls,
+        total: scan.totalDocs
       }
+    }
 
+    const seen = {}
+    for (const field of idFields) {
+      seen[field] = new Map()
+    }
+
+    for (const doc of scan.sampleDocs || []) {
       for (const field of idFields) {
-        const values = new Map()
-        let nullCount = 0
-        for (const doc of docs) {
-          const value = doc[field]
-          if (value === undefined || value === null || value === '') {
-            nullCount += 1
-            continue
-          }
-          const count = values.get(value) || 0
-          values.set(value, count + 1)
-        }
-        const dupes = Array.from(values.entries())
-          .filter(([, count]) => count > 1)
-          .map(([value, count]) => ({ value, count }))
-        if (dupes.length) {
-          if (!duplicates[typeName]) duplicates[typeName] = {}
-          duplicates[typeName][field] = dupes
-        }
-        if (docs.length) {
-          if (!nullRates[typeName]) nullRates[typeName] = {}
-          nullRates[typeName][field] = nullCount / docs.length
-        }
+        const value = doc[field]
+        if (!value) continue
+        const map = seen[field]
+        map.set(value, (map.get(value) || 0) + 1)
+      }
+    }
+
+    for (const field of idFields) {
+      const duplicates = []
+      const map = seen[field]
+      if (!map) continue
+      for (const [value, count] of map.entries()) {
+        if (count > 1) duplicates.push({ value, count })
+      }
+      if (duplicates.length > 0) {
+        result.duplicates[`${type}.${field}`] = duplicates
       }
     }
   }
 
-  const hasDupes = Object.keys(duplicates).length > 0
-  const hasMissingRequired = Object.keys(missingRequired).length > 0
-  const output = {
-    status: hasDupes || hasMissingRequired ? 'FAIL' : 'PASS',
-    generatedAt: new Date().toISOString(),
-    idFields,
-    duplicates,
-    nullRates,
-    missingRequired,
-    notes: runtimeDocsByType ? null : 'Runtime scan unavailable; duplicates and missing required ids not computed.',
+  const hasRequiredIdMissing = Object.entries(runtimeScan.scannedTypes || {}).some(
+    ([type, scan]) => {
+      const required = new Set(schemaIndex.schemas?.[type]?.required || [])
+      return (result.idFields[type] || []).some(field =>
+        required.has(field) && (scan.missingRequired?.[field]?.length || 0) > 0
+      )
+    }
+  )
+
+  if (Object.keys(result.duplicates).length > 0 || hasRequiredIdMissing) {
+    result.status = 'FAIL'
   }
 
-  writeJson(path.join(outputDir, 'external-id-integrity.json'), output)
-  return output
+  return result
 }

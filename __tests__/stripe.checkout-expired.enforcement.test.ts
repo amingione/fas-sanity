@@ -36,7 +36,7 @@ vi.mock('resend', () => ({
 
 vi.mock('../netlify/lib/stripeEnv', () => ({
   resolveStripeSecretKey: () => 'sk_test_123',
-  STRIPE_SECRET_ENV_KEYS: ['STRIPE_SECRET_KEY'],
+  STRIPE_SECRET_ENV_KEY: 'STRIPE_SECRET_KEY',
 }))
 
 vi.mock('../shared/resendEnv', () => ({
@@ -67,10 +67,9 @@ describe('checkout.session.expired enforcement', () => {
     resendSendMock.mockClear()
     process.env.STRIPE_WEBHOOK_NO_VERIFY = '1'
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test'
-    process.env.SANITY_PROJECT_ID = 'test-project'
-    process.env.SANITY_DATASET = 'test-dataset'
+    process.env.SANITY_STUDIO_PROJECT_ID = 'test-project'
+    process.env.SANITY_STUDIO_DATASET = 'test-dataset'
     process.env.SANITY_API_TOKEN = 'test-token'
-    process.env.SANITY_WRITE_TOKEN = 'test-token'
   })
 
   it('logs cart only and never creates an order', async () => {

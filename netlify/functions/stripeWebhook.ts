@@ -59,9 +59,10 @@ import {
   deriveFulfillmentFromMetadata,
 } from '../lib/fulfillmentFromMetadata'
 import {markAbandonedCheckoutRecovered} from '../lib/abandonedCheckouts'
-import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
+import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../lib/stripeEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {ensureProductCodes} from '../../packages/sanity-config/src/utils/generateProductCodes'
 import {
   linkCheckoutSessionToCustomer,
   linkInvoiceToCustomer,
@@ -194,7 +195,8 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
   }
 }
 
-// Netlify delivers body as string; may be base64-encoded
+// Stripe verifies signatures against the exact raw request bytes.
+// Netlify may base64-encode the body during transport; decode only when event.isBase64Encoded.
 function getRawBody(event: any): Buffer {
   const body = event.body || ''
   if (event.isBase64Encoded) return Buffer.from(body, 'base64')
@@ -2419,7 +2421,7 @@ async function upsertCheckoutSessionDocument(
 const stripeKey = resolveStripeSecretKey()
 if (!stripeKey) {
   console.error(
-    `stripeWebhook: missing Stripe secret (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')})`,
+    `stripeWebhook: missing Stripe secret (set ${STRIPE_SECRET_ENV_KEY})`,
   )
 }
 const stripe = stripeKey ? new Stripe(stripeKey, {apiVersion: STRIPE_API_VERSION}) : (null as any)
@@ -2475,9 +2477,9 @@ const markCartRecovered = async (
 
 // Dedicated client for strict order creation + backfill requirements.
 const webhookSanityClient = createClient({
-  projectId: process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID!,
-  dataset: process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET!,
-  token: (process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN) as string,
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: process.env.SANITY_STUDIO_DATASET!,
+  token: (process.env.SANITY_API_TOKEN) as string,
   apiVersion: '2024-01-01',
   useCdn: false,
 })
@@ -4302,6 +4304,22 @@ function unixToIso(timestamp?: number | null): string | undefined {
   return new Date(timestamp * 1000).toISOString()
 }
 
+function normalizeSku(value?: string | null): string | undefined {
+  const trimmed = value ? value.toString().trim().toUpperCase() : ''
+  return trimmed || undefined
+}
+
+function deriveSkuFromMpn(mpn?: string | null): string | null {
+  if (!mpn) return null
+  const trimmed = mpn.toString().trim().toUpperCase()
+  if (!trimmed) return null
+  const match = trimmed.match(/^([A-Z0-9]+)-(\d+)$/)
+  if (!match) return null
+  const prefix = match[1]
+  const serial = match[2].padStart(3, '0')
+  return `FAS-${prefix}-${serial}A`
+}
+
 async function findProductDocumentId(opts: {
   metadata?: Record<string, string>
   stripeProductId?: string
@@ -4407,7 +4425,7 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
   const updatedAt = unixToIso(product.updated) || new Date().toISOString()
   const defaultPriceId =
     typeof product.default_price === 'string' ? product.default_price : product.default_price?.id
-  const sku = skuCandidates.find(Boolean)
+  const sku = normalizeSku(skuCandidates.find(Boolean))
 
   const setOps: Record<string, any> = {
     stripeProductId: product.id,
@@ -4417,12 +4435,14 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
   if (defaultPriceId) setOps.stripeDefaultPriceId = defaultPriceId
 
   if (existingId) {
-    const existing = await sanity.fetch<{title?: string; sku?: string}>(
-      `*[_id == $id][0]{title, sku}`,
+    const existing = await sanity.fetch<{title?: string; sku?: string; mpn?: string}>(
+      `*[_id == $id][0]{title, sku, mpn}`,
       {id: existingId},
     )
     let patch = sanity.patch(existingId).set(setOps)
-    if (sku && !existing?.sku) patch = patch.set({sku})
+    const derivedSku = deriveSkuFromMpn(existing?.mpn)
+    const skuMatchesMpn = Boolean(sku && derivedSku && sku === derivedSku)
+    if (skuMatchesMpn && !existing?.sku) patch = patch.set({sku})
     if (product.name && !existing?.title) patch = patch.set({title: product.name})
     try {
       await patch.commit({autoGenerateArrayKeys: true})
@@ -4446,11 +4466,20 @@ async function syncStripeProduct(product: Stripe.Product): Promise<string | null
     stripeUpdatedAt: updatedAt,
   }
   if (defaultPriceId) payload.stripeDefaultPriceId = defaultPriceId
-  if (sku) payload.sku = sku
 
   try {
     const created = await sanity.create(payload as any, {autoGenerateArrayKeys: true})
-    return created?._id || null
+    const createdId = created?._id
+    if (createdId) {
+      try {
+        await ensureProductCodes(createdId, sanity, {
+          log: (...args: unknown[]) => console.log('[stripeWebhook:product-codes]', ...args),
+        })
+      } catch (err) {
+        console.warn('stripeWebhook: failed to ensure product codes', err)
+      }
+    }
+    return createdId || null
   } catch (err) {
     console.warn('stripeWebhook: failed to create product doc from Stripe product', err)
     return null
@@ -7132,14 +7161,13 @@ export const handler: Handler = async (event) => {
   })
   console.log('🧪 stripeWebhook: resolved env vars', {
     stripeSecretKeySet: Boolean(stripeKey),
-    stripeSecretEnvKeys: STRIPE_SECRET_ENV_KEYS,
+    stripeSecretEnvKeys: [STRIPE_SECRET_ENV_KEY],
     stripeWebhookSecretSet: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
     stripeWebhookNoVerify: process.env.STRIPE_WEBHOOK_NO_VERIFY || null,
-    sanityProjectId: process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID || null,
-    sanityDataset: process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET || null,
+    sanityProjectId: process.env.SANITY_STUDIO_PROJECT_ID || null,
+    sanityDataset: process.env.SANITY_STUDIO_DATASET || null,
     sanityStudioProjectId: process.env.SANITY_STUDIO_PROJECT_ID || null,
     sanityStudioDataset: process.env.SANITY_STUDIO_DATASET || null,
-    sanityWriteTokenSet: Boolean(process.env.SANITY_WRITE_TOKEN),
     sanityApiTokenSet: Boolean(process.env.SANITY_API_TOKEN),
     resendApiKeySet: Boolean(RESEND_API_KEY),
   })
@@ -7178,7 +7206,7 @@ export const handler: Handler = async (event) => {
   try {
     console.log('Function stripeWebhook invoked')
     console.log('Has RESEND_API_KEY:', Boolean(process.env.RESEND_API_KEY))
-    console.log('Has SANITY_WRITE_TOKEN:', Boolean(process.env.SANITY_WRITE_TOKEN))
+    console.log('Has SANITY_API_TOKEN:', Boolean(process.env.SANITY_API_TOKEN))
 
     if (!stripe) {
       console.warn('⚠️ stripeWebhook: exiting early', {reason: 'stripe not configured'})

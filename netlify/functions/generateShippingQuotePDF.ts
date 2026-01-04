@@ -2,18 +2,18 @@ import type {Handler} from '@netlify/functions'
 import {PDFDocument, PDFPage, PDFFont, StandardFonts, rgb} from 'pdf-lib'
 import {createClient} from '@sanity/client'
 
-const SANITY_PROJECT_ID = process.env.SANITY_PROJECT_ID
-const SANITY_DATASET = process.env.SANITY_DATASET || 'production'
-const SANITY_TOKEN =
-  process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN || process.env.SANITY_AUTH_TOKEN
-const SANITY_API_VERSION = process.env.SANITY_API_VERSION || '2024-10-01'
+const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
+const SANITY_STUDIO_DATASET = process.env.SANITY_STUDIO_DATASET || 'production'
+const SANITY_API_TOKEN =
+  process.env.SANITY_API_TOKEN
+const SANITY_API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 
 const sanityClient =
-  SANITY_PROJECT_ID && SANITY_TOKEN
+  SANITY_STUDIO_PROJECT_ID && SANITY_API_TOKEN
     ? createClient({
-        projectId: SANITY_PROJECT_ID,
-        dataset: SANITY_DATASET,
-        token: SANITY_TOKEN,
+        projectId: SANITY_STUDIO_PROJECT_ID,
+        dataset: SANITY_STUDIO_DATASET,
+        token: SANITY_API_TOKEN,
         apiVersion: SANITY_API_VERSION,
         useCdn: false,
       })

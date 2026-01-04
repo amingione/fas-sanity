@@ -2,14 +2,10 @@ import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
-const token =
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
-  ''
-const apiVersion = process.env.SANITY_API_VERSION || '2024-10-01'
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
+const token = process.env.SANITY_API_TOKEN || ''
+const apiVersion = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 const resendApiKey = resolveResendApiKey() || ''
 const SITE_URL =
   process.env.SANITY_STUDIO_SITE_URL ||
@@ -17,7 +13,8 @@ const SITE_URL =
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
   ''
-const FROM_EMAIL = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'FAS Motorsports <noreply@fasmotorsports.com>'
+const FROM_EMAIL =
+  process.env.RESEND_FROM || 'FAS Motorsports <noreply@fasmotorsports.com>'
 
 const sanityClient =
   projectId && dataset && token

@@ -4,10 +4,10 @@ import {createClient} from '@sanity/client'
 dotenv.config()
 
 const sanity = createClient({
-  projectId: process.env.SANITY_PROJECT_ID!,
-  dataset: process.env.SANITY_DATASET!,
-  token: process.env.SANITY_TOKEN!,
-  apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: process.env.SANITY_STUDIO_DATASET!,
+  token: process.env.SANITY_API_TOKEN!,
+  apiVersion: process.env.SANITY_STUDIO_API_VERSION || '2024-04-10',
   useCdn: false,
 })
 

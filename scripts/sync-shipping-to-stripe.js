@@ -11,8 +11,8 @@ dotenv.config()
 const {createClient} = require('@sanity/client')
 const Stripe = require('stripe')
 
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
 const token = process.env.SANITY_API_TOKEN
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 

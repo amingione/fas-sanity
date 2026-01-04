@@ -11,7 +11,6 @@ type Payload = {
 
 const endpoint =
   process.env.SANITY_STUDIO_SECURITY_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_SECURITY_ENDPOINT ||
   '/.netlify/functions/security-status'
 
 export function SecurityComplianceTool() {

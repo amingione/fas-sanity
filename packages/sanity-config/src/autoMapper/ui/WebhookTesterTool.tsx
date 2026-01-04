@@ -7,7 +7,6 @@ type Payload = {status: string; mappingId: string; assertions: Assertion[]; rece
 
 const endpoint =
   process.env.SANITY_STUDIO_WEBHOOK_TEST_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_WEBHOOK_TEST_ENDPOINT ||
   '/.netlify/functions/webhook-test'
 
 export function WebhookTesterTool() {

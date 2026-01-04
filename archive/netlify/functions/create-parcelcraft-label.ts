@@ -3,16 +3,11 @@ import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
 
 const stripeSecret =
-  process.env.STRIPE_SECRET_KEY ||
-  process.env.STRIPE_API_KEY ||
-  process.env.STRIPE_SK ||
-  process.env.VITE_STRIPE_SECRET_KEY
-const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const sanityDataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+  process.env.STRIPE_SECRET_KEY
+const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID
+const sanityDataset = process.env.SANITY_STUDIO_DATASET
 const sanityToken =
   process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
   ''
 const shipFrom = {
   name: process.env.SHIP_FROM_NAME,

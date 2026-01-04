@@ -4,14 +4,14 @@ import {createClient} from '@sanity/client'
 
 dotenv.config()
 
-const projectId = process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID
-const dataset = process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET
-const token = process.env.SANITY_WRITE_TOKEN || process.env.SANITY_API_TOKEN
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
+const token = process.env.SANITY_API_TOKEN
 const schemaId = process.env.SANITY_SCHEMA_ID || process.env.SANITY_STUDIO_SCHEMA_ID
 
 if (!projectId || !dataset || !token || !schemaId) {
   console.error(
-    'Missing Sanity configuration. Set SANITY_PROJECT_ID, SANITY_DATASET, SANITY_WRITE_TOKEN, and SANITY_SCHEMA_ID.',
+    'Missing Sanity configuration. Set SANITY_STUDIO_PROJECT_ID, SANITY_STUDIO_DATASET, SANITY_API_TOKEN, and SANITY_SCHEMA_ID.',
   )
   process.exit(1)
 }

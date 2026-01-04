@@ -4,7 +4,7 @@ import path from 'node:path'
 import {config as loadEnv} from 'dotenv'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
-import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../netlify/lib/stripeEnv'
+import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../netlify/lib/stripeEnv'
 import {STRIPE_API_VERSION} from '../netlify/lib/stripeConfig'
 import {requireSanityCredentials} from '../netlify/lib/sanityEnv'
 import {syncStripeCoupons} from '../netlify/lib/stripeCoupons'
@@ -34,7 +34,7 @@ async function main() {
 
   const stripeKey = resolveStripeSecretKey()
   if (!stripeKey) {
-    throw new Error(`Missing Stripe secret (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')})`)
+    throw new Error(`Missing Stripe secret (set ${STRIPE_SECRET_ENV_KEY})`)
   }
 
   const sanityConfig = requireSanityCredentials()

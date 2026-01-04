@@ -20,25 +20,24 @@ function makeCORS(origin?: string) {
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
 
-const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
+const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
 
-const SANITY_DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const SANITY_STUDIO_DATASET =
+  process.env.SANITY_STUDIO_DATASET || 'production'
 
-if (!SANITY_PROJECT_ID) {
+if (!SANITY_STUDIO_PROJECT_ID) {
   throw new Error('syncStripeCatalog: missing Sanity project id (set SANITY_STUDIO_PROJECT_ID).')
 }
 
 const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset: SANITY_DATASET,
+  projectId: SANITY_STUDIO_PROJECT_ID,
+  dataset: SANITY_STUDIO_DATASET,
   apiVersion: '2024-04-10',
   token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
 
 const DEFAULT_CURRENCY = (process.env.STRIPE_DEFAULT_CURRENCY || 'usd').toLowerCase()
-const SYNC_SECRET = (process.env.STRIPE_SYNC_SECRET || '').trim()
 const MAX_LIMIT = 100
 
 type PortableValue = any
@@ -363,8 +362,8 @@ function buildMetadata(
     sanity_product_id: normalizedId,
     sanity_slug: product.slug,
     sku: product.sku,
-    sanity_project_id: SANITY_PROJECT_ID,
-    sanity_dataset: SANITY_DATASET,
+    sanity_project_id: SANITY_STUDIO_PROJECT_ID,
+    sanity_dataset: SANITY_STUDIO_DATASET,
     sanity_title: product.title,
     sanity_availability: product.availability,
     shipping_weight_lbs: typeof weight === 'number' ? weight.toString() : undefined,
@@ -723,20 +722,6 @@ export const handler: Handler = async (event) => {
       statusCode: 500,
       headers: {...CORS, 'Content-Type': 'application/json'},
       body: JSON.stringify({error: 'Stripe not configured (missing STRIPE_SECRET_KEY)'}),
-    }
-  }
-
-  const expectedSecret = SYNC_SECRET
-  const providedSecret = (
-    (event.headers?.authorization || '').replace(/^Bearer\s+/i, '') ||
-    event.queryStringParameters?.token ||
-    ''
-  ).trim()
-  if (expectedSecret && providedSecret !== expectedSecret) {
-    return {
-      statusCode: 401,
-      headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Unauthorized'}),
     }
   }
 

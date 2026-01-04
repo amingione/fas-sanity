@@ -28,7 +28,7 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const secretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+    const secretKey = process.env.STRIPE_SECRET_KEY
     if (!secretKey) {
       return {
         statusCode: 500,

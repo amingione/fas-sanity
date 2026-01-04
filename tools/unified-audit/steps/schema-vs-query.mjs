@@ -1,41 +1,34 @@
-import path from 'node:path'
-import { uniqueSorted } from '../lib/utils.mjs'
-import { writeJson } from '../lib/utils.mjs'
+import { stableSort } from '../lib/utils.mjs'
 
-export async function runSchemaVsQuery(context) {
-  const { outputDir, schemaIndex, queryIndex, mappingIndex } = context
+export async function runSchemaVsQuery({ schemaIndex, queryIndex }) {
+  const result = {
+    status: 'PASS',
+    missingInSchema: {},
+    missingInQuery: {},
+    requiresEnforcement: false,
+    enforcementApproved: false
+  }
 
-  if (!schemaIndex || !queryIndex || schemaIndex.status !== 'OK' || queryIndex.status !== 'OK') {
-    const output = {
-      status: 'SKIPPED',
-      reason: 'Schema or query index missing',
-      generatedAt: new Date().toISOString(),
-      missingInSchema: [],
-      unusedSchemaFields: [],
-      inferredMatches: [],
+  const schemaFieldsByType = schemaIndex.schemas || {}
+  const allSchemaFields = new Set()
+  for (const schema of Object.values(schemaFieldsByType)) {
+    for (const field of schema.fields || []) {
+      allSchemaFields.add(field)
     }
-    writeJson(path.join(outputDir, 'schema-vs-query.json'), output)
-    return output
   }
 
-  const schemaFields = mappingIndex?.allSchemaFields
-    ? mappingIndex.allSchemaFields
-    : uniqueSorted((schemaIndex.types || []).flatMap((type) => type.fields || []))
-  const queryFields = mappingIndex?.queryFields
-    ? mappingIndex.queryFields
-    : uniqueSorted(Object.keys(queryIndex.fieldsUsed || {}))
+  const queryFields = new Set(Object.keys(queryIndex.fieldsUsed || {}))
 
-  const missingInSchema = queryFields.filter((field) => !schemaFields.includes(field))
-  const unusedSchemaFields = schemaFields.filter((field) => !queryFields.includes(field))
+  const missingInSchema = [...queryFields].filter(field => !allSchemaFields.has(field))
+  const missingInQuery = [...allSchemaFields].filter(field => !queryFields.has(field))
 
-  const output = {
-    status: 'OK',
-    generatedAt: new Date().toISOString(),
-    missingInSchema,
-    unusedSchemaFields,
-    inferredMatches: mappingIndex?.inferredMatches || [],
+  if (missingInSchema.length > 0 || missingInQuery.length > 0) {
+    result.status = 'WARN'
+    result.requiresEnforcement = missingInSchema.length > 0
   }
 
-  writeJson(path.join(outputDir, 'schema-vs-query.json'), output)
-  return output
+  result.missingInSchema = stableSort(missingInSchema)
+  result.missingInQuery = stableSort(missingInQuery)
+
+  return result
 }

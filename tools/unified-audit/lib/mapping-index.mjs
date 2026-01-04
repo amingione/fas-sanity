@@ -1,60 +1,54 @@
-import { uniqueSorted } from './utils.mjs'
+import { normalizeKey, stableSort, uniqueArray } from './utils.mjs'
 
-function normalizeFieldName(name) {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
-}
-
-export function buildMappingIndex(schemaIndex, queryIndex, integrationInventory) {
-  const schemaFields = new Map()
-  const requiredByType = new Map()
-  for (const type of schemaIndex.types || []) {
-    schemaFields.set(type.name, type.fields || [])
-    requiredByType.set(type.name, type.required || [])
+export function buildMappingIndex({ schemaIndex, queryIndex, integrations }) {
+  const schemaFields = {}
+  for (const [typeName, schema] of Object.entries(schemaIndex.schemas || {})) {
+    for (const field of schema.fields || []) {
+      const key = normalizeKey(field)
+      if (!schemaFields[key]) {
+        schemaFields[key] = { fields: new Set(), types: new Set() }
+      }
+      schemaFields[key].fields.add(field)
+      schemaFields[key].types.add(typeName)
+    }
   }
 
-  const allSchemaFields = uniqueSorted(
-    Array.from(schemaFields.values()).flatMap((fields) => fields)
-  )
-
-  const queryFields = uniqueSorted(Object.keys(queryIndex.fieldsUsed || {}))
-  const normalizedSchema = new Map()
-  const normalizedQuery = new Map()
-
-  for (const field of allSchemaFields) {
-    const normalized = normalizeFieldName(field)
-    if (!normalizedSchema.has(normalized)) normalizedSchema.set(normalized, [])
-    normalizedSchema.get(normalized).push(field)
+  const queryFields = {}
+  for (const [field, usage] of Object.entries(queryIndex.fieldsUsed || {})) {
+    const key = normalizeKey(field)
+    if (!queryFields[key]) {
+      queryFields[key] = { fields: new Set(), files: new Set() }
+    }
+    queryFields[key].fields.add(field)
+    for (const file of usage.files || []) {
+      queryFields[key].files.add(file)
+    }
   }
 
-  for (const field of queryFields) {
-    const normalized = normalizeFieldName(field)
-    if (!normalizedQuery.has(normalized)) normalizedQuery.set(normalized, [])
-    normalizedQuery.get(normalized).push(field)
-  }
-
-  const inferredMatches = []
-  for (const [normalized, schemaList] of normalizedSchema.entries()) {
-    const queryList = normalizedQuery.get(normalized)
-    if (!queryList) continue
-    inferredMatches.push({
-      normalized,
-      schemaFields: uniqueSorted(schemaList),
-      queryFields: uniqueSorted(queryList),
+  const correlations = []
+  const allKeys = new Set([...Object.keys(schemaFields), ...Object.keys(queryFields)])
+  for (const key of stableSort([...allKeys])) {
+    correlations.push({
+      normalized: key,
+      schemaFields: schemaFields[key]
+        ? uniqueArray([...schemaFields[key].fields])
+        : [],
+      schemaTypes: schemaFields[key]
+        ? uniqueArray([...schemaFields[key].types])
+        : [],
+      queryFields: queryFields[key]
+        ? uniqueArray([...queryFields[key].fields])
+        : [],
+      queryFiles: queryFields[key]
+        ? uniqueArray([...queryFields[key].files])
+        : []
     })
   }
 
   return {
-    generatedAt: new Date().toISOString(),
-    schemaFields: Object.fromEntries(
-      Array.from(schemaFields.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    ),
-    requiredByType: Object.fromEntries(
-      Array.from(requiredByType.entries()).sort((a, b) => (a[0] < b[0] ? -1 : 1))
-    ),
-    allSchemaFields,
-    queryFields,
-    inferredMatches: inferredMatches.sort((a, b) => (a.normalized < b.normalized ? -1 : 1)),
-    integrationHits: integrationInventory.hits || [],
-    envKeys: integrationInventory.envKeys || {},
+    correlations,
+    schemaFieldCount: Object.keys(schemaIndex.schemas || {}).length,
+    queryFieldCount: Object.keys(queryIndex.fieldsUsed || {}).length,
+    integrationHits: integrations?.hits?.length || 0
   }
 }

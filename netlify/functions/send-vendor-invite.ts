@@ -13,20 +13,14 @@ const JSON_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const DATASET = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
-const API_VERSION = process.env.SANITY_API_VERSION || '2024-10-01'
-const TOKEN =
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
-  ''
+const PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
+const DATASET = process.env.SANITY_STUDIO_DATASET
+const API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
+const TOKEN = process.env.SANITY_API_TOKEN || ''
 
 const resendApiKey = resolveResendApiKey() || ''
 const resendFrom =
-  process.env.RESEND_FROM ||
-  process.env.EMAIL_FROM ||
-  'FAS Motorsports <support@updates.fasmotorsports.com>'
+  process.env.RESEND_FROM || 'FAS Motorsports <support@updates.fasmotorsports.com>'
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
 
 const DEFAULT_TEMPLATE_ID =

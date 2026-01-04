@@ -340,11 +340,8 @@ const handler: Handler = async (event) => {
       }
     }
 
-    const apiKey =
-      process.env.OPENAI_API_KEY ||
-      process.env.SANITY_STUDIO_OPENAI_API_KEY ||
-      process.env.VITE_OPENAI_API_KEY
-    const model = process.env.OPENAI_MODEL || process.env.SANITY_STUDIO_OPENAI_MODEL || 'gpt-4o-mini'
+    const apiKey = process.env.OPENAI_API_KEY
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
 
     let suggestions: MappingSuggestion[] | null = null
     let used = 'rule-based'
@@ -425,13 +422,9 @@ export {handler}
 const randomId = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(16).slice(2))
 
 const buildFeedbackClient = () => {
-  const token =
-    process.env.SANITY_AI_FEEDBACK_TOKEN ||
-    process.env.SANITY_API_TOKEN ||
-    process.env.SANITY_STUDIO_API_TOKEN
-  const projectId =
-    process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || process.env.SANITY_PROJECT
-  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+  const token = process.env.SANITY_AI_FEEDBACK_TOKEN || process.env.SANITY_API_TOKEN
+  const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+  const dataset = process.env.SANITY_STUDIO_DATASET
 
   if (!token || !projectId || !dataset) return null
 

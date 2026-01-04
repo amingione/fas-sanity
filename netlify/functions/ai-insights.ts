@@ -7,11 +7,10 @@ const handler: Handler = async (event) => {
   }
 
   const projectId =
-    process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || process.env.SANITY_PROJECT
-  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+    process.env.SANITY_STUDIO_PROJECT_ID
+  const dataset = process.env.SANITY_STUDIO_DATASET
   const token =
     process.env.SANITY_API_TOKEN ||
-    process.env.SANITY_STUDIO_API_TOKEN ||
     process.env.SANITY_AI_FEEDBACK_TOKEN
 
   const now = new Date()

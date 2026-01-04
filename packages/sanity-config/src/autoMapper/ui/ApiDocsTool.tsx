@@ -14,7 +14,6 @@ type Payload = {
 
 const endpoint =
   process.env.SANITY_STUDIO_API_DOCS_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_API_DOCS_ENDPOINT ||
   '/.netlify/functions/api-docs'
 
 export function ApiDocsTool() {

@@ -6,13 +6,11 @@ import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
 import {getMissingResendFields} from '../lib/resendValidation'
 
 const sanity = createClient({
-  projectId: process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID,
-  dataset: process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET,
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID,
+  dataset: process.env.SANITY_STUDIO_DATASET,
   apiVersion: '2024-01-01',
   token:
-    process.env.SANITY_API_TOKEN ||
-    process.env.SANITY_STUDIO_API_TOKEN ||
-    process.env.SANITY_WRITE_TOKEN,
+    process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
 

@@ -1,5 +1,5 @@
 import type {Handler} from '@netlify/functions'
-import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEYS} from '../lib/stripeEnv'
+import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../lib/stripeEnv'
 import syncStripeCatalog from './syncStripeCatalog'
 
 function normalizeOrigin(value?: string | null): string {
@@ -105,28 +105,21 @@ export const handler: Handler = async (event, context) => {
             .filter(Boolean)
         : undefined
 
-  const secret = (process.env.STRIPE_SYNC_SECRET || '').trim()
   const stripeSecret = resolveStripeSecretKey()
   if (!stripeSecret) {
     return {
       statusCode: 500,
       headers: {...CORS, 'Content-Type': 'application/json'},
       body: JSON.stringify({
-        error: `Missing Stripe secret key (set one of: ${STRIPE_SECRET_ENV_KEYS.join(', ')}).`,
+        error: `Missing Stripe secret key (set ${STRIPE_SECRET_ENV_KEY}).`,
       }),
     }
   }
 
   const proxyEvent = {
     ...event,
-    headers: {
-      ...(event.headers || {}),
-      authorization: secret ? `Bearer ${secret}` : event.headers?.authorization,
-    },
-    multiValueHeaders: {
-      ...(event.multiValueHeaders || {}),
-      authorization: secret ? [`Bearer ${secret}`] : event.multiValueHeaders?.authorization,
-    },
+    headers: event.headers,
+    multiValueHeaders: event.multiValueHeaders,
     httpMethod: 'POST',
     body: JSON.stringify({
       mode: normalizedMode,

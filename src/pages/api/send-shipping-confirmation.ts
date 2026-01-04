@@ -23,13 +23,11 @@ type OrderForShippingEmail = TrackingEmailOrder & {
   trackingUrl?: string | null
 }
 
-const projectId = process.env.SANITY_PROJECT_ID || process.env.SANITY_STUDIO_PROJECT_ID
-const dataset = process.env.SANITY_DATASET || process.env.SANITY_STUDIO_DATASET
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
 const token =
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN
-const apiVersion = process.env.SANITY_API_VERSION || '2024-04-10'
+  process.env.SANITY_API_TOKEN
+const apiVersion = process.env.SANITY_STUDIO_API_VERSION || '2024-04-10'
 
 if (!projectId || !dataset || !token) {
   throw new Error('Missing Sanity credentials for /api/send-shipping-confirmation')

@@ -5,7 +5,7 @@ type EnvMap = Record<string, string | undefined>
 
 declare const __SANITY_STUDIO_RUNTIME_ENV__: EnvMap | undefined
 
-const ALLOWED_PREFIXES = ['SANITY_STUDIO_', 'VITE_', 'PUBLIC_']
+const ALLOWED_PREFIXES = ['SANITY_STUDIO_', 'PUBLIC_']
 const pickAllowed = (source: EnvMap | undefined): EnvMap =>
   Object.fromEntries(
     Object.entries(source || {}).filter(([key]) =>

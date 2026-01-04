@@ -27,8 +27,7 @@ const makeCors = (origin?: string) => {
   }
 }
 
-const stripeSecretKey =
-  process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY || resolveStripeSecretKey()
+const stripeSecretKey = resolveStripeSecretKey()
 const stripe =
   stripeSecretKey &&
   new Stripe(stripeSecretKey, {

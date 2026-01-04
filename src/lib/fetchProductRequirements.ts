@@ -66,32 +66,15 @@ function normalizeCustomization(customization: any): ProductCustomizationRequire
 }
 
 function resolveProjectId(explicit?: string): string | undefined {
-  return (
-    explicit ||
-    process.env.SANITY_STUDIO_PROJECT_ID ||
-    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ||
-    process.env.SANITY_PROJECT_ID ||
-    undefined
-  )
+  return explicit || process.env.SANITY_STUDIO_PROJECT_ID || undefined
 }
 
 function resolveDataset(explicit?: string): string | undefined {
-  return (
-    explicit ||
-    process.env.SANITY_STUDIO_DATASET ||
-    process.env.NEXT_PUBLIC_SANITY_DATASET ||
-    process.env.SANITY_DATASET ||
-    undefined
-  )
+  return explicit || process.env.SANITY_STUDIO_DATASET || undefined
 }
 
 function resolveApiVersion(explicit?: string): string {
-  return (
-    explicit ||
-    process.env.NEXT_PUBLIC_SANITY_API_VERSION ||
-    process.env.SANITY_STUDIO_API_VERSION ||
-    DEFAULT_API_VERSION
-  )
+  return explicit || process.env.SANITY_STUDIO_API_VERSION || DEFAULT_API_VERSION
 }
 
 export async function fetchProductRequirements({

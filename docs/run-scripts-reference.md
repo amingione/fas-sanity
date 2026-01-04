@@ -22,7 +22,7 @@ The `set -a` trick exports every variable declared inside the sourced file so `p
 
 | Area                               | Command                                                                                                        | Notes                                                                                                                                        |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Stripe product snapshots           | `pnpm tsx scripts/backfill-stripe-products.ts --mode all`                                                      | Re-syncs Stripe metadata for every product. Requires `STRIPE_SECRET_KEY` (optional `STRIPE_SYNC_SECRET` for authenticated Netlify endpoint). |
+| Stripe product snapshots           | `pnpm tsx scripts/backfill-stripe-products.ts --mode all`                                                      | Re-syncs Stripe metadata for every product. Requires `STRIPE_SECRET_KEY`. |
 | Product core fields                | `pnpm tsx scripts/backfillProductCoreFields.ts [--batch=50 --max=200]`                                         | Defaults undefined `coreRequired` (false) and `promotionTagline` (empty string). Use `--batch` + `--max` to process manageable chunks.      |
 | Order cart metadata                | `pnpm tsx scripts/backfillOrderCartMetadata.ts [--batch=10 --max=50]`                                          | Copies legacy `optionSummary`/`upgrades` into `metadata`. The new flags let you limit how many orders are touched per run.                  |
 | Orders (generic)                   | `node scripts/backfill-orders.js`                                                                              | Legacy order cleanup (id migration, cart fixes).                                                                                             |
@@ -83,7 +83,7 @@ Grok’s default command timeout is ~120 seconds unless overridden. For scripts 
 
 ## 4. Troubleshooting Cheatsheet
 
-- **“Configuration must contain `projectId`”**: Ensure `.env` was sourced or pass the Sanity vars inline (`SANITY_PROJECT_ID=... SANITY_DATASET=...`).
+- **“Configuration must contain `projectId`”**: Ensure `.env` was sourced or pass the Sanity vars inline (`SANITY_STUDIO_PROJECT_ID=... SANITY_STUDIO_DATASET=...`).
 - **Stripe `resource_missing` warnings**: Happens when a script references sandbox ids (e.g., `cs_test_*`). If the script output still ends with “status=200”, the miss was non-blocking.
 - **Timeout mid-run**: Re-run the script; most are idempotent and will skip rows already fixed.
 - **Need to replay a specific checkout session**: Use `pnpm tsx scripts/backfill-order-stripe.ts --type checkout --id cs_live_...`.

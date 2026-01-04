@@ -3,9 +3,9 @@
 Utility scripts for diagnosing and repairing Stripe → Sanity sync issues. All scripts expect a Sanity write token and Stripe secret key to be available in the environment:
 
 ```bash
-export SANITY_WRITE_TOKEN=<sanity write token>
-export SANITY_PROJECT_ID=r4og35qd       # or your project id
-export SANITY_DATASET=production        # or your dataset
+export SANITY_API_TOKEN=<sanity api token>
+export SANITY_STUDIO_PROJECT_ID=r4og35qd       # or your project id
+export SANITY_STUDIO_DATASET=production        # or your dataset
 export STRIPE_SECRET_KEY=sk_live_xxx    # or test key
 export STRIPE_WEBHOOK_SECRET=whsec_xxx  # required for webhook simulations
 ```

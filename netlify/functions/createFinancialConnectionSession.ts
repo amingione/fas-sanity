@@ -2,7 +2,7 @@ import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
 
 const stripe =
   stripeSecretKey &&

@@ -22,7 +22,6 @@ type AnalyticsPayload = {
 
 const endpoint =
   process.env.SANITY_STUDIO_ANALYTICS_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_ANALYTICS_ENDPOINT ||
   '/.netlify/functions/analytics-dashboard'
 
 const StatCard = ({label, value, tone = 'default'}: {label: string; value: string; tone?: any}) => (

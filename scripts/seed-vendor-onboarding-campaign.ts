@@ -3,12 +3,10 @@ import {createClient} from '@sanity/client'
 
 dotenv.config()
 
-const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+const dataset = process.env.SANITY_STUDIO_DATASET
 const token =
   process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
   ''
 
 const client =

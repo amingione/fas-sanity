@@ -21,13 +21,11 @@ type CheckoutSessionDoc = {
   createdAt?: string
 }
 
-const PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-const DATASET = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
-const API_VERSION = process.env.SANITY_API_VERSION || '2024-10-01'
+const PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID
+const DATASET = process.env.SANITY_STUDIO_DATASET
+const API_VERSION = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 const TOKEN =
   process.env.SANITY_API_TOKEN ||
-  process.env.SANITY_WRITE_TOKEN ||
-  process.env.SANITY_ACCESS_TOKEN ||
   ''
 
 const sanity =
@@ -115,7 +113,7 @@ const buildTrackingUrl = (checkoutUrl?: string): string | undefined => {
 const handler: Handler = async (event) => {
   console.log('Function sendAbandonedCartEmails invoked')
   console.log('Has RESEND_API_KEY:', Boolean(process.env.RESEND_API_KEY))
-  console.log('Has SANITY_WRITE_TOKEN:', Boolean(process.env.SANITY_WRITE_TOKEN))
+  console.log('Has SANITY_API_TOKEN:', Boolean(process.env.SANITY_API_TOKEN))
 
   const startTime = Date.now()
   const metadata: Record<string, unknown> = {

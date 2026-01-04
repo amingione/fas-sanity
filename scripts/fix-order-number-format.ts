@@ -8,13 +8,13 @@ dotenv.config({path: path.join(process.cwd(), '.env.development.local')})
 dotenv.config({path: path.join(process.cwd(), '.env.local')})
 
 const projectId =
-  process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID || 'r4og35qd'
-const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+  process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production'
 const token =
-  process.env.SANITY_AUTH_TOKEN || process.env.SANITY_API_TOKEN || process.env.SANITY_WRITE_TOKEN
+  process.env.SANITY_API_TOKEN
 
 if (!token) {
-  console.error('Missing SANITY_AUTH_TOKEN / SANITY_API_TOKEN / SANITY_WRITE_TOKEN')
+  console.error('Missing SANITY_API_TOKEN / SANITY_API_TOKEN / SANITY_API_TOKEN')
   process.exit(1)
 }
 

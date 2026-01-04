@@ -12,7 +12,7 @@
   NODE_OPTIONS = "--require=/opt/build/repo/scripts/aws-secrets-shim.cjs" # CI/prod shim preload only.
   # Allow specific environment variable names to pass secret scanning since
   # their values are required during builds but are not written to the public build output.
-  SECRETS_SCAN_OMIT_KEYS = "CHECK_PRINTER_SANITY_TOKEN,CORS_ALLOW,CORS_ORIGIN"
+  SECRETS_SCAN_OMIT_KEYS = "CORS_ALLOW"
 
 [context.production]
   [[context.production.plugins]]

@@ -12,9 +12,9 @@ dotenvPaths.forEach((configPath) => {
 })
 
 const REQUIRED_ENV = {
-  SANITY_PROJECT_ID: process.env.SANITY_PROJECT_ID,
-  SANITY_DATASET: process.env.SANITY_DATASET,
-  SANITY_WRITE_TOKEN: process.env.SANITY_WRITE_TOKEN,
+  SANITY_STUDIO_PROJECT_ID: process.env.SANITY_STUDIO_PROJECT_ID,
+  SANITY_STUDIO_DATASET: process.env.SANITY_STUDIO_DATASET,
+  SANITY_API_TOKEN: process.env.SANITY_API_TOKEN,
   GMC_CONTENT_API_MERCHANT_ID: process.env.GMC_CONTENT_API_MERCHANT_ID,
 }
 
@@ -137,9 +137,9 @@ async function fetchSanityProducts(client: ReturnType<typeof createClient>) {
 async function syncStatuses() {
   assertEnv()
   const client = createClient({
-    projectId: REQUIRED_ENV.SANITY_PROJECT_ID,
-    dataset: REQUIRED_ENV.SANITY_DATASET,
-    token: REQUIRED_ENV.SANITY_WRITE_TOKEN,
+    projectId: REQUIRED_ENV.SANITY_STUDIO_PROJECT_ID,
+    dataset: REQUIRED_ENV.SANITY_STUDIO_DATASET,
+    token: REQUIRED_ENV.SANITY_API_TOKEN,
     apiVersion: '2024-10-01',
     useCdn: false,
   })

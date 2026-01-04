@@ -73,9 +73,9 @@ C) Configuration rules
   - each repo’s .env / .env.local / .env.development / .env.production if present (read-only)
   - process.env
 - Must recognize these key families:
-  - SANITY_PROJECT_ID / NEXT_PUBLIC_SANITY_PROJECT_ID
-  - SANITY_DATASET / NEXT_PUBLIC_SANITY_DATASET
-  - SANITY_READ_TOKEN / SANITY_TOKEN
+  - SANITY_STUDIO_PROJECT_ID / SANITY_STUDIO_PROJECT_ID
+  - SANITY_STUDIO_DATASET / SANITY_STUDIO_DATASET
+  - SANITY_API_TOKEN / SANITY_API_TOKEN
   - and inventory all process.env.* uses in code.
 
 D) Step outputs (MANDATORY FILES)

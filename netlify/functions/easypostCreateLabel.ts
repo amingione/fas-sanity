@@ -12,7 +12,9 @@ import {
 import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 import {sanityClient} from '../lib/sanityClient'
 
-const DEFAULT_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3333'
+const DEFAULT_ORIGIN = (process.env.CORS_ALLOW || 'http://localhost:3333')
+  .split(',')[0]
+  .trim()
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': DEFAULT_ORIGIN,
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',

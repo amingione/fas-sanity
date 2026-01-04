@@ -18,13 +18,13 @@ function makeCORS(origin?: string) {
   }
 }
 
-const SANITY_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
-const SANITY_DATASET =
-  process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET || 'production'
+const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
+const SANITY_STUDIO_DATASET =
+  process.env.SANITY_STUDIO_DATASET || 'production'
 
 const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset: SANITY_DATASET,
+  projectId: SANITY_STUDIO_PROJECT_ID,
+  dataset: SANITY_STUDIO_DATASET,
   apiVersion: '2024-10-01',
   token: process.env.SANITY_API_TOKEN as string,
   useCdn: false,
@@ -107,7 +107,7 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  if (!SANITY_PROJECT_ID || !process.env.SANITY_API_TOKEN) {
+  if (!SANITY_STUDIO_PROJECT_ID || !process.env.SANITY_API_TOKEN) {
     return {
       statusCode: 500,
       headers: {...CORS, 'Content-Type': 'application/json'},

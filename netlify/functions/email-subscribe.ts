@@ -7,9 +7,9 @@ import {resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
 
 const sanityClient = createClient({
-  projectId: process.env.SANITY_PROJECT_ID || 'r4og35qd',
-  dataset: process.env.SANITY_DATASET || 'production',
-  token: process.env.SANITY_WRITE_TOKEN!,
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
+  dataset: process.env.SANITY_STUDIO_DATASET || 'production',
+  token: process.env.SANITY_API_TOKEN!,
   apiVersion: '2024-01-01',
   useCdn: false,
 })

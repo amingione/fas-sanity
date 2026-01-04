@@ -33,7 +33,7 @@ const sanity =
     ? createClient({
         projectId: sanityProjectId,
         dataset: sanityDataset,
-        apiVersion: process.env.SANITY_API_VERSION || '2024-04-10',
+        apiVersion: process.env.SANITY_STUDIO_API_VERSION || '2024-04-10',
         token: process.env.SANITY_API_TOKEN,
         useCdn: false,
       })

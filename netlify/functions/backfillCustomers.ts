@@ -20,14 +20,14 @@ function makeCORS(origin?: string) {
   }
 }
 
-const {projectId: SANITY_PROJECT_ID, dataset: SANITY_DATASET, token: SANITY_TOKEN} =
+const {projectId: SANITY_STUDIO_PROJECT_ID, dataset: SANITY_STUDIO_DATASET, token: SANITY_API_TOKEN} =
   requireSanityCredentials()
 
 const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset: SANITY_DATASET,
+  projectId: SANITY_STUDIO_PROJECT_ID,
+  dataset: SANITY_STUDIO_DATASET,
   apiVersion: '2024-04-10',
-  token: SANITY_TOKEN,
+  token: SANITY_API_TOKEN,
   useCdn: false,
 })
 

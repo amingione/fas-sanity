@@ -15,12 +15,10 @@ type Payload = {connectors: Connector[]; installed?: string[]}
 
 const endpoint =
   process.env.SANITY_STUDIO_CONNECTORS_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_CONNECTORS_ENDPOINT ||
   '/.netlify/functions/enterprise-connectors'
 
 const installEndpoint =
   process.env.SANITY_STUDIO_CONNECTOR_INSTALL_ENDPOINT ||
-  process.env.VITE_SANITY_STUDIO_CONNECTOR_INSTALL_ENDPOINT ||
   '/.netlify/functions/connector-install'
 
 export function ConnectorsHubTool() {

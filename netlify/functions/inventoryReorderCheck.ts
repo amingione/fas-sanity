@@ -17,8 +17,8 @@ const alertRecipient =
 const alertSender = process.env.RESEND_FROM || 'Inventory Alerts <alerts@fasmotorsports.com>'
 
 function getSanityClient() {
-  const projectId = process.env.SANITY_STUDIO_PROJECT_ID || process.env.SANITY_PROJECT_ID
-  const dataset = process.env.SANITY_STUDIO_DATASET || process.env.SANITY_DATASET
+  const projectId = process.env.SANITY_STUDIO_PROJECT_ID
+  const dataset = process.env.SANITY_STUDIO_DATASET
   const token = process.env.SANITY_API_TOKEN
 
   if (!projectId || !dataset || !token) {
