@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/**
+ * FIELD MAPPING NOTE
+ * This file must conform to:
+ * .docs/reports/field-to-api-map.md
+ *
+ * Do not introduce new field names or mappings
+ * without updating and authorizing changes
+ * to the canonical field-to-API map.
+ */
 /*
   standardize-order-cart-items
   - Converts any `_type: "orderCartEntry"` cart entries to `_type: "orderCartItem"`
@@ -99,4 +108,3 @@ run().catch((err) => {
   console.error(err)
   process.exit(1)
 })
-

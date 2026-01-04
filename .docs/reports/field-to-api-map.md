@@ -1,3 +1,26 @@
+## 🔒 Schema ↔ API Mapping Contract
+
+This document defines the canonical mapping between:
+- Sanity schemas
+- Runtime payloads (Stripe, EasyPost, internal APIs)
+- Backfill input/output shapes
+
+### Contract Level
+- Status: AUTHORITATIVE
+- Enforcement: Progressive (docs → lint → runtime)
+- Scope: Field names, nesting, and data ownership
+- Exceptions: Must be explicitly documented and approved
+- Read-only: This file is a locked reference unless explicit authorization is granted
+- Canonical reference: Runtime code must align to this document, not vice versa
+- Change control: Updates require explicit authorization
+
+### What this file does NOT do (by design)
+- ❌ It does not normalize schemas
+- ❌ It does not resolve drift
+- ❌ It does not enforce runtime mapping automatically
+
+These actions are handled by downstream enforcement layers.
+
 # Field-to-API Map (String Fields)
 
 - Source: `packages/sanity-config/schema.json` (parsed schema output)
@@ -10,6 +33,53 @@
 - `orderCartItem` lacks a `productName` field in `packages/sanity-config/src/schemaTypes/objects/orderCartItemType.ts`, yet `productName` is referenced across runtime types and render logic (`packages/sanity-config/src/types/order.ts`, `netlify/functions/stripeWebhook.ts`, `netlify/lib/invoicePdf.ts`). This mismatch can lead to missing product names or fallback labels in UI and PDFs.
 - `order.cart` is the schema field in `packages/sanity-config/src/schemaTypes/documents/order.tsx`, but webhook parsing accepts `cartItems`/`cart_items` in `src/pages/api/webhooks/stripe-order.ts` and `netlify/functions/stripeWebhook.ts`. This mismatch can route data into the wrong field or skip expected cart hydration if the mapper uses the wrong key.
 - `order.shippingAddress` and `order.billingAddress` are inline object definitions instead of reusing `shippingAddressType`/`customerBillingAddressType`, so edits to shared address schemas will not propagate to order fields without manual alignment, increasing drift risk.
+
+### Cart Key Normalization — RESOLVED
+
+Status: RESOLVED  
+Date: 2026-01-04  
+Normalization boundary: `normalizeStripeOrderToSanityOrder`  
+Applies to: Stripe webhook order ingestion
+
+Resolved aliases:
+- cartItems
+- cart_items
+- lineItems
+- line_items
+
+Canonical field:
+- order.cart
+
+Resolution is enforced at the Stripe webhook boundary only.
+No backfills or schema renames were performed.
+
+This closes the loop required by Part C.
+No code changes needed — documentation only.
+
+One thing I checked closely (and you got right):
+Your normalizeCartItem function:
+- assigns canonical fields only if missing
+- removes aliases afterward
+- does not overwrite existing normalized data
+
+That prevents:
+- clobbering historical orders
+- changing already-clean payloads
+- subtle regressions in replays
+
+Run Tests:
+- cartItems -> order.cart
+- lineItems -> order.cart
+- order.cart remains unchanged
+- mixed keys -> order.cart wins
+
+No address tests. No customer tests.
+
+Final status:
+- Part C implementation: ACCEPTED
+- Normalization boundary: LIVE
+- Runtime enforcement: SOFT, correct
+- Scope control: MAINTAINED
 
 ## `packages/sanity-config/src/schemaTypes/documents/attribution.ts`
 ### `attribution`
@@ -471,3 +541,333 @@
 ### `siteSettings`
 - `title`
 - `description`
+
+## Array of Strings
+### `customer` (packages/sanity-config/src/schemaTypes/documents/customer.ts)
+- `roles[]`
+- `stripeCustomerIds[]`
+
+### `downloadResource` (packages/sanity-config/src/schemaTypes/documents/downloadResource.ts)
+- `tags[]`
+
+### `product` (packages/sanity-config/src/schemaTypes/documents/product.ts)
+- `importantNotes[].children[].marks[]`
+- `shortDescription[].children[].marks[]`
+- `variationOptions[]`
+
+### `productBundle` (packages/sanity-config/src/schemaTypes/documents/productBundle.ts)
+- `description[].children[].marks[]`
+
+### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
+- `roles[]`
+
+## Array of Objects (Shallow)
+### `campaign` (packages/sanity-config/src/schemaTypes/marketing/campaigns/campaign.ts)
+- `channels[]`
+- `deviceAnalytics[]`
+- `locationAnalytics[]`
+- `products[]`
+- `webhookConfig.customHeaders[]`
+
+### `category` (packages/sanity-config/src/schemaTypes/documents/category.ts)
+- `products[]`
+
+### `check` (packages/sanity-config/src/schemaTypes/documents/check.ts)
+- `attachments[]`
+- `lineItems[]`
+
+### `customer` (packages/sanity-config/src/schemaTypes/documents/customer.ts)
+- `addresses[]`
+- `discounts[]`
+- `orders[]`
+- `quotes[]`
+- `stripeMetadata[]`
+- `wishlistItems[]`
+
+### `expiredCart` (packages/sanity-config/src/schemaTypes/documents/expiredCart.tsx)
+- `cart[]`
+- `events[]`
+- `metadata[]`
+
+### `freightQuote` (packages/sanity-config/src/schemaTypes/documents/freightQuote.ts)
+- `cart[]`
+- `packages[]`
+
+### `invoice` (packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx)
+- `lineItems[]`
+- `shippingLog[]`
+
+### `order`
+- `cart[]`
+- `lineItems[]`
+- `orderEvents[]`
+- `shippingLog[]`
+
+### `paymentLink` (packages/sanity-config/src/schemaTypes/documents/paymentLink.ts)
+- `lineItems[]`
+- `metadata[]`
+
+### `product` (packages/sanity-config/src/schemaTypes/documents/product.ts)
+- `addOns[]`
+- `attributes[]`
+- `category[]`
+- `compatibleVehicles[]`
+- `filters[]`
+- `images[]`
+- `importantNotes[]`
+- `importantNotes[].children[]`
+- `importantNotes[].markDefs[]`
+- `includedInKit[]`
+- `mediaAssets[]`
+- `pricingTiers[]`
+- `relatedProducts[]`
+- `shortDescription[]`
+- `shortDescription[].children[]`
+- `shortDescription[].markDefs[]`
+- `specifications[]`
+- `stripeMetadata[]`
+- `stripePrices[]`
+- `upsellProducts[]`
+
+### `productBundle` (packages/sanity-config/src/schemaTypes/documents/productBundle.ts)
+- `description[]`
+- `description[].children[]`
+- `description[].markDefs[]`
+- `products[]`
+
+### `quote` (packages/sanity-config/src/schemaTypes/documents/quoteContent.tsx)
+- `attachments[]`
+- `lineItems[]`
+- `timeline[]`
+
+### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
+- `assignedCustomers[]`
+- `orders[]`
+- `quotes[]`
+
+## Numeric Fields
+### `attribution` (packages/sanity-config/src/schemaTypes/documents/attribution.ts)
+- `conversionValue`
+- `metrics.clickThroughs`
+- `metrics.clicks`
+- `metrics.commissions`
+- `metrics.impressions`
+- `metrics.newCustomers`
+- `metrics.opens`
+- `metrics.orders`
+- `metrics.returningCustomers`
+- `metrics.revenue`
+- `metrics.sessions`
+- `metrics.spend`
+
+### `bill` (packages/sanity-config/src/schemaTypes/documents/bill.tsx)
+- `amount`
+
+### `campaign` (packages/sanity-config/src/schemaTypes/marketing/campaigns/campaign.ts)
+- `channels[].orders`
+- `channels[].sales`
+- `channels[].sessions`
+- `deviceAnalytics[].orders`
+- `deviceAnalytics[].sales`
+- `deviceAnalytics[].sessions`
+- `locationAnalytics[].orders`
+- `locationAnalytics[].sales`
+- `locationAnalytics[].sessions`
+- `metrics.avgOrderValue`
+- `metrics.orders`
+- `metrics.sales`
+- `metrics.sessions`
+- `orders.newOrders`
+- `orders.returningOrders`
+- `products[].sales`
+- `products[].unitsSold`
+
+### `check` (packages/sanity-config/src/schemaTypes/documents/check.ts)
+- `amount`
+- `checkNumber`
+
+### `customer` (packages/sanity-config/src/schemaTypes/documents/customer.ts)
+- `lifetimeSpend`
+- `orderCount`
+- `quoteCount`
+
+### `expense` (packages/sanity-config/src/schemaTypes/documents/expense.ts)
+- `amount`
+
+### `expiredCart` (packages/sanity-config/src/schemaTypes/documents/expiredCart.tsx)
+- `totalAmount`
+
+### `invoice` (packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx)
+- `amountShipping`
+- `amountSubtotal`
+- `amountTax`
+- `depositAmount`
+- `discountValue`
+- `selectedService.amount`
+- `selectedService.deliveryDays`
+- `subtotal`
+- `taxRate`
+- `total`
+
+### `order`
+- `amountRefunded`
+- `amountShipping`
+- `amountSubtotal`
+- `amountTax`
+- `lastDisputeAmount`
+- `selectedService.amount`
+- `selectedService.deliveryDays`
+- `selectedShippingAmount`
+- `shippingDeliveryDays`
+- `totalAmount`
+
+### `product` (packages/sanity-config/src/schemaTypes/documents/product.ts)
+- `averageHorsepower`
+- `importantNotes[].level`
+- `manualInventoryCount`
+- `price`
+- `salePrice`
+- `shippingWeight`
+- `shortDescription[].level`
+
+### `productBundle` (packages/sanity-config/src/schemaTypes/documents/productBundle.ts)
+- `bundlePrice`
+- `description[].level`
+
+### `quote` (packages/sanity-config/src/schemaTypes/documents/quoteContent.tsx)
+- `discountValue`
+- `subtotal`
+- `taxAmount`
+- `taxRate`
+- `total`
+
+### `sanity.fileAsset`
+- `size`
+
+### `sanity.imageAsset`
+- `size`
+
+### `shippingOption` (packages/sanity-config/src/schemaTypes/documents/shippingOption.ts)
+- `shippingCost`
+
+### `stripeWebhookEvent` (packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts)
+- `amount`
+
+### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
+- `yearsInBusiness`
+
+### `wheelQuote` (packages/sanity-config/src/schemaTypes/documents/wheelQuote.ts)
+- `diameter`
+- `qtyFront`
+- `qtyRear`
+- `width`
+
+## Boolean Flags
+### `bankAccount` (packages/sanity-config/src/schemaTypes/documents/bankAccount.ts)
+- `defaultForChecks`
+
+### `bill` (packages/sanity-config/src/schemaTypes/documents/bill.tsx)
+- `paid`
+
+### `campaign` (packages/sanity-config/src/schemaTypes/marketing/campaigns/campaign.ts)
+- `webhookConfig.enabled`
+
+### `collection` (packages/sanity-config/src/schemaTypes/documents/collection.tsx)
+- `showHero`
+
+### `customer` (packages/sanity-config/src/schemaTypes/documents/customer.ts)
+- `emailOptIn`
+- `marketingOptIn`
+- `textOptIn`
+
+### `marketingChannel` (packages/sanity-config/src/schemaTypes/marketing/marketingChannel.ts)
+- `active`
+
+### `order`
+- `checkoutDraft`
+- `confirmationEmailSent`
+- `webhookNotified`
+
+### `page`
+- `showHero`
+
+### `paymentLink` (packages/sanity-config/src/schemaTypes/documents/paymentLink.ts)
+- `active`
+- `livemode`
+
+### `product` (packages/sanity-config/src/schemaTypes/documents/product.ts)
+- `featured`
+- `installOnly`
+- `noindex`
+- `onSale`
+- `shipsAlone`
+- `stripeActive`
+
+### `stripeWebhook` (packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts)
+- `livemode`
+
+### `stripeWebhookEvent` (packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts)
+- `livemode`
+
+### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
+- `active`
+- `approved`
+
+### `wheelQuote` (packages/sanity-config/src/schemaTypes/documents/wheelQuote.ts)
+- `agreeTrackUseOnly`
+
+## Date / Time Fields
+### `bankAccount` (packages/sanity-config/src/schemaTypes/documents/bankAccount.ts)
+- `metadata.lastSyncedAt`
+
+### `bill` (packages/sanity-config/src/schemaTypes/documents/bill.tsx)
+- `paidDate`
+
+### `campaign` (packages/sanity-config/src/schemaTypes/marketing/campaigns/campaign.ts)
+- `endDate`
+- `startDate`
+
+### `customer` (packages/sanity-config/src/schemaTypes/documents/customer.ts)
+- `stripeLastSyncedAt`
+- `updatedAt`
+
+### `downloadResource` (packages/sanity-config/src/schemaTypes/documents/downloadResource.ts)
+- `publishedAt`
+
+### `expiredCart` (packages/sanity-config/src/schemaTypes/documents/expiredCart.tsx)
+- `createdAt`
+- `eventCreated`
+- `expiredAt`
+- `recoveredAt`
+
+### `freightQuote` (packages/sanity-config/src/schemaTypes/documents/freightQuote.ts)
+- `createdAt`
+
+### `invoice` (packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx)
+- `stripeLastSyncedAt`
+
+### `paymentLink` (packages/sanity-config/src/schemaTypes/documents/paymentLink.ts)
+- `stripeLastSyncedAt`
+
+### `product` (packages/sanity-config/src/schemaTypes/documents/product.ts)
+- `stripeLastSyncedAt`
+- `stripeUpdatedAt`
+
+### `quote` (packages/sanity-config/src/schemaTypes/documents/quoteContent.tsx)
+- `createdAt`
+- `lastEmailedAt`
+- `stripeLastSyncedAt`
+
+### `stripeWebhook` (packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts)
+- `occurredAt`
+- `processedAt`
+
+### `stripeWebhookEvent` (packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts)
+- `createdAt`
+- `receivedAt`
+
+### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
+- `lastLogin`
+
+### `wheelQuote` (packages/sanity-config/src/schemaTypes/documents/wheelQuote.ts)
+- `createdAt`
