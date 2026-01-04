@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* eslint-env node */
-/* global process, console */
+// eslint-disable-next-line no-redeclare
+/* global console */
 import fs from 'node:fs'
 import path from 'node:path'
 import {pathToFileURL} from 'node:url'

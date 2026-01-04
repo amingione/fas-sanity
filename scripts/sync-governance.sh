@@ -30,7 +30,7 @@ rsync -av --ignore-existing \
 
 # --- Codex reference ---
 echo "📄 Syncing codex.md (reference-only)"
-cp "$ROOT/docs/codex.md" "$CMS_DIR/docs/codex.md"
+cp "$ROOT/codex.md" "$CMS_DIR/codex.md"
 
 # --- Governance Makefile block ---
 echo "🧠 Syncing Makefile governance block"

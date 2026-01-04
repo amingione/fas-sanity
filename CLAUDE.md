@@ -4,7 +4,7 @@
 **Last Updated:** 2025-12-26
 **For:** Claude Code, Cursor, and other AI assistants
 
-> **📖 Full Documentation:** See [docs/codex.md](./docs/codex.md) for comprehensive patterns, examples, and integration details.
+> **📖 Full Documentation:** See [codex.md](./codex.md) for comprehensive patterns, examples, and integration details.
 
 ---
 
@@ -260,7 +260,7 @@ shippingAddress: session.shipping_details?.address
 ### Before Making Changes
 
 1. **Read the schema first** - `fas-sanity/schemas/[documentType].ts(x)`
-2. **Check codex.md** - [docs/codex.md](./docs/codex.md) for detailed patterns
+2. **Check codex.md** - [codex.md](./codex.md) for detailed patterns
 3. **Identify affected files** - Schema → API → Frontend
 4. **Plan minimal changes** - What's the smallest fix?
 5. **Ask if unsure** - Better to clarify than break things
@@ -421,7 +421,7 @@ stripe listen --forward-to localhost:4321/api/webhooks
 
 ## Getting Help
 
-1. **Check codex.md first** - [docs/codex.md](./docs/codex.md)
+1. **Check codex.md first** - [codex.md](./codex.md)
 2. **Review schema files** - They're the source of truth
 3. **Look for similar patterns** - In webhooks.ts, checkout.ts, etc.
 4. **Ask before breaking things** - Better safe than sorry
@@ -439,4 +439,4 @@ stripe listen --forward-to localhost:4321/api/webhooks
 
 **Last Updated:** 2025-12-26
 **Maintained by:** Amber Min (ambermin)
-**For questions:** See [docs/codex.md](./docs/codex.md) or ask the team
+**For questions:** See [codex.md](./codex.md) or ask the team
