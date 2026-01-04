@@ -1,5 +1,5 @@
 export const PHYSICAL_PRODUCTS_QUERY = `
-  *[_type == "product" && productType != "service" && status != "archived"]|order(_updatedAt desc){
+  *[_type == "product" && status != "archived"]|order(_updatedAt desc){
     _id,
     title,
     "slug": slug.current,
