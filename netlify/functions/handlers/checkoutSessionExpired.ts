@@ -31,34 +31,73 @@ const patchProductTable = async (carts: Array<Record<string, unknown>>): Promise
  */
 export async function handleCheckoutSessionExpired(event: Stripe.Event) {
   const session = event.data.object as Stripe.Checkout.Session
-  const email = session.customer_details?.email ?? session.customer_email ?? null
-  const name =
-    session.customer_details?.name ??
-    (session.customer_details as {individual_name?: string} | null | undefined)
-      ?.individual_name ??
-    null
-  const phone = session.customer_details?.phone ?? null
-
-  if (session.metadata?.cart_id) {
-    await patchProductTable([
-      {
-        _key: session.metadata.cart_id,
-        cartId: session.metadata.cart_id,
-        status: 'expired',
-        email,
-        name,
-        phone,
-        checkoutSessionId: session.id,
-        expiredAt: new Date(session.expires_at * 1000).toISOString(),
-        livemode: session.livemode,
-        recovery: {
-          recovered: false,
-          recoveredAt: null,
-          recoveredSessionId: null,
-        },
-      },
-    ])
+  const metadata = (session.metadata || {}) as Record<string, string>
+  const cartId =
+    (typeof metadata.cart_id === 'string' && metadata.cart_id.trim()) ||
+    (typeof session.client_reference_id === 'string' && session.client_reference_id.trim()) ||
+    ''
+  if (!cartId) {
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        received: true,
+        event: 'checkout.session.expired',
+      }),
+    }
   }
+
+  const cartDoc = await sanityClient.fetch<{
+    _id: string
+    customerEmail?: string | null
+    customerName?: string | null
+    customerPhone?: string | null
+  } | null>(`*[_type == "checkoutSession" && _id == $id][0]`, {id: cartId})
+
+  const expiredAt = session.expires_at
+    ? new Date(session.expires_at * 1000).toISOString()
+    : new Date().toISOString()
+
+  if (cartDoc?._id) {
+    await sanityClient
+      .patch(cartDoc._id)
+      .set({
+        status: 'expired',
+        expiredAt,
+        sessionId: session.id,
+        stripeCheckoutUrl: (session as any)?.url || undefined,
+      })
+      .setIfMissing({recoveryEmailSent: false, recovered: false})
+      .commit({autoGenerateArrayKeys: true})
+  } else {
+    await sanityClient.createIfNotExists({
+      _id: cartId,
+      _type: 'checkoutSession',
+      sessionId: session.id,
+      status: 'expired',
+      createdAt: new Date().toISOString(),
+      expiredAt,
+      stripeCheckoutUrl: (session as any)?.url || undefined,
+    })
+  }
+
+  await patchProductTable([
+    {
+      _key: cartId,
+      cartId,
+      status: 'expired',
+      email: cartDoc?.customerEmail || null,
+      name: cartDoc?.customerName || null,
+      phone: cartDoc?.customerPhone || null,
+      checkoutSessionId: session.id,
+      expiredAt,
+      livemode: session.livemode,
+      recovery: {
+        recovered: false,
+        recoveredAt: null,
+        recoveredSessionId: null,
+      },
+    },
+  ])
 
   return {
     statusCode: 200,

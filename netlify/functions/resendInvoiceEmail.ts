@@ -57,10 +57,21 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
   const unitAmount = Math.round(Number(total || 0) * 100)
   if (!Number.isFinite(unitAmount) || unitAmount <= 0) return ''
 
+  const cartId = invoiceId
+  const cartType = 'invoice'
+  const itemCount = Array.isArray(inv?.lineItems)
+    ? inv.lineItems.reduce(
+        (sum: number, item: any) => sum + (Number(item?.quantity) > 0 ? Number(item.quantity) : 1),
+        0,
+      )
+    : 1
+  const estimatedTotal = Number(total || 0)
+
   let session: Stripe.Response<Stripe.Checkout.Session> | undefined
   try {
     session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      client_reference_id: cartId,
       line_items: [
         {
           price_data: {
@@ -75,11 +86,16 @@ async function ensureCheckoutUrl(invoiceId: string, inv: any, baseUrl: string) {
       metadata: {
         sanity_invoice_id: String(invoiceId),
         sanity_invoice_number: String(inv?.invoiceNumber || ''),
+        cart_id: cartId,
+        cart_type: cartType,
+        item_count: String(Math.max(1, itemCount)),
+        est_total: estimatedTotal.toFixed(2),
       },
       payment_intent_data: {
         metadata: {
           sanity_invoice_id: String(invoiceId),
           sanity_invoice_number: String(inv?.invoiceNumber || ''),
+          cart_id: cartId,
         },
       },
       success_url: `${baseUrl}/invoice/success?invoiceId=${encodeURIComponent(invoiceId)}`,

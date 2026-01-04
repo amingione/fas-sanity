@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
+import {randomUUID} from 'crypto'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -194,10 +195,21 @@ export const handler: Handler = async (event) => {
 
   const cart = Array.isArray(payload.cart) ? payload.cart : []
   const shippingRate: ShippingRate | undefined = payload.shippingRate
+  const rawCartId =
+    typeof payload.cartId === 'string'
+      ? payload.cartId
+      : typeof payload.cart_id === 'string'
+        ? payload.cart_id
+        : ''
+  const cartId = rawCartId.trim() || `cart_${randomUUID()}`
+  const cartType =
+    typeof payload.cartType === 'string'
+      ? payload.cartType.trim()
+      : typeof payload.cart_type === 'string'
+        ? payload.cart_type.trim()
+        : 'storefront'
   const customerEmail =
     typeof payload.customerEmail === 'string' ? payload.customerEmail.trim() : undefined
-  const customerPhone =
-    typeof payload.customerPhone === 'string' ? payload.customerPhone.trim() : undefined
 
   if (!cart.length || !shippingRate) {
     return {
@@ -409,45 +421,19 @@ export const handler: Handler = async (event) => {
     },
   ]
 
+  const itemCount = normalizedCart.reduce((total, item) => total + item.quantity, 0)
+  const subtotalEstimate = normalizedCart.reduce((total, item) => {
+    if (typeof item.price !== 'number') return total
+    return total + item.price * item.quantity
+  }, 0)
+  const shippingEstimate = Number(shippingRate.amount || 0) || 0
+  const estimatedTotal = subtotalEstimate + shippingEstimate
+
   const sessionMetadata: Stripe.MetadataParam = {
-    easypost_rate_id: shippingRate.rateId || '',
-    shipping_carrier: shippingRate.carrier || '',
-    shipping_service: shippingRate.service || '',
-    shipping_amount: (Number(shippingRate.amount || 0) || 0).toFixed(2),
-  }
-  if (weightSummary > 0) {
-    const roundedWeight = Number(weightSummary.toFixed(2)).toString()
-    sessionMetadata.shipping_total_weight_lbs = roundedWeight
-    sessionMetadata.shipping_chargeable_lbs = roundedWeight
-  }
-  if (dimensionsSummary) {
-    sessionMetadata.shipping_package_length_in = Number(dimensionsSummary.length.toFixed(2)).toString()
-    sessionMetadata.shipping_package_width_in = Number(dimensionsSummary.width.toFixed(2)).toString()
-    sessionMetadata.shipping_package_height_in = Number(dimensionsSummary.height.toFixed(2)).toString()
-  }
-
-  if (customerEmail) {
-    sessionMetadata.customer_email = customerEmail
-    sessionMetadata.customerEmail = customerEmail
-    sessionMetadata.email = customerEmail
-  }
-  if (customerPhone) {
-    sessionMetadata.customer_phone = customerPhone
-    sessionMetadata.customerPhone = customerPhone
-    sessionMetadata.phone = customerPhone
-  }
-
-  try {
-    sessionMetadata.cart = JSON.stringify(
-      cart.map((item: any) => ({
-        sku: item?.sku,
-        productId: item?._id || item?.productId,
-        quantity: item?.quantity,
-        price: item?.price,
-      })),
-    )
-  } catch {
-    // Ignore serialization errors
+    cart_id: cartId,
+    cart_type: cartType || 'storefront',
+    item_count: String(itemCount),
+    est_total: estimatedTotal.toFixed(2),
   }
 
   const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com').replace(/\/+$/, '')
@@ -456,14 +442,13 @@ export const handler: Handler = async (event) => {
   const captureMethod: 'automatic' | 'manual' =
     captureStrategy === 'manual' ? 'manual' : 'automatic'
   const paymentIntentMetadata: Stripe.MetadataParam = {
-    capture_strategy: captureStrategy,
-    requires_manual_capture: captureStrategy === 'manual' ? 'true' : 'false',
+    cart_id: cartId,
   }
-  sessionMetadata.capture_strategy = captureStrategy
 
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      client_reference_id: cartId,
       customer_email: customerEmail,
       line_items: lineItems,
       shipping_address_collection: {
@@ -480,6 +465,61 @@ export const handler: Handler = async (event) => {
       success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart`,
     })
+
+    if (sanity) {
+      const nowIso = new Date().toISOString()
+      const cartSnapshot = cart.map((item: any) => {
+        if (!item || typeof item !== 'object') return null
+        const quantity = resolveCartQuantity(item.quantity)
+        const productId = normalizeSanityId(item?._id || item?.productId)
+        const price = typeof item?.price === 'number' ? item.price : undefined
+        const total = price !== undefined ? price * quantity : undefined
+        const entry: Record<string, any> = {
+          name: item?.title || item?.name || item?.sku || 'Item',
+          sku: typeof item?.sku === 'string' ? item.sku.trim() : undefined,
+          id: item?._id || item?.productId,
+          image: typeof item?.image === 'string' ? item.image.trim() : undefined,
+          price,
+          quantity,
+          total,
+        }
+        if (productId) {
+          entry.productRef = {_type: 'reference', _ref: productId}
+        }
+        return Object.fromEntries(Object.entries(entry).filter(([, value]) => value !== undefined))
+      })
+      const cleanCart = cartSnapshot.filter(Boolean)
+      try {
+        await sanity.createIfNotExists({
+          _id: cartId,
+          _type: 'checkoutSession',
+          sessionId: session.id,
+          status: session.status || 'open',
+          createdAt: nowIso,
+        })
+        await sanity
+          .patch(cartId)
+          .set({
+            sessionId: session.id,
+            status: session.status || 'open',
+            createdAt: nowIso,
+            expiresAt: session.expires_at
+              ? new Date(session.expires_at * 1000).toISOString()
+              : undefined,
+            customerEmail: customerEmail || undefined,
+            cart: cleanCart.length ? cleanCart : undefined,
+            amountSubtotal: subtotalEstimate || undefined,
+            amountShipping: shippingEstimate || undefined,
+            totalAmount: estimatedTotal || undefined,
+            currency: 'USD',
+            stripeCheckoutUrl: session.url || undefined,
+          })
+          .setIfMissing({recoveryEmailSent: false, recovered: false})
+          .commit({autoGenerateArrayKeys: true})
+      } catch (err) {
+        console.warn('createCheckoutSession: failed to persist cart snapshot', err)
+      }
+    }
 
     return {
       statusCode: 200,
