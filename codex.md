@@ -2378,7 +2378,7 @@ try {
 
 # Update the codex.md file
 
-cat > docs/codex.md << 'EOF'
+cat > codex.md << 'EOF'
 
 # FAS Motorsports Codex Master Prompt
 

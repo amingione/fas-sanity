@@ -1,3 +1,3 @@
 refer to:
 
-> docs/codex.md & AI_GUIDELINES.md
+> codex.md & AI_GUIDELINES.md
