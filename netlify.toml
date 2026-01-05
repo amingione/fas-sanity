@@ -18,14 +18,10 @@
 [context.production]
   [[context.production.plugins]]
     package = "@netlify/plugin-secrets-manager"
-    [context.production.plugins.inputs]
-      format = "json"
 
 [context.deploy-preview]
   [[context.deploy-preview.plugins]]
     package = "@netlify/plugin-secrets-manager"
-    [context.deploy-preview.plugins.inputs]
-      format = "json"
 
 [context.production.environment]
   NODE_ENV = "production"
