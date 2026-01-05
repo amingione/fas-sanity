@@ -34,6 +34,21 @@ These actions are handled by downstream enforcement layers.
 - `order.cart` is the schema field in `packages/sanity-config/src/schemaTypes/documents/order.tsx`, but webhook parsing accepts `cartItems`/`cart_items` in `src/pages/api/webhooks/stripe-order.ts` and `netlify/functions/stripeWebhook.ts`. This mismatch can route data into the wrong field or skip expected cart hydration if the mapper uses the wrong key.
 - `order.shippingAddress` and `order.billingAddress` are inline object definitions instead of reusing `shippingAddressType`/`customerBillingAddressType`, so edits to shared address schemas will not propagate to order fields without manual alignment, increasing drift risk.
 
+## Drift acknowledgements
+
+Status: ACKNOWLEDGED (Codex audit pending)  
+Date: 2026-01-05  
+Owner: Codex
+
+New fields detected but not yet mapped to runtime/API consumers:
+- `wheelQuote.attachments[]`
+- `invoice.attachments[]`
+- `settings.customProductOptions[]`
+- `product.description[]`
+- `product.options[]`
+- `home.modules[]`
+- `collection.modules[]`
+
 ### Cart Key Normalization — RESOLVED
 
 Status: RESOLVED  

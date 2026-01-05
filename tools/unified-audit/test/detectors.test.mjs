@@ -1,5 +1,4 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
+import {describe, it, expect} from 'vitest'
 import { isWebhookHandler } from '../lib/classifiers/webhook-handler.mjs'
 import {
   detectIdempotencyViolation,
@@ -24,7 +23,8 @@ export default async function handler(req, res) {
 }
 `
 
-test('webhook handler classification', () => {
+describe('unified audit detectors', () => {
+  it('webhook handler classification', () => {
   const cases = [
     {
       filePath: 'netlify/functions/easypostWebhook.ts',
@@ -128,12 +128,12 @@ test('webhook handler classification', () => {
     },
   ]
 
-  for (const entry of cases) {
-    assert.equal(isWebhookHandler(entry.filePath, entry.content), entry.expected)
-  }
-})
+    for (const entry of cases) {
+      expect(isWebhookHandler(entry.filePath, entry.content)).toBe(entry.expected)
+    }
+  })
 
-test('idempotency detection', () => {
+  it('idempotency detection', () => {
   const base = `
 export default async function handler(req, res) {
   const signature = req.headers['stripe-signature']
@@ -142,48 +142,48 @@ export default async function handler(req, res) {
 }
 `
 
-  assert.equal(hasSideEffects('sanityClient.create({})'), true)
-  assert.equal(hasSideEffects('client.fetch()'), false)
-  assert.equal(hasIdempotencyGuard('createIfNotExists({})'), true)
-  assert.equal(hasIdempotencyGuard('console.log("noop")'), false)
+    expect(hasSideEffects('sanityClient.create({})')).toBe(true)
+    expect(hasSideEffects('client.fetch()')).toBe(false)
+    expect(hasIdempotencyGuard('createIfNotExists({})')).toBe(true)
+    expect(hasIdempotencyGuard('console.log("noop")')).toBe(false)
 
   const violation = detectIdempotencyViolation(
     'netlify/functions/stripe-webhook.ts',
     `${base}\nsanityClient.create({ _type: 'order' })`,
     null,
   )
-  assert.equal(Boolean(violation), true)
+    expect(Boolean(violation)).toBe(true)
 
   const guarded = detectIdempotencyViolation(
     'netlify/functions/stripe-webhook.ts',
     `${base}\nclient.createIfNotExists({ _id: 'webhook.' + event.id })`,
     null,
   )
-  assert.equal(guarded, null)
+    expect(guarded).toBeNull()
 
   const readOnly = detectIdempotencyViolation(
     'netlify/functions/stripe-webhook.ts',
     `${base}\nclient.fetch('*[_type == "order"]')`,
     null,
   )
-  assert.equal(readOnly, null)
+    expect(readOnly).toBeNull()
 
   const testEndpoint = detectIdempotencyViolation(
     'netlify/functions/test/stripe-webhook.ts',
     `${base}\nsanityClient.create({ _type: 'order' })`,
     null,
   )
-  assert.equal(testEndpoint, null)
+    expect(testEndpoint).toBeNull()
 
   const nonWebhook = detectIdempotencyViolation(
     'src/lib/stripe.ts',
     `${base}\nsanityClient.create({ _type: 'order' })`,
     null,
   )
-  assert.equal(nonWebhook, null)
-})
+    expect(nonWebhook).toBeNull()
+  })
 
-test('payload access detection', () => {
+  it('payload access detection', () => {
   const base = `
 export default async function handler(req, res) {
   const signature = req.headers['stripe-signature']
@@ -192,40 +192,40 @@ export default async function handler(req, res) {
 }
 `
 
-  assert.equal(findPayloadAccess('event.data.object.amount').length, 1)
-  assert.equal(hasValidationBefore('webhookSchema.parse(event)\n', 30), true)
+    expect(findPayloadAccess('event.data.object.amount').length).toBe(1)
+    expect(hasValidationBefore('webhookSchema.parse(event)\n', 30)).toBe(true)
 
   const unsafe = detectUnsafePayloadAccess(
     'netlify/functions/stripe-webhook.ts',
     `${base}\nconst amount = event.data.object.amount_total`,
     null,
   )
-  assert.equal(Array.isArray(unsafe), true)
-  assert.equal(unsafe?.length, 1)
+    expect(Array.isArray(unsafe)).toBe(true)
+    expect(unsafe?.length).toBe(1)
 
   const safe = detectUnsafePayloadAccess(
     'netlify/functions/stripe-webhook.ts',
     `${base}\nwebhookSchema.parse(event.data.object)\nconst amount = event.data.object.amount_total`,
     null,
   )
-  assert.equal(safe, null)
+    expect(safe).toBeNull()
 
   const safeByConstruct = detectUnsafePayloadAccess(
     'netlify/functions/stripe-webhook.ts',
     `${base}\nstripe.webhooks.constructEvent(req.body, signature, secret)\nconst obj = event.data.object`,
     null,
   )
-  assert.equal(safeByConstruct, null)
+    expect(safeByConstruct).toBeNull()
 
   const nonWebhook = detectUnsafePayloadAccess(
     'src/lib/webhook.ts',
     `${base}\nconst obj = event.data.object`,
     null,
   )
-  assert.equal(nonWebhook, null)
-})
+    expect(nonWebhook).toBeNull()
+  })
 
-test('api contract detection', () => {
+  it('api contract detection', () => {
   const easypostMissing = `
 const shipmentData = { to_address, from_address }
 await easypost.Shipment.create(shipmentData)
@@ -242,22 +242,26 @@ await resend.emails.send({ to, from, html: '<p>Hi</p>' })
 await resend.emails.send({ to, from, subject, text: 'Hi' })
 `
 
-  const violationsA = detectApiContractViolation('netlify/functions/fulfillOrder.ts', easypostMissing, null)
-  assert.equal(violationsA.length > 0, true)
+    const violationsA = detectApiContractViolation('netlify/functions/fulfillOrder.ts', easypostMissing, null)
+    expect(violationsA.length > 0).toBe(true)
 
-  const violationsB = detectApiContractViolation('netlify/functions/fulfillOrder.ts', easypostOk, null)
-  assert.equal(violationsB.length, 0)
+    const violationsB = detectApiContractViolation('netlify/functions/fulfillOrder.ts', easypostOk, null)
+    expect(violationsB.length).toBe(0)
 
-  const violationsC = detectApiContractViolation('netlify/functions/send-email.ts', resendMissing, null)
-  assert.equal(violationsC.length > 0, true)
+    const violationsC = detectApiContractViolation('netlify/functions/send-email.ts', resendMissing, null)
+    expect(violationsC.length > 0).toBe(true)
 
-  const violationsD = detectApiContractViolation('netlify/functions/send-email.ts', resendOk, null)
-  assert.equal(violationsD.length, 0)
+    const violationsD = detectApiContractViolation('netlify/functions/send-email.ts', resendOk, null)
+    expect(violationsD.length).toBe(0)
 
-  const skipValidation = detectApiContractViolation('netlify/lib/easypostValidation.ts', easypostMissing, null)
-  assert.equal(skipValidation.length, 0)
+    const skipValidation = detectApiContractViolation(
+      'netlify/lib/easypostValidation.ts',
+      easypostMissing,
+      null,
+    )
+    expect(skipValidation.length).toBe(0)
 
-  const inlineFields = extractInlineObjectFields(0, 'foo({ to_address, from_address, parcel })')
-  assert.equal(inlineFields.has('parcel'), true)
-
+    const inlineFields = extractInlineObjectFields(0, 'foo({ to_address, from_address, parcel })')
+    expect(inlineFields.has('parcel')).toBe(true)
+  })
 })
