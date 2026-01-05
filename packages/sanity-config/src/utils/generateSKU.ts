@@ -1,6 +1,11 @@
 import type {SanityClient} from '@sanity/client'
 import Stripe from 'stripe'
 
+// DRIFT ACKNOWLEDGEMENT:
+// This generator intentionally enforces deterministic SKU/MPN formats.
+// Legacy prefix-based or sequential identifiers are forbidden by governance.
+// Source of truth: docs/ai-governance/PROD_IDENTIFICATION_RULES.md
+
 const RANDOM_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 const PREFIX_RULES = [
