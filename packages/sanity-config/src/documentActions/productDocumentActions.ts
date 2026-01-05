@@ -147,6 +147,56 @@ const createGenerateTagsAction =
     }
   }
 
+const createGenerateCodesAction =
+  (context: DocumentActionsContext): DocumentActionComponent =>
+  (props) => {
+    if (!isProduct(props)) return null
+
+    const toast = useToast()
+    const [busy, setBusy] = useState(false)
+    const client = context.getClient({apiVersion: API_VERSION})
+
+    return {
+      label: 'Generate SKU/MPN',
+      disabled: busy,
+      onHandle: async () => {
+        setBusy(true)
+        try {
+          const targetId = props.draft?._id || props.id
+          if (!targetId) {
+            toast.push({status: 'warning', title: 'Missing product id'})
+            return
+          }
+
+          const result = await ensureProductCodes(targetId, client, {
+            log: (...args: unknown[]) => console.log('[product-codes]', ...args),
+          })
+
+          if (result.generated) {
+            const sku = result.sku || (props.draft || props.published)?.sku
+            toast.push({
+              status: 'success',
+              title: 'SKU/MPN generated',
+              description: sku ? `SKU set to ${sku}.` : undefined,
+            })
+          } else {
+            toast.push({
+              status: 'info',
+              title: 'SKU/MPN already present',
+              description: result.skippedReason || 'No updates were needed.',
+            })
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          toast.push({status: 'error', title: 'Generation failed', description: message})
+        } finally {
+          setBusy(false)
+          props.onComplete()
+        }
+      },
+    }
+  }
+
 const createDuplicateServicePackageAction =
   (context: DocumentActionsContext): DocumentActionComponent =>
   (props) => {
@@ -324,6 +374,7 @@ export function resolveProductDocumentActions(
   if (tagged[TAG_ACTIONS_FLAG]) return prev
 
   const generateTagsAction = createGenerateTagsAction(context)
+  const generateCodesAction = createGenerateCodesAction(context)
   const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
   const previewServicePackageAction = createPreviewServicePackageAction(context)
   const syncStripeAction = createSyncStripeAction(context)
@@ -360,6 +411,7 @@ export function resolveProductDocumentActions(
   const enhanced: TagActionArray = [
     ...enhancedList,
     generateTagsAction,
+    generateCodesAction,
     duplicateServicePackageAction,
     previewServicePackageAction,
     syncStripeAction,
