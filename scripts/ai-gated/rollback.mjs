@@ -29,6 +29,34 @@ function parseArgs(argv) {
   return result
 }
 
+function parseNpmConfigArgv() {
+  const raw = process.env.npm_config_argv
+  if (!raw) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    const source = parsed.original || parsed.cooked
+    if (!Array.isArray(source)) {
+      return null
+    }
+    return source.filter((value) => {
+      return !['run', 'run-script', 'ai:rollback'].includes(value)
+    })
+  } catch {
+    return null
+  }
+}
+
+function getEffectiveArgv() {
+  const direct = process.argv.slice(2)
+  if (direct.length > 0) {
+    return direct
+  }
+  const fallback = parseNpmConfigArgv()
+  return fallback || []
+}
+
 function exitWithUsage(message) {
   if (message) {
     console.error(message)
@@ -73,7 +101,7 @@ async function readSnapshot(snapshotPath) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2))
+  const args = parseArgs(getEffectiveArgv())
   if (args.help) {
     console.log(USAGE)
     process.exit(0)

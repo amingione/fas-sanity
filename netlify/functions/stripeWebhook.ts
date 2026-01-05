@@ -3809,19 +3809,9 @@ async function createOrderFromCheckout(
     (session as any)?.shipping_details?.name ||
     'Customer'
 
-  const captureMethod =
-    paymentDetails.paymentIntent?.capture_method ||
-    sessionPaymentIntent?.capture_method ||
-    'automatic'
   const paymentIntentStatus = (paymentDetails.paymentIntent?.status || '').toLowerCase()
-  const metadataCaptureStrategyRaw =
-    sessionMeta['capture_strategy'] ||
-    (paymentDetails.paymentIntent?.metadata?.capture_strategy as string) ||
-    (captureMethod === 'manual' ? 'manual' : 'auto')
-  const paymentCaptureStrategy =
-    metadataCaptureStrategyRaw === 'manual' ? 'manual' : ('auto' as 'auto' | 'manual')
   const paymentCaptured =
-    paymentCaptureStrategy === 'auto' || ['succeeded', 'paid'].includes(paymentIntentStatus)
+    ['succeeded', 'paid'].includes(paymentIntentStatus) || session.payment_status === 'paid'
   const paymentCapturedAt =
     paymentCaptured && paymentDetails.charge?.created
       ? unixToIso(paymentDetails.charge.created)
@@ -3857,7 +3847,6 @@ async function createOrderFromCheckout(
     amountTax,
     amountShipping: resolvedShippingAmount ?? 0,
     currency: currencyUpper || currencyLower || 'USD',
-    paymentCaptureStrategy,
     paymentCaptured,
     paymentCapturedAt,
     labelPurchased: existingOrder?.labelPurchased ?? false,
@@ -3961,7 +3950,7 @@ async function createOrderFromCheckout(
     baseOrderPayload.fulfillment = fulfillmentWithDefaults
   }
 
-  const desiredFulfillmentStatus = paymentCaptured ? 'ready_to_ship' : 'awaiting_capture'
+  const desiredFulfillmentStatus = paymentCaptured ? 'ready_to_ship' : 'unfulfilled'
   if (baseOrderPayload.fulfillment) {
     const fulfillment = baseOrderPayload.fulfillment as Record<string, any>
     if (!fulfillment.status || fulfillment.status === 'unfulfilled') {
@@ -6218,19 +6207,12 @@ const handleChargeEvent = async (input: HandleChargeEventInput) => {
     Object.assign(orderFields, additionalOrderFields)
   }
 
-  const resolvedCaptureMethod =
-    resolvedPaymentIntent?.capture_method ||
-    (charge?.captured ? 'manual' : undefined) ||
-    undefined
   const shouldMarkCaptured =
     event.type === 'charge.captured' ||
     Boolean(charge?.captured && charge.amount_captured) ||
-    (resolvedCaptureMethod === 'manual' && event.type === 'charge.succeeded')
+    (charge?.captured && event.type === 'charge.succeeded')
   if (shouldMarkCaptured) {
     orderFields.paymentCaptured = true
-    orderFields.paymentCaptureStrategy =
-      orderFields.paymentCaptureStrategy ||
-      (resolvedCaptureMethod === 'manual' ? 'manual' : 'auto')
     orderFields.paymentCapturedAt =
       unixToIso(charge?.created) || unixToIso(event.created) || new Date().toISOString()
     if (!orderFields['fulfillment.status']) {

@@ -37,7 +37,6 @@ type ProductDocumentLike = {
   images?: SanityImageLike[]
   keyFeatures?: CollapsibleFeature[]
   specifications?: SpecItem[]
-  structuredDataOverrides?: string
 }
 
 export type BuildProductJsonLdOptions = {
@@ -100,28 +99,6 @@ const buildImageUrls = (images: SanityImageLike[] | undefined, builder?: ImageUr
       return image.asset?.url
     })
     .filter((url): url is string => typeof url === 'string' && Boolean(url))
-}
-
-const deepMerge = (
-  base: Record<string, unknown>,
-  overrides: Record<string, unknown>,
-): Record<string, unknown> => {
-  const output: Record<string, unknown> = {...base}
-  for (const [key, value] of Object.entries(overrides)) {
-    if (
-      value &&
-      typeof value === 'object' &&
-      !Array.isArray(value) &&
-      typeof output[key] === 'object' &&
-      !Array.isArray(output[key]) &&
-      output[key] !== null
-    ) {
-      output[key] = deepMerge(output[key] as Record<string, unknown>, value as Record<string, unknown>)
-    } else {
-      output[key] = value
-    }
-  }
-  return output
 }
 
 export const buildProductJsonLd = (
@@ -221,20 +198,6 @@ export const buildProductJsonLd = (
       url: canonicalUrl,
     },
     additionalProperty: additionalProperty.length ? additionalProperty : undefined,
-  }
-
-  const overrideText = product.structuredDataOverrides?.trim()
-  if (overrideText) {
-    try {
-      const overrideJson = JSON.parse(overrideText)
-      if (overrideJson && typeof overrideJson === 'object') {
-        const merged = deepMerge(jsonLd, overrideJson as Record<string, unknown>)
-        return {json: merged, errors, warnings}
-      }
-      warnings.push('structuredDataOverrides must be a JSON object; ignoring value.')
-    } catch {
-      warnings.push('structuredDataOverrides contains invalid JSON and was ignored.')
-    }
   }
 
   return {json: jsonLd, errors, warnings}

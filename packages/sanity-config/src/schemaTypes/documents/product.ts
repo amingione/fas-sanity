@@ -14,7 +14,9 @@ import {generateInitialMpn} from '../../utils/generateProductCodes'
 
 const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fdb-1000x1000-png'
 const PRODUCT_API_VERSION = '2024-10-01'
-const SKU_PATTERN = /^FAS-[A-Z0-9]+-\d{3,}A$/
+// Canonical FAS SKU pattern (LOCKED – see docs/ai-governance/PROD_IDENTIFICATION_RULES.md)
+// Format: <ENGINE>-<PACKAGECODE>-<BRAND>  (e.g. HC-A8FI-FAS)
+const SKU_PATTERN = /^[A-Z]{2}-[A-Z0-9]{4}-[A-Z]{3}$/
 
 type CanonicalFieldProps = StringInputProps<StringSchemaType> & {document?: any}
 
@@ -311,6 +313,9 @@ const product = defineType({
       validation: (Rule) => Rule.required(),
       group: 'basic',
     }),
+    // IMPORTANT:
+    // SKU logic is governed by docs/ai-governance/PROD_IDENTIFICATION_RULES.md (AU-tagged governance file).
+    // Do NOT change validation, format, or messaging without a governance cycle.
     defineField({
       name: 'sku',
       title: 'SKU',
@@ -318,11 +323,11 @@ const product = defineType({
       description: 'Auto-generated on product creation.',
       readOnly: true,
       validation: (Rule) =>
-        Rule.custom((value) => {
-          if (!value) return true
+        Rule.required().custom((value) => {
+          if (!value) return 'SKU is required and auto-generated.'
           const normalized = value.toString().trim().toUpperCase()
           if (!SKU_PATTERN.test(normalized)) {
-            return 'SKU must match FAS-<PREFIX>-<SERIAL>A (example: FAS-ABC-001A).'
+            return 'SKU must match ENGINE-PACKAGECODE-BRAND (e.g. HC-A8FI-FAS). This format is locked.'
           }
           return true
         }),
@@ -727,34 +732,6 @@ const product = defineType({
       group: 'details',
     }),
     defineField({
-      name: 'faq',
-      title: 'Product FAQ',
-      type: 'array',
-      options: {collapsible: true, collapsed: true} as any,
-      of: [
-        {
-          type: 'object',
-          name: 'faqEntry',
-          fields: [
-            {name: 'question', type: 'string', title: 'Question'},
-            {name: 'answer', type: 'text', title: 'Answer', rows: 3},
-          ],
-          preview: {
-            select: {title: 'question', subtitle: 'answer'},
-            prepare({title, subtitle}) {
-              return {
-                title: title || 'Untitled question',
-                subtitle: subtitle || 'No answer provided',
-              }
-            },
-          },
-        },
-      ],
-      description: 'Answer common objections up front.',
-      fieldset: 'productDetails',
-      group: 'details',
-    }),
-    defineField({
       name: 'mediaAssets',
       title: 'Additional Media',
       type: 'array',
@@ -780,7 +757,7 @@ const product = defineType({
       group: 'options',
     }),
     defineField({
-      name: 'options',
+      name: 'options', // these ARE NOT an addOn —they define variant selectors like Color, Size, etc. It's not optional for variable products
       title: 'Product Options',
       description:
         'Color, Size, or custom selectors customers must choose before adding to cart. Use the Required toggle on each option to enforce selection.',
@@ -815,7 +792,7 @@ const product = defineType({
       group: 'options',
     }),
     defineField({
-      name: 'addOns',
+      name: 'addOns', // upsellAddOns they cost money and are separate products
       title: 'Add-Ons & Optional Bundles',
       type: 'array',
       description: 'Upsell extras or link to products that can be bundled with this item.',
@@ -830,36 +807,6 @@ const product = defineType({
       description: 'Offer optional powder coating with paint code collection.',
       fieldset: 'optionsAndVariants',
       group: 'options',
-    }),
-    defineField({
-      name: 'paymentCaptureStrategy',
-      title: 'Payment Capture Strategy',
-      type: 'string',
-      description: "When should we charge the customer's card?",
-      options: {
-        layout: 'radio',
-        list: [
-          {
-            title: 'Auto-Capture – Charge Immediately (in-stock items)',
-            value: 'auto',
-          },
-          {
-            title: 'Manual Capture – Authorize Now, Charge When Ready to Ship',
-            value: 'manual',
-          },
-        ],
-      },
-      initialValue: (context) => {
-        const doc = (context as any)?.document || {}
-        const productType = doc?.productType
-        const handlingTime = Number(doc?.shippingConfig?.handlingTime || 0)
-        const hasCustomPaint = Boolean(doc?.customPaint?.enabled)
-        const isMailIn = doc?.serviceDeliveryModel === 'mail-in-service'
-        if (hasCustomPaint || handlingTime > 3 || isMailIn) return 'manual'
-        if (productType === 'service') return 'manual'
-        return 'auto'
-      },
-      group: 'advanced',
     }),
     defineField({
       name: 'serviceDuration',
@@ -1475,15 +1422,6 @@ const product = defineType({
       group: 'compatibility',
     }),
     defineField({
-      name: 'averageHorsepower',
-      title: 'Average HP Gain',
-      type: 'number',
-      description: 'Expected horsepower increase for marketing and comparison tables.',
-      hidden: ({document, parent}) => isServiceProduct({document, parent}),
-      fieldset: 'compatibilityDetails',
-      group: 'compatibility',
-    }),
-    defineField({
       name: 'metaTitle',
       title: 'Meta Title',
       type: 'string',
@@ -1556,15 +1494,6 @@ const product = defineType({
       type: 'boolean',
       initialValue: false,
       description: 'Enable only for campaigns or duplicates that should not be indexed.',
-      fieldset: 'seoAdvanced',
-      group: 'seo',
-    }),
-    defineField({
-      name: 'structuredDataOverrides',
-      title: 'Structured Data Overrides',
-      type: 'text',
-      rows: 6,
-      description: 'Optional raw JSON that will be merged with the generated Product JSON-LD.',
       fieldset: 'seoAdvanced',
       group: 'seo',
     }),
@@ -1718,7 +1647,15 @@ const product = defineType({
       readOnly: true,
       fieldset: 'merchant',
       group: 'advanced',
-      validation: (Rule) => merchantFieldWarning(Rule, '⚠️ Add MPN for Google Shopping'),
+      validation: (Rule) =>
+        Rule.custom((value) => {
+          if (!value) return true
+          const normalized = value.toString().trim().toUpperCase()
+          if (!/^[A-Z]{2}-[A-Z0-9]{4}$/.test(normalized)) {
+            return 'MPN must match ENGINE-PACKAGECODE (e.g. HC-A8FI).'
+          }
+          return true
+        }).warning(),
     }),
     defineField({
       name: 'googleProductCategory',
@@ -1759,28 +1696,6 @@ const product = defineType({
       title: 'Bulk Pricing Tiers',
       type: 'array',
       of: [{type: 'pricingTier'}],
-      fieldset: 'merchant',
-      group: 'advanced',
-    }),
-    defineField({
-      name: 'merchantData',
-      title: 'Merchant Data',
-      type: 'object',
-      fields: [
-        defineField({
-          name: 'linkedMerchant',
-          title: 'Merchant Feed',
-          type: 'reference',
-          to: [{type: 'merchantFeed'}],
-        }),
-        defineField({
-          name: 'linkedCampaign',
-          title: 'Campaign Data',
-          type: 'reference',
-          to: [{type: 'shoppingCampaign'}],
-        }),
-      ],
-      options: {collapsible: true},
       fieldset: 'merchant',
       group: 'advanced',
     }),
@@ -1850,294 +1765,10 @@ const product = defineType({
       readOnly: true,
       group: 'advanced',
     }),
-    defineField({
-      name: 'analytics',
-      type: 'object',
-      title: 'Analytics & Performance',
-      description: 'Product performance metrics (auto-updated)',
-      readOnly: true,
-      options: {
-        collapsible: true,
-        collapsed: true,
-      },
-      group: 'advanced',
-      fields: [
-        defineField({
-          name: 'views',
-          type: 'object',
-          title: 'Page Views',
-          fields: [
-            {
-              name: 'total',
-              type: 'number',
-              title: 'Total Views',
-              description: 'All-time page views',
-              initialValue: 0,
-            },
-            {name: 'last7Days', type: 'number', title: 'Last 7 Days', initialValue: 0},
-            {name: 'last30Days', type: 'number', title: 'Last 30 Days', initialValue: 0},
-            {name: 'last90Days', type: 'number', title: 'Last 90 Days', initialValue: 0},
-            {
-              name: 'uniqueVisitors',
-              type: 'number',
-              title: 'Unique Visitors',
-              description: 'Unique visitors (all-time)',
-              initialValue: 0,
-            },
-          ],
-        }),
-        defineField({
-          name: 'sales',
-          type: 'object',
-          title: 'Sales Performance',
-          fields: [
-            {
-              name: 'totalOrders',
-              type: 'number',
-              title: 'Total Orders',
-              description: 'Number of orders containing this product',
-              initialValue: 0,
-            },
-            {
-              name: 'totalQuantitySold',
-              type: 'number',
-              title: 'Total Quantity Sold',
-              description: 'Total units sold',
-              initialValue: 0,
-            },
-            {
-              name: 'totalRevenue',
-              type: 'number',
-              title: 'Total Revenue',
-              description: 'Total revenue generated (USD)',
-              initialValue: 0,
-            },
-            {
-              name: 'averageOrderValue',
-              type: 'number',
-              title: 'Average Order Value',
-              description: 'Average revenue per order',
-            },
-            {name: 'last7DaysSales', type: 'number', title: 'Sales (Last 7 Days)', initialValue: 0},
-            {
-              name: 'last30DaysSales',
-              type: 'number',
-              title: 'Sales (Last 30 Days)',
-              initialValue: 0,
-            },
-            {
-              name: 'last90DaysSales',
-              type: 'number',
-              title: 'Sales (Last 90 Days)',
-              initialValue: 0,
-            },
-            {
-              name: 'bestSellingRank',
-              type: 'number',
-              title: 'Best Seller Rank',
-              description: 'Rank among all products (1 = best seller)',
-            },
-            {name: 'firstSaleDate', type: 'datetime', title: 'First Sale Date'},
-            {name: 'lastSaleDate', type: 'datetime', title: 'Last Sale Date'},
-          ],
-        }),
-        defineField({
-          name: 'conversion',
-          type: 'object',
-          title: 'Conversion Metrics',
-          fields: [
-            {
-              name: 'addToCartCount',
-              type: 'number',
-              title: 'Add to Cart Count',
-              description: 'Times added to cart',
-              initialValue: 0,
-            },
-            {
-              name: 'addToCartRate',
-              type: 'number',
-              title: 'Add to Cart Rate (%)',
-              description: 'Percentage of views that add to cart',
-            },
-            {
-              name: 'purchaseConversionRate',
-              type: 'number',
-              title: 'Purchase Conversion Rate (%)',
-              description: 'Percentage of views that result in purchase',
-            },
-            {
-              name: 'cartAbandonmentRate',
-              type: 'number',
-              title: 'Cart Abandonment Rate (%)',
-              description: 'Percentage of carts abandoned',
-            },
-            {
-              name: 'wishlistCount',
-              type: 'number',
-              title: 'Wishlist Adds',
-              description: 'Times added to wishlist',
-              initialValue: 0,
-            },
-          ],
-        }),
-        defineField({
-          name: 'engagement',
-          type: 'object',
-          title: 'Customer Engagement',
-          fields: [
-            {
-              name: 'averageTimeOnPage',
-              type: 'number',
-              title: 'Avg Time on Page (seconds)',
-              description: 'Average time spent viewing product',
-            },
-            {
-              name: 'bounceRate',
-              type: 'number',
-              title: 'Bounce Rate (%)',
-              description: 'Percentage of single-page sessions',
-            },
-            {
-              name: 'shareCount',
-              type: 'number',
-              title: 'Social Shares',
-              description: 'Times shared on social media',
-              initialValue: 0,
-            },
-            {
-              name: 'emailClicks',
-              type: 'number',
-              title: 'Email Clicks',
-              description: 'Clicks from email campaigns',
-              initialValue: 0,
-            },
-          ],
-        }),
-        defineField({
-          name: 'ads',
-          type: 'object',
-          title: 'Google Ads Performance (Last 30 Days)',
-          options: {collapsible: true, collapsed: true},
-          fields: [
-            {name: 'impressions', type: 'number', title: 'Impressions'},
-            {name: 'clicks', type: 'number', title: 'Clicks'},
-            {name: 'conversions', type: 'number', title: 'Conversions'},
-            {name: 'adSpend', type: 'number', title: 'Ad Spend (USD)'},
-            {name: 'revenue', type: 'number', title: 'Revenue (USD)'},
-            {name: 'roas', type: 'number', title: 'ROAS (Return on Ad Spend)'},
-            {name: 'ctr', type: 'number', title: 'CTR (%)'},
-            {name: 'lastUpdated', type: 'datetime', title: 'Last Updated'},
-          ],
-        }),
-        defineField({
-          name: 'returns',
-          type: 'object',
-          title: 'Returns & Refunds',
-          fields: [
-            {
-              name: 'returnCount',
-              type: 'number',
-              title: 'Return Count',
-              description: 'Number of returns',
-              initialValue: 0,
-            },
-            {
-              name: 'returnRate',
-              type: 'number',
-              title: 'Return Rate (%)',
-              description: 'Percentage of orders returned',
-            },
-            {
-              name: 'refundAmount',
-              type: 'number',
-              title: 'Total Refunds',
-              description: 'Total refund amount (USD)',
-              initialValue: 0,
-            },
-            {
-              name: 'topReturnReasons',
-              type: 'array',
-              title: 'Top Return Reasons',
-              of: [
-                defineField({
-                  name: 'returnReason',
-                  title: 'Return Reason',
-                  type: 'object',
-                  fields: [
-                    {name: 'reason', type: 'string', title: 'Reason'},
-                    {name: 'count', type: 'number', title: 'Count'},
-                  ],
-                }),
-              ],
-            },
-          ],
-        }),
-        defineField({
-          name: 'profitability',
-          type: 'object',
-          title: 'Profitability',
-          fields: [
-            {
-              name: 'grossProfit',
-              type: 'number',
-              title: 'Gross Profit',
-              description: 'Total revenue minus cost',
-            },
-            {
-              name: 'grossMargin',
-              type: 'number',
-              title: 'Gross Margin (%)',
-              description: 'Profit as percentage of revenue',
-            },
-            {
-              name: 'averageProfitPerUnit',
-              type: 'number',
-              title: 'Avg Profit Per Unit',
-            },
-          ],
-        }),
-        defineField({
-          name: 'trends',
-          type: 'object',
-          title: 'Trends',
-          fields: [
-            {
-              name: 'velocityScore',
-              type: 'number',
-              title: 'Velocity Score',
-              description: 'Sales momentum indicator (0-100)',
-            },
-            {
-              name: 'trendDirection',
-              type: 'string',
-              title: 'Trend Direction',
-              options: {
-                list: [
-                  {title: '📈 Trending Up', value: 'up'},
-                  {title: '📊 Stable', value: 'stable'},
-                  {title: '📉 Trending Down', value: 'down'},
-                ],
-              },
-            },
-            {
-              name: 'seasonalityScore',
-              type: 'number',
-              title: 'Seasonality Score',
-              description: 'Seasonal demand indicator',
-            },
-            {name: 'peakSalesMonth', type: 'string', title: 'Peak Sales Month'},
-          ],
-        }),
-        defineField({
-          name: 'lastUpdated',
-          type: 'datetime',
-          title: 'Last Analytics Update',
-          description: 'When analytics were last calculated',
-        }),
-      ],
-    }),
   ],
-
+  // NOTE:
+  // preview.subtitle is for Sanity Studio admin rows only.
+  // It is NOT related to storefront displayTitle or SEO title.
   preview: {
     select: {
       title: 'title',
@@ -2158,7 +1789,13 @@ const product = defineType({
 
       return {
         title: title || 'Untitled Product',
-        subtitle: [subtitle, priceDisplay, status?.toUpperCase()].filter(Boolean).join(' • '),
+        subtitle: [
+          subtitle ? subtitle.toUpperCase() : subtitle,
+          priceDisplay,
+          status?.toUpperCase(),
+        ]
+          .filter(Boolean)
+          .join(' • '),
         media: media as any,
       }
     },

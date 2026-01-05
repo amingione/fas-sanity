@@ -840,11 +840,6 @@ group: 'overview'
       group: 'technical'
     },
     {
-      name: 'paymentCaptureStrategy',
-      type: 'string',
-      group: 'technical'
-    },
-    {
       name: 'fulfillmentStatusDisplay',
       type: 'object',
       fields: [

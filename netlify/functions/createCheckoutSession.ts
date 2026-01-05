@@ -100,67 +100,6 @@ const resolveCartQuantity = (value?: unknown): number => {
   return Math.max(1, Math.round(num))
 }
 
-async function determineCaptureStrategy(cart: any[]): Promise<'auto' | 'manual'> {
-  if (!sanity || !cart.length) return 'auto'
-  const ids = Array.from(
-    new Set(
-      cart
-        .map((item) => {
-          const refId =
-            typeof item?.productId === 'string'
-              ? item.productId
-              : typeof item?._id === 'string'
-                ? item._id
-                : typeof item?.productRef?._ref === 'string'
-                  ? item.productRef._ref
-                  : undefined
-          return normalizeSanityId(refId)
-        })
-        .filter(Boolean) as string[],
-    ),
-  )
-  if (!ids.length) return 'auto'
-
-  type ProductDoc = {
-    _id: string
-    paymentCaptureStrategy?: 'auto' | 'manual'
-    customPaint?: {enabled?: boolean}
-    shippingConfig?: {handlingTime?: number}
-    serviceDeliveryModel?: string
-    productType?: string
-  }
-
-  try {
-    const products = await sanity.fetch<ProductDoc[]>(
-      `*[_type == "product" && _id in $ids]{
-        _id,
-        paymentCaptureStrategy,
-        customPaint{enabled},
-        shippingConfig{handlingTime},
-        serviceDeliveryModel,
-        productType
-      }`,
-      {ids},
-    )
-
-    const requiresManual = products.some((product) => {
-      if (!product) return false
-      if (product.paymentCaptureStrategy === 'manual') return true
-      if (product.paymentCaptureStrategy === 'auto') return false
-      const handling = Number(product.shippingConfig?.handlingTime || 0)
-      const hasCustomPaint = Boolean(product.customPaint?.enabled)
-      const isMailIn = product.serviceDeliveryModel === 'mail-in-service'
-      const isService = product.productType === 'service'
-      return hasCustomPaint || handling > 3 || isMailIn || isService
-    })
-
-    return requiresManual ? 'manual' : 'auto'
-  } catch (err) {
-    console.warn('createCheckoutSession: failed to determine capture strategy', err)
-    return 'auto'
-  }
-}
-
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
@@ -438,9 +377,7 @@ export const handler: Handler = async (event) => {
 
   const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com').replace(/\/+$/, '')
 
-  const captureStrategy = await determineCaptureStrategy(cart as any[])
-  const captureMethod: 'automatic' | 'manual' =
-    captureStrategy === 'manual' ? 'manual' : 'automatic'
+  const captureMethod: 'automatic' = 'automatic'
   const paymentIntentMetadata: Stripe.MetadataParam = {
     cart_id: cartId,
   }

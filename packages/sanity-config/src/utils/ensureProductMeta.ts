@@ -27,69 +27,6 @@ const deriveFocusKeyword = (title?: string | null) => {
   return words.slice(0, 4).join(' ')
 }
 
-const buildAnalyticsDefaults = () => ({
-  views: {
-    total: 0,
-    last7Days: 0,
-    last30Days: 0,
-    last90Days: 0,
-    uniqueVisitors: 0,
-  },
-  sales: {
-    totalOrders: 0,
-    totalQuantitySold: 0,
-    totalRevenue: 0,
-    averageOrderValue: undefined,
-    last7DaysSales: 0,
-    last30DaysSales: 0,
-    last90DaysSales: 0,
-    bestSellingRank: undefined,
-    firstSaleDate: undefined,
-    lastSaleDate: undefined,
-  },
-  conversion: {
-    addToCartCount: 0,
-    addToCartRate: undefined,
-    purchaseConversionRate: undefined,
-    cartAbandonmentRate: undefined,
-    wishlistCount: 0,
-  },
-  engagement: {
-    averageTimeOnPage: undefined,
-    bounceRate: undefined,
-    shareCount: 0,
-    emailClicks: 0,
-  },
-  ads: {
-    impressions: undefined,
-    clicks: undefined,
-    conversions: undefined,
-    adSpend: undefined,
-    revenue: undefined,
-    roas: undefined,
-    ctr: undefined,
-    lastUpdated: undefined,
-  },
-  returns: {
-    returnCount: 0,
-    returnRate: undefined,
-    refundAmount: 0,
-    topReturnReasons: undefined,
-  },
-  profitability: {
-    grossProfit: undefined,
-    grossMargin: undefined,
-    averageProfitPerUnit: undefined,
-  },
-  trends: {
-    velocityScore: undefined,
-    trendDirection: undefined,
-    seasonalityScore: undefined,
-    peakSalesMonth: undefined,
-  },
-  lastUpdated: new Date().toISOString(),
-})
-
 const buildMerchantStatus = (product: MerchantCenterProduct) => {
   const issues = getMerchantFeedIssues(product)
   const warnings = getMerchantCoreWarnings(product)
@@ -139,7 +76,6 @@ type ProductForMeta = {
   focusKeyword?: string
   canonicalUrl?: string
   socialImage?: {asset?: {_ref?: string}}
-  analytics?: Record<string, unknown>
   merchantCenterStatus?: Record<string, unknown>
   gtin?: string
   mpn?: string
@@ -169,7 +105,6 @@ export const ensureProductMetaAndStatus = async (
       focusKeyword,
       canonicalUrl,
       socialImage,
-      analytics,
       merchantCenterStatus,
       gtin,
       mpn,
@@ -211,10 +146,6 @@ export const ensureProductMetaAndStatus = async (
 
   if (!product.socialImage && Array.isArray(product.images) && product.images[0]?.asset) {
     updates.socialImage = product.images[0]
-  }
-
-  if (!product.analytics) {
-    updates.analytics = buildAnalyticsDefaults()
   }
 
   const merchantStatus = buildMerchantStatus({

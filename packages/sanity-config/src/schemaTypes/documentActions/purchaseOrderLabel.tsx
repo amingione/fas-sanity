@@ -10,7 +10,6 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
   const doc = (draft || published) as
     | {
         paymentStatus?: string
-        paymentCaptureStrategy?: 'auto' | 'manual'
         paymentCaptured?: boolean
         orderNumber?: string
         shippingAddress?: unknown
@@ -23,7 +22,7 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
     return null
   }
 
-  if (doc?.paymentCaptureStrategy === 'manual' && !doc?.paymentCaptured) {
+  if (doc?.paymentCaptured === false) {
     return null
   }
 

@@ -111,3 +111,6 @@ Consistency and safety over speed. When in doubt, propose and discuss before imp
 ## Additional Standards
 
 Add any other coding standards, architecture decisions, or process notes here as needed.
+
+Refer to the docs/ai-governance/PROD_IDENTIFICATION_RULES.md for:
+| SKU | MPN |

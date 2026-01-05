@@ -609,7 +609,6 @@ export default defineType({
     }),
     defineField({name: 'deliveryDays', type: 'number', hidden: true}),
     defineField({name: 'easyPostTrackerId', type: 'string', hidden: true}),
-    defineField({name: 'paymentCaptureStrategy', type: 'string', hidden: true}),
     defineField({
       name: 'fulfillmentStatusDisplay',
       type: 'object',

@@ -18,11 +18,16 @@ export default defineType({
       options: {source: 'title', maxLength: 96},
       validation: (Rule) => Rule.required(),
     }),
+    // GOVERNANCE NOTE:
+    // `mpnPrefix` is legacy/category-scoped metadata.
+    // It must NOT be used to derive canonical SKU/MPN values.
+    // Canonical identifier logic lives in docs/ai-governance/PROD_IDENTIFICATION_RULES.md.
     defineField({
       name: 'mpnPrefix',
       title: 'MPN Prefix',
       type: 'string',
-      description: '3-6 letter code used when auto-generating SKUs/MPNs.',
+      description:
+        'LEGACY / CONTROLLED. Historical category-level prefix. NOT the canonical SKU engine code. Canonical SKU/MPN logic is governed by docs/ai-governance/PROD_IDENTIFICATION_RULES.md.',
       options: {
         list: [
           {title: 'Hellcat platform', value: 'HC'},
@@ -55,7 +60,20 @@ export default defineType({
           .min(2)
           .max(6)
           .regex(/^[A-Z0-9]+$/, {name: 'uppercase code'})
-          .error('MPN prefix is required (use uppercase letters/numbers).'),
+          .custom((value) => {
+            if (typeof value !== 'string') return true
+
+            // Prevent collision with canonical ENGINE codes used in SKU/MPN
+            const RESERVED_ENGINE_CODES = ['HC', 'LS', 'CO', 'HE', 'PS']
+            const normalized = value.trim().toUpperCase()
+
+            if (RESERVED_ENGINE_CODES.includes(normalized)) {
+              return 'This value collides with canonical ENGINE codes. Category MPN prefixes must not equal SKU engine identifiers.'
+            }
+
+            return true
+          })
+          .error('MPN prefix is required (uppercase letters/numbers only, 2–6 chars).'),
     }),
     defineField({
       name: 'image',

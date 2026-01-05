@@ -12,7 +12,7 @@ Use this guide to help merchandisers move quickly without missing critical detai
 | **Product Type**                                       | Tells the system whether to show shipping fields, service scheduling inputs, or bundle composition. Also powers storefront filtering and badges. |
 | **Images**                                             | First image becomes the hero card. Upload 3–5 angles so the storefront carousel looks complete.                                                  |
 | **Short Description**                                  | Two-sentence hook used on collection cards and checkout. Mention platforms + outcome.                                                            |
-| **Full Description**                                   | Long-form content for SEO + customers. Include install tips, FAQs, kit contents.                                                                 |
+| **Full Description**                                   | Long-form content for SEO + customers. Include install tips and kit contents.                                                                     |
 | **Categories**                                         | Controls where the product appears on the storefront and the service catalog.                                                                    |
 | **Price**                                              | Base USD price sent to Stripe, Google Merchant, and quotes.                                                                                      |
 | **Shipping Weight + Box Dimensions** (physical/bundle) | Used to calculate shipping rates, packing slips, and freight flags. Missing values stop the shipping calculator.                                 |
@@ -20,38 +20,47 @@ Use this guide to help merchandisers move quickly without missing critical detai
 ## Fieldset Quick Reference
 
 - **Basic Info** – Everything needed to launch a product in under 5 minutes: title, slug, product type, images, descriptions, price, categories, highlights.
-- **Product Details** – Key features, specs, kit contents, FAQs, and supporting media.
+- **Product Details** – Key features, specs, kit contents, and supporting media.
 - **Options & Variants** – Only visible for physical/bundle products. Choose “Requires options” if the customer must pick size/color/platform. Upgrades, Add-Ons & Optional Bundles, and the Custom Paint builder live here for mix-and-match upsells.
 - **Service Details** – Appears when `Product Type = Service`. Capture duration, location, deliverables, and scheduling notes rather than shipping data.
 - **Bundle Components** – Appears when `Product Type = Bundle`. Reference each included product, quantity, and special notes.
 - **Shipping & Fulfillment** – Weight, box size, handling time, shipping class, ships-alone flag, and a live shipping-cost preview. Hidden for services.
 - **Inventory** – Toggle manual tracking and update quantities. Keeps Merchant Center inventory in sync.
 - **Compatibility** – Vehicle fitment, required tunes, average HP gain. Hidden for services.
-- **SEO & Marketing** – Collapsible section for meta title/description, focus keyword usage indicator, social image, canonical URL, and structured data overrides.
+- **SEO & Marketing** – Collapsible section for meta title/description, focus keyword usage indicator, social image, and canonical URL.
 - **Stripe Sync** – Read-only IDs, timestamps, metadata snapshots (collapsed by default).
 - **Advanced** – Merchant feed fields, tax behavior, Google product category, legacy data.
 
 ## Add-Ons & Optional Bundles
 
+## Add-Ons cost money - when they are selected it ads cost to the original price.
+
+##
+
 ### Overview
+
 The `Add-Ons & Optional Bundles` field now supports two approaches inside the same array: manual upgrades for quick price adjustments and product references for optional bundles. Referencing another product keeps pricing, inventory, SKU, and imagery in sync automatically, while still letting you override labels, add bundle discounts, or mark the add-on as required.
 
 ### Manual Upgrade (Custom Entry)
+
 - Mirrors the legacy upgrade workflow with required name + price validations.
 - Perfect for labor adders, coatings, or services that do not need standalone inventory.
 - Fields: Upgrade Name, Price Adjustment, Description, SKU suffix, Default Selected toggle.
 
 ### Product Bundle Add-On (Reference)
+
 - Reference any active product (except the one you are editing) so pricing + photos stay synced.
 - Configure quantity, fixed dollar or percent discounts, custom labels/descriptions, and default/required toggles.
 - Discount fields are optional; leave blank to surface the referenced product price.
 
 ### Use Cases
+
 1. **Installation Hardware Kit** – Reference the kit, set quantity `1`, apply a `$20` bundle discount, and label it “Add Installation Kit” to highlight the savings.
 2. **Required Shipping Label** – Reference the prepaid label, mark `Required = true`, and rename it “Purchase Shipping Label (Required)” to enforce fulfillment steps.
 3. **Optional Tune Package** – Reference the remote tuning service, set `Bundle Discount (%) = 15`, and label it “Add Custom Tune” for cold-air intake products.
 
 ### GROQ Query
+
 Expand add-ons when fetching a product so the frontend can render both manual upgrades and referenced bundles:
 
 ```groq
@@ -62,6 +71,15 @@ Expand add-ons when fetching a product so the frontend can render both manual up
   price,
   images,
   description,
+  options[]{
+    _type,
+    _key,
+    title,
+    required,
+    colors[]{title, color},
+    sizes[]{title},
+    values[]{title, value}
+  },
   addOns[]{
     _type,
     _key,
@@ -70,7 +88,6 @@ Expand add-ons when fetching a product so the frontend can render both manual up
     description,
     skuSuffix,
     defaultSelected,
-    "productRef": product,
     quantity,
     bundleDiscount,
     bundleDiscountPercent,
@@ -91,12 +108,16 @@ Expand add-ons when fetching a product so the frontend can render both manual up
 }
 ```
 
+**Important:** `options` are not returned unless you query them. If a product uses variable options, omitting `options[]{...}` means customers cannot select required values or add the item to the cart.
+
 ### Benefits
+
 **For Editors** – Reuse accessory products across the catalog, let pricing follow the source product automatically, and lean on inventory tracking + imagery without duplicate data.  
 **For Customers** – Visual bundles, clear savings callouts (“save $50” or “15% off”), smart defaults, and required badges keep checkout honest.  
 **For The Business** – Accurate inventory deductions, bundle analytics, and flexible discount testing unlock better upsell performance.
 
 ### Checklist & Testing
+
 - [ ] Manual upgrades still save/publish correctly.
 - [ ] Product reference add-ons show preview pricing + imagery.
 - [ ] Bundle discount math (fixed + percent) renders correctly.
@@ -106,9 +127,11 @@ Expand add-ons when fetching a product so the frontend can render both manual up
 ## Custom Paint & Powder Coating
 
 ### Overview
+
 The dedicated `Custom Paint Options` object replaces the old “customizations” array so we can offer powder coating the way customers actually buy it: as an optional checkbox with conditional paint-code entry. The paint code field now only appears—and becomes required—after the buyer opts into coating. This flow prevents forcing every shopper to enter a code, while still capturing the details we need when the service is selected.
 
 ### Studio Setup
+
 - **Toggle** `Offer Custom Paint/Powder Coating?` to reveal the configuration block.
 - **Checkbox Label** – defaults to “Add Powder Coating”, but you can override it for anodizing/ceramic etc.
 - **Price** – enter the upcharge (supports decimals with two-place precision).
@@ -117,6 +140,7 @@ The dedicated `Custom Paint Options` object replaces the old “customizations�
 - **Popular Color Swatches** – optional quick-picks with name/code/hex that auto-fill the paint-code input on click.
 
 ### Customer Flow
+
 1. Page loads with the checkbox + price and supportive description.
 2. Leaving the box unchecked does nothing—customer can checkout without a code.
 3. Checking the box reveals instructions, swatches, and a required paint-code input (red asterisk).
@@ -124,11 +148,13 @@ The dedicated `Custom Paint Options` object replaces the old “customizations�
 5. Unchecking the box clears the selection so validation no longer fires.
 
 ### Validation & Cart
+
 - Frontend validation should only trigger when `selected = true` and `paintCode` is empty.
 - When selected, send `{selected: true, paintCode, price}` inside the cart payload so order + checkout metadata can surface the detail (`powder_coating`, `powder_coating_price`, `paint_code`).
 - Cart/checkout UI should list the powder coating line with the upcharge and customer-entered code.
 
 ### Testing Checklist
+
 - [ ] Checkbox hidden when `enabled` is false.
 - [ ] Price/description show correctly when enabled.
 - [ ] Checking the box reveals instructions + swatches + required paint field.
