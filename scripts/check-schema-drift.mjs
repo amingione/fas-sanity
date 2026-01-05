@@ -3,14 +3,30 @@ import path from 'node:path'
 
 const schemaPath = path.resolve('packages/sanity-config/schema.json')
 const reportPath = path.resolve('.docs/reports/field-to-api-map.md')
+const args = process.argv.slice(2)
+const modeIndex = args.indexOf('--mode')
+const modeValue = modeIndex !== -1 ? args[modeIndex + 1] : null
+const modeInline = args.find((value) => value.startsWith('--mode='))
+const mode = (modeValue || (modeInline ? modeInline.split('=')[1] : null) || '').trim()
+const ciMode = mode === 'ci'
 
 if (!fs.existsSync(schemaPath)) {
-  console.warn('⚠️ Schema Drift Check: missing schema.json')
+  const message = 'Schema Drift Check: missing schema.json'
+  if (ciMode) {
+    console.error(`❌ ${message}`)
+    process.exit(1)
+  }
+  console.warn(`⚠️ ${message}`)
   process.exit(0)
 }
 
 if (!fs.existsSync(reportPath)) {
-  console.warn('⚠️ Schema Drift Check: missing field-to-api map report')
+  const message = 'Schema Drift Check: missing field-to-api map report'
+  if (ciMode) {
+    console.error(`❌ ${message}`)
+    process.exit(1)
+  }
+  console.warn(`⚠️ ${message}`)
   process.exit(0)
 }
 
@@ -119,4 +135,8 @@ for (const warning of warnings) {
   console.warn('    - OR add a drift acknowledgement')
 }
 
+if (ciMode) {
+  console.error('❌ Schema drift detected (CI mode)')
+  process.exit(1)
+}
 process.exit(0)

@@ -22,6 +22,8 @@
     "ai:decide": "echo 'Run Claude decision prompt'",
     "ai:enforce": "echo 'Run Codex enforcement prompt'",
     "ai:gated": "node scripts/ai-gated/run.mjs",
+    "ai:approve": "node scripts/ai-gated/approve.mjs",
+    "ai:apply": "node scripts/ai-gated/apply.mjs",
     "ai:rollback": "node scripts/ai-gated/rollback.mjs",
     "ai:check": "pnpm lint && pnpm exec tsc -p tsconfig.runtime.json",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",

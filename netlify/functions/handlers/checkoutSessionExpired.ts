@@ -57,6 +57,8 @@ export async function handleCheckoutSessionExpired(event: Stripe.Event) {
     customerName?: string | null
     customerPhone?: string | null
   } | null>(`*[_type == "checkoutSession" && _id == $id][0]`, {id: cartId})
+  const customerDetails =
+    session.customer_details || (event.data.object as any)?.customer_details || null
 
   const expiredAt = session.expires_at
     ? new Date(session.expires_at * 1000).toISOString()
@@ -90,9 +92,9 @@ export async function handleCheckoutSessionExpired(event: Stripe.Event) {
       _key: cartId,
       cartId,
       status: 'expired',
-      email: cartDoc?.customerEmail || null,
-      name: cartDoc?.customerName || null,
-      phone: cartDoc?.customerPhone || null,
+      email: cartDoc?.customerEmail ?? customerDetails?.email ?? null,
+      name: cartDoc?.customerName ?? customerDetails?.name ?? null,
+      phone: cartDoc?.customerPhone ?? customerDetails?.phone ?? null,
       checkoutSessionId: session.id,
       expiredAt,
       livemode: session.livemode,

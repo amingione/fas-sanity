@@ -82,3 +82,18 @@ export function cleanSnippet(line, max = 180) {
 export function toLineMap(content) {
   return content.split(/\r?\n/)
 }
+
+export function lineNumberForIndex(content, index) {
+  const safeIndex = Number.isFinite(index) ? index : 0
+  if (safeIndex <= 0) {
+    return 1
+  }
+  let line = 1
+  const limit = Math.min(safeIndex, content.length)
+  for (let i = 0; i < limit; i += 1) {
+    if (content[i] === '\n') {
+      line += 1
+    }
+  }
+  return line
+}
