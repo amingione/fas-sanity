@@ -2,7 +2,6 @@ import React from 'react'
 import {Badge, Card, Flex, Stack, Text} from '@sanity/ui'
 
 type OrderDocument = {
-  paymentCaptureStrategy?: 'auto' | 'manual'
   paymentCaptured?: boolean
   fulfillment?: {
     status?: string
@@ -38,18 +37,14 @@ export function OrderFulfillmentStatus(props: FulfillmentStatusProps) {
   const order = props.document || props.value
   if (!order) return null
 
-  const captureStrategy = (order.paymentCaptureStrategy || 'auto') as 'auto' | 'manual'
-  const isManual = captureStrategy === 'manual'
   const paymentCaptured = Boolean(order.paymentCaptured)
   const fulfillmentState = order.fulfillment?.status
   const trackingNumber = order.fulfillment?.trackingNumber
   const hasLabel = Boolean(order.fulfillment?.labelUrl)
 
-  const paymentBadge = isManual
-    ? paymentCaptured
-      ? {tone: 'positive' as const, label: 'Manual – Captured'}
-      : {tone: 'caution' as const, label: 'Manual – Awaiting Capture'}
-    : {tone: 'positive' as const, label: 'Auto-Captured'}
+  const paymentBadge = paymentCaptured
+    ? {tone: 'positive' as const, label: 'Captured'}
+    : {tone: 'caution' as const, label: 'Not Captured'}
 
   const fulfillmentBadge = statusLabel(fulfillmentState)
 
@@ -83,12 +78,6 @@ export function OrderFulfillmentStatus(props: FulfillmentStatusProps) {
               {trackingNumber}
             </Text>
           </Flex>
-        ) : null}
-
-        {!paymentCaptured && isManual ? (
-          <Card padding={3} radius={2} tone="caution">
-            <Text size={1}>Capture payment before purchasing a label.</Text>
-          </Card>
         ) : null}
 
         {paymentCaptured && !hasLabel ? (

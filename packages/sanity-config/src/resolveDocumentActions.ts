@@ -10,7 +10,6 @@ import {
   refundStripeInvoiceAction,
 } from './schemaTypes/documentActions/refundStripeAction'
 import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
-import {capturePaymentAction} from './schemaTypes/documentActions/capturePaymentAction'
 import {orderActions} from './schemaTypes/documents/order.actions'
 import {
   approveVendorApplicationAction,
@@ -72,7 +71,6 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
     list.push(refundStripeInvoiceAction)
   }
   if (isOrderSchemaType(context.schemaType)) {
-    list.push(capturePaymentAction)
     list.push(
       GeneratePackingSlipAction,
       CreateShippingLabelAction,

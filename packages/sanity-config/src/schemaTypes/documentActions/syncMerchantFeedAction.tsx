@@ -76,8 +76,7 @@ const SyncMerchantFeedAction: DocumentActionComponent = (props) => {
           salePrice,
           brand,
           status,
-          images[]{asset->{url}},
-          merchantData
+          images[]{asset->{url}}
         }`,
         {id: baseId},
       )
@@ -117,11 +116,6 @@ const SyncMerchantFeedAction: DocumentActionComponent = (props) => {
 
       const tx = client.transaction()
       tx.createOrReplace(merchantDoc as any)
-      tx.patch(baseId, (patch) =>
-        patch
-          .setIfMissing({merchantData: {}})
-          .set({merchantData: {...snapshot.merchantData, linkedMerchant: merchantDoc.linkedProduct}}),
-      )
 
       await tx.commit({autoGenerateArrayKeys: true})
 
