@@ -18,6 +18,14 @@ export default defineType({
       options: {source: 'title', maxLength: 96},
       validation: (Rule) => Rule.required(),
     }),
+    /**
+     * DRIFT ACKNOWLEDGEMENT:
+     * `mpnPrefix` is legacy metadata and is intentionally prevented
+     * from colliding with canonical ENGINE codes.
+     *
+     * This restriction is intentional governance drift.
+     * See docs/ai-governance/PROD_IDENTIFICATION_RULES.md
+     */
     // GOVERNANCE NOTE:
     // `mpnPrefix` is legacy/category-scoped metadata.
     // It must NOT be used to derive canonical SKU/MPN values.

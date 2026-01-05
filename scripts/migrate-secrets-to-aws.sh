@@ -22,18 +22,7 @@ set +o allexport
 
 echo "Parsing .env and building JSON payload…"
 
-SECRET_JSON=$(
-  grep -v '^\s*#' "$ENV_FILE" \
-  | grep -v '^\s*$' \
-  | while IFS='=' read -r key value; do
-      clean_key=$(echo "$key" | xargs)
-      clean_val=$(printf '%s' "$value" | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")
-      printf '"%s":"%s"\n' "$clean_key" "$clean_val"
-    done \
-  | paste -sd, - \
-  | sed 's/^/{/' \
-  | sed 's/$/}/'
-)
+SECRET_JSON=$(pnpm exec tsx scripts/serialize-secrets.ts "$ENV_FILE")
 
 if [[ "$SECRET_JSON" == "{}" ]]; then
   echo "❌ No environment variables found to migrate"

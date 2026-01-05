@@ -313,6 +313,17 @@ const product = defineType({
       validation: (Rule) => Rule.required(),
       group: 'basic',
     }),
+    /**
+     * DRIFT ACKNOWLEDGEMENT:
+     * The SKU / MPN format enforced here intentionally diverges from legacy
+     * sequential identifiers (e.g. FAS-ABC-001A).
+     *
+     * This is GOVERNED behavior, not a regression.
+     * Canonical rules are defined in:
+     * docs/ai-governance/PROD_IDENTIFICATION_RULES.md
+     *
+     * Do NOT “fix” or reintroduce legacy patterns.
+     */
     // IMPORTANT:
     // SKU logic is governed by docs/ai-governance/PROD_IDENTIFICATION_RULES.md (AU-tagged governance file).
     // Do NOT change validation, format, or messaging without a governance cycle.
