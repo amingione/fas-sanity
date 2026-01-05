@@ -1,20 +1,22 @@
 import type {SanityClient} from '@sanity/client'
+import {generateFasSKU} from './generateSKU'
 
-const BRAND_PREFIX = 'FAS'
-const FALLBACK_PREFIX = 'UNI'
-const DEFAULT_REVISION = 'A'
+const BRAND_SUFFIX = 'FAS'
 const DEFAULT_STARTING_NUMBER = 636
 const SETTINGS_TYPE = 'siteSettings'
 const SETTINGS_TITLE = 'Site Settings'
 const NEXT_SERIAL_FIELD = 'nextMpnNumber'
-const SERIAL_PAD_LENGTH = 3
+const SERIAL_PAD_LENGTH = 4
+const SKU_PATTERN = /^[A-Z]{2}-[A-Z0-9]{4}-[A-Z]{3}$/
+const MPN_PATTERN = /^[A-Z]{2}-[A-Z0-9]{4}$/
 
 type ProductForCodes = {
   _id: string
   _rev?: string
   sku?: string
   mpn?: string
-  categoryPrefix?: string | null
+  title?: string | null
+  platform?: string | null
 }
 
 type SettingsDoc = {
@@ -41,11 +43,9 @@ export type ProductCodeResult = {
   skippedReason?: string
 }
 
-const MPN_REGEX = /^(?:([A-Z0-9]+)-)?([A-Z0-9]+)-(\d+)([A-Z])?$/
-
 function normalizePrefix(prefix?: string | null): string {
   const trimmed = typeof prefix === 'string' ? prefix.trim() : ''
-  return trimmed ? trimmed.toUpperCase() : FALLBACK_PREFIX
+  return trimmed ? trimmed.toUpperCase() : 'UN'
 }
 
 function formatSerial(serialNumber: number): string {
@@ -53,22 +53,30 @@ function formatSerial(serialNumber: number): string {
   return String(safe).padStart(SERIAL_PAD_LENGTH, '0')
 }
 
-function buildMpn(prefix: string, serial: string): string {
-  return `${prefix}-${serial}`
+function buildMpn(engine: string, packageCode: string): string {
+  return `${engine}-${packageCode}`
 }
 
-function buildSku(prefix: string, serial: string): string {
-  return `${BRAND_PREFIX}-${prefix}-${serial}${DEFAULT_REVISION}`
+function buildSku(engine: string, packageCode: string): string {
+  return `${engine}-${packageCode}-${BRAND_SUFFIX}`
 }
 
-function parseMpn(mpn?: string | null): SerialInfo | null {
-  if (!mpn) return null
-  const match = String(mpn).trim().toUpperCase().match(MPN_REGEX)
-  if (!match) return null
-  const [, , prefix, serialStr] = match
-  const serialNumber = parseInt(serialStr, 10)
-  if (!Number.isFinite(serialNumber)) return null
-  return {prefix: normalizePrefix(prefix), serialNumber, serial: formatSerial(serialNumber)}
+function normalizeValue(value?: string | null): string {
+  return typeof value === 'string' ? value.trim().toUpperCase() : ''
+}
+
+function parseSku(sku?: string | null): {engine: string; packageCode: string} | null {
+  const normalized = normalizeValue(sku)
+  if (!SKU_PATTERN.test(normalized)) return null
+  const [engine, packageCode] = normalized.split('-', 2)
+  return engine && packageCode ? {engine, packageCode} : null
+}
+
+function parseMpn(mpn?: string | null): {engine: string; packageCode: string} | null {
+  const normalized = normalizeValue(mpn)
+  if (!MPN_PATTERN.test(normalized)) return null
+  const [engine, packageCode] = normalized.split('-', 2)
+  return engine && packageCode ? {engine, packageCode} : null
 }
 
 async function reserveSerialNumber(
@@ -131,7 +139,7 @@ export async function ensureProductCodes(
   const log = options?.log || ((...args: unknown[]) => console.log('[product-codes]', ...args))
 
   const product = await client.fetch<ProductForCodes>(
-    `*[_id == $productId][0]{_id, _rev, sku, mpn, "categoryPrefix": category[0]->mpnPrefix}`,
+    `*[_id == $productId][0]{_id, _rev, sku, mpn, title, platform}`,
     {productId},
   )
 
@@ -140,34 +148,37 @@ export async function ensureProductCodes(
     return {generated: false, skippedReason: 'missing product'}
   }
 
-  const hasSku = typeof product.sku === 'string' && product.sku.trim() !== ''
-  const hasMpn = typeof product.mpn === 'string' && product.mpn.trim() !== ''
+  const normalizedSku = normalizeValue(product.sku)
+  const normalizedMpn = normalizeValue(product.mpn)
+  const hasSku = normalizedSku !== ''
+  const hasMpn = normalizedMpn !== ''
+  const skuData = parseSku(normalizedSku)
+  const mpnData = parseMpn(normalizedMpn)
+  const skuValid = Boolean(skuData)
+  const mpnValid = Boolean(mpnData)
 
-  if (hasSku && hasMpn) {
+  if (skuValid && mpnValid) {
     log(`SKU/MPN already exist for ${product._id}; skipping generation.`)
     return {generated: false, skippedReason: 'existing codes'}
   }
 
-  const parsedMpn = hasMpn ? parseMpn(product.mpn) : null
-  const categoryPrefix = product.categoryPrefix
-
-  let serialInfo: SerialInfo | null = parsedMpn
-  if (!serialInfo && !hasMpn) {
-    serialInfo = await reserveSerialNumber(client, categoryPrefix)
-  }
-
   const updates: Record<string, string> = {}
 
-  if (serialInfo) {
+  if (skuValid && skuData && !mpnValid) {
+    updates.mpn = buildMpn(skuData.engine, skuData.packageCode)
+  } else if (!skuValid && mpnValid && mpnData) {
+    updates.sku = buildSku(mpnData.engine, mpnData.packageCode)
+  } else if (!skuValid) {
+    const generatedSku = await generateFasSKU(
+      product.title ? String(product.title) : '',
+      product.platform ? String(product.platform) : '',
+      client,
+    )
+    updates.sku = generatedSku
     if (!hasMpn) {
-      updates.mpn = buildMpn(serialInfo.prefix, serialInfo.serial)
+      const generatedMpn = generatedSku.replace(`-${BRAND_SUFFIX}`, '')
+      updates.mpn = generatedMpn
     }
-    if (!hasSku) {
-      updates.sku = buildSku(serialInfo.prefix, serialInfo.serial)
-    }
-  } else if (hasMpn && !hasSku && product.mpn) {
-    updates.sku = product.mpn
-    log(`MPN present but unparsable for ${product._id}; backfilling SKU with existing MPN value.`)
   }
 
   if (!Object.keys(updates).length) {
@@ -182,19 +193,9 @@ export async function ensureProductCodes(
 
   await productPatch.commit({autoGenerateArrayKeys: true})
 
-  const prefix = serialInfo?.prefix || normalizePrefix(categoryPrefix)
-  const serial = serialInfo?.serial
   const generatedFields = Object.keys(updates).join(' & ') || 'codes'
 
-  log(
-    `Generated ${generatedFields} for ${product._id} (prefix=${prefix}${
-      serial ? `, serial=${serial}` : ''
-    }).`,
-  )
+  log(`Generated ${generatedFields} for ${product._id}.`)
 
-  if (!product.categoryPrefix) {
-    log(`No category prefix found for ${product._id}; used fallback ${FALLBACK_PREFIX}.`)
-  }
-
-  return {generated: true, ...updates, prefix, serial}
+  return {generated: true, ...updates}
 }

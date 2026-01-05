@@ -4,12 +4,14 @@ import Stripe from 'stripe'
 const RANDOM_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 const PREFIX_RULES = [
-  {match: ['trx', 'hellcat truck'], prefix: 'TRX'},
-  {match: ['powerstroke', 'ford', 'raptor', 'mustang'], prefix: 'PR'},
-  {match: ['hellcat', 'charger', 'challenger'], prefix: 'HC'},
+  {match: ['trx', 'hellcat', 'trackhawk', 'charger', 'challenger', 'redeye', 'demon'], prefix: 'HC'},
+  {match: ['hemi'], prefix: 'HE'},
+  {match: ['ls', 'ls1', 'ls3', 'ls7'], prefix: 'LS'},
+  {match: ['coyote', 'mustang'], prefix: 'CO'},
+  {match: ['powerstroke', 'diesel'], prefix: 'PS'},
 ]
 
-const defaultPrefix = 'UNI'
+const defaultPrefix = 'UN'
 
 const pickPrefix = (title = '', platform = ''): string => {
   const normalized = (platform || title || '').toLowerCase()

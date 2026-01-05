@@ -217,6 +217,11 @@ async function main() {
   const claudeOutputPath = path.join(baseDir, 'claude', 'review', 'output.md')
   const codexPlanPath = path.join(baseDir, 'codex', 'audit', 'plan.md')
 
+  if (!process.env.GEMINI_API_KEY) {
+    log('Missing GEMINI_API_KEY. Set it before running AI audits.')
+    process.exit(3)
+  }
+
   await runToolCommand('gemini', promptContent, geminiOutputPath, log)
   const geminiOutput = await fsp.readFile(geminiOutputPath, 'utf8')
 
