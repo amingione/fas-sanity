@@ -5,6 +5,7 @@ import {syncContact} from '../lib/resend/contacts'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
@@ -134,7 +135,9 @@ export const handler: Handler = async (event) => {
     }
 
     // === EXISTING: SEND WELCOME EMAIL (keep your existing code) ===
-    const from = 'FAS Motorsports <info@fasmotorsports.com>'
+    let reservationLogId: string | undefined
+    const from =
+      process.env.RESEND_FROM || 'FAS Motorsports <info@fasmotorsports.com>'
     const subject = 'Welcome to FAS Motorsports!'
     const missing = getMissingResendFields({to: emailLower, from, subject})
     if (missing.length) {
@@ -144,30 +147,42 @@ export const handler: Handler = async (event) => {
         body: JSON.stringify({error: `Missing email fields: ${missing.join(', ')}`}),
       }
     }
-    await resend.emails.send({
-      from,
-      to: emailLower,
-      subject,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #000;">Thanks for subscribing!</h1>
-          <p>Hi ${name || 'there'},</p>
-          <p>You're now subscribed to FAS Motorsports updates.</p>
-          <p><strong>You'll be the first to know about:</strong></p>
-          <ul>
-            <li>🚀 New product launches</li>
-            <li>💰 Exclusive deals and promotions</li>
-            <li>🏁 Performance tips and tricks</li>
-            <li>📅 Event announcements</li>
-          </ul>
-          <p>Thanks for being part of the FAS family!</p>
-          <hr style="margin: 2rem 0; border: none; border-top: 1px solid #ddd;">
-          <p style="font-size: 12px; color: #666;">
-            You can unsubscribe anytime by clicking the link in our emails.
-          </p>
-        </div>
-      `,
-    })
+    try {
+      const contextKey = `welcome-subscriber:${emailLower}`
+      const reservation = await reserveEmailLog({contextKey, to: emailLower, subject})
+      reservationLogId = reservation.logId
+      if (reservation.shouldSend) {
+        const response = await resend.emails.send({
+          from,
+          to: emailLower,
+          subject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #000;">Thanks for subscribing!</h1>
+              <p>Hi ${name || 'there'},</p>
+              <p>You're now subscribed to FAS Motorsports updates.</p>
+              <p><strong>You'll be the first to know about:</strong></p>
+              <ul>
+                <li>🚀 New product launches</li>
+                <li>💰 Exclusive deals and promotions</li>
+                <li>🏁 Performance tips and tricks</li>
+                <li>📅 Event announcements</li>
+              </ul>
+              <p>Thanks for being part of the FAS family!</p>
+              <hr style="margin: 2rem 0; border: none; border-top: 1px solid #ddd;">
+              <p style="font-size: 12px; color: #666;">
+                You can unsubscribe anytime by clicking the link in our emails.
+              </p>
+            </div>
+          `,
+        })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      }
+    } catch (emailError) {
+      await markEmailLogFailed(reservationLogId, emailError)
+      throw emailError
+    }
 
     return {
       statusCode: 200,

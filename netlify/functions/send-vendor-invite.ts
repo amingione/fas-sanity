@@ -5,6 +5,7 @@ import {Resend} from 'resend'
 import {triggerOnboardingCampaign} from '../lib/vendorOnboardingCampaign'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -276,22 +277,32 @@ const handler: Handler = async (event) => {
 
   const invitedAt = new Date().toISOString()
 
+  let reservationLogId: string | undefined
   try {
     const missing = getMissingResendFields({to: email, from: fromAddress, subject})
     if (missing.length) {
       throw new Error(`Missing email fields: ${missing.join(', ')}`)
     }
-    const result = await resendClient.emails.send({
-      from: fromAddress,
-      to: email,
-      subject,
-      html,
-      text,
-      replyTo: template?.replyTo,
-    })
+    const contextKey = `vendor-invite:${vendorId || 'unknown'}:${email.toLowerCase()}:${setupToken}`
+    const reservation = await reserveEmailLog({contextKey, to: email, subject})
+    reservationLogId = reservation.logId
+    let result: any = {error: undefined}
+    if (reservation.shouldSend) {
+      result = await resendClient.emails.send({
+        from: fromAddress,
+        to: email,
+        subject,
+        html,
+        text,
+        replyTo: template?.replyTo,
+      })
+      const resendId = (result as any)?.data?.id || (result as any)?.id || null
+      await markEmailLogSent(reservation.logId, resendId)
+    }
 
     const errorMessage = (result as any)?.error?.message || (result as any)?.message
     if (errorMessage) {
+      await markEmailLogFailed(reservation.logId, errorMessage)
       throw new Error(errorMessage)
     }
 
@@ -317,6 +328,7 @@ const handler: Handler = async (event) => {
       }),
     }
   } catch (error) {
+    await markEmailLogFailed(reservationLogId, error)
     console.error('[send-vendor-invite] send failed', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return {

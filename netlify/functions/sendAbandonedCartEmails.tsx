@@ -7,6 +7,7 @@ import type {CartItem as EmailCartItem} from '../emails/AbandonedCartEmail'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {buildAbandonedCartEmail} from '../lib/abandonedCartEmail'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 type CheckoutSessionDoc = {
   _id: string
@@ -245,6 +246,7 @@ const handler: Handler = async (event) => {
       }
     }
 
+    let reservationLogId: string | undefined
     try {
       const emailPayload = buildAbandonedCartEmail({
         customerName: checkout.customerName || 'Valued Customer',
@@ -262,25 +264,38 @@ const handler: Handler = async (event) => {
       }
       const html = await render(emailPayload.react)
 
-      const {data, error} = await resendClient.emails.send({
-        from: emailPayload.from,
+      const contextKey = `abandoned-cart:${checkout.sessionId || checkout._id}:${to.toLowerCase()}`
+      const reservation = await reserveEmailLog({
+        contextKey,
         to,
         subject: emailPayload.subject,
-        html,
-        tags: [
-          {name: 'type', value: 'abandoned_cart'},
-          {name: 'session_id', value: checkout.sessionId || checkout._id},
-        ],
       })
+      reservationLogId = reservation.logId
+      let resendId: string | undefined
+      if (reservation.shouldSend) {
+        const {data, error} = await resendClient.emails.send({
+          from: emailPayload.from,
+          to,
+          subject: emailPayload.subject,
+          html,
+          tags: [
+            {name: 'type', value: 'abandoned_cart'},
+            {name: 'session_id', value: checkout.sessionId || checkout._id},
+          ],
+        })
 
-      if (error) throw error
+        if (error) throw error
+
+        resendId = data?.id
+        await markEmailLogSent(reservation.logId, resendId)
+      }
 
       await sanity
         .patch(checkout._id)
         .set({
           recoveryEmailSent: true,
           recoveryEmailSentAt: new Date().toISOString(),
-          resendEmailId: data?.id,
+          ...(resendId ? {resendEmailId: resendId} : {}),
         })
         .unset(['emailError', 'emailErrorAt'])
         .commit({autoGenerateArrayKeys: true})
@@ -290,8 +305,11 @@ const handler: Handler = async (event) => {
       })
 
       sent += 1
-      console.log(`[sendAbandonedCartEmails] sent to ${to}`)
+      console.log(
+        `[sendAbandonedCartEmails] ${reservation.shouldSend ? 'sent' : 'skipped'} to ${to}`,
+      )
     } catch (err: any) {
+      await markEmailLogFailed(reservationLogId, err)
       failed += 1
       const message = err?.message || 'Failed to send abandoned cart email'
       console.error(`[sendAbandonedCartEmails] ${message}`, err)

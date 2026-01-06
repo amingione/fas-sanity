@@ -6,6 +6,7 @@ import {generateReferenceCode} from '../../shared/referenceCodes'
 import {applyInventoryChanges} from '../../shared/inventory'
 import {INVENTORY_DOCUMENT_TYPE} from '../../shared/docTypes'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const resendApiKey = resolveResendApiKey()
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
@@ -159,12 +160,23 @@ const handler = schedule('0 9 * * *', async () => {
     if (missing.length) {
       console.warn('inventoryReorderCheck: missing Resend fields', {missing})
     } else {
-      await resendClient.emails.send({
-        from: alertSender,
-        to: alertRecipient,
-        subject,
-        text: sections.join('\n\n'),
-      })
+      const contextKey = `inventory-reorder:${new Date().toISOString().slice(0, 10)}:${alertRecipient}`
+      const reservation = await reserveEmailLog({contextKey, to: alertRecipient, subject})
+      if (reservation.shouldSend) {
+        try {
+          const response = await resendClient.emails.send({
+            from: alertSender,
+            to: alertRecipient,
+            subject,
+            text: sections.join('\n\n'),
+          })
+          const resendId = (response as any)?.data?.id || (response as any)?.id || null
+          await markEmailLogSent(reservation.logId, resendId)
+        } catch (err) {
+          await markEmailLogFailed(reservation.logId, err)
+          throw err
+        }
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import {easypostRequest} from '../lib/easypostClient'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 type OrderDoc = {
   _id: string
@@ -172,6 +173,7 @@ export const handler: Handler = async (event) => {
       .commit({autoGenerateArrayKeys: true})
 
     if (resendClient && order.customerEmail) {
+      let reservationLogId: string | undefined
       try {
         const subject = `Refund processed for ${order.orderNumber || 'your order'}`
         const missing = getMissingResendFields({
@@ -183,13 +185,26 @@ export const handler: Handler = async (event) => {
           console.warn('refundOrder: missing Resend fields', {missing, orderId: order._id})
           throw new Error(`Missing email fields: ${missing.join(', ')}`)
         }
-        await resendClient.emails.send({
-          from: resendFrom,
+        const contextKey = `refund-order:${order._id}:${refund.id}`
+        const reservation = await reserveEmailLog({
+          contextKey,
           to: order.customerEmail,
           subject,
-          html: buildRefundEmail(order),
+          orderId: order._id,
         })
+        reservationLogId = reservation.logId
+        if (reservation.shouldSend) {
+          const response = await resendClient.emails.send({
+            from: resendFrom,
+            to: order.customerEmail,
+            subject,
+            html: buildRefundEmail(order),
+          })
+          const resendId = (response as any)?.data?.id || (response as any)?.id || null
+          await markEmailLogSent(reservation.logId, resendId)
+        }
       } catch (emailError) {
+        await markEmailLogFailed(reservationLogId, emailError)
         console.warn('refundOrder: failed to send refund email', emailError)
       }
     }

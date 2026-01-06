@@ -4,6 +4,7 @@ import {createClient} from '@sanity/client'
 import type {Handler} from '@netlify/functions'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const resend = new Resend(resolveResendApiKey()!)
 
@@ -281,20 +282,31 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    await resend.emails.send({
-      from,
-      to: toEmail,
-      subject,
-      html,
-      attachments: [
-        {
-          filename: pdfFilename,
-          content: Buffer.from(pdfBytes).toString('base64'),
-          path: undefined,
-          contentType: 'application/pdf',
-        },
-      ],
-    })
+    const contextKey = `quote-email:${quote._id}:${toEmail.toLowerCase()}`
+    const reservation = await reserveEmailLog({contextKey, to: toEmail, subject})
+    if (reservation.shouldSend) {
+      try {
+        const response = await resend.emails.send({
+          from,
+          to: toEmail,
+          subject,
+          html,
+          attachments: [
+            {
+              filename: pdfFilename,
+              content: Buffer.from(pdfBytes).toString('base64'),
+              path: undefined,
+              contentType: 'application/pdf',
+            },
+          ],
+        })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      } catch (err) {
+        await markEmailLogFailed(reservation.logId, err)
+        throw err
+      }
+    }
 
     return {statusCode: 200, body: JSON.stringify({message: 'Quote email sent', to: toEmail})}
   } catch (error: any) {

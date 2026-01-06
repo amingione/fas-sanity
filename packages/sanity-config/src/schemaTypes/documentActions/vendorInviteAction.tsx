@@ -161,12 +161,13 @@ export const sendVendorInviteAction: DocumentActionComponent = (props) => {
               <Text size={1} muted>
                 Last invite: {formatDateTime(invitedAt)}
               </Text>
-              <Checkbox
-                checked={resendConfirmed}
-                onChange={(event) => setResendConfirmed(event.currentTarget.checked)}
-              >
-                I want to resend this invite
-              </Checkbox>
+              <Flex gap={3} align="center">
+                <Checkbox
+                  checked={resendConfirmed}
+                  onChange={(event) => setResendConfirmed(event.currentTarget.checked)}
+                />
+                <Text size={1}>I want to resend this invite</Text>
+              </Flex>
             </Stack>
           </Card>
         )}

@@ -4,6 +4,7 @@ import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID,
@@ -71,7 +72,10 @@ const handler: Handler = async (event) => {
       return {statusCode: 400, body: JSON.stringify({error: 'Campaign content is empty'})}
     }
 
-    const fromEmail = campaign.fromEmail || 'noreply@updates.fasmotorsports.com'
+    const fromEmail =
+      campaign.fromEmail ||
+      process.env.RESEND_FROM ||
+      'noreply@updates.fasmotorsports.com'
     const fromName = campaign.fromName || 'FAS Motorsports'
     const from = `${fromName} <${fromEmail}>`
     const to = campaign.testEmail.trim()
@@ -96,18 +100,26 @@ const handler: Handler = async (event) => {
       }
     }
 
-    const result = await resend.emails.send({
-      from,
-      to,
-      subject: campaign.subject,
-      html,
-      text,
-      replyTo: campaign.replyTo || undefined,
-      headers: campaign.previewText ? {'X-Entity-Ref-ID': campaign.previewText} : undefined,
-    })
+    const contextKey = `send-email-test:${campaignId}:${to.toLowerCase()}`
+    const reservation = await reserveEmailLog({contextKey, to, subject: campaign.subject})
+    if (reservation.shouldSend) {
+      const result = await resend.emails.send({
+        from,
+        to,
+        subject: campaign.subject,
+        html,
+        text,
+        replyTo: campaign.replyTo || undefined,
+        headers: campaign.previewText ? {'X-Entity-Ref-ID': campaign.previewText} : undefined,
+      })
 
-    if (result.error) {
-      throw new Error(result.error.message)
+      if (result.error) {
+        await markEmailLogFailed(reservation.logId, result.error)
+        throw new Error(result.error.message)
+      }
+
+      const resendId = (result as any)?.data?.id || (result as any)?.id || null
+      await markEmailLogSent(reservation.logId, resendId)
     }
 
     return {

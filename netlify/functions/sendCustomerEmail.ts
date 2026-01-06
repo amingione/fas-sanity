@@ -1,7 +1,9 @@
 import type {Handler} from '@netlify/functions'
+import {createHash} from 'crypto'
 import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,23 +68,37 @@ const handler: Handler = async (event) => {
       }
     }
 
-    await resend.emails.send({
-      from: fromAddress,
-      to,
-      subject,
-      html: `<p>${html}</p><p style="font-size:12px;color:#94a3b8;">Template: ${template}</p>`,
-      attachments: attachments
-        .map((attachment: any) => {
-          const filename = typeof attachment.filename === 'string' ? attachment.filename : ''
-          const content = typeof attachment.content === 'string' ? attachment.content : ''
-          if (!filename || !content) return null
-          return {
-            filename,
-            content,
-          }
+    const payloadHash = createHash('sha256')
+      .update(`${subject}|${message}|${JSON.stringify(attachments)}`)
+      .digest('hex')
+    const contextKey = `sendCustomerEmail:${to.toLowerCase()}:${payloadHash}`
+    const reservation = await reserveEmailLog({contextKey, to, subject})
+    if (reservation.shouldSend) {
+      try {
+        const response = await resend.emails.send({
+          from: fromAddress,
+          to,
+          subject,
+          html: `<p>${html}</p><p style="font-size:12px;color:#94a3b8;">Template: ${template}</p>`,
+          attachments: attachments
+            .map((attachment: any) => {
+              const filename = typeof attachment.filename === 'string' ? attachment.filename : ''
+              const content = typeof attachment.content === 'string' ? attachment.content : ''
+              if (!filename || !content) return null
+              return {
+                filename,
+                content,
+              }
+            })
+            .filter(Boolean) as Array<{filename: string; content: string}>,
         })
-        .filter(Boolean) as Array<{filename: string; content: string}>,
-    })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      } catch (err) {
+        await markEmailLogFailed(reservation.logId, err)
+        throw err
+      }
+    }
 
     return {
       statusCode: 200,

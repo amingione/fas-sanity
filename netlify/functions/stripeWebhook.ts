@@ -80,6 +80,7 @@ import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../lib/stripeEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {ensureProductCodes} from '../../packages/sanity-config/src/utils/generateProductCodes'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 import {
   linkCheckoutSessionToCustomer,
   linkInvoiceToCustomer,
@@ -7189,14 +7190,19 @@ async function sendOrderConfirmationEmail(opts: {
     ? `Order Confirmation #${displayOrderNumber} – F.A.S. Motorsports`
     : 'Order Confirmation – F.A.S. Motorsports'
 
-  const from = 'orders@fasmotorsports.com'
+  const from =
+    process.env.FROM_EMAIL || process.env.RESEND_FROM || 'orders@fasmotorsports.com'
   const missing = getMissingResendFields({to, from, subject})
   if (missing.length) {
     console.warn('stripeWebhook: missing Resend fields', {missing, to})
     return
   }
 
-  await fetch('https://api.resend.com/emails', {
+  const contextKey = `order-confirmation:${orderNumber}:${to.toLowerCase()}`
+  const reservation = await reserveEmailLog({contextKey, to, subject})
+  if (!reservation.shouldSend) return
+
+  const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -7210,6 +7216,16 @@ async function sendOrderConfirmationEmail(opts: {
       text,
     }),
   })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    await markEmailLogFailed(reservation.logId, errorBody)
+    throw new Error(`Resend API error: ${errorBody}`)
+  }
+
+  const data = await response.json().catch(() => null)
+  const resendId = data?.data?.id || data?.id || null
+  await markEmailLogSent(reservation.logId, resendId)
 }
 
 // Manual checklist:

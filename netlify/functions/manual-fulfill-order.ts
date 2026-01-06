@@ -14,6 +14,7 @@ import {consumeInventoryForItems} from '../../shared/inventory'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const configuredOrigins = [
   process.env.CORS_ALLOW,
@@ -440,6 +441,7 @@ export const handler: Handler = async (event) => {
       : 'Simulation: customer email missing or invalid; no message would be sent.'
     emailDeliveryState = emailSent ? 'queued' : 'skipped'
   } else if (resend && emailTo) {
+    let reservationLogId: string | undefined
     try {
       const emailTimestamp = new Date().toISOString()
       const subject = `Your order ${displayOrderNumber} has shipped`
@@ -452,17 +454,32 @@ export const handler: Handler = async (event) => {
         log('warn', 'missing Resend fields', {orderId: baseId, missing})
         throw new Error(`Missing email fields: ${missing.join(', ')}`)
       }
-      const sendResult: any = await resend.emails.send({
-        from: resendFrom,
+      const contextKey = `manual-fulfill:${baseId}:${trackingNumber}:${forceResend ? 'force' : 'normal'}`
+      const reservation = await reserveEmailLog({
+        contextKey,
         to: emailTo,
         subject,
-        html: htmlBody,
-        text: textBody,
+        orderId: baseId,
       })
-      emailSent = true
-      emailMessage = `Shipping update sent to ${emailTo}.`
-      emailDeliveryState = 'queued'
-      resendResponseId = sendResult?.data?.id || sendResult?.id || null
+      reservationLogId = reservation.logId
+      if (reservation.shouldSend) {
+        const sendResult: any = await resend.emails.send({
+          from: resendFrom,
+          to: emailTo,
+          subject,
+          html: htmlBody,
+          text: textBody,
+        })
+        emailSent = true
+        emailMessage = `Shipping update sent to ${emailTo}.`
+        emailDeliveryState = 'queued'
+        resendResponseId = sendResult?.data?.id || sendResult?.id || null
+        await markEmailLogSent(reservation.logId, resendResponseId)
+      } else {
+        emailSent = false
+        emailMessage = `Shipping update already sent to ${emailTo}.`
+        emailDeliveryState = 'skipped'
+      }
       log('info', 'resend email queued', {
         orderId: baseId,
         trackingNumber,
@@ -475,6 +492,7 @@ export const handler: Handler = async (event) => {
       })
     } catch (err: any) {
       const errorTimestamp = new Date().toISOString()
+      await markEmailLogFailed(reservationLogId, err)
       log('error', 'resend email send failed', {
         orderId: baseId,
         trackingNumber,
