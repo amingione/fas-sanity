@@ -132,10 +132,11 @@ function ensureCleanWorkingTree() {
   }
 }
 
-async function runToolCommand(command, input, outputPath, log) {
-  log(`Running ${command}`)
+async function runToolCommand(command, args, input, outputPath, log) {
+  const argv = args && args.length > 0 ? ` ${args.join(' ')}` : ''
+  log(`Running ${command}${argv}`)
   await new Promise((resolve, reject) => {
-    const child = spawn(command, [], {stdio: ['pipe', 'pipe', 'pipe']})
+    const child = spawn(command, args || [], {stdio: ['pipe', 'pipe', 'pipe']})
     const outputStream = fs.createWriteStream(outputPath, {encoding: 'utf8'})
     let stderr = ''
 
@@ -223,10 +224,10 @@ async function main() {
     process.exit(3)
   }
 
-  await runToolCommand('gemini', promptContent, geminiOutputPath, log)
+  await runToolCommand('gemini', [], promptContent, geminiOutputPath, log)
   const geminiOutput = await fsp.readFile(geminiOutputPath, 'utf8')
 
-  await runToolCommand('claude', geminiOutput, claudeOutputPath, log)
+  await runToolCommand('claude', [], geminiOutput, claudeOutputPath, log)
   const claudeOutput = await fsp.readFile(claudeOutputPath, 'utf8')
 
   const codexInput = [
@@ -239,35 +240,7 @@ async function main() {
     claudeOutput,
   ].join('\n')
 
-  // Replace the runToolCommand call for codex with non-interactive spawn
-  log(`Running codex`)
-  await new Promise((resolve, reject) => {
-    const child = spawn('codex', ['--non-interactive'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: process.env,
-    })
-    const outputStream = fs.createWriteStream(codexPlanPath, {encoding: 'utf8'})
-    let stderr = ''
-
-    child.stdout.pipe(outputStream)
-    child.stderr.on('data', (chunk) => {
-      stderr += chunk.toString()
-    })
-    child.on('error', (error) => {
-      reject(error)
-    })
-    child.on('close', (code) => {
-      outputStream.end()
-      if (code !== 0) {
-        reject(new Error(`codex exited with code ${code}: ${stderr}`))
-        return
-      }
-      resolve()
-    })
-
-    child.stdin.write(codexInput)
-    child.stdin.end()
-  })
+  await runToolCommand('codex', ['exec', '-'], codexInput, codexPlanPath, log)
   log('Codex plan output saved.')
 
   const approvalPath = path.join(baseDir, 'contract', 'approval.md')

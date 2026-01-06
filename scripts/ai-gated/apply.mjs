@@ -90,10 +90,11 @@ function createLogger(logPath) {
   }
 }
 
-async function runToolCommand(command, input, outputPath, log) {
-  log(`Running ${command}`)
+async function runToolCommand(command, args, input, outputPath, log) {
+  const argv = args && args.length > 0 ? ` ${args.join(' ')}` : ''
+  log(`Running ${command}${argv}`)
   await new Promise((resolve, reject) => {
-    const child = spawn(command, [], {stdio: ['pipe', 'pipe', 'pipe']})
+    const child = spawn(command, args || [], {stdio: ['pipe', 'pipe', 'pipe']})
     const outputStream = fs.createWriteStream(outputPath, {encoding: 'utf8'})
     let stderr = ''
 
@@ -235,7 +236,7 @@ async function main() {
     codexPlan,
   ].join('\n')
 
-  await runToolCommand('codex', codexInput, codexApplyOutput, log)
+  await runToolCommand('codex', ['exec', '-'], codexInput, codexApplyOutput, log)
   log('Codex apply output saved.')
 
   const diffPath = path.join(baseDir, 'codex', 'apply', 'changes.diff')
