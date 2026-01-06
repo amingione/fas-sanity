@@ -441,7 +441,7 @@ export default defineType({
           title: 'Portal Login Email',
           type: 'string',
           validation: (Rule) => Rule.email(),
-          readOnly: true,
+          readOnly: false,
         }),
         defineField({
           name: 'userSub',
@@ -763,7 +763,9 @@ export default defineType({
           if (!customer.roles?.includes('vendor')) {
             return 'Linked customer must have "vendor" role.'
           }
-          const vendorEmail = (context?.document?.primaryContact as {email?: string} | undefined)?.email
+          const vendorEmail = (
+            context?.document?.primaryContact as {email?: string} | undefined
+          )?.email
             ?.toString()
             .trim()
             .toLowerCase()
