@@ -1,0 +1,1 @@
+Failure: pnpm run lint failed with exit code 1
