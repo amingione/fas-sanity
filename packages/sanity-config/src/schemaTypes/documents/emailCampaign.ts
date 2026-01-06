@@ -74,14 +74,14 @@ export default defineType({
       name: 'fromEmail',
       title: 'From Email',
       type: 'string',
-      initialValue: 'orders@fasmotorsports.com',
+      initialValue: 'orders@updates.fasmotorsports.com',
       validation: (Rule) => Rule.required().email(),
     }),
     defineField({
       name: 'replyTo',
       title: 'Reply-To Email',
       type: 'string',
-      description: 'Optional: Different email for replies',
+      initialValue: 'sales@fasmotorsports.com',
     }),
     defineField({
       name: 'segment',
@@ -445,7 +445,9 @@ export default defineType({
           ? `Scheduled ${new Date(scheduledSendDate).toLocaleDateString()}`
           : undefined
       const formatPercent = (value?: number) =>
-        typeof value === 'number' && Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : undefined
+        typeof value === 'number' && Number.isFinite(value)
+          ? `${(value * 100).toFixed(1)}%`
+          : undefined
       const openRateDisplay = formatPercent(openRate)
       const clickRateDisplay = formatPercent(clickRate)
       const metrics = [

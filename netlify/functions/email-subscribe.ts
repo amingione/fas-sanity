@@ -79,10 +79,7 @@ export const handler: Handler = async (event) => {
       if (nameParts.firstName && !existingCustomer?.firstName) patch.firstName = nameParts.firstName
       if (nameParts.lastName && !existingCustomer?.lastName) patch.lastName = nameParts.lastName
 
-      await sanityClient
-        .patch(existingCustomer._id)
-        .set(patch)
-        .commit()
+      await sanityClient.patch(existingCustomer._id).set(patch).commit()
 
       customerId = existingCustomer._id
     } else {
@@ -120,7 +117,10 @@ export const handler: Handler = async (event) => {
         console.warn('email-subscribe: General audience sync failed', syncResults.general.error)
       }
       if (!syncResults.subscribers.success) {
-        console.warn('email-subscribe: Subscribers audience sync failed', syncResults.subscribers.error)
+        console.warn(
+          'email-subscribe: Subscribers audience sync failed',
+          syncResults.subscribers.error,
+        )
       }
     } catch (resendError) {
       console.error('Resend error:', resendError)
@@ -129,7 +129,7 @@ export const handler: Handler = async (event) => {
 
     // Send welcome email
     try {
-      const from = 'FAS Motorsports <info@fasmotorsports.com>'
+      const from = 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
       const subject = 'Welcome to FAS Motorsports!'
       const missing = getMissingResendFields({to: emailLower, from, subject})
       if (missing.length) {

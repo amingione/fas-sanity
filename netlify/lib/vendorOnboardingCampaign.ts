@@ -13,8 +13,7 @@ const SITE_URL =
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
   ''
-const FROM_EMAIL =
-  process.env.RESEND_FROM || 'FAS Motorsports <noreply@fasmotorsports.com>'
+const FROM_EMAIL = process.env.RESEND_FROM || 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
 
 const sanityClient =
   projectId && dataset && token
@@ -129,7 +128,9 @@ export const runOnboardingCron = async () => {
     for (const email of campaign.emails || []) {
       if (!email?.active) continue
       if (email.emailNumber === 1) continue
-      const targetDate = new Date(Date.now() - (email.delayDays || 0) * 24 * 60 * 60 * 1000).toISOString()
+      const targetDate = new Date(
+        Date.now() - (email.delayDays || 0) * 24 * 60 * 60 * 1000,
+      ).toISOString()
 
       const vendors =
         (await sanityClient.fetch(

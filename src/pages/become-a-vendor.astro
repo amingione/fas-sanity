@@ -146,7 +146,8 @@ import Layout from '../layouts/Layout.astro'
 
           <label>
             <span>Additional Information</span>
-            <textarea name="additionalNotes" rows="4" placeholder="Tell us about your business..."></textarea>
+            <textarea name="additionalNotes" rows="4" placeholder="Tell us about your business..."
+            ></textarea>
           </label>
         </fieldset>
 
@@ -227,7 +228,7 @@ import Layout from '../layouts/Layout.astro'
             <p>Thank you for your interest in becoming a FAS Motorsports vendor.
             We'll review your application and get back to you within 2-3 business days.</p>
             <p>If you have any questions, please contact us at
-            <a href="mailto:wholesale@fasmotorsports.com">wholesale@fasmotorsports.com</a></p>
+            <a href="mailto:sales@fasmotorsports.com">sales@fasmotorsports.com</a></p>
           </div>
         `
         form.reset()
@@ -235,7 +236,8 @@ import Layout from '../layouts/Layout.astro'
         submitButton.disabled = false
         submitButton.textContent = 'Submit Application'
       } catch (error) {
-        const description = error instanceof Error ? error.message : 'Please try again or contact us directly.'
+        const description =
+          error instanceof Error ? error.message : 'Please try again or contact us directly.'
         message.innerHTML = `
           <div class="error-message">
             <h3>❌ Submission Failed</h3>

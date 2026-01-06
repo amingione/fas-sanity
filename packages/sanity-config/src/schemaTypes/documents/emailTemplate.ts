@@ -48,7 +48,7 @@ export default defineType({
     defineField({
       name: 'fromEmail',
       type: 'string',
-      initialValue: 'info@fasmotorsports.com',
+      initialValue: 'noreply@updates.fasmotorsports.com',
     }),
     defineField({
       name: 'replyTo',
