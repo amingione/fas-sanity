@@ -8,6 +8,15 @@ function normalizeNetlifyBase(value?: string | null): string | null {
   return trimmed.replace(/\/+$/, '')
 }
 
+function isLocalhostBase(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase()
+    return hostname === 'localhost' || hostname === '127.0.0.1'
+  } catch {
+    return false
+  }
+}
+
 function isHostedStudio(base: string): boolean {
   try {
     const hostname = new URL(base).hostname.toLowerCase()
@@ -52,7 +61,7 @@ function getNetlifyFunctionBaseCandidates(): string[] {
   // Prefer local Netlify dev when running Studio locally, then any stored success, then env/prod.
   const ordered = [
     ...(isLocalStudio ? localNetlifyBases : []),
-    ...storedBases,
+    ...(isLocalStudio ? storedBases : storedBases.filter((base) => !isLocalhostBase(base))),
     ...(envBase ? [envBase] : []),
     ...(currentOrigin ? [currentOrigin] : []),
     ...(!isLocalStudio ? localNetlifyBases : []),
