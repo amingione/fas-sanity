@@ -1,0 +1,8 @@
+{
+  "task": "test",
+  "prompt": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/docs/ai-gated/prompt/test.md",
+  "originalBranch": "main",
+  "originalHeadSha": "6da0e05953b5ecbd91729b057efe416870719277",
+  "autoBranch": "autoTest/test",
+  "timestamp": "2026-01-05T06:32:02.594Z"
+}
