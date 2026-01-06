@@ -14,7 +14,8 @@ const alertRecipient =
   process.env.ORDERS_ALERT_EMAIL ||
   process.env.SHIP_FROM_EMAIL ||
   ''
-const alertSender = process.env.RESEND_FROM || 'Inventory Alerts <alerts@fasmotorsports.com>'
+const alertSender =
+  process.env.RESEND_FROM || 'Inventory Alerts <noreply@updates.fasmotorsports.com>'
 
 function getSanityClient() {
   const projectId = process.env.SANITY_STUDIO_PROJECT_ID
@@ -85,9 +86,7 @@ const handler = schedule('0 9 * * *', async () => {
     const onHand = Number(record.quantityOnHand ?? 0)
     const reserved = Number(record.quantityReserved ?? 0)
     const available =
-      record.quantityAvailable !== undefined
-        ? Number(record.quantityAvailable)
-        : onHand - reserved
+      record.quantityAvailable !== undefined ? Number(record.quantityAvailable) : onHand - reserved
     const reorderPoint = Number(record.reorderPoint ?? 0)
     const reorderQuantity = Math.max(1, Number(record.reorderQuantity ?? 0))
     const needsAlert = available <= reorderPoint
@@ -141,9 +140,7 @@ const handler = schedule('0 9 * * *', async () => {
         `${record.product?.title || 'Product'} • Available ${Math.max(
           0,
           available,
-        )} / Reorder ${reorderPoint} • Supplier: ${
-          record.supplier?.companyName || 'n/a'
-        }`,
+        )} / Reorder ${reorderPoint} • Supplier: ${record.supplier?.companyName || 'n/a'}`,
       )
     }
   }
@@ -151,9 +148,7 @@ const handler = schedule('0 9 * * *', async () => {
   if (resendClient && alertRecipient && (manufacturingCreated.length || purchasedAlerts.length)) {
     const sections: string[] = []
     if (manufacturingCreated.length) {
-      sections.push(
-        `Manufacturing orders created:\n- ${manufacturingCreated.join('\n- ')}`,
-      )
+      sections.push(`Manufacturing orders created:\n- ${manufacturingCreated.join('\n- ')}`)
     }
     if (purchasedAlerts.length) {
       sections.push(`Purchase alerts:\n- ${purchasedAlerts.join('\n- ')}`)

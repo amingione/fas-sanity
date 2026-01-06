@@ -5,9 +5,7 @@ dotenv.config()
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID
 const dataset = process.env.SANITY_STUDIO_DATASET
-const token =
-  process.env.SANITY_API_TOKEN ||
-  ''
+const token = process.env.SANITY_API_TOKEN || ''
 
 const client =
   projectId && dataset && token
@@ -26,7 +24,7 @@ const commonFooter = `
   <div style="margin-top: 30px; padding-top: 20px; font-size: 13px; color: #666; text-align: center;">
     <p style="margin: 5px 0;"><strong>FAS Motorsports</strong></p>
     <p style="margin: 5px 0;">6161 Riverside Dr, Punta Gorda, FL 33982</p>
-    <p style="margin: 5px 0;">(812) 200-9012 | vendors@fasmotorsports.com</p>
+    <p style="margin: 5px 0;">(812) 200-9012 | sales@fasmotorsports.com</p>
     <p style="margin: 5px 0;"><a href="http://www.fasmotorsports.com" style="color: #ea1d26;">www.fasmotorsports.com</a></p>
   </div>`
 
@@ -259,7 +257,7 @@ const email5HTML = `
       </ul>
     </div>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="mailto:vendors@fasmotorsports.com?subject=Portal Feedback from {{companyName}}" style="display: inline-block; padding: 14px 28px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+      <a href="mailto:sales@fasmotorsports.com?subject=Portal Feedback from {{companyName}}" style="display: inline-block; padding: 14px 28px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
         Send Us Feedback
       </a>
     </div>
@@ -268,7 +266,7 @@ const email5HTML = `
       <h3 style="color: #ea1d26; margin-top: 0; text-align: center;">Need Help?</h3>
       <p style="text-align: center; margin-bottom: 20px;">We're always here to support you.</p>
       <div style="text-align: center;">
-        <p style="margin: 8px 0;"><strong>📧 Email:</strong> <a href="mailto:vendors@fasmotorsports.com" style="color: #ea1d26;">vendors@fasmotorsports.com</a></p>
+        <p style="margin: 8px 0;"><strong>📧 Email:</strong> <a href="mailto:sales@fasmotorsports.com" style="color: #ea1d26;">sales@fasmotorsports.com</a></p>
         <p style="margin: 8px 0;"><strong>📞 Phone:</strong> <a href="tel:8122009012" style="color: #ea1d26;">(812) 200-9012</a></p>
         <p style="margin: 8px 0;"><strong>💬 Portal:</strong> <a href="${PORTAL_URL}/vendor-portal/messages" style="color: #ea1d26;">Send us a message</a></p>
       </div>

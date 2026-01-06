@@ -3,7 +3,7 @@ export async function handler(event) {
     let payload = {}
     try {
       payload = event.body ? JSON.parse(event.body) : {}
-    } catch (parseError) {
+    } catch {
       return {
         statusCode: 400,
         body: JSON.stringify({error: 'Invalid JSON payload'}),
@@ -35,7 +35,7 @@ export async function handler(event) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'FAS Garage <support@updates.fasmotorsports.com>',
+        from: 'FAS Garage <noreply@updates.fasmotorsports.com>',
         to: [email], // <- use the form-submitted email safely here
         subject: '🚗 New Garage Submission',
         html: `

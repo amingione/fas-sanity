@@ -9,8 +9,7 @@ const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID,
   dataset: process.env.SANITY_STUDIO_DATASET,
   apiVersion: '2024-01-01',
-  token:
-    process.env.SANITY_API_TOKEN,
+  token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 })
 
@@ -72,7 +71,7 @@ const handler: Handler = async (event) => {
       return {statusCode: 400, body: JSON.stringify({error: 'Campaign content is empty'})}
     }
 
-    const fromEmail = campaign.fromEmail || 'orders@fasmotorsports.com'
+    const fromEmail = campaign.fromEmail || 'noreply@updates.fasmotorsports.com'
     const fromName = campaign.fromName || 'FAS Motorsports'
     const from = `${fromName} <${fromEmail}>`
     const to = campaign.testEmail.trim()

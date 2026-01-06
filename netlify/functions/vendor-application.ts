@@ -148,15 +148,15 @@ export const handler: Handler = async (event) => {
 
     // Send notification to FAS team
     try {
-      const from = 'FAS Motorsports <info@fasmotorsports.com>'
+      const from = 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
       const subject = `New Vendor Application: ${data.companyName}`
-      const missing = getMissingResendFields({to: 'amber@fasmotorsports.com', from, subject})
+      const missing = getMissingResendFields({to: 'sales@fasmotorsports.com', from, subject})
       if (missing.length) {
         throw new Error(`Missing email fields: ${missing.join(', ')}`)
       }
       await resend.emails.send({
         from,
-        to: 'amber@fasmotorsports.com',
+        to: 'sales@fasmotorsports.com',
         subject,
         html: `
           <div style="font-family: Arial, sans-serif;">
@@ -189,10 +189,14 @@ export const handler: Handler = async (event) => {
               <li><strong>How They Heard:</strong> ${data.referralSource || 'N/A'}</li>
             </ul>
             
-            ${data.additionalInfo ? `
+            ${
+              data.additionalInfo
+                ? `
               <h2>Additional Info</h2>
               <p>${data.additionalInfo}</p>
-            ` : ''}
+            `
+                : ''
+            }
             
             <hr style="margin: 2rem 0;">
             <p><a href="https://fasmotorsports.com/studio/desk/wholesale;vendorApplications;pending" style="background: #000; color: white; padding: 1rem 2rem; text-decoration: none; border-radius: 4px; display: inline-block;">Review in Studio →</a></p>

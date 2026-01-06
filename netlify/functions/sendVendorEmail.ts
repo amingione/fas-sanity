@@ -19,12 +19,20 @@ const handler: Handler = async (event) => {
   }
 
   if (event.httpMethod !== 'POST') {
-    return {statusCode: 405, headers: corsHeaders, body: JSON.stringify({error: 'Method not allowed'})}
+    return {
+      statusCode: 405,
+      headers: corsHeaders,
+      body: JSON.stringify({error: 'Method not allowed'}),
+    }
   }
 
   if (!resend) {
     logMissingResendApiKey('sendVendorEmail')
-    return {statusCode: 500, headers: corsHeaders, body: JSON.stringify({error: 'Missing RESEND_API_KEY'})}
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({error: 'Missing RESEND_API_KEY'}),
+    }
   }
 
   try {
@@ -34,20 +42,32 @@ const handler: Handler = async (event) => {
     const data = payload.data || {}
 
     if (!to) {
-      return {statusCode: 400, headers: corsHeaders, body: JSON.stringify({error: 'Recipient email required'})}
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({error: 'Recipient email required'}),
+      }
     }
     if (!template) {
-      return {statusCode: 400, headers: corsHeaders, body: JSON.stringify({error: 'Template is required'})}
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({error: 'Template is required'}),
+      }
     }
 
     if (!['welcome', 'rejection', 'quote', 'order'].includes(template)) {
-      return {statusCode: 400, headers: corsHeaders, body: JSON.stringify({error: 'Invalid template'})}
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({error: 'Invalid template'}),
+      }
     }
 
     const emailConfig = buildVendorEmail({template, data} as VendorEmailTemplateInput)
     const missing = getMissingResendFields({
       to,
-      from: 'FAS Motorsports <support@updates.fasmotorsports.com>',
+      from: 'FAS Motorsports <noreply@updates.fasmotorsports.com>',
       subject: emailConfig.subject,
     })
     if (missing.length) {
@@ -59,7 +79,7 @@ const handler: Handler = async (event) => {
     }
 
     await resend.emails.send({
-      from: 'FAS Motorsports <support@updates.fasmotorsports.com>',
+      from: 'FAS Motorsports <noreply@updates.fasmotorsports.com>',
       to,
       subject: emailConfig.subject,
       html: emailConfig.html,
