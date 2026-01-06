@@ -150,7 +150,6 @@ export async function ensureProductCodes(
 
   const normalizedSku = normalizeValue(product.sku)
   const normalizedMpn = normalizeValue(product.mpn)
-  const hasSku = normalizedSku !== ''
   const hasMpn = normalizedMpn !== ''
   const skuData = parseSku(normalizedSku)
   const mpnData = parseMpn(normalizedMpn)
