@@ -5,6 +5,7 @@ import {syncContact} from '../lib/resend/contacts'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
@@ -128,33 +129,43 @@ export const handler: Handler = async (event) => {
     }
 
     // Send welcome email
+    let reservationLogId: string | undefined
     try {
-      const from = 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
+      const from =
+        process.env.RESEND_FROM || 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
       const subject = 'Welcome to FAS Motorsports!'
       const missing = getMissingResendFields({to: emailLower, from, subject})
       if (missing.length) {
         throw new Error(`Missing email fields: ${missing.join(', ')}`)
       }
-      await resend.emails.send({
-        from,
-        to: emailLower,
-        subject,
-        html: `
-          <h1>Thanks for subscribing!</h1>
-          <p>Hi ${name || 'there'},</p>
-          <p>You're now subscribed to FAS Motorsports updates.</p>
-          <p>You'll be the first to know about:</p>
-          <ul>
-            <li>New product launches</li>
-            <li>Exclusive deals and promotions</li>
-            <li>Performance tips and tricks</li>
-            <li>Event announcements</li>
-          </ul>
-          <p>Thanks for being part of the FAS family!</p>
-          <p><small>You can unsubscribe anytime by clicking the link in our emails.</small></p>
-        `,
-      })
+      const contextKey = `email-subscribe:welcome:${emailLower}`
+      const reservation = await reserveEmailLog({contextKey, to: emailLower, subject})
+      reservationLogId = reservation.logId
+      if (reservation.shouldSend) {
+        const response = await resend.emails.send({
+          from,
+          to: emailLower,
+          subject,
+          html: `
+            <h1>Thanks for subscribing!</h1>
+            <p>Hi ${name || 'there'},</p>
+            <p>You're now subscribed to FAS Motorsports updates.</p>
+            <p>You'll be the first to know about:</p>
+            <ul>
+              <li>New product launches</li>
+              <li>Exclusive deals and promotions</li>
+              <li>Performance tips and tricks</li>
+              <li>Event announcements</li>
+            </ul>
+            <p>Thanks for being part of the FAS family!</p>
+            <p><small>You can unsubscribe anytime by clicking the link in our emails.</small></p>
+          `,
+        })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      }
     } catch (emailError) {
+      await markEmailLogFailed(reservationLogId, emailError)
       console.error('Welcome email error:', emailError)
       // Don't fail if email fails
     }

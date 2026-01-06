@@ -3,6 +3,7 @@ import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {buildVendorEmail, type VendorEmailTemplateInput} from '../lib/emailTemplates/vendorEmails'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,9 +66,11 @@ const handler: Handler = async (event) => {
     }
 
     const emailConfig = buildVendorEmail({template, data} as VendorEmailTemplateInput)
+    const from =
+      process.env.RESEND_FROM || 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
     const missing = getMissingResendFields({
       to,
-      from: 'FAS Motorsports <noreply@updates.fasmotorsports.com>',
+      from,
       subject: emailConfig.subject,
     })
     if (missing.length) {
@@ -78,12 +81,27 @@ const handler: Handler = async (event) => {
       }
     }
 
-    await resend.emails.send({
-      from: 'FAS Motorsports <noreply@updates.fasmotorsports.com>',
+    const contextKey = `sendVendorEmail:${template}:${to.toLowerCase()}`
+    const reservation = await reserveEmailLog({
+      contextKey,
       to,
       subject: emailConfig.subject,
-      html: emailConfig.html,
     })
+    if (reservation.shouldSend) {
+      try {
+        const response = await resend.emails.send({
+          from,
+          to,
+          subject: emailConfig.subject,
+          html: emailConfig.html,
+        })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      } catch (err) {
+        await markEmailLogFailed(reservation.logId, err)
+        throw err
+      }
+    }
 
     return {
       statusCode: 200,

@@ -5,6 +5,7 @@ import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {randomUUID} from 'crypto'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -72,6 +73,7 @@ export const handler: Handler = async (event) => {
   type CartItem = {sku?: string; name?: string; quantity?: number}
 
   let body: any = {}
+  let reservationLogId: string | undefined
   try {
     body = JSON.parse(event.body || '{}')
   } catch {
@@ -327,24 +329,32 @@ export const handler: Handler = async (event) => {
       if (missing.length) {
         throw new Error(`Missing email fields: ${missing.join(', ')}`)
       }
-      await resend.emails.send({
-        from,
-        to,
-        subject,
-        html: `
-          <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111">
-            <p>A freight quote task has been opened.</p>
-            <ul>
-              <li><strong>Contact:</strong> ${contact} ${email ? `&lt;${email}&gt;` : ''} ${phone ? `(${phone})` : ''}</li>
-              <li><strong>Destination:</strong> ${addr}</li>
-              <li><strong>Items:</strong> ${(doc.cart || []).map((c: any) => `${c.quantity || 1}× ${c.name || c.sku || 'Item'}`).join(', ')}</li>
-            </ul>
-            ${link ? `<p><a href="${link}" target="_blank">Open in Studio</a></p>` : ''}
-          </div>
-        `,
-      })
+      const contextKey = `freight-quote:${created?._id || orderId || 'unknown'}:${to}`
+      const reservation = await reserveEmailLog({contextKey, to, subject})
+      reservationLogId = reservation.logId
+      if (reservation.shouldSend) {
+        const response = await resend.emails.send({
+          from,
+          to,
+          subject,
+          html: `
+            <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111">
+              <p>A freight quote task has been opened.</p>
+              <ul>
+                <li><strong>Contact:</strong> ${contact} ${email ? `&lt;${email}&gt;` : ''} ${phone ? `(${phone})` : ''}</li>
+                <li><strong>Destination:</strong> ${addr}</li>
+                <li><strong>Items:</strong> ${(doc.cart || []).map((c: any) => `${c.quantity || 1}× ${c.name || c.sku || 'Item'}`).join(', ')}</li>
+              </ul>
+              ${link ? `<p><a href="${link}" target="_blank">Open in Studio</a></p>` : ''}
+            </div>
+          `,
+        })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      }
     }
   } catch (e) {
+    await markEmailLogFailed(reservationLogId, e)
     console.warn('requestFreightQuote: notify skipped/failed', e)
   }
 

@@ -41,6 +41,14 @@ export const sendCampaignEmail = async (params: {
 
   const {vendorId, campaignId, emailNumber, setupLink} = params
 
+  const existingLog = await sanityClient.fetch<number>(
+    `count(*[_type == "vendorEmailLog" && vendor._ref == $vendorId && campaign._ref == $campaignId && emailNumber == $emailNumber])`,
+    {vendorId, campaignId, emailNumber},
+  )
+  if (existingLog > 0) {
+    return {skipped: true}
+  }
+
   const campaign = await sanityClient.fetch(
     `*[_type == "emailCampaign" && _id == $campaignId][0]{emails}`,
     {campaignId},

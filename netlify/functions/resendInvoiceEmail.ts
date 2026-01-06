@@ -8,6 +8,7 @@ import {fetchPrintSettings} from '../lib/printSettings'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 // --- CORS (more permissive localhost-aware)
 const DEFAULT_ORIGINS = (
@@ -369,7 +370,8 @@ const handler: Handler = async (event) => {
       </div>
     `
 
-    const from = 'FAS Motorsports <billing@updates.fasmotorsports.com>'
+    const from =
+      process.env.RESEND_FROM || 'FAS Motorsports <billing@updates.fasmotorsports.com>'
     const subject = `Your Invoice${invoice.invoiceNumber ? ' #' + invoice.invoiceNumber : ''}`
     const missing = getMissingResendFields({to: email, from, subject})
     if (missing.length) {
@@ -380,21 +382,32 @@ const handler: Handler = async (event) => {
       }
     }
 
-    await resend.emails.send({
-      from,
-      to: email,
-      subject,
-      html,
-      text: `Your invoice${invoice.invoiceNumber ? ' #' + invoice.invoiceNumber : ''} is attached. ${payUrl ? 'Pay securely: ' + payUrl : ''}`,
-      attachments: [
-        {
-          filename: `invoice-${invoice.invoiceNumber || invoiceId}.pdf`,
-          content: pdfResult.base64,
-          contentType: 'application/pdf',
-          encoding: 'base64',
-        } as any,
-      ],
-    })
+    const contextKey = `invoice-email:${invoiceId}:${email.toLowerCase()}`
+    const reservation = await reserveEmailLog({contextKey, to: email, subject})
+    if (reservation.shouldSend) {
+      try {
+        const response = await resend.emails.send({
+          from,
+          to: email,
+          subject,
+          html,
+          text: `Your invoice${invoice.invoiceNumber ? ' #' + invoice.invoiceNumber : ''} is attached. ${payUrl ? 'Pay securely: ' + payUrl : ''}`,
+          attachments: [
+            {
+              filename: `invoice-${invoice.invoiceNumber || invoiceId}.pdf`,
+              content: pdfResult.base64,
+              contentType: 'application/pdf',
+              encoding: 'base64',
+            } as any,
+          ],
+        })
+        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        await markEmailLogSent(reservation.logId, resendId)
+      } catch (err) {
+        await markEmailLogFailed(reservation.logId, err)
+        throw err
+      }
+    }
 
     return {
       statusCode: 200,

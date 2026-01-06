@@ -8,6 +8,7 @@ import {getEasyPostClient, resolveDimensions, resolveWeight} from '../lib/easypo
 import {getEasyPostFromAddress} from '../lib/ship-from'
 import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 import {getMissingResendFields} from '../lib/resendValidation'
+import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
 
 type OrderCartItem = {
   name?: string | null
@@ -310,6 +311,7 @@ export const handler: Handler = async (event) => {
       .commit({autoGenerateArrayKeys: true})
 
     if (resendClient && order.customerEmail) {
+      let reservationLogId: string | undefined
       try {
         const subject = `Your order ${order.orderNumber || ''} has shipped`
         const missing = getMissingResendFields({
@@ -321,16 +323,29 @@ export const handler: Handler = async (event) => {
           console.warn('fulfillOrder: missing Resend fields', {missing, orderId: order._id})
           throw new Error(`Missing email fields: ${missing.join(', ')}`)
         }
-        await resendClient.emails.send({
-          from: resendFrom,
+        const contextKey = `fulfill-order:${order._id}:${trackingCode || 'missing'}`
+        const reservation = await reserveEmailLog({
+          contextKey,
           to: order.customerEmail,
           subject,
-          html: buildTrackingEmailHtml(order, {
-            trackingUrl,
-            trackingCode: trackingCode || undefined,
-          }),
+          orderId: order._id,
         })
+        reservationLogId = reservation.logId
+        if (reservation.shouldSend) {
+          const response = await resendClient.emails.send({
+            from: resendFrom,
+            to: order.customerEmail,
+            subject,
+            html: buildTrackingEmailHtml(order, {
+              trackingUrl,
+              trackingCode: trackingCode || undefined,
+            }),
+          })
+          const resendId = (response as any)?.data?.id || (response as any)?.id || null
+          await markEmailLogSent(reservation.logId, resendId)
+        }
       } catch (emailError) {
+        await markEmailLogFailed(reservationLogId, emailError)
         console.warn('fulfillOrder: failed to send tracking email', emailError)
       }
     }
