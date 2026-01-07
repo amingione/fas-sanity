@@ -1,5 +1,6 @@
 import {useState} from 'react'
 import {Box, Button, Flex, Select, Stack, Text, TextArea, TextInput, useToast} from '@sanity/ui'
+import type {SanityClient} from '@sanity/client'
 import type {DocumentActionComponent} from 'sanity'
 import {useClient, useCurrentUser} from 'sanity'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
@@ -45,6 +46,14 @@ type VendorApplicationDoc = {
   applicationNumber?: string
 }
 
+type CustomerDoc = {
+  _id: string
+  email?: string | null
+  roles?: string[] | null
+  customerType?: string | null
+  name?: string | null
+}
+
 const useVendorApplication = (props: any): VendorApplicationDoc | null => {
   const doc = (props?.draft || props?.published) as VendorApplicationDoc | null
   if (!doc || doc._type !== 'vendorApplication') return null
@@ -66,6 +75,55 @@ const sendVendorEmail = async (
   } catch (error) {
     console.warn('sendVendorEmail failed', error)
   }
+}
+
+const normalizeEmail = (value?: string) => value?.trim().toLowerCase() || ''
+
+const ensureVendorRoles = (customer: CustomerDoc) => {
+  const roles = Array.isArray(customer.roles) ? customer.roles.slice() : []
+  const hasCustomerRole = roles.includes('customer')
+  const hasVendorRole = roles.includes('vendor')
+  if (!hasVendorRole) roles.push('vendor')
+
+  let customerType = customer.customerType || null
+  if (!customerType || customerType === 'retail' || customerType === 'in-store') {
+    customerType = hasCustomerRole ? 'both' : 'vendor'
+  }
+  if (customerType === 'vendor' && hasCustomerRole) customerType = 'both'
+
+  const patch: Record<string, any> = {}
+  if (!hasVendorRole) patch.roles = roles
+  if (customerType && customerType !== customer.customerType) patch.customerType = customerType
+  return patch
+}
+
+const ensureCustomerForVendor = async (client: SanityClient, doc: VendorApplicationDoc) => {
+  const email = normalizeEmail(doc.email)
+  if (!email) throw new Error('Vendor email is missing')
+
+  const existing = await client.fetch<CustomerDoc | null>(
+    '*[_type == "customer" && lower(email) == $email][0]{_id, email, roles, customerType, name}',
+    {email},
+  )
+
+  if (existing?._id) {
+    const patch = ensureVendorRoles(existing)
+    if (Object.keys(patch).length) {
+      await client.patch(existing._id).set(patch).commit()
+    }
+    return {customerId: existing._id, email: existing.email || email}
+  }
+
+  const name = doc.contactName || doc.companyName || email
+  const created = await client.create({
+    _type: 'customer',
+    email,
+    name,
+    roles: ['customer', 'vendor'],
+    customerType: 'vendor',
+  })
+
+  return {customerId: created._id, email}
 }
 
 export const approveVendorApplicationAction: DocumentActionComponent = (props) => {
@@ -103,6 +161,7 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
 
     setBusy(true)
     try {
+      const customer = await ensureCustomerForVendor(client, doc)
       const vendorNumber = await generateReferenceCode(client, {
         prefix: 'VEN-',
         typeName: 'vendor',
@@ -130,7 +189,7 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
         primaryContact: {
           name: doc.contactName,
           title: doc.contactTitle,
-          email: doc.email,
+          email: customer.email,
           phone: doc.phone,
           mobile: doc.alternatePhone,
         },
@@ -145,13 +204,17 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
         minimumOrderAmount: Number(minimumOrderAmount) || 500,
         allowBackorders: true,
         autoApproveOrders: false,
-        portalAccess: {enabled: false},
+        portalAccess: {enabled: false, email: customer.email},
         portalUsers: [],
         accountManager: accountManager || reviewer,
         onboardedAt: now,
         totalOrders: 0,
         totalRevenue: 0,
         internalNotes: doc.internalNotes || undefined,
+        customerRef: {
+          _type: 'reference',
+          _ref: customer.customerId,
+        },
         applicationRef: {
           _type: 'reference',
           _ref: baseId,

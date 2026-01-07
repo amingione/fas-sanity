@@ -1,0 +1,204 @@
+[
+  {
+    "_createdAt": "2025-12-05T06:09:20Z",
+    "_id": "5EUpQzG2AQi15vZWihu9kE",
+    "_rev": "uhI195ZWWSrEU1zA3FR8Vh",
+    "_system": {
+      "base": {
+        "id": "5EUpQzG2AQi15vZWihu9kE",
+        "rev": "5EUpQzG2AQi15vZWihu9gQ"
+      }
+    },
+    "_type": "order",
+    "_updatedAt": "2025-12-23T10:32:37Z",
+    "amountShipping": 0,
+    "amountSubtotal": 4379.969999999999,
+    "amountTax": 0,
+    "attribution": {
+      "capturedAt": "2025-12-23T10:32:37.263Z",
+      "medium": "none",
+      "source": "direct"
+    },
+    "cart": [
+      {
+        "_key": "9cd5f541-3483-4754-87c4-0f9865d3955d",
+        "_type": "orderCartItem",
+        "categories": [
+          "Performance Upgrades",
+          "Custom Fabrication"
+        ],
+        "id": "a05acd88-0ea9-4aaf-8f78-cdc322953948",
+        "lineTotal": 1599.99,
+        "metadataEntries": [
+          {
+            "_key": "0865iJGdVaTjjxrm44Ga6P",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_sku",
+            "source": "derived",
+            "value": "PR-RM6S-FAS"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44Ga7c",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_slug",
+            "source": "derived",
+            "value": "2020-6-7l-powerstroke-piping-kit"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44Ga8p",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_product_ref",
+            "source": "derived",
+            "value": "a05acd88-0ea9-4aaf-8f78-cdc322953948"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44GaA2",
+            "_type": "orderCartItemMeta",
+            "key": "validation_issue",
+            "source": "derived",
+            "value": "Missing selection for Type"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44GaBF",
+            "_type": "orderCartItemMeta",
+            "key": "validation_issue",
+            "source": "derived",
+            "value": "Missing selection for Filter"
+          }
+        ],
+        "price": 1599.99,
+        "productRef": {
+          "_ref": "a05acd88-0ea9-4aaf-8f78-cdc322953948",
+          "_type": "reference"
+        },
+        "productSlug": "2020-6-7l-powerstroke-piping-kit",
+        "quantity": 1,
+        "sku": "PR-RM6S-FAS",
+        "total": 1599.99,
+        "validationIssues": [
+          "Missing selection for Type",
+          "Missing selection for Filter"
+        ]
+      },
+      {
+        "_key": "e7ceb89f-2456-4a6f-add4-970dca6c90c6",
+        "_type": "orderCartItem",
+        "categories": [
+          "Billet Parts"
+        ],
+        "id": "product-5625ef16-15f4-4848-a1a5-ef870588b09b",
+        "lineTotal": 699.99,
+        "metadataEntries": [
+          {
+            "_key": "0865iJGdVaTjjxrm44GaCS",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_sku",
+            "source": "derived",
+            "value": "HC-PDJW-FAS"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44GaDf",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_slug",
+            "source": "derived",
+            "value": "fas-motorsports-108mm-billet-throttle-body"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44GaEs",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_product_ref",
+            "source": "derived",
+            "value": "drafts.product-5625ef16-15f4-4848-a1a5-ef870588b09b"
+          }
+        ],
+        "price": 699.99,
+        "productRef": {
+          "_ref": "drafts.product-5625ef16-15f4-4848-a1a5-ef870588b09b",
+          "_type": "reference"
+        },
+        "productSlug": "fas-motorsports-108mm-billet-throttle-body",
+        "quantity": 1,
+        "sku": "HC-PDJW-FAS",
+        "total": 699.99
+      },
+      {
+        "_key": "29c230e6-4e7f-4daf-b67b-e07e008c0a53",
+        "_type": "orderCartItem",
+        "categories": [
+          "Billet Parts"
+        ],
+        "id": "d195367f-a44c-4126-b8bb-254fd09f6482",
+        "lineTotal": 2079.99,
+        "metadataEntries": [
+          {
+            "_key": "0865iJGdVaTjjxrm44GaG5",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_sku",
+            "source": "derived",
+            "value": "HC-PYAY-FAS"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44GaHI",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_slug",
+            "source": "derived",
+            "value": "2-4l-hellcat-130mm-billet-supercharger-snout-and-130mm-throttle-body"
+          },
+          {
+            "_key": "0865iJGdVaTjjxrm44GaIV",
+            "_type": "orderCartItemMeta",
+            "key": "sanity_product_ref",
+            "source": "derived",
+            "value": "d195367f-a44c-4126-b8bb-254fd09f6482"
+          }
+        ],
+        "price": 2079.99,
+        "productRef": {
+          "_ref": "d195367f-a44c-4126-b8bb-254fd09f6482",
+          "_type": "reference"
+        },
+        "productSlug": "2-4l-hellcat-130mm-billet-supercharger-snout-and-130mm-throttle-body",
+        "quantity": 1,
+        "sku": "HC-PYAY-FAS",
+        "total": 2079.99
+      }
+    ],
+    "createdAt": "2025-12-05T06:09:19.987Z",
+    "currency": "USD",
+    "customerEmail": "ambermingione@gmail.com",
+    "customerName": "Amber Mingione",
+    "customerRef": {
+      "_ref": "2a49d2ed-aeba-4abe-9738-8e66f2fcfbbb",
+      "_type": "reference"
+    },
+    "orderDate": "2025-12-05T06:09:19.987Z",
+    "orderNumber": "FAS-959987",
+    "orderType": "wholesale",
+    "packageDimensions": {
+      "height": 6,
+      "length": 12,
+      "width": 9
+    },
+    "paymentStatus": "pending",
+    "slug": {
+      "_type": "slug",
+      "current": "fas-959987"
+    },
+    "source": "vendor-portal",
+    "status": "cancelled",
+    "totalAmount": 4379.969999999999,
+    "wholesaleDetails": {
+      "notes": null,
+      "poNumber": null,
+      "pricingTier": "standard",
+      "vendor": {
+        "_ref": "1a38e652-8075-4157-9cdf-148fa2bebeac",
+        "_type": "reference"
+      },
+      "vendorId": "1a38e652-8075-4157-9cdf-148fa2bebeac",
+      "vendorName": "Launchwell Brands",
+      "vendorTier": "standard"
+    },
+    "wholesaleWorkflowStatus": "cancelled"
+  }
+]

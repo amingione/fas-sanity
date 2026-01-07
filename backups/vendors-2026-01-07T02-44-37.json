@@ -1,0 +1,238 @@
+[
+  {
+    "_createdAt": "2025-04-11T14:42:45Z",
+    "_id": "1a38e652-8075-4157-9cdf-148fa2bebeac",
+    "_rev": "ugQNfkLHeGvjlhDzu1nXhT",
+    "_system": {
+      "base": {
+        "id": "1a38e652-8075-4157-9cdf-148fa2bebeac",
+        "rev": "ugQNfkLHeGvjlhDzu1m6RF"
+      }
+    },
+    "_type": "vendor",
+    "_updatedAt": "2026-01-07T02:33:51Z",
+    "accountManager": "Amber Mingione",
+    "accountingContact": {
+      "email": "ambermingione@gmail.com",
+      "name": "Amber Mingione",
+      "phone": "2392924303"
+    },
+    "active": true,
+    "allowBackorders": true,
+    "autoApproveOrders": true,
+    "businessAddress": {
+      "city": "Punta Gorda",
+      "country": "United States",
+      "state": "Florida",
+      "street": "6161 Riverside Drive",
+      "zip": "33982"
+    },
+    "businessType": "wholesaler",
+    "companyName": "LaunchWell Brands",
+    "creditLimit": 1000000,
+    "customerRef": {
+      "_ref": "2a49d2ed-aeba-4abe-9738-8e66f2fcfbbb",
+      "_type": "reference"
+    },
+    "description": "LaunchWell Brands is a full-service web development, content management, and marketing partner focused on helping performance and automotive brands grow online. It combines modern web technology, strategic content, and data-informed marketing to build, optimize, and scale high-converting digital experiences for merchants and manufacturers.\n\nCompany summary\nLaunchWell Brands provides website development, ecommerce implementation, and ongoing content management tailored to brands that want a stronger, more profitable online presence. The team supports everything from initial builds and redesigns to continuous optimization, campaign support, and day-to-day site updates.\n\nServices and capabilities\nCore capabilities typically include custom web development, SEO-focused content production, and performance marketing strategy across channels like search, social, and email. LaunchWell Brands also acts as an embedded digital partner, coordinating creative, technical, and analytics work so brands can focus on product and operations.\n\nValue to FAS Motorsports\nAs a vendor, LaunchWell Brands supports FAS Motorsports with specialized web, content, and marketing services tailored to automotive customers and complex product catalogs. This partnership helps ensure product pages, campaigns, and site experiences are fast, on-brand, and conversion-focused across current and future initiatives.",
+    "displayName": "Launchwell Brands",
+    "internalNotes": "they are ass gholes, ",
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-9cfa89bf56275d31df046b5028efb07da10b69e4-500x500-png",
+        "_type": "reference"
+      }
+    },
+    "notificationPreferences": {
+      "emailInvoices": true,
+      "emailMessages": true,
+      "emailOrders": true,
+      "emailPayments": true,
+      "smsNotifications": true,
+      "smsPhone": "2392924303"
+    },
+    "onboardedAt": "2025-12-03T22:50:00.000Z",
+    "passwordHash": "$2b$10$nACUFZRDveSqEtHPYC1d3eqr1VzIXKOUzmDOzl/hMpWwRRHQ0rUh2",
+    "paymentTerms": "due_on_receipt",
+    "portalAccess": {
+      "email": "ambermingione@gmail.com",
+      "enabled": true,
+      "invitedAt": "2025-12-03T17:46:06.599Z",
+      "lastLogin": "2026-01-07T02:33:51.822Z",
+      "permissions": [
+        "view_own_orders",
+        "create_wholesale_orders",
+        "view_own_quotes",
+        "view_wholesale_catalog",
+        "send_support_messages"
+      ]
+    },
+    "portalUsers": [
+      {
+        "_key": "12eb19989b18",
+        "_type": "portalUser",
+        "active": true,
+        "email": "ambermingione@gmail.com",
+        "name": "Amber Mingione",
+        "role": "Ordering"
+      }
+    ],
+    "preferredVendor": true,
+    "pricingTier": "platinum",
+    "primaryContact": {
+      "email": "ambermingione@gmail.com",
+      "mobile": "2392924303",
+      "name": "Amber Mingione",
+      "phone": "8122009012",
+      "title": "Owner"
+    },
+    "rating": 1,
+    "roles": [
+      "vendor",
+      "customer",
+      "admin"
+    ],
+    "shippingAddress": {
+      "city": "Punta Gorda",
+      "country": "United States",
+      "state": "Florida",
+      "street": "6161 Riverside Drive",
+      "zip": "33982"
+    },
+    "shippingAddresses": [
+      {
+        "_key": "m0vuBZO5SDdbCbNZN4aflh",
+        "address2": "",
+        "city": "Punta Gorda",
+        "country": "USA",
+        "isDefault": true,
+        "label": "LaunchWell",
+        "state": "Florida",
+        "street": "6161 Riverside Drive",
+        "zip": "33982"
+      }
+    ],
+    "slug": {
+      "_type": "slug",
+      "current": "launchwell-brands"
+    },
+    "status": "active",
+    "tags": [
+      "vendor"
+    ],
+    "taxExempt": true,
+    "vendorNumber": "VEN-202",
+    "website": "https://launchwellbrands.com",
+    "yearsInBusiness": 26
+  },
+  {
+    "_createdAt": "2025-12-21T20:52:57Z",
+    "_id": "73831935-4be7-4352-abe5-2a810f559aa1",
+    "_rev": "V0GRC4Tle9y4FQBL5OrYKK",
+    "_system": {
+      "base": {
+        "id": "73831935-4be7-4352-abe5-2a810f559aa1",
+        "rev": "YZWBAGJtM0BNeKybKZty8b"
+      }
+    },
+    "_type": "vendor",
+    "_updatedAt": "2026-01-07T02:08:59Z",
+    "accountManager": "Nico Mingione",
+    "accountingContact": {
+      "email": "sales@fullblown-performance.com",
+      "name": "Alex Valenzuela",
+      "phone": "8443271320"
+    },
+    "active": true,
+    "allowBackorders": true,
+    "autoApproveOrders": true,
+    "businessAddress": {
+      "city": "Los Angeles",
+      "country": "USA",
+      "state": "CA",
+      "street": "2945 S. Western Avenue",
+      "zip": "90018"
+    },
+    "businessType": "wholesaler",
+    "companyName": "Alex Valenzuela or Christian Villegas",
+    "currentBalance": 0,
+    "customDiscountPercentage": 20,
+    "description": "Fullblown Performance is a premier performance shop located in the heart of Los Angeles, California. Known for pushing the limits of speed and power, we have built a solid reputation among California’s car enthusiasts and gearheads from across the country. Whether you're looking for more HORSEPOWER, improved drivability, or high-performance upgrades, Fullblown Performance is your one-stop shop for all things automotive!",
+    "displayName": "Full Blown Performance",
+    "featured": false,
+    "logo": {
+      "_type": "image",
+      "asset": {
+        "_ref": "image-2d7d14cc1f1a978c2be3769b8e3fc9350fd1b391-342x342-heif",
+        "_type": "reference"
+      }
+    },
+    "notificationPreferences": {
+      "browserNotifications": false,
+      "emailInvoices": true,
+      "emailMessages": true,
+      "emailOrders": true,
+      "emailPayments": true,
+      "smsNotifications": false
+    },
+    "passwordHash": "$2b$10$USz7ADxLNTV/2.0DGStTS.eFkizgrcFEUIdHaEfYEBrvM9C.2N8zi",
+    "passwordResetExpires": null,
+    "passwordResetToken": null,
+    "paymentTerms": "due_on_receipt",
+    "portalAccess": {
+      "email": "sales@fullblown-performance.com",
+      "enabled": true,
+      "invitedAt": "2026-01-06T19:04:11.250Z",
+      "lastLogin": "2026-01-07T02:08:18.527Z",
+      "permissions": [
+        "view_own_orders",
+        "create_wholesale_orders",
+        "view_own_quotes",
+        "view_wholesale_catalog",
+        "send_support_messages"
+      ],
+      "setupToken": "f80c694da574b1333bb1ed08dc1a512eca78d7fde7a8a83abe139ab50fcf77c9",
+      "setupTokenExpiry": "2026-01-07T19:04:11.248Z"
+    },
+    "portalEnabled": true,
+    "portalUsers": [
+      {
+        "_key": "cabcd1ebe713",
+        "_type": "portalUser",
+        "active": true,
+        "email": "sales@fullblown-performance.com",
+        "name": "Alex Valenzuela",
+        "role": "Ordering"
+      }
+    ],
+    "preferredVendor": false,
+    "pricingTier": "custom",
+    "primaryContact": {
+      "email": "sales@fullblown-performance.com",
+      "name": "Alex Valenzuela",
+      "phone": "8443271320",
+      "title": "owner"
+    },
+    "roles": [
+      "vendor"
+    ],
+    "shippingAddress": {
+      "city": "Los Angeles",
+      "country": "USA",
+      "state": "CA",
+      "street": "2945 S. Western Avenue",
+      "zip": "90018"
+    },
+    "slug": {
+      "_type": "slug",
+      "current": "full-blown-performance"
+    },
+    "status": "active",
+    "taxExempt": true,
+    "totalOrders": 0,
+    "totalRevenue": 0,
+    "vendorNumber": "VEN-262",
+    "website": "https://www.fullblown-performance.com/"
+  }
+]
