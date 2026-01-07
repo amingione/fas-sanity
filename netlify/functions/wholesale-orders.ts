@@ -100,20 +100,30 @@ export const handler: Handler = async (event) => {
     const totals = calculateTotals(cart, {shipping, taxRate})
     const client = ensureSanityClient()
 
+    const customerRef = vendor.customerRef?._ref
+    if (!customerRef) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({error: 'Vendor customer reference missing'}),
+      }
+    }
+
     const orderNumber = await generateWholesaleOrderNumber(client)
     const nowIso = new Date().toISOString()
     const orderDoc = {
       _type: 'order',
       orderNumber,
       orderType: 'wholesale',
-      status: 'paid',
+      status: 'pending',
+      paymentStatus: 'unpaid',
       currency: 'USD',
       wholesaleDetails: {
         workflowStatus: 'requested',
       },
       customerName: vendor.companyName,
       customerEmail: vendor.portalAccess?.email || vendor.primaryContact?.email,
-      customerRef: {_type: 'reference', _ref: vendor._id},
+      customerRef: {_type: 'reference', _ref: customerRef},
       cart: buildOrderCart(cart),
       amountSubtotal: totals.subtotal,
       amountTax: totals.tax,

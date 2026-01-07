@@ -145,7 +145,7 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
         minimumOrderAmount: Number(minimumOrderAmount) || 500,
         allowBackorders: true,
         autoApproveOrders: false,
-        portalEnabled: false,
+        portalAccess: {enabled: false},
         portalUsers: [],
         accountManager: accountManager || reviewer,
         onboardedAt: now,
@@ -180,6 +180,7 @@ export const approveVendorApplicationAction: DocumentActionComponent = (props) =
           pricingTier,
           paymentTerms,
           creditLimit: Number(creditLimit) || undefined,
+          portalAccessEnabled: false,
           accountManager: accountManager || reviewer,
         },
       })

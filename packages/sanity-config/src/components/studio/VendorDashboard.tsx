@@ -171,7 +171,8 @@ const VendorDashboard: ComponentType<VendorDashboardProps> = (props) => {
                 Minimum order: <strong>{formatCurrency(vendor?.minimumOrderAmount)}</strong>
               </Text>
               <Text size={1}>
-                Portal access: <strong>{vendor?.portalEnabled ? 'Enabled' : 'Disabled'}</strong>
+                Portal access:{' '}
+                <strong>{vendor?.portalAccess?.enabled ? 'Enabled' : 'Disabled'}</strong>
               </Text>
             </Stack>
           </Card>

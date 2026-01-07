@@ -574,23 +574,38 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .component(WholesaleOrdersPane as ComponentType),
             ),
           S.listItem()
-            .id('wholesale-orders-pending')
-            .title('Pending Review')
+            .id('wholesale-orders-requested')
+            .title('Requested')
             .icon(ClockIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
-                .title('Pending Wholesale Orders')
+                .title('Requested Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "pending"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "requested"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
+            ),
+          S.listItem()
+            .id('wholesale-orders-pending-approval')
+            .title('Pending Approval')
+            .icon(ClockIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('order')
+                .title('Pending Approval')
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "pending_approval"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
           S.listItem()
             .id('wholesale-orders-approved')
-            .title('Approved - Awaiting Payment')
+            .title('Approved')
             .icon(CheckmarkCircleIcon)
             .child(
               S.documentList()
@@ -604,46 +619,76 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
           S.listItem()
-            .id('wholesale-orders-paid')
-            .title('Paid - Ready to Fulfill')
-            .icon(CreditCardIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('order')
-                .title('Paid Wholesale Orders')
-                .filter(
-                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "paid"',
-                )
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
-                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
-            ),
-          S.listItem()
-            .id('wholesale-orders-partial')
-            .title('Partially Fulfilled')
+            .id('wholesale-orders-production')
+            .title('In Production')
             .icon(PackageIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
-                .title('Partially Fulfilled Wholesale Orders')
+                .title('In Production')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "partial"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "in_production"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
           S.listItem()
-            .id('wholesale-orders-fulfilled')
-            .title('Fulfilled')
+            .id('wholesale-orders-ready-to-ship')
+            .title('Ready to Ship')
+            .icon(PackageIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('order')
+                .title('Ready to Ship')
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "ready_to_ship"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
+            ),
+          S.listItem()
+            .id('wholesale-orders-shipped')
+            .title('Shipped')
             .icon(RocketIcon)
             .child(
               S.documentList()
                 .apiVersion(API_VERSION)
                 .schemaType('order')
-                .title('Fulfilled Wholesale Orders')
+                .title('Shipped Wholesale Orders')
                 .filter(
-                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "fulfilled"',
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "shipped"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
+            ),
+          S.listItem()
+            .id('wholesale-orders-delivered')
+            .title('Delivered')
+            .icon(CheckmarkCircleIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('order')
+                .title('Delivered Wholesale Orders')
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "delivered"',
+                )
+                .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
+                .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
+            ),
+          S.listItem()
+            .id('wholesale-orders-rejected')
+            .title('Rejected')
+            .icon(WarningOutlineIcon)
+            .child(
+              S.documentList()
+                .apiVersion(API_VERSION)
+                .schemaType('order')
+                .title('Rejected Wholesale Orders')
+                .filter(
+                  '_type == "order" && orderType == "wholesale" && wholesaleDetails.workflowStatus == "rejected"',
                 )
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
@@ -928,50 +973,19 @@ const createWholesaleManufacturingSection = (S: any) =>
 const createVendorPortalSection = (S: any) =>
   S.listItem()
     .id('vendor-portal')
-    .title('Vendors')
+    .title('Wholesale Management')
     .icon(UserIcon)
     .child(
       S.list()
-        .title('Vendors')
+        .title('Wholesale Management')
         .items([
-          S.listItem()
-            .id('vendor-portal-purchase-orders')
-            .title('Purchase Orders')
-            .icon(ClipboardIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('purchaseOrder')
-                .title('Purchase Orders')
-                .filter('_type == "purchaseOrder"')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('vendor-portal-notifications')
-            .title('Notifications')
-            .icon(BellIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorNotification')
-                .title('Notifications')
-                .filter('_type == "vendorNotification"')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('vendor-portal-products')
-            .title('Vendor Products')
-            .icon(PackageIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorProduct')
-                .title('Vendor Products')
-                .filter('_type == "vendorProduct"'),
-            ),
+          createVendorsSubSection(S),
+          createVendorApplicationsSubSection(S),
+          createVendorQuotesSubSection(S),
+          createWholesaleOrdersSubSection(S),
           S.listItem()
             .id('vendor-portal-documents')
-            .title('Documents')
+            .title('Vendor Documents')
             .icon(DocumentIcon)
             .child(
               S.documentList()
@@ -993,125 +1007,8 @@ const createVendorPortalSection = (S: any) =>
                 .filter('_type == "vendorReturn"')
                 .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
             ),
-          S.listItem()
-            .id('vendor-portal-feedback')
-            .title('Feedback')
-            .icon(BarChartIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('vendorFeedback')
-                .title('Vendor Feedback')
-                .filter('_type == "vendorFeedback"')
-                .defaultOrdering([{field: 'createdAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('vendor-portal-templates')
-            .title('Order Templates')
-            .icon(ClipboardIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('orderTemplate')
-                .title('Order Templates')
-                .filter('_type == "orderTemplate"'),
-            ),
-          S.listItem()
-            .id('vendor-portal-blog')
-            .title('Vendor Blog')
-            .icon(DocumentIcon)
-            .child(
-              S.list()
-                .title('Vendor Blog')
-                .items([
-                  S.listItem()
-                    .title('All Posts')
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendorPost')
-                        .title('All Posts')
-                        .filter('_type == "vendorPost"')
-                        .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
-                    ),
-                  S.listItem()
-                    .title('Drafts')
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendorPost')
-                        .title('Drafts')
-                        .filter('_type == "vendorPost" && !defined(publishedAt)'),
-                    ),
-                  S.listItem()
-                    .title('Published')
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('vendorPost')
-                        .title('Published')
-                        .filter('_type == "vendorPost" && defined(publishedAt)')
-                        .defaultOrdering([{field: 'publishedAt', direction: 'desc'}]),
-                    ),
-                  S.listItem()
-                    .title('By Type')
-                    .child(
-                      S.list()
-                        .title('By Type')
-                        .items([
-                          S.listItem()
-                            .title('📢 Announcements')
-                            .child(
-                              S.documentList()
-                                .apiVersion(API_VERSION)
-                                .schemaType('vendorPost')
-                                .title('Announcements')
-                                .filter('_type == "vendorPost" && postType == "announcement"'),
-                            ),
-                          S.listItem()
-                            .title('🚨 Important Notices')
-                            .child(
-                              S.documentList()
-                                .apiVersion(API_VERSION)
-                                .schemaType('vendorPost')
-                                .title('Important Notices')
-                                .filter('_type == "vendorPost" && postType == "notice"'),
-                            ),
-                          S.listItem()
-                            .title('🆕 New Releases')
-                            .child(
-                              S.documentList()
-                                .apiVersion(API_VERSION)
-                                .schemaType('vendorPost')
-                                .title('New Releases')
-                                .filter('_type == "vendorPost" && postType == "release"'),
-                            ),
-                          S.listItem()
-                            .title('📋 Policy Updates')
-                            .child(
-                              S.documentList()
-                                .apiVersion(API_VERSION)
-                                .schemaType('vendorPost')
-                                .title('Policy Updates')
-                                .filter('_type == "vendorPost" && postType == "policy"'),
-                            ),
-                          S.listItem()
-                            .title('💡 Tips')
-                            .child(
-                              S.documentList()
-                                .apiVersion(API_VERSION)
-                                .schemaType('vendorPost')
-                                .title('Tips')
-                                .filter('_type == "vendorPost" && postType == "tip"'),
-                            ),
-                        ]),
-                    ),
-                  S.divider(),
-                  S.documentTypeListItem('vendorPostCategory').title('Categories'),
-                ]),
-            ),
-          S.divider(),
-          createWholesaleManufacturingSection(S),
+          S.documentTypeListItem('vendorPost').title('Vendor Posts'),
+          S.documentTypeListItem('vendorEmailLog').title('Vendor Email Log'),
         ]),
     )
 

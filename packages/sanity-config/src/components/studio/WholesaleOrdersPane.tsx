@@ -5,12 +5,14 @@ import {Box, Card, Flex, Heading, Select, Spinner, Stack, Text, useToast} from '
 const API_VERSION = '2024-10-01'
 const WORKFLOW_OPTIONS = [
   {value: 'all', label: 'All workflows'},
-  {value: 'pending', label: 'Pending review'},
-  {value: 'approved', label: 'Approved - awaiting payment'},
-  {value: 'paid', label: 'Paid - ready to fulfill'},
-  {value: 'partial', label: 'Partially fulfilled'},
-  {value: 'fulfilled', label: 'Fulfilled'},
-  {value: 'cancelled', label: 'Cancelled'},
+  {value: 'requested', label: 'Requested'},
+  {value: 'pending_approval', label: 'Pending approval'},
+  {value: 'approved', label: 'Approved'},
+  {value: 'in_production', label: 'In production'},
+  {value: 'ready_to_ship', label: 'Ready to ship'},
+  {value: 'shipped', label: 'Shipped'},
+  {value: 'delivered', label: 'Delivered'},
+  {value: 'rejected', label: 'Rejected'},
 ]
 
 type WholesaleOrder = {
@@ -155,7 +157,7 @@ const WholesaleOrdersPane = forwardRef<HTMLDivElement, Record<string, never>>((_
                       <Text style={{flex: 1}}>{resolveQuantity(order)}</Text>
                       <Stack flex={1} space={1}>
                         <Select
-                          value={order.wholesaleDetails?.workflowStatus || 'pending'}
+                          value={order.wholesaleDetails?.workflowStatus || 'requested'}
                           disabled={updatingId === order._id}
                           onChange={(event) => updateWorkflow(order._id, event.currentTarget.value)}
                         >

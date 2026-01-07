@@ -8,7 +8,6 @@ type PortalVendor = {
   pricingTier?: VendorPricingTier | null
   customDiscountPercentage?: number | null
   paymentTerms?: string | null
-  portalEnabled?: boolean | null
   portalAccess?: {enabled?: boolean | null; email?: string | null} | null
   primaryContact?: {email?: string | null} | null
   status?: string | null
@@ -240,7 +239,6 @@ export const resolveVendor = async (options: {
       pricingTier,
       customDiscountPercentage,
       paymentTerms,
-      portalEnabled,
       portalAccess,
       primaryContact,
       status,
@@ -251,8 +249,7 @@ export const resolveVendor = async (options: {
   )
 
   if (!vendor) return null
-  const portalEnabled = toBoolean(vendor.portalAccess?.enabled) || toBoolean(vendor.portalEnabled)
-  if (!portalEnabled) return null
+  if (!toBoolean(vendor.portalAccess?.enabled)) return null
   return vendor
 }
 

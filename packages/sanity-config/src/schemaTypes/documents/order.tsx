@@ -268,6 +268,75 @@ export default defineType({
       ],
     }),
     defineField({
+      name: 'wholesaleDetails',
+      title: 'Wholesale Details',
+      type: 'object',
+      group: 'fulfillment',
+      description: 'Wholesale-specific workflow and pricing details',
+      hidden: ({document}) => document?.orderType !== 'wholesale',
+      fields: [
+        {
+          name: 'workflowStatus',
+          title: 'Wholesale Workflow Status',
+          type: 'string',
+          description: 'Current state in wholesale order workflow',
+          options: {
+            list: [
+              {title: 'Requested', value: 'requested'},
+              {title: 'Pending Approval', value: 'pending_approval'},
+              {title: 'Approved', value: 'approved'},
+              {title: 'In Production', value: 'in_production'},
+              {title: 'Ready to Ship', value: 'ready_to_ship'},
+              {title: 'Shipped', value: 'shipped'},
+              {title: 'Delivered', value: 'delivered'},
+              {title: 'Rejected', value: 'rejected'},
+            ],
+            layout: 'radio',
+          },
+          validation: (Rule) => Rule.required(),
+        },
+        {
+          name: 'approvedBy',
+          title: 'Approved By',
+          type: 'string',
+          description: 'Staff member who approved the order',
+          hidden: ({parent}) =>
+            !['approved', 'in_production', 'ready_to_ship', 'shipped', 'delivered'].includes(
+              parent?.workflowStatus || '',
+            ),
+        },
+        {
+          name: 'approvedAt',
+          title: 'Approved At',
+          type: 'datetime',
+          hidden: ({parent}) =>
+            !['approved', 'in_production', 'ready_to_ship', 'shipped', 'delivered'].includes(
+              parent?.workflowStatus || '',
+            ),
+        },
+        {
+          name: 'rejectionReason',
+          title: 'Rejection Reason',
+          type: 'text',
+          rows: 3,
+          hidden: ({parent}) => parent?.workflowStatus !== 'rejected',
+        },
+        {
+          name: 'estimatedShipDate',
+          title: 'Estimated Ship Date',
+          type: 'date',
+          description: 'Estimated date when order will be ready to ship',
+        },
+        {
+          name: 'internalNotes',
+          title: 'Internal Notes',
+          type: 'text',
+          rows: 4,
+          description: 'Internal notes about wholesale order (not visible to vendor)',
+        },
+      ],
+    }),
+    defineField({
       name: 'orderDocuments',
       title: 'Order Documents',
       type: 'array',

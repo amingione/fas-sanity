@@ -115,6 +115,7 @@ const fetchQuoteQuery = `*[_type == "vendorQuote" && _id == $id][0]{
     _id,
     companyName,
     primaryContact,
+    customerRef,
     paymentTerms,
     pricingTier,
     customDiscountPercentage,
@@ -164,6 +165,9 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       if (!quote.vendor?._id) throw new Error('Vendor is required')
       const vendor = quote.vendor
       const tier = quote.pricingTier || vendor.pricingTier || 'standard'
+      if (!vendor.customerRef?._ref) {
+        throw new Error('Vendor customer reference is missing')
+      }
       const customDiscount =
         typeof quote.customDiscountPercentage === 'number'
           ? quote.customDiscountPercentage
@@ -205,10 +209,15 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
         _type: 'order',
         orderNumber: normalizedOrderNumber || undefined,
         orderType: 'wholesale',
-        status: 'paid',
+        status: 'pending',
+        paymentStatus: 'unpaid',
         currency: 'USD',
         wholesaleDetails: {
           workflowStatus: 'requested',
+        },
+        customerRef: {
+          _type: 'reference',
+          _ref: vendor.customerRef._ref,
         },
         customerName: vendor.companyName,
         customerEmail: vendor.primaryContact?.email,

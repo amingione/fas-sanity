@@ -4,6 +4,10 @@ export default defineType({
   name: 'vendorMessage',
   title: 'Vendor Message',
   type: 'document',
+  deprecated: {
+    reason:
+      'Vendor messaging consolidated into customer support system. This schema is orphaned (no backend functions use it). See vendor-portal-reform audit (2026-01-06) for details.',
+  },
   fields: [
     defineField({
       name: 'vendor',

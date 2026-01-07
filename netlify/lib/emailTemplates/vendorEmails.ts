@@ -4,7 +4,7 @@ export type VendorWelcomeEmailData = {
   pricingTier?: string
   paymentTerms?: string
   creditLimit?: number | null
-  portalEnabled?: boolean
+  portalAccessEnabled?: boolean
   accountManager?: string
   vendorPortalUrl?: string
 }
@@ -87,12 +87,12 @@ export const buildVendorWelcomeEmail = ({
   pricingTier,
   paymentTerms,
   creditLimit,
-  portalEnabled,
+  portalAccessEnabled,
   accountManager,
   vendorPortalUrl,
 }: VendorWelcomeEmailData) => {
   const greeting = contactName ? `Hi ${contactName},` : 'Welcome,'
-  const portalCopy = portalEnabled
+  const portalCopy = portalAccessEnabled
     ? `<p style="margin:0 0 16px">Your portal access is active. Sign in to review products, create quotes, and track wholesale orders.${
         vendorPortalUrl
           ? ` <a href="${vendorPortalUrl}" style="color:#6366f1;text-decoration:none;">Open vendor portal</a>.`
