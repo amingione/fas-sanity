@@ -31,12 +31,11 @@ const PAYMENT_TERMS = [
 ]
 
 const PORTAL_PERMISSIONS = [
-  {title: 'View Purchase Orders', value: 'view_purchase_orders'},
-  {title: 'Update Product Inventory', value: 'update_inventory'},
-  {title: 'Upload Invoices', value: 'upload_invoices'},
-  {title: 'View Payments', value: 'view_payments'},
-  {title: 'Manage Products', value: 'manage_products'},
-  {title: 'View Analytics', value: 'view_analytics'},
+  {title: 'View Own Orders', value: 'view_own_orders'},
+  {title: 'Create Wholesale Orders', value: 'create_wholesale_orders'},
+  {title: 'View Own Quotes', value: 'view_own_quotes'},
+  {title: 'View Wholesale Catalog', value: 'view_wholesale_catalog'},
+  {title: 'Send Support Messages', value: 'send_support_messages'},
 ]
 
 export default defineType({
@@ -393,14 +392,6 @@ export default defineType({
       group: 'business',
     }),
     defineField({
-      name: 'portalEnabled',
-      title: 'Portal Access Enabled',
-      type: 'boolean',
-      description: 'Allow vendor to access vendor portal',
-      initialValue: false,
-      group: 'portal',
-    }),
-    defineField({
       name: 'portalUsers',
       title: 'Portal Users',
       type: 'array',
@@ -441,7 +432,8 @@ export default defineType({
           title: 'Portal Login Email',
           type: 'string',
           validation: (Rule) => Rule.email(),
-          readOnly: false,
+          readOnly: true,
+          description: 'Mirror of customer.email (read-only)',
         }),
         defineField({
           name: 'userSub',
@@ -490,10 +482,29 @@ export default defineType({
         }),
         defineField({
           name: 'permissions',
-          title: 'Permissions',
+          title: 'Vendor Permissions',
           type: 'array',
           of: [{type: 'string'}],
           options: {list: PORTAL_PERMISSIONS},
+          description: 'Permissions for vendor portal access',
+          validation: (Rule) =>
+            Rule.unique().custom((permissions) => {
+              const forbidden = [
+                'inventory_management',
+                'product_management',
+                'analytics',
+                'upload_invoices',
+                'update_inventory',
+                'manage_products',
+                'view_analytics',
+              ]
+              const hasForbidden = permissions?.some((permission) =>
+                forbidden.includes(String(permission || '').toLowerCase()),
+              )
+              return hasForbidden
+                ? 'Vendors cannot have inventory/product management permissions'
+                : true
+            }),
         }),
         defineField({
           name: 'invitedAt',

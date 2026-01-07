@@ -15,7 +15,19 @@ const sanityClient = createClient({
 
 const resend = new Resend(resolveResendApiKey()!)
 
+/**
+ * @deprecated This function is deprecated as of 2026-01-06 (vendor-portal-reform).
+ *
+ * Canonical vendor application handler is:
+ * fas-cms-fresh/src/pages/api/vendor-application.ts
+ *
+ * This function remains for backward compatibility but should not be used for new integrations.
+ */
+
 export const handler: Handler = async (event) => {
+  console.warn(
+    'DEPRECATED: vendor-application.ts is deprecated. Use fas-cms-fresh/src/pages/api/vendor-application.ts instead.',
+  )
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',

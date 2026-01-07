@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import {syncContact} from '../lib/resend/contacts'
+import {syncVendorPortalEmail} from '../lib/vendorPortalEmail'
 
 const projectId =
   process.env.SANITY_STUDIO_PROJECT_ID
@@ -145,9 +146,22 @@ const handler: Handler = async (event) => {
     return {statusCode: 200, body: 'Ignored non-customer document'}
   }
 
-  const email = (customer.email || '').trim().toLowerCase()
-  if (!email) {
+  const rawEmail = (customer.email || '').trim()
+  const email = rawEmail.toLowerCase()
+  if (!rawEmail) {
     return {statusCode: 200, body: 'Customer missing email; skipped'}
+  }
+
+  try {
+    const vendor = await sanity.fetch<{_id: string} | null>(
+      `*[_type == "vendor" && customerRef._ref == $customerId][0]{_id}`,
+      {customerId: normalizedId},
+    )
+    if (vendor?._id) {
+      await syncVendorPortalEmail(sanity, vendor._id, rawEmail)
+    }
+  } catch (err) {
+    console.warn('sanity-resend-sync: vendor portal email sync failed', err)
   }
 
   const {firstName, lastName} = deriveName(customer)

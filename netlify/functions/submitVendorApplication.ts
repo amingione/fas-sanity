@@ -19,6 +19,15 @@ const sanity = createClient({
 
 const hasToken = Boolean(process.env.SANITY_API_TOKEN)
 
+/**
+ * @deprecated This function is deprecated as of 2026-01-06 (vendor-portal-reform).
+ *
+ * Canonical vendor application handler is:
+ * fas-cms-fresh/src/pages/api/vendor-application.ts
+ *
+ * This function remains for backward compatibility but should not be used for new integrations.
+ */
+
 const sanitizeString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
@@ -88,6 +97,9 @@ const sanitizeReferences = (value: unknown) => {
 }
 
 const handler: Handler = async (event) => {
+  console.warn(
+    'DEPRECATED: submitVendorApplication.ts is deprecated. Use fas-cms-fresh/src/pages/api/vendor-application.ts instead.',
+  )
   if (event.httpMethod === 'OPTIONS') {
     return {statusCode: 204, headers: corsHeaders}
   }

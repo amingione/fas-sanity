@@ -2369,6 +2369,150 @@ try {
 
 ---
 
+## Vendor Portal Reform (2026-01-06)
+
+### Wholesale Orders (CRITICAL)
+
+**Schema status**: `wholesaleDetails` field MUST exist in order schema before any wholesale work.
+
+**BEFORE working with wholesale orders**:
+1. Verify `wholesaleDetails` object is added to `order.tsx`
+2. Check that wholesale workflow fields are documented
+3. Confirm schema changes are deployed to Sanity
+
+**Wholesale workflow state lives at**: `order.wholesaleDetails.workflowStatus`
+
+**Valid workflow states**: `'requested'`, `'pending_approval'`, `'approved'`, `'in_production'`, `'ready_to_ship'`, `'shipped'`, `'delivered'`, `'rejected'`
+
+**REQUIRED FIELDS for wholesale orders**:
+- `orderType: 'wholesale'`
+- `customerRef` (must point to customer document with 'vendor' role)
+- `status: 'pending'` (not 'paid' until payment captured)
+- `paymentStatus: 'unpaid'` (until payment confirmed)
+- `wholesaleDetails.workflowStatus: 'requested'`
+
+### Vendor Authentication (CRITICAL)
+
+**Canonical vendor status values**: `'active'`, `'pending'`, `'suspended'`, `'on_hold'`
+
+**Login logic**: Vendors can log in ONLY if:
+- `vendor.status === 'active'` AND
+- `vendor.portalAccess.enabled === true` AND
+- `vendor.customerRef` points to valid customer document
+
+**FORBIDDEN**:
+- Do not check for capitalized `'Approved'` status (does not exist in schema)
+- Do not implement multiple login endpoints with different vendor checks
+- Do not add undefined status values like `'inactive'`
+
+**Email Identity Rules**:
+- `customer.email` is the ONLY canonical source of truth for vendor identity
+- `vendor.portalAccess.email` MUST mirror `customer.email` (read-only field)
+- `vendor.primaryContact.email` is independent (business contact, not login)
+- Portal login MUST authenticate against `customer.email` only
+
+**Vendor permissions (ALLOWED)**:
+- `view_own_orders`
+- `create_wholesale_orders`
+- `view_own_quotes`
+- `view_wholesale_catalog` (read-only)
+- `send_support_messages` (optional)
+
+**Vendor permissions (FORBIDDEN - NEVER ADD)**:
+- `inventory_management` / `update_inventory`
+- `product_management` / `manage_products`
+- `analytics` / `view_analytics` (except own order analytics)
+- `upload_invoices` (supplier-side operation)
+
+### Email Origination (CRITICAL)
+
+**RULE**: All transactional/vendor emails MUST originate from fas-sanity ONLY.
+
+**fas-sanity handles**:
+- Vendor invitations
+- Vendor onboarding campaigns
+- Vendor password resets
+- Vendor notifications
+- All vendor-related email logging (`vendorEmailLog`)
+
+**fas-cms-fresh handles**:
+- Customer order confirmations (via Stripe/Resend)
+- Customer shipping notifications
+
+**FORBIDDEN**:
+- Do not add vendor email sending to fas-cms-fresh
+- Do not duplicate email pipelines across repos
+- Do not bypass fas-sanity email logging for vendor communications
+
+**Vendor email sources (fas-sanity)**:
+- `netlify/functions/send-vendor-invite.ts`
+- `netlify/lib/vendorOnboardingCampaign.ts`
+- `netlify/functions/sendVendorEmail.ts`
+- `netlify/lib/emailTemplates/vendorEmails.ts`
+
+### Vendor Application Flow
+
+**Canonical flow**:
+- **UI**: `fas-cms-fresh/src/pages/become-a-vendor.astro`
+- **API**: `fas-cms-fresh/src/pages/api/vendor-application.ts`
+- **Handler**: `fas-cms-fresh/src/server/vendor-application-handler.ts`
+
+**BEFORE modifying vendor applications**:
+1. Verify `vendorApplication` schema matches handler fields exactly
+2. Check that no fields are silently dropped
+3. Test that all submitted data persists in Sanity
+
+**Known schema requirements**:
+- Use existing schema fields for business address (separate `street`, `city`, `state`, `zip`)
+- Do NOT write `businessAddress.full`, `additionalInfo`, or `resaleCertificateId` (not in schema)
+
+**FORBIDDEN**:
+- Do not create duplicate application handlers in fas-sanity
+- Do not accept vendor applications via Netlify functions
+- All vendor applications must go through canonical fas-cms-fresh flow
+
+### Vendor Portal Security (CRITICAL)
+
+**FORBIDDEN - IMMEDIATE REMOVAL REQUIRED**:
+- Do not expose Sanity API tokens on client-side
+- Do not accept vendor ID from query strings (`?vendorId=`)
+- Do not build vendor portal pages without server-side authentication
+
+**REQUIRED for all vendor portal pages**:
+1. Server-side authentication (validate session before rendering)
+2. Vendor ID from session only (never from URL/query string)
+3. API calls via authenticated server routes (never client-side tokens)
+4. Vendor isolation enforced (vendors see only their own data)
+
+**Current state**:
+- Portal UI is NOT implemented (only auth infrastructure exists)
+- Do not promise portal features in emails until implemented
+- Middleware protects `/vendor-portal/*` but pages do not exist
+
+### Wholesale Workflow State (CRITICAL)
+
+**Single source of truth**: `order.wholesaleDetails.workflowStatus`
+
+**FORBIDDEN**:
+- Do not introduce top-level wholesale workflow fields
+- Do not duplicate wholesale workflow state
+- Top-level `status` represents order lifecycle, not wholesale lifecycle
+
+**Workflow progression**:
+1. `requested` - Vendor submits wholesale order
+2. `pending_approval` - FAS reviews order
+3. `approved` - Order approved, moves to production
+4. `in_production` - Products being manufactured
+5. `ready_to_ship` - Order ready for shipment
+6. `shipped` - Order shipped to vendor
+7. `delivered` - Order delivered
+8. `rejected` - Order rejected (provide reason in notes)
+
+**Status vs Workflow Status**:
+- `order.status` - Overall order lifecycle (`pending`, `paid`, `fulfilled`, `delivered`)
+- `order.paymentStatus` - Payment state (`unpaid`, `paid`, `failed`, `refunded`)
+- `order.wholesaleDetails.workflowStatus` - Wholesale-specific workflow state
+
 ## Version History
 
 # Update the codex.md file

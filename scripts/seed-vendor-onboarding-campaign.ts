@@ -25,7 +25,7 @@ const commonFooter = `
     <p style="margin: 5px 0;"><strong>FAS Motorsports</strong></p>
     <p style="margin: 5px 0;">6161 Riverside Dr, Punta Gorda, FL 33982</p>
     <p style="margin: 5px 0;">(812) 200-9012 | sales@fasmotorsports.com</p>
-    <p style="margin: 5px 0;"><a href="http://www.fasmotorsports.com" style="color: #ea1d26;">www.fasmotorsports.com</a></p>
+    <p style="margin: 5px 0;"><a href="https://www.fasmotorsports.com" style="color: #ea1d26;">www.fasmotorsports.com</a></p>
   </div>`
 
 const email1HTML = `
@@ -34,11 +34,11 @@ const email1HTML = `
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   <div style="background-color: white; padding: 40px; border-radius: 8px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <img src="http://www.fasmotorsports.com/logo/faslogo150.webp" alt="FAS Motorsports" style="max-width: 150px;">
+      <div style="font-size: 20px; font-weight: bold; color: #1a1a1a;">FAS Motorsports</div>
     </div>
     <h1 style="color: #ea1d26; font-size: 28px; margin-bottom: 20px; text-align: center;">Welcome to FAS Motorsports!</h1>
     <p style="font-size: 16px;">Hi {{companyName}},</p>
-    <p style="font-size: 16px;">We're excited to partner with you! You've been invited to access the FAS Motorsports Vendor Portal, where you can manage orders, invoices, inventory, and communicate with our team.</p>
+    <p style="font-size: 16px;">We're excited to partner with you! You've been invited to access the FAS Motorsports Vendor Portal, where you can browse the wholesale catalog, submit orders, and track your wholesale status with our team.</p>
     <div style="text-align: center; margin: 40px 0;">
       <a href="{{setupLink}}" style="display: inline-block; padding: 16px 32px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 18px;">
         Set Up Your Account
@@ -51,12 +51,11 @@ const email1HTML = `
     <div style="background-color: #f9fafb; padding: 24px; border-radius: 8px; margin: 30px 0;">
       <h3 style="margin-top: 0; color: #1a1a1a; font-size: 18px;">What you can do in the portal:</h3>
       <ul style="margin: 0; padding-left: 20px; font-size: 15px;">
-        <li style="margin-bottom: 8px;">📦 Submit and track purchase orders</li>
-        <li style="margin-bottom: 8px;">📄 Upload and manage invoices</li>
-        <li style="margin-bottom: 8px;">📊 Update product inventory levels</li>
-        <li style="margin-bottom: 8px;">💳 View payment history and status</li>
-        <li style="margin-bottom: 8px;">💬 Message our team directly</li>
-        <li style="margin-bottom: 8px;">📁 Access important documents</li>
+        <li style="margin-bottom: 8px;">🛒 Browse the wholesale catalog</li>
+        <li style="margin-bottom: 8px;">📦 Submit and track wholesale orders</li>
+        <li style="margin-bottom: 8px;">📄 Review invoices and order documents</li>
+        <li style="margin-bottom: 8px;">🏷️ Manage shipping addresses and notifications</li>
+        <li style="margin-bottom: 8px;">💬 Contact our wholesale support team</li>
       </ul>
     </div>
     <div style="border-left: 4px solid #ea1d26; padding-left: 16px; margin: 24px 0;">
@@ -79,7 +78,7 @@ const email2HTML = `
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   <div style="background-color: white; padding: 40px; border-radius: 8px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <img src="http://www.fasmotorsports.com/logo/faslogo150.webp" alt="FAS Motorsports" style="max-width: 150px;">
+      <div style="font-size: 20px; font-weight: bold; color: #1a1a1a;">FAS Motorsports</div>
     </div>
     <h1 style="color: #ea1d26; font-size: 24px;">Welcome aboard, {{companyName}}! 🎉</h1>
     <p>We noticed you've set up your account. Great! Here are some tips to help you get the most out of the portal.</p>
@@ -90,19 +89,19 @@ const email2HTML = `
         <p style="margin: 0; font-size: 14px;">Go to Settings and add your shipping addresses and notification preferences.</p>
       </div>
       <div style="margin-bottom: 20px;">
-        <h4 style="color: #1a1a1a; margin-bottom: 8px;">2. Update Your Inventory</h4>
-        <p style="margin: 0; font-size: 14px;">Head to Inventory and update your product quantities and lead times so we know what's available.</p>
+        <h4 style="color: #1a1a1a; margin-bottom: 8px;">2. Browse the Wholesale Catalog</h4>
+        <p style="margin: 0; font-size: 14px;">Use the catalog to review wholesale pricing, availability, and product details.</p>
       </div>
       <div style="margin-bottom: 20px;">
-        <h4 style="color: #1a1a1a; margin-bottom: 8px;">3. Explore the Dashboard</h4>
-        <p style="margin: 0; font-size: 14px;">Your dashboard shows key metrics, recent activity, and quick actions for common tasks.</p>
+        <h4 style="color: #1a1a1a; margin-bottom: 8px;">3. Review Order History</h4>
+        <p style="margin: 0; font-size: 14px;">Track your recent orders, statuses, and invoices in one place.</p>
       </div>
     </div>
     <h3 style="color: #1a1a1a;">Helpful Resources</h3>
     <ul style="font-size: 15px;">
-      <li><a href="${PORTAL_URL}/vendor-portal/onboarding" style="color: #ea1d26;">📚 Full Onboarding Guide</a></li>
-      <li><a href="${PORTAL_URL}/vendor-portal/onboarding/getting-started" style="color: #ea1d26;">⚡ Quick Start Guide</a></li>
-      <li><a href="${PORTAL_URL}/vendor-portal/onboarding/faq" style="color: #ea1d26;">❓ Frequently Asked Questions</a></li>
+      <li>📚 Wholesale catalog updates weekly</li>
+      <li>✅ Order history and invoices are available in your portal</li>
+      <li>❓ Reply to this email for help with your account</li>
     </ul>
     <div style="text-align: center; margin: 30px 0;">
       <a href="${PORTAL_URL}/vendor-portal" style="display: inline-block; padding: 14px 28px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
@@ -123,7 +122,7 @@ const email3HTML = `
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   <div style="background-color: white; padding: 40px; border-radius: 8px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <img src="http://www.fasmotorsports.com/logo/faslogo150.webp" alt="FAS Motorsports" style="max-width: 150px;">
+      <div style="font-size: 20px; font-weight: bold; color: #1a1a1a;">FAS Motorsports</div>
     </div>
     <h1 style="color: #ea1d26; font-size: 24px;">Let's Submit Your First Order!</h1>
     <p>Hi {{companyName}},</p>
@@ -174,11 +173,11 @@ const email3HTML = `
       <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
         <li style="margin-bottom: 8px;">Save frequently ordered items as templates</li>
         <li style="margin-bottom: 8px;">Use the "Reorder" button on past orders</li>
-        <li style="margin-bottom: 8px;">Check inventory availability before ordering</li>
+        <li style="margin-bottom: 8px;">Confirm product availability before ordering</li>
       </ul>
     </div>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${PORTAL_URL}/vendor-portal/orders/new" style="display: inline-block; padding: 14px 28px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+      <a href="${PORTAL_URL}/vendor-portal/orders" style="display: inline-block; padding: 14px 28px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
         Submit Your First Order
       </a>
     </div>
@@ -196,40 +195,36 @@ const email4HTML = `
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   <div style="background-color: white; padding: 40px; border-radius: 8px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <img src="http://www.fasmotorsports.com/logo/faslogo150.webp" alt="FAS Motorsports" style="max-width: 150px;">
+      <div style="font-size: 20px; font-weight: bold; color: #1a1a1a;">FAS Motorsports</div>
     </div>
-    <h1 style="color: #ea1d26; font-size: 24px;">Hidden Gems in Your Portal 💎</h1>
+    <h1 style="color: #ea1d26; font-size: 24px;">Maximize Your Wholesale Partnership</h1>
     <p>Hi {{companyName}},</p>
-    <p>You've been using the portal for a week now. Here are some powerful features you might not have discovered yet:</p>
-    <div style="margin: 30px 0;">
+    <p>Here are a few tips to help you get the most from your wholesale account:</p>
+    <div style="margin: 24px 0;">
       <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 16px;">
-        <h3 style="color: #ea1d26; margin-top: 0;">1. 📊 Analytics Dashboard</h3>
-        <p style="margin: 0; font-size: 15px;">Track your performance metrics, see top-selling products, and generate reports. Go to <strong>Analytics</strong> to explore.</p>
-      </div>
-      <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 16px;">
-        <h3 style="color: #ea1d26; margin-top: 0;">2. 📋 Order Templates</h3>
-        <p style="margin: 0; font-size: 15px;">Save your frequently ordered items as templates for one-click reordering. Create one when submitting an order.</p>
-      </div>
-      <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 16px;">
-        <h3 style="color: #ea1d26; margin-top: 0;">3. 📁 Document Library</h3>
-        <p style="margin: 0; font-size: 15px;">Access price lists, catalogs, and marketing materials. Upload your own compliance documents. Check out <strong>Documents</strong>.</p>
-      </div>
-      <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 16px;">
-        <h3 style="color: #ea1d26; margin-top: 0;">4. 🔔 Custom Notifications</h3>
-        <p style="margin: 0; font-size: 15px;">Choose exactly which notifications you want to receive. Go to <strong>Settings → Notifications</strong> to customize.</p>
+        <h3 style="color: #ea1d26; margin-top: 0;">Wholesale Ordering Tips</h3>
+        <ul style="margin: 0; padding-left: 20px; font-size: 15px;">
+          <li style="margin-bottom: 8px;">Plan ahead: lead times vary by product.</li>
+          <li style="margin-bottom: 8px;">Bulk orders may qualify for better pricing.</li>
+          <li style="margin-bottom: 8px;">Ask about seasonal previews and upcoming releases.</li>
+        </ul>
       </div>
       <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px;">
-        <h3 style="color: #ea1d26; margin-top: 0;">5. 📤 Bulk Inventory Upload</h3>
-        <p style="margin: 0; font-size: 15px;">Update hundreds of products at once with a CSV file. Go to <strong>Inventory → Bulk Upload</strong> and download the template.</p>
+        <h3 style="color: #ea1d26; margin-top: 0;">Account Resources</h3>
+        <ul style="margin: 0; padding-left: 20px; font-size: 15px;">
+          <li style="margin-bottom: 8px;">Order History: review past orders and invoices.</li>
+          <li style="margin-bottom: 8px;">Product Catalog: updated regularly with new releases.</li>
+          <li style="margin-bottom: 8px;">Support: dedicated wholesale support team.</li>
+        </ul>
       </div>
     </div>
     <div style="text-align: center; margin: 30px 0;">
       <a href="${PORTAL_URL}/vendor-portal" style="display: inline-block; padding: 14px 28px; background-color: #ea1d26; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
-        Explore the Portal
+        View Wholesale Portal
       </a>
     </div>
-    <p>Want to learn more? Check out our <a href="${PORTAL_URL}/vendor-portal/onboarding" style="color: #ea1d26;">full onboarding guide</a>.</p>
-    <p>Happy selling!<br><strong>The FAS Motorsports Team</strong></p>
+    <p>Need help? Reply to this email or call <strong>(812) 200-9012</strong>.</p>
+    <p>Best regards,<br><strong>The FAS Motorsports Team</strong></p>
   </div>
   ${commonFooter}
 </body>
@@ -242,7 +237,7 @@ const email5HTML = `
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   <div style="background-color: white; padding: 40px; border-radius: 8px;">
     <div style="text-align: center; margin-bottom: 30px;">
-      <img src="http://www.fasmotorsports.com/logo/faslogo150.webp" alt="FAS Motorsports" style="max-width: 150px;">
+      <div style="font-size: 20px; font-weight: bold; color: #1a1a1a;">FAS Motorsports</div>
     </div>
     <h1 style="color: #ea1d26; font-size: 24px;">How's Your Experience So Far?</h1>
     <p>Hi {{companyName}},</p>
@@ -268,14 +263,14 @@ const email5HTML = `
       <div style="text-align: center;">
         <p style="margin: 8px 0;"><strong>📧 Email:</strong> <a href="mailto:sales@fasmotorsports.com" style="color: #ea1d26;">sales@fasmotorsports.com</a></p>
         <p style="margin: 8px 0;"><strong>📞 Phone:</strong> <a href="tel:8122009012" style="color: #ea1d26;">(812) 200-9012</a></p>
-        <p style="margin: 8px 0;"><strong>💬 Portal:</strong> <a href="${PORTAL_URL}/vendor-portal/messages" style="color: #ea1d26;">Send us a message</a></p>
+        <p style="margin: 8px 0;"><strong>💬 Portal:</strong> <a href="${PORTAL_URL}/vendor-portal" style="color: #ea1d26;">Access your wholesale portal</a></p>
       </div>
     </div>
     <h3 style="color: #1a1a1a;">Helpful Resources</h3>
     <ul style="font-size: 15px;">
-      <li><a href="${PORTAL_URL}/vendor-portal/onboarding" style="color: #ea1d26;">📚 Full Onboarding Guide</a></li>
-      <li><a href="${PORTAL_URL}/vendor-portal/onboarding/faq" style="color: #ea1d26;">❓ FAQ</a></li>
-      <li><a href="${PORTAL_URL}/vendor-portal/onboarding/support" style="color: #ea1d26;">🆘 Get Support</a></li>
+      <li>📚 Wholesale catalog and order history available in the portal</li>
+      <li>❓ Reply to this email for support</li>
+      <li>🆘 Call us at (812) 200-9012 if you need help right away</li>
     </ul>
     <p>Thank you for being a valued partner. We're committed to making this the best vendor experience possible.</p>
     <p>With gratitude,<br><strong>The FAS Motorsports Team</strong></p>
@@ -312,7 +307,7 @@ export async function seedVendorOnboardingCampaign() {
         emailNumber: 1,
         delayDays: 0,
         subject: 'Welcome to FAS Motorsports Vendor Portal 🏁',
-        previewText: 'Set up your account and start managing orders, invoices, and inventory',
+        previewText: 'Set up your account and start placing wholesale orders',
         htmlContent: email1HTML,
         active: true,
       },
@@ -341,8 +336,8 @@ export async function seedVendorOnboardingCampaign() {
         _key: 'email4',
         emailNumber: 4,
         delayDays: 7,
-        subject: '5 Portal Features You Might Have Missed ✨',
-        previewText: 'Discover powerful features to make your work easier',
+        subject: 'Maximize Your Wholesale Partnership',
+        previewText: 'Wholesale tips and resources for your account',
         htmlContent: email4HTML,
         active: true,
       },
