@@ -28,6 +28,7 @@ import {
   deriveWorkflowState,
   resolveWorkflowActionBadge,
 } from '../../utils/orderWorkflow'
+import {isTrackingEmailStatus} from '../../utils/trackingEmailStatus'
 
 const parseUpgradeAmount = (value?: unknown): number => {
   if (typeof value !== 'string') return 0
@@ -272,6 +273,7 @@ export function OrderHeader(props: any) {
     labelPurchased,
     shippedAt,
     deliveredAt,
+    includeWorkflowBadges: false,
   })
 
   const workflowState = deriveWorkflowState({
@@ -301,8 +303,7 @@ export function OrderHeader(props: any) {
   )
 
   const trackingEmailSent = useMemo(
-    () =>
-      shippingLogEntries.some((entry) => (entry?.status || '').trim().toLowerCase() === 'notified'),
+    () => shippingLogEntries.some((entry) => isTrackingEmailStatus(entry?.status)),
     [shippingLogEntries],
   )
 

@@ -79,6 +79,17 @@ function stringOrUndefined(value: unknown): string | undefined {
   return undefined
 }
 
+function useMaybeFormValue<T = unknown>(path: (string | number)[]): T | undefined {
+  try {
+    return useFormValue(path) as T
+  } catch (error) {
+    if (error instanceof Error && (error.message || '').includes('FormValueProvider')) {
+      return undefined
+    }
+    throw error
+  }
+}
+
 function normalizeAddress(
   raw: Record<string, any> | null | undefined,
   meta: {label?: string; source?: string; defaultName?: string; email?: string; phone?: string},
@@ -310,7 +321,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   const [query, setQuery] = useState<string>('')
   const [optionLookup, setOptionLookup] = useState<Map<string, AddressOption>>(new Map())
   const autoFilledRef = useRef(false)
-  const stripeSummaryValue = useFormValue(['stripeSummary']) as Record<string, any> | null
+  const stripeSummaryValue = useMaybeFormValue(['stripeSummary']) as Record<string, any> | null
   const stripeSummary = useMemo(
     () => parseStripeSummary(stripeSummaryValue),
     [stripeSummaryValue],

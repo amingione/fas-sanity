@@ -479,7 +479,7 @@ export default defineType({
       type: 'text',
       description: 'Error message if label creation or shipment failed',
       readOnly: true,
-      hidden: ({document}) => document?.shippingStatus !== 'failure',
+      hidden: ({document}) => document?.shippingStatus?.status !== 'failure',
       group: 'fulfillment',
     }),
     defineField({
@@ -583,20 +583,36 @@ export default defineType({
     defineField({
       name: 'shippingStatus',
       title: 'Shipping Status',
-      type: 'string',
+      type: 'object',
       group: 'fulfillment',
       readOnly: true,
-      options: {
-        list: [
-          {title: 'Pre-Transit', value: 'pre_transit'},
-          {title: 'In Transit', value: 'in_transit'},
-          {title: 'Out for Delivery', value: 'out_for_delivery'},
-          {title: 'Delivered', value: 'delivered'},
-          {title: 'Returned', value: 'returned'},
-          {title: 'Failure', value: 'failure'},
-          {title: 'Unknown', value: 'unknown'},
-        ],
-      },
+      hidden: false,
+      fields: [
+        {
+          name: 'status',
+          title: 'Status',
+          type: 'string',
+          options: {
+            list: [
+              {title: 'Pre-Transit', value: 'pre_transit'},
+              {title: 'In Transit', value: 'in_transit'},
+              {title: 'Out for Delivery', value: 'out_for_delivery'},
+              {title: 'Delivered', value: 'delivered'},
+              {title: 'Returned', value: 'returned'},
+              {title: 'Failure', value: 'failure'},
+              {title: 'Unknown', value: 'unknown'},
+            ],
+          },
+        },
+        {name: 'carrier', title: 'Carrier', type: 'string'},
+        {name: 'service', title: 'Service', type: 'string'},
+        {name: 'trackingCode', title: 'Tracking Code', type: 'string'},
+        {name: 'trackingUrl', title: 'Tracking URL', type: 'url'},
+        {name: 'labelUrl', title: 'Label URL', type: 'url'},
+        {name: 'cost', title: 'Cost', type: 'number'},
+        {name: 'currency', title: 'Currency', type: 'string'},
+        {name: 'lastEventAt', title: 'Last Event At', type: 'datetime'},
+      ],
     }),
     defineField({
       name: 'shippingLog',

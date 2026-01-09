@@ -11,6 +11,7 @@ import {
   deriveWorkflowState,
   resolveWorkflowActionBadge,
 } from '../../utils/orderWorkflow'
+import {isTrackingEmailStatus} from '../../utils/trackingEmailStatus'
 
 type DocumentViewProps = {
   document?: {
@@ -302,9 +303,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
     shippedAt: order.shippedAt,
     deliveredAt: order.deliveredAt,
   })
-  const trackingEmailSent = shippingLog.some(
-    (entry) => (entry?.status || '').trim().toLowerCase() === 'notified',
-  )
+  const trackingEmailSent = shippingLog.some((entry) => isTrackingEmailStatus(entry?.status))
 
   return (
     <Stack space={4} padding={4}>

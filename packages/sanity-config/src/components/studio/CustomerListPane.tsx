@@ -42,8 +42,14 @@ interface CustomerRecord {
   orderCount?: number | null
   lifetimeSpend?: number | null
   roles?: string[] | null
-  emailOptIn?: boolean | null
-  marketingOptIn?: boolean | null
+  emailMarketing?: {subscribed?: boolean | null}
+  communicationPreferences?: {
+    marketingOptIn?: boolean | null
+    smsOptIn?: boolean | null
+  }
+  emailMarketingSubscribed?: boolean
+  communicationMarketingOptIn?: boolean
+  communicationSmsOptIn?: boolean
   shippingAddress?: BasicAddress | null
   address?: string | null
   location?: string | null
@@ -60,8 +66,13 @@ const CUSTOMER_LIST_QUERY = `*[_type == "customer"] | order(coalesce(firstName +
   orderCount,
   lifetimeSpend,
   roles,
-  emailOptIn,
-  marketingOptIn,
+  emailMarketing{
+    subscribed
+  },
+  communicationPreferences{
+    marketingOptIn,
+    smsOptIn
+  },
   shippingAddress{city,state,country},
   address,
   updatedAt
@@ -118,6 +129,11 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
         if (cancelled) return
         const mapped = (result || []).map((customer) => ({
           ...customer,
+          emailMarketingSubscribed: Boolean(customer.emailMarketing?.subscribed),
+          communicationMarketingOptIn: Boolean(
+            customer.communicationPreferences?.marketingOptIn,
+          ),
+          communicationSmsOptIn: Boolean(customer.communicationPreferences?.smsOptIn),
           location: buildLocation(customer),
         }))
         setCustomers(mapped)
@@ -141,7 +157,11 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
     let next = customers
 
     if (filter === 'subscribed') {
-      next = next.filter((customer) => Boolean(customer.emailOptIn || customer.marketingOptIn))
+      next = next.filter((customer) =>
+        Boolean(
+          customer.emailMarketingSubscribed || customer.communicationMarketingOptIn,
+        ),
+      )
     } else if (filter === 'highValue') {
       next = next.filter((customer) => (customer.lifetimeSpend ?? 0) >= 100)
     } else if (filter === 'inactive') {

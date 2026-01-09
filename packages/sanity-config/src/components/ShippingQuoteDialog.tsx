@@ -340,6 +340,24 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
     [products, selectedProductId],
   )
 
+  useEffect(() => {
+    if (!selectedProduct) return
+    const dims = selectedProduct.dimensions
+    if (
+      dims?.length &&
+      dims?.width &&
+      dims?.height &&
+      typeof selectedProduct.weight === 'number'
+    ) {
+      setManualDimensions({
+        length: String(dims.length),
+        width: String(dims.width),
+        height: String(dims.height),
+        weight: String(selectedProduct.weight),
+      })
+    }
+  }, [selectedProduct])
+
   // Auto-populate shipping address when customer is selected
   useEffect(() => {
     if (selectedCustomer?.shippingAddress) {
@@ -509,178 +527,224 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
     }
   }
 
+  const hasAddressPreview = shipToAddress.trim().length > 0
+  const manualDimensionHint = selectedProduct
+    ? 'Selecting a product auto-fills these values; adjust them if you need a custom package.'
+    : 'Enter package dimensions manually or search for a product to auto-populate the fields.'
+
   return (
     <Dialog id="shipping-quote-dialog" header="Shipping Quote" onClose={onClose} width={2}>
       <Box padding={4}>
         <Stack space={4}>
-          {/* Customer Search */}
-          <Stack space={2}>
-            <Label>Search Customer</Label>
-            <TextInput
-              icon={SearchIcon}
-              placeholder="Search by name or email..."
-              value={customerSearch}
-              onChange={(event) => setCustomerSearch(event.currentTarget.value)}
-            />
-            {isLoadingCustomers && (
-              <Flex align="center" justify="center" padding={2}>
-                <Spinner muted />
-              </Flex>
-            )}
-            <Select
-              value={selectedCustomerId}
-              onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
-              disabled={!customerSearch.trim() || isLoadingCustomers}
-            >
-              <option value="">
-                {customerSearch.trim()
-                  ? customers.length > 0
-                    ? 'Select a customer…'
-                    : 'No customers found'
-                  : 'Type to search customers…'}
-              </option>
-              {customers.map((customer) => (
-                <option key={customer._id} value={customer._id}>
-                  {customer.name}
-                </option>
-              ))}
-            </Select>
-            {!customerSearch.trim() && (
-              <Text size={1} muted>
-                Start typing to surface active customers.
-              </Text>
-            )}
-            {customerSearch && !isLoadingCustomers && customers.length === 0 && (
-              <Text size={1} muted>
-                No customers found — refine the query or add a customer record.
-              </Text>
-            )}
-          </Stack>
-
-          {/* Ship To Address */}
-          <Stack space={2}>
-            <Label>Ship To Address *</Label>
-            <AddressAutocompleteInput
-              {...(addressAutocompleteProps as ObjectInputProps<Record<string, string | undefined>>)}
-            />
-            <Text size={1} muted>
-              {selectedCustomer
-                ? 'Auto-filled from customer record (editable)'
-                : 'Enter address manually or select a customer above'}
-            </Text>
-          </Stack>
-
-          <Stack space={2}>
-            <Label>Quote Notes</Label>
-            <TextArea
-              rows={3}
-              value={quoteNotes}
-              onChange={(event) => setQuoteNotes(event.currentTarget.value)}
-              placeholder="Add context to include with the saved quote (optional)"
-            />
-          </Stack>
-
-          {/* Manual Dimensions */}
-          <Stack space={2}>
-            <Label>Manual Package Dimensions (inches / lbs)</Label>
-            <Flex gap={2} align="center">
-              <TextInput
-                placeholder="L"
-                type="number"
-                value={manualDimensions.length}
-                onChange={handleManualDimensionChange('length')}
-              />
-              <Text muted>×</Text>
-              <TextInput
-                placeholder="W"
-                type="number"
-                value={manualDimensions.width}
-                onChange={handleManualDimensionChange('width')}
-              />
-              <Text muted>×</Text>
-              <TextInput
-                placeholder="H"
-                type="number"
-                value={manualDimensions.height}
-                onChange={handleManualDimensionChange('height')}
-              />
-              <TextInput
-                placeholder="Weight (lbs)"
-                type="number"
-                value={manualDimensions.weight}
-                onChange={handleManualDimensionChange('weight')}
-              />
-            </Flex>
-          </Stack>
-
-          <Flex align="center" gap={2}>
-            <Box flex={1} style={{height: 1, backgroundColor: '#E5E7EB'}} />
-            <Text size={1} muted>
-              OR
-            </Text>
-            <Box flex={1} style={{height: 1, backgroundColor: '#E5E7EB'}} />
-          </Flex>
-
-          {/* Product Search */}
-          <Stack space={2}>
-            <Label>Select Product</Label>
-            <TextInput
-              icon={SearchIcon}
-              placeholder="Search for products..."
-              value={productSearch}
-              onChange={(event) => setProductSearch(event.currentTarget.value)}
-            />
-            {isLoadingProducts && (
-              <Flex align="center" justify="center" padding={2}>
-                <Spinner muted />
-              </Flex>
-            )}
-            <Select
-              value={selectedProductId}
-              onChange={(event) => setSelectedProductId(event.currentTarget.value)}
-              disabled={!productSearch.trim() || isLoadingProducts}
-            >
-              <option value="">
-                {productSearch.trim()
-                  ? products.length > 0
-                    ? 'Select a product…'
-                    : 'No products found'
-                  : 'Type to search products…'}
-              </option>
-              {products.map((product) => {
-                const dims = product.dimensions
-                const hasDims = dims?.length && dims?.width && dims?.height
-                const hasWeight = typeof product.weight === 'number' && product.weight > 0
-
-                return (
-                  <option key={product._id} value={product._id}>
-                    {product.title}
-                    {hasDims && hasWeight && dims
-                      ? ` (${dims.length}×${dims.width}×${dims.height}", ${product.weight} lbs)`
-                      : ' (no dimensions)'}
+          <Card padding={4} radius={3} border tone="transparent">
+            <Stack space={3}>
+              <Stack space={1}>
+                <Text size={1} weight="semibold">
+                  1. Select Customer
+                </Text>
+                <Text size={1} muted>
+                  Search by name or email to pull saved shipping details.
+                </Text>
+              </Stack>
+              <Stack space={2}>
+                <Label>Search Customer</Label>
+                <TextInput
+                  icon={SearchIcon}
+                  placeholder="Search by name or email..."
+                  value={customerSearch}
+                  onChange={(event) => setCustomerSearch(event.currentTarget.value)}
+                />
+                {isLoadingCustomers && (
+                  <Flex align="center" justify="center" padding={2}>
+                    <Spinner muted />
+                  </Flex>
+                )}
+                <Select
+                  value={selectedCustomerId}
+                  onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
+                  disabled={!customerSearch.trim() || isLoadingCustomers}
+                >
+                  <option value="">
+                    {customerSearch.trim()
+                      ? customers.length > 0
+                        ? 'Select a customer…'
+                        : 'No customers found'
+                      : 'Type to search customers…'}
                   </option>
-                )
-              })}
-            </Select>
-            {!productSearch.trim() && (
-              <Text size={1} muted>
-                Start typing to surface products with shipping data.
-              </Text>
-            )}
-            {productSearch && !isLoadingProducts && products.length === 0 && (
-              <Text size={1} muted>
-                No products found — check the spelling or add a new product.
-              </Text>
-            )}
-          </Stack>
+                  {customers.map((customer) => (
+                    <option key={customer._id} value={customer._id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </Select>
+                {!customerSearch.trim() && (
+                  <Text size={1} muted>
+                    Start typing to surface active customers.
+                  </Text>
+                )}
+                {customerSearch && !isLoadingCustomers && customers.length === 0 && (
+                  <Text size={1} muted>
+                    No customers found — refine the query or add a customer record.
+                  </Text>
+                )}
+              </Stack>
+            </Stack>
+          </Card>
 
-          <Button
-            text="Get quotes"
-            tone="primary"
-            onClick={handleGetQuotes}
-            disabled={!canGetQuote || isLoadingRates}
-            loading={isLoadingRates}
-          />
+          <Card padding={4} radius={3} border tone="transparent">
+            <Stack space={3}>
+              <Stack space={1}>
+                <Text size={1} weight="semibold">
+                  2. Shipping Address
+                </Text>
+                <Text size={1} muted>
+                  Pull a saved address or edit the values manually.
+                </Text>
+              </Stack>
+              <Stack space={2}>
+                <Label>Ship To Address *</Label>
+                <AddressAutocompleteInput
+                  {...(addressAutocompleteProps as ObjectInputProps<Record<string, string | undefined>>)}
+                />
+                <Text size={1} muted>
+                  {selectedCustomer
+                    ? 'Auto-filled from customer record (editable)'
+                    : 'Enter address manually or select a customer above'}
+                </Text>
+              </Stack>
+              <Stack space={2}>
+                <Label>Quote Notes</Label>
+                <TextArea
+                  rows={3}
+                  value={quoteNotes}
+                  onChange={(event) => setQuoteNotes(event.currentTarget.value)}
+                  placeholder="Add context to include with the saved quote (optional)"
+                />
+              </Stack>
+              {hasAddressPreview && (
+                <Card padding={3} radius={2} border tone="default">
+                  <Text size={1} style={{whiteSpace: 'pre-wrap'}}>
+                    {shipToAddress}
+                  </Text>
+                </Card>
+              )}
+            </Stack>
+          </Card>
+
+          <Card padding={4} radius={3} border tone="transparent">
+            <Stack space={3}>
+              <Stack space={1}>
+                <Text size={1} weight="semibold">
+                  3. Package Details
+                </Text>
+                <Text size={1} muted>
+                  {manualDimensionHint}
+                </Text>
+              </Stack>
+              <Stack space={2}>
+                <Label>Manual Package Dimensions (inches / lbs)</Label>
+                <Flex gap={2} align="center">
+                  <TextInput
+                    placeholder="L"
+                    type="number"
+                    value={manualDimensions.length}
+                    onChange={handleManualDimensionChange('length')}
+                  />
+                  <Text muted>×</Text>
+                  <TextInput
+                    placeholder="W"
+                    type="number"
+                    value={manualDimensions.width}
+                    onChange={handleManualDimensionChange('width')}
+                  />
+                  <Text muted>×</Text>
+                  <TextInput
+                    placeholder="H"
+                    type="number"
+                    value={manualDimensions.height}
+                    onChange={handleManualDimensionChange('height')}
+                  />
+                  <TextInput
+                    placeholder="Weight (lbs)"
+                    type="number"
+                    value={manualDimensions.weight}
+                    onChange={handleManualDimensionChange('weight')}
+                  />
+                </Flex>
+              </Stack>
+              <Flex align="center" gap={2}>
+                <Box
+                  flex={1}
+                  style={{height: 1, backgroundColor: 'var(--card-border-color, #E5E7EB)'}}
+                />
+                <Text size={1} muted>
+                  Or pull a product to auto-fill dimensions
+                </Text>
+                <Box
+                  flex={1}
+                  style={{height: 1, backgroundColor: 'var(--card-border-color, #E5E7EB)'}}
+                />
+              </Flex>
+              <Stack space={2}>
+                <Label>Select Product</Label>
+                <TextInput
+                  icon={SearchIcon}
+                  placeholder="Search for products..."
+                  value={productSearch}
+                  onChange={(event) => setProductSearch(event.currentTarget.value)}
+                />
+                {isLoadingProducts && (
+                  <Flex align="center" justify="center" padding={2}>
+                    <Spinner muted />
+                  </Flex>
+                )}
+                <Select
+                  value={selectedProductId}
+                  onChange={(event) => setSelectedProductId(event.currentTarget.value)}
+                  disabled={!productSearch.trim() || isLoadingProducts}
+                >
+                  <option value="">
+                    {productSearch.trim()
+                      ? products.length > 0
+                        ? 'Select a product…'
+                        : 'No products found'
+                      : 'Type to search products…'}
+                  </option>
+                  {products.map((product) => {
+                    const dims = product.dimensions
+                    const hasDims = dims?.length && dims?.width && dims?.height
+                    const hasWeight = typeof product.weight === 'number' && product.weight > 0
+
+                    return (
+                      <option key={product._id} value={product._id}>
+                        {product.title}
+                        {hasDims && hasWeight && dims
+                          ? ` (${dims.length}×${dims.width}×${dims.height}", ${product.weight} lbs)`
+                          : ' (no dimensions)'}
+                      </option>
+                    )
+                  })}
+                </Select>
+                {!productSearch.trim() && (
+                  <Text size={1} muted>
+                    Start typing to surface products with shipping data.
+                  </Text>
+                )}
+                {productSearch && !isLoadingProducts && products.length === 0 && (
+                  <Text size={1} muted>
+                    No products found — check the spelling or add a new product.
+                  </Text>
+                )}
+              </Stack>
+              <Button
+                text="Get quotes"
+                tone="primary"
+                onClick={handleGetQuotes}
+                disabled={!canGetQuote || isLoadingRates}
+                loading={isLoadingRates}
+              />
+            </Stack>
+          </Card>
 
           {/* Rates Display */}
           {rates.length > 0 && (

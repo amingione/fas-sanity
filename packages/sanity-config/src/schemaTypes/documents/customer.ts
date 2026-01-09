@@ -348,6 +348,7 @@ export default defineType({
       title: 'Total Orders',
       type: 'number',
       readOnly: true,
+      hidden: true,
       initialValue: 0,
       group: 'activity',
     }),
@@ -356,6 +357,7 @@ export default defineType({
       title: 'Average Order Value',
       type: 'number',
       readOnly: true,
+      hidden: true,
       group: 'activity',
     }),
     defineField({
@@ -363,6 +365,7 @@ export default defineType({
       title: 'Last Order Date',
       type: 'datetime',
       readOnly: true,
+      hidden: true,
       group: 'activity',
     }),
     defineField({
@@ -370,6 +373,7 @@ export default defineType({
       title: 'First Order Date',
       type: 'datetime',
       readOnly: true,
+      hidden: true,
       group: 'activity',
     }),
     defineField({
@@ -377,6 +381,7 @@ export default defineType({
       title: 'Days Since Last Order',
       type: 'number',
       readOnly: true,
+      hidden: true,
       group: 'activity',
     }),
     defineField({
@@ -384,6 +389,7 @@ export default defineType({
       title: 'Order Count',
       type: 'number',
       readOnly: true,
+      hidden: true,
       group: 'activity',
     }),
     defineField({
@@ -391,6 +397,7 @@ export default defineType({
       title: 'Quote Count',
       type: 'number',
       readOnly: true,
+      hidden: true,
       group: 'activity',
     }),
     defineField({
