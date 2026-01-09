@@ -9,12 +9,13 @@ import {
   type DimensionsInput,
   type WeightInput,
 } from '../lib/easypostClient'
-import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
+import {
+  getEasyPostAddressMissingFields,
+  getEasyPostParcelMissingFields,
+} from '../lib/easypostValidation'
 import {sanityClient} from '../lib/sanityClient'
 
-const DEFAULT_ORIGIN = (process.env.CORS_ALLOW || 'http://localhost:3333')
-  .split(',')[0]
-  .trim()
+const DEFAULT_ORIGIN = (process.env.CORS_ALLOW || 'http://localhost:3333').split(',')[0].trim()
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': DEFAULT_ORIGIN,
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -230,6 +231,7 @@ function assertAddress(address: EasyPostAddress) {
   const missing: string[] = []
   if (!address.name) missing.push('name')
   if (!address.street1) missing.push('addressLine1')
+  if (!address.street2) missing.push('addressLine2')
   if (!address.city) missing.push('city')
   if (!address.state) missing.push('state')
   if (!address.zip) missing.push('postalCode')
@@ -269,8 +271,10 @@ function normalizeRateValue(value?: string | number | null) {
 function buildSelectedRatePayload(rate?: SelectedRateInput) {
   if (!rate) return undefined
   const payload = {
-    carrier: typeof rate.carrier === 'string' && rate.carrier.trim() ? rate.carrier.trim() : undefined,
-    service: typeof rate.service === 'string' && rate.service.trim() ? rate.service.trim() : undefined,
+    carrier:
+      typeof rate.carrier === 'string' && rate.carrier.trim() ? rate.carrier.trim() : undefined,
+    service:
+      typeof rate.service === 'string' && rate.service.trim() ? rate.service.trim() : undefined,
     rate: normalizeRateValue(rate.rate),
     currency:
       typeof rate.currency === 'string' && rate.currency.trim() ? rate.currency.trim() : undefined,
@@ -516,7 +520,10 @@ export async function createEasyPostLabel(
   const weightInput =
     packageDetails?.weight ?? weightOverride ?? order?.weight ?? packageFromCart?.weight
   const dimensionsInput =
-    packageDetails?.dimensions ?? dimensionsOverride ?? order?.dimensions ?? packageFromCart?.dimensions
+    packageDetails?.dimensions ??
+    dimensionsOverride ??
+    order?.dimensions ??
+    packageFromCart?.dimensions
 
   const {ounces, pounds} = resolveWeight(weightInput, order?.weight ?? packageFromCart?.weight)
   const dimensions = resolveDimensions(
@@ -736,11 +743,11 @@ export async function createEasyPostLabel(
       appliedRate?.service_code ||
       undefined
 
-  const logEntry = {
-    _type: 'shippingLogEntry',
-    status: 'label_created',
-    message: `Label generated via EasyPost (${shippingStatus.carrier || 'carrier'} – ${shippingStatus.service || 'service'})`,
-    labelUrl,
+    const logEntry = {
+      _type: 'shippingLogEntry',
+      status: 'label_created',
+      message: `Label generated via EasyPost (${shippingStatus.carrier || 'carrier'} – ${shippingStatus.service || 'service'})`,
+      labelUrl,
       trackingNumber: trackingCode,
       trackingUrl,
       weight: Number.isFinite(pounds) ? Number(pounds.toFixed(2)) : undefined,

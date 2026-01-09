@@ -237,7 +237,11 @@ const CustomerListPane = React.forwardRef<HTMLDivElement, Record<string, never>>
   }
 
   const subscriptionBadge = (customer: CustomerRecord) => {
-    const subscribed = Boolean(customer.emailOptIn || customer.marketingOptIn)
+    const subscribed = Boolean(
+      customer.emailMarketingSubscribed ||
+        customer.communicationMarketingOptIn ||
+        customer.communicationPreferences?.marketingOptIn,
+    )
     return subscribed ? (
       <Badge radius={2} tone="positive" padding={2} fontSize={1}>
         Subscribed

@@ -23,6 +23,7 @@
     "@sanity/ui": "^3.1.11",
     "@sanity/vision": "^5.1.0",
     "@sanity/visual-editing": "^5.0.3",
+    "@portabletext/react": "^3.0.0",
     "@stripe/stripe-js": "^3.2.0",
     "codemirror": "^6.0.0",
     "date-fns": "^3.6.0",

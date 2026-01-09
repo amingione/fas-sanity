@@ -104,7 +104,7 @@ export default defineType({
           if (isDueOnReceipt) {
             return dueTime >= invoiceTime ? true : 'Due date cannot be before invoice date'
           }
-          return dueTime > invoiceTime ? true : 'Due date must be after invoice date'
+          return dueTime >= invoiceTime ? true : 'Due date must be on or after invoice date'
         }),
       fieldset: 'basicInfo',
     }),

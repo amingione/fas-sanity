@@ -8,11 +8,11 @@ import {
 import {
   ArchiveIcon,
   CopyIcon,
-  DownloadIcon,
   LinkIcon,
   RestoreIcon,
   SparkleIcon,
 } from '@sanity/icons'
+import {DownloadFileAction} from '../actions/DownloadFileAction'
 
 const API_VERSION = '2024-10-01'
 const DOWNLOAD_ACTIONS_FLAG = Symbol.for('fas.downloadActionsApplied')
@@ -84,29 +84,6 @@ const patchDownloadDocument = async (
 
   await tx.commit({autoGenerateArrayKeys: true})
 }
-
-const createDownloadFileAction =
-  (context: DocumentActionsContext): DocumentActionComponent =>
-  (props) => {
-    if (!isDownloadDocument(props)) return null
-    const doc = getActiveDoc(props)
-    if (!doc?._id || !doc.file?.asset?._ref) return null
-
-    return {
-      label: 'Download File',
-      icon: DownloadIcon,
-      tone: 'primary',
-      onHandle: async () => {
-        const info = await fetchFileMeta(context, doc._id!)
-        if (info?.url) {
-          window.open(info.url, '_blank', 'noopener,noreferrer')
-        } else {
-          window.alert('No file to download yet. Upload a file first.')
-        }
-        props.onComplete()
-      },
-    }
-  }
 
 const createCopyUrlAction =
   (context: DocumentActionsContext): DocumentActionComponent =>
@@ -258,7 +235,7 @@ export const resolveDownloadDocumentActions = (
   const publishWrapped = prev.map((action) => (action ? withLastUpdatedPublish(action) : action))
 
   const downloadActions = [
-    createDownloadFileAction(context),
+    DownloadFileAction,
     createCopyUrlAction(context),
     createMarkAsTemplateAction(context),
     createArchiveAction(context),
