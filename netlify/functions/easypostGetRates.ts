@@ -66,18 +66,18 @@ const handler: Handler = async (event) => {
   try {
     const {toAddress, parcel} = JSON.parse(event.body || '{}')
     if (!toAddress || !parcel) {
-      return jsonResponse(400, {error: 'Missing toAddress or parcel payload'})
+      return jsonResponse(400, {error: 'Missing toAddress or parcel payload'}, corsHeaders)
     }
 
     const normalizedParcel = normalizeParcel(parcel)
     const toAddressParsed = parseAddress(toAddress)
     const missingTo = getEasyPostAddressMissingFields(toAddressParsed)
     if (missingTo.length) {
-      return jsonResponse(400, {error: `Missing to_address fields: ${missingTo.join(', ')}`})
+      return jsonResponse(400, {error: `Missing to_address fields: ${missingTo.join(', ')}`}, corsHeaders)
     }
     const missingParcel = getEasyPostParcelMissingFields(normalizedParcel)
     if (missingParcel.length) {
-      return jsonResponse(400, {error: `Missing parcel fields: ${missingParcel.join(', ')}`})
+      return jsonResponse(400, {error: `Missing parcel fields: ${missingParcel.join(', ')}`}, corsHeaders)
     }
     const shipment = await easyPostClient.Shipment.create({
       to_address: toAddressParsed,
