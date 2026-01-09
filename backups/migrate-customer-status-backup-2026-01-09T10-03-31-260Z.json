@@ -1,0 +1,950 @@
+[
+  {
+    "_id": "07ijh2LC0WMzuw5YBaXTT1",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "0ZX8N1zyZCF6xa6AD272tW",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "0e8Ogn6oMj2M7KfRYaDcHg",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "0e8Ogn6oMj2M7KfRYcEXJK",
+    "customerStatus": null,
+    "lifetimeSpend": 3087.67,
+    "orderCount": 1
+  },
+  {
+    "_id": "0e8Ogn6oMj2M7KfRYcEtbc",
+    "customerStatus": null,
+    "lifetimeSpend": 824.43,
+    "orderCount": 1
+  },
+  {
+    "_id": "1crO578Kg9GLw1Z6pAEeA9",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "1crO578Kg9GLw1Z6pU29al",
+    "customerStatus": null,
+    "lifetimeSpend": 974.43,
+    "orderCount": 1
+  },
+  {
+    "_id": "2a49d2ed-aeba-4abe-9738-8e66f2fcfbbb",
+    "customerStatus": null,
+    "lifetimeSpend": 59.67,
+    "orderCount": 3
+  },
+  {
+    "_id": "2pXpyaIoQm5n5Ibf7xXhLX",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "2pXpyaIoQm5n5Ibf7yz9Ih",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "2u1wzlRSaIqkYNMBREkHQG",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "2u1wzlRSaIqkYNMBRLXAMQ",
+    "customerStatus": null,
+    "lifetimeSpend": 916.2,
+    "orderCount": 1
+  },
+  {
+    "_id": "39tr2dGATJPXMGnTVof6dX",
+    "customerStatus": null,
+    "lifetimeSpend": 2013.26,
+    "orderCount": 2
+  },
+  {
+    "_id": "3F51bEg9WhgsVxQUTjD6z1",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "5EUpQzG2AQi15vZWif8j9K",
+    "customerStatus": null,
+    "lifetimeSpend": 824.43,
+    "orderCount": 1
+  },
+  {
+    "_id": "5EUpQzG2AQi15vZWio1iKk",
+    "customerStatus": null,
+    "lifetimeSpend": 1648.86,
+    "orderCount": 2
+  },
+  {
+    "_id": "7fTbHJfKQOJZnatQe4UIBD",
+    "customerStatus": null,
+    "lifetimeSpend": 134.95,
+    "orderCount": 1
+  },
+  {
+    "_id": "7nlP15JTsWK8DGlzwWDGn1",
+    "customerStatus": null,
+    "lifetimeSpend": 263.88,
+    "orderCount": 2
+  },
+  {
+    "_id": "82LxAjbTYkGzFfRMz42eUr",
+    "customerStatus": null,
+    "lifetimeSpend": 122.45,
+    "orderCount": 1
+  },
+  {
+    "_id": "82LxAjbTYkGzFfRMzBhNvX",
+    "customerStatus": null,
+    "lifetimeSpend": 279.97,
+    "orderCount": 1
+  },
+  {
+    "_id": "ATZnC953ZI6BkOhriPNHz4",
+    "customerStatus": null,
+    "lifetimeSpend": 84.95,
+    "orderCount": 1
+  },
+  {
+    "_id": "ATZnC953ZI6BkOhriVQEVQ",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "ATZnC953ZI6BkOhriYFky0",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "ATZnC953ZI6BkOhriZTtDE",
+    "customerStatus": null,
+    "lifetimeSpend": 620.28,
+    "orderCount": 2
+  },
+  {
+    "_id": "ATZnC953ZI6BkOhriZTtKq",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "ATZnC953ZI6BkOhrib4TZk",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KIfUEKz",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KIgE8I6",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KIi0SD7",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KIt67dg",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KIxXcgU",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KJ4Mppo",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "BMNgS7xYff7OVB8KJ9TQUn",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "Bx1nnDheNcwyvfrE5wezHX",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "Bx1nnDheNcwyvfrE5x1Ch5",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "Bx1nnDheNcwyvfrE5xUSsT",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "DoH27XNsandOwYPH8xLocU",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "E0ytE44muZCxdH7ygRfrr6",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "Fie5oYNHXmf8OfWOgxP8iN",
+    "customerStatus": null,
+    "lifetimeSpend": 911.64,
+    "orderCount": 1
+  },
+  {
+    "_id": "Fie5oYNHXmf8OfWOh2LtAV",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "IkQtNmLsoOQC4dxvVTlGje",
+    "customerStatus": null,
+    "lifetimeSpend": 824.43,
+    "orderCount": 1
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyB4bH5f",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyB4lFJJ",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyB5JVVI",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyB6Ap7U",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyB6rWEy",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyBAnMUs",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyBB8ORY",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyBBW4n8",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "KtFuBZxLFDsJEKfyBCuS80",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "NjPajrZeZtXFPEsZu1WQPw",
+    "customerStatus": null,
+    "lifetimeSpend": 1026.93,
+    "orderCount": 1
+  },
+  {
+    "_id": "Nx81iCOhqsXEK2jKK5rQ66",
+    "customerStatus": null,
+    "lifetimeSpend": 757.88,
+    "orderCount": 1
+  },
+  {
+    "_id": "PM4sgDErIeTHjxMToObDBI",
+    "customerStatus": null,
+    "lifetimeSpend": 100,
+    "orderCount": 0
+  },
+  {
+    "_id": "Pw8QyyJ36x6ildklu1kvjU",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "RgNcVWkKG7J3P0ZAHyPyqt",
+    "customerStatus": null,
+    "lifetimeSpend": 1914.99,
+    "orderCount": 1
+  },
+  {
+    "_id": "RgNcVWkKG7J3P0ZAI2U6vb",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "SoyCAbrF4SPOxAFbjuh04B",
+    "customerStatus": null,
+    "lifetimeSpend": 1762.26,
+    "orderCount": 1
+  },
+  {
+    "_id": "V0GRC4Tle9y4FQBL5LfCCS",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "V0GRC4Tle9y4FQBL5MNCT2",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "V0GRC4Tle9y4FQBL5SOUbo",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "W7WKZqTuh9piACAxeXloVj",
+    "customerStatus": null,
+    "lifetimeSpend": 824.43,
+    "orderCount": 1
+  },
+  {
+    "_id": "WND3u2R0zuuaLwXIAfBnAa",
+    "customerStatus": null,
+    "lifetimeSpend": 8486.72,
+    "orderCount": 2
+  },
+  {
+    "_id": "WND3u2R0zuuaLwXIAhc0VS",
+    "customerStatus": null,
+    "lifetimeSpend": 384.94,
+    "orderCount": 1
+  },
+  {
+    "_id": "WND3u2R0zuuaLwXIAje6yU",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "XkICT23xt6rpMNZx07iMkX",
+    "customerStatus": null,
+    "lifetimeSpend": 544.95,
+    "orderCount": 1
+  },
+  {
+    "_id": "Y7XS0nrHH7wRWAXx7gAjpI",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "YW0q48iJcpU17UNesBDJYs",
+    "customerStatus": null,
+    "lifetimeSpend": 134.95,
+    "orderCount": 1
+  },
+  {
+    "_id": "YZWBAGJtM0BNeKybKXuGEh",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "YZWBAGJtM0BNeKybKjSJDB",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "Zuxbdi1Wl3DApzNzfG0Ri9",
+    "customerStatus": null,
+    "lifetimeSpend": 269.9,
+    "orderCount": 1
+  },
+  {
+    "_id": "acFO0htS6558DeDCbWctFv",
+    "customerStatus": null,
+    "lifetimeSpend": 709.94,
+    "orderCount": 1
+  },
+  {
+    "_id": "customer.0161a10b-f37c-41bb-92df-840806d26943",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.0271cec4-f86d-4e9b-afba-0b147cd8c62a",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.04bb82c7-df41-4925-b2a8-fac44e3a092c",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.099d9635-df94-4e19-b89e-47157b9d0fc3",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.0c2befe8-f56a-4a3c-ad00-d80c367e7c72",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.11bbca1b-421c-428e-942a-5c113cf7e9d2",
+    "customerStatus": null,
+    "lifetimeSpend": 2083.26,
+    "orderCount": 2
+  },
+  {
+    "_id": "customer.18c7176a-96ec-4c1c-8941-4c357d3d2a7a",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.1d79ac0a-e0da-4b21-9f07-575a949e443c",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.2383245d-2098-4cdf-aab9-4e3fdd0dae6d",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "customer.2714fd7e-b712-44eb-bc49-023159ffe3fe",
+    "customerStatus": null,
+    "lifetimeSpend": 134.95,
+    "orderCount": 1
+  },
+  {
+    "_id": "customer.3336f207-14a3-40db-b08d-a1a72efbd5ee",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.3f5b4531-e816-483f-8b56-1b8b343af02e",
+    "customerStatus": null,
+    "lifetimeSpend": 914.43,
+    "orderCount": 1
+  },
+  {
+    "_id": "customer.4c81349f-0bec-4ffc-94a8-e18b7d0ac965",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.639f21d5-21f7-4a08-9a18-bf1f00069d81",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.7a0f1828-9fa2-43c8-8934-3643a66cca9c",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.7ac019ae-dc6b-49c4-92bd-4c59c4464037",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.7bdcbde6-dea9-49e3-b9f8-1b284dbf8547",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.953b6497-79ea-4a1e-aafe-12405a24b10f",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.9ffa3ff1-b828-45fb-8b09-ecd9523b3cd1",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.a4d2c162-e369-4933-85d3-24a362b9c510",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.ab6829d0-a884-4834-b694-5105222a9838",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.b4ced9a7-5a88-4b02-a944-c71bd96d86d4",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.bb2a0442-2445-48ce-af58-e0a7a082e27a",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.bfa91621-8ce4-42b3-98fe-a40cfa1ba5eb",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.c2a25e8b-df18-4eb7-a49c-22ba7d1c0803",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.c48c605f-0e44-4c52-87c1-4bbda4f19899",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.c7bee705-a973-4426-a8d1-6746dfb9738c",
+    "customerStatus": null,
+    "lifetimeSpend": 2789.82,
+    "orderCount": 1
+  },
+  {
+    "_id": "customer.c85ec0e8-bbdb-43f0-b0ae-16ecb0b9b70e",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.d9ea8ca6-a00c-4cce-9fe6-822d6502a42c",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.f384dba1-241f-49f9-85a0-01f86445194c",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.f4d16be5-5a59-4e08-ab94-334e5dff6f19",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "customer.fbf2d56b-cedc-4a09-ae8d-3f5f2a04db97",
+    "customerStatus": null,
+    "lifetimeSpend": 384.94,
+    "orderCount": 1
+  },
+  {
+    "_id": "customer.ff8bf999-a98e-4ee8-9cf5-25554ac88091",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "drafts.0e8Ogn6oMj2M7KfRYcEXJK",
+    "customerStatus": null,
+    "lifetimeSpend": 3087.67,
+    "orderCount": 3
+  },
+  {
+    "_id": "drafts.3F51bEg9WhgsVxQUTjD6z1",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "drafts.49ee9da8-b117-4524-a880-b9367fb1f8e4",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "drafts.ATZnC953ZI6BkOhriZTtDE",
+    "customerStatus": null,
+    "lifetimeSpend": 310.14,
+    "orderCount": 1
+  },
+  {
+    "_id": "eaDTm6e2kqrnY1K8YSXe8B",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "eaDTm6e2kqrnY1K8YSYEyD",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "eaDTm6e2kqrnY1K8YSYPrw",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "eaDTm6e2kqrnY1K8YU8mjm",
+    "customerStatus": null,
+    "lifetimeSpend": 938.16,
+    "orderCount": 1
+  },
+  {
+    "_id": "eaDTm6e2kqrnY1K8YWwZde",
+    "customerStatus": null,
+    "lifetimeSpend": 1913.77,
+    "orderCount": 1
+  },
+  {
+    "_id": "gA4exLPMpLCRNnXl2DSLuW",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "gA4exLPMpLCRNnXl2DVa28",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "gA4exLPMpLCRNnXl2Dhcxs",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "ja6rnrc2JBIMXQQsjzOAr2",
+    "customerStatus": null,
+    "lifetimeSpend": 97.18,
+    "orderCount": 1
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxpaHaC",
+    "customerStatus": null,
+    "lifetimeSpend": 1008.16,
+    "orderCount": 1
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs3wLk",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs44qK",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs4NQq",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs4VKA",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs4iIw",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs4kfU",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxs4mpc",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "ldIqrUWpjFlP6ReYxtyUe2",
+    "customerStatus": null,
+    "lifetimeSpend": 132.89,
+    "orderCount": 1
+  },
+  {
+    "_id": "lxXtrswKrF9naDWW1GxudU",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "m0vuBZO5SDdbCbNZN5nJNN",
+    "customerStatus": null,
+    "lifetimeSpend": 635.13,
+    "orderCount": 2
+  },
+  {
+    "_id": "p0Xeun8bf8C7yRRTOg6dvJ",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "s0lZb9OHX3eL8QMZR10q8R",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "s0lZb9OHX3eL8QMZR7Olyy",
+    "customerStatus": null,
+    "lifetimeSpend": 209.94,
+    "orderCount": 1
+  },
+  {
+    "_id": "sTqrLGKRwWMHNjBwTtfoQb",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "uHY6pnb0nvuOqg3YKcTrO0",
+    "customerStatus": null,
+    "lifetimeSpend": 8297.68,
+    "orderCount": 1
+  },
+  {
+    "_id": "ugQNfkLHeGvjlhDztzs7V7",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "ugQNfkLHeGvjlhDzu0iUXL",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "ugQNfkLHeGvjlhDzu0yWnT",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "ugQNfkLHeGvjlhDzu1teRt",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "ugQNfkLHeGvjlhDzu4xklv",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "ugQNfkLHeGvjlhDzu6eqej",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA2kowuj",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA2l8zhx",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA2lRjq3",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA2qSv2t",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA3HbxET",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA3INOGZ",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "uhI195ZWWSrEU1zA3OCfz9",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": null
+  },
+  {
+    "_id": "uvA80wcSKMQCqyPGDKu6WL",
+    "customerStatus": null,
+    "lifetimeSpend": 945.33,
+    "orderCount": 1
+  },
+  {
+    "_id": "xDRTR3NF9oWaWxExMHQnuS",
+    "customerStatus": null,
+    "lifetimeSpend": null,
+    "orderCount": 0
+  },
+  {
+    "_id": "xqZXE857VWoYxXsk9YX4kt",
+    "customerStatus": null,
+    "lifetimeSpend": 1648.86,
+    "orderCount": 2
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUruaGG",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrulf0",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUruy9p",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrv3O1",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrv79R",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrv8vf",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrvB7p",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrvcJd",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  },
+  {
+    "_id": "yKtMuNrLDrmT8EyPUrviQw",
+    "customerStatus": null,
+    "lifetimeSpend": 0,
+    "orderCount": 0
+  }
+]

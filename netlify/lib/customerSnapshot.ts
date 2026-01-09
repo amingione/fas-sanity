@@ -13,6 +13,8 @@ type ShippingLike = {
   name?: string | null
   addressLine1?: string | null
   addressLine2?: string | null
+  line1?: string | null
+  line2?: string | null
   street?: string | null
   street1?: string | null
   street2?: string | null
@@ -54,8 +56,13 @@ function normalizeShippingAddress(address: ShippingLike | null | undefined) {
     address.addressLine1 ||
     address.street ||
     address.street1 ||
+    address.line1 ||
     (typeof address === 'object' && 'address' in address ? (address as any).address : undefined)
-  const line2 = address.addressLine2 || address.street2 || undefined
+  const line2 =
+    address.addressLine2 ||
+    address.street2 ||
+    address.line2 ||
+    (typeof address === 'object' && 'line2' in address ? (address as any).line2 : undefined)
   const city = address.city || undefined
   const state = address.state || address.stateProvince || address.region || undefined
   const postalCode = address.postalCode || address.postal_code || address.zip || undefined

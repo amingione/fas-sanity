@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react'
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {
   Box,
   Button,
@@ -14,7 +14,9 @@ import {
   TextInput,
 } from '@sanity/ui'
 import {SearchIcon} from '@sanity/icons'
-import {useClient} from 'sanity'
+import {set, useClient} from 'sanity'
+import type {ObjectInputProps} from 'sanity'
+import AddressAutocompleteInput from './inputs/AddressAutocompleteInput'
 
 interface ShippingQuoteDialogProps {
   onClose: () => void
@@ -37,11 +39,11 @@ interface Customer {
   _id: string
   name: string
   shippingAddress?: {
-    street1?: string
-    street2?: string
+    street?: string
     city?: string
     state?: string
     postalCode?: string
+    country?: string
   }
 }
 
@@ -60,8 +62,32 @@ const parseManualNumber = (value: string) => {
   return Number.isFinite(num) ? num : 0
 }
 
+const formatAddressPreview = (address: {
+  name?: string
+  street?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  country?: string
+}) => {
+  if (!address) return ''
+  const parts = [
+    address.name,
+    address.street,
+    [address.city, address.state, address.postalCode]
+      .filter((line) => line && String(line).trim())
+      .join(', '),
+    address.country,
+  ].filter((part) => part && String(part).trim())
+  return parts.join('\n')
+}
+
 export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
   const client = useClient({apiVersion: '2024-01-01'})
+  const customerRequestIdRef = useRef(0)
+  const productRequestIdRef = useRef(0)
+  const customerAbortControllerRef = useRef<AbortController | null>(null)
+  const productAbortControllerRef = useRef<AbortController | null>(null)
 
   // Customer search state
   const [customerSearch, setCustomerSearch] = useState('')
@@ -70,25 +96,136 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false)
 
   const [shipToAddress, setShipToAddress] = useState('')
+  const [structuredShipToAddress, setStructuredShipToAddress] = useState<{
+    name?: string
+    street?: string
+    city?: string
+    state?: string
+    postalCode?: string
+    country?: string
+  } | null>(null)
   const [manualDimensions, setManualDimensions] = useState(INITIAL_DIMENSIONS)
+  const [quoteNotes, setQuoteNotes] = useState('')
   const [productSearch, setProductSearch] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [rates, setRates] = useState<Rate[]>([])
   const [isLoadingRates, setIsLoadingRates] = useState(false)
+  const addressSchemaType = useMemo(
+    () => ({
+      name: 'customerBillingAddress',
+      options: {showSavedAddressLookup: true},
+    }),
+    [],
+  )
+
+  const handleStructuredAddressChange = useCallback((patch: any) => {
+    if (!patch || patch.type !== 'set') return
+    const nextAddress = patch.value
+    if (!nextAddress) {
+      setStructuredShipToAddress(null)
+      return
+    }
+    const normalized = {
+      name: nextAddress.name || '',
+      street: nextAddress.street || '',
+      city: nextAddress.city || '',
+      state: nextAddress.state || '',
+      postalCode: nextAddress.postalCode || '',
+      country: nextAddress.country || '',
+    }
+    setStructuredShipToAddress(normalized)
+  }, [])
+
+  const renderAddressFields = useCallback(
+    (props: ObjectInputProps<Record<string, string | undefined>>) => {
+      const currentValue = {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+        ...(props.value || {}),
+      }
+      const handleFieldChange =
+        (field: keyof typeof currentValue) =>
+        (event: React.ChangeEvent<HTMLInputElement>) => {
+          props.onChange?.(
+            set({
+              ...currentValue,
+              [field]: event.currentTarget.value,
+              _type: 'customerBillingAddress',
+            }),
+          )
+        }
+
+      return (
+        <Stack space={2}>
+          <TextInput
+            placeholder="Street address"
+            value={currentValue.street || ''}
+            onChange={handleFieldChange('street')}
+          />
+          <Flex gap={2}>
+            <TextInput
+              placeholder="City"
+              value={currentValue.city || ''}
+              onChange={handleFieldChange('city')}
+            />
+            <TextInput
+              placeholder="State"
+              value={currentValue.state || ''}
+              onChange={handleFieldChange('state')}
+            />
+          </Flex>
+          <Flex gap={2}>
+            <TextInput
+              placeholder="Postal code"
+              value={currentValue.postalCode || ''}
+              onChange={handleFieldChange('postalCode')}
+            />
+            <TextInput
+              placeholder="Country"
+              value={currentValue.country || ''}
+              onChange={handleFieldChange('country')}
+            />
+          </Flex>
+        </Stack>
+      )
+    },
+    [],
+  )
+
+  const addressAutocompleteProps = useMemo(
+    () => ({
+      renderDefault: renderAddressFields,
+      schemaType: addressSchemaType,
+      value: structuredShipToAddress || {},
+      onChange: handleStructuredAddressChange,
+      id: 'shipping-quote-address',
+      path: ['shippingAddress'],
+    }),
+    [addressSchemaType, handleStructuredAddressChange, renderAddressFields, structuredShipToAddress],
+  )
 
   // Customer search effect
   useEffect(() => {
     const timer = setTimeout(() => {
+      const query = customerSearch.trim().toLowerCase()
+      if (!query) {
+        customerAbortControllerRef.current?.abort()
+        setIsLoadingCustomers(false)
+        return
+      }
+      const requestId = ++customerRequestIdRef.current
+      const controller = new AbortController()
+      customerAbortControllerRef.current?.abort()
+      customerAbortControllerRef.current = controller
+      setIsLoadingCustomers(true)
+
       void (async () => {
-        if (!customerSearch.trim()) {
-          setCustomers([])
-          return
-        }
-        setIsLoadingCustomers(true)
         try {
-          const search = customerSearch.trim().toLowerCase()
           const results = await client.fetch<Customer[]>(
             `*[_type == "customer" && (
               lower(name) match $searchTerm ||
@@ -98,53 +235,100 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
             )][0...10]{
               _id,
               name,
-              shippingAddress
+              email,
+              shippingAddress {
+                street,
+                city,
+                state,
+                postalCode,
+                country
+              }
             }`,
-            {searchTerm: `*${search}*`},
+            {searchTerm: `*${query}*`},
+            {signal: controller.signal},
           )
+          if (customerRequestIdRef.current !== requestId) return
           setCustomers(results || [])
-        } catch (error) {
+        } catch (error: any) {
+          if (controller.signal.aborted) return
+          if (customerRequestIdRef.current !== requestId) return
           console.error('Error searching customers', error)
           setCustomers([])
         } finally {
-          setIsLoadingCustomers(false)
+          if (customerRequestIdRef.current === requestId && !controller.signal.aborted) {
+            setIsLoadingCustomers(false)
+          }
         }
       })()
     }, 300)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      customerAbortControllerRef.current?.abort()
+    }
   }, [client, customerSearch])
 
   // Product search effect
   useEffect(() => {
     const timer = setTimeout(() => {
+      const query = productSearch.trim().toLowerCase()
+      if (!query) {
+        productAbortControllerRef.current?.abort()
+        setIsLoadingProducts(false)
+        return
+      }
+      const requestId = ++productRequestIdRef.current
+      const controller = new AbortController()
+      productAbortControllerRef.current?.abort()
+      productAbortControllerRef.current = controller
+      setIsLoadingProducts(true)
+
       void (async () => {
-        if (!productSearch.trim()) {
-          setProducts([])
-          return
-        }
-        setIsLoadingProducts(true)
         try {
-          const search = productSearch.trim().toLowerCase()
           const results = await client.fetch<Product[]>(
             `*[_type == "product" && lower(title) match $searchTerm][0...20]{
               _id,
               title,
-              "dimensions": shippingConfig.dimensions,
-              "weight": coalesce(shippingConfig.weight.value, shippingWeight.value)
+              "dimensions": coalesce(shippingConfig.dimensions, dimensions),
+              "weight": coalesce(
+                shippingConfig.weight,
+                shippingWeight.value,
+                shippingWeight
+              )
             }`,
-            {searchTerm: `*${search}*`},
+            {searchTerm: `*${query}*`},
+            {signal: controller.signal},
           )
+          if (productRequestIdRef.current !== requestId) return
           setProducts(results || [])
-        } catch (error) {
+        } catch (error: any) {
+          if (controller.signal.aborted) return
+          if (productRequestIdRef.current !== requestId) return
           console.error('Error searching products for shipping quote', error)
           setProducts([])
         } finally {
-          setIsLoadingProducts(false)
+          if (productRequestIdRef.current === requestId && !controller.signal.aborted) {
+            setIsLoadingProducts(false)
+          }
         }
       })()
     }, 300)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      productAbortControllerRef.current?.abort()
+    }
   }, [client, productSearch])
+
+  useEffect(() => {
+    if (selectedCustomerId && !customers.some((customer) => customer._id === selectedCustomerId)) {
+      setSelectedCustomerId('')
+    }
+  }, [customers, selectedCustomerId])
+
+  useEffect(() => {
+    if (selectedProductId && !products.some((product) => product._id === selectedProductId)) {
+      setSelectedProductId('')
+    }
+  }, [products, selectedProductId])
 
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer._id === selectedCustomerId),
@@ -162,13 +346,33 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
       const addr = selectedCustomer.shippingAddress
       const lines = [
         selectedCustomer.name,
-        addr.street1,
-        addr.street2,
-        [addr.city, addr.state, addr.postalCode].filter(Boolean).join(', '),
-      ].filter(Boolean)
+        addr.street,
+        [addr.city, addr.state, addr.postalCode]
+          .filter((line) => line && String(line).trim())
+          .join(', '),
+        addr.country,
+      ].filter((line) => line && String(line).trim())
       setShipToAddress(lines.join('\n'))
+      setStructuredShipToAddress({
+        name: selectedCustomer.name,
+        street: addr.street,
+        city: addr.city,
+        state: addr.state,
+        postalCode: addr.postalCode,
+        country: addr.country,
+      })
+      return
     }
+    setStructuredShipToAddress(null)
   }, [selectedCustomer])
+
+  useEffect(() => {
+    if (structuredShipToAddress) {
+      setShipToAddress(formatAddressPreview(structuredShipToAddress))
+    } else {
+      setShipToAddress('')
+    }
+  }, [structuredShipToAddress])
 
   const hasManualDimensions = useMemo(() => {
     return (
@@ -181,12 +385,22 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
 
   const canGetQuote = useMemo(() => {
     const hasAddress = shipToAddress.trim().length > 0
-    const hasProductDimensions = Boolean(selectedProduct?.dimensions && selectedProduct?.weight)
+    const hasProductDimensions = Boolean(
+      selectedProduct?.dimensions?.length &&
+      selectedProduct?.dimensions?.width &&
+      selectedProduct?.dimensions?.height &&
+      selectedProduct?.weight,
+    )
     return hasAddress && (hasManualDimensions || hasProductDimensions)
   }, [hasManualDimensions, selectedProduct, shipToAddress])
 
   const resolveDimensions = (): {dimensions: Dimensions; weight: number} => {
-    if (selectedProduct?.dimensions && selectedProduct?.weight) {
+    if (
+      selectedProduct?.dimensions?.length &&
+      selectedProduct?.dimensions?.width &&
+      selectedProduct?.dimensions?.height &&
+      selectedProduct?.weight
+    ) {
       return {dimensions: selectedProduct.dimensions, weight: selectedProduct.weight}
     }
     return {
@@ -206,11 +420,19 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
 
     try {
       const {dimensions, weight} = resolveDimensions()
+      const hasStructured =
+        structuredShipToAddress &&
+        (structuredShipToAddress.street ||
+          structuredShipToAddress.city ||
+          structuredShipToAddress.state ||
+          structuredShipToAddress.postalCode ||
+          structuredShipToAddress.country)
+      const toAddressPayload = hasStructured ? structuredShipToAddress : shipToAddress
       const response = await fetch('/.netlify/functions/easypostGetRates', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          toAddress: shipToAddress,
+          toAddress: toAddressPayload,
           parcel: {...dimensions, weight},
         }),
       })
@@ -246,6 +468,7 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
           weight,
           rate,
           customerId: trimmedCustomerId,
+          notes: quoteNotes.trim() || undefined,
         }),
       })
       if (!pdfResponse.ok) {
@@ -265,11 +488,13 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
             carrier: rate.carrier,
             service: rate.service,
             rate: rate.rate,
+            notes: quoteNotes.trim() || '',
           },
         ])
         .commit({autoGenerateArrayKeys: true})
 
       alert('Shipping quote saved to customer record.')
+      setQuoteNotes('')
       onClose()
     } catch (error) {
       console.error('Error saving shipping quote', error)
@@ -302,35 +527,57 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
                 <Spinner muted />
               </Flex>
             )}
-            {customers.length > 0 && (
-              <Select
-                value={selectedCustomerId}
-                onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
-              >
-                <option value="">Select a customer…</option>
-                {customers.map((customer) => (
-                  <option key={customer._id} value={customer._id}>
-                    {customer.name}
-                  </option>
-                ))}
-              </Select>
+            <Select
+              value={selectedCustomerId}
+              onChange={(event) => setSelectedCustomerId(event.currentTarget.value)}
+              disabled={!customerSearch.trim() || isLoadingCustomers}
+            >
+              <option value="">
+                {customerSearch.trim()
+                  ? customers.length > 0
+                    ? 'Select a customer…'
+                    : 'No customers found'
+                  : 'Type to search customers…'}
+              </option>
+              {customers.map((customer) => (
+                <option key={customer._id} value={customer._id}>
+                  {customer.name}
+                </option>
+              ))}
+            </Select>
+            {!customerSearch.trim() && (
+              <Text size={1} muted>
+                Start typing to surface active customers.
+              </Text>
+            )}
+            {customerSearch && !isLoadingCustomers && customers.length === 0 && (
+              <Text size={1} muted>
+                No customers found — refine the query or add a customer record.
+              </Text>
             )}
           </Stack>
 
           {/* Ship To Address */}
           <Stack space={2}>
             <Label>Ship To Address *</Label>
-            <TextArea
-              placeholder={'FAS Customer\n123 Main St\nCity, ST 12345'}
-              rows={4}
-              value={shipToAddress}
-              onChange={(event) => setShipToAddress(event.currentTarget.value)}
+            <AddressAutocompleteInput
+              {...(addressAutocompleteProps as ObjectInputProps<Record<string, string | undefined>>)}
             />
             <Text size={1} muted>
               {selectedCustomer
                 ? 'Auto-filled from customer record (editable)'
                 : 'Enter address manually or select a customer above'}
             </Text>
+          </Stack>
+
+          <Stack space={2}>
+            <Label>Quote Notes</Label>
+            <TextArea
+              rows={3}
+              value={quoteNotes}
+              onChange={(event) => setQuoteNotes(event.currentTarget.value)}
+              placeholder="Add context to include with the saved quote (optional)"
+            />
           </Stack>
 
           {/* Manual Dimensions */}
@@ -388,25 +635,41 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
                 <Spinner muted />
               </Flex>
             )}
-            {products.length > 0 && (
-              <Select
-                value={selectedProductId}
-                onChange={(event) => setSelectedProductId(event.currentTarget.value)}
-              >
-                <option value="">Select a product…</option>
-                {products.map((product) => (
+            <Select
+              value={selectedProductId}
+              onChange={(event) => setSelectedProductId(event.currentTarget.value)}
+              disabled={!productSearch.trim() || isLoadingProducts}
+            >
+              <option value="">
+                {productSearch.trim()
+                  ? products.length > 0
+                    ? 'Select a product…'
+                    : 'No products found'
+                  : 'Type to search products…'}
+              </option>
+              {products.map((product) => {
+                const dims = product.dimensions
+                const hasDims = dims?.length && dims?.width && dims?.height
+                const hasWeight = typeof product.weight === 'number' && product.weight > 0
+
+                return (
                   <option key={product._id} value={product._id}>
                     {product.title}
-                    {product.dimensions && product.weight
-                      ? ` (${product.dimensions.length}×${product.dimensions.width}×${product.dimensions.height}", ${product.weight} lbs)`
+                    {hasDims && hasWeight && dims
+                      ? ` (${dims.length}×${dims.width}×${dims.height}", ${product.weight} lbs)`
                       : ' (no dimensions)'}
                   </option>
-                ))}
-              </Select>
+                )
+              })}
+            </Select>
+            {!productSearch.trim() && (
+              <Text size={1} muted>
+                Start typing to surface products with shipping data.
+              </Text>
             )}
             {productSearch && !isLoadingProducts && products.length === 0 && (
               <Text size={1} muted>
-                No products found with shipping dimensions
+                No products found — check the spelling or add a new product.
               </Text>
             )}
           </Stack>

@@ -5,19 +5,62 @@ import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '.
 const API_KEY = process.env.EASYPOST_API_KEY
 const easyPostClient = API_KEY ? new EasyPost(API_KEY) : null
 
-const jsonResponse = (statusCode: number, payload: Record<string, unknown>) => ({
+const DEFAULT_ORIGINS = (
+  process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
+)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+function makeCORS(origin?: string) {
+  const fallback = DEFAULT_ORIGINS[0] || '*'
+  if (!origin)
+    return {
+      'Access-Control-Allow-Origin': fallback,
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    }
+  if (/^http:\/\/localhost:\d+$/i.test(origin) || DEFAULT_ORIGINS.includes(origin)) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    }
+  }
+  return {
+    'Access-Control-Allow-Origin': fallback,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  }
+}
+
+const jsonResponse = (
+  statusCode: number,
+  payload: Record<string, unknown>,
+  cors: Record<string, string>,
+) => ({
   statusCode,
-  headers: {'Content-Type': 'application/json'},
+  headers: {...cors, 'Content-Type': 'application/json'},
   body: JSON.stringify(payload),
 })
 
 const handler: Handler = async (event) => {
+  const origin = (event.headers?.origin || event.headers?.Origin || '') as string
+  const corsHeaders = makeCORS(origin)
+
+  if (event.httpMethod === 'OPTIONS') {
+    return {statusCode: 204, headers: corsHeaders, body: ''}
+  }
   if (event.httpMethod !== 'POST') {
-    return jsonResponse(405, {error: 'Method not allowed'})
+    return jsonResponse(405, {error: 'Method not allowed'}, corsHeaders)
   }
 
   if (!easyPostClient) {
-    return jsonResponse(500, {error: 'Missing EASYPOST_API_KEY environment variable'})
+    return jsonResponse(
+      500,
+      {error: 'Missing EASYPOST_API_KEY environment variable'},
+      corsHeaders,
+    )
   }
 
   try {
@@ -62,12 +105,12 @@ const handler: Handler = async (event) => {
           }))
         : []
 
-    return jsonResponse(200, {rates})
+    return jsonResponse(200, {rates}, corsHeaders)
   } catch (error: any) {
     console.error('easypostGetRates failed', error)
     const message =
       error?.body?.error?.message || error?.message || 'Failed to retrieve shipping rates'
-    return jsonResponse(500, {error: message})
+    return jsonResponse(500, {error: message}, corsHeaders)
   }
 }
 
@@ -86,23 +129,45 @@ function toPositiveNumber(value: unknown) {
   return Number.isFinite(num) && num > 0 ? Number(num.toFixed(2)) : 1
 }
 
-function parseAddress(addressString: string) {
-  const lines = (addressString || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
+type AddressInput = string | Record<string, string | undefined>
 
-  const name = lines.length > 2 ? lines[0] : undefined
-  const street1 = lines.length > 1 ? lines[1] : lines[0] || ''
-  const cityState = lines.length > 2 ? lines[2] : lines[1] || ''
-  const cityMatch = cityState.match(/([^,]+),\s*([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)/)
+function parseAddress(addressInput: AddressInput) {
+  if (typeof addressInput === 'string') {
+    const lines = (addressInput || '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
 
+    const name = lines.length > 2 ? lines[0] : undefined
+    const street1 = lines.length > 1 ? lines[1] : lines[0] || ''
+    const cityState = lines.length > 2 ? lines[2] : lines[1] || ''
+    const cityMatch = cityState.match(/([^,]+),\s*([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)/)
+
+    return {
+      name,
+      street1,
+      city: cityMatch ? cityMatch[1].trim() : cityState.split(',')[0]?.trim() || '',
+      state: cityMatch ? cityMatch[2] : '',
+      zip: cityMatch ? cityMatch[3] : '',
+      country: 'US',
+    }
+  }
+
+  const {
+    name,
+    street,
+    city,
+    state,
+    postalCode,
+    zip,
+    country,
+  } = addressInput || {}
   return {
     name,
-    street1,
-    city: cityMatch ? cityMatch[1].trim() : cityState.split(',')[0]?.trim() || '',
-    state: cityMatch ? cityMatch[2] : '',
-    zip: cityMatch ? cityMatch[3] : '',
-    country: 'US',
+    street1: street || '',
+    city: city || '',
+    state: state || '',
+    zip: postalCode || zip || '',
+    country: country || 'US',
   }
 }

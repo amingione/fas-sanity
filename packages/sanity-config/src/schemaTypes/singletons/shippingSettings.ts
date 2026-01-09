@@ -179,21 +179,8 @@ export const shippingSettingsType = defineType({
       name: 'automationRules',
       type: 'object',
       title: 'Automation Rules',
+      description: 'Control assisted behaviors for shipping workflows. Shipping labels are manually purchased only.',
       fields: [
-        {
-          name: 'autoPurchaseLabels',
-          type: 'boolean',
-          title: 'Auto-Purchase Labels',
-          description: 'Automatically buy labels when orders are paid',
-          initialValue: false,
-        },
-        {
-          name: 'autoSelectCheapest',
-          type: 'boolean',
-          title: 'Auto-Select Cheapest Rate',
-          description: 'Automatically choose lowest cost option',
-          initialValue: false,
-        },
         {
           name: 'requireInsuranceOver',
           type: 'number',

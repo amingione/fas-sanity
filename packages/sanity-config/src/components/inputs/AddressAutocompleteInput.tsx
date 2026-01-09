@@ -39,8 +39,7 @@ const ADDRESS_QUERY = `
     email,
     phone,
     shippingAddress,
-    billingAddress,
-    addresses
+    billingAddress
   },
   "orders": *[_type == "order"][0...250]{
     _id,
@@ -62,7 +61,6 @@ interface AddressQueryResult {
     phone?: string
     shippingAddress?: Record<string, any>
     billingAddress?: Record<string, any>
-    addresses?: Array<Record<string, any> | null> | null
   }>
   orders: Array<{
     _id: string
@@ -209,16 +207,6 @@ function buildOptions(data: AddressQueryResult | null | undefined): AddressOptio
       }),
     )
 
-    if (Array.isArray(customer.addresses)) {
-      customer.addresses.forEach((entry) => {
-        pushOption(
-          normalizeAddress(entry || {}, {
-            ...baseMeta,
-            label: `Saved address — ${baseName}`,
-          }),
-        )
-      })
-    }
   })
 
   data.orders.forEach((order) => {

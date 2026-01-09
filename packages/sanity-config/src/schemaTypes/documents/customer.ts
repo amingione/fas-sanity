@@ -85,6 +85,7 @@ export default defineType({
       type: 'datetime',
       readOnly: true,
       group: 'stripe',
+      hidden: true,
     }),
     defineField({
       name: 'roles',
@@ -137,25 +138,20 @@ export default defineType({
       group: 'profile',
     }),
     defineField({
-      name: 'customerType',
-      title: 'Customer Type',
+      hidden: true,
+      name: 'customerStatus',
+      title: 'Customer Status',
       type: 'string',
+      initialValue: 'visitor',
       options: {
         list: [
-          {title: 'Retail (online only)', value: 'retail'},
-          {title: 'In-store service', value: 'in-store'},
-          {title: 'Vendor / Wholesale', value: 'vendor'},
-          {title: 'Both retail & in-store', value: 'both'},
+          {title: '👤 Visitor (no orders)', value: 'visitor'},
+          {title: '🛒 Customer (has orders)', value: 'customer'},
+          {title: '💎 VIP (high value)', value: 'vip'},
         ],
       },
-      initialValue: 'retail',
-      group: 'profile',
-    }),
-    defineField({
-      name: 'hasVisitedStore',
-      title: 'Has visited store',
-      type: 'boolean',
-      initialValue: false,
+      description:
+        'Tracks whether this contact is a visitor, customer, or VIP based on orders and lifetime spend.',
       group: 'profile',
     }),
     defineField({
@@ -172,46 +168,7 @@ export default defineType({
       },
       group: 'profile',
     }),
-    defineField({
-      name: 'communicationPreferences',
-      title: 'Communication Preferences',
-      type: 'object',
-      group: 'profile',
-      options: {collapsible: true, collapsed: true},
-      fields: [
-        defineField({
-          name: 'preferredMethod',
-          title: 'Preferred Method',
-          type: 'string',
-          options: {
-            list: [
-              {title: 'Email', value: 'email'},
-              {title: 'Phone', value: 'phone'},
-              {title: 'Text', value: 'text'},
-              {title: 'No Contact', value: 'none'},
-            ],
-          },
-        }),
-        defineField({
-          name: 'marketingOptIn',
-          title: 'Marketing Opt-In',
-          type: 'boolean',
-          initialValue: false,
-        }),
-        defineField({
-          name: 'smsOptIn',
-          title: 'SMS Opt-In',
-          type: 'boolean',
-          initialValue: false,
-        }),
-        defineField({
-          name: 'appointmentReminders',
-          title: 'Appointment Reminders',
-          type: 'boolean',
-          initialValue: true,
-        }),
-      ],
-    }),
+
     defineField({
       name: 'passwordHash',
       title: 'Password Hash',
@@ -242,14 +199,7 @@ export default defineType({
       fieldset: 'billingInfo',
       group: 'addresses',
     }),
-    defineField({
-      name: 'tags',
-      title: 'Tags',
-      type: 'array',
-      of: [{type: 'string'}],
-      options: {layout: 'tags'},
-      group: 'profile',
-    }),
+
     defineField({
       name: 'orders',
       title: 'Orders',
@@ -258,6 +208,7 @@ export default defineType({
       group: 'activity',
     }),
     defineField({
+      hidden: true,
       name: 'invoices',
       title: 'Invoices',
       type: 'array',
@@ -277,28 +228,7 @@ export default defineType({
       type: 'array',
       of: [{type: 'customerAddress'}],
       group: 'addresses',
-    }),
-    defineField({
-      name: 'wishlistItems',
-      title: 'Wishlist Items',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'product'}]}],
-      group: 'activity',
       hidden: true,
-    }),
-    defineField({
-      name: 'vehicles',
-      title: 'Vehicles',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'vehicle'}]}],
-      group: 'activity',
-    }),
-    defineField({
-      name: 'preferredServices',
-      title: 'Preferred Services',
-      type: 'array',
-      of: [{type: 'reference', to: [{type: 'service'}]}],
-      group: 'activity',
     }),
     defineField({
       name: 'customerNotes',
@@ -308,22 +238,7 @@ export default defineType({
       description: 'Internal notes about this customer',
       group: 'activity',
     }),
-    defineField({
-      name: 'referredBy',
-      title: 'Referred By',
-      type: 'reference',
-      to: [{type: 'customer'}],
-      group: 'activity',
-    }),
-    defineField({
-      name: 'referralCount',
-      title: 'Referral Count',
-      type: 'number',
-      initialValue: 0,
-      readOnly: true,
-      group: 'activity',
-      hidden: true,
-    }),
+
     defineField({
       name: 'stripeMetadata',
       title: 'Latest Stripe Metadata',
@@ -335,34 +250,13 @@ export default defineType({
     }),
     // Marketing preferences
     defineField({
-      name: 'emailOptIn',
-      title: 'Email Opt‑In',
-      type: 'boolean',
-      initialValue: false,
-      group: 'marketing',
-    }),
-    defineField({
-      name: 'marketingOptIn',
-      title: 'Marketing Opt‑In',
-      type: 'boolean',
-      initialValue: false,
-      group: 'marketing',
-    }),
-    defineField({
-      name: 'textOptIn',
-      title: 'Text/SMS Opt‑In',
-      type: 'boolean',
-      initialValue: false,
-      group: 'marketing',
-    }),
-    defineField({
       name: 'emailMarketing',
       title: 'Email Marketing',
       type: 'object',
       group: 'marketing',
       options: {
         collapsible: true,
-        collapsed: false,
+        collapsed: true,
       },
       fields: [
         defineField({
@@ -440,6 +334,7 @@ export default defineType({
         ],
       },
       group: 'activity',
+      
     }),
     defineField({
       name: 'lifetimeValue',
@@ -560,8 +455,9 @@ export default defineType({
       lifetimeSpend: 'lifetimeSpend',
       city: 'shippingAddress.city',
       state: 'shippingAddress.state',
-      emailOptIn: 'emailOptIn',
-      marketingOptIn: 'marketingOptIn',
+      emailMarketingSubscribed: 'emailMarketing.subscribed',
+      marketingPreference: 'communicationPreferences.marketingOptIn',
+      customerStatus: 'customerStatus',
       segment: 'segment',
     },
     prepare({
@@ -572,8 +468,9 @@ export default defineType({
       lifetimeSpend,
       city,
       state,
-      emailOptIn,
-      marketingOptIn,
+      emailMarketingSubscribed,
+      marketingPreference,
+      customerStatus,
       segment,
     }) {
       const fullName = [firstName, lastName].filter(Boolean).join(' ').trim()
@@ -592,13 +489,15 @@ export default defineType({
               maximumFractionDigits: 0,
             }).format(lifetimeTotal)
           : '$0'
-      const subscribed = emailOptIn || marketingOptIn ? '✓' : ''
+      const subscribed = Boolean(emailMarketingSubscribed || marketingPreference)
+      const statusLabel = customerStatus ? `Status: ${customerStatus}` : ''
 
       const parts = [
         orders > 0 ? `${orders} orders` : 'No orders',
         spend,
         location,
         subscribed ? 'Subscribed' : '',
+        statusLabel,
       ].filter(Boolean)
 
       return {
