@@ -463,7 +463,7 @@ export default defineType({
       group: 'fulfillment',
       readOnly: true,
       initialValue: false,
-      hidden: false,
+      hidden: true,
     }),
     defineField({
       name: 'labelPurchasedAt',
@@ -471,7 +471,7 @@ export default defineType({
       type: 'datetime',
       group: 'fulfillment',
       readOnly: true,
-      hidden: false,
+      hidden: true,
     }),
     defineField({
       name: 'fulfillmentError',
@@ -479,7 +479,9 @@ export default defineType({
       type: 'text',
       description: 'Error message if label creation or shipment failed',
       readOnly: true,
-      hidden: ({document}) => document?.shippingStatus?.status !== 'failure',
+      hidden: ({document}) =>
+        (document as {shippingStatus?: {status?: string | null}})?.shippingStatus?.status !==
+        'failure',
       group: 'fulfillment',
     }),
     defineField({
@@ -489,6 +491,7 @@ export default defineType({
       description: 'Number of times label creation has been attempted',
       readOnly: true,
       initialValue: 0,
+      hidden: true,
       group: 'fulfillment',
     }),
     defineField({
@@ -510,7 +513,7 @@ export default defineType({
       description: 'Auto-populated from product catalog during checkout',
       validation: (Rule) =>
         Rule.custom((value, context) => {
-          const status = (context.document as any)?.status
+          const status = (context.document as {status?: string | null})?.status
           if (status === 'paid' && !value) {
             return 'Missing weight snapshot - fulfillment may use defaults'
           }
@@ -690,7 +693,7 @@ export default defineType({
       title: 'Label Cost',
       type: 'number',
       group: 'fulfillment',
-      hidden: false,
+      hidden: true,
     }),
     defineField({name: 'deliveryDays', type: 'number', hidden: true}),
     defineField({name: 'easyPostTrackerId', type: 'string', hidden: true}),

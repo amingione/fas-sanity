@@ -28,7 +28,6 @@ import {
   deriveWorkflowState,
   resolveWorkflowActionBadge,
 } from '../../utils/orderWorkflow'
-import {isTrackingEmailStatus} from '../../utils/trackingEmailStatus'
 
 const parseUpgradeAmount = (value?: unknown): number => {
   if (typeof value !== 'string') return 0
@@ -102,12 +101,11 @@ export function OrderHeader(props: any) {
   const orderNumber = useFormValue(['orderNumber']) as string
   const createdAt = useFormValue(['createdAt']) as string
   const status = useFormValue(['status']) as string
+  const orderType = useFormValue(['orderType']) as string
   const paymentStatus = useFormValue(['paymentStatus']) as string
   const labelPurchased = useFormValue(['labelPurchased']) as boolean
   const shippedAt = useFormValue(['shippedAt']) as string
   const deliveredAt = useFormValue(['deliveredAt']) as string
-  const confirmationEmailSent = useFormValue(['confirmationEmailSent']) as boolean
-  const shippingLog = useFormValue(['shippingLog']) as Array<{status?: string}> | null
   const customerInstructions = useFormValue(['customerInstructions']) as string
   const opsInternalNotes = useFormValue(['opsInternalNotes']) as string
 
@@ -283,6 +281,8 @@ export function OrderHeader(props: any) {
     deliveredAt,
   })
 
+  const showWorkflowBadges = orderType === 'wholesale'
+
   const workflowBadges = buildWorkflowBadges({
     paymentStatus,
     labelPurchased,
@@ -296,16 +296,6 @@ export function OrderHeader(props: any) {
     shippedAt,
     deliveredAt,
   })
-
-  const shippingLogEntries = useMemo(
-    () => (Array.isArray(shippingLog) ? shippingLog.filter(Boolean) : []),
-    [shippingLog],
-  )
-
-  const trackingEmailSent = useMemo(
-    () => shippingLogEntries.some((entry) => isTrackingEmailStatus(entry?.status)),
-    [shippingLogEntries],
-  )
 
   return (
     <Stack space={4}>
@@ -343,56 +333,43 @@ export function OrderHeader(props: any) {
               )}
             </Flex>
 
-            {/* Workflow Status */}
-            <Stack space={2}>
-              <Flex align="center" gap={3}>
-                <Text size={[1, 1, 2]} weight="semibold" muted>
-                  Workflow
-                </Text>
-                <Inline space={2}>
-                  <DocumentBadge
-                    label={workflowState.label}
-                    tone={workflowState.tone}
-                    title="Derived workflow state (display only)"
-                  />
-                  {actionBadge && (
+            {showWorkflowBadges && (
+              <Stack space={2}>
+                <Flex align="center" gap={3}>
+                  <Text size={[1, 1, 2]} weight="semibold" muted>
+                    Workflow
+                  </Text>
+                  <Inline space={2}>
                     <DocumentBadge
-                      label={actionBadge.label}
-                      tone={actionBadge.tone}
-                      title={actionBadge.title}
+                      label={workflowState.label}
+                      tone={workflowState.tone}
+                      title="Derived workflow state (display only)"
                     />
-                  )}
-                </Inline>
-              </Flex>
+                    {actionBadge && (
+                      <DocumentBadge
+                        label={actionBadge.label}
+                        tone={actionBadge.tone}
+                        title={actionBadge.title}
+                      />
+                    )}
+                  </Inline>
+                </Flex>
 
-              {workflowBadges.length > 0 && (
-                <Inline space={2}>
-                  {workflowBadges.map((badge) => (
-                    <DocumentBadge
-                      key={badge.key}
-                      label={badge.label}
-                      tone={badge.tone}
-                      title={badge.title}
-                    />
-                  ))}
-                </Inline>
-              )}
+                {workflowBadges.length > 0 && (
+                  <Inline space={2}>
+                    {workflowBadges.map((badge) => (
+                      <DocumentBadge
+                        key={badge.key}
+                        label={badge.label}
+                        tone={badge.tone}
+                        title={badge.title}
+                      />
+                    ))}
+                  </Inline>
+                )}
+              </Stack>
+            )}
 
-              <Inline space={2}>
-                <DocumentBadge
-                  label={
-                    confirmationEmailSent ? 'Order confirmation sent' : 'Order confirmation pending'
-                  }
-                  tone={confirmationEmailSent ? 'positive' : 'caution'}
-                  title="Order confirmation email status"
-                />
-                <DocumentBadge
-                  label={trackingEmailSent ? 'Tracking email sent' : 'Tracking email not recorded'}
-                  tone={trackingEmailSent ? 'positive' : 'default'}
-                  title="Tracking email status (derived from shipping log)"
-                />
-              </Inline>
-            </Stack>
           </Stack>
         </Card>
       </Container>

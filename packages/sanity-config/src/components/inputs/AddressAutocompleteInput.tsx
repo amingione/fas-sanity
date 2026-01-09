@@ -29,9 +29,26 @@ interface AddressOption extends BaseAutocompleteOption {
   searchValue: string
 }
 
-const ADDRESS_QUERY = `
+const ADDRESS_SEARCH_QUERY = `
 {
-  "customers": *[_type == "customer"][0...250]{
+  "customers": *[_type == "customer" && (defined(shippingAddress) || defined(billingAddress)) && (
+    lower(name) match $term ||
+    lower(email) match $term ||
+    lower(firstName) match $term ||
+    lower(lastName) match $term ||
+    lower(shippingAddress.street) match $term ||
+    lower(shippingAddress.addressLine1) match $term ||
+    lower(shippingAddress.city) match $term ||
+    lower(shippingAddress.state) match $term ||
+    lower(shippingAddress.postalCode) match $term ||
+    lower(shippingAddress.country) match $term ||
+    lower(billingAddress.street) match $term ||
+    lower(billingAddress.addressLine1) match $term ||
+    lower(billingAddress.city) match $term ||
+    lower(billingAddress.state) match $term ||
+    lower(billingAddress.postalCode) match $term ||
+    lower(billingAddress.country) match $term
+  )][0...40]{
     _id,
     firstName,
     lastName,
@@ -41,7 +58,16 @@ const ADDRESS_QUERY = `
     shippingAddress,
     billingAddress
   },
-  "orders": *[_type == "order"][0...250]{
+  "orders": *[_type == "order" && defined(shippingAddress) && (
+    lower(orderNumber) match $term ||
+    lower(customerName) match $term ||
+    lower(customerEmail) match $term ||
+    lower(shippingAddress.addressLine1) match $term ||
+    lower(shippingAddress.city) match $term ||
+    lower(shippingAddress.state) match $term ||
+    lower(shippingAddress.postalCode) match $term ||
+    lower(shippingAddress.country) match $term
+  )][0...40]{
     _id,
     orderNumber,
     customerName,
@@ -69,6 +95,120 @@ interface AddressQueryResult {
     customerEmail?: string
     shippingAddress?: Record<string, any>
   }>
+}
+
+const US_STATE_ABBREVIATIONS: Record<string, string> = {
+  alabama: 'AL',
+  alaska: 'AK',
+  arizona: 'AZ',
+  arkansas: 'AR',
+  california: 'CA',
+  colorado: 'CO',
+  connecticut: 'CT',
+  delaware: 'DE',
+  'district of columbia': 'DC',
+  florida: 'FL',
+  georgia: 'GA',
+  hawaii: 'HI',
+  idaho: 'ID',
+  illinois: 'IL',
+  indiana: 'IN',
+  iowa: 'IA',
+  kansas: 'KS',
+  kentucky: 'KY',
+  louisiana: 'LA',
+  maine: 'ME',
+  maryland: 'MD',
+  massachusetts: 'MA',
+  michigan: 'MI',
+  minnesota: 'MN',
+  mississippi: 'MS',
+  missouri: 'MO',
+  montana: 'MT',
+  nebraska: 'NE',
+  nevada: 'NV',
+  'new hampshire': 'NH',
+  'new jersey': 'NJ',
+  'new mexico': 'NM',
+  'new york': 'NY',
+  'north carolina': 'NC',
+  'north dakota': 'ND',
+  ohio: 'OH',
+  oklahoma: 'OK',
+  oregon: 'OR',
+  pennsylvania: 'PA',
+  'rhode island': 'RI',
+  'south carolina': 'SC',
+  'south dakota': 'SD',
+  tennessee: 'TN',
+  texas: 'TX',
+  utah: 'UT',
+  vermont: 'VT',
+  virginia: 'VA',
+  washington: 'WA',
+  'west virginia': 'WV',
+  wisconsin: 'WI',
+  wyoming: 'WY',
+}
+
+function usStateAbbreviation(value?: string): string | undefined {
+  if (!value) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const lookup = US_STATE_ABBREVIATIONS[trimmed.toLowerCase()]
+  return lookup || trimmed.toUpperCase()
+}
+
+function normalizeMapboxFeature(feature: Record<string, any>): NormalizedAddress | null {
+  if (!feature) return null
+  const ctx = Array.isArray(feature.context) ? feature.context : []
+  const place = ctx.find((item) => String(item.id || '').startsWith('place.'))
+  const region = ctx.find((item) => String(item.id || '').startsWith('region.'))
+  const postcode = ctx.find((item) => String(item.id || '').startsWith('postcode.'))
+  const countryCtx = ctx.find((item) => String(item.id || '').startsWith('country.'))
+
+  const addrNum = feature?.address || feature?.properties?.address
+  const street =
+    feature?.text ||
+    feature?.text_en ||
+    String(feature?.place_name || '').split(',')[0] ||
+    undefined
+  const line1 = [addrNum, street].filter(Boolean).join(' ').trim()
+
+  const city = feature?.properties?.city || place?.text
+  const rawState = feature?.properties?.region || region?.text
+  const countryCode =
+    feature?.properties?.short_code ||
+    countryCtx?.short_code ||
+    countryCtx?.properties?.short_code
+  const state =
+    String(countryCode || '').toUpperCase() === 'US'
+      ? usStateAbbreviation(rawState)
+      : rawState
+  const postalCode = feature?.properties?.postcode || postcode?.text
+  const country = countryCtx?.text || feature?.properties?.country
+
+  if (!line1 && !city && !state && !postalCode && !country) {
+    return null
+  }
+
+  const searchTerms = [line1, city, state, postalCode, country]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return {
+    key: `mapbox-${feature.id}`,
+    label: feature?.place_name || line1 || city || 'Global address',
+    searchTerms,
+    line1: line1 || undefined,
+    line2: undefined,
+    city,
+    state,
+    postalCode,
+    country,
+    sourceLabel: 'Global address search',
+  }
 }
 
 function stringOrUndefined(value: unknown): string | undefined {
@@ -315,11 +455,20 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   const {renderDefault, schemaType, value, onChange, id, path} = props
   const mapping = useMemo(() => mappingByType[schemaType.name], [schemaType.name])
   const client = useClient({apiVersion: '2024-10-01'})
-  const [options, setOptions] = useState<AddressOption[]>([])
-  const [loading, setLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+  const [savedOptions, setSavedOptions] = useState<AddressOption[]>([])
+  const [savedLoading, setSavedLoading] = useState<boolean>(false)
+  const [savedError, setSavedError] = useState<string | null>(null)
+  const [mapboxOptions, setMapboxOptions] = useState<AddressOption[]>([])
+  const [mapboxLoading, setMapboxLoading] = useState<boolean>(false)
+  const [mapboxError, setMapboxError] = useState<string | null>(null)
   const [query, setQuery] = useState<string>('')
-  const [optionLookup, setOptionLookup] = useState<Map<string, AddressOption>>(new Map())
+  const savedRequestIdRef = useRef(0)
+  const mapboxRequestIdRef = useRef(0)
+  const searchControllerRef = useRef<AbortController | null>(null)
+  const mapboxControllerRef = useRef<AbortController | null>(null)
+  const mapboxToken = (
+    typeof process !== 'undefined' ? process.env?.SANITY_STUDIO_MAPBOX_TOKEN : undefined
+  ) as string | undefined
   const autoFilledRef = useRef(false)
   const stripeSummaryValue = useMaybeFormValue(['stripeSummary']) as Record<string, any> | null
   const stripeSummary = useMemo(
@@ -332,30 +481,150 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
 
   useEffect(() => {
     if (!mapping || !showLookup) return
-    let cancelled = false
-    setLoading(true)
-    setError(null)
+    const trimmed = query.trim()
+    if (trimmed.length < 2) {
+      savedRequestIdRef.current = 0
+      searchControllerRef.current?.abort()
+      setSavedLoading(false)
+      setSavedError(null)
+      setSavedOptions([])
+      return
+    }
+
+    const requestId = ++savedRequestIdRef.current
+    const controller = new AbortController()
+    searchControllerRef.current?.abort()
+    searchControllerRef.current = controller
+    setSavedLoading(true)
+    setSavedError(null)
+
+    const searchTerm = `*${trimmed.toLowerCase()}*`
+
     client
-      .fetch<AddressQueryResult>(ADDRESS_QUERY)
+      .fetch<AddressQueryResult>(ADDRESS_SEARCH_QUERY, {term: searchTerm}, {signal: controller.signal})
       .then((result) => {
-        if (cancelled) return
+        if (
+          controller.signal.aborted ||
+          savedRequestIdRef.current !== requestId ||
+          !mapping ||
+          !showLookup
+        ) {
+          return
+        }
         const built = buildOptions(result)
-        setOptions(built)
-        setOptionLookup(new Map(built.map((opt) => [opt.value, opt])))
+        setSavedOptions(built)
       })
       .catch((err) => {
-        if (cancelled) return
-        console.error('AddressAutocompleteInput: failed to load saved addresses', err)
-        setError('Unable to load saved addresses')
-        setOptions([])
+        if (
+          controller.signal.aborted ||
+          savedRequestIdRef.current !== requestId ||
+          !mapping ||
+          !showLookup
+        ) {
+          return
+        }
+        console.error('AddressAutocompleteInput: failed to search saved addresses', err)
+        setSavedError('Unable to search saved addresses')
+        setSavedOptions([])
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (
+          controller.signal.aborted ||
+          savedRequestIdRef.current !== requestId ||
+          !mapping ||
+          !showLookup
+        ) {
+          return
+        }
+        setSavedLoading(false)
       })
+
     return () => {
-      cancelled = true
+      controller.abort()
     }
-  }, [client, mapping, showLookup])
+  }, [client, mapping, query, showLookup])
+
+  useEffect(() => {
+    if (!mapping || !showLookup || !mapboxToken) return
+    const trimmed = query.trim()
+    if (trimmed.length < 2) {
+      mapboxRequestIdRef.current = 0
+      mapboxControllerRef.current?.abort()
+      setMapboxLoading(false)
+      setMapboxError(null)
+      setMapboxOptions([])
+      return
+    }
+
+    const requestId = ++mapboxRequestIdRef.current
+    const controller = new AbortController()
+    mapboxControllerRef.current?.abort()
+    mapboxControllerRef.current = controller
+    setMapboxLoading(true)
+    setMapboxError(null)
+
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      trimmed,
+    )}.json?types=address&autocomplete=true&limit=6&access_token=${mapboxToken}`
+
+    fetch(url, {signal: controller.signal})
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Mapbox returned an error')
+        }
+        return res.json()
+      })
+      .then((data) => {
+        if (
+          controller.signal.aborted ||
+          mapboxRequestIdRef.current !== requestId ||
+          !mapping ||
+          !showLookup
+        ) {
+          return
+        }
+        const features = Array.isArray(data?.features) ? data.features : []
+        const normalized = features
+          .map((feature: Record<string, any>) => normalizeMapboxFeature(feature))
+          .filter((address): address is NormalizedAddress => Boolean(address))
+          .map((address) => ({
+            value: address.key,
+            address,
+            label: address.label,
+            sourceLabel: address.sourceLabel,
+            searchValue: `${address.label} ${address.searchTerms}`,
+          }))
+        setMapboxOptions(normalized)
+      })
+      .catch((err) => {
+        if (
+          controller.signal.aborted ||
+          mapboxRequestIdRef.current !== requestId ||
+          !mapping ||
+          !showLookup
+        ) {
+          return
+        }
+        console.error('AddressAutocompleteInput: failed to search global addresses', err)
+        setMapboxError('Unable to search global addresses')
+        setMapboxOptions([])
+      })
+      .finally(() => {
+        if (
+          controller.signal.aborted ||
+          mapboxRequestIdRef.current !== requestId ||
+          !mapping ||
+          !showLookup
+        ) {
+          return
+        }
+        setMapboxLoading(false)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [mapping, mapboxToken, query, showLookup])
 
   useEffect(() => {
     if (!mapping) return
@@ -395,6 +664,17 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
     onChange(set(nextValue))
   }, [mapping, onChange, schemaType.name, stripeSummary, value])
 
+  const options = useMemo(() => [...savedOptions, ...mapboxOptions], [
+    savedOptions,
+    mapboxOptions,
+  ])
+  const optionLookup = useMemo(
+    () => new Map(options.map((option) => [option.value, option])),
+    [options],
+  )
+  const loading = savedLoading || mapboxLoading
+  const error = savedError || mapboxError
+
   const handleSelect = useCallback(
     (selectedValue: string) => {
       if (!mapping || !selectedValue) return
@@ -420,7 +700,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
         <Card padding={4} paddingBottom={[7, 7, 8]} radius={2} border tone="transparent">
           <Stack space={3}>
             <Text size={2} weight="semibold">
-              Pull a saved address
+              Pull a saved or global address
             </Text>
             <Autocomplete<AddressOption>
               id={inputId}
@@ -463,7 +743,9 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
                   </Stack>
                 )
               }}
-              placeholder={loading ? 'Loading saved addresses…' : 'Search saved addresses'}
+              placeholder={
+                loading ? 'Loading saved and global addresses…' : 'Type 2+ characters to search saved and global addresses'
+              }
               suffix={
                 loading ? (
                   <Flex align="center">
@@ -471,7 +753,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
                   </Flex>
                 ) : undefined
               }
-              openButton
+              openOnFocus
             />
             {error && (
               <Text size={1} style={{color: 'var(--card-critical-fg-color)', minHeight: '1.5em'}}>
@@ -480,7 +762,9 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
             )}
             {!loading && options.length === 0 && !error && (
               <Text size={1} muted>
-                No saved addresses found yet. You can fill the fields manually below.
+                {query.trim().length < 2
+                  ? 'Type at least two characters to search saved and global addresses.'
+                  : 'No saved or global addresses matched that text.'}
               </Text>
             )}
           </Stack>

@@ -4,6 +4,7 @@ import {Card, Box, Stack, Text, Button, Dialog, Badge, useToast} from '@sanity/u
 import {useFormValue} from 'sanity'
 import {differenceInCalendarDays, format} from 'date-fns'
 import {callNetlifyFunction} from '../../utils/netlifyHelpers'
+import {buildTrackingUrl, detectTrackingCarrier} from '../../../../../shared/tracking'
 
 export function ShippingDetails() {
   const toast = useToast()
@@ -49,8 +50,13 @@ export function ShippingDetails() {
   const carrier = (useFormValue(['carrier']) as string) || oldFulfillment?.carrier
   const service = (useFormValue(['service']) as string) || oldFulfillment?.service
   const trackingNumber =
-    (useFormValue(['trackingNumber']) as string) || oldFulfillment?.trackingNumber
-  const trackingUrl = (useFormValue(['trackingUrl']) as string) || oldFulfillment?.trackingUrl
+    ((useFormValue(['trackingNumber']) as string) || oldFulfillment?.trackingNumber || '').trim()
+  const trackingUrl =
+    ((useFormValue(['trackingUrl']) as string) || oldFulfillment?.trackingUrl || '').trim()
+
+  const fallbackTrackingUrl =
+    buildTrackingUrl(detectTrackingCarrier(trackingNumber), trackingNumber) || ''
+  const resolvedTrackingUrl = trackingUrl || fallbackTrackingUrl
 
   // Get fulfillment status for label badge
   const fulfillmentStatus = fulfillmentDetails?.status || oldFulfillment?.status || 'unfulfilled'
@@ -286,9 +292,9 @@ export function ShippingDetails() {
             >
               <Text align="center" size={[2, 2, 3]}>
                 Tracking Number:{' '}
-                {trackingUrl ? (
+                {resolvedTrackingUrl ? (
                   <a
-                    href={trackingUrl}
+                    href={resolvedTrackingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{color: 'inherit', textDecoration: 'underline'}}
