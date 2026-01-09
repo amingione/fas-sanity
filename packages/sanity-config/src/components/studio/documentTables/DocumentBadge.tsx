@@ -137,6 +137,7 @@ export function buildOrderStatusBadges({
   shippedAt,
   deliveredAt,
   useStripePaymentFallback = false,
+  includeWorkflowBadges = true,
 }: {
   paymentStatus?: string | null
   stripePaymentIntentStatus?: string | null
@@ -144,6 +145,7 @@ export function buildOrderStatusBadges({
   labelPurchased?: boolean | null
   shippedAt?: string | null
   deliveredAt?: string | null
+  includeWorkflowBadges?: boolean
   useStripePaymentFallback?: boolean
 }): StatusBadgeDescriptor[] {
   const badges: StatusBadgeDescriptor[] = []
@@ -203,21 +205,23 @@ export function buildOrderStatusBadges({
     shippedAt,
     deliveredAt,
   })
-  workflowBadges.forEach((badge) => {
-    badges.push({
-      key: badge.key,
-      label: badge.label,
-      tone: badge.tone,
-      title: badge.title,
+  if (includeWorkflowBadges) {
+    workflowBadges.forEach((badge) => {
+      badges.push({
+        key: badge.key,
+        label: badge.label,
+        tone: badge.tone,
+        title: badge.title,
+      })
     })
-  })
-  if (actionBadge) {
-    badges.push({
-      key: actionBadge.key,
-      label: actionBadge.label,
-      tone: actionBadge.tone,
-      title: actionBadge.title,
-    })
+    if (actionBadge) {
+      badges.push({
+        key: actionBadge.key,
+        label: actionBadge.label,
+        tone: actionBadge.tone,
+        title: actionBadge.title,
+      })
+    }
   }
 
   return badges
