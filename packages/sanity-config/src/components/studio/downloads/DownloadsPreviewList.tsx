@@ -1,5 +1,16 @@
 import React, {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {Button, Card, Flex, Heading, Inline, Spinner, Stack, Text, Tooltip} from '@sanity/ui'
+import {
+  Button,
+  Card,
+  Checkbox,
+  Flex,
+  Heading,
+  Inline,
+  Spinner,
+  Stack,
+  Text,
+  Tooltip,
+} from '@sanity/ui'
 import {DownloadIcon, DocumentIcon} from '@sanity/icons'
 import {useRouter} from 'sanity/router'
 import {useClient} from 'sanity'
@@ -98,7 +109,15 @@ const EmptyState = () => (
   </Card>
 )
 
-function DownloadPreview({download}: {download: DownloadRow}) {
+function DownloadPreview({
+  download,
+  isSelected,
+  onToggleSelect,
+}: {
+  download: DownloadRow
+  isSelected: boolean
+  onToggleSelect: () => void
+}) {
   const ref = useRef<HTMLButtonElement | null>(null)
   const router = useRouter()
 
@@ -142,64 +161,87 @@ function DownloadPreview({download}: {download: DownloadRow}) {
   }
 
   return (
-    <Card padding={3} radius={3} tone="transparent" border>
-      <Button
-        ref={ref}
-        mode="bleed"
-        style={{width: '100%', textAlign: 'left'}}
-        onClick={handleOpen}
-      >
-        <Flex align="center" gap={4}>
-          <Card
-            radius={3}
-            padding={3}
-            tone="primary"
-            style={{flexShrink: 0, backgroundColor: 'var(--card-muted-fg-color)'}}
-          >
-            <DocumentIcon />
-          </Card>
-          <Stack flex={1} space={2}>
-            <Text weight="medium" size={2}>
-              {decoratedTitle}
+    <Card
+      padding={3}
+      radius={3}
+      tone="transparent"
+      border
+      style={{cursor: 'pointer'}}
+      onClick={(event) => {
+        const target = event.target as Element | null
+        if (target && target.closest('input, button')) return
+        handleOpen()
+      }}
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          handleOpen()
+        }
+      }}
+    >
+      <Flex align="center" gap={3}>
+        <Checkbox
+          checked={isSelected}
+          onChange={(event) => {
+            event.stopPropagation()
+            onToggleSelect()
+          }}
+          aria-label={`Select ${download.title || download.fileName || 'document'}`}
+          style={{flexShrink: 0}}
+        />
+        <Card
+          radius={3}
+          padding={3}
+          tone="primary"
+          style={{flexShrink: 0, backgroundColor: 'var(--card-muted-fg-color)'}}
+        >
+          <DocumentIcon />
+        </Card>
+        <Stack flex={1} space={2}>
+          <Text weight="medium" size={2}>
+            {decoratedTitle}
+          </Text>
+          {download.description ? (
+            <Text size={1} muted>
+              {download.description}
             </Text>
-            {download.description ? (
-              <Text size={1} muted>
-                {download.description}
+          ) : null}
+          <Inline space={3}>
+            {download.fileName ? (
+              <Text size={0} muted>
+                {download.fileName}
               </Text>
             ) : null}
-            <Inline space={3}>
-              {download.fileName ? (
-                <Text size={0} muted>
-                  {download.fileName}
-                </Text>
-              ) : null}
-              {subtitleParts.map((part, index) => (
-                <Text key={`${part}-${index}`} size={0} muted>
-                  {part}
-                </Text>
-              ))}
-            </Inline>
-          </Stack>
-          {download.fileUrl ? (
-            <Tooltip
-              content={
-                <Card padding={2}>
-                  <Text size={1}>Open file</Text>
-                </Card>
-              }
-              fallbackPlacements={['top', 'bottom']}
-            >
-              <Button
-                mode="bleed"
-                tone="primary"
-                icon={DownloadIcon}
-                onClick={handleDownload}
-                aria-label="Open file"
-              />
-            </Tooltip>
-          ) : null}
-        </Flex>
-      </Button>
+            {subtitleParts.map((part, index) => (
+              <Text key={`${part}-${index}`} size={0} muted>
+                {part}
+              </Text>
+            ))}
+          </Inline>
+        </Stack>
+        {download.fileUrl ? (
+          <Tooltip
+            content={
+              <Card padding={2}>
+                <Text size={1}>Open file</Text>
+              </Card>
+            }
+            fallbackPlacements={['top', 'bottom']}
+          >
+            <Button
+              mode="bleed"
+              tone="primary"
+              icon={DownloadIcon}
+              onClick={(event) => {
+                event.stopPropagation()
+                handleDownload(event)
+              }}
+              aria-label="Open file"
+            />
+          </Tooltip>
+        ) : null}
+      </Flex>
     </Card>
   )
 }
@@ -211,6 +253,7 @@ export default function DownloadsPreviewList() {
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const fetchPage = useCallback(
     async (pageIndex: number) => {
@@ -261,6 +304,55 @@ export default function DownloadsPreviewList() {
     router.navigateIntent('create', {type: 'downloadResource'})
   }
 
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
+  const selectedDownloads = useMemo(
+    () => downloads.filter((download) => selectedIdSet.has(download._id)),
+    [downloads, selectedIdSet],
+  )
+  const hasDownloadableSelection = selectedIds.length > 0
+
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((existing) => existing !== id) : [...prev, id],
+    )
+  }, [])
+
+  const triggerDownload = useCallback((url: string, fileName?: string | null) => {
+    if (typeof document === 'undefined') return
+    const link = document.createElement('a')
+    link.href = url
+    if (fileName) {
+      link.download = fileName
+    }
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }, [])
+
+  const handleDownloadSelected = useCallback(() => {
+    if (!hasDownloadableSelection) return
+    const downloadable = selectedDownloads.filter((download) => download.fileUrl)
+    if (!downloadable.length) {
+      window.alert(
+        'Selected documents do not have a published file yet. Open them individually to generate the download.',
+      )
+      return
+    }
+    downloadable.forEach((download) => {
+      triggerDownload(download.fileUrl!, download.fileName)
+    })
+    setSelectedIds([])
+  }, [hasDownloadableSelection, selectedDownloads, triggerDownload])
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const filtered = prev.filter((id) => downloads.some((download) => download._id === id))
+      return filtered.length === prev.length ? prev : filtered
+    })
+  }, [downloads])
+
   if (downloads.length === 0 && !loading) {
     return (
       <Stack space={4}>
@@ -279,10 +371,29 @@ export default function DownloadsPreviewList() {
         <Heading size={3}>Downloads</Heading>
         <Button text="New download" tone="primary" onClick={handleCreate} />
       </Flex>
+      <Flex align="center" gap={2}>
+        <Button
+          icon={DownloadIcon}
+          mode="ghost"
+          tone="primary"
+          text="Download selected"
+          disabled={!hasDownloadableSelection}
+          onClick={handleDownloadSelected}
+        />
+        <Text size={1} muted>
+          {selectedIds.length
+            ? `${selectedIds.length} selected`
+            : 'Select documents to enable batch download.'}
+        </Text>
+      </Flex>
       <Stack space={3}>
         {downloads.map((download) => (
           <Suspense fallback={LOADING_FALLBACK} key={download._id}>
-            <DownloadPreview download={download} />
+            <DownloadPreview
+              download={download}
+              isSelected={selectedIdSet.has(download._id)}
+              onToggleSelect={() => toggleSelection(download._id)}
+            />
           </Suspense>
         ))}
         {hasMore ? (

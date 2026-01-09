@@ -1628,14 +1628,6 @@ const product = defineType({
       group: 'advanced',
       validation: (Rule) =>
         Rule.custom((value, context) => {
-          const status = context?.document?.status
-          const productType =
-            typeof context?.document?.productType === 'string'
-              ? context.document.productType.toLowerCase()
-              : 'physical'
-          if (!value && status === 'active' && productType !== 'service') {
-            return '⚠️ GTIN recommended for Google Shopping (not required)'
-          }
           return true
         }).warning(),
     }),
@@ -1656,6 +1648,7 @@ const product = defineType({
         }
       },
       readOnly: true,
+      hidden: true, //approveed by Ambermin - not needed in UI - keep env's set
       fieldset: 'merchant',
       group: 'advanced',
       validation: (Rule) =>
