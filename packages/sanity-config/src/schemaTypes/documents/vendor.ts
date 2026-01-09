@@ -243,7 +243,7 @@ export default defineType({
       group: 'contact',
       of: [
         defineField({
-          name: 'shippingAddress',
+          name: 'vendorShippingAddress',
           type: 'object',
           fields: [
             defineField({

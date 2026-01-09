@@ -1,5 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
+import {randomUUID, createHash} from 'crypto'
 import {getEasyPostFromAddress} from '../lib/ship-from'
 import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
 import {easypostRequest, getEasyPostClient} from '../lib/easypostClient'
@@ -32,6 +33,166 @@ const sanity = createClient({
 })
 
 const FREIGHT_WEIGHT_THRESHOLD_LBS = 150
+
+const SHIPPING_QUOTE_DOC_PREFIX = 'shippingQuote.'
+const SHIPPING_QUOTE_CACHE_TTL_SECONDS = Number(
+  process.env.SHIPPING_QUOTE_CACHE_TTL_SECONDS || 1800,
+)
+
+type QuoteCacheDestination = {
+  addressLine1: string
+  city: string
+  state: string
+  postalCode: string
+  country: string
+}
+
+type QuoteCacheCartItem = {
+  identifier: string
+  quantity: number
+}
+
+const normalizeCacheDestination = (dest: Dest): QuoteCacheDestination => ({
+  addressLine1: (dest.addressLine1 || dest.address_line1 || '').trim(),
+  city: (dest.city || dest.city_locality || '').trim(),
+  state: (dest.state || dest.state_province || '').trim().toUpperCase(),
+  postalCode: (dest.postalCode || dest.postal_code || '').trim().replace(/\s+/g, '').toUpperCase(),
+  country: (dest.country || dest.country_code || 'US').trim().toUpperCase(),
+})
+
+const normalizeCacheCartItems = (cart: CartItem[]): QuoteCacheCartItem[] =>
+  cart.map((item) => {
+    const quantity =
+      typeof item.quantity === 'number' && Number.isFinite(item.quantity)
+        ? Math.max(1, Math.floor(item.quantity))
+        : 1
+    const identifier =
+      (item.sku && item.sku.trim()) ||
+      (item.productId && item.productId.trim()) ||
+      (item.id && item.id.trim()) ||
+      (item._id && item._id.trim()) ||
+      'custom_item'
+    return {
+      identifier,
+      quantity,
+    }
+  })
+
+const buildLocalQuoteKey = (cartItems: QuoteCacheCartItem[], destination: QuoteCacheDestination) => {
+  const normalizedItems = [...cartItems].sort((a, b) =>
+    a.identifier.localeCompare(b.identifier),
+  )
+  const canonical = {
+    items: normalizedItems,
+    destination: {
+      addressLine1: destination.addressLine1.toLowerCase(),
+      city: destination.city.toLowerCase(),
+      state: destination.state,
+      postalCode: destination.postalCode,
+      country: destination.country,
+    },
+  }
+  return createHash('sha256').update(JSON.stringify(canonical)).digest('hex')
+}
+
+const getQuoteCacheDocId = (quoteKey: string) => `${SHIPPING_QUOTE_DOC_PREFIX}${quoteKey}`
+
+const isCacheValid = (expiresAt?: string | null) => {
+  if (!expiresAt) return true
+  const timestamp = Number(new Date(expiresAt).getTime())
+  if (!Number.isFinite(timestamp)) return false
+  return timestamp > Date.now()
+}
+
+async function readCachedQuote(
+  quoteKey: string,
+): Promise<{
+  docId: string
+  rates: NormalizedRate[]
+  easyPostShipmentId?: string | null
+  packages?: any[]
+  missingProducts?: string[]
+  carrierId?: string
+  serviceCode?: string
+} | null> {
+  const docId = getQuoteCacheDocId(quoteKey)
+  try {
+    const cached = await sanity.fetch<{
+      _id?: string
+      rates?: NormalizedRate[]
+      easyPostShipmentId?: string | null
+      expiresAt?: string | null
+      packages?: any[]
+      missingProducts?: string[]
+      carrierId?: string
+      serviceCode?: string
+    } | null>(
+      '*[_id == $id][0]{_id, rates, easyPostShipmentId, expiresAt, packages, missingProducts, carrierId, serviceCode}',
+      {id: docId},
+    )
+    if (
+      !cached ||
+      !Array.isArray(cached.rates) ||
+      !cached.rates.length ||
+      !isCacheValid(cached.expiresAt)
+    ) {
+      return null
+    }
+    return {
+      docId,
+      rates: cached.rates,
+      easyPostShipmentId: cached.easyPostShipmentId,
+      packages: cached.packages,
+      missingProducts: cached.missingProducts,
+      carrierId: cached.carrierId,
+      serviceCode: cached.serviceCode,
+    }
+  } catch (error) {
+    console.warn('readCachedQuote failed', {quoteKey, error})
+    return null
+  }
+}
+
+async function persistQuoteCache(params: {
+  quoteKey: string
+  quoteRequestId: string
+  rates: NormalizedRate[]
+  easyPostShipmentId: string
+  destination: QuoteCacheDestination
+  packages: any[]
+  missingProducts: string[]
+  carrierId?: string
+  serviceCode?: string
+}) {
+  const {quoteKey, quoteRequestId, rates, easyPostShipmentId, destination, packages, missingProducts, carrierId, serviceCode} = params
+  const docId = getQuoteCacheDocId(quoteKey)
+  const nowIso = new Date().toISOString()
+  const ttlSeconds = Number.isFinite(SHIPPING_QUOTE_CACHE_TTL_SECONDS)
+    ? SHIPPING_QUOTE_CACHE_TTL_SECONDS
+    : 0
+  const expiresAt =
+    ttlSeconds > 0 ? new Date(Date.now() + ttlSeconds * 1000).toISOString() : undefined
+  try {
+    await sanity.createOrReplace({
+      _id: docId,
+      _type: 'shippingQuote',
+      quoteKey,
+      quoteRequestId,
+      easyPostShipmentId,
+      carryingDestination: destination,
+      rates,
+      packages,
+      missingProducts,
+      carrierId,
+      serviceCode,
+      createdAt: nowIso,
+      expiresAt,
+      updatedAt: nowIso,
+    })
+  } catch (error) {
+    console.warn('persistQuoteCache failed', {quoteKey, error})
+  }
+}
 
 type NormalizedRate = {
   rateId?: string

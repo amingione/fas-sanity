@@ -131,8 +131,11 @@ export async function ensureShippingConfig(
     (normalizedProductType(product.productType) === 'service' ? false : true)
   const weight = existing.weight ?? toNumber(product.shippingWeight)
   const dimensions = existingDimensions ?? parseDimensions(product.boxDimensions)
-  const shippingClass =
-    existing.shippingClass ?? (typeof product.shippingClass === 'string' ? product.shippingClass : undefined)
+  const topLevelShippingClass =
+    typeof product.shippingClass === 'string' && product.shippingClass.trim()
+      ? product.shippingClass.trim()
+      : undefined
+  const shippingClass = topLevelShippingClass ?? existing.shippingClass ?? undefined
   const handlingTime = existing.handlingTime ?? toNumber(product.handlingTime)
   const separateShipment =
     existing.separateShipment ??
