@@ -94,8 +94,14 @@ type CustomerRecord = {
   lastName?: string
   name?: string
   email?: string
-  emailOptIn?: boolean
-  marketingOptIn?: boolean
+  emailMarketing?: {subscribed?: boolean | null}
+  communicationPreferences?: {
+    marketingOptIn?: boolean | null
+    smsOptIn?: boolean | null
+  }
+  emailMarketingSubscribed?: boolean
+  communicationMarketingOptIn?: boolean
+  communicationSmsOptIn?: boolean
   shippingAddress?: {
     city?: string
     state?: string
@@ -110,7 +116,6 @@ type CustomerRecord = {
 
 type CustomerDetail = CustomerRecord & {
   phone?: string | null
-  textOptIn?: boolean | null
   shippingAddress?: BasicAddress | null
   billingAddress?: BasicAddress | null
   orders?: CustomerOrderSummary[] | null
@@ -179,8 +184,13 @@ const CUSTOMER_QUERY = `{
     lastName,
     name,
     email,
-    emailOptIn,
-    marketingOptIn,
+    emailMarketing{
+      subscribed
+    },
+    communicationPreferences{
+      marketingOptIn,
+      smsOptIn
+    },
     shippingAddress{
       city,
       state,
@@ -199,9 +209,13 @@ const CUSTOMER_DETAIL_QUERY = `*[_type == "customer" && _id == $id][0]{
   name,
   email,
   phone,
-  emailOptIn,
-  marketingOptIn,
-  textOptIn,
+  emailMarketing{
+    subscribed
+  },
+  communicationPreferences{
+    marketingOptIn,
+    smsOptIn
+  },
   shippingAddress{
     name,
     street,
@@ -353,7 +367,7 @@ const formatCurrency = (value: number | null | undefined) => {
 }
 
 const getSubscriptionStatus = (customer: CustomerRecord) => {
-  if (customer.marketingOptIn || customer.emailOptIn) {
+  if (customer.emailMarketingSubscribed || customer.communicationMarketingOptIn) {
     return 'Subscribed'
   }
   return 'Not subscribed'
@@ -948,9 +962,9 @@ const CustomerDashboard = React.forwardRef<HTMLDivElement, Record<string, never>
     activeProfile?.roles && activeProfile.roles.length > 0 ? activeProfile.roles : ['customer']
 
   const marketingStatuses = [
-    {label: 'Email', subscribed: Boolean(activeProfile?.emailOptIn)},
-    {label: 'Marketing email', subscribed: Boolean(activeProfile?.marketingOptIn)},
-    {label: 'SMS', subscribed: Boolean(activeProfile?.textOptIn)},
+    {label: 'Email', subscribed: Boolean(activeProfile?.emailMarketingSubscribed)},
+    {label: 'Marketing email', subscribed: Boolean(activeProfile?.communicationMarketingOptIn)},
+    {label: 'SMS', subscribed: Boolean(activeProfile?.communicationSmsOptIn)},
   ]
 
   const allSelected =

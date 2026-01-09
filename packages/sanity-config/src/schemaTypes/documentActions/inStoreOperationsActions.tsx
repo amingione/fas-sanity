@@ -46,17 +46,18 @@ const formatCustomerName = (customer?: CustomerInfo) => {
 
 const buildBillToPayload = (customer?: CustomerInfo) => {
   if (!customer) return undefined
-  const primaryAddress = customer.addresses?.[0]
+  const address = customer.shippingAddress
+  const postal = address?.postalCode || address?.zip
   return {
     name: formatCustomerName(customer),
     email: customer.email,
     phone: customer.phone,
-    address_line1: primaryAddress?.street,
+    address_line1: address?.street,
     address_line2: undefined,
-    city_locality: primaryAddress?.city,
-    state_province: primaryAddress?.state,
-    postal_code: primaryAddress?.zip,
-    country_code: primaryAddress?.country || 'US',
+    city_locality: address?.city,
+    state_province: address?.state,
+    postal_code: postal,
+    country_code: address?.country || 'US',
   }
 }
 
@@ -69,6 +70,18 @@ const calculateHoursFromRange = (start?: string, end?: string) => {
   return Number((diff / 3_600_000).toFixed(2))
 }
 
+type CustomerAddress = {
+  name?: string
+  email?: string
+  phone?: string
+  street?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  zip?: string
+  country?: string
+}
+
 type CustomerInfo = {
   _id: string
   firstName?: string
@@ -77,7 +90,7 @@ type CustomerInfo = {
   email?: string
   phone?: string
   vehicles?: string[]
-  addresses?: Array<{_key: string; street?: string; city?: string; state?: string; zip?: string; country?: string}>
+  shippingAddress?: CustomerAddress
 }
 
 type VehicleInfo = {
@@ -382,7 +395,16 @@ export const manageWorkOrderAction: DocumentActionComponent = (props) => {
             email,
             phone,
             "vehicles": vehicles[]->_ref,
-            addresses[]{_key, street, city, state, zip, country}
+            shippingAddress{
+              name,
+              email,
+              phone,
+              street,
+              city,
+              state,
+              postalCode,
+              country
+            }
           },
           vehicle->{
             _id,
