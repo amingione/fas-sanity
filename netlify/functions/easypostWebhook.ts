@@ -244,6 +244,22 @@ function buildTrackingUrl(payload: any, carrier?: string, trackingCode?: string 
     payload?.result?.public_url ||
     null
   if (typeof direct === 'string' && direct.trim()) return direct.trim()
+  const trackerIdCandidate = [
+    payload?.tracker?.id,
+    payload?.tracker?.tracker_id,
+    payload?.shipment?.tracker?.id,
+    payload?.shipment?.tracker?.tracker_id,
+    payload?.tracker_id,
+    payload?.shipment?.tracker_id,
+    payload?.result?.tracker?.id,
+    payload?.result?.tracker?.tracker_id,
+    payload?.result?.id,
+    payload?.result?.tracker_id,
+  ].find((value): value is string => typeof value === 'string' && value.trim())
+  if (trackerIdCandidate) {
+    const encodedId = Buffer.from(`v1:${trackerIdCandidate.trim()}`, 'utf8').toString('base64')
+    return `https://track.easypost.com/${encodeURIComponent(encodedId)}`
+  }
   if (carrier && trackingCode) {
     return `https://www.easypost.com/tracking/${encodeURIComponent(carrier)}/${encodeURIComponent(
       trackingCode,
