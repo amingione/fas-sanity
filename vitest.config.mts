@@ -12,6 +12,7 @@ export default defineConfig({
     },
   },
   test: {
+    cacheDir: './node_modules/.vitest',
     environment: 'node',
   },
 })

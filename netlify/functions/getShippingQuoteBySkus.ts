@@ -95,6 +95,15 @@ const buildLocalQuoteKey = (cartItems: QuoteCacheCartItem[], destination: QuoteC
   return createHash('sha256').update(JSON.stringify(canonical)).digest('hex')
 }
 
+const buildCartSummary = (items: QuoteCacheCartItem[]): string => {
+  return items
+    .map((item) => `${item.identifier || 'item'} x${item.quantity}`)
+    .filter((value) => !!value)
+    .join(', ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 const getQuoteCacheDocId = (quoteKey: string) => `${SHIPPING_QUOTE_DOC_PREFIX}${quoteKey}`
 
 const isCacheValid = (expiresAt?: string | null) => {
@@ -126,8 +135,12 @@ async function readCachedQuote(
       missingProducts?: string[]
       carrierId?: string
       serviceCode?: string
+      source?: string | null
+      rateCount?: number
+      cartSummary?: string
+      createdAt?: string | null
     } | null>(
-      '*[_id == $id][0]{_id, rates, easyPostShipmentId, expiresAt, packages, missingProducts, carrierId, serviceCode}',
+      '*[_id == $id][0]{_id, rates, easyPostShipmentId, expiresAt, packages, missingProducts, carrierId, serviceCode, source, rateCount, cartSummary, createdAt}',
       {id: docId},
     )
     if (
@@ -146,6 +159,16 @@ async function readCachedQuote(
       missingProducts: cached.missingProducts,
       carrierId: cached.carrierId,
       serviceCode: cached.serviceCode,
+      source: cached.source || 'fresh',
+      rateCount:
+        typeof cached.rateCount === 'number'
+          ? cached.rateCount
+          : Array.isArray(cached.rates)
+            ? cached.rates.length
+            : 0,
+      cartSummary: cached.cartSummary || '',
+      createdAt: cached.createdAt || null,
+      expiresAt: cached.expiresAt || null,
     }
   } catch (error) {
     console.warn('readCachedQuote failed', {quoteKey, error})
@@ -163,7 +186,10 @@ async function persistQuoteCache(params: {
   missingProducts: string[]
   carrierId?: string
   serviceCode?: string
-}) {
+  cartSummary: string
+  rateCount: number
+  source: 'fresh' | 'cache'
+}): Promise<{docId: string; createdAt: string; expiresAt?: string}> {
   const {quoteKey, quoteRequestId, rates, easyPostShipmentId, destination, packages, missingProducts, carrierId, serviceCode} = params
   const docId = getQuoteCacheDocId(quoteKey)
   const nowIso = new Date().toISOString()
@@ -179,18 +205,23 @@ async function persistQuoteCache(params: {
       quoteKey,
       quoteRequestId,
       easyPostShipmentId,
-      carryingDestination: destination,
+      destination,
       rates,
       packages,
       missingProducts,
       carrierId,
       serviceCode,
+      cartSummary: params.cartSummary,
+      source: params.source,
+      rateCount: params.rateCount,
       createdAt: nowIso,
       expiresAt,
       updatedAt: nowIso,
     })
+    return {docId, createdAt: nowIso, expiresAt}
   } catch (error) {
     console.warn('persistQuoteCache failed', {quoteKey, error})
+    return {docId, createdAt: nowIso, expiresAt}
   }
 }
 
@@ -303,34 +334,6 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({error: 'Method Not Allowed'}),
     }
 
-  type CartItem = {
-    sku?: string
-    quantity?: number
-    productId?: string
-    id?: string
-    _id?: string
-    title?: string
-    name?: string
-    product?: {_id?: string; sku?: string; title?: string}
-  }
-  type Dest = {
-    name?: string
-    phone?: string
-    email?: string
-    address_line1?: string
-    addressLine1?: string
-    address_line2?: string
-    addressLine2?: string
-    city_locality?: string
-    city?: string
-    state_province?: string
-    state?: string
-    postal_code?: string
-    postalCode?: string
-    country_code?: string
-    country?: string
-  }
-
   let body: any = {}
   try {
     body = JSON.parse(event.body || '{}')
@@ -344,6 +347,13 @@ export const handler: Handler = async (event) => {
 
   const cart: CartItem[] = Array.isArray(body?.cart) ? body.cart : []
   const dest: Dest = body?.destination || body?.to || {}
+
+  const providedQuoteKey =
+    typeof body.quoteKey === 'string' && body.quoteKey.trim() ? body.quoteKey.trim() : undefined
+  const providedQuoteRequestId =
+    typeof body.quoteRequestId === 'string' && body.quoteRequestId.trim()
+      ? body.quoteRequestId.trim()
+      : undefined
 
   if (!Array.isArray(cart) || cart.length === 0) {
     return {
@@ -377,6 +387,41 @@ export const handler: Handler = async (event) => {
   }
 
   const fromAddress = getEasyPostFromAddress()
+
+  const cacheCartItems = normalizeCacheCartItems(cart)
+  const cacheDestination = normalizeCacheDestination(dest)
+  const cacheQuoteKey = providedQuoteKey || buildLocalQuoteKey(cacheCartItems, cacheDestination)
+  const quoteRequestId = providedQuoteRequestId || randomUUID()
+  const cartSummary = buildCartSummary(cacheCartItems)
+
+  const cachedQuote = await readCachedQuote(cacheQuoteKey)
+  if (cachedQuote) {
+    const cachedBest = selectBestRate(cachedQuote.rates)
+    return {
+      statusCode: 200,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        success: true,
+        freight: false,
+        bestRate: cachedBest,
+        rates: cachedQuote.rates,
+        packages: cachedQuote.packages || [],
+        installOnlySkus: [],
+        missingProducts: cachedQuote.missingProducts || [],
+        carrierId: cachedQuote.carrierId,
+        serviceCode: cachedQuote.serviceCode,
+        shippingQuoteId: cachedQuote.docId,
+        easyPostShipmentId: cachedQuote.easyPostShipmentId,
+        quoteKey: cacheQuoteKey,
+        quoteRequestId,
+        source: 'cache',
+        rateCount: cachedQuote.rateCount,
+        cartSummary: cachedQuote.cartSummary,
+        createdAt: cachedQuote.createdAt,
+        expiresAt: cachedQuote.expiresAt,
+      }),
+    }
+  }
 
   try {
     const normalizeId = (value?: string) => {
@@ -782,6 +827,21 @@ export const handler: Handler = async (event) => {
     const carrierId = bestRate?.carrierId || null
     const serviceCode = bestRate?.serviceCode || null
 
+    const persistedQuote = await persistQuoteCache({
+      quoteKey: cacheQuoteKey,
+      quoteRequestId,
+      rates,
+      easyPostShipmentId: shipment.id,
+      destination: cacheDestination,
+      packages,
+      missingProducts,
+      carrierId,
+      serviceCode,
+      cartSummary,
+      rateCount: rates.length,
+      source: 'fresh',
+    })
+
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
@@ -795,6 +855,15 @@ export const handler: Handler = async (event) => {
         carrierId,
         serviceCode,
         missingProducts,
+        shippingQuoteId: getQuoteCacheDocId(cacheQuoteKey),
+        easyPostShipmentId: shipment.id,
+        quoteKey: cacheQuoteKey,
+        quoteRequestId,
+        source: 'fresh',
+        rateCount: rates.length,
+        cartSummary,
+        createdAt: persistedQuote.createdAt,
+        expiresAt: persistedQuote.expiresAt,
       }),
     }
   } catch (err: any) {
@@ -808,3 +877,4 @@ export const handler: Handler = async (event) => {
 }
 
 // Netlify picks up the named export automatically; avoid duplicate exports.
+export {buildLocalQuoteKey, buildCartSummary}

@@ -503,6 +503,14 @@ export default defineType({
       hidden: true,
     }),
     defineField({
+      name: 'labelTransactionId',
+      title: 'Label Transaction ID',
+      type: 'string',
+      group: 'technical',
+      readOnly: true,
+      hidden: true,
+    }),
+    defineField({
       name: 'weight',
       title: 'Package Weight',
       type: 'shipmentWeight',
@@ -630,6 +638,27 @@ export default defineType({
     defineField({name: 'deliveredAt', type: 'date', readOnly: true, hidden: true}),
     defineField({name: 'estimatedDeliveryDate', type: 'date', readOnly: true, hidden: true}),
     defineField({name: 'easypostRateId', type: 'string', hidden: true}),
+    defineField({
+      name: 'shippingQuoteId',
+      title: 'Shipping Quote ID',
+      type: 'string',
+      hidden: true,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'shippingQuoteKey',
+      title: 'Shipping Quote Key',
+      type: 'string',
+      hidden: true,
+      readOnly: true,
+    }),
+    defineField({
+      name: 'shippingQuoteRequestId',
+      title: 'Shipping Quote Request ID',
+      type: 'string',
+      hidden: true,
+      readOnly: true,
+    }),
     defineField({
       name: 'stripeSummary',
       type: 'object',

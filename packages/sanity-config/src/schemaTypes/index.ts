@@ -248,6 +248,7 @@ import pickup from './documents/pickup'
 import schedulePickup from './documents/schedulePickup'
 import senderAddress from './documents/senderAddress'
 import createLabel from './documents/createLabel'
+import shippingQuote from './documents/shippingQuote'
 import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
 import stripeCoupon from './documents/stripeCoupon'
@@ -365,6 +366,7 @@ const documents = [
   schedulePickup,
   senderAddress,
   createLabel,
+  shippingQuote,
   freightQuote,
   vehicleModel,
   filterTag,

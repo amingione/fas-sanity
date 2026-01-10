@@ -67,6 +67,7 @@ type OrderForLabel = {
   easypostRateId?: string | null
   deliveryDays?: number | null
   estimatedDeliveryDate?: string | null
+  labelTransactionId?: string | null
 }
 
 type SenderAddressDoc = {
@@ -115,7 +116,8 @@ const ORDER_FOR_LABEL_QUERY = `*[_type == "order" && _id == $id][0]{
   service,
   easypostRateId,
   deliveryDays,
-  estimatedDeliveryDate
+  estimatedDeliveryDate,
+  labelTransactionId
 }`
 
 const DEFAULT_PACKAGE = {weight: 2, length: 10, width: 8, height: 4}
@@ -143,10 +145,18 @@ export const POST: APIRoute = async ({request}) => {
     if (order.labelPurchased) {
       return jsonResponse(
         {
-          error: 'Label already purchased',
+          success: true,
           trackingNumber: order.trackingNumber || undefined,
+          trackingUrl: order.trackingUrl || undefined,
+          labelUrl: order.shippingLabelUrl || undefined,
+          carrier: order.carrier || undefined,
+          service: order.service || undefined,
+          cost: order.labelCost || undefined,
+          easyPostShipmentId: order.easyPostShipmentId || undefined,
+          labelTransactionId: order.labelTransactionId || undefined,
+          message: 'Label already purchased',
         },
-        400,
+        200,
       )
     }
 
@@ -193,15 +203,37 @@ export const POST: APIRoute = async ({request}) => {
       return jsonResponse({error: `Missing parcel fields: ${missingParcel.join(', ')}`}, 400)
     }
 
-    const shipment = await getEasyPostClient().Shipment.create({
-      to_address: toAddress,
-      from_address: fromAddress,
-      options: {
-        label_format: 'PDF',
-        label_size: '4x6',
-      },
-      parcel,
-    })
+    let shipment: Shipment | null = null
+    let reusedShipment = false
+    if (order.easyPostShipmentId) {
+      try {
+        shipment = await getEasyPostClient().Shipment.retrieve(order.easyPostShipmentId)
+        reusedShipment = true
+      } catch (err) {
+        console.warn('create-shipping-label: failed to reuse cached shipment', {
+          orderId: cleanOrderId,
+          easyPostShipmentId: order.easyPostShipmentId,
+          error: err,
+        })
+      }
+    }
+
+    if (!shipment) {
+      shipment = await getEasyPostClient().Shipment.create({
+        to_address: toAddress,
+        from_address: fromAddress,
+        options: {
+          label_format: 'PDF',
+          label_size: '4x6',
+        },
+        parcel,
+      })
+    } else if (reusedShipment) {
+      console.log('create-shipping-label: reusing cached shipment', {
+        orderId: cleanOrderId,
+        easyPostShipmentId: order.easyPostShipmentId,
+      })
+    }
 
     const ratePreference = body.easypostRateId || order.easypostRateId || null
     const chosenRate = selectRate(shipment, ratePreference)
@@ -232,6 +264,13 @@ export const POST: APIRoute = async ({request}) => {
       typeof rateCostRaw === 'number' && Number.isFinite(rateCostRaw)
         ? Number(rateCostRaw.toFixed(2))
         : undefined
+    const easyPostShipmentId = purchasedShipment.id || shipment.id
+    const labelTransactionId =
+      postageLabel?.label_transaction_id ||
+      postageLabel?.label_id ||
+      selectedRate?.id ||
+      easyPostShipmentId ||
+      undefined
     const nowIso = new Date().toISOString()
 
     await sanity
@@ -245,9 +284,10 @@ export const POST: APIRoute = async ({request}) => {
         shippingLabelUrl: labelUrl || undefined,
         labelCreatedAt: nowIso,
         labelCost: normalizedCost,
-        easyPostShipmentId: purchasedShipment.id || shipment.id,
+        easyPostShipmentId,
         easyPostTrackerId: tracker?.id,
         easypostRateId: selectedRate?.id || ratePreference || undefined,
+        labelTransactionId: labelTransactionId || undefined,
         carrier: selectedRate?.carrier || body.carrier || order.carrier,
         service: selectedRate?.service || body.service || order.service,
         deliveryDays:
@@ -259,6 +299,12 @@ export const POST: APIRoute = async ({request}) => {
       })
       .commit({autoGenerateArrayKeys: true})
 
+    console.log('create-shipping-label: label purchased', {
+      orderId: cleanOrderId,
+      easyPostShipmentId,
+      labelTransactionId,
+    })
+
     return jsonResponse({
       success: true,
       trackingNumber: trackingCode,
@@ -267,6 +313,8 @@ export const POST: APIRoute = async ({request}) => {
       carrier: selectedRate?.carrier,
       service: selectedRate?.service,
       cost: normalizedCost,
+      easyPostShipmentId,
+      labelTransactionId,
       deliveryDays: selectedRate?.delivery_days,
     })
   } catch (error: any) {
