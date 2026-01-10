@@ -1837,6 +1837,7 @@ export const deskStructure: StructureResolver = (S) =>
         .icon(DatabaseIcon)
         .child(
           S.documentList()
+            .apiVersion(API_VERSION)
             .title('Log Drains')
             .schemaType('logDrain')
             .filter('_type == "logDrain"'),
