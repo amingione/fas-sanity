@@ -7,6 +7,7 @@ import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '.
 const requestSchema = z.object({
   orderId: z.string().min(1),
   serviceLevel: z.enum(['cheapest', 'fastest', 'ground', 'priority']).optional(),
+  source: z.string().min(1)
 })
 
 const json = (statusCode: number, body: any) => ({
@@ -23,7 +24,10 @@ export const handler: Handler = async (event) => {
       return json(400, {error: 'Invalid request', details: validation.error.format()})
     }
 
-    const {orderId, serviceLevel = 'cheapest'} = validation.data
+    const {orderId, serviceLevel = 'cheapest', source} = validation.data
+    if (source !== 'sanity-manual') {
+      throw new Error('LABEL_PURCHASE_REQUIRES_MANUAL_SANITY_ACTION')
+    }
 
     const attempts =
       (await sanityClient.fetch<number | null>(

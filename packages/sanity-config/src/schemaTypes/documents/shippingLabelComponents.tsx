@@ -274,6 +274,7 @@ export function GenerateAndPrintPanel(props: any) {
       if (orderId) {
         payload.orderId = orderId
       }
+      payload.source = 'sanity-manual'
 
       const res = (await safeFetchJson(
         `${currentBase || 'https://fassanity.fasmotorsports.com'}/.netlify/functions/easypostCreateLabel`,

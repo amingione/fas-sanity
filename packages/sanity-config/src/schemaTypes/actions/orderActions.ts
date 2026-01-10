@@ -176,6 +176,7 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
           },
         },
         rateId: doc.easypostRateId,
+        source: 'sanity-manual',
       }
 
       try {

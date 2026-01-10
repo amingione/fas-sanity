@@ -40,7 +40,7 @@ describe('create-shipping-label idempotency', () => {
     const request = new Request('https://example.com', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({orderId: 'order-123'}),
+      body: JSON.stringify({orderId: 'order-123', source: 'sanity-manual'}),
     })
 
     const {POST} = await import('../src/pages/api/create-shipping-label')

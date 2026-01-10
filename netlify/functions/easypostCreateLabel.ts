@@ -418,6 +418,7 @@ export type CreateEasyPostLabelOptions = {
   dimensionsOverride?: DimensionsInput
   packageDetails?: {weight?: WeightInput; dimensions?: DimensionsInput}
   reference?: string
+  source?: string
 }
 
 export type EasyPostLabelResult = {
@@ -485,7 +486,11 @@ export async function createEasyPostLabel(
     dimensionsOverride,
     packageDetails,
     reference,
+    source,
   } = options
+  if (source !== 'sanity-manual') {
+    throw new Error('LABEL_PURCHASE_REQUIRES_MANUAL_SANITY_ACTION')
+  }
   if (!orderId && !shipTo) {
     throw new Error('Missing orderId or shipTo address')
   }
@@ -885,6 +890,17 @@ export const handler: Handler = async (event) => {
     }
   }
 
+  const requestSource = (payload.source || '').toString().trim()
+  // Prevent any webhook/public checkout call from secretly purchasing labels.
+  if (requestSource !== 'sanity-manual') {
+    console.warn('Blocked EasyPost label request without manual source flag', {source: requestSource})
+    return {
+      statusCode: 403,
+      headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'LABEL_PURCHASE_REQUIRES_MANUAL_SANITY_ACTION'}),
+    }
+  }
+
   if (payload.address && payload.parcel && payload.selectedRate) {
     try {
       const result = await createWizardLabel({
@@ -968,6 +984,7 @@ export const handler: Handler = async (event) => {
         payload.selected_rate_id ||
         payload.selectedRate?.id,
       selectedRate: payload.selectedRate,
+      source: requestSource,
     })
 
     return {

@@ -114,7 +114,7 @@ export const CreateLabelWizard: React.FC<CreateLabelWizardProps> = ({
         const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(finalState),
+          body: JSON.stringify({...finalState, source: 'sanity-manual'}),
         })
 
         if (!res.ok) {
