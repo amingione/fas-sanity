@@ -36,6 +36,7 @@ export const createShippingLabel: DocumentActionComponent = (props) => {
               weight: {value: wt, unit: 'pound'},
               dimensions: {unit: 'inch', length: L, width: W, height: H},
             },
+            source: 'sanity-manual',
           }),
         })
         const result = await res.json().catch(() => ({}))

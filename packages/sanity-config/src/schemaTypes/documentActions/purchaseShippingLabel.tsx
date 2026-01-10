@@ -56,6 +56,7 @@ export const purchaseShippingLabelAction: DocumentActionComponent = (props) => {
             invoiceId: id,
             shipmentId: shipping.easypostShipmentId,
             rateId: shipping.easypostRateId,
+            source: 'sanity-manual',
           }),
         })
 

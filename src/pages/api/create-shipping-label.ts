@@ -130,6 +130,13 @@ export const POST: APIRoute = async ({request}) => {
     return jsonResponse({error: 'Invalid JSON payload'}, 400)
   }
 
+  const source = (body.source || '').toString().trim()
+  // Guard against any webhook/public traffic to this route unless the manual studio flag is provided.
+  if (source !== 'sanity-manual') {
+    console.warn('Blocked non-manual label purchase request on /api/create-shipping-label', { source })
+    return jsonResponse({ error: 'LABEL_PURCHASE_REQUIRES_MANUAL_SANITY_ACTION' }, 403)
+  }
+
   const cleanOrderId = (body.orderId || '').replace(/^drafts\./, '')
   if (!cleanOrderId) {
     return jsonResponse({error: 'orderId is required'}, 400)

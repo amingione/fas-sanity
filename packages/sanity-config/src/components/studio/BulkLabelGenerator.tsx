@@ -189,6 +189,7 @@ export default function BulkLabelGenerator() {
       if (orderId) {
         payload.orderId = orderId
       }
+      payload.source = 'sanity-manual'
 
       const res = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
         method: 'POST',

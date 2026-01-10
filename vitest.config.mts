@@ -14,5 +14,10 @@ export default defineConfig({
   test: {
     cacheDir: './node_modules/.vitest',
     environment: 'node',
+    env: {
+      SANITY_STUDIO_PROJECT_ID: 'test-project',
+      SANITY_STUDIO_DATASET: 'test-dataset',
+      SANITY_API_TOKEN: 'test-token',
+    },
   },
 })

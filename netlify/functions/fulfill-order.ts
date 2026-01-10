@@ -134,6 +134,7 @@ export const handler: Handler = async (event) => {
         orderId,
         weightOverride: payload.weight,
         dimensionsOverride: payload.dimensions,
+        source: 'sanity-manual',
       })
     }
   } catch (err: any) {

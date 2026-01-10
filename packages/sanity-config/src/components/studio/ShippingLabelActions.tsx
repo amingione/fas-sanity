@@ -51,7 +51,7 @@ export default function ShippingLabelActions({doc}: ShippingLabelActionsProps) {
       const response = await fetch(`${base}/.netlify/functions/easypostCreateLabel`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({orderId}),
+        body: JSON.stringify({orderId, source: 'sanity-manual'}),
       })
       const rawBody = await response.text()
       let result: any = null

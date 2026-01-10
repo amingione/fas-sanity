@@ -53,6 +53,7 @@ export const purchaseOrderLabelAction: DocumentActionComponent = (props) => {
             orderNumber: doc.orderNumber,
             shippingAddress: doc.shippingAddress,
             cart: doc.cart,
+            source: 'sanity-manual',
           }),
         })
 
