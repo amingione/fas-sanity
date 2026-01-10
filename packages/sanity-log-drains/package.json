@@ -1,0 +1,21 @@
+{
+  "name": "@fas/sanity-log-drains",
+  "version": "1.0.0",
+  "private": false,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@sanity/client": "^7.13.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
