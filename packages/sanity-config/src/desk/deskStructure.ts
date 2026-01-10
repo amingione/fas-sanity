@@ -1831,6 +1831,16 @@ export const deskStructure: StructureResolver = (S) =>
             .documentId('printSettings')
             .title('Print & PDF Settings'),
         ),
+      S.listItem()
+        .id('log-drains')
+        .title('Log Drains')
+        .icon(DatabaseIcon)
+        .child(
+          S.documentList()
+            .title('Log Drains')
+            .schemaType('logDrain')
+            .filter('_type == "logDrain"'),
+        ),
       createAdminSection(S),
     ])
 export default deskStructure

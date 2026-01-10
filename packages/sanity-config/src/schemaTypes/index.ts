@@ -305,6 +305,7 @@ import empProfile from './documents/empProfile'
 import empResources from './documents/empResources'
 import empPortal from './documents/empPortal/empPortal'
 import empFormSubmission from './documents/empFormSubmission'
+import logDrain from './documents/logDrain'
 
 const documents = [
   collectionType,
@@ -320,6 +321,7 @@ const documents = [
   stripeCoupon,
   stripeWebhook,
   functionLog,
+  logDrain,
   vendorApplication,
   vendor,
   purchaseOrder,

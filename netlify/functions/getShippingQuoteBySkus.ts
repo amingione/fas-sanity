@@ -262,6 +262,35 @@ function selectBestRate(
   return [...eligible].sort((a, b) => a.amount - b.amount)[0] || null
 }
 
+type CartItem = {
+  sku?: string
+  quantity?: number
+  productId?: string
+  id?: string
+  _id?: string
+  title?: string
+  name?: string
+  product?: {_id?: string; sku?: string; title?: string}
+}
+
+type Dest = {
+  name?: string
+  phone?: string
+  email?: string
+  address_line1?: string
+  addressLine1?: string
+  address_line2?: string
+  addressLine2?: string
+  city_locality?: string
+  city?: string
+  state_province?: string
+  state?: string
+  postal_code?: string
+  postalCode?: string
+  country_code?: string
+  country?: string
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
