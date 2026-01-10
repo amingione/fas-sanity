@@ -75,7 +75,7 @@ const ShipmentsPanel = React.forwardRef<HTMLDivElement>((_props, ref) => {
         createdAt,
         labelUrl,
         postageLabel,
-        "orderNumber": order->orderNumber,
+        "orderNumber": coalesce(order->orderNumber, reference),
         "customerName": order->customerName,
         tracker
       }`

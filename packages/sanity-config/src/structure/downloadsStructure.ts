@@ -8,9 +8,11 @@ const BASE_FILTER = '_type == "downloadResource" && isArchived != true'
 
 const defaultOrdering = [{field: 'lastUpdated', direction: 'desc' as const}]
 
+const createDownloadList = (S: StructureBuilder) =>
+  S.documentTypeList('downloadResource').apiVersion(API_VERSION)
+
 const buildList = (S: StructureBuilder, title: string, filter: string) =>
-  S.documentList()
-    .apiVersion(API_VERSION)
+  createDownloadList(S)
     .title(title)
     .filter(filter)
     .defaultOrdering([

@@ -41,6 +41,7 @@ import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
 import {autoMapperPlugin} from './src/plugins/autoMapper'
 import {documentListWidget} from './src/plugins/documentListWidget'
 import './src/styles/studio.css'
+import {BulkPublishAction} from './src/documentActions/bulkPublishAction'
 
 declare const __SANITY_STUDIO_RUNTIME_ENV__: Record<string, string | undefined> | undefined
 
@@ -358,7 +359,10 @@ export default defineConfig({
   document: {
     actions: (prev, context) =>
       resolveProductDocumentActions(
-        resolveDownloadDocumentActions(resolveDocumentActions(prev, context), context),
+        resolveDownloadDocumentActions(
+          resolveDocumentActions([...prev, BulkPublishAction], context),
+          context,
+        ),
         context,
       ),
     badges: resolveDocumentBadges,
