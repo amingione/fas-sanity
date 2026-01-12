@@ -1,6 +1,9 @@
-import {describe, expect, it} from 'vitest'
+import {beforeEach, describe, expect, it, vi} from 'vitest'
 
-import {buildCartSummary, buildLocalQuoteKey} from '../netlify/functions/getShippingQuoteBySkus'
+vi.mock('@easypost/api', () => ({
+  default: class EasyPostMock {},
+  Shipment: class ShipmentMock {},
+}))
 
 const destination = {
   addressLine1: '123 Main St',
@@ -11,7 +14,12 @@ const destination = {
 }
 
 describe('Shipping quote helpers', () => {
-  it('builds a deterministic quote key for the same cart/address', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('builds a deterministic quote key for the same cart/address', async () => {
+    const {buildLocalQuoteKey} = await import('../netlify/functions/getShippingQuoteBySkus')
     const cartA = [
       {identifier: 'SKU-1', quantity: 2},
       {identifier: 'SKU-2', quantity: 1},
@@ -25,7 +33,8 @@ describe('Shipping quote helpers', () => {
     expect(keyA).toBe(keyB)
   })
 
-  it('summarizes the cart items for logging', () => {
+  it('summarizes the cart items for logging', async () => {
+    const {buildCartSummary} = await import('../netlify/functions/getShippingQuoteBySkus')
     const summary = buildCartSummary([
       {identifier: 'SKU-1', quantity: 1},
       {identifier: 'SKU-2', quantity: 3},

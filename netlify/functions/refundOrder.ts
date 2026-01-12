@@ -2,11 +2,11 @@ import type {Handler} from '@netlify/functions'
 import Stripe from 'stripe'
 import {Resend} from 'resend'
 import {sanityClient} from '../lib/sanityClient'
-import {easypostRequest} from '../lib/easypostClient'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 type OrderDoc = {
   _id: string
@@ -15,8 +15,6 @@ type OrderDoc = {
   paymentIntentId?: string | null
   stripePaymentIntentId?: string | null
   customerEmail?: string | null
-  easyPostShipmentId?: string | null
-  easypostShipmentId?: string | null
 }
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || ''
@@ -60,15 +58,6 @@ const buildRefundEmail = (order: OrderDoc) => {
   `
 }
 
-async function refundShipment(shipmentId?: string | null) {
-  if (!shipmentId) return
-  try {
-    await easypostRequest('POST', `/shipments/${shipmentId}/refund`)
-  } catch (error) {
-    console.warn('refundOrder: EasyPost refund failed', error)
-  }
-}
-
 export const handler: Handler = async (event) => {
   const cors = buildCors(event.headers?.origin || event.headers?.Origin)
 
@@ -108,14 +97,12 @@ export const handler: Handler = async (event) => {
     const order = await sanityClient.fetch<OrderDoc | null>(
       `*[_type == "order" && _id == $id][0]{
         _id,
-        orderNumber,
-        status,
-        paymentIntentId,
-        stripePaymentIntentId,
-        customerEmail,
-        easyPostShipmentId,
-        easypostShipmentId
-      }`,
+      orderNumber,
+      status,
+      paymentIntentId,
+      stripePaymentIntentId,
+      customerEmail,
+    }`,
       {id: orderId},
     )
 
@@ -152,7 +139,6 @@ export const handler: Handler = async (event) => {
       payment_intent: paymentIntentId,
       reason: 'requested_by_customer',
     })
-    await refundShipment(order.easyPostShipmentId || order.easypostShipmentId)
 
     await sanityClient
       .patch(order._id)
@@ -200,7 +186,7 @@ export const handler: Handler = async (event) => {
             subject,
             html: buildRefundEmail(order),
           })
-          const resendId = (response as any)?.data?.id || (response as any)?.id || null
+          const resendId = getMessageId(response)
           await markEmailLogSent(reservation.logId, resendId)
         }
       } catch (emailError) {

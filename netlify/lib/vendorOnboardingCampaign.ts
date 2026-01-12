@@ -1,6 +1,7 @@
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../shared/resendEnv'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID
 const dataset = process.env.SANITY_STUDIO_DATASET
@@ -88,7 +89,7 @@ export const sendCampaignEmail = async (params: {
     subject: email.subject,
     sentAt: new Date().toISOString(),
     status: 'sent',
-    resendId: (result as any)?.id,
+    resendId: getMessageId(result),
   })
 
   return result

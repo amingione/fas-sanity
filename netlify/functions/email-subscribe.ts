@@ -6,6 +6,7 @@ import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const sanityClient = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd',
@@ -161,7 +162,7 @@ export const handler: Handler = async (event) => {
             <p><small>You can unsubscribe anytime by clicking the link in our emails.</small></p>
           `,
         })
-        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        const resendId = getMessageId(response)
         await markEmailLogSent(reservation.logId, resendId)
       }
     } catch (emailError) {

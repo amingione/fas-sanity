@@ -605,8 +605,10 @@ export async function createEasyPostLabel(
       raw: rate,
       amount: Number.parseFloat(rate?.rate ?? ''),
     }))
-    .filter((entry) => Number.isFinite(entry.amount) && entry.amount > 0)
-    .sort((a, b) => a.amount - b.amount)
+    .filter(
+      (entry: {raw: any; amount: number}) => Number.isFinite(entry.amount) && entry.amount > 0,
+    )
+    .sort((a: {raw: any; amount: number}, b: {raw: any; amount: number}) => a.amount - b.amount)
 
   const preferredRateId =
     rateId ||
@@ -615,7 +617,7 @@ export async function createEasyPostLabel(
     (packageDetails as any)?.selectedRateId
 
   const selectedRateEntry = preferredRateId
-    ? sortedRates.find((rate) => rate.raw?.id === preferredRateId) || sortedRates[0]
+    ? sortedRates.find((rate: {raw: any; amount: number}) => rate.raw?.id === preferredRateId) || sortedRates[0]
     : sortedRates[0]
   const chosenRate = selectedRateEntry?.raw
 
@@ -893,7 +895,9 @@ export const handler: Handler = async (event) => {
   const requestSource = (payload.source || '').toString().trim()
   // Prevent any webhook/public checkout call from secretly purchasing labels.
   if (requestSource !== 'sanity-manual') {
-    console.warn('Blocked EasyPost label request without manual source flag', {source: requestSource})
+    console.warn('Blocked EasyPost label request without manual source flag', {
+      source: requestSource,
+    })
     return {
       statusCode: 403,
       headers: {...CORS_HEADERS, 'Content-Type': 'application/json'},

@@ -26,20 +26,6 @@ import {
 
 type StripeCheckoutSession = Stripe.Checkout.Session
 
-interface SessionWithShipping extends Stripe.Checkout.Session {
-  shipping_details?: {
-    name?: string
-    address?: {
-      line1?: string
-      line2?: string | null
-      city?: string
-      state?: string
-      postal_code?: string
-      country?: string
-    }
-  }
-}
-
 async function generateOrderNumber(client: SanityClient): Promise<string> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const randomValue = Math.floor(Math.random() * 1_000_000)
@@ -157,6 +143,22 @@ function parseCartFromMetadata(metadata?: Stripe.Metadata | null): OrderCartItem
   ]
 }
 
+function formatDeliveryEstimate(estimate?: Stripe.ShippingRate.DeliveryEstimate | null) {
+  if (!estimate) return undefined
+  const unit = estimate.maximum?.unit || estimate.minimum?.unit || 'business_day'
+  const formattedUnit = unit.replace(/_/g, ' ')
+  const minValue = estimate.minimum?.value
+  const maxValue = estimate.maximum?.value
+  if (minValue != null && maxValue != null && minValue !== maxValue) {
+    return `${minValue}-${maxValue} ${formattedUnit}`
+  }
+  const value = minValue ?? maxValue
+  if (value != null) {
+    return `${value} ${formattedUnit}`
+  }
+  return undefined
+}
+
 const buildStripeSummary = (session: StripeCheckoutSession) =>
   serializeStripeSummaryData(buildStripeSummaryRecord({session}))
 
@@ -165,7 +167,26 @@ export async function handleStripeCheckoutComplete(
   client: SanityClient,
 ) {
   const orderNumber = await generateOrderNumber(client)
-  const sessionWithShipping = session as SessionWithShipping
+  const shippingDetails = (session as any).shipping_details
+  const shippingCost = session.shipping_cost
+  const shippingRateObject =
+    shippingCost && typeof shippingCost.shipping_rate === 'object'
+      ? (shippingCost.shipping_rate as Stripe.ShippingRate)
+      : null
+  const shippingRateMetadata =
+    shippingRateObject?.metadata && typeof shippingRateObject.metadata === 'object'
+      ? (shippingRateObject.metadata as Record<string, string | null | undefined>)
+      : {}
+  const shippingRateId =
+    shippingCost && typeof shippingCost.shipping_rate === 'string'
+      ? shippingCost.shipping_rate
+      : shippingRateObject?.id
+  const shippingAmountRaw =
+    shippingCost?.amount_total ??
+    shippingCost?.amount_subtotal ??
+    session.total_details?.amount_shipping ??
+    0
+  const shippingDeliveryEstimate = formatDeliveryEstimate(shippingRateObject?.delivery_estimate)
 
   // Build shipping address text
   const orderDoc = {
@@ -182,7 +203,7 @@ export async function handleStripeCheckoutComplete(
     totalAmount: (session.amount_total ?? 0) / 100,
     amountSubtotal: (session.amount_subtotal ?? 0) / 100,
     amountTax: (session.total_details?.amount_tax ?? 0) / 100,
-    amountShipping: (session.total_details?.amount_shipping ?? 0) / 100,
+    amountShipping: shippingAmountRaw / 100,
     amountDiscount: (session.total_details?.amount_discount ?? 0) / 100,
     currency: session.currency,
 
@@ -196,29 +217,31 @@ export async function handleStripeCheckoutComplete(
     // Fulfillment details (visible)
     fulfillmentDetails: {
       status: 'unfulfilled',
-      packageWeight: parseFloat(session.metadata?.shipping_total_weight_lbs || '2'),
       fulfillmentNotes: '',
     },
 
     // Hidden data storage
-    shippingAddress: sessionWithShipping.shipping_details
+    shippingAddress: shippingDetails?.address
       ? {
-          name: sessionWithShipping.shipping_details.name || undefined,
+          name: shippingDetails.name || undefined,
           phone: session.customer_details?.phone || undefined,
           email: session.customer_details?.email || undefined,
-          addressLine1: sessionWithShipping.shipping_details.address?.line1 || undefined,
-          addressLine2: sessionWithShipping.shipping_details.address?.line2 || undefined,
-          city: sessionWithShipping.shipping_details.address?.city || undefined,
-          state: sessionWithShipping.shipping_details.address?.state || undefined,
-          postalCode: sessionWithShipping.shipping_details.address?.postal_code || undefined,
-          country: sessionWithShipping.shipping_details.address?.country || undefined,
+          addressLine1: shippingDetails.address?.line1 || undefined,
+          addressLine2: shippingDetails.address?.line2 || undefined,
+          city: shippingDetails.address?.city || undefined,
+          state: shippingDetails.address?.state || undefined,
+          postalCode: shippingDetails.address?.postal_code || undefined,
+          country: shippingDetails.address?.country || undefined,
         }
       : null,
 
-    carrier: session.metadata?.shipping_carrier || 'USPS',
-    service: session.metadata?.shipping_service_name || 'Standard',
-    easypostRateId: session.metadata?.shipping_rate_id,
-    estimatedDeliveryDate: session.metadata?.shipping_estimated_delivery_date,
+    carrier:
+      shippingRateMetadata.carrier ||
+      shippingRateMetadata.carrier_id ||
+      (shippingRateObject ? 'Stripe Checkout' : undefined),
+    service: shippingRateMetadata.service || shippingRateObject?.display_name || undefined,
+    easypostRateId: shippingRateId,
+    estimatedDeliveryDate: shippingDeliveryEstimate,
 
     // Cart
     cart: parseCartFromMetadata(session.metadata),

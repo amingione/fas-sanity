@@ -5,6 +5,7 @@ import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEn
 import {renderCampaignHtml, htmlToText} from '../lib/email/renderCampaign'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const sanity = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID,
@@ -118,7 +119,7 @@ const handler: Handler = async (event) => {
         throw new Error(result.error.message)
       }
 
-      const resendId = (result as any)?.data?.id || (result as any)?.id || null
+      const resendId = getMessageId(result)
       await markEmailLogSent(reservation.logId, resendId)
     }
 

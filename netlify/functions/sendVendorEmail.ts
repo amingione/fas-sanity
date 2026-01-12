@@ -4,6 +4,7 @@ import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEn
 import {buildVendorEmail, type VendorEmailTemplateInput} from '../lib/emailTemplates/vendorEmails'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -95,7 +96,7 @@ const handler: Handler = async (event) => {
           subject: emailConfig.subject,
           html: emailConfig.html,
         })
-        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        const resendId = getMessageId(response)
         await markEmailLogSent(reservation.logId, resendId)
       } catch (err) {
         await markEmailLogFailed(reservation.logId, err)

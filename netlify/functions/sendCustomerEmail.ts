@@ -4,6 +4,7 @@ import {Resend} from 'resend'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,7 +93,7 @@ const handler: Handler = async (event) => {
             })
             .filter(Boolean) as Array<{filename: string; content: string}>,
         })
-        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        const resendId = getMessageId(response)
         await markEmailLogSent(reservation.logId, resendId)
       } catch (err) {
         await markEmailLogFailed(reservation.logId, err)
