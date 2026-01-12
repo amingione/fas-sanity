@@ -1,4 +1,5 @@
 import type {Handler} from '@netlify/functions'
+import type {IRate} from '@easypost/api'
 import {z} from 'zod'
 import {easypost, getWarehouseAddress} from './_easypost'
 import {sanityClient} from '../lib/sanityClient'
@@ -120,8 +121,8 @@ export const handler: Handler = async (event) => {
       }
       const shipment = await easypost.Shipment.create(shipmentPayload)
 
-      const rates = Array.isArray(shipment?.rates) ? shipment.rates : []
-      let selectedRate: any = null
+      const rates: IRate[] = Array.isArray(shipment?.rates) ? shipment.rates : []
+      let selectedRate: IRate | null = null
 
       if (serviceLevel === 'cheapest') {
         try {
@@ -130,15 +131,15 @@ export const handler: Handler = async (event) => {
           selectedRate = rates[0] || null
         }
       } else if (serviceLevel === 'fastest') {
-        selectedRate = rates.reduce((fastest, rate) => {
+        selectedRate = rates.reduce((fastest: IRate | null, rate: IRate) => {
           const fastestDays = fastest?.delivery_days ?? 999
           const rateDays = rate?.delivery_days ?? 999
           return rateDays < fastestDays ? rate : fastest
-        }, null as any)
+        }, null)
       } else {
         const serviceLowerCase = serviceLevel.toLowerCase()
         selectedRate =
-          rates.find((rate) => rate?.service?.toLowerCase().includes(serviceLowerCase)) ||
+          rates.find((rate: IRate) => rate?.service?.toLowerCase().includes(serviceLowerCase)) ||
           rates[0] ||
           null
       }
@@ -161,7 +162,7 @@ export const handler: Handler = async (event) => {
       await sanityClient
         .patch(orderId)
         .set({
-          trackingNumber: purchasedShipment.tracking_code || '',
+          trackingNumber: purchasedShipment?.tracking_code || '',
           trackingUrl: purchasedShipment.tracker?.public_url || '',
           carrier: selectedRate.carrier || '',
           service: selectedRate.service || '',
@@ -177,7 +178,7 @@ export const handler: Handler = async (event) => {
         _type: 'shippingLabel',
         name: order.orderNumber || `Order ${orderId}`,
         orderRef: { _type: 'reference', _ref: orderId },
-        trackingNumber: purchasedShipment.tracking_code || '',
+        trackingNumber: purchasedShipment?.tracking_code || '',
         labelUrl: purchasedShipment.postage_label?.label_url || '',
         carrier: selectedRate.carrier || '',
         service: selectedRate.service || '',
@@ -188,7 +189,7 @@ export const handler: Handler = async (event) => {
 
       return json(200, {
         success: true,
-        trackingNumber: purchasedShipment.tracking_code,
+        trackingNumber: purchasedShipment?.tracking_code || '',
         trackingUrl: purchasedShipment.tracker?.public_url,
         labelUrl: purchasedShipment.postage_label?.label_url,
       })

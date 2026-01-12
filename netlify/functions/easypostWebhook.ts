@@ -255,7 +255,7 @@ function buildTrackingUrl(payload: any, carrier?: string, trackingCode?: string 
     payload?.result?.tracker?.tracker_id,
     payload?.result?.id,
     payload?.result?.tracker_id,
-  ].find((value): value is string => typeof value === 'string' && value.trim())
+  ].find((value): value is string => typeof value === 'string' && value.trim().length > 0)
   if (trackerIdCandidate) {
     const encodedId = Buffer.from(`v1:${trackerIdCandidate.trim()}`, 'utf8').toString('base64')
     return `https://track.easypost.com/${encodeURIComponent(encodedId)}`

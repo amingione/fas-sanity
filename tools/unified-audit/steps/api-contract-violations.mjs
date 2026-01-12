@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import { listRepoFiles, relativeToRepo } from '../lib/file-scan.mjs'
+import { detectApiContractViolation } from '../lib/detectors/api-contract.mjs'
 
 function findLineNumber(content, search) {
   const idx = content.indexOf(search)
@@ -7,42 +8,82 @@ function findLineNumber(content, search) {
   return content.slice(0, idx).split(/\r?\n/).length
 }
 
-function checkEasyPostPayload(content) {
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function parseDestructuredBindings(binding) {
+  const trimmed = binding.trim()
+  if (!trimmed.startsWith('{')) return []
+  const end = trimmed.lastIndexOf('}')
+  if (end === -1) return []
+  const inner = trimmed.slice(1, end)
+  return inner
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const [leftRaw, rightRaw] = part.split(':').map((value) => value.trim())
+      const left = leftRaw?.split('=')[0]?.trim() || ''
+      const right = rightRaw?.split('=')[0]?.trim() || ''
+      return { key: left, name: right || left }
+    })
+}
+
+function findResendUnsafeIdAccess(content) {
   const violations = []
-  const shipmentCall = content.match(/Shipment\.create\(([\s\S]*?)\)/)
-  if (shipmentCall) {
-    const body = shipmentCall[1]
-    const required = ['to_address', 'from_address', 'parcel']
-    for (const field of required) {
-      if (!body.includes(field)) {
+  const sendRegex = /(const|let|var)\s+([^=]+?)=\s*await\s+resend\.emails\.send\s*\(/g
+  const matches = [...content.matchAll(sendRegex)]
+
+  for (const match of matches) {
+    const binding = match[2]?.trim() || ''
+    const windowStart = match.index ?? 0
+    const snippet = content.slice(windowStart, windowStart + 2000)
+    const bindings = []
+
+    if (binding.startsWith('{')) {
+      const destructured = parseDestructuredBindings(binding)
+      for (const entry of destructured) {
+        if (entry.key === 'data' || entry.key === 'id') {
+          bindings.push(entry.name)
+        }
+      }
+    } else {
+      const varName = binding.split(':')[0].trim()
+      if (varName) bindings.push(varName)
+    }
+
+    for (const name of bindings) {
+      if (!name) continue
+      const directId = new RegExp(`\\b${escapeRegExp(name)}\\.id\\b`)
+      const dataId = new RegExp(`\\b${escapeRegExp(name)}\\.data\\.id\\b`)
+      if (directId.test(snippet)) {
         violations.push({
-          type: 'missingField',
-          fieldPath: field,
-          message: `EasyPost payload missing ${field}`
+          lineNo: findLineNumber(content, `${name}.id`),
+          fieldPath: 'id',
+          message: 'Guard Resend response id access and handle missing responses.'
+        })
+      } else if (dataId.test(snippet)) {
+        violations.push({
+          lineNo: findLineNumber(content, `${name}.data.id`),
+          fieldPath: 'id',
+          message: 'Guard Resend response id access and handle missing responses.'
         })
       }
     }
   }
+
   return violations
 }
 
-function checkResendPayload(content) {
-  const violations = []
-  const sendCall = content.match(/emails\.send\(([\s\S]*?)\)/)
-  if (sendCall) {
-    const body = sendCall[1]
-    const required = ['to', 'from', 'subject']
-    for (const field of required) {
-      if (!body.includes(field)) {
-        violations.push({
-          type: 'missingField',
-          fieldPath: field,
-          message: `Resend payload missing ${field}`
-        })
-      }
-    }
-  }
-  return violations
+function shouldSkipFile(filePath) {
+  return (
+    /\/node_modules\//.test(filePath) ||
+    /\/tools\/unified-audit\/test\//.test(filePath) ||
+    /\/tools\/unified-audit\/out\//.test(filePath) ||
+    /\/__tests__\//.test(filePath) ||
+    /\.(test|spec)\.(t|j)sx?$/.test(filePath)
+  )
 }
 
 export async function runApiContractViolations({ repos }) {
@@ -68,21 +109,23 @@ export async function runApiContractViolations({ repos }) {
   let persistResend = false
 
   for (const { repo, file } of files) {
+    if (shouldSkipFile(file)) continue
     const content = await fs.readFile(file, 'utf8')
     const rel = relativeToRepo(repo.path, file)
 
     if (/easypost|EasyPost/i.test(content)) {
       hasEasyPost = true
-      const payloadViolations = checkEasyPostPayload(content)
+      const payloadViolations = detectApiContractViolation(file, content, null)
+        .filter((violation) => violation.service === 'easypost')
       for (const violation of payloadViolations) {
         result.violations.push({
-          service: 'easypost',
+          service: violation.service,
           type: violation.type,
           file: rel,
           repo: repo.name,
-          lineNo: findLineNumber(content, violation.fieldPath),
+          lineNo: violation.lineNo,
           fieldPath: violation.fieldPath,
-          recommendedFix: violation.message
+          recommendedFix: violation.recommendedFix
         })
       }
       for (const field of easypostPersistFields) {
@@ -103,34 +146,33 @@ export async function runApiContractViolations({ repos }) {
 
     if (/resend|RESEND_/i.test(content)) {
       hasResend = true
-      const payloadViolations = checkResendPayload(content)
+      const payloadViolations = detectApiContractViolation(file, content, null)
+        .filter((violation) => violation.service === 'resend')
       for (const violation of payloadViolations) {
         result.violations.push({
-          service: 'resend',
+          service: violation.service,
           type: violation.type,
           file: rel,
           repo: repo.name,
-          lineNo: findLineNumber(content, violation.fieldPath),
+          lineNo: violation.lineNo,
           fieldPath: violation.fieldPath,
-          recommendedFix: violation.message
+          recommendedFix: violation.recommendedFix
         })
       }
       for (const field of resendPersistFields) {
         if (content.includes(`${field}:`)) persistResend = true
       }
-      if (content.includes('.id') && content.includes('resend')) {
-        const lineNo = findLineNumber(content, '.id')
-        if (lineNo) {
-          result.violations.push({
-            service: 'resend',
-            type: 'unsafeAccess',
-            file: rel,
-            repo: repo.name,
-            lineNo,
-            fieldPath: 'id',
-            recommendedFix: 'Guard Resend response id access and handle missing responses.'
-          })
-        }
+      const unsafeResendAccess = findResendUnsafeIdAccess(content)
+      for (const violation of unsafeResendAccess) {
+        result.violations.push({
+          service: 'resend',
+          type: 'unsafeAccess',
+          file: rel,
+          repo: repo.name,
+          lineNo: violation.lineNo,
+          fieldPath: violation.fieldPath,
+          recommendedFix: violation.message
+        })
       }
     }
   }

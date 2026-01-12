@@ -1,6 +1,7 @@
 import {createClient, type SanityClient} from '@sanity/client'
 import type {
   DrainProvider,
+  DrainResponse,
   LogDrain,
   LogDrainConfig,
   LogDrainCreateInput,

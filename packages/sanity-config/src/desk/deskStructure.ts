@@ -13,7 +13,6 @@ import {
   DocumentIcon,
   DocumentTextIcon,
   EnvelopeIcon,
-  BellIcon,
   FolderIcon,
   HomeIcon,
   BulbOutlineIcon,
@@ -30,7 +29,6 @@ import {
   CalendarIcon,
   ActivityIcon,
   BoltIcon,
-  PauseIcon,
 } from '@sanity/icons'
 import HomePane from '../components/studio/HomePane'
 import AdminTools from '../components/studio/AdminTools'
@@ -41,7 +39,6 @@ import MerchantCenterDashboard from '../components/studio/MerchantCenterDashboar
 import AttributionDashboard from '../components/studio/AttributionDashboard'
 import CampaignPerformance from '../components/studio/CampaignPerformance'
 import ComingSoonPane from '../components/studio/ComingSoonPane'
-import InventoryDashboard from '../components/studio/InventoryDashboard'
 import {
   OrdersDocumentTable,
   ProductsDocumentTable,
@@ -58,15 +55,11 @@ import ShipmentsPanel from '../components/shipments/ShipmentsPanel'
 import PickupsPanel from '../components/pickups/PickupsPanel'
 import SalesAnalyticsDashboard from '../components/studio/SalesAnalyticsDashboard'
 import OperationsDashboard from '../components/studio/OperationsDashboard'
-import WholesaleDashboard from '../components/studio/WholesaleDashboard'
-import WholesalePricingCalculator from '../components/studio/WholesalePricingCalculator'
-import ProfitMarginAnalysis from '../components/studio/ProfitMarginAnalysis'
 import FinancialDashboard from '../components/studio/FinancialDashboard'
 import ExpenseManager from '../components/studio/ExpenseManager'
 import ProductProfitability from '../components/studio/ProductProfitability'
 import AccountsReceivable from '../components/studio/AccountsReceivable'
 import FinancialReports from '../components/studio/FinancialReports'
-import {INVENTORY_DOCUMENT_TYPE} from '../../../../shared/docTypes'
 
 const API_VERSION = '2024-10-01'
 const EMAIL_SUBSCRIBER_FILTER = '_type == "customer" && emailMarketing.subscribed == true'
@@ -136,9 +129,6 @@ const VendorsTableView: ComponentType = () =>
   })
 
 const productDefaultOrdering = [{field: '_updatedAt', direction: 'desc' as const}]
-const canHandleProductIntent = (intentName: string, params?: {type?: string}) =>
-  intentName === 'edit' && params?.type === 'product'
-
 const createProductsSection = (S: any) =>
   S.listItem()
     .id('products')
@@ -706,267 +696,6 @@ const createWholesaleOrdersSubSection = (S: any) =>
                 .defaultOrdering([{field: '_createdAt', direction: 'desc'}])
                 .child((orderId: string) => S.document().schemaType('order').documentId(orderId)),
             ),
-        ]),
-    )
-
-const createPricingManagementSubSection = (S: any) =>
-  S.listItem()
-    .id('wholesale-pricing')
-    .title('Pricing Management')
-    .icon(CreditCardIcon)
-    .child(
-      S.list()
-        .title('Pricing Management')
-        .items([
-          S.listItem()
-            .id('wholesale-pricing-products')
-            .title('Wholesale Pricing by Product')
-            .icon(CreditCardIcon)
-            .child(
-              S.documentList()
-                .id('wholesale-pricing-products-list')
-                .schemaType('product')
-                .apiVersion(API_VERSION)
-                .title('Wholesale Pricing')
-                .filter('_type == "product" && coalesce(availableForWholesale, false) == true')
-                .defaultOrdering(productDefaultOrdering)
-                .canHandleIntent(canHandleProductIntent),
-            ),
-          S.listItem()
-            .id('wholesale-pricing-calculator')
-            .title('Wholesale Pricing Calculator')
-            .icon(CreditCardIcon)
-            .child(
-              S.component()
-                .id('wholesale-pricing-calculator-pane')
-                .title('Wholesale Pricing Calculator')
-                .component(WholesalePricingCalculator as ComponentType),
-            ),
-          S.listItem()
-            .id('wholesale-pricing-missing')
-            .title('Products Missing Pricing')
-            .icon(WarningOutlineIcon)
-            .child(
-              S.documentList()
-                .id('wholesale-pricing-missing-list')
-                .apiVersion(API_VERSION)
-                .schemaType('product')
-                .title('Missing Wholesale Pricing')
-                .filter(
-                  '_type == "product" && productType != "service" && (!defined(wholesalePriceStandard) && !defined(wholesalePricePreferred) && !defined(wholesalePricePlatinum))',
-                )
-                .defaultOrdering([{field: 'title', direction: 'asc'}])
-                .canHandleIntent(canHandleProductIntent),
-            ),
-          S.listItem()
-            .id('wholesale-pricing-margins')
-            .title('Profit Margin Analysis')
-            .icon(BarChartIcon)
-            .child(
-              S.component()
-                .id('wholesale-pricing-margins-pane')
-                .title('Profit Margin Analysis')
-                .component(ProfitMarginAnalysis as ComponentType),
-            ),
-        ]),
-    )
-
-const createInventorySubSection = (S: any) =>
-  S.listItem()
-    .id('wholesale-inventory')
-    .title('Inventory')
-    .icon(PackageIcon)
-    .child(
-      S.list()
-        .title('Inventory')
-        .items([
-          S.listItem()
-            .id('inventory-dashboard')
-            .title('Inventory Dashboard')
-            .icon(BarChartIcon)
-            .child(
-              S.component()
-                .id('inventory-dashboard-pane')
-                .title('Inventory Dashboard')
-                .component(InventoryDashboard as ComponentType),
-            ),
-          S.listItem()
-            .id('inventory-all')
-            .title('All Inventory')
-            .icon(PackageIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType(INVENTORY_DOCUMENT_TYPE)
-                .title('All Inventory')
-                .filter(`_type == "${INVENTORY_DOCUMENT_TYPE}"`)
-                .defaultOrdering([{field: '_updatedAt', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('inventory-out-of-stock')
-            .title('🚨 Out of Stock')
-            .icon(WarningOutlineIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType(INVENTORY_DOCUMENT_TYPE)
-                .title('Out of Stock')
-                .filter(`_type == "${INVENTORY_DOCUMENT_TYPE}" && quantityAvailable <= 0`)
-                .defaultOrdering([{field: 'quantityAvailable', direction: 'asc'}]),
-            ),
-          S.listItem()
-            .id('inventory-low-stock')
-            .title('⚠️ Low Stock')
-            .icon(WarningOutlineIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType(INVENTORY_DOCUMENT_TYPE)
-                .title('Low Stock')
-                .filter(
-                  `_type == "${INVENTORY_DOCUMENT_TYPE}" && quantityAvailable <= coalesce(reorderPoint, 0)`,
-                )
-                .defaultOrdering([{field: 'quantityAvailable', direction: 'asc'}]),
-            ),
-          S.listItem()
-            .id('inventory-in-stock')
-            .title('✅ In Stock')
-            .icon(CheckmarkCircleIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType(INVENTORY_DOCUMENT_TYPE)
-                .title('In Stock')
-                .filter(
-                  `_type == "${INVENTORY_DOCUMENT_TYPE}" && quantityAvailable > coalesce(reorderPoint, 0)`,
-                )
-                .defaultOrdering([{field: 'quantityAvailable', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('inventory-overstocked')
-            .title('📈 Overstocked')
-            .icon(ActivityIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType(INVENTORY_DOCUMENT_TYPE)
-                .title('Overstocked')
-                .filter(
-                  `_type == "${INVENTORY_DOCUMENT_TYPE}" && quantityOnHand > coalesce(reorderPoint, 0) * 3`,
-                )
-                .defaultOrdering([{field: 'quantityOnHand', direction: 'desc'}]),
-            ),
-          S.listItem()
-            .id('manufacturing-orders')
-            .title('🏭 Manufacturing Orders')
-            .icon(WrenchIcon)
-            .child(
-              S.list()
-                .title('Manufacturing Orders')
-                .items([
-                  S.listItem()
-                    .id('manufacturing-orders-all')
-                    .title('All Orders')
-                    .icon(PackageIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('manufacturingOrder')
-                        .title('All Manufacturing Orders')
-                        .filter('_type == "manufacturingOrder"')
-                        .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-                    ),
-                  S.listItem()
-                    .id('manufacturing-orders-urgent')
-                    .title('🔴 Urgent')
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('manufacturingOrder')
-                        .title('Urgent Orders')
-                        .filter(
-                          '_type == "manufacturingOrder" && priority == "urgent" && status != "completed"',
-                        )
-                        .defaultOrdering([{field: '_createdAt', direction: 'asc'}]),
-                    ),
-                  S.listItem()
-                    .id('manufacturing-orders-in-progress')
-                    .title('In Production')
-                    .icon(ActivityIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('manufacturingOrder')
-                        .title('In Production')
-                        .filter('_type == "manufacturingOrder" && status == "in_production"')
-                        .defaultOrdering([{field: '_updatedAt', direction: 'desc'}]),
-                    ),
-                  S.listItem()
-                    .id('manufacturing-orders-queued')
-                    .title('Queued')
-                    .icon(PauseIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('manufacturingOrder')
-                        .title('Queued Orders')
-                        .filter('_type == "manufacturingOrder" && status == "queued"')
-                        .defaultOrdering([{field: '_createdAt', direction: 'asc'}]),
-                    ),
-                  S.listItem()
-                    .id('manufacturing-orders-completed')
-                    .title('Completed')
-                    .icon(CheckmarkCircleIcon)
-                    .child(
-                      S.documentList()
-                        .apiVersion(API_VERSION)
-                        .schemaType('manufacturingOrder')
-                        .title('Completed Orders')
-                        .filter('_type == "manufacturingOrder" && status == "completed"')
-                        .defaultOrdering([{field: 'actualCompletion', direction: 'desc'}]),
-                    ),
-                ]),
-            ),
-          S.listItem()
-            .id('inventory-transactions')
-            .title('📋 Inventory Transactions')
-            .icon(ClipboardIcon)
-            .child(
-              S.documentList()
-                .apiVersion(API_VERSION)
-                .schemaType('inventoryTransaction')
-                .title('Inventory Transactions')
-                .filter('_type == "inventoryTransaction"')
-                .defaultOrdering([{field: '_createdAt', direction: 'desc'}]),
-            ),
-        ]),
-    )
-
-const createWholesaleManufacturingSection = (S: any) =>
-  S.listItem()
-    .id('wholesale-manufacturing')
-    .title('Vendors')
-    .icon(PackageIcon)
-    .child(
-      S.list()
-        .title('Vendors')
-        .items([
-          S.listItem()
-            .id('wholesale-dashboard')
-            .title('Wholesale Dashboard')
-            .icon(BarChartIcon)
-            .child(
-              S.component()
-                .id('wholesale-dashboard-pane')
-                .title('Wholesale Dashboard')
-                .component(WholesaleDashboard as ComponentType),
-            ),
-          createVendorApplicationsSubSection(S),
-          createVendorsSubSection(S),
-          createVendorQuotesSubSection(S),
-          createWholesaleOrdersSubSection(S),
-          createPricingManagementSubSection(S),
-          createInventorySubSection(S),
         ]),
     )
 

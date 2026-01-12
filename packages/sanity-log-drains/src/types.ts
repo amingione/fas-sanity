@@ -20,7 +20,7 @@ export interface LogDrain {
   lastTestResult?: DrainTestResult
 }
 
-export interface LogDrainCreateInput extends Omit<LogDrain, 'id' | 'lastTestedAt' | 'lastTestResult'> {}
+export type LogDrainCreateInput = Omit<LogDrain, 'id' | 'lastTestedAt' | 'lastTestResult'>
 
 export interface LogDrainUpdateInput extends Partial<Omit<LogDrain, 'id' | 'lastTestedAt' | 'lastTestResult'>> {
   enabled?: boolean

@@ -5,6 +5,7 @@ import {resolveVendorUnitPrice} from '../../shared/vendorPricing'
 type PortalVendor = {
   _id: string
   companyName?: string | null
+  customerRef?: {_ref?: string} | null
   pricingTier?: VendorPricingTier | null
   customDiscountPercentage?: number | null
   paymentTerms?: string | null
@@ -236,6 +237,7 @@ export const resolveVendor = async (options: {
     )][0]{
       _id,
       companyName,
+      customerRef,
       pricingTier,
       customDiscountPercentage,
       paymentTerms,

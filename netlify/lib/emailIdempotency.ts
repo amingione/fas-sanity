@@ -45,20 +45,19 @@ export const reserveEmailLog = async (context: EmailLogContext): Promise<EmailRe
   }
 
   const logId = makeLogId(context.contextKey)
-  const doc: Record<string, any> = {
+  const doc = {
     _id: logId,
     _type: 'emailLog',
     to: context.to,
     subject: context.subject,
     status: 'queued',
     contextKey: context.contextKey,
+    order: context.orderId ? {_type: 'reference', _ref: context.orderId} : undefined,
+    customer: context.customerId ? {_type: 'reference', _ref: context.customerId} : undefined,
+    campaign: context.campaignId ? {_type: 'reference', _ref: context.campaignId} : undefined,
+    template: context.templateId ? {_type: 'reference', _ref: context.templateId} : undefined,
+    automation: context.automationId ? {_type: 'reference', _ref: context.automationId} : undefined,
   }
-
-  if (context.orderId) doc.order = {_type: 'reference', _ref: context.orderId}
-  if (context.customerId) doc.customer = {_type: 'reference', _ref: context.customerId}
-  if (context.campaignId) doc.campaign = {_type: 'reference', _ref: context.campaignId}
-  if (context.templateId) doc.template = {_type: 'reference', _ref: context.templateId}
-  if (context.automationId) doc.automation = {_type: 'reference', _ref: context.automationId}
 
   try {
     await emailLogClient.create(doc)
