@@ -103,7 +103,7 @@ const sendViaResend = async (options: SendEmailOptions): Promise<SendEmailResult
   if (errorMessage) {
     throw new Error(`Resend API error: ${errorMessage}`)
   }
-  const id = getMessageId(response)
+  const id = getMessageId(response) ?? undefined
   return {provider: 'resend', id, status: 'sent'}
 }
 

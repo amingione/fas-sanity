@@ -1,4 +1,4 @@
-import React, {Suspense, useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import React, {Suspense, useCallback, useEffect, useMemo, useState} from 'react'
 import {
   Button,
   Card,
@@ -118,7 +118,6 @@ function DownloadPreview({
   isSelected: boolean
   onToggleSelect: () => void
 }) {
-  const ref = useRef<HTMLButtonElement | null>(null)
   const router = useRouter()
 
   const typeMeta = download.documentType ? DOCUMENT_TYPE_LABELS[download.documentType] : null

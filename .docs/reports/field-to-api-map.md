@@ -545,6 +545,8 @@ Final status:
 ### `siteSettings`
 - `title`
 - `description`
+
+### `settings`
 - `customProductOptions[]` — Array of reusable product option definitions (color, size, custom selectors) that admins configure once for storefront variants; admin-only editing, front-end-consumed when building product option pickers, and API-exposed so Checkout/option endpoints know which selectors to surface.
 
 ## `packages/sanity-config/src/schemaTypes/singletons/homeType.ts`

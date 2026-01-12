@@ -74,6 +74,7 @@
   ],
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.940.0",
+    "@easypost/api": "^8.2.0",
     "@netlify/functions": "^3.1.10",
     "@portabletext/react": "^4.0.3",
     "@portabletext/to-html": "^3.0.0",

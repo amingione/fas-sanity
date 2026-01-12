@@ -123,6 +123,11 @@ async function readCachedQuote(
   missingProducts?: string[]
   carrierId?: string
   serviceCode?: string
+  source?: string
+  rateCount?: number
+  cartSummary?: string
+  createdAt?: string | null
+  expiresAt?: string | null
 } | null> {
   const docId = getQuoteCacheDocId(quoteKey)
   try {

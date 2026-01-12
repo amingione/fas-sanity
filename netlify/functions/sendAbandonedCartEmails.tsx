@@ -287,7 +287,7 @@ const handler: Handler = async (event) => {
 
         if (error) throw error
 
-        resendId = getMessageId(data)
+        resendId = getMessageId(data) ?? undefined
         await markEmailLogSent(reservation.logId, resendId)
       }
 
