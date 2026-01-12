@@ -47,6 +47,12 @@ type ShippingRate = {
   carrierCode?: string
   service?: string
   serviceCode?: string
+  packageCode?: string
+  packagingWeight?: number
+  packagingWeightUnit?: string
+  length?: number
+  width?: number
+  height?: number
   amount?: number
   deliveryDays?: number | null
 }
@@ -277,9 +283,16 @@ export const handler: Handler = async (event) => {
       const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
       const metadata: Stripe.MetadataParam = {...item.metadata}
       const productWeight = resolveProductWeight(product)
-      if (productWeight) metadata.weight_lbs = productWeight.toString()
+      if (productWeight) {
+        metadata.weight = productWeight.toString()
+        metadata.weight_unit = 'pound'
+        metadata.weight_lbs = productWeight.toString()
+      }
       const dims = resolveProductDimensions(product)
       if (dims) {
+        metadata.length = dims.length.toString()
+        metadata.width = dims.width.toString()
+        metadata.height = dims.height.toString()
         metadata.length_in = dims.length.toString()
         metadata.width_in = dims.width.toString()
         metadata.height_in = dims.height.toString()
@@ -336,6 +349,12 @@ export const handler: Handler = async (event) => {
   pushMeta('easypost_rate_id', shippingRate.rateId)
   pushMeta('carrier_id', shippingRate.carrierId || shippingRate.carrierCode)
   pushMeta('service_code', shippingRate.serviceCode)
+  pushMeta('package_code', shippingRate.packageCode)
+  pushMeta('packaging_weight', shippingRate.packagingWeight)
+  pushMeta('packaging_weight_unit', shippingRate.packagingWeightUnit)
+  pushMeta('length', shippingRate.length)
+  pushMeta('width', shippingRate.width)
+  pushMeta('height', shippingRate.height)
   pushMeta('carrier', shippingRate.carrier)
   pushMeta('service', shippingRate.service)
   pushMeta('shipping_amount', (Number(shippingRate.amount || 0) || 0).toFixed(2))
@@ -380,6 +399,7 @@ export const handler: Handler = async (event) => {
   const captureMethod: 'automatic' = 'automatic'
   const paymentIntentMetadata: Stripe.MetadataParam = {
     cart_id: cartId,
+    ship_status: 'unshipped',
   }
 
   try {

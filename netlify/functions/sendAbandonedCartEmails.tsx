@@ -8,6 +8,7 @@ import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEn
 import {getMissingResendFields} from '../lib/resendValidation'
 import {buildAbandonedCartEmail} from '../lib/abandonedCartEmail'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 type CheckoutSessionDoc = {
   _id: string
@@ -286,7 +287,7 @@ const handler: Handler = async (event) => {
 
         if (error) throw error
 
-        resendId = data?.id
+        resendId = getMessageId(data)
         await markEmailLogSent(reservation.logId, resendId)
       }
 

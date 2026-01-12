@@ -6,6 +6,7 @@ import {triggerOnboardingCampaign} from '../lib/vendorOnboardingCampaign'
 import {logMissingResendApiKey, resolveResendApiKey} from '../../shared/resendEnv'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -296,7 +297,7 @@ const handler: Handler = async (event) => {
         text,
         replyTo: template?.replyTo,
       })
-      const resendId = (result as any)?.data?.id || (result as any)?.id || null
+      const resendId = getMessageId(result)
       await markEmailLogSent(reservation.logId, resendId)
     }
 

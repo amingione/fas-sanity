@@ -34,21 +34,6 @@ These actions are handled by downstream enforcement layers.
 - `order.cart` is the schema field in `packages/sanity-config/src/schemaTypes/documents/order.tsx`, but webhook parsing accepts `cartItems`/`cart_items` in `src/pages/api/webhooks/stripe-order.ts` and `netlify/functions/stripeWebhook.ts`. This mismatch can route data into the wrong field or skip expected cart hydration if the mapper uses the wrong key.
 - `order.shippingAddress` and `order.billingAddress` are inline object definitions instead of reusing `shippingAddressType`/`customerBillingAddressType`, so edits to shared address schemas will not propagate to order fields without manual alignment, increasing drift risk.
 
-## Drift acknowledgements
-
-Status: ACKNOWLEDGED (Codex audit pending)  
-Date: 2026-01-05  
-Owner: Codex
-
-New fields detected but not yet mapped to runtime/API consumers:
-- `wheelQuote.attachments[]`
-- `invoice.attachments[]`
-- `settings.customProductOptions[]`
-- `product.description[]`
-- `product.options[]`
-- `home.modules[]`
-- `collection.modules[]`
-
 ### Cart Key Normalization — RESOLVED
 
 Status: RESOLVED  
@@ -144,6 +129,7 @@ Final status:
 ## `packages/sanity-config/src/schemaTypes/documents/collection.tsx`
 ### `collection`
 - `hidden`
+- `modules[]` — Array of editorial modules (callouts, imagery, CTA blocks) associated with the collection page; configured via Studio, front-end-consumed when assembling collection landing pages, and available through API responses for headless rendering.
 
 ## `packages/sanity-config/src/schemaTypes/documents/colorTheme.tsx`
 ### `colorTheme`
@@ -249,6 +235,7 @@ Final status:
 - `dateIssued`
 - `totalsPanel`
 - `actions`
+- `attachments[]` — Array of file/image references (PDF, image) that document customer/internal attachments; admin-managed in Studio but API-exposed so front-end invoice/detail views can surface supporting documents.
 
 ## `packages/sanity-config/src/schemaTypes/documents/paymentLink.ts`
 ### `paymentLink`
@@ -284,6 +271,7 @@ Final status:
 - `color`
 - `size`
 - `material`
+- `description[]` — Array of Portable Text blocks (structured text + media) that narrate the product detail story; edited by admins, API-exposed through product queries, and front-end-consumed on detail pages.
 
 ## `packages/sanity-config/src/schemaTypes/documents/productBundle.ts`
 ### `productBundle`
@@ -416,6 +404,7 @@ Final status:
 - `tireSizeRear`
 - `brakeClearanceNotes`
 - `notes`
+- `attachments[]` — Array of image/file uploads (PDFs, install photos) that accompany each quote; admin-created inside Studio, API-exposed for quote viewers, and front-end-consumed when rendering multimedia attachments for sales/review flows.
 
 ## `packages/sanity-config/src/schemaTypes/marketing/campaigns/campaign.ts`
 ### `campaign`
@@ -556,6 +545,11 @@ Final status:
 ### `siteSettings`
 - `title`
 - `description`
+- `customProductOptions[]` — Array of reusable product option definitions (color, size, custom selectors) that admins configure once for storefront variants; admin-only editing, front-end-consumed when building product option pickers, and API-exposed so Checkout/option endpoints know which selectors to surface.
+
+## `packages/sanity-config/src/schemaTypes/singletons/homeType.ts`
+### `home`
+- `modules[]` — Array of editorial module references (callouts, grids, images, embedded products, etc.) that define the home page layout; admin-configured inside Sanity but front-end-consumed by the home route and API-exposed for headless rendering pipelines.
 
 ## Array of Strings
 ### `customer` (packages/sanity-config/src/schemaTypes/documents/customer.ts)
@@ -584,8 +578,14 @@ Final status:
 - `products[]`
 - `webhookConfig.customHeaders[]`
 
+### `home` (packages/sanity-config/src/schemaTypes/singletons/homeType.ts)
+- `modules[]` — Array of editorial module entries (callout, grid, products, etc.) defining home page sections; admin-configured, front-end-consumed for home rendering, and API-exposed for headless clients to compose the landing page.
+
 ### `category` (packages/sanity-config/src/schemaTypes/documents/category.ts)
 - `products[]`
+
+### `collection` (packages/sanity-config/src/schemaTypes/documents/collection.tsx)
+- `modules[]` — Array of editorial module references (callout, call-to-action, image/Instagram blocks) curated for the collection landing page; admins assemble the modules, the front-end consumes them for collection layouts, and APIs expose them for headless rendering.
 
 ### `check` (packages/sanity-config/src/schemaTypes/documents/check.ts)
 - `attachments[]`
@@ -611,6 +611,10 @@ Final status:
 ### `invoice` (packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx)
 - `lineItems[]`
 - `shippingLog[]`
+- `attachments[]` — Array of file/image references attached to invoices for supporting documentation; admin-provided, API-exposed to invoice readers, and front-end-consumed when showing attached docs to customers/staff.
+
+### `wheelQuote` (packages/sanity-config/src/schemaTypes/documents/wheelQuote.ts)
+- `attachments[]` — Array of image/file uploads (photos, PDFs) submitted with each quote; admin-managed, API-exposed for quote dashboards, and front-end-consumed on quote review screens.
 
 ### `order`
 - `cart[]`
@@ -624,6 +628,7 @@ Final status:
 
 ### `product` (packages/sanity-config/src/schemaTypes/documents/product.ts)
 - `addOns[]`
+- `options[]` — Array of custom option objects (color/size/custom selectors) that define variant selectors required by the storefront; admin-defined, front-end-consumed in variant pickers, and API-exposed for checkout/selection flows.
 - `attributes[]`
 - `category[]`
 - `compatibleVehicles[]`

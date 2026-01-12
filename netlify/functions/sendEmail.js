@@ -1,5 +1,6 @@
 import {createHash} from 'crypto'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../shared/messageResponse.js'
 
 export async function handler(event) {
   let reservationLogId
@@ -72,7 +73,7 @@ export async function handler(event) {
       }
 
       data = await response.json()
-      const resendId = data?.data?.id || data?.id || null
+      const resendId = getMessageId(data)
       await markEmailLogSent(reservation.logId, resendId)
     }
 

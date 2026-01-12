@@ -7,6 +7,7 @@ import {applyInventoryChanges} from '../../shared/inventory'
 import {INVENTORY_DOCUMENT_TYPE} from '../../shared/docTypes'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const resendApiKey = resolveResendApiKey()
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null
@@ -170,7 +171,7 @@ const handler = schedule('0 9 * * *', async () => {
             subject,
             text: sections.join('\n\n'),
           })
-          const resendId = (response as any)?.data?.id || (response as any)?.id || null
+          const resendId = getMessageId(response)
           await markEmailLogSent(reservation.logId, resendId)
         } catch (err) {
           await markEmailLogFailed(reservation.logId, err)

@@ -1,6 +1,7 @@
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../../../shared/resendEnv'
+import {getMessageId} from '../../../../shared/messageResponse.js'
 
 export type EmailProvider = 'resend'
 
@@ -102,7 +103,7 @@ const sendViaResend = async (options: SendEmailOptions): Promise<SendEmailResult
   if (errorMessage) {
     throw new Error(`Resend API error: ${errorMessage}`)
   }
-  const id = (response as any)?.data?.id || (response as any)?.id
+  const id = getMessageId(response)
   return {provider: 'resend', id, status: 'sent'}
 }
 

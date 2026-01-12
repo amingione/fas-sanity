@@ -9,6 +9,7 @@ import {resolveResendApiKey} from '../../shared/resendEnv'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 // --- CORS (more permissive localhost-aware)
 const DEFAULT_ORIGINS = (
@@ -401,7 +402,7 @@ const handler: Handler = async (event) => {
             } as any,
           ],
         })
-        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        const resendId = getMessageId(response)
         await markEmailLogSent(reservation.logId, resendId)
       } catch (err) {
         await markEmailLogFailed(reservation.logId, err)

@@ -5,6 +5,7 @@ import type {Handler} from '@netlify/functions'
 import {PDFDocument, StandardFonts, rgb} from 'pdf-lib'
 import {getMissingResendFields} from '../lib/resendValidation'
 import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
+import {getMessageId} from '../../shared/messageResponse.js'
 
 const resend = new Resend(resolveResendApiKey()!)
 
@@ -300,7 +301,7 @@ export const handler: Handler = async (event) => {
             },
           ],
         })
-        const resendId = (response as any)?.data?.id || (response as any)?.id || null
+        const resendId = getMessageId(response)
         await markEmailLogSent(reservation.logId, resendId)
       } catch (err) {
         await markEmailLogFailed(reservation.logId, err)

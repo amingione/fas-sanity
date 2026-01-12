@@ -1,6 +1,11 @@
 import {Request} from 'node-fetch'
 import {describe, expect, it, vi} from 'vitest'
 
+vi.mock('@easypost/api', () => ({
+  default: class EasyPostMock {},
+  Shipment: class ShipmentMock {},
+}))
+
 const fetchMock = vi.fn()
 const createClientMock = vi.fn(() => ({fetch: fetchMock}))
 const getEasyPostClientMock = vi.fn()

@@ -352,31 +352,6 @@
     {
       "bundler": "esbuild",
       "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateShippingQuotePDF.ts",
-      "name": "generateShippingQuotePDF",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/generateShippingQuotePDF.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/getEasyPostRates.ts",
-      "name": "getEasyPostRates",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/getEasyPostRates.zip",
-      "runtime": "js"
-    },
-    {
-      "buildData": {},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/getShippingQuoteBySkus.zip",
-      "name": "getShippingQuoteBySkus",
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/getShippingQuoteBySkus.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
       "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/ha-health.ts",
       "name": "ha-health",
       "priority": 10,
@@ -459,15 +434,6 @@
     {
       "bundler": "esbuild",
       "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/refund-shipping-label.ts",
-      "name": "refund-shipping-label",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/refund-shipping-label.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
       "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/refundOrder.ts",
       "name": "refundOrder",
       "priority": 10,
@@ -488,13 +454,6 @@
       "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/reprocessStripeSession.zip",
       "name": "reprocessStripeSession",
       "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/reprocessStripeSession.zip",
-      "runtime": "js"
-    },
-    {
-      "buildData": {},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/requestFreightQuote.zip",
-      "name": "requestFreightQuote",
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/requestFreightQuote.zip",
       "runtime": "js"
     },
     {
@@ -606,15 +565,6 @@
       "name": "sendVendorEmail",
       "priority": 10,
       "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/sendVendorEmail.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripe-shipping-webhook.ts",
-      "name": "stripe-shipping-webhook",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/stripe-shipping-webhook.zip",
       "runtime": "js"
     },
     {
