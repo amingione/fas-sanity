@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react'
 import {FormField, PatchEvent, set, unset, useFormValue} from 'sanity'
 import {useId} from 'react'
-import {Stack, Card, Text} from '@sanity/ui'
+import {Stack, Card, Text, Select} from '@sanity/ui'
 
 type RateOption = {
   rateId: string
@@ -158,7 +158,7 @@ export default function EasyPostServiceInput({
         ) : null}
 
         <Card padding={2} radius={2} shadow={1} tone="default">
-          <select
+          <Select
             id={inputId}
             value={value || ''}
             onChange={handleChange}
@@ -170,7 +170,7 @@ export default function EasyPostServiceInput({
                 {opt.title}
               </option>
             ))}
-          </select>
+          </Select>
         </Card>
       </Stack>
     </FormField>

@@ -1,6 +1,7 @@
 import {PatchEvent, defineType, set} from 'sanity'
 import React from 'react'
 import EasyPostServiceInput from '../../components/EasyPostServiceInput'
+import {Button, Card, Stack, Text} from '@sanity/ui'
 
 interface EasyPostFieldProps {
   value: string
@@ -63,65 +64,48 @@ function CustomEasyPostServiceField(props: EasyPostFieldProps) {
   }, [fetchAllRates, showOptions])
 
   return React.createElement(
-    'div',
-    null,
+    Stack,
+    {space: 3},
     [
-      React.createElement(
-        'button',
-        {
-          key: 'review-button',
-          type: 'button',
-          onClick: () => setShowOptions(true),
-          style: {
-            marginBottom: '0.5em',
-            padding: '0.4em 1em',
-            borderRadius: '4px',
-            background: '#007acc',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-          },
-        },
-        'Review Rate Options',
-      ),
+      React.createElement(Button, {
+        key: 'review-button',
+        text: 'Review Rate Options',
+        tone: 'primary',
+        onClick: () => setShowOptions(true),
+      }),
       showOptions &&
         React.createElement(
-          'ul',
-          {
-            key: 'rate-options',
-            style: {padding: '0.5em', background: '#f9f9f9', borderRadius: '4px'},
-          },
-          rates.map((rate) =>
-            React.createElement(
-              'li',
-              {key: rate.value, style: {marginBottom: '0.3em'}},
-              React.createElement(
-                'button',
-                {
-                  type: 'button',
-                  onClick: () => {
-                    props.onChange(
-                      PatchEvent.from([
-                        set(rate.value, ['easyPostService']),
-                        set(rate.amount, ['shippingCost']),
-                      ]),
-                    )
-                    setShowOptions(false)
-                  },
-                  style: {
-                    padding: '0.3em 0.6em',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    cursor: 'pointer',
-                  },
-                },
-                `${rate.title} – $${rate.amount}`,
-              ),
-            ),
+          Card,
+          {key: 'rate-options', padding: 3, radius: 2, tone: 'default'},
+          React.createElement(
+            Stack,
+            {space: 2},
+            rates.length
+              ? rates.map((rate) =>
+                  React.createElement(Button, {
+                    key: rate.value,
+                    text: `${rate.title} – $${rate.amount}`,
+                    mode: 'ghost',
+                    onClick: () => {
+                      props.onChange(
+                        PatchEvent.from([
+                          set(rate.value, ['easyPostService']),
+                          set(rate.amount, ['shippingCost']),
+                        ]),
+                      )
+                      setShowOptions(false)
+                    },
+                  }),
+                )
+              : React.createElement(
+                  Text,
+                  {size: 1, muted: true},
+                  'No rates available.',
+                ),
           ),
         ),
       React.createElement(EasyPostServiceInput, {
+        key: 'easypost-service-input',
         ...props,
         fetchRates: () => Promise.resolve(rates.map(({title, value}) => ({title, value}))),
       }),
