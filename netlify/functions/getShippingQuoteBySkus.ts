@@ -1,9 +1,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {randomUUID, createHash} from 'crypto'
-import {getEasyPostFromAddress} from '../lib/ship-from'
-import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
-import {easypostRequest, getEasyPostClient} from '../lib/easypostClient'
 
 // CORS helper (uses CORS_ALLOW like other functions)
 const DEFAULT_ORIGINS = (
@@ -148,12 +145,9 @@ async function readCachedQuote(
       '*[_id == $id][0]{_id, rates, easyPostShipmentId, expiresAt, packages, missingProducts, carrierId, serviceCode, source, rateCount, cartSummary, createdAt}',
       {id: docId},
     )
-    if (
-      !cached ||
-      !Array.isArray(cached.rates) ||
-      !cached.rates.length ||
-      !isCacheValid(cached.expiresAt)
-    ) {
+    const hasRates = Array.isArray(cached.rates) && cached.rates.length
+    const hasPackages = Array.isArray(cached.packages) && cached.packages.length
+    if (!cached || (!hasRates && !hasPackages) || !isCacheValid(cached.expiresAt)) {
       return null
     }
     return {
@@ -260,43 +254,30 @@ function parseDims(
 const isInstallOnlyClass = (value?: string) =>
   typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
 
-function selectBestRate(
-  rates: NormalizedRate[],
-  options?: {maxDays?: number; preferredCarrier?: string; confidenceThreshold?: number},
-) {
-  const opts = {
-    maxDays: options?.maxDays ?? 5,
-    preferredCarrier: options?.preferredCarrier,
-    confidenceThreshold: options?.confidenceThreshold ?? 75,
-  }
+const formatDimensions = (dims: {length: number; width: number; height: number}) =>
+  `${dims.length}x${dims.width}x${dims.height}`
 
-  if (!Array.isArray(rates) || rates.length === 0) return null
-
-  const eligible = rates.filter((rate) => {
-    const days =
-      typeof rate?.timeInTransit?.percentile_75 === 'number'
-        ? rate.timeInTransit.percentile_75
-        : typeof rate?.deliveryDays === 'number'
-          ? rate.deliveryDays
-          : 999
-    const confidence =
-      typeof rate?.deliveryConfidence === 'number' ? rate.deliveryConfidence : 100
-    return days <= opts.maxDays && confidence >= opts.confidenceThreshold
-  })
-
-  if (eligible.length === 0) {
-    return [...rates].sort((a, b) => a.amount - b.amount)[0] || null
-  }
-
-  if (opts.preferredCarrier) {
-    const preferred = eligible.find((r) =>
-      (r.carrier || '').toLowerCase().includes(opts.preferredCarrier!.toLowerCase()),
-    )
-    if (preferred) return preferred
-  }
-
-  return [...eligible].sort((a, b) => a.amount - b.amount)[0] || null
-}
+const buildParcelcraftMetadata = (
+  packages: Array<{
+    weight: {value: number; unit: 'pound'}
+    dimensions: {length: number; width: number; height: number}
+    sku?: string
+    title?: string
+  }>,
+  destination: QuoteCacheDestination,
+  quoteKey: string,
+  quoteRequestId: string,
+) => ({
+  parcelcraft_quote_key: quoteKey,
+  parcelcraft_quote_request_id: quoteRequestId,
+  parcelcraft_destination_postal: destination.postalCode,
+  parcelcraft_packages: packages.map((pkg) => ({
+    weight_lbs: pkg.weight.value,
+    dimensions_in: formatDimensions(pkg.dimensions),
+    sku: pkg.sku,
+    title: pkg.title,
+  })),
+})
 
 type CartItem = {
   sku?: string
@@ -380,19 +361,6 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  const toAddress = {
-    name: dest.name,
-    phone: dest.phone,
-    address_line1: (dest.addressLine1 || dest.address_line1) as string,
-    address_line2: (dest.addressLine2 || dest.address_line2) as string | undefined,
-    city_locality: (dest.city || dest.city_locality) as string | undefined,
-    state_province: (dest.state || dest.state_province) as string | undefined,
-    postal_code: (dest.postalCode || dest.postal_code) as string,
-    country_code: (dest.country || dest.country_code) as string,
-  }
-
-  const fromAddress = getEasyPostFromAddress()
-
   const cacheCartItems = normalizeCacheCartItems(cart)
   const cacheDestination = normalizeCacheDestination(dest)
   const cacheQuoteKey = providedQuoteKey || buildLocalQuoteKey(cacheCartItems, cacheDestination)
@@ -400,16 +368,15 @@ export const handler: Handler = async (event) => {
   const cartSummary = buildCartSummary(cacheCartItems)
 
   const cachedQuote = await readCachedQuote(cacheQuoteKey)
-  if (cachedQuote) {
-    const cachedBest = selectBestRate(cachedQuote.rates)
+  if (cachedQuote && !cachedQuote.rates?.length) {
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
       body: JSON.stringify({
         success: true,
         freight: false,
-        bestRate: cachedBest,
-        rates: cachedQuote.rates,
+        bestRate: null,
+        rates: cachedQuote.rates || [],
         packages: cachedQuote.packages || [],
         installOnlySkus: [],
         missingProducts: cachedQuote.missingProducts || [],
@@ -424,6 +391,12 @@ export const handler: Handler = async (event) => {
         cartSummary: cachedQuote.cartSummary,
         createdAt: cachedQuote.createdAt,
         expiresAt: cachedQuote.expiresAt,
+        parcelcraftMetadata: buildParcelcraftMetadata(
+          cachedQuote.packages || [],
+          cacheDestination,
+          cacheQuoteKey,
+          quoteRequestId,
+        ),
       }),
     }
   }
@@ -653,6 +626,12 @@ export const handler: Handler = async (event) => {
     }
 
     if (shippableCount === 0) {
+      const parcelcraftMetadata = buildParcelcraftMetadata(
+        [],
+        cacheDestination,
+        cacheQuoteKey,
+        quoteRequestId,
+      )
       return {
         statusCode: 200,
         headers: {...CORS, 'Content-Type': 'application/json'},
@@ -661,6 +640,7 @@ export const handler: Handler = async (event) => {
           message: 'All items are install-only; schedule installation instead of shipping.',
           installOnlySkus: installOnlyItems,
           missingProducts,
+          parcelcraftMetadata,
         }),
       }
     }
@@ -686,6 +666,12 @@ export const handler: Handler = async (event) => {
       })
 
     if (freightRequired) {
+      const parcelcraftMetadata = buildParcelcraftMetadata(
+        packages,
+        cacheDestination,
+        cacheQuoteKey,
+        quoteRequestId,
+      )
       return {
         statusCode: 200,
         headers: {...CORS, 'Content-Type': 'application/json'},
@@ -694,156 +680,30 @@ export const handler: Handler = async (event) => {
           message: 'Freight required due to weight/dimensions or product class.',
           packages,
           installOnlySkus: installOnlyItems,
+          parcelcraftMetadata,
         }),
       }
     }
 
-    const primaryPackage = packages[0]
-    if (!primaryPackage) {
-      return {
-        statusCode: 200,
-        headers: {...CORS, 'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          success: true,
-          rates: [],
-          packages,
-          installOnlySkus: installOnlyItems,
-          missingProducts,
-        }),
-      }
-    }
-
-    const easyPostToAddress = {
-      name: toAddress.name,
-      street1: toAddress.address_line1,
-      street2: toAddress.address_line2,
-      city: toAddress.city_locality,
-      state: toAddress.state_province,
-      zip: toAddress.postal_code,
-      country: toAddress.country_code,
-      phone: toAddress.phone,
-    }
-
-    const easyPostFromAddress = {
-      name: fromAddress.name,
-      street1: fromAddress.street1,
-      street2: fromAddress.street2,
-      city: fromAddress.city,
-      state: fromAddress.state,
-      zip: fromAddress.zip,
-      country: fromAddress.country,
-      phone: fromAddress.phone,
-      email: fromAddress.email,
-    }
-
-    const missingTo = getEasyPostAddressMissingFields(easyPostToAddress)
-    if (missingTo.length) {
-      return {
-        statusCode: 400,
-        headers: {...CORS, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: `Missing ship_to fields: ${missingTo.join(', ')}`}),
-      }
-    }
-    const missingFrom = getEasyPostAddressMissingFields(easyPostFromAddress)
-    if (missingFrom.length) {
-      return {
-        statusCode: 500,
-        headers: {...CORS, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: `Missing ship_from fields: ${missingFrom.join(', ')}`}),
-      }
-    }
-    const parcel = {
-      length: Number(primaryPackage.dimensions.length.toFixed(2)),
-      width: Number(primaryPackage.dimensions.width.toFixed(2)),
-      height: Number(primaryPackage.dimensions.height.toFixed(2)),
-      weight: Math.max(1, Math.round(primaryPackage.weight.value * 16)),
-    }
-    const missingParcel = getEasyPostParcelMissingFields(parcel)
-    if (missingParcel.length) {
-      return {
-        statusCode: 400,
-        headers: {...CORS, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: `Missing parcel fields: ${missingParcel.join(', ')}`}),
-      }
-    }
-
-    const client = getEasyPostClient()
-    const shipment = await client.Shipment.create({
-      to_address: easyPostToAddress,
-      from_address: easyPostFromAddress,
-      parcel,
-    } as any)
-
-    // Fetch SmartRates for accurate delivery predictions
-    let smartRates: any[] = []
-    try {
-      const smartRateResponse = await easypostRequest('GET', `/shipments/${shipment.id}/smartrate`)
-      if (Array.isArray((smartRateResponse as any)?.result)) {
-        smartRates = (smartRateResponse as any).result
-      } else if (Array.isArray(smartRateResponse as any)) {
-        smartRates = smartRateResponse as any[]
-      }
-    } catch (err) {
-      console.warn('SmartRate unavailable, using basic rates', err)
-    }
-
-    const ratesArr: any[] = Array.isArray(shipment?.rates) ? shipment.rates : []
-    const rates = ratesArr
-      .map((rate: any) => {
-        const smartData = smartRates.find(
-          (sr) => sr?.carrier === rate?.carrier && sr?.service === rate?.service,
-        )
-        const smartDeliveryDate = smartData?.delivery_date
-          ? new Date(smartData.delivery_date).toISOString()
-          : null
-        const smartPercentile = smartData?.time_in_transit?.percentile_75
-        const amount = Number.parseFloat(rate?.rate || '0')
-        const deliveryDate = rate?.delivery_date ? new Date(rate.delivery_date).toISOString() : null
-        return {
-          rateId: rate?.id,
-          carrierId: rate?.carrier_account_id || '',
-          carrierCode: rate?.carrier || '',
-          carrier: rate?.carrier_display_name || rate?.carrier || '',
-          service: rate?.service || '',
-          serviceCode: rate?.service_code || '',
-          amount: Number.isFinite(amount) ? amount : 0,
-          currency: rate?.currency || 'USD',
-          deliveryDays:
-            typeof smartPercentile === 'number'
-              ? smartPercentile
-              : typeof rate?.delivery_days === 'number'
-                ? rate.delivery_days
-                : null,
-          estimatedDeliveryDate: smartDeliveryDate || deliveryDate,
-          accurateDeliveryDate: smartDeliveryDate || deliveryDate,
-          timeInTransit: smartData?.time_in_transit || null,
-          deliveryConfidence:
-            typeof smartData?.delivery_date_confidence === 'number'
-              ? smartData.delivery_date_confidence
-              : null,
-          deliveryDateGuaranteed: Boolean(smartData?.delivery_date_guaranteed),
-        }
-      })
-      .filter((rate) => Number.isFinite(rate.amount) && rate.amount > 0)
-      .sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0))
-
-    const bestRate = selectBestRate(rates) || rates[0] || null
-
-    const carrierId = bestRate?.carrierId || null
-    const serviceCode = bestRate?.serviceCode || null
+    const parcelcraftMetadata = buildParcelcraftMetadata(
+      packages,
+      cacheDestination,
+      cacheQuoteKey,
+      quoteRequestId,
+    )
 
     const persistedQuote = await persistQuoteCache({
       quoteKey: cacheQuoteKey,
       quoteRequestId,
-      rates,
-      easyPostShipmentId: shipment.id,
+      rates: [],
+      easyPostShipmentId: '',
       destination: cacheDestination,
       packages,
       missingProducts,
-      carrierId,
-      serviceCode,
+      carrierId: undefined,
+      serviceCode: undefined,
       cartSummary,
-      rateCount: rates.length,
+      rateCount: 0,
       source: 'fresh',
     })
 
@@ -853,22 +713,20 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({
         success: true,
         freight: false,
-        bestRate,
-        rates,
+        bestRate: null,
+        rates: [],
         packages,
         installOnlySkus: installOnlyItems,
-        carrierId,
-        serviceCode,
         missingProducts,
         shippingQuoteId: getQuoteCacheDocId(cacheQuoteKey),
-        easyPostShipmentId: shipment.id,
         quoteKey: cacheQuoteKey,
         quoteRequestId,
-        source: 'fresh',
-        rateCount: rates.length,
+        source: 'parcelcraft',
+        rateCount: 0,
         cartSummary,
         createdAt: persistedQuote.createdAt,
         expiresAt: persistedQuote.expiresAt,
+        parcelcraftMetadata,
       }),
     }
   } catch (err: any) {
