@@ -1,10 +1,13 @@
 import {useState} from 'react'
+import {Button, Inline, Stack, Text} from '@sanity/ui'
 import {type DocumentActionComponent, useDocumentOperation} from 'sanity'
 
 export const getShippingRatesAction: DocumentActionComponent = (props) => {
   const {id, type, draft, published} = props
   const {patch} = useDocumentOperation(id, type)
   const [isLoading, setIsLoading] = useState(false)
+  const [dialogMessage, setDialogMessage] = useState('')
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const doc = (draft || published) as
     | {
@@ -81,10 +84,40 @@ export const getShippingRatesAction: DocumentActionComponent = (props) => {
         props.onComplete?.()
       } catch (error) {
         console.error('Failed to fetch rates:', error)
-        alert('Failed to fetch shipping rates. Check console for details.')
+        setDialogMessage('Failed to fetch shipping rates. Check console for details.')
+        setDialogOpen(true)
       } finally {
         setIsLoading(false)
       }
     },
+    dialog: dialogOpen
+      ? {
+          type: 'dialog',
+          header: 'Shipping Rates',
+          onClose: () => {
+            setDialogOpen(false)
+            setDialogMessage('')
+            props.onComplete?.()
+          },
+          content: (
+            <Stack space={3}>
+              <Text size={1}>{dialogMessage}</Text>
+            </Stack>
+          ),
+          footer: (
+            <Inline space={3}>
+              <Button
+                text="OK"
+                tone="primary"
+                onClick={() => {
+                  setDialogOpen(false)
+                  setDialogMessage('')
+                  props.onComplete?.()
+                }}
+              />
+            </Inline>
+          ),
+        }
+      : undefined,
   }
 }

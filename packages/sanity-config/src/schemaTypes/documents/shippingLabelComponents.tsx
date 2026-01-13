@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {Button, Text} from '@sanity/ui'
+import {Box, Button, Card, Flex, Select, Stack, Text, TextInput} from '@sanity/ui'
 import {set, useClient, useFormValue} from 'sanity'
 import {formatApiError} from '../../utils/formatApiError'
 import {resolveNetlifyBase} from '../../utils/netlifyBase'
@@ -21,19 +21,6 @@ function setFnBase(next: string) {
   try {
     if (typeof window !== 'undefined') window.localStorage?.setItem('NLFY_BASE', next)
   } catch {}
-}
-
-const baseInputStyle: React.CSSProperties = {
-  padding: '4px 6px',
-  borderRadius: 4,
-  border: '1px solid var(--input-border-color, var(--card-border-color))',
-  backgroundColor: 'var(--input-bg-color, var(--card-bg-color))',
-  color: 'var(--input-fg-color, var(--card-fg-color))',
-}
-
-const mutedLabelStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--card-muted-fg-color)',
 }
 
 async function safeFetchJson(url: string, init?: RequestInit) {
@@ -173,25 +160,27 @@ export function ServiceRateInput(props: any) {
   if (!(Number(dimensions?.height) > 0)) missing.push('Height')
 
   return (
-    <div>
-      <div style={{display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8}}>
-        <label style={mutedLabelStyle}>Functions Base:</label>
-        <input
-          type="text"
-          placeholder="https://fassanity.fasmotorsports.com"
-          value={baseOverride || currentBase}
-          onChange={(e) => {
-            const v = e.currentTarget.value
-            setBaseOverride(v)
-            setFnBase(v)
-          }}
-          style={{...baseInputStyle, flex: 1}}
-        />
-      </div>
-      {!canQuote && (
-        <Text size={1} style={{marginTop: 4, color: 'var(--card-caution-fg-color)'}}>
-          Fill required fields: {missing.join(', ')}
+    <Stack space={3}>
+      <Flex align="center" gap={3}>
+        <Text size={1} muted>
+          Functions Base
         </Text>
+        <Box flex={1}>
+          <TextInput
+            placeholder="https://fassanity.fasmotorsports.com"
+            value={baseOverride || currentBase}
+            onChange={(e) => {
+              const v = e.currentTarget.value
+              setBaseOverride(v)
+              setFnBase(v)
+            }}
+          />
+        </Box>
+      </Flex>
+      {!canQuote && (
+        <Card tone="caution" padding={2} radius={2}>
+          <Text size={1}>Fill required fields: {missing.join(', ')}</Text>
+        </Card>
       )}
       {loading && (
         <Text size={1} muted>
@@ -199,30 +188,26 @@ export function ServiceRateInput(props: any) {
         </Text>
       )}
       {error && (
-        <Text size={1} style={{color: 'var(--card-critical-fg-color)'}}>
-          {error}
-        </Text>
+        <Card tone="critical" padding={2} radius={2}>
+          <Text size={1}>{error}</Text>
+        </Card>
       )}
       {!loading && !error && (
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(set(e.currentTarget.value))}
-          style={{...baseInputStyle}}
-        >
+        <Select value={value || ''} onChange={(e) => onChange(set(e.currentTarget.value))}>
           <option value="">Select a service</option>
           {rates.map((rate) => (
             <option key={rate.rateId || rate.serviceCode} value={rate.rateId || rate.serviceCode}>
               {rate.carrier} – {rate.service} (${rate.amount})
             </option>
           ))}
-        </select>
+        </Select>
       )}
       {!loading && !error && rates?.length === 0 && canQuote && (
         <Text size={1} muted>
           No rates returned. Adjust details and try again.
         </Text>
       )}
-    </div>
+    </Stack>
   )
 }
 
@@ -321,15 +306,8 @@ export function GenerateAndPrintPanel(props: any) {
     }
   }
 
-  const messageToneColors: Record<'positive' | 'critical' | 'default', string> = {
-    positive: 'var(--card-positive-fg-color)',
-    critical: 'var(--card-critical-fg-color)',
-    default: 'inherit',
-  }
-  const messageColor = message ? messageToneColors[message.tone] : undefined
-
   return (
-    <div style={{borderTop: '1px solid var(--card-border-color)', paddingTop: 12}}>
+    <Stack space={3}>
       <Button
         tone="primary"
         text={busy ? 'Generating…' : 'Generate & Print'}
@@ -338,17 +316,29 @@ export function GenerateAndPrintPanel(props: any) {
         loading={busy}
       />
       {message ? (
-        <Text size={1} style={{marginTop: 8, color: messageColor}}>
-          {message.text}
-        </Text>
+        <Card
+          tone={
+            message.tone === 'positive'
+              ? 'positive'
+              : message.tone === 'critical'
+                ? 'critical'
+                : 'default'
+          }
+          padding={2}
+          radius={2}
+        >
+          <Text size={1}>{message.text}</Text>
+        </Card>
       ) : null}
       {!orderId && (
-        <Text size={1} muted style={{marginTop: 8}}>
-          In a shippingLabel document, set the “Related Order” reference before clicking “Generate &
-          Print”. The Netlify function will persist the PDF in Sanity and patch that order’s
-          “Shipping Label” file field automatically.
-        </Text>
+        <Card tone="caution" padding={2} radius={2}>
+          <Text size={1}>
+            In a shippingLabel document, set the “Related Order” reference before clicking
+            “Generate & Print”. The Netlify function will persist the PDF in Sanity and patch that
+            order’s “Shipping Label” file field automatically.
+          </Text>
+        </Card>
       )}
-    </div>
+    </Stack>
   )
 }

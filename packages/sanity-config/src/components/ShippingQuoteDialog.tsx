@@ -112,6 +112,7 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [rates, setRates] = useState<Rate[]>([])
   const [isLoadingRates, setIsLoadingRates] = useState(false)
+  const [dialogMessage, setDialogMessage] = useState<string | null>(null)
   const addressSchemaType = useMemo(
     () => ({
       name: 'customerBillingAddress',
@@ -546,7 +547,7 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
       setRates(normalizedRates)
     } catch (error) {
       console.error('Error fetching shipping quotes', error)
-      alert('Failed to fetch shipping quotes. Please try again.')
+      setDialogMessage('Failed to fetch shipping quotes. Please try again.')
     } finally {
       setIsLoadingRates(false)
     }
@@ -555,7 +556,7 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
   const handleSaveQuote = async (rate: Rate) => {
     const trimmedCustomerId = selectedCustomerId.trim()
     if (!trimmedCustomerId) {
-      alert('Select a customer before saving a quote.')
+      setDialogMessage('Select a customer before saving a quote.')
       return
     }
 
@@ -595,12 +596,12 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
         ])
         .commit({autoGenerateArrayKeys: true})
 
-      alert('Shipping quote saved to customer record.')
+      setDialogMessage('Shipping quote saved to customer record.')
       setQuoteNotes('')
       onClose()
     } catch (error) {
       console.error('Error saving shipping quote', error)
-      alert('Failed to save quote to customer. Check console for details.')
+      setDialogMessage('Failed to save quote to customer. Check console for details.')
     }
   }
 
@@ -617,9 +618,10 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
     : 'Enter package dimensions manually or search for a product to auto-populate the fields.'
 
   return (
-    <Dialog id="shipping-quote-dialog" header="Shipping Quote" onClose={onClose} width={2}>
-      <Box padding={4}>
-        <Stack space={4}>
+    <>
+      <Dialog id="shipping-quote-dialog" header="Shipping Quote" onClose={onClose} width={2}>
+        <Box padding={4}>
+          <Stack space={4}>
           <Card padding={4} radius={3} border tone="transparent">
             <Stack space={3}>
               <Stack space={1}>
@@ -863,7 +865,23 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
             </Stack>
           )}
         </Stack>
-      </Box>
-    </Dialog>
+        </Box>
+      </Dialog>
+      {dialogMessage && (
+        <Dialog
+          id="shipping-quote-message"
+          header="Shipping Quote"
+          onClose={() => setDialogMessage(null)}
+          width={1}
+          footer={
+            <Button text="OK" tone="primary" onClick={() => setDialogMessage(null)} />
+          }
+        >
+          <Box padding={3}>
+            <Text size={1}>{dialogMessage}</Text>
+          </Box>
+        </Dialog>
+      )}
+    </>
   )
 }

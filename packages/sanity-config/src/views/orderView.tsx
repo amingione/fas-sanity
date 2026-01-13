@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   Card,
+  Dialog,
   Flex,
   Inline,
   Select,
@@ -300,6 +301,9 @@ const OrderViewComponent = (props: any) => {
     order.fulfillmentDetails?.status ?? '',
   )
   const [trackingDraft, setTrackingDraft] = useState(order.trackingNumber ?? '')
+  const [fulfillDialogOpen, setFulfillDialogOpen] = useState(false)
+  const [fulfillTrackingDraft, setFulfillTrackingDraft] = useState(order.trackingNumber ?? '')
+  const [fulfillDeliveredAtDraft, setFulfillDeliveredAtDraft] = useState('')
   const isOnlineOrder = useMemo(
     () => order.orderType === 'online' || Boolean(order.stripeSessionId),
     [order.orderType, order.stripeSessionId],
@@ -316,6 +320,10 @@ const OrderViewComponent = (props: any) => {
 
   useEffect(() => {
     setTrackingDraft(order.trackingNumber ?? '')
+  }, [order.trackingNumber])
+
+  useEffect(() => {
+    setFulfillTrackingDraft(order.trackingNumber ?? '')
   }, [order.trackingNumber])
 
   useEffect(() => {
@@ -484,9 +492,18 @@ const OrderViewComponent = (props: any) => {
     }
   }, [editableFields, order.trackingNumber, patch, pushToast, trackingDraft])
 
-  const handleMarkFulfilled = useCallback(async () => {
-    if (!order._id) return
+  const handleOpenFulfillDialog = useCallback(() => {
     if (!canMarkFulfilled) return
+    setFulfillDeliveredAtDraft('')
+    setFulfillDialogOpen(true)
+  }, [canMarkFulfilled])
+
+  const handleCloseFulfillDialog = useCallback(() => {
+    setFulfillDialogOpen(false)
+  }, [])
+
+  const handleConfirmFulfilled = useCallback(async () => {
+    if (!order._id || !canMarkFulfilled) return
     if (order._id.startsWith('drafts.')) {
       pushToast({
         status: 'warning',
@@ -497,23 +514,34 @@ const OrderViewComponent = (props: any) => {
     }
     try {
       const timestamp = new Date().toISOString()
+      const trackingValue = fulfillTrackingDraft.trim()
+      const deliveredAtValue = fulfillDeliveredAtDraft.trim()
+      const patchSet: Record<string, any> = {
+        status: 'fulfilled',
+        'fulfillmentDetails.status': 'shipped',
+        shippedAt: timestamp,
+      }
+      if (trackingValue) {
+        patchSet.trackingNumber = trackingValue
+      }
+      if (deliveredAtValue) {
+        patchSet.deliveredAt = deliveredAtValue
+      }
       await client
         .patch(order._id)
-        .set({
-          status: 'fulfilled',
-          'fulfillmentDetails.status': 'shipped',
-          shippedAt: timestamp,
-        })
+        .set(patchSet)
         .setIfMissing({shippingLog: []})
         .append('shippingLog', [
           {
             _type: 'shippingLogEntry',
             status: 'fulfilled',
             message: 'Order marked as fulfilled from Order UI',
+            trackingNumber: trackingValue || undefined,
             createdAt: timestamp,
           },
         ])
         .commit({autoGenerateArrayKeys: true})
+      setFulfillDialogOpen(false)
       pushToast({
         status: 'success',
         title: 'Order fulfilled',
@@ -527,7 +555,14 @@ const OrderViewComponent = (props: any) => {
         description: error?.message || 'Check console for details.',
       })
     }
-  }, [canMarkFulfilled, client, order._id, pushToast])
+  }, [
+    canMarkFulfilled,
+    client,
+    fulfillDeliveredAtDraft,
+    fulfillTrackingDraft,
+    order._id,
+    pushToast,
+  ])
 
   const renderSection = (section: OrderViewSection) => {
     const sectionKey = section._key || section.title
@@ -713,7 +748,7 @@ const OrderViewComponent = (props: any) => {
           <Button
             tone="positive"
             text="Mark Fulfilled"
-            onClick={handleMarkFulfilled}
+            onClick={handleOpenFulfillDialog}
             disabled={!canMarkFulfilled}
           />
         )}
@@ -870,6 +905,51 @@ const OrderViewComponent = (props: any) => {
       )}
       {renderSummaryCards()}
       {config.sections.map((section) => renderSection(section))}
+      {fulfillDialogOpen && (
+        <Dialog
+          header="Mark Order Fulfilled"
+          id="order-fulfill-dialog"
+          onClose={handleCloseFulfillDialog}
+          width={1}
+          footer={
+            <Inline space={3}>
+              <Button text="Cancel" mode="ghost" onClick={handleCloseFulfillDialog} />
+              <Button
+                text="Mark Fulfilled"
+                tone="positive"
+                onClick={handleConfirmFulfilled}
+                disabled={!canMarkFulfilled}
+              />
+            </Inline>
+          }
+        >
+          <Stack space={4}>
+            <Text size={1}>
+              This will move the order to Closed and mark fulfillment as shipped.
+            </Text>
+            <FormField
+              title="Tracking Number (optional)"
+              description="If provided, it will be stored on the order."
+            >
+              <TextInput
+                value={fulfillTrackingDraft}
+                onChange={(event) => setFulfillTrackingDraft(event.currentTarget.value)}
+                placeholder="Enter tracking number"
+              />
+            </FormField>
+            <FormField
+              title="Delivered Date (optional)"
+              description="Set if the order is already delivered."
+            >
+              <TextInput
+                type="date"
+                value={fulfillDeliveredAtDraft}
+                onChange={(event) => setFulfillDeliveredAtDraft(event.currentTarget.value)}
+              />
+            </FormField>
+          </Stack>
+        </Dialog>
+      )}
       <Card tone="transparent" padding={3}>
         <Inline space={3} style={{alignItems: 'center'}}>
           <TrolleyIcon />

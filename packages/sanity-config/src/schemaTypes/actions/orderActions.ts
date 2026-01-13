@@ -1,5 +1,7 @@
 import type {DocumentActionComponent} from 'sanity'
 import {PackageIcon, RocketIcon, EnvelopeIcon} from '@sanity/icons'
+import {Button, Inline, Stack, Text, TextInput} from '@sanity/ui'
+import {useState} from 'react'
 import {callNetlifyFunction} from '../../utils/netlifyHelpers'
 
 const openUrl = (url?: string | null) => {
@@ -52,13 +54,67 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
   const doc = draft || published
   const labelAlreadyPurchased = Boolean(doc?.labelPurchased)
   const defaultDimensions = {weight: 2, length: 10, width: 8, height: 4}
-  const parseDimensionInput = (input: string) => {
-    const numbers = input.match(/[\d.]+/g)?.map((value) => Number(value)) || []
-    if (numbers.length !== 4 || numbers.some((value) => !Number.isFinite(value) || value <= 0)) {
-      return null
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'form' | 'message'>('form')
+  const [dialogMessage, setDialogMessage] = useState('')
+  const [formError, setFormError] = useState('')
+  const [weightInput, setWeightInput] = useState('')
+  const [lengthInput, setLengthInput] = useState('')
+  const [widthInput, setWidthInput] = useState('')
+  const [heightInput, setHeightInput] = useState('')
+  const [resultLabelUrl, setResultLabelUrl] = useState<string | null>(null)
+
+  const openMessageDialog = (message: string) => {
+    setDialogMode('message')
+    setDialogMessage(message)
+    setDialogOpen(true)
+  }
+
+  const closeDialog = () => {
+    setDialogOpen(false)
+    setDialogMessage('')
+    setFormError('')
+    setResultLabelUrl(null)
+    onComplete()
+  }
+
+  const openFormDialog = () => {
+    const packageDimensions: {
+      weight?: number | null
+      length?: number | null
+      width?: number | null
+      height?: number | null
+    } = doc?.packageDimensions || {}
+    const normalizedFromDoc = {
+      weight:
+        typeof packageDimensions.weight === 'number' && packageDimensions.weight > 0
+          ? packageDimensions.weight
+          : null,
+      length:
+        typeof packageDimensions.length === 'number' && packageDimensions.length > 0
+          ? packageDimensions.length
+          : null,
+      width:
+        typeof packageDimensions.width === 'number' && packageDimensions.width > 0
+          ? packageDimensions.width
+          : null,
+      height:
+        typeof packageDimensions.height === 'number' && packageDimensions.height > 0
+          ? packageDimensions.height
+          : null,
     }
-    const [weight, length, width, height] = numbers
-    return {weight, length, width, height}
+    const seed = {
+      weight: normalizedFromDoc.weight ?? defaultDimensions.weight,
+      length: normalizedFromDoc.length ?? defaultDimensions.length,
+      width: normalizedFromDoc.width ?? defaultDimensions.width,
+      height: normalizedFromDoc.height ?? defaultDimensions.height,
+    }
+    setWeightInput(String(seed.weight))
+    setLengthInput(String(seed.length))
+    setWidthInput(String(seed.width))
+    setHeightInput(String(seed.height))
+    setDialogMode('form')
+    setDialogOpen(true)
   }
 
   return {
@@ -67,153 +123,147 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
     tone: 'primary',
     disabled: labelAlreadyPurchased,
     title: labelAlreadyPurchased ? 'Label already purchased for this order.' : undefined,
-    onHandle: async () => {
+    onHandle: () => {
       if (!doc?._id) {
-        alert('Save the order before creating a label.')
-        onComplete()
+        openMessageDialog('Save the order before creating a label.')
         return
       }
       if (doc.labelPurchased) {
-        alert(`Label already purchased${doc.trackingNumber ? ` (Tracking ${doc.trackingNumber})` : ''}.`)
-        onComplete()
+        openMessageDialog(
+          `Label already purchased${doc.trackingNumber ? ` (Tracking ${doc.trackingNumber})` : ''}.`,
+        )
         return
       }
       if (!doc.shippingAddress) {
-        alert('Add a shipping address before purchasing a label.')
-        onComplete()
+        openMessageDialog('Add a shipping address before purchasing a label.')
         return
       }
-
-      const packageDimensions: {
-        weight?: number | null
-        length?: number | null
-        width?: number | null
-        height?: number | null
-      } = doc.packageDimensions || {}
-      const normalizedFromDoc = {
-        weight:
-          typeof packageDimensions.weight === 'number' && packageDimensions.weight > 0
-            ? packageDimensions.weight
-            : null,
-        length:
-          typeof packageDimensions.length === 'number' && packageDimensions.length > 0
-            ? packageDimensions.length
-            : null,
-        width:
-          typeof packageDimensions.width === 'number' && packageDimensions.width > 0
-            ? packageDimensions.width
-            : null,
-        height:
-          typeof packageDimensions.height === 'number' && packageDimensions.height > 0
-            ? packageDimensions.height
-            : null,
-      }
-      const hasCompleteDimensions =
-        normalizedFromDoc.weight &&
-        normalizedFromDoc.length &&
-        normalizedFromDoc.width &&
-        normalizedFromDoc.height
-      let normalizedDimensions = hasCompleteDimensions
-        ? {
-            weight: normalizedFromDoc.weight,
-            length: normalizedFromDoc.length,
-            width: normalizedFromDoc.width,
-            height: normalizedFromDoc.height,
-          }
-        : null
-      if (!normalizedDimensions) {
-        const promptDefaults = {
-          weight: normalizedFromDoc.weight ?? defaultDimensions.weight,
-          length: normalizedFromDoc.length ?? defaultDimensions.length,
-          width: normalizedFromDoc.width ?? defaultDimensions.width,
-          height: normalizedFromDoc.height ?? defaultDimensions.height,
-        }
-        const promptValue = window.prompt(
-          'Package dimensions are missing. Enter weight, length, width, height (lbs, inches).\n' +
-            'Example: 2, 10, 8, 4\n\n' +
-            'Leave as-is to use defaults.',
-          `${promptDefaults.weight}, ${promptDefaults.length}, ${promptDefaults.width}, ${promptDefaults.height}`,
-        )
-        if (promptValue === null) {
-          onComplete()
-          return
-        }
-        const parsed = parseDimensionInput(promptValue)
-        if (!parsed) {
-          alert('Please enter four positive numbers for weight, length, width, and height.')
-          onComplete()
-          return
-        }
-        normalizedDimensions = parsed
-      }
-
-      const shippingAddress = doc.shippingAddress as {city?: string; state?: string} | undefined
-      const confirmPurchase = window.confirm(
-        `Purchase shipping label for order ${doc.orderNumber || doc._id}?\n\n` +
-          `Customer: ${doc.customerName || 'Customer'}\n` +
-          `Ship to: ${shippingAddress?.city || ''}, ${shippingAddress?.state || ''}\n` +
-          `Carrier: ${doc.carrier || 'Selected at checkout'}\n` +
-          `Service: ${doc.service || 'Selected at checkout'}\n\n` +
-          'This will charge your EasyPost account.',
-      )
-      if (!confirmPurchase) {
-        onComplete()
-        return
-      }
-
-      if (!normalizedDimensions) {
-        normalizedDimensions = defaultDimensions
-      }
-
-      const body = {
-        orderId: (doc._id || '').replace(/^drafts\./, ''),
-        packageDetails: {
-          weight: normalizedDimensions.weight,
-          dimensions: {
-            length: normalizedDimensions.length,
-            width: normalizedDimensions.width,
-            height: normalizedDimensions.height,
-          },
-        },
-        rateId: doc.easypostRateId,
-        source: 'sanity-manual',
-      }
-
-      try {
-        const response = await fetch('/.netlify/functions/easypostCreateLabel', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(body),
-        })
-        if (!response.ok) {
-          const result = await response.json().catch(() => ({}))
-          throw new Error(result?.error || result?.message || 'Unable to create label')
-        }
-        const {trackingNumber, labelUrl, carrier, service, cost} = (await response.json()) as {
-          trackingNumber?: string
-          labelUrl?: string
-          carrier?: string
-          service?: string
-          cost?: number
-        }
-        const costLabel = typeof cost === 'number' ? cost.toFixed(2) : null
-        alert(
-          `✅ Shipping label created!\n\n` +
-            `Tracking: ${trackingNumber || 'Pending'}\n` +
-            `Carrier: ${carrier || 'n/a'}\n` +
-            `Service: ${service || 'n/a'}\n` +
-            (costLabel ? `Cost: $${costLabel}\n` : ''),
-        )
-        if (labelUrl && window.confirm('Open shipping label for printing?')) {
-          openUrl(labelUrl)
-        }
-        onComplete()
-      } catch (err) {
-        console.error('CreateShippingLabelAction failed', err)
-        alert((err as Error)?.message || 'Failed to create shipping label')
-        onComplete()
-      }
+      openFormDialog()
     },
+    dialog: dialogOpen
+      ? {
+          type: 'dialog',
+          onClose: closeDialog,
+          header: dialogMode === 'form' ? 'Create Shipping Label' : 'Shipping Label',
+          content:
+            dialogMode === 'form' ? (
+              <Stack space={3}>
+                <Text size={1} muted>
+                  Confirm package details before purchasing the label.
+                </Text>
+                <TextInput
+                  value={weightInput}
+                  onChange={(event) => setWeightInput(event.currentTarget.value)}
+                  placeholder="Weight (lbs)"
+                />
+                <TextInput
+                  value={lengthInput}
+                  onChange={(event) => setLengthInput(event.currentTarget.value)}
+                  placeholder="Length (in)"
+                />
+                <TextInput
+                  value={widthInput}
+                  onChange={(event) => setWidthInput(event.currentTarget.value)}
+                  placeholder="Width (in)"
+                />
+                <TextInput
+                  value={heightInput}
+                  onChange={(event) => setHeightInput(event.currentTarget.value)}
+                  placeholder="Height (in)"
+                />
+                {formError ? (
+                  <Text size={1} tone="critical">
+                    {formError}
+                  </Text>
+                ) : null}
+              </Stack>
+            ) : (
+              <Stack space={3}>
+                <Text size={1}>{dialogMessage}</Text>
+              </Stack>
+            ),
+          footer: (
+            <Inline space={3}>
+              <Button text="Close" mode="ghost" onClick={closeDialog} />
+              {dialogMode === 'form' ? (
+                <Button
+                  text="Purchase Label"
+                  tone="primary"
+                  onClick={async () => {
+                    const weight = Number.parseFloat(weightInput)
+                    const length = Number.parseFloat(lengthInput)
+                    const width = Number.parseFloat(widthInput)
+                    const height = Number.parseFloat(heightInput)
+                    if (
+                      !Number.isFinite(weight) ||
+                      !Number.isFinite(length) ||
+                      !Number.isFinite(width) ||
+                      !Number.isFinite(height) ||
+                      weight <= 0 ||
+                      length <= 0 ||
+                      width <= 0 ||
+                      height <= 0
+                    ) {
+                      setFormError('Enter positive numbers for weight and dimensions.')
+                      return
+                    }
+                    setFormError('')
+                    const body = {
+                      orderId: (doc._id || '').replace(/^drafts\./, ''),
+                      packageDetails: {
+                        weight,
+                        dimensions: {length, width, height},
+                      },
+                      rateId: doc.easypostRateId,
+                      source: 'sanity-manual',
+                    }
+                    try {
+                      const response = await fetch('/.netlify/functions/easypostCreateLabel', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(body),
+                      })
+                      if (!response.ok) {
+                        const result = await response.json().catch(() => ({}))
+                        throw new Error(result?.error || result?.message || 'Unable to create label')
+                      }
+                      const {trackingNumber, labelUrl, carrier, service, cost} =
+                        (await response.json()) as {
+                          trackingNumber?: string
+                          labelUrl?: string
+                          carrier?: string
+                          service?: string
+                          cost?: number
+                        }
+                      const costLabel = typeof cost === 'number' ? cost.toFixed(2) : null
+                      setResultLabelUrl(labelUrl || null)
+                      setDialogMessage(
+                        `Shipping label created.\nTracking: ${trackingNumber || 'Pending'}\n` +
+                          `Carrier: ${carrier || 'n/a'} • Service: ${service || 'n/a'}${
+                            costLabel ? ` • Cost: $${costLabel}` : ''
+                          }`,
+                      )
+                      setDialogMode('message')
+                    } catch (err) {
+                      console.error('CreateShippingLabelAction failed', err)
+                      setFormError((err as Error)?.message || 'Failed to create shipping label')
+                    }
+                  }}
+                />
+              ) : resultLabelUrl ? (
+                <Button
+                  text="Open Label"
+                  tone="primary"
+                  onClick={() => {
+                    if (resultLabelUrl) openUrl(resultLabelUrl)
+                    closeDialog()
+                  }}
+                />
+              ) : null}
+            </Inline>
+          ),
+        }
+      : undefined,
   }
 }
 
