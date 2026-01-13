@@ -42,27 +42,70 @@ type AddressInput = {
   phone?: string
   email?: string
   address_line1?: string
+  addressLine1?: string
+  street1?: string
+  street?: string
   address_line2?: string
+  addressLine2?: string
+  street2?: string
   city_locality?: string
+  city?: string
   state_province?: string
+  state?: string
   postal_code?: string
+  postalCode?: string
+  zip?: string
   country_code?: string
+  country?: string
 }
 
-function normalizeAddress(input: AddressInput | null | undefined) {
+function parseAddressString(addressInput: string) {
+  const lines = (addressInput || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const name = lines.length > 2 ? lines[0] : undefined
+  const street1 = lines.length > 1 ? lines[1] : lines[0] || ''
+  const cityState = lines.length > 2 ? lines[2] : lines[1] || ''
+  const cityMatch = cityState.match(/([^,]+),\s*([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)/)
+
+  return {
+    name,
+    street1,
+    city: cityMatch ? cityMatch[1].trim() : cityState.split(',')[0]?.trim() || '',
+    state: cityMatch ? cityMatch[2] : '',
+    postalCode: cityMatch ? cityMatch[3] : '',
+    country: 'US',
+  }
+}
+
+function normalizeAddress(input: AddressInput | string | null | undefined) {
   if (!input) return null
-  const street = input.address_line1?.trim()
-  const city = input.city_locality?.trim()
-  const state = input.state_province?.trim()
-  const postal = input.postal_code?.trim()
-  const country = (input.country_code || 'US').trim()
+  if (typeof input === 'string') {
+    return normalizeAddress(parseAddressString(input))
+  }
+  const street =
+    input.address_line1?.trim() ||
+    input.addressLine1?.trim() ||
+    input.street1?.trim() ||
+    input.street?.trim() ||
+    ''
+  const city = input.city_locality?.trim() || input.city?.trim() || ''
+  const state = input.state_province?.trim() || input.state?.trim() || ''
+  const postal = input.postal_code?.trim() || input.postalCode?.trim() || input.zip?.trim() || ''
+  const country = (input.country_code || input.country || 'US').trim()
   if (!street || !city || !state || !postal || !country) return null
   return {
     name: input.name,
     phone: input.phone,
     email: input.email,
     street1: street,
-    street2: input.address_line2 || undefined,
+    street2:
+      input.address_line2?.trim() ||
+      input.addressLine2?.trim() ||
+      input.street2?.trim() ||
+      undefined,
     city,
     state,
     zip: postal,
@@ -185,6 +228,7 @@ export const handler: Handler = async (event) => {
         : null
 
       return {
+        rateId: rate?.id || '',
         carrierId: rate?.carrier_account_id || '',
         carrierCode: rate?.carrier || '',
         carrier: rate?.carrier_display_name || rate?.carrier || '',

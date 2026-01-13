@@ -31,18 +31,8 @@ function CustomEasyPostServiceField(props: EasyPostFieldProps) {
   const fetchAllRates = React.useCallback(async () => {
     if (!isComplete) return
 
-    const ship_from = {
-      name: 'Your Company',
-      address_line1: '123 Warehouse Rd',
-      city_locality: 'San Francisco',
-      state_province: 'CA',
-      postal_code: '94103',
-      country_code: 'US',
-    }
-
     const payload = {
       ship_to: customerAddress,
-      ship_from,
       package_details: packageDetails,
     }
 
@@ -55,7 +45,13 @@ function CustomEasyPostServiceField(props: EasyPostFieldProps) {
 
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
-      setRates(data)
+      const incomingRates = Array.isArray(data?.rates) ? data.rates : []
+      const normalized = incomingRates.map((rate: any) => ({
+        title: `${rate.carrier} – ${rate.service}`,
+        value: rate.rateId || rate.serviceCode,
+        amount: rate.amount,
+      }))
+      setRates(normalized)
     } catch (err) {
       console.error('Error fetching rates:', err)
       setRates([])
