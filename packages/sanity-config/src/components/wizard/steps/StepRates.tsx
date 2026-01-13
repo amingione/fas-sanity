@@ -30,12 +30,28 @@ export const StepRates: React.FC<StepRatesProps> = ({state, setState}) => {
 
       try {
         const base = resolveNetlifyBase()
-        const res = await fetch(`${base}/.netlify/functions/easypostGetRates`, {
+        const res = await fetch(`${base}/.netlify/functions/getEasyPostRates`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            address: state.address,
-            parcel: state.parcel,
+            ship_to: {
+              name: state.address?.name,
+              address_line1: state.address?.street1,
+              address_line2: state.address?.street2,
+              city_locality: state.address?.city,
+              state_province: state.address?.state,
+              postal_code: state.address?.postalCode,
+              country_code: state.address?.country || 'US',
+            },
+            package_details: {
+              weight: {value: Number(state.parcel?.weight) || 1, unit: 'pound'},
+              dimensions: {
+                unit: 'inch',
+                length: Number(state.parcel?.length) || undefined,
+                width: Number(state.parcel?.width) || undefined,
+                height: Number(state.parcel?.height) || undefined,
+              },
+            },
           }),
         })
 
@@ -44,7 +60,18 @@ export const StepRates: React.FC<StepRatesProps> = ({state, setState}) => {
         }
 
         const data = await res.json()
-        setState((prev) => ({...prev, rates: data.rates || []}))
+        const rates = Array.isArray(data?.rates) ? data.rates : []
+        const normalized = rates.map((rate: any) => ({
+          id: rate.rateId,
+          carrier: rate.carrier,
+          service: rate.service,
+          rate:
+            typeof rate.amount === 'number'
+              ? rate.amount.toFixed(2)
+              : String(rate.amount ?? ''),
+          delivery_days: rate.deliveryDays ?? null,
+        }))
+        setState((prev) => ({...prev, rates: normalized}))
       } catch (err: any) {
         setError(err.message || 'Failed to load rates')
       } finally {

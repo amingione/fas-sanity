@@ -300,6 +300,11 @@ const OrderViewComponent = (props: any) => {
     order.fulfillmentDetails?.status ?? '',
   )
   const [trackingDraft, setTrackingDraft] = useState(order.trackingNumber ?? '')
+  const isOnlineOrder = useMemo(
+    () => order.orderType === 'online' || Boolean(order.stripeSessionId),
+    [order.orderType, order.stripeSessionId],
+  )
+  const canMarkFulfilled = isOnlineOrder && order.status === 'paid'
 
   useEffect(() => {
     setStatusDraft(order.status ?? '')
@@ -479,6 +484,51 @@ const OrderViewComponent = (props: any) => {
     }
   }, [editableFields, order.trackingNumber, patch, pushToast, trackingDraft])
 
+  const handleMarkFulfilled = useCallback(async () => {
+    if (!order._id) return
+    if (!canMarkFulfilled) return
+    if (order._id.startsWith('drafts.')) {
+      pushToast({
+        status: 'warning',
+        title: 'Publish the order first',
+        description: 'Online orders must be published before fulfillment.',
+      })
+      return
+    }
+    try {
+      const timestamp = new Date().toISOString()
+      await client
+        .patch(order._id)
+        .set({
+          status: 'fulfilled',
+          'fulfillmentDetails.status': 'shipped',
+          shippedAt: timestamp,
+        })
+        .setIfMissing({shippingLog: []})
+        .append('shippingLog', [
+          {
+            _type: 'shippingLogEntry',
+            status: 'fulfilled',
+            message: 'Order marked as fulfilled from Order UI',
+            createdAt: timestamp,
+          },
+        ])
+        .commit({autoGenerateArrayKeys: true})
+      pushToast({
+        status: 'success',
+        title: 'Order fulfilled',
+        description: 'Order moved to closed orders.',
+      })
+    } catch (error: any) {
+      console.error('Failed to mark order fulfilled', error)
+      pushToast({
+        status: 'error',
+        title: 'Unable to mark fulfilled',
+        description: error?.message || 'Check console for details.',
+      })
+    }
+  }, [canMarkFulfilled, client, order._id, pushToast])
+
   const renderSection = (section: OrderViewSection) => {
     const sectionKey = section._key || section.title
     const visibleFields = section.fields.filter(
@@ -647,17 +697,27 @@ const OrderViewComponent = (props: any) => {
       label={field.label}
       description={getFieldDescription(field)}
     >
-      <Select
-        value={fulfillmentStatusDraft}
-        onChange={(event) => handleFulfillmentStatusChange(event.currentTarget.value)}
-      >
-        <option value="">Select status</option>
-        {FULFILLMENT_STATUS_OPTIONS.map((statusOption) => (
-          <option key={statusOption} value={statusOption}>
-            {statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
-          </option>
-        ))}
-      </Select>
+      <Stack space={3}>
+        <Select
+          value={fulfillmentStatusDraft}
+          onChange={(event) => handleFulfillmentStatusChange(event.currentTarget.value)}
+        >
+          <option value="">Select status</option>
+          {FULFILLMENT_STATUS_OPTIONS.map((statusOption) => (
+            <option key={statusOption} value={statusOption}>
+              {statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
+            </option>
+          ))}
+        </Select>
+        {isOnlineOrder && (
+          <Button
+            tone="positive"
+            text="Mark Fulfilled"
+            onClick={handleMarkFulfilled}
+            disabled={!canMarkFulfilled}
+          />
+        )}
+      </Stack>
     </EditableFieldWrapper>
   )
 

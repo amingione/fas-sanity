@@ -231,7 +231,6 @@ function assertAddress(address: EasyPostAddress) {
   const missing: string[] = []
   if (!address.name) missing.push('name')
   if (!address.street1) missing.push('addressLine1')
-  if (!address.street2) missing.push('addressLine2')
   if (!address.city) missing.push('city')
   if (!address.state) missing.push('state')
   if (!address.zip) missing.push('postalCode')
@@ -505,7 +504,6 @@ export async function createEasyPostLabel(
     await sanity
       .patch(orderId)
       .set({
-        fulfillmentStatus: 'creating_label',
         fulfillmentAttempts: nextAttempts,
       })
       .commit({autoGenerateArrayKeys: true})
@@ -617,7 +615,14 @@ export async function createEasyPostLabel(
     (packageDetails as any)?.selectedRateId
 
   const selectedRateEntry = preferredRateId
-    ? sortedRates.find((rate: {raw: any; amount: number}) => rate.raw?.id === preferredRateId) || sortedRates[0]
+    ? sortedRates.find((rate: {raw: any; amount: number}) => {
+        const raw = rate.raw
+        return (
+          raw?.id === preferredRateId ||
+          raw?.service_code === preferredRateId ||
+          raw?.service === preferredRateId
+        )
+      }) || sortedRates[0]
     : sortedRates[0]
   const chosenRate = selectedRateEntry?.raw
 
@@ -772,9 +777,10 @@ export async function createEasyPostLabel(
         easyPostTrackerId: tracker?.id,
         labelCreatedAt: shippingStatus.lastEventAt,
         labelCost: amount,
-        labelPurchasedFrom: resolvedCarrier || 'EasyPost',
+        labelPurchased: true,
+        labelPurchasedAt: shippingStatus.lastEventAt,
+        labelPurchasedBy: source || 'sanity-manual',
         'fulfillment.status': 'label_created',
-        fulfillmentStatus: 'label_created',
         fulfillmentError: null,
         carrier: resolvedCarrier,
         service: shippingStatus.service || undefined,
@@ -787,7 +793,6 @@ export async function createEasyPostLabel(
           ? {estimatedDeliveryDate: new Date(tracker.est_delivery_date).toISOString().slice(0, 10)}
           : {}),
         packingSlipUrl: packingSlipUrl || undefined,
-        qrCodeUrl: qrCodeUrl || undefined,
       }).filter(([, value]) => value !== undefined),
     )
 
@@ -1002,7 +1007,6 @@ export const handler: Handler = async (event) => {
         await sanity
           .patch(orderId)
           .set({
-            fulfillmentStatus: 'label_creation_failed',
             fulfillmentError: err?.message || 'Label creation failed',
           })
           .commit({autoGenerateArrayKeys: true})

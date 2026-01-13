@@ -629,12 +629,6 @@ async function handleTracker(tracker: any, rawPayload?: any) {
       'shippingStatus.status': tracker?.status || undefined,
       'shippingStatus.lastEventAt': lastEventAt ? new Date(lastEventAt).toISOString() : undefined,
       'fulfillment.status': tracker?.status || undefined,
-      fulfillmentStatus:
-        tracker?.status === 'delivered'
-          ? 'delivered'
-          : tracker?.status
-            ? 'shipped'
-            : undefined,
       ...(tracker?.status === 'delivered' && lastEventAt
         ? {deliveredAt: new Date(lastEventAt).toISOString().slice(0, 10)}
         : {}),
@@ -808,8 +802,6 @@ async function handleShipment(shipment: any, rawPayload?: any) {
     setOps.service = selectedRate.service
   }
   setOps['fulfillment.status'] = shippingStatus.status || 'label_created'
-  setOps.fulfillmentStatus =
-    shippingStatus.status === 'delivered' ? 'delivered' : 'label_created'
   setOps.shippedAt = shippingStatus.lastEventAt
   if (typeof selectedRate?.delivery_days === 'number') {
     setOps.deliveryDays = selectedRate.delivery_days

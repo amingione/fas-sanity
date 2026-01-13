@@ -35,25 +35,45 @@ export const getShippingRatesAction: DocumentActionComponent = (props) => {
       setIsLoading(true)
 
       try {
-        const response = await fetch('/api/easypost/get-rates', {
+        const response = await fetch('/.netlify/functions/getEasyPostRates', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            invoiceId: id,
-            shipTo: doc.shipTo,
-            weight: doc.shipping?.packageWeight,
-            dimensions: doc.shipping?.packageDimensions,
-            lineItems: doc.lineItems,
+            ship_to: doc.shipTo,
+            package_details: {
+              weight: {
+                value: Number(doc.shipping?.packageWeight) || 1,
+                unit: 'pound',
+              },
+              dimensions: doc.shipping?.packageDimensions
+                ? {
+                    unit: 'inch',
+                    length: Number((doc.shipping?.packageDimensions as any)?.length) || undefined,
+                    width: Number((doc.shipping?.packageDimensions as any)?.width) || undefined,
+                    height: Number((doc.shipping?.packageDimensions as any)?.height) || undefined,
+                  }
+                : undefined,
+            },
           }),
         })
 
-        const {rates, shipmentId} = await response.json()
+        const data = await response.json()
+        const rates = Array.isArray(data?.rates) ? data.rates : []
+        const normalizedRates = rates.map((rate: any) => ({
+          rateId: rate.rateId,
+          carrier: rate.carrier,
+          service: rate.service,
+          rate: rate.amount,
+          currency: rate.currency,
+          deliveryDays: rate.deliveryDays,
+          carrierId: rate.carrierId,
+          serviceCode: rate.serviceCode,
+        }))
 
         patch.execute([
           {
             set: {
-              'shipping.availableRates': rates,
-              'shipping.easypostShipmentId': shipmentId,
+              'shipping.availableRates': normalizedRates,
             },
           },
         ])

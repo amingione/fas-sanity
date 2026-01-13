@@ -12,17 +12,15 @@ interface Order {
   customerEmail?: string
   customerPhone?: string
   shippingAddress?: {
-    street1?: string
-    street2?: string
+    addressLine1?: string
+    addressLine2?: string
     city?: string
     state?: string
     postalCode?: string
     country?: string
   }
-  weightLbs?: number
-  lengthIn?: number
-  widthIn?: number
-  heightIn?: number
+  weight?: {value?: number; unit?: string} | number | null
+  dimensions?: {length?: number; width?: number; height?: number} | null
 }
 
 interface CreateLabelWizardProps {
@@ -41,6 +39,13 @@ export const CreateLabelWizard: React.FC<CreateLabelWizardProps> = ({
   orderId,
   onComplete,
 }) => {
+  const weightValue =
+    typeof order.weight === 'number'
+      ? order.weight
+      : typeof order.weight?.value === 'number'
+        ? order.weight.value
+        : 1
+  const dimensions = order.dimensions || {}
   const initialState = {
     orderId,
     customer: {
@@ -49,18 +54,18 @@ export const CreateLabelWizard: React.FC<CreateLabelWizardProps> = ({
       phone: order.customerPhone || '',
     },
     address: {
-      street1: order.shippingAddress?.street1 || '',
-      street2: order.shippingAddress?.street2 || '',
+      street1: order.shippingAddress?.addressLine1 || '',
+      street2: order.shippingAddress?.addressLine2 || '',
       city: order.shippingAddress?.city || '',
       state: order.shippingAddress?.state || '',
       postalCode: order.shippingAddress?.postalCode || '',
       country: order.shippingAddress?.country || 'US',
     },
     parcel: {
-      weight: order.weightLbs || 1,
-      length: order.lengthIn || 10,
-      width: order.widthIn || 10,
-      height: order.heightIn || 10,
+      weight: weightValue || 1,
+      length: dimensions.length || 10,
+      width: dimensions.width || 10,
+      height: dimensions.height || 10,
     },
     selectedRate: null,
     rates: [],

@@ -511,20 +511,39 @@ export function ShippingQuoteDialog({onClose}: ShippingQuoteDialogProps) {
           structuredShipToAddress.postalCode ||
           structuredShipToAddress.country)
       const toAddressPayload = hasStructured ? structuredShipToAddress : shipToAddress
-      const response = await fetch('/.netlify/functions/easypostGetRates', {
+      const response = await fetch('/.netlify/functions/getEasyPostRates', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          toAddress: toAddressPayload,
-          parcel: {...dimensions, weight},
+          ship_to: toAddressPayload,
+          package_details: {
+            weight: {value: weight, unit: 'pound'},
+            dimensions: {
+              unit: 'inch',
+              length: dimensions.length,
+              width: dimensions.width,
+              height: dimensions.height,
+            },
+          },
         }),
       })
       if (!response.ok) {
         const message = await response.text().catch(() => '')
         throw new Error(message || 'Failed to fetch shipping quotes')
       }
-      const data = (await response.json()) as {rates?: Rate[]}
-      setRates(data.rates || [])
+      const data = (await response.json()) as {rates?: any[]}
+      const normalizedRates = Array.isArray(data.rates)
+        ? data.rates.map((rate) => ({
+            rateId: rate.rateId,
+            carrier: rate.carrier,
+            service: rate.service,
+            rate:
+              typeof rate.amount === 'number' ? rate.amount.toFixed(2) : String(rate.amount || ''),
+            currency: rate.currency,
+            deliveryDays: rate.deliveryDays,
+          }))
+        : []
+      setRates(normalizedRates)
     } catch (error) {
       console.error('Error fetching shipping quotes', error)
       alert('Failed to fetch shipping quotes. Please try again.')

@@ -211,7 +211,7 @@ export function ServiceRateInput(props: any) {
         >
           <option value="">Select a service</option>
           {rates.map((rate) => (
-            <option key={rate.serviceCode} value={rate.serviceCode}>
+            <option key={rate.rateId || rate.serviceCode} value={rate.rateId || rate.serviceCode}>
               {rate.carrier} – {rate.service} (${rate.amount})
             </option>
           ))}
@@ -273,6 +273,9 @@ export function GenerateAndPrintPanel(props: any) {
       }
       if (orderId) {
         payload.orderId = orderId
+      }
+      if (doc.serviceSelection) {
+        payload.rateId = doc.serviceSelection
       }
       payload.source = 'sanity-manual'
 
