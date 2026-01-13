@@ -6,3 +6,4 @@
 
 governance-guard:
 	@./scripts/check-governance.sh
+	@./scripts/check-shipping-guards.sh
