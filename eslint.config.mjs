@@ -34,6 +34,7 @@ export default [
       '*.cjs',
       '*.js',
       'tools/unified-audit/**/*.{js,mjs}',
+      'tools/ai-governance/scripts/**/*.{js,mjs,cjs}',
       'netlify/**/*.{js,ts}',
       'shared/**/*.{js,ts,tsx}',
       'packages/sanity-config/src/**/*.{js,ts,tsx}',
