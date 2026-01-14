@@ -156,11 +156,14 @@ export const handler: Handler = async (event) => {
   const customerEmail =
     typeof payload.customerEmail === 'string' ? payload.customerEmail.trim() : undefined
 
-  if (!cart.length || !shippingRate) {
+  // For Parcelcraft-native flows, we always require a cart but allow shipping to be
+  // resolved dynamically by the Stripe app. A shippingRate payload is optional and
+  // only used when an upstream caller has already computed a fixed rate.
+  if (!cart.length) {
     return {
       statusCode: 400,
       headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Missing cart or shippingRate'}),
+      body: JSON.stringify({error: 'Missing cart'}),
     }
   }
 
@@ -321,70 +324,84 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  const amountCents = Math.round(Number(shippingRate.amount || 0) * 100)
-  if (!Number.isFinite(amountCents) || amountCents < 0) {
-    return {
-      statusCode: 400,
-      headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Invalid shipping amount'}),
+  // Optional shipping configuration:
+  // - When shippingRate is provided (e.g., a CMS/EasyPost flow), we create an explicit
+  //   Stripe shipping_rate with metadata.
+  // - When shippingRate is omitted (Parcelcraft-native storefront flow), we rely on the
+  //   Stripe app to resolve shipping dynamically and do NOT attach shipping_options here.
+  let shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined
+  let shippingEstimate = 0
+
+  if (shippingRate) {
+    const amountCents = Math.round(Number(shippingRate.amount || 0) * 100)
+    if (!Number.isFinite(amountCents) || amountCents < 0) {
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Invalid shipping amount'}),
+      }
     }
-  }
 
-  const deliveryDays = Number(shippingRate.deliveryDays)
-  const deliveryEstimate =
-    Number.isFinite(deliveryDays) && deliveryDays > 0
-      ? {
-          minimum: {unit: 'business_day' as const, value: Math.max(1, Math.floor(deliveryDays))},
-          maximum: {unit: 'business_day' as const, value: Math.max(1, Math.ceil(deliveryDays + 2))},
-        }
-      : undefined
+    const deliveryDays = Number(shippingRate.deliveryDays)
+    const deliveryEstimate =
+      Number.isFinite(deliveryDays) && deliveryDays > 0
+        ? {
+            minimum: {unit: 'business_day' as const, value: Math.max(1, Math.floor(deliveryDays))},
+            maximum: {
+              unit: 'business_day' as const,
+              value: Math.max(1, Math.ceil(deliveryDays + 2)),
+            },
+          }
+        : undefined
 
-  const shippingMetadata: Stripe.MetadataParam = {}
-  const pushMeta = (key: string, value: unknown) => {
-    if (value === undefined || value === null) return
-    const raw = typeof value === 'number' ? value.toString() : `${value}`
-    if (raw.trim()) shippingMetadata[key] = raw.trim()
-  }
+    const shippingMetadata: Stripe.MetadataParam = {}
+    const pushMeta = (key: string, value: unknown) => {
+      if (value === undefined || value === null) return
+      const raw = typeof value === 'number' ? value.toString() : `${value}`
+      if (raw.trim()) shippingMetadata[key] = raw.trim()
+    }
 
-  pushMeta('easypost_rate_id', shippingRate.rateId)
-  pushMeta('carrier_id', shippingRate.carrierId || shippingRate.carrierCode)
-  pushMeta('service_code', shippingRate.serviceCode)
-  pushMeta('package_code', shippingRate.packageCode)
-  pushMeta('packaging_weight', shippingRate.packagingWeight)
-  pushMeta('packaging_weight_unit', shippingRate.packagingWeightUnit)
-  pushMeta('length', shippingRate.length)
-  pushMeta('width', shippingRate.width)
-  pushMeta('height', shippingRate.height)
-  pushMeta('carrier', shippingRate.carrier)
-  pushMeta('service', shippingRate.service)
-  pushMeta('shipping_amount', (Number(shippingRate.amount || 0) || 0).toFixed(2))
-  if (weightSummary > 0) {
-    pushMeta('total_weight_lbs', Number(weightSummary.toFixed(2)))
-  }
-  if (dimensionsSummary) {
-    pushMeta('package_length_in', Number(dimensionsSummary.length.toFixed(2)))
-    pushMeta('package_width_in', Number(dimensionsSummary.width.toFixed(2)))
-    pushMeta('package_height_in', Number(dimensionsSummary.height.toFixed(2)))
-  }
+    pushMeta('easypost_rate_id', shippingRate.rateId)
+    pushMeta('carrier_id', shippingRate.carrierId || shippingRate.carrierCode)
+    pushMeta('service_code', shippingRate.serviceCode)
+    pushMeta('package_code', shippingRate.packageCode)
+    pushMeta('packaging_weight', shippingRate.packagingWeight)
+    pushMeta('packaging_weight_unit', shippingRate.packagingWeightUnit)
+    pushMeta('length', shippingRate.length)
+    pushMeta('width', shippingRate.width)
+    pushMeta('height', shippingRate.height)
+    pushMeta('carrier', shippingRate.carrier)
+    pushMeta('service', shippingRate.service)
+    pushMeta('shipping_amount', (Number(shippingRate.amount || 0) || 0).toFixed(2))
+    if (weightSummary > 0) {
+      pushMeta('total_weight_lbs', Number(weightSummary.toFixed(2)))
+    }
+    if (dimensionsSummary) {
+      pushMeta('package_length_in', Number(dimensionsSummary.length.toFixed(2)))
+      pushMeta('package_width_in', Number(dimensionsSummary.width.toFixed(2)))
+      pushMeta('package_height_in', Number(dimensionsSummary.height.toFixed(2)))
+    }
 
-  const shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] = [
-    {
-      shipping_rate_data: {
-        type: 'fixed_amount',
-        fixed_amount: {amount: amountCents, currency: 'usd'},
-        display_name: `${shippingRate.carrier || 'Shipping'} ${shippingRate.service || ''}`.trim(),
-        delivery_estimate: deliveryEstimate,
-        metadata: shippingMetadata,
+    shippingOptions = [
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount',
+          fixed_amount: {amount: amountCents, currency: 'usd'},
+          display_name: `${shippingRate.carrier || 'Shipping'} ${shippingRate.service || ''}`.trim(),
+          delivery_estimate: deliveryEstimate,
+          metadata: shippingMetadata,
+        },
       },
-    },
-  ]
+    ]
+
+    shippingEstimate = Number(shippingRate.amount || 0) || 0
+  }
 
   const itemCount = normalizedCart.reduce((total, item) => total + item.quantity, 0)
   const subtotalEstimate = normalizedCart.reduce((total, item) => {
     if (typeof item.price !== 'number') return total
     return total + item.price * item.quantity
   }, 0)
-  const shippingEstimate = Number(shippingRate.amount || 0) || 0
   const estimatedTotal = subtotalEstimate + shippingEstimate
 
   const sessionMetadata: Stripe.MetadataParam = {
@@ -403,7 +420,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       client_reference_id: cartId,
       customer_email: customerEmail,
@@ -411,7 +428,6 @@ export const handler: Handler = async (event) => {
       shipping_address_collection: {
         allowed_countries: ['US', 'CA'],
       },
-      shipping_options: shippingOptions,
       payment_intent_data: {
         capture_method: captureMethod,
         metadata: paymentIntentMetadata,
@@ -421,7 +437,13 @@ export const handler: Handler = async (event) => {
       phone_number_collection: {enabled: true},
       success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart`,
-    })
+    }
+
+    if (shippingOptions && shippingOptions.length > 0) {
+      sessionParams.shipping_options = shippingOptions
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
 
     if (sanity) {
       const nowIso = new Date().toISOString()
