@@ -2647,6 +2647,43 @@ async function resolveCheckoutCustomerContact(
   }
 }
 
+const resolveCheckoutCompany = (checkoutSession: Stripe.Checkout.Session): string | undefined => {
+  const customFields = checkoutSession.custom_fields || []
+  const companyField = customFields.find((field) => field?.key === 'company')
+  const companyValue = companyField?.text?.value?.toString().trim()
+  if (companyValue) return companyValue
+  const metadata = (checkoutSession.metadata || {}) as Record<string, string>
+  return metaValue(metadata, 'company')
+}
+
+const syncCheckoutCompanyToStripeCustomer = async (
+  checkoutSession: Stripe.Checkout.Session,
+): Promise<void> => {
+  if (!stripe) return
+  const company = resolveCheckoutCompany(checkoutSession)
+  if (!company) return
+  const stripeCustomerId =
+    typeof checkoutSession.customer === 'string'
+      ? checkoutSession.customer
+      : checkoutSession.customer?.id
+  if (!stripeCustomerId) return
+  const existingMetadata =
+    typeof checkoutSession.customer === 'object' && checkoutSession.customer
+      ? (checkoutSession.customer.metadata as Record<string, string> | null | undefined)
+      : undefined
+  if (existingMetadata?.company === company) return
+  try {
+    await stripe.customers.update(stripeCustomerId, {
+      metadata: {
+        ...(existingMetadata || {}),
+        company,
+      },
+    })
+  } catch (err) {
+    console.warn('stripeWebhook: failed to sync company to Stripe customer metadata', err)
+  }
+}
+
 type IdentityCustomer = {
   _id: string
   name?: string
@@ -3467,6 +3504,7 @@ async function createOrderFromCheckout(
   }
 
   const customer = await strictFindOrCreateCustomer(session)
+  await syncCheckoutCompanyToStripeCustomer(session)
   const paymentDetails = await strictGetPaymentDetails(paymentIntentId)
   const sessionPaymentIntent =
     typeof session.payment_intent === 'object' && session.payment_intent

@@ -50,6 +50,7 @@ type ProductShippingSnapshot = {
   title?: string
   shippingWeight?: number | null
   shippingConfig?: {
+    requiresShipping?: boolean | null
     weight?: number | null
     dimensions?: {length?: number | null; width?: number | null; height?: number | null} | null
   } | null
@@ -66,6 +67,13 @@ const resolveProductWeight = (product?: ProductShippingSnapshot | null): number 
   const configWeight = toPositiveNumber(product.shippingConfig?.weight)
   if (configWeight !== null) return configWeight
   return toPositiveNumber(product.shippingWeight)
+}
+
+const resolveRequiresShipping = (product?: ProductShippingSnapshot | null): boolean | null => {
+  if (!product) return null
+  const requiresShipping = product.shippingConfig?.requiresShipping
+  if (typeof requiresShipping === 'boolean') return requiresShipping
+  return null
 }
 
 const resolveProductDimensions = (
@@ -212,6 +220,7 @@ export const handler: Handler = async (event) => {
           title,
           shippingWeight,
           shippingConfig{
+            requiresShipping,
             weight,
             dimensions{
               length,
@@ -242,21 +251,23 @@ export const handler: Handler = async (event) => {
       const unitAmount = Math.round(item.price * 100)
       if (!Number.isFinite(unitAmount) || unitAmount < 0) return null
       const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
+      const requiresShipping = resolveRequiresShipping(product)
+      const isShippable = requiresShipping !== false
       const metadata: Stripe.MetadataParam = {...item.metadata}
       const productWeight = resolveProductWeight(product)
-      if (productWeight) {
-        metadata.weight = productWeight.toString()
-        metadata.weight_unit = 'pound'
-        metadata.weight_lbs = productWeight.toString()
-      }
-      const dims = resolveProductDimensions(product)
-      if (dims) {
-        metadata.length = dims.length.toString()
-        metadata.width = dims.width.toString()
-        metadata.height = dims.height.toString()
-        metadata.length_in = dims.length.toString()
-        metadata.width_in = dims.width.toString()
-        metadata.height_in = dims.height.toString()
+      if (isShippable) {
+        metadata.origin_country = 'US'
+        metadata.customs_description = 'Auto-parts'
+        if (productWeight) {
+          metadata.weight = productWeight.toString()
+          metadata.weight_unit = 'pound'
+        }
+        const dims = resolveProductDimensions(product)
+        if (dims) {
+          metadata.length = dims.length.toString()
+          metadata.width = dims.width.toString()
+          metadata.height = dims.height.toString()
+        }
       }
       return {
         price_data: {
@@ -307,9 +318,15 @@ export const handler: Handler = async (event) => {
   const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com').replace(/\/+$/, '')
 
   const captureMethod: 'automatic' = 'automatic'
+  const hasShippableItems = normalizedCart.some((item) => {
+    if (!item.sanityProductId) return true
+    const product = productMap.get(item.sanityProductId)
+    const requiresShipping = resolveRequiresShipping(product)
+    return requiresShipping !== false
+  })
   const paymentIntentMetadata: Stripe.MetadataParam = {
     cart_id: cartId,
-    ship_status: 'unshipped',
+    ship_status: hasShippableItems ? 'unshipped' : 'unshippable',
   }
 
   try {
@@ -327,6 +344,14 @@ export const handler: Handler = async (event) => {
       shipping_address_collection: {
         allowed_countries: ['US', 'CA'],
       },
+      custom_fields: [
+        {
+          key: 'company',
+          label: {type: 'custom', custom: 'Company'},
+          type: 'text',
+          optional: true,
+        },
+      ],
       invoice_creation: {
         enabled: true,
         invoice_data: {
