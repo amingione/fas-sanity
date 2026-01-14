@@ -23,9 +23,7 @@ function makeCORS(origin?: string) {
 }
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY
-const stripe = stripeSecret
-  ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION})
-  : null
+const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
 
 const sanityProjectId = process.env.SANITY_STUDIO_PROJECT_ID
 const sanityDataset = process.env.SANITY_STUDIO_DATASET
@@ -39,7 +37,6 @@ const sanity =
         useCdn: false,
       })
     : null
-
 
 const normalizeSanityId = (value?: string | null): string | undefined => {
   if (!value) return undefined
@@ -164,8 +161,7 @@ export const handler: Handler = async (event) => {
     .map((item: any): NormalizedCartItem | null => {
       if (!item || typeof item !== 'object') return null
       const quantity = resolveCartQuantity(item.quantity)
-      const images =
-        typeof item?.image === 'string' && item.image.trim() ? [item.image.trim()] : []
+      const images = typeof item?.image === 'string' && item.image.trim() ? [item.image.trim()] : []
       const metadata: Stripe.MetadataParam = {}
       const sanityProductId =
         normalizeSanityId(
@@ -203,9 +199,7 @@ export const handler: Handler = async (event) => {
 
   const productIds = Array.from(
     new Set(
-      normalizedCart
-        .map((item) => item.sanityProductId)
-        .filter((id): id is string => Boolean(id)),
+      normalizedCart.map((item) => item.sanityProductId).filter((id): id is string => Boolean(id)),
     ),
   )
 
