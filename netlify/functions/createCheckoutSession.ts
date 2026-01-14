@@ -314,21 +314,21 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    // Parcelcraft (Stripe app) requires invoice_creation.enabled to access order information
-    // for post-purchase label creation. Parcelcraft does NOT add shipping_options to checkout sessions.
-    // 
-    // For dynamic shipping rates, we need to implement them ourselves. Currently shipping_options
-    // are NOT set, which means NO shipping options will appear in the checkout UI.
-    // 
+    // Dynamic shipping implementation using Stripe embedded checkout with server-side updates.
+    // Parcelcraft (Stripe app) requires invoice_creation.enabled for post-purchase label creation.
     // Product metadata (weight, dimensions) is set in line items for Parcelcraft to read
     // AFTER checkout completion when creating shipping labels.
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      ui_mode: 'embedded',
       client_reference_id: cartId,
       customer_email: customerEmail,
       line_items: lineItems,
       shipping_address_collection: {
         allowed_countries: ['US', 'CA'],
+      },
+      permissions: {
+        update_shipping_details: 'server_only',
       },
       invoice_creation: {
         enabled: true,
@@ -346,8 +346,7 @@ export const handler: Handler = async (event) => {
       metadata: sessionMetadata,
       billing_address_collection: 'required',
       phone_number_collection: {enabled: true},
-      success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/cart`,
+      return_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
     })
 
     if (sanity) {
@@ -408,7 +407,12 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({sessionId: session.id, url: session.url}),
+      body: JSON.stringify({
+        sessionId: session.id,
+        clientSecret: session.client_secret,
+        // Include url for backwards compatibility, but embedded checkout uses client_secret
+        url: session.url,
+      }),
     }
   } catch (err: any) {
     console.error('createCheckoutSession error:', err)
