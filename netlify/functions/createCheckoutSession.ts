@@ -282,13 +282,12 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  // NOTE: Parcelcraft is a post-purchase label creation tool, NOT a dynamic shipping rate provider.
-  // For dynamic shipping rates in checkout, we need to implement them ourselves.
-  // Currently, shipping_options are NOT set - this means NO shipping options will appear in checkout.
-  // TODO: Implement dynamic shipping using either:
-  //   1. Stripe embedded checkout with server-side shipping calculation (using EasyPost backend)
-  //   2. Pre-calculate shipping for estimated addresses
-  //   3. Use Stripe webhooks to update shipping when address is collected
+  // Parcelcraft (Stripe app) handles dynamic shipping rates natively.
+  // Product metadata (weight, dimensions) is set in line items for Parcelcraft to read.
+  // Parcelcraft will automatically add shipping_options based on:
+  // - Product metadata (weight, dimensions) from line items
+  // - Shipping address collected via shipping_address_collection
+  // We do NOT set shipping_options - Parcelcraft handles dynamic rates natively.
 
   const itemCount = normalizedCart.reduce((total, item) => total + item.quantity, 0)
   const subtotalEstimate = normalizedCart.reduce((total, item) => {
@@ -314,21 +313,19 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    // Dynamic shipping implementation using Stripe embedded checkout with server-side updates.
-    // Parcelcraft (Stripe app) requires invoice_creation.enabled for post-purchase label creation.
-    // Product metadata (weight, dimensions) is set in line items for Parcelcraft to read
-    // AFTER checkout completion when creating shipping labels.
+    // Parcelcraft (Stripe app) requires invoice_creation.enabled to access order information
+    // and calculate dynamic shipping rates. Parcelcraft will automatically add shipping_options
+    // based on:
+    // - Product metadata (weight, dimensions) from line items
+    // - Shipping address collected via shipping_address_collection
+    // We do NOT set shipping_options - Parcelcraft handles dynamic rates natively.
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      ui_mode: 'embedded',
       client_reference_id: cartId,
       customer_email: customerEmail,
       line_items: lineItems,
       shipping_address_collection: {
         allowed_countries: ['US', 'CA'],
-      },
-      permissions: {
-        update_shipping_details: 'server_only',
       },
       invoice_creation: {
         enabled: true,
@@ -346,7 +343,8 @@ export const handler: Handler = async (event) => {
       metadata: sessionMetadata,
       billing_address_collection: 'required',
       phone_number_collection: {enabled: true},
-      return_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/cart`,
     })
 
     if (sanity) {
@@ -407,12 +405,7 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        sessionId: session.id,
-        clientSecret: session.client_secret,
-        // Include url for backwards compatibility, but embedded checkout uses client_secret
-        url: session.url,
-      }),
+      body: JSON.stringify({sessionId: session.id, url: session.url}),
     }
   } catch (err: any) {
     console.error('createCheckoutSession error:', err)
