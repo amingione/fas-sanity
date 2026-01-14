@@ -282,10 +282,13 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  // Parcelcraft (Stripe app) will calculate shipping dynamically based on:
-  // - Product metadata (weight, dimensions) in line items
-  // - Shipping address collected via shipping_address_collection
-  // We do NOT set shipping_options here - Parcelcraft adds them automatically.
+  // NOTE: Parcelcraft is a post-purchase label creation tool, NOT a dynamic shipping rate provider.
+  // For dynamic shipping rates in checkout, we need to implement them ourselves.
+  // Currently, shipping_options are NOT set - this means NO shipping options will appear in checkout.
+  // TODO: Implement dynamic shipping using either:
+  //   1. Stripe embedded checkout with server-side shipping calculation (using EasyPost backend)
+  //   2. Pre-calculate shipping for estimated addresses
+  //   3. Use Stripe webhooks to update shipping when address is collected
 
   const itemCount = normalizedCart.reduce((total, item) => total + item.quantity, 0)
   const subtotalEstimate = normalizedCart.reduce((total, item) => {
@@ -311,10 +314,14 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    // Parcelcraft (Stripe app) will automatically add shipping_options based on:
-    // - Product metadata (weight, dimensions) from line items
-    // - Shipping address collected via shipping_address_collection
-    // We do NOT set shipping_options - Parcelcraft handles dynamic rates natively.
+    // Parcelcraft (Stripe app) requires invoice_creation.enabled to access order information
+    // for post-purchase label creation. Parcelcraft does NOT add shipping_options to checkout sessions.
+    // 
+    // For dynamic shipping rates, we need to implement them ourselves. Currently shipping_options
+    // are NOT set, which means NO shipping options will appear in the checkout UI.
+    // 
+    // Product metadata (weight, dimensions) is set in line items for Parcelcraft to read
+    // AFTER checkout completion when creating shipping labels.
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       client_reference_id: cartId,
@@ -322,6 +329,15 @@ export const handler: Handler = async (event) => {
       line_items: lineItems,
       shipping_address_collection: {
         allowed_countries: ['US', 'CA'],
+      },
+      invoice_creation: {
+        enabled: true,
+        invoice_data: {
+          metadata: {
+            ...sessionMetadata,
+            cart_type: cartType || 'storefront',
+          },
+        },
       },
       payment_intent_data: {
         capture_method: captureMethod,
