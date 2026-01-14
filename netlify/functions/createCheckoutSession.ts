@@ -144,9 +144,7 @@ export const handler: Handler = async (event) => {
   const customerEmail =
     typeof payload.customerEmail === 'string' ? payload.customerEmail.trim() : undefined
 
-  // Parcelcraft (Stripe app) handles dynamic shipping rates natively.
-  // We only require a cart - shipping will be calculated by Parcelcraft based on
-  // product metadata (weight, dimensions) and the shipping address collected.
+  // Embedded Checkout with Parcelcraft dynamic rates (no static shipping options).
   if (!cart.length) {
     return {
       statusCode: 400,
@@ -293,12 +291,7 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  // Parcelcraft (Stripe app) handles dynamic shipping rates natively.
-  // Product metadata (weight, dimensions) is set in line items for Parcelcraft to read.
-  // Parcelcraft will automatically add shipping_options based on:
-  // - Product metadata (weight, dimensions) from line items
-  // - Shipping address collected via shipping_address_collection
-  // We do NOT set shipping_options - Parcelcraft handles dynamic rates natively.
+  // Product metadata (weight, dimensions) is set in line items for Parcelcraft.
 
   const itemCount = normalizedCart.reduce((total, item) => total + item.quantity, 0)
   const subtotalEstimate = normalizedCart.reduce((total, item) => {
@@ -322,28 +315,32 @@ export const handler: Handler = async (event) => {
     if (!item.sanityProductId) return true
     const product = productMap.get(item.sanityProductId)
     const requiresShipping = resolveRequiresShipping(product)
-    return requiresShipping !== false
+    return requiresShipping !== true
   })
+  const shipStatus: 'unshipped' | 'unshippable' | 'shipped' | 'back_ordered' | 'canceled' =
+    hasShippableItems ? 'unshipped' : 'unshippable'
+
+  sessionMetadata.ship_status = shipStatus
+
   const paymentIntentMetadata: Stripe.MetadataParam = {
     cart_id: cartId,
-    ship_status: hasShippableItems ? 'unshipped' : 'unshippable',
+    ship_status: shipStatus,
+    package_code: hasShippableItems ? 'Package' : 'None',
   }
 
   try {
-    // Parcelcraft (Stripe app) requires invoice_creation.enabled to access order information
-    // and calculate dynamic shipping rates. Parcelcraft will automatically add shipping_options
-    // based on:
-    // - Product metadata (weight, dimensions) from line items
-    // - Shipping address collected via shipping_address_collection
-    // We do NOT set shipping_options - Parcelcraft handles dynamic rates natively.
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      ui_mode: 'embedded',
       client_reference_id: cartId,
       customer_email: customerEmail,
       line_items: lineItems,
+
+      // Shipping address collection is required for Parcelcraft to calculate rates.
       shipping_address_collection: {
         allowed_countries: ['US', 'CA'],
       },
+
       custom_fields: [
         {
           key: 'company',
@@ -352,6 +349,9 @@ export const handler: Handler = async (event) => {
           optional: true,
         },
       ],
+
+      // 4. PARCELCRAFT REQUIREMENTS
+      // invoice_creation is required so Parcelcraft can read the weight/dims later
       invoice_creation: {
         enabled: true,
         invoice_data: {
@@ -361,15 +361,16 @@ export const handler: Handler = async (event) => {
           },
         },
       },
+
       payment_intent_data: {
         capture_method: captureMethod,
-        metadata: paymentIntentMetadata,
+        metadata: paymentIntentMetadata, // Includes 'ship_status: unshipped'
       },
+
       metadata: sessionMetadata,
       billing_address_collection: 'required',
       phone_number_collection: {enabled: true},
-      success_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/cart`,
+      return_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
     })
 
     if (sanity) {
@@ -430,7 +431,11 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
-      body: JSON.stringify({sessionId: session.id, url: session.url}),
+      body: JSON.stringify({
+        sessionId: session.id,
+        clientSecret: session.client_secret,
+        url: session.url,
+      }),
     }
   } catch (err: any) {
     console.error('createCheckoutSession error:', err)
