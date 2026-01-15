@@ -49,10 +49,13 @@ type ProductShippingSnapshot = {
   _id: string
   title?: string
   shippingWeight?: number | null
+  installOnly?: boolean | null
   shippingConfig?: {
     requiresShipping?: boolean | null
     weight?: number | null
     dimensions?: {length?: number | null; width?: number | null; height?: number | null} | null
+    shippingClass?: string | null
+    installOnly?: boolean | null
   } | null
 }
 
@@ -69,11 +72,11 @@ const resolveProductWeight = (product?: ProductShippingSnapshot | null): number 
   return toPositiveNumber(product.shippingWeight)
 }
 
-const resolveRequiresShipping = (product?: ProductShippingSnapshot | null): boolean | null => {
-  if (!product) return null
+const resolveRequiresShipping = (product?: ProductShippingSnapshot | null): boolean => {
+  if (!product) return true
   const requiresShipping = product.shippingConfig?.requiresShipping
   if (typeof requiresShipping === 'boolean') return requiresShipping
-  return null
+  return true
 }
 
 const resolveProductDimensions = (
@@ -93,6 +96,24 @@ const resolveCartQuantity = (value?: unknown): number => {
   const num = Number(value)
   if (!Number.isFinite(num) || num <= 0) return 1
   return Math.max(1, Math.round(num))
+}
+
+const resolveShippingClass = (product?: ProductShippingSnapshot | null): string | null => {
+  if (!product) return null
+  const configClass = product.shippingConfig?.shippingClass
+  if (typeof configClass === 'string' && configClass.trim()) return configClass.trim()
+  return null
+}
+
+const resolveInstallOnly = (product?: ProductShippingSnapshot | null): boolean => {
+  if (!product) return false
+  const configInstallOnly = product.shippingConfig?.installOnly
+  if (typeof configInstallOnly === 'boolean') return configInstallOnly
+  const topLevelInstallOnly = product.installOnly
+  if (typeof topLevelInstallOnly === 'boolean') return topLevelInstallOnly
+  const shippingClass = resolveShippingClass(product)
+  if (shippingClass === 'install_only') return true
+  return false
 }
 
 export const handler: Handler = async (event) => {
@@ -222,6 +243,7 @@ export const handler: Handler = async (event) => {
           _id,
           title,
           shippingWeight,
+          installOnly,
           shippingConfig{
             requiresShipping,
             weight,
@@ -229,7 +251,9 @@ export const handler: Handler = async (event) => {
               length,
               width,
               height
-            }
+            },
+            shippingClass,
+            installOnly
           }
         }`,
         {ids: productIds},
@@ -280,42 +304,57 @@ export const handler: Handler = async (event) => {
       const productMeta = stripeProduct?.metadata || {}
       const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
       const requiresShipping = resolveRequiresShipping(product)
-      const isShippable = requiresShipping !== false
-      const hasShippingMeta =
-        Boolean(productMeta?.weight) &&
-        Boolean(productMeta?.weight_unit) &&
-        Boolean(productMeta?.origin_country)
+      const isShippable = requiresShipping === true
 
-      if (isShippable && !hasShippingMeta) {
+      if (isShippable) {
         if (price.type !== 'one_time' || !Number.isFinite(price.unit_amount ?? NaN)) {
           return {
             statusCode: 400,
             headers: {...CORS, 'Content-Type': 'application/json'},
-            body: JSON.stringify({error: 'Stripe price missing shippable metadata'}),
+            body: JSON.stringify({
+              error: `Product "${item.name}" requires shipping but has invalid Stripe price configuration`,
+            }),
           }
         }
 
         const metadata: Stripe.MetadataParam = {...productMeta, ...item.metadata}
         const productWeight = resolveProductWeight(product)
-        metadata.origin_country = metadata.origin_country || 'US'
-        metadata.customs_description = metadata.customs_description || 'Auto-parts'
-        if (productWeight) {
-          metadata.weight = metadata.weight || productWeight.toString()
-          metadata.weight_unit = metadata.weight_unit || 'pound'
-        }
-        const dims = resolveProductDimensions(product)
-        if (dims) {
-          metadata.length = metadata.length || dims.length.toString()
-          metadata.width = metadata.width || dims.width.toString()
-          metadata.height = metadata.height || dims.height.toString()
-        }
 
-        if (!metadata.weight || !metadata.weight_unit || !metadata.origin_country) {
+        if (!productWeight) {
           return {
             statusCode: 400,
             headers: {...CORS, 'Content-Type': 'application/json'},
-            body: JSON.stringify({error: 'Stripe product metadata required for shipping'}),
+            body: JSON.stringify({
+              error: `Product "${item.name}" (${item.sanityProductId || 'unknown'}) requires shipping but has no weight configured in Sanity. Please add weight to shippingConfig.`,
+            }),
           }
+        }
+
+        metadata.shipping_required = 'true'
+        metadata.weight = productWeight.toString()
+        metadata.weight_unit = 'pound'
+        metadata.origin_country = metadata.origin_country || 'US'
+        metadata.customs_description = metadata.customs_description || 'Auto-parts'
+
+        const shippingClass = resolveShippingClass(product)
+        if (shippingClass) {
+          metadata.shipping_class = shippingClass
+        }
+
+        const installOnly = resolveInstallOnly(product)
+        if (installOnly) {
+          metadata.install_only = 'true'
+        }
+
+        if (item.sanityProductId) {
+          metadata.sanityProductId = item.sanityProductId
+        }
+
+        const dims = resolveProductDimensions(product)
+        if (dims) {
+          metadata.length = dims.length.toString()
+          metadata.width = dims.width.toString()
+          metadata.height = dims.height.toString()
         }
 
         lineItems.push({
@@ -324,7 +363,7 @@ export const handler: Handler = async (event) => {
             product_data: {
               name: stripeProduct?.name || item.name || 'Item',
               images: item.images.length ? item.images : stripeProduct?.images || [],
-              metadata: Object.keys(metadata).length ? metadata : undefined,
+              metadata,
             },
             unit_amount: price.unit_amount ?? 0,
             tax_behavior: price.tax_behavior || 'exclusive',
@@ -332,8 +371,23 @@ export const handler: Handler = async (event) => {
           quantity: item.quantity,
         })
       } else {
+        const metadata: Stripe.MetadataParam = {...productMeta, ...item.metadata}
+        metadata.shipping_required = 'false'
+        if (item.sanityProductId) {
+          metadata.sanityProductId = item.sanityProductId
+        }
+
         lineItems.push({
-          price: item.stripePriceId,
+          price_data: {
+            currency: price.currency,
+            product_data: {
+              name: stripeProduct?.name || item.name || 'Item',
+              images: item.images.length ? item.images : stripeProduct?.images || [],
+              metadata,
+            },
+            unit_amount: price.unit_amount ?? 0,
+            tax_behavior: price.tax_behavior || 'exclusive',
+          },
           quantity: item.quantity,
         })
       }
@@ -357,30 +411,59 @@ export const handler: Handler = async (event) => {
     }
     const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
     const requiresShipping = resolveRequiresShipping(product)
-    const isShippable = requiresShipping !== false
+    const isShippable = requiresShipping === true
     const metadata: Stripe.MetadataParam = {...item.metadata}
-    const productWeight = resolveProductWeight(product)
+
+    if (item.sanityProductId) {
+      metadata.sanityProductId = item.sanityProductId
+    }
+
     if (isShippable) {
+      const productWeight = resolveProductWeight(product)
+
+      if (!productWeight) {
+        return {
+          statusCode: 400,
+          headers: {...CORS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            error: `Product "${item.name}" (${item.sanityProductId || 'unknown'}) requires shipping but has no weight configured in Sanity. Please add weight to shippingConfig.`,
+          }),
+        }
+      }
+
+      metadata.shipping_required = 'true'
+      metadata.weight = productWeight.toString()
+      metadata.weight_unit = 'pound'
       metadata.origin_country = 'US'
       metadata.customs_description = 'Auto-parts'
-      if (productWeight) {
-        metadata.weight = productWeight.toString()
-        metadata.weight_unit = 'pound'
+
+      const shippingClass = resolveShippingClass(product)
+      if (shippingClass) {
+        metadata.shipping_class = shippingClass
       }
+
+      const installOnly = resolveInstallOnly(product)
+      if (installOnly) {
+        metadata.install_only = 'true'
+      }
+
       const dims = resolveProductDimensions(product)
       if (dims) {
         metadata.length = dims.length.toString()
         metadata.width = dims.width.toString()
         metadata.height = dims.height.toString()
       }
+    } else {
+      metadata.shipping_required = 'false'
     }
+
     lineItems.push({
       price_data: {
         currency: 'usd',
         product_data: {
           name: product?.title || item.name || 'Item',
           images: item.images,
-          metadata: Object.keys(metadata).length ? metadata : undefined,
+          metadata,
         },
         unit_amount: unitAmount,
         tax_behavior: 'exclusive',
@@ -410,6 +493,7 @@ export const handler: Handler = async (event) => {
   const sessionMetadata: Stripe.MetadataParam = {
     cart_id: cartId,
     cart_type: cartType || 'storefront',
+    order_type: cartType || 'storefront',
     item_count: String(itemCount),
     est_total: estimatedTotal.toFixed(2),
   }
@@ -421,7 +505,7 @@ export const handler: Handler = async (event) => {
     if (!item.sanityProductId) return true
     const product = productMap.get(item.sanityProductId)
     const requiresShipping = resolveRequiresShipping(product)
-    return requiresShipping !== false
+    return requiresShipping === true
   })
   const shipStatus: 'unshipped' | 'unshippable' | 'shipped' | 'back_ordered' | 'canceled' =
     hasShippableItems ? 'unshipped' : 'unshippable'
@@ -430,6 +514,7 @@ export const handler: Handler = async (event) => {
   if (isReturn) sessionMetadata.is_return = 'false'
 
   sessionMetadata.ship_status = shipStatus
+  sessionMetadata.shipping_required = hasShippableItems ? 'true' : 'false'
 
   const shipmentIds = [
     'ca_ec65ddeb7dcc43eca9fa42870662751f',
