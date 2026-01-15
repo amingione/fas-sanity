@@ -92,7 +92,7 @@ src/pages/api/
 ├── checkout.ts          # Stripe checkout session creation
 ├── webhooks.ts          # Stripe webhook handler (creates orders)
 ├── shipping/
-│   └── rates.ts         # EasyPost shipping rates
+│   └── rates.ts         # parcelcraft shipping rates
 └── military-verify/
     ├── start.ts         # Military verification start
     └── check-status.ts  # Verification status check
