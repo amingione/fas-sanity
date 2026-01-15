@@ -1078,11 +1078,6 @@ const product = defineType({
               ? doc.shipsAlone
               : false
 
-        const freeShippingEligible =
-          typeof doc?.shippingConfig?.freeShippingEligible === 'boolean'
-            ? doc.shippingConfig.freeShippingEligible
-            : true
-
         const callForShippingQuote =
           typeof doc?.shippingConfig?.callForShippingQuote === 'boolean'
             ? doc.shippingConfig.callForShippingQuote
@@ -1092,7 +1087,6 @@ const product = defineType({
           requiresShipping,
           shippingClass,
           handlingTime,
-          freeShippingEligible,
           separateShipment,
           callForShippingQuote,
           weight: weight ?? undefined,
@@ -1294,15 +1288,7 @@ const product = defineType({
             }).integer(),
           initialValue: 1,
         },
-        {
-          name: 'freeShippingEligible',
-          type: 'boolean',
-          title: 'Free Shipping Eligible',
-          description: 'Can this product qualify for free shipping promotions?',
-          hidden: (context: ShippingVisibilityContext) =>
-            !shouldRequireShippingDetails(context as ShippingVisibilityContext),
-          initialValue: true,
-        },
+
         {
           name: 'separateShipment',
           type: 'boolean',

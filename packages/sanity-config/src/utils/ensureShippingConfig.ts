@@ -12,7 +12,6 @@ type ShippingConfig = {
   dimensions?: Dimensions
   shippingClass?: string
   handlingTime?: number
-  freeShippingEligible?: boolean
   separateShipment?: boolean
   callForShippingQuote?: boolean
 }
@@ -140,8 +139,6 @@ export async function ensureShippingConfig(
   const separateShipment =
     existing.separateShipment ??
     (typeof product.shipsAlone === 'boolean' ? product.shipsAlone : undefined)
-  const freeShippingEligible =
-    typeof existing.freeShippingEligible === 'boolean' ? existing.freeShippingEligible : undefined
   const callForShippingQuote =
     typeof existing.callForShippingQuote === 'boolean' ? existing.callForShippingQuote : undefined
 
@@ -152,7 +149,6 @@ export async function ensureShippingConfig(
   if (typeof shippingClass === 'string' && shippingClass) nextConfig.shippingClass = shippingClass
   if (typeof handlingTime === 'number') nextConfig.handlingTime = handlingTime
   if (typeof separateShipment === 'boolean') nextConfig.separateShipment = separateShipment
-  if (typeof freeShippingEligible === 'boolean') nextConfig.freeShippingEligible = freeShippingEligible
   if (typeof callForShippingQuote === 'boolean') nextConfig.callForShippingQuote = callForShippingQuote
 
   const invalidShippingConfig = product.shippingConfig === null
