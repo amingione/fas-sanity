@@ -208,6 +208,11 @@ export const handler: Handler = async (event) => {
       normalizedCart.map((item) => item.sanityProductId).filter((id): id is string => Boolean(id)),
     ),
   )
+  const stripePriceIds = Array.from(
+    new Set(
+      normalizedCart.map((item) => item.stripePriceId).filter((id): id is string => Boolean(id)),
+    ),
+  )
 
   let productMap = new Map<string, ProductShippingSnapshot>()
   if (productIds.length && sanity) {
@@ -235,53 +240,154 @@ export const handler: Handler = async (event) => {
     }
   }
 
+  let stripePriceMap = new Map<string, Stripe.Price>()
+  if (stripePriceIds.length) {
+    try {
+      const prices = await Promise.all(
+        stripePriceIds.map((priceId) => stripe.prices.retrieve(priceId, {expand: ['product']})),
+      )
+      stripePriceMap = new Map(prices.filter(Boolean).map((price) => [price.id, price]))
+    } catch (err) {
+      console.error('createCheckoutSession: failed to load Stripe prices', err)
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Invalid Stripe price ID'}),
+      }
+    }
+  }
+
   // Product metadata (weight, dimensions) is embedded in line items for Parcelcraft to read.
   // Parcelcraft calculates shipping dynamically based on this metadata and the shipping address.
-  const lineItems = normalizedCart
-    .map((item) => {
-      if (item.stripePriceId) {
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
+  for (const item of normalizedCart) {
+    if (item.stripePriceId) {
+      const price = stripePriceMap.get(item.stripePriceId)
+      if (!price) {
         return {
-          price: item.stripePriceId,
-          quantity: item.quantity,
+          statusCode: 400,
+          headers: {...CORS, 'Content-Type': 'application/json'},
+          body: JSON.stringify({error: 'Stripe price not found'}),
         }
       }
-      if (typeof item.price !== 'number') return null
-      const unitAmount = Math.round(item.price * 100)
-      if (!Number.isFinite(unitAmount) || unitAmount < 0) return null
+      const priceProduct = price.product
+      const stripeProduct =
+        priceProduct &&
+        typeof priceProduct !== 'string' &&
+        !('deleted' in priceProduct && priceProduct.deleted)
+          ? priceProduct
+          : undefined
+      const productMeta = stripeProduct?.metadata || {}
       const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
       const requiresShipping = resolveRequiresShipping(product)
       const isShippable = requiresShipping !== false
-      const metadata: Stripe.MetadataParam = {...item.metadata}
-      const productWeight = resolveProductWeight(product)
-      if (isShippable) {
-        metadata.origin_country = 'US'
-        metadata.customs_description = 'Auto-parts'
+      const hasShippingMeta =
+        Boolean(productMeta?.weight) &&
+        Boolean(productMeta?.weight_unit) &&
+        Boolean(productMeta?.origin_country)
+
+      if (isShippable && !hasShippingMeta) {
+        if (price.type !== 'one_time' || !Number.isFinite(price.unit_amount ?? NaN)) {
+          return {
+            statusCode: 400,
+            headers: {...CORS, 'Content-Type': 'application/json'},
+            body: JSON.stringify({error: 'Stripe price missing shippable metadata'}),
+          }
+        }
+
+        const metadata: Stripe.MetadataParam = {...productMeta, ...item.metadata}
+        const productWeight = resolveProductWeight(product)
+        metadata.origin_country = metadata.origin_country || 'US'
+        metadata.customs_description = metadata.customs_description || 'Auto-parts'
         if (productWeight) {
-          metadata.weight = productWeight.toString()
-          metadata.weight_unit = 'pound'
+          metadata.weight = metadata.weight || productWeight.toString()
+          metadata.weight_unit = metadata.weight_unit || 'pound'
         }
         const dims = resolveProductDimensions(product)
         if (dims) {
-          metadata.length = dims.length.toString()
-          metadata.width = dims.width.toString()
-          metadata.height = dims.height.toString()
+          metadata.length = metadata.length || dims.length.toString()
+          metadata.width = metadata.width || dims.width.toString()
+          metadata.height = metadata.height || dims.height.toString()
         }
-      }
-      return {
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: product?.title || item.name || 'Item',
-            images: item.images,
-            metadata: Object.keys(metadata).length ? metadata : undefined,
+
+        if (!metadata.weight || !metadata.weight_unit || !metadata.origin_country) {
+          return {
+            statusCode: 400,
+            headers: {...CORS, 'Content-Type': 'application/json'},
+            body: JSON.stringify({error: 'Stripe product metadata required for shipping'}),
+          }
+        }
+
+        lineItems.push({
+          price_data: {
+            currency: price.currency,
+            product_data: {
+              name: stripeProduct?.name || item.name || 'Item',
+              images: item.images.length ? item.images : stripeProduct?.images || [],
+              metadata: Object.keys(metadata).length ? metadata : undefined,
+            },
+            unit_amount: price.unit_amount ?? 0,
+            tax_behavior: price.tax_behavior || 'exclusive',
           },
-          unit_amount: unitAmount,
-          tax_behavior: 'exclusive',
-        },
-        quantity: item.quantity,
+          quantity: item.quantity,
+        })
+      } else {
+        lineItems.push({
+          price: item.stripePriceId,
+          quantity: item.quantity,
+        })
       }
+      continue
+    }
+
+    if (typeof item.price !== 'number') {
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Invalid line item price'}),
+      }
+    }
+    const unitAmount = Math.round(item.price * 100)
+    if (!Number.isFinite(unitAmount) || unitAmount < 0) {
+      return {
+        statusCode: 400,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({error: 'Invalid line item price'}),
+      }
+    }
+    const product = item.sanityProductId ? productMap.get(item.sanityProductId) : undefined
+    const requiresShipping = resolveRequiresShipping(product)
+    const isShippable = requiresShipping !== false
+    const metadata: Stripe.MetadataParam = {...item.metadata}
+    const productWeight = resolveProductWeight(product)
+    if (isShippable) {
+      metadata.origin_country = 'US'
+      metadata.customs_description = 'Auto-parts'
+      if (productWeight) {
+        metadata.weight = productWeight.toString()
+        metadata.weight_unit = 'pound'
+      }
+      const dims = resolveProductDimensions(product)
+      if (dims) {
+        metadata.length = dims.length.toString()
+        metadata.width = dims.width.toString()
+        metadata.height = dims.height.toString()
+      }
+    }
+    lineItems.push({
+      price_data: {
+        currency: 'usd',
+        product_data: {
+          name: product?.title || item.name || 'Item',
+          images: item.images,
+          metadata: Object.keys(metadata).length ? metadata : undefined,
+        },
+        unit_amount: unitAmount,
+        tax_behavior: 'exclusive',
+      },
+      quantity: item.quantity,
     })
-    .filter(Boolean) as Stripe.Checkout.SessionCreateParams.LineItem[]
+  }
 
   if (!lineItems.length) {
     return {
@@ -315,17 +421,28 @@ export const handler: Handler = async (event) => {
     if (!item.sanityProductId) return true
     const product = productMap.get(item.sanityProductId)
     const requiresShipping = resolveRequiresShipping(product)
-    return requiresShipping !== true
+    return requiresShipping !== false
   })
   const shipStatus: 'unshipped' | 'unshippable' | 'shipped' | 'back_ordered' | 'canceled' =
     hasShippableItems ? 'unshipped' : 'unshippable'
 
+  const isReturn: boolean = Boolean(payload.isReturn || payload.is_return)
+  if (isReturn) sessionMetadata.is_return = 'false'
+
   sessionMetadata.ship_status = shipStatus
+
+  const shipmentIds = [
+    'ca_ec65ddeb7dcc43eca9fa42870662751f',
+    'ca_ed4230c54cc44385a518e8274f0cdc1e',
+    'ca_d6f01c95df834796822516afe2e05771',
+  ]
 
   const paymentIntentMetadata: Stripe.MetadataParam = {
     cart_id: cartId,
     ship_status: shipStatus,
     package_code: hasShippableItems ? 'Package' : 'None',
+    ship_date: hasShippableItems ? new Date().toISOString().split('T')[0] : 'N/A',
+    shipment_ids: shipmentIds.join(','),
   }
 
   try {
@@ -364,7 +481,7 @@ export const handler: Handler = async (event) => {
 
       payment_intent_data: {
         capture_method: captureMethod,
-        metadata: paymentIntentMetadata, // Includes 'ship_status: unshipped'
+        metadata: paymentIntentMetadata, // Includes 'ship_status: unshipped' or 'unshippable' or 'canceled' or 'shipped' or 'back_ordered'
       },
 
       metadata: sessionMetadata,
