@@ -326,6 +326,38 @@ const configuredPlugins = [
       },
     ],
   }),
+  assist({
+    // Configure the AI assistant with OpenAI
+    __customMaxTokens: 4000,
+    ...(readEnv('SANITY_STUDIO_OPENAI_API_KEY')
+      ? {
+          aiAssist: {
+            provider: 'openai',
+            configuration: {
+              apiKey: readEnv('SANITY_STUDIO_OPENAI_API_KEY'),
+              model: 'gpt-4o',
+              temperature: 0.7,
+            },
+          },
+          instructions: `
+You are helping content editors at FAS Motorsports create and manage content for an automotive parts e-commerce platform.
+
+Key context:
+- Products have complex attributes including fitment, specifications, and pricing tiers
+- Orders flow through multiple fulfillment states with Stripe and EasyPost integration
+- Customer data includes vehicles, purchase history, and wholesale accounts
+- Maintain strict data integrity between Stripe, Sanity, and EasyPost systems
+
+When creating or editing content:
+- Use proper automotive terminology and industry standards
+- Ensure product fitment data is accurate and complete
+- Maintain consistency with existing content patterns
+- Follow established naming conventions for orders, customers, and products
+- Preserve referential integrity in all document relationships
+          `.trim(),
+        }
+      : {}),
+  }),
   ...(autoMapperEnabled ? [autoMapperPlugin()] : []),
   // preview/presentation tool removed
   ...(visionEnabled ? [visionTool()] : []),
