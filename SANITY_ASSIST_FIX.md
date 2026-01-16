@@ -1,9 +1,11 @@
 # Sanity Assist Content Agent AI - Configuration Fix
 
 ## Problem
+
 Error: "No JSON object found in response" when trying to create agents in Sanity Studio
 
 ## Root Causes
+
 1. Missing AI provider configuration in `assist()` plugin
 2. No API credentials passed to the Sanity Assist plugin
 3. Schema types may lack comprehensive descriptions
@@ -15,8 +17,9 @@ Error: "No JSON object found in response" when trying to create agents in Sanity
 You already have `OPENAI_API_KEY` in `.env.local`. Now expose it to Sanity Studio:
 
 Add to `.env.local`:
+
 ```bash
-SANITY_STUDIO_OPENAI_API_KEY=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
+SANITY_STUDIO_OPENAI_API_KEY=<key_your_openai_api_key_here>
 ```
 
 ### Step 2: Update Sanity Config
@@ -24,6 +27,7 @@ SANITY_STUDIO_OPENAI_API_KEY=sk-proj-fQvlYmnBuZyyt2NhBMgyOBYVgAOwTPqrp5Wlcq4dyNQ
 Edit `packages/sanity-config/sanity.config.ts` at line 329.
 
 **Current Configuration (lines 329-332):**
+
 ```typescript
 assist({
   // Configure the AI assistant with instructions specific to your schema
@@ -32,6 +36,7 @@ assist({
 ```
 
 **Replace with:**
+
 ```typescript
 assist({
   // Configure the AI assistant with OpenAI
@@ -82,6 +87,7 @@ assist({
 ```
 
 You'll need to add to `.env.local`:
+
 ```bash
 SANITY_STUDIO_ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ```
@@ -91,11 +97,13 @@ SANITY_STUDIO_ANTHROPIC_API_KEY=your_anthropic_api_key_here
 Ensure Sanity CORS allows the AI provider:
 
 Run this script (already in your codebase):
+
 ```bash
 pnpm exec tsx scripts/ensure-sanity-cors.ts
 ```
 
 Or manually add to CORS in Sanity project settings:
+
 - `https://api.openai.com` (for OpenAI)
 - `https://api.anthropic.com` (for Claude)
 
@@ -123,21 +131,24 @@ export default {
   name: 'product',
   title: 'Product',
   type: 'document',
-  description: 'Automotive parts and accessories sold through FAS Motorsports. Products have fitment compatibility, pricing tiers, and inventory tracking.',
+  description:
+    'Automotive parts and accessories sold through FAS Motorsports. Products have fitment compatibility, pricing tiers, and inventory tracking.',
   fields: [
     {
       name: 'title',
       title: 'Product Title',
       type: 'string',
-      description: 'The display name for this product. Should include brand, part type, and key specifications. Example: "Mishimoto Performance Radiator for 2015-2020 Mustang GT"',
-      validation: Rule => Rule.required(),
+      description:
+        'The display name for this product. Should include brand, part type, and key specifications. Example: "Mishimoto Performance Radiator for 2015-2020 Mustang GT"',
+      validation: (Rule) => Rule.required(),
     },
     {
       name: 'description',
       title: 'Description',
       type: 'text',
       rows: 5,
-      description: 'Detailed product description including features, benefits, specifications, and fitment information. Optimized for SEO and customer understanding.',
+      description:
+        'Detailed product description including features, benefits, specifications, and fitment information. Optimized for SEO and customer understanding.',
     },
     // ... more fields with descriptions
   ],
@@ -149,22 +160,25 @@ export default {
 ### Issue: Still getting "No JSON object found"
 
 **Check:**
+
 1. API key is correct and active
 2. CORS settings include AI provider domain
 3. Browser console for detailed error messages
 4. Network tab to see actual API requests/responses
 
 **Debug:**
+
 ```bash
 # Check if env var is loading
 pnpm exec sanity exec --with-user-token scripts/debug-env.js
 ```
 
 Create `scripts/debug-env.js`:
+
 ```javascript
-const readEnv = (key) => process.env[key];
-console.log('SANITY_STUDIO_OPENAI_API_KEY exists:', !!readEnv('SANITY_STUDIO_OPENAI_API_KEY'));
-console.log('Value starts with:', readEnv('SANITY_STUDIO_OPENAI_API_KEY')?.substring(0, 10));
+const readEnv = (key) => process.env[key]
+console.log('SANITY_STUDIO_OPENAI_API_KEY exists:', !!readEnv('SANITY_STUDIO_OPENAI_API_KEY'))
+console.log('Value starts with:', readEnv('SANITY_STUDIO_OPENAI_API_KEY')?.substring(0, 10))
 ```
 
 ### Issue: API key not loading
@@ -172,11 +186,13 @@ console.log('Value starts with:', readEnv('SANITY_STUDIO_OPENAI_API_KEY')?.subst
 Sanity Studio only loads env vars prefixed with `SANITY_STUDIO_` or `PUBLIC_`.
 
 Make sure your key is:
+
 ```bash
 SANITY_STUDIO_OPENAI_API_KEY=sk-...
 ```
 
 NOT:
+
 ```bash
 OPENAI_API_KEY=sk-...  # Won't work in Studio!
 ```
@@ -184,6 +200,7 @@ OPENAI_API_KEY=sk-...  # Won't work in Studio!
 ### Issue: Rate limit errors
 
 If using OpenAI free tier, you may hit rate limits. Consider:
+
 - Upgrading to paid tier
 - Using a different provider (Anthropic)
 - Implementing request throttling
