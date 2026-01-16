@@ -1,4 +1,3 @@
-import {Request} from 'node-fetch'
 import {describe, expect, it, vi} from 'vitest'
 
 vi.mock('@easypost/api', () => ({
@@ -42,14 +41,25 @@ describe('create-shipping-label idempotency', () => {
       service: 'Ground',
     })
 
-    const request = new Request('https://example.com', {
+    const request = {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({orderId: 'order-123', source: 'sanity-manual'}),
-    })
+      headers: new Map([['Content-Type', 'application/json']]),
+      json: async () => ({orderId: 'order-123', source: 'sanity-manual'}),
+    } as unknown as Request
 
     const {POST} = await import('../src/pages/api/create-shipping-label')
-    const response = await POST({request})
+    const context = {
+      request,
+      site: undefined,
+      generator: '',
+      url: new URL('https://example.com'),
+      params: {},
+      props: {},
+      locals: {},
+      getStaticPaths: async () => [],
+      redirect: () => new Response(),
+    } as any
+    const response = await POST(context)
     const payload = await response.json()
 
     expect(response.status).toBe(200)
