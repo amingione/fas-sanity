@@ -1,8 +1,0 @@
-{
-  "task": "vendor-portal-polish",
-  "prompt": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/docs/ai-gated/prompt/vendor-portal-polish.md",
-  "originalBranch": "main",
-  "originalHeadSha": "80887f7fc11d59ec73fe0c892eaca290b606b921",
-  "autoBranch": "autoTest/vendor-portal-polish",
-  "timestamp": "2026-01-06T19:58:54.028Z"
-}
