@@ -21,6 +21,7 @@ import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {dashboardTool} from '@sanity/dashboard'
 import {media} from 'sanity-plugin-media'
+import {assist} from '@sanity/assist'
 // Removed presentation/preview tool
 import {schemaTypes} from './src/schemaTypes'
 import {deskStructure} from './src/desk/deskStructure'
