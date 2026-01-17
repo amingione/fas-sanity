@@ -14,6 +14,9 @@
 
 This rule overrides all other defaults unless explicitly superseded.
 
+**FOLDERS TO ALWAYS REFERENCE FOR RULES & GUIDES + FILES TO REVIEW AND KEEP UPDATED:**
+.docs/
+
 # FAS Motorsports Codex Master Prompt
 
 **Version:** 1.2.1  

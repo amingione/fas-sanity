@@ -11,7 +11,7 @@
     }
   ],
   "shippingRate": {
-    "rateId": "easypost_rate_abc123",
+    "rateId": "parcelcraft_stripe_checkout_abc123",
     "carrier": "UPS",
     "service": "Ground",
     "serviceCode": "UPS_GROUND",

@@ -70,3 +70,5 @@ node_modules
 !.ai-stack-trace/disk-persisted/inputs/
 !.ai-stack-trace/disk-persisted/inputs/prompt.md
 !/docs/ai-gated/
+
+.early.coverage

@@ -1,5 +1,5 @@
+import 'dotenv/config'
 import {getCliClient} from 'sanity/cli'
-import {Transaction} from '@sanity/client'
 
 // USAGE:
 // pnpm exec sanity exec migrations/fix-shipping-class-case.ts --with-user-token
@@ -50,7 +50,7 @@ const run = async () => {
     return
   }
 
-  let transaction: Transaction | undefined
+  let transaction: ReturnType<typeof client.transaction> | undefined
   let updatedCount = 0
   let checkedCount = 0
 
