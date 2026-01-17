@@ -94,6 +94,7 @@ export type StripeShippingDetails = {
   serviceName?: string
   deliveryDays?: number
   estimatedDeliveryDate?: string
+  shippingRateId?: string
   metadata: Record<string, string>
 }
 
@@ -159,15 +160,25 @@ export async function resolveStripeShippingDetails(
   if (!carrier && sessionCarrier) carrier = sessionCarrier
 
   let shippingRate: Stripe.ShippingRate | null = null
-  const shippingRateId = (() => {
-    const costRate = (session as any)?.shipping_cost?.shipping_rate
-    if (typeof costRate === 'string' && costRate) return costRate
-    const topLevelRate = (session as any)?.shipping_rate
-    if (typeof topLevelRate === 'string' && topLevelRate) return topLevelRate
-    return undefined
-  })()
+  let shippingRateId: string | undefined
+  const costRate = (session as any)?.shipping_cost?.shipping_rate
+  if (costRate && typeof costRate === 'object') {
+    shippingRate = costRate as Stripe.ShippingRate
+    shippingRateId = shippingRate.id
+    shippingRateMetadata = normalizeMetadata((shippingRate as any)?.metadata)
+  } else if (typeof costRate === 'string' && costRate) {
+    shippingRateId = costRate
+  }
+  const topLevelRate = (session as any)?.shipping_rate
+  if (!shippingRateId && topLevelRate && typeof topLevelRate === 'object') {
+    shippingRate = topLevelRate as Stripe.ShippingRate
+    shippingRateId = shippingRate.id
+    shippingRateMetadata = normalizeMetadata((shippingRate as any)?.metadata)
+  } else if (!shippingRateId && typeof topLevelRate === 'string' && topLevelRate) {
+    shippingRateId = topLevelRate
+  }
 
-  if (stripe && shippingRateId) {
+  if (stripe && shippingRateId && !shippingRate) {
     try {
       shippingRate = await stripe.shippingRates.retrieve(shippingRateId)
       shippingRateMetadata = normalizeMetadata((shippingRate as any)?.metadata)
@@ -263,6 +274,18 @@ export async function resolveStripeShippingDetails(
     }
   }
 
+  const passthroughKeys = [
+    'shipping_quote_id',
+    'shipping_quote_key',
+    'shipping_quote_request_id',
+    'selected_rate_id',
+  ]
+  for (const key of passthroughKeys) {
+    if (meta[key] && !metadataForDoc[key]) {
+      metadataForDoc[key] = meta[key]
+    }
+  }
+
   return {
     amount,
     currency,
@@ -272,6 +295,7 @@ export async function resolveStripeShippingDetails(
     serviceName,
     deliveryDays,
     estimatedDeliveryDate,
+    shippingRateId,
     metadata: metadataForDoc,
   }
 }
