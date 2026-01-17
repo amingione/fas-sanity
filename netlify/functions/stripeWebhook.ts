@@ -24,7 +24,11 @@ import {randomUUID} from 'crypto'
 import {logFunctionExecution} from '../../utils/functionLogger'
 import {computeCustomerName, splitFullName} from '../../shared/customerName'
 import {generatePackingSlipAsset} from '../lib/packingSlip'
-import {mapStripeLineItem, sanitizeOrderCartItem, type CartMetadataEntry} from '../lib/stripeCartItem'
+import {
+  mapStripeLineItem,
+  sanitizeOrderCartItem,
+  type CartMetadataEntry,
+} from '../lib/stripeCartItem'
 import {syncVendorPortalEmail} from '../lib/vendorPortalEmail'
 import {buildStripeCustomerAliasPatch} from '../lib/stripeCustomerAliases'
 import {getMissingResendFields} from '../lib/resendValidation'
@@ -1817,9 +1821,7 @@ function ensureRequiredPaymentDetails(
     if (!normalizedBrand) missing.push('cardBrand')
     if (!normalizedLast4) missing.push('cardLast4')
     if (!receipt) missing.push('receiptUrl')
-    console.warn(
-      `stripeWebhook: missing payment details [${missing.join(', ')}] (${contextLabel})`,
-    )
+    console.warn(`stripeWebhook: missing payment details [${missing.join(', ')}] (${contextLabel})`)
   }
 }
 
@@ -2459,9 +2461,7 @@ async function upsertCheckoutSessionDocument(
 
 const stripeKey = resolveStripeSecretKey()
 if (!stripeKey) {
-  console.error(
-    `stripeWebhook: missing Stripe secret (set ${STRIPE_SECRET_ENV_KEY})`,
-  )
+  console.error(`stripeWebhook: missing Stripe secret (set ${STRIPE_SECRET_ENV_KEY})`)
 }
 const stripe = stripeKey ? new Stripe(stripeKey, {apiVersion: STRIPE_API_VERSION}) : (null as any)
 const RESEND_API_KEY = resolveResendApiKey() || ''
@@ -2549,7 +2549,7 @@ const markCartRecovered = async (
 const webhookSanityClient = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
   dataset: process.env.SANITY_STUDIO_DATASET!,
-  token: (process.env.SANITY_API_TOKEN) as string,
+  token: process.env.SANITY_API_TOKEN as string,
   apiVersion: '2024-01-01',
   useCdn: false,
 })
@@ -2688,8 +2688,13 @@ const syncCheckoutCompanyToStripeCustomer = async (
       : checkoutSession.customer?.id
   if (!stripeCustomerId) return
   const existingMetadata =
-    typeof checkoutSession.customer === 'object' && checkoutSession.customer
-      ? (checkoutSession.customer.metadata as Record<string, string> | null | undefined)
+    typeof checkoutSession.customer === 'object' &&
+    checkoutSession.customer &&
+    !('deleted' in checkoutSession.customer && checkoutSession.customer.deleted)
+      ? ((checkoutSession.customer as Stripe.Customer).metadata as
+          | Record<string, string>
+          | null
+          | undefined)
       : undefined
   if (existingMetadata?.company === company) return
   try {
@@ -2726,7 +2731,12 @@ const CUSTOMER_IDENTITY_PROJECTION =
   '{_id, name, email, stripeCustomerId, stripeCustomerIds, stripeLastSyncedAt, customerType, roles, firstName, lastName}'
 
 const normalizeDocId = (value?: string | null) =>
-  value ? value.toString().trim().replace(/^drafts\./, '') : ''
+  value
+    ? value
+        .toString()
+        .trim()
+        .replace(/^drafts\./, '')
+    : ''
 
 const fetchCustomerByStripeId = async (stripeCustomerId: string) =>
   webhookSanityClient.fetch<IdentityCustomer | null>(
@@ -2758,9 +2768,7 @@ const fetchVendorByEmail = async (email: string) =>
 
 // INVARIANT: This function must never throw due to Stripe customer identity ambiguity.
 // CI GUARD: Do not introduce `throw` statements for identity conflicts.
-async function strictFindOrCreateCustomer(
-  input: Stripe.Checkout.Session | Stripe.Customer,
-) {
+async function strictFindOrCreateCustomer(input: Stripe.Checkout.Session | Stripe.Customer) {
   if ((input as Stripe.Customer)?.object === 'customer') {
     return strictFindOrCreateCustomerFromStripeCustomer(input as Stripe.Customer)
   }
@@ -2779,12 +2787,15 @@ async function strictFindOrCreateCustomer(
   })
   const stripeCustomerId = contact.stripeCustomerId || null
   const emailCustomer = normalizedEmail ? await fetchCustomerByEmail(normalizedEmail) : null
-  const stripeCustomerRecord = stripeCustomerId ? await fetchCustomerByStripeId(stripeCustomerId) : null
+  const stripeCustomerRecord = stripeCustomerId
+    ? await fetchCustomerByStripeId(stripeCustomerId)
+    : null
   const observedStripeIds = new Set<string>()
   // NOTE: Stripe customer identity ambiguity is recoverable.
   // Do NOT throw. Continue with canonical Stripe customer selection.
   if (stripeCustomerId) observedStripeIds.add(stripeCustomerId)
-  if (stripeCustomerRecord?.stripeCustomerId) observedStripeIds.add(stripeCustomerRecord.stripeCustomerId)
+  if (stripeCustomerRecord?.stripeCustomerId)
+    observedStripeIds.add(stripeCustomerRecord.stripeCustomerId)
   if (emailCustomer?.stripeCustomerId) observedStripeIds.add(emailCustomer.stripeCustomerId)
   ;(stripeCustomerRecord?.stripeCustomerIds || []).forEach((id) => observedStripeIds.add(id))
   ;(emailCustomer?.stripeCustomerIds || []).forEach((id) => observedStripeIds.add(id))
@@ -2869,10 +2880,7 @@ async function strictFindOrCreateCustomer(
   ) => {
     if (!Object.keys(patch).length) return customer
     try {
-      await webhookSanityClient
-        .patch(customer._id)
-        .set(patch)
-        .commit({autoGenerateArrayKeys: true})
+      await webhookSanityClient.patch(customer._id).set(patch).commit({autoGenerateArrayKeys: true})
       return {...customer, ...patch}
     } catch (err) {
       console.warn('stripeWebhook: failed to refresh customer details', err)
@@ -3063,10 +3071,9 @@ async function strictGetPaymentDetails(paymentIntentId?: string | null) {
     } catch (err) {
       if (isDisallowedExpandError(err)) {
         expandRejected = true
-        console.warn(
-          'stripeWebhook: Stripe rejected payment intent expand, retrying without it',
-          {paymentIntentId},
-        )
+        console.warn('stripeWebhook: Stripe rejected payment intent expand, retrying without it', {
+          paymentIntentId,
+        })
         paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
       } else {
         throw err
@@ -3396,12 +3403,13 @@ async function strictCreateInvoice(
     toCurrencyNumber(options.amountDiscount) ?? toCurrencyNumber(order.amountDiscount) ?? 0
   const invoiceTotal =
     toCurrencyNumber(options.totalAmount) ?? toCurrencyNumber(order.totalAmount) ?? 0
+  const paymentStatusNormalized = (order?.paymentStatus || '').toString().toLowerCase().trim()
 
   const invoice = await webhookSanityClient.create({
     _type: 'invoice',
     title: `Invoice for ${order.orderNumber}`,
     invoiceNumber: (order.orderNumber || '').toString().replace('FAS-', 'INV-'),
-    status: normalizedPaymentStatus === 'paid' ? 'paid' : 'pending',
+    status: paymentStatusNormalized === 'paid' ? 'paid' : 'pending',
     invoiceDate: order.createdAt,
     dueDate: order.createdAt,
     paymentTerms: 'Paid in full',
@@ -3708,7 +3716,10 @@ async function createOrderFromCheckout(
       amountTotal,
       currency,
       customerName:
-        cartSnapshot?.customerName || cartSnapshot?.customerEmail || session.customer_email || undefined,
+        cartSnapshot?.customerName ||
+        cartSnapshot?.customerEmail ||
+        session.customer_email ||
+        undefined,
       customerId: customer?._id || undefined,
       checkoutUrl: cartSnapshot?.stripeCheckoutUrl || (session as any)?.url || undefined,
       attribution: extractAttributionFromMetadata(
@@ -4025,7 +4036,9 @@ async function createOrderFromCheckout(
     baseOrderPayload.fulfillment = {status: desiredFulfillmentStatus}
   }
 
-  const orderPayload = normalizeStripeOrderToSanityOrder(baseOrderPayload) as typeof baseOrderPayload
+  const orderPayload = normalizeStripeOrderToSanityOrder(
+    baseOrderPayload,
+  ) as typeof baseOrderPayload
   const validationIssues = validateOrderData(orderPayload)
   if (validationIssues.length) {
     console.warn('stripeWebhook: order validation issues', {
@@ -4273,8 +4286,8 @@ function isStripeProduct(
 ): product is Stripe.Product {
   return Boolean(
     product &&
-      typeof product === 'object' &&
-      !('deleted' in product && (product as Stripe.DeletedProduct).deleted),
+    typeof product === 'object' &&
+    !('deleted' in product && (product as Stripe.DeletedProduct).deleted),
   )
 }
 
@@ -5485,7 +5498,7 @@ async function syncCustomerPaymentMethod(paymentMethod: Stripe.PaymentMethod): P
       livemode: paymentMethod.livemode ?? undefined,
       isDefault: Boolean(
         (paymentMethod.metadata as any)?.is_default === 'true' ||
-          (paymentMethod.metadata as any)?.default_payment_method === 'true',
+        (paymentMethod.metadata as any)?.default_payment_method === 'true',
       ),
     })
 
@@ -5770,10 +5783,7 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
   const applyCustomerPatch = async (customer: IdentityCustomer, patch: Record<string, any>) => {
     if (!Object.keys(patch).length) return customer
     try {
-      await webhookSanityClient
-        .patch(customer._id)
-        .set(patch)
-        .commit({autoGenerateArrayKeys: true})
+      await webhookSanityClient.patch(customer._id).set(patch).commit({autoGenerateArrayKeys: true})
       return {...customer, ...patch}
     } catch (err) {
       console.warn('stripeWebhook: failed to update customer doc', err)
@@ -5864,7 +5874,11 @@ async function strictFindOrCreateCustomerFromStripeCustomer(
 
   // Multiple Stripe customer IDs per Sanity customer are REQUIRED and EXPECTED.
   // Throwing on Stripe customer ID mismatch is forbidden.
-  const stripeAliasPatch = buildStripeCustomerAliasPatch(customer, stripeCustomer.id, normalizedEmail)
+  const stripeAliasPatch = buildStripeCustomerAliasPatch(
+    customer,
+    stripeCustomer.id,
+    normalizedEmail,
+  )
   const setOps: Record<string, any> = {
     ...stripeAliasPatch.patch,
     stripeLastSyncedAt: new Date().toISOString(),
@@ -6604,7 +6618,8 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       paymentFailureCode?: string
       paymentFailureMessage?: string
       paymentStatus?: string
-    } | null>(`*[_type == "order" && _id in $orderIds][0]{
+    } | null>(
+      `*[_type == "order" && _id in $orderIds][0]{
       _id,
       orderNumber,
       customerRef,
@@ -6615,9 +6630,11 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
       status,
       attribution,
       invoiceRef->{ _id }
-    }`, {
-      orderIds: ids,
-    })
+    }`,
+      {
+        orderIds: ids,
+      },
+    )
   }
 
   let order = await sanity.fetch<{
@@ -6666,7 +6683,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     ? ['paid', 'fulfilled', 'shipped', 'delivered'].includes(existingPaymentStatus)
     : Boolean(
         existingOrderStatus &&
-          (existingOrderStatus === 'paid' || isFulfillmentCompleteStatus(existingOrderStatus)),
+        (existingOrderStatus === 'paid' || isFulfillmentCompleteStatus(existingOrderStatus)),
       )
   const normalizedPaymentStatus =
     typeof paymentStatus === 'string' ? paymentStatus.toLowerCase() : undefined
@@ -6694,10 +6711,7 @@ async function updateOrderPaymentStatus(opts: OrderPaymentStatusInput): Promise<
     if (isTerminalOrderStatus(existingOrderStatus)) {
       return normalizedOrderStatus === existingOrderStatus
     }
-    if (
-      normalizedOrderStatus === 'paid' &&
-      isFulfillmentCompleteStatus(existingOrderStatus)
-    ) {
+    if (normalizedOrderStatus === 'paid' && isFulfillmentCompleteStatus(existingOrderStatus)) {
       return false
     }
     return true
@@ -6997,8 +7011,7 @@ export async function handleCheckoutAsyncPaymentFailed(
   if (failureCode) additionalOrderFields.paymentFailureCode = failureCode
   if (failureMessage) additionalOrderFields.paymentFailureMessage = failureMessage
 
-  const additionalInvoiceFields: Record<string, any> = {
-  }
+  const additionalInvoiceFields: Record<string, any> = {}
   if (failureCode) additionalInvoiceFields.paymentFailureCode = failureCode
   if (failureMessage) additionalInvoiceFields.paymentFailureMessage = failureMessage
 
@@ -7254,8 +7267,7 @@ async function sendOrderConfirmationEmail(opts: {
     ? `Order Confirmation #${displayOrderNumber} – F.A.S. Motorsports`
     : 'Order Confirmation – F.A.S. Motorsports'
 
-  const from =
-    process.env.FROM_EMAIL || process.env.RESEND_FROM || 'orders@fasmotorsports.com'
+  const from = process.env.FROM_EMAIL || process.env.RESEND_FROM || 'orders@fasmotorsports.com'
   const missing = getMissingResendFields({to, from, subject})
   if (missing.length) {
     console.warn('stripeWebhook: missing Resend fields', {missing, to})
@@ -7341,11 +7353,7 @@ export const handler: Handler = async (event) => {
   try {
     stripeEvent = skipSignature
       ? JSON.parse(rawBody.toString('utf8'))
-      : stripe.webhooks.constructEvent(
-          rawBody,
-          sig,
-          process.env.STRIPE_WEBHOOK_SECRET as string,
-        )
+      : stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET as string)
   } catch (err) {
     console.error('❌ Stripe signature verification failed', err)
     return {
@@ -7415,21 +7423,17 @@ export const handler: Handler = async (event) => {
 
     if (!stripe) {
       console.warn('⚠️ stripeWebhook: exiting early', {reason: 'stripe not configured'})
-      return await finalize(
-        {statusCode: 500, body: 'Stripe not configured'},
-        'error',
-        {message: 'Stripe not configured'},
-      )
+      return await finalize({statusCode: 500, body: 'Stripe not configured'}, 'error', {
+        message: 'Stripe not configured',
+      })
     }
 
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
     if (!endpointSecret) {
       console.warn('⚠️ stripeWebhook: exiting early', {reason: 'missing webhook secret'})
-      return await finalize(
-        {statusCode: 500, body: 'Missing STRIPE_WEBHOOK_SECRET'},
-        'error',
-        {message: 'Missing STRIPE_WEBHOOK_SECRET'},
-      )
+      return await finalize({statusCode: 500, body: 'Missing STRIPE_WEBHOOK_SECRET'}, 'error', {
+        message: 'Missing STRIPE_WEBHOOK_SECRET',
+      })
     }
 
     if (stripeEvent.type === 'checkout.session.expired') {
@@ -7522,1434 +7526,1457 @@ export const handler: Handler = async (event) => {
       console.warn('stripeWebhook: failed to record processing event', err)
     }
 
-  try {
-    type ExtendedStripeEventType = Stripe.Event.Type | string
-    const eventType = stripeEvent.type as ExtendedStripeEventType
+    try {
+      type ExtendedStripeEventType = Stripe.Event.Type | string
+      const eventType = stripeEvent.type as ExtendedStripeEventType
 
-    switch (eventType) {
-      case 'quote.created':
-      case 'quote.finalized':
-      case 'quote.updated':
-      case 'quote.accepted':
-      case 'quote.canceled':
-      case 'quote.will_expire': {
-        try {
-          const quoteObject = stripeEvent.data.object as Stripe.Quote
-          const quote = (await fetchQuoteResource(quoteObject)) || quoteObject
-          await syncStripeQuote(quote, {
-            eventType: stripeEvent.type,
-            eventCreated: stripeEvent.created,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync quote event', err)
-        }
-        break
-      }
-
-      case 'payment_link.created':
-      case 'payment_link.updated': {
-        try {
-          const paymentLinkObject = stripeEvent.data.object as Stripe.PaymentLink
-          const paymentLink =
-            (await fetchPaymentLinkResource(paymentLinkObject)) || paymentLinkObject
-          await syncStripePaymentLink(paymentLink, {
-            eventType: stripeEvent.type,
-            eventCreated: stripeEvent.created,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync payment link event', err)
-        }
-        break
-      }
-
-      case 'payment_method.attached':
-      case 'payment_method.updated':
-      case 'payment_method.automatically_updated': {
-        try {
-          const paymentMethod = stripeEvent.data.object as Stripe.PaymentMethod
-          await syncCustomerPaymentMethod(paymentMethod)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync payment method', err)
-        }
-        break
-      }
-
-      case 'payment_method.detached': {
-        try {
-          const paymentMethod = stripeEvent.data.object as Stripe.PaymentMethod
-          await removeCustomerPaymentMethod(paymentMethod.id)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to remove payment method', err)
-        }
-        break
-      }
-
-      case 'product.created':
-      case 'product.updated': {
-        try {
-          const product = stripeEvent.data.object as Stripe.Product
-          await syncStripeProduct(product)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync product event', err)
-        }
-        break
-      }
-
-      case 'product.deleted': {
-        try {
-          const product = stripeEvent.data.object as {id: string}
-          const docId = await findProductDocumentId({stripeProductId: product.id})
-          if (docId) {
-            await sanity
-              .patch(docId)
-              .set({
-                stripeActive: false,
-                stripeUpdatedAt: new Date().toISOString(),
-              })
-              .commit({autoGenerateArrayKeys: true})
+      switch (eventType) {
+        case 'quote.created':
+        case 'quote.finalized':
+        case 'quote.updated':
+        case 'quote.accepted':
+        case 'quote.canceled':
+        case 'quote.will_expire': {
+          try {
+            const quoteObject = stripeEvent.data.object as Stripe.Quote
+            const quote = (await fetchQuoteResource(quoteObject)) || quoteObject
+            await syncStripeQuote(quote, {
+              eventType: stripeEvent.type,
+              eventCreated: stripeEvent.created,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync quote event', err)
           }
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle product.deleted', err)
-        }
-        break
-      }
-
-      case 'coupon.created':
-      case 'coupon.updated': {
-        try {
-          const couponEvent = stripeEvent.data.object as Stripe.Coupon
-          const couponId = couponEvent?.id
-          if (!couponId) {
-            console.warn('stripeWebhook: coupon event missing id')
-            break
-          }
-          await syncStripeCouponById({
-            stripe,
-            sanity,
-            couponId,
-            syncedAt: new Date().toISOString(),
-            logger: console,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync coupon event', err)
-        }
-        break
-      }
-
-      case 'coupon.deleted': {
-        try {
-          const couponEvent = stripeEvent.data.object as {id?: string | null}
-          const couponId = couponEvent?.id || ''
-          if (!couponId) {
-            console.warn('stripeWebhook: coupon.deleted missing id')
-            break
-          }
-          await markStripeCouponDeleted(sanity, couponId, new Date().toISOString(), console)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to mark coupon deleted', err)
-        }
-        break
-      }
-
-      case 'price.created':
-      case 'price.updated': {
-        try {
-          const price = stripeEvent.data.object as Stripe.Price
-          await syncStripePrice(price)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync price event', err)
-        }
-        break
-      }
-
-      case 'price.deleted': {
-        try {
-          const deleted = stripeEvent.data.object as {id: string; product?: string | {id?: string}}
-          const productId =
-            typeof deleted.product === 'string' ? deleted.product : deleted.product?.id
-          await removeStripePrice(deleted.id, productId)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle price.deleted', err)
-        }
-        break
-      }
-
-      case 'customer.created':
-      case 'customer.updated': {
-        try {
-          const customer = stripeEvent.data.object as Stripe.Customer
-          if (!customer.deleted) {
-            await strictFindOrCreateCustomer(customer)
-          }
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync customer', err)
-        }
-        break
-      }
-
-      case 'customer.deleted': {
-        try {
-          const deleted = stripeEvent.data.object as {id: string}
-          const docId = await sanity.fetch<string | null>(
-            `*[_type == "customer" && (stripeCustomerId == $id || $id in stripeCustomerIds)][0]._id`,
-            {id: deleted.id},
-          )
-          if (docId) {
-            await sanity
-              .patch(docId)
-              .set({stripeLastSyncedAt: new Date().toISOString()})
-              .commit({autoGenerateArrayKeys: true})
-          }
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle customer.deleted', err)
-        }
-        break
-      }
-
-      case 'customer.discount.created':
-      case 'customer.discount.updated': {
-        try {
-          const discount = stripeEvent.data.object as Stripe.Discount
-          const {coupon, promotion} = await hydrateDiscountResources(stripe, discount)
-          await syncCustomerDiscountRecord({
-            sanity,
-            discount,
-            stripe,
-            coupon,
-            promotion,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync customer discount', err)
-        }
-        break
-      }
-
-      case 'customer.discount.deleted': {
-        try {
-          const discount = stripeEvent.data.object as Stripe.Discount
-          const stripeCustomerId =
-            typeof discount.customer === 'string'
-              ? discount.customer
-              : (discount.customer as Stripe.Customer | null)?.id
-          await removeCustomerDiscountRecord({
-            sanity,
-            stripeDiscountId: discount.id,
-            stripeCustomerId,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to remove customer discount', err)
-        }
-        break
-      }
-
-      case 'shipping.label.created':
-      case 'shipping.label.updated':
-      case 'shipping.tracking.updated': {
-        try {
-          const payload = stripeEvent.data.object as Record<string, any>
-          await handleShippingStatusSync(payload, {
-            eventType: stripeEvent.type,
-            stripeEventId: stripeEvent.id,
-            eventCreated: stripeEvent.created,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle shipping status event', err)
-        }
-        break
-      }
-
-      case 'invoice.created':
-      case 'invoice.deleted':
-      case 'invoice.finalization_failed':
-      case 'invoice.finalized':
-      case 'invoice.marked_uncollectible':
-      case 'invoice.overdue':
-      case 'invoice.overpaid':
-      case 'invoice.paid':
-      case 'invoice.payment_action_required':
-      case 'invoice.payment_failed':
-      case 'invoice.payment_succeeded':
-      case 'invoice.sent':
-      case 'invoice.upcoming':
-      case 'invoice.voided':
-      case 'invoice.updated':
-      case 'invoice.will_be_due': {
-        try {
-          const invoice = stripeEvent.data.object as Stripe.Invoice
-          await syncStripeInvoice(invoice)
-
-          const invoiceStatus = (invoice.status || '').toString().toLowerCase()
-          const invoiceIdentifier = (() => {
-            const raw = (invoice.number ?? invoice.id ?? '') as string | null
-            return raw ? raw.toString().trim() : ''
-          })()
-          const shouldRecordFailure =
-            stripeEvent.type === 'invoice.payment_failed' || invoiceStatus === 'uncollectible'
-
-          if (shouldRecordFailure) {
-            const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
-            if (paymentIntent) {
-              await markPaymentIntentFailure(paymentIntent)
-            }
-          } else if (stripeEvent.type === 'invoice.payment_action_required') {
-            const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
-            const paymentIntentId =
-              paymentIntent?.id ||
-              (typeof (invoice as any)?.payment_intent === 'string'
-                ? ((invoice as any).payment_intent as string)
-                : undefined)
-            if (paymentIntentId) {
-              await updateOrderPaymentStatus({
-                paymentIntentId,
-                paymentStatus: 'requires_action',
-                invoiceStripeStatus: stripeEvent.type,
-                metadata: (invoice.metadata || {}) as Record<string, unknown>,
-                preserveExistingFailureDiagnostics: true,
-                event: {
-                  eventType: stripeEvent.type,
-                  label: 'Invoice requires payment action',
-                  message: invoiceIdentifier
-                    ? `Invoice ${invoiceIdentifier} requires customer action`
-                    : 'Invoice requires customer action',
-                  stripeEventId: stripeEvent.id,
-                  occurredAt: stripeEvent.created,
-                  metadata: (invoice.metadata || {}) as Record<string, unknown>,
-                },
-              })
-            }
-          } else if (
-            stripeEvent.type === 'invoice.payment_succeeded' ||
-            stripeEvent.type === 'invoice.paid'
-          ) {
-            const paymentIntent = await fetchPaymentIntentResource((invoice as any).payment_intent)
-            const paymentIntentId =
-              paymentIntent?.id ||
-              (typeof (invoice as any)?.payment_intent === 'string'
-                ? ((invoice as any).payment_intent as string)
-                : undefined)
-            if (paymentIntentId) {
-              const latestCharge = paymentIntent?.latest_charge as
-                | string
-                | Stripe.Charge
-                | null
-                | undefined
-              const chargeId =
-                typeof latestCharge === 'string'
-                  ? latestCharge
-                  : typeof latestCharge?.id === 'string'
-                    ? latestCharge.id
-                    : undefined
-              const summary = buildStripeSummary({
-                paymentIntent: paymentIntent || undefined,
-                eventType: stripeEvent.type,
-                eventCreated: stripeEvent.created,
-              })
-              const additionalOrderFields = {
-                stripeSummary: serializeStripeSummaryData(summary),
-                paymentFailureCode: null,
-                paymentFailureMessage: null,
-              }
-              const additionalInvoiceFields = {
-                paymentFailureCode: null,
-                paymentFailureMessage: null,
-              }
-              await updateOrderPaymentStatus({
-                paymentIntentId,
-                chargeId,
-                paymentStatus: 'paid',
-                orderStatus: 'paid',
-                invoiceStatus: 'paid',
-                invoiceStripeStatus: stripeEvent.type,
-                metadata: (invoice.metadata || {}) as Record<string, unknown>,
-                additionalOrderFields,
-                additionalInvoiceFields,
-                event: {
-                  eventType: stripeEvent.type,
-                  label: 'Invoice payment succeeded',
-                  message: invoiceIdentifier
-                    ? `Invoice ${invoiceIdentifier} payment succeeded`
-                    : 'Invoice payment succeeded',
-                  stripeEventId: stripeEvent.id,
-                  occurredAt: stripeEvent.created,
-                  metadata: (invoice.metadata || {}) as Record<string, unknown>,
-                },
-              })
-            }
-          }
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync invoice', err)
-        }
-        break
-      }
-
-      case 'invoiceitem.created':
-      case 'invoiceitem.deleted':
-      case 'invoiceitem.updated': {
-        try {
-          const invoiceItem = stripeEvent.data.object as Stripe.InvoiceItem
-          await syncStripeInvoiceById(
-            invoiceItem.invoice as string | Stripe.Invoice | null | undefined,
-          )
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync invoice from invoiceitem event', err)
-        }
-        break
-      }
-
-      case 'payment_intent.updated': {
-        try {
-          const pi = stripeEvent.data.object as Stripe.PaymentIntent
-          const metadata = normalizeShippingMetadata((pi.metadata || {}) as Record<string, unknown>)
-
-          const shipStatus = metadata.ship_status
-          const shipDate = metadata.ship_date
-          const trackingNumber = metadata.tracking_number
-          const trackingUrl = metadata.tracking_URL || metadata.tracking_url
-          const serviceName = metadata.service_name
-
-          const hasParcelcraftSignal = Boolean(
-            shipStatus || shipDate || trackingNumber || trackingUrl || serviceName,
-          )
-          if (!hasParcelcraftSignal) break
-
-          const orderId = await findOrderDocumentIdForEvent({
-            metadata,
-            paymentIntentId: pi.id,
-            sessionId:
-              typeof metadata.checkout_session_id === 'string'
-                ? metadata.checkout_session_id
-                : typeof metadata.checkout_session === 'string'
-                  ? metadata.checkout_session
-                  : null,
-          })
-
-          if (!orderId) break
-
-          const setOps: Record<string, any> = {}
-          const shippedAt = shipDate ? toIsoTimestamp(shipDate) : undefined
-          if (shippedAt) setOps.shippedAt = shippedAt
-          if (trackingNumber) setOps.trackingNumber = trackingNumber
-          if (trackingUrl) setOps.trackingUrl = trackingUrl
-          if (serviceName) setOps.service = serviceName
-          if (metadata.carrier) setOps.carrier = metadata.carrier
-
-          if (Object.keys(setOps).length) {
-            await sanity.patch(orderId).set(setOps).commit({autoGenerateArrayKeys: true})
-          }
-        } catch (err) {
-          console.warn('stripeWebhook: failed to sync Parcelcraft metadata from payment_intent.updated', err)
-        }
-        break
-      }
-
-      case 'payment_intent.payment_failed': {
-        try {
-          const pi = stripeEvent.data.object as Stripe.PaymentIntent
-          await markPaymentIntentFailure(pi)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to mark payment failure', err)
-        }
-        break
-      }
-
-      case 'payment_intent.canceled': {
-        try {
-          const pi = stripeEvent.data.object as Stripe.PaymentIntent
-          const diagnostics = await resolvePaymentFailureDiagnostics(pi)
-          await updateOrderPaymentStatus({
-            paymentIntentId: pi.id,
-            stripeSessionId:
-              typeof pi.metadata?.checkout_session_id === 'string'
-                ? pi.metadata?.checkout_session_id
-                : undefined,
-            paymentStatus: pi.status || 'canceled',
-            orderStatus: 'cancelled',
-            invoiceStatus: 'cancelled',
-            invoiceStripeStatus: 'payment_intent.canceled',
-            metadata: (pi.metadata || {}) as Record<string, unknown>,
-            additionalOrderFields: {
-              paymentFailureCode: diagnostics.code,
-              paymentFailureMessage: diagnostics.message,
-            },
-            additionalInvoiceFields: {
-              paymentFailureCode: diagnostics.code,
-              paymentFailureMessage: diagnostics.message,
-            },
-            preserveExistingFailureDiagnostics: true,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to mark payment cancellation', err)
-        }
-        break
-      }
-
-      case 'charge.captured':
-      case 'charge.succeeded': {
-        try {
-          const charge = stripeEvent.data.object as Stripe.Charge
-          const amountCaptured =
-            stripeEvent.type === 'charge.captured'
-              ? toMajorUnits(charge.amount_captured)
-              : toMajorUnits(charge.amount || undefined)
-          const amountLabel = formatMajorAmount(amountCaptured, charge.currency)
-          await handleChargeEvent({
-            charge,
-            event: stripeEvent!,
-            paymentStatus: 'paid',
-            orderStatus: 'paid',
-            invoiceStatus: 'paid',
-            label: stripeEvent.type === 'charge.captured' ? 'Charge captured' : 'Charge succeeded',
-            messageParts: [
-              charge.id ? `Charge ${charge.id}` : null,
-              amountCaptured !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
-              charge.status ? `Stripe status ${charge.status}` : null,
-            ],
-            amountOverride: amountCaptured,
-            includeChargeContext: false,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle charge success event', err)
-        }
-        break
-      }
-
-      case 'charge.pending': {
-        try {
-          const charge = stripeEvent.data.object as Stripe.Charge
-          const amountPending = toMajorUnits(charge.amount || undefined)
-          const amountLabel = formatMajorAmount(amountPending, charge.currency)
-          await handleChargeEvent({
-            charge,
-            event: stripeEvent!,
-            paymentStatus: 'pending',
-            invoiceStatus: 'pending',
-            label: 'Charge pending',
-            messageParts: [
-              charge.id ? `Charge ${charge.id}` : null,
-              amountPending !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
-              charge.status ? `Stripe status ${charge.status}` : null,
-            ],
-            amountOverride: amountPending,
-            includeChargeContext: false,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle charge.pending', err)
-        }
-        break
-      }
-
-      case 'charge.failed': {
-        try {
-          const charge = stripeEvent.data.object as Stripe.Charge
-          const amountFailed = toMajorUnits(charge.amount || undefined)
-          const amountLabel = formatMajorAmount(amountFailed, charge.currency)
-          await handleChargeEvent({
-            charge,
-            event: stripeEvent!,
-            paymentStatus: 'failed',
-            orderStatus: 'cancelled',
-            invoiceStatus: 'cancelled',
-            label: 'Charge failed',
-            messageParts: [
-              charge.id ? `Charge ${charge.id}` : null,
-              amountFailed !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
-              charge.failure_code ? `Failure ${charge.failure_code}` : null,
-              charge.failure_message ? charge.failure_message : null,
-            ],
-            amountOverride: amountFailed,
-            additionalOrderFields: {
-              paymentFailureCode: charge.failure_code || charge.outcome?.reason || undefined,
-              paymentFailureMessage:
-                charge.failure_message || charge.outcome?.seller_message || undefined,
-            },
-            additionalInvoiceFields: {
-              paymentFailureCode: charge.failure_code || charge.outcome?.reason || undefined,
-              paymentFailureMessage:
-                charge.failure_message || charge.outcome?.seller_message || undefined,
-            },
-            preserveExistingFailureDiagnostics: false,
-            includeChargeContext: false,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle charge.failed', err)
-        }
-        break
-      }
-
-      case 'charge.expired': {
-        try {
-          const charge = stripeEvent.data.object as Stripe.Charge
-          const amount = toMajorUnits(charge.amount || undefined)
-          const amountLabel = formatMajorAmount(amount, charge.currency)
-          await handleChargeEvent({
-            charge,
-            event: stripeEvent!,
-            paymentStatus: 'expired',
-            orderStatus: 'expired',
-            invoiceStatus: 'cancelled',
-            label: 'Charge authorization expired',
-            messageParts: [
-              charge.id ? `Charge ${charge.id}` : null,
-              amount !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
-            ],
-            amountOverride: amount,
-            includeChargeContext: false,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle charge.expired', err)
-        }
-        break
-      }
-
-      case 'charge.dispute.created': {
-        try {
-          const dispute = stripeEvent.data.object as Stripe.Dispute
-          await handleDisputeEvent({
-            dispute,
-            charge: null,
-            event: stripeEvent!,
-            paymentStatus: 'disputed',
-            label: 'Dispute opened',
-            messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle dispute.created', err)
-        }
-        break
-      }
-
-      case 'charge.dispute.updated': {
-        try {
-          const dispute = stripeEvent.data.object as Stripe.Dispute
-          await handleDisputeEvent({
-            dispute,
-            charge: null,
-            event: stripeEvent!,
-            paymentStatus: 'disputed',
-            label: 'Dispute updated',
-            messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle dispute.updated', err)
-        }
-        break
-      }
-
-      case 'charge.dispute.closed': {
-        try {
-          const dispute = stripeEvent.data.object as Stripe.Dispute
-          const status = (dispute.status || '').toLowerCase()
-          let paymentStatus: string = 'dispute_closed'
-          let orderStatus: OrderPaymentStatusInput['orderStatus'] | undefined = undefined
-          let invoiceStatus: OrderPaymentStatusInput['invoiceStatus'] | undefined = undefined
-          if (status === 'won') {
-            paymentStatus = 'dispute_won'
-            orderStatus = 'paid'
-            invoiceStatus = 'paid'
-          } else if (status === 'lost') {
-            paymentStatus = 'dispute_lost'
-            orderStatus = 'cancelled'
-            invoiceStatus = 'cancelled'
-          } else if (status === 'warning_closed') {
-            paymentStatus = 'dispute_warning_closed'
-          }
-          await handleDisputeEvent({
-            dispute,
-            charge: null,
-            event: stripeEvent!,
-            paymentStatus,
-            orderStatus,
-            invoiceStatus,
-            label: 'Dispute closed',
-            messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
-            eventStatus: paymentStatus,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle dispute.closed', err)
-        }
-        break
-      }
-
-      case 'charge.dispute.funds_withdrawn': {
-        try {
-          const dispute = stripeEvent.data.object as Stripe.Dispute
-          await handleDisputeEvent({
-            dispute,
-            charge: null,
-            event: stripeEvent!,
-            paymentStatus: 'dispute_funds_withdrawn',
-            label: 'Dispute funds withdrawn',
-            messageParts: [
-              dispute.id ? `Dispute ${dispute.id}` : null,
-              'Stripe withdrew dispute funds',
-            ],
-            eventStatus: 'dispute_funds_withdrawn',
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle dispute.funds_withdrawn', err)
-        }
-        break
-      }
-
-      case 'charge.dispute.funds_reinstated': {
-        try {
-          const dispute = stripeEvent.data.object as Stripe.Dispute
-          await handleDisputeEvent({
-            dispute,
-            charge: null,
-            event: stripeEvent!,
-            paymentStatus: 'dispute_funds_reinstated',
-            orderStatus: 'paid',
-            invoiceStatus: 'paid',
-            label: 'Dispute funds reinstated',
-            messageParts: [
-              dispute.id ? `Dispute ${dispute.id}` : null,
-              'Stripe reinstated dispute funds',
-            ],
-            eventStatus: 'dispute_funds_reinstated',
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle dispute.funds_reinstated', err)
-        }
-        break
-      }
-
-      case 'charge.refunded':
-      case 'charge.refund.created':
-      case 'charge.refund.updated': {
-        await handleRefundWebhookEvent(stripeEvent!)
-        break
-      }
-
-      case 'refund.created':
-      case 'refund.updated':
-      case 'refund.failed': {
-        await handleRefundWebhookEvent(stripeEvent!)
-        break
-      }
-
-      case 'checkout.session.async_payment_succeeded': {
-        try {
-          const session = stripeEvent.data.object as Stripe.Checkout.Session
-          await handleCheckoutAsyncPaymentSucceeded(session, {
-            eventType: stripeEvent.type,
-            invoiceStripeStatus: stripeEvent.type,
-            stripeEventId: stripeEvent.id,
-            eventCreated: stripeEvent.created,
-          })
-        } catch (err) {
-          console.warn(
-            'stripeWebhook: failed to handle checkout.session.async_payment_succeeded',
-            err,
-          )
-        }
-        break
-      }
-
-      case 'checkout.session.async_payment_failed': {
-        try {
-          const session = stripeEvent.data.object as Stripe.Checkout.Session
-          await handleCheckoutAsyncPaymentFailed(session, {
-            eventType: stripeEvent.type,
-            invoiceStripeStatus: stripeEvent.type,
-            stripeEventId: stripeEvent.id,
-            eventCreated: stripeEvent.created,
-          })
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle checkout.session.async_payment_failed', err)
-        }
-        break
-      }
-
-      case 'checkout.session.created': {
-        const session = stripeEvent.data.object as Stripe.Checkout.Session
-        try {
-          await handleCheckoutCreated(session)
-        } catch (err) {
-          console.warn('stripeWebhook: failed to handle checkout.session.created', err)
-        }
-        break
-      }
-
-      case 'checkout.session.completed': {
-        const session = stripeEvent.data.object as Stripe.Checkout.Session
-        if (!isValidCheckoutSessionId(session.id)) {
-          console.warn('stripeWebhook: invalid checkout session id for completion', {
-            sessionId: session.id,
-          })
-          webhookStatus = 'ignored'
-          webhookSummary = 'checkout.session.completed ignored (invalid session id)'
-          break
-        }
-        try {
-          const result = await createOrderFromCheckout(session)
-          if (result?.status) webhookStatus = result.status
-          if (result?.summary) webhookSummary = result.summary
-          const cartId = resolveCartIdFromSession(session)
-          if (result?.status === 'processed' && cartId) {
-            try {
-              await markCartRecovered(cartId, session.id)
-            } catch (err) {
-              console.warn('stripeWebhook: failed to mark cart recovered', err)
-            }
-          }
-        } catch (err) {
-          webhookStatus = 'error'
-          webhookSummary = 'checkout.session.completed processing error'
-          console.error('stripeWebhook: strict checkout order creation failed', err)
-        }
-        break
-      }
-
-      case 'payment_intent.succeeded': {
-        const pi = stripeEvent.data.object as Stripe.PaymentIntent
-        const meta = (pi.metadata || {}) as Record<string, string>
-        const userIdMeta =
-          (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
-            .toString()
-            .trim() || undefined
-        const metadataCustomerId =
-          firstString(CUSTOMER_METADATA_ID_KEYS.map((key) => meta[key])) || undefined
-        const metadataInvoiceId = normalizeSanityId(meta['sanity_invoice_id'])
-        const checkoutSessionMeta =
-          (
-            meta['checkout_session_id'] ||
-            meta['checkoutSessionId'] ||
-            meta['stripe_checkout_session_id'] ||
-            meta['session_id'] ||
-            ''
-          )
-            .toString()
-            .trim() || undefined
-        const normalizedSessionId =
-          checkoutSessionMeta && isValidCheckoutSessionId(checkoutSessionMeta)
-            ? checkoutSessionMeta
-            : undefined
-
-        if (!normalizedSessionId) {
-          console.warn('stripeWebhook: payment_intent.succeeded ignored (no checkout session)', {
-            paymentIntentId: pi.id,
-            checkoutSessionId: checkoutSessionMeta || null,
-          })
-          webhookStatus = 'ignored'
-          webhookSummary = 'payment_intent.succeeded ignored (no checkout session)'
           break
         }
 
-        // Update existing order records tied to the checkout session.
-        try {
-          const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
-          const email =
-            (pi as any)?.charges?.data?.[0]?.billing_details?.email ||
-            (pi as any)?.receipt_email ||
-            undefined
-          const currency = ((pi as any)?.currency || '').toString().toLowerCase() || undefined
-          const ch = (pi as any)?.charges?.data?.[0]
-          const chargeId = ch?.id || undefined
-          const receiptUrl = ch?.receipt_url || undefined
-          const cardBrand = ch?.payment_method_details?.card?.brand || undefined
-          const cardLast4 = ch?.payment_method_details?.card?.last4 || undefined
-          const chargeBillingName = ch?.billing_details?.name || undefined
-          const shippingAddr: any = (pi as any)?.shipping?.address || undefined
-          const stripeCustomerIdValue =
-            resolveStripeCustomerId(
-              pi.customer as string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined,
-            ) || metadataCustomerId
-          const billingAddress =
-            normalizeStripeContactAddress(
-              ch?.billing_details?.address as Stripe.Address | undefined,
-              {
-                name: chargeBillingName || undefined,
-                email,
-                phone: ch?.billing_details?.phone || undefined,
+        case 'payment_link.created':
+        case 'payment_link.updated': {
+          try {
+            const paymentLinkObject = stripeEvent.data.object as Stripe.PaymentLink
+            const paymentLink =
+              (await fetchPaymentLinkResource(paymentLinkObject)) || paymentLinkObject
+            await syncStripePaymentLink(paymentLink, {
+              eventType: stripeEvent.type,
+              eventCreated: stripeEvent.created,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync payment link event', err)
+          }
+          break
+        }
+
+        case 'payment_method.attached':
+        case 'payment_method.updated':
+        case 'payment_method.automatically_updated': {
+          try {
+            const paymentMethod = stripeEvent.data.object as Stripe.PaymentMethod
+            await syncCustomerPaymentMethod(paymentMethod)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync payment method', err)
+          }
+          break
+        }
+
+        case 'payment_method.detached': {
+          try {
+            const paymentMethod = stripeEvent.data.object as Stripe.PaymentMethod
+            await removeCustomerPaymentMethod(paymentMethod.id)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to remove payment method', err)
+          }
+          break
+        }
+
+        case 'product.created':
+        case 'product.updated': {
+          try {
+            const product = stripeEvent.data.object as Stripe.Product
+            await syncStripeProduct(product)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync product event', err)
+          }
+          break
+        }
+
+        case 'product.deleted': {
+          try {
+            const product = stripeEvent.data.object as {id: string}
+            const docId = await findProductDocumentId({stripeProductId: product.id})
+            if (docId) {
+              await sanity
+                .patch(docId)
+                .set({
+                  stripeActive: false,
+                  stripeUpdatedAt: new Date().toISOString(),
+                })
+                .commit({autoGenerateArrayKeys: true})
+            }
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle product.deleted', err)
+          }
+          break
+        }
+
+        case 'coupon.created':
+        case 'coupon.updated': {
+          try {
+            const couponEvent = stripeEvent.data.object as Stripe.Coupon
+            const couponId = couponEvent?.id
+            if (!couponId) {
+              console.warn('stripeWebhook: coupon event missing id')
+              break
+            }
+            await syncStripeCouponById({
+              stripe,
+              sanity,
+              couponId,
+              syncedAt: new Date().toISOString(),
+              logger: console,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync coupon event', err)
+          }
+          break
+        }
+
+        case 'coupon.deleted': {
+          try {
+            const couponEvent = stripeEvent.data.object as {id?: string | null}
+            const couponId = couponEvent?.id || ''
+            if (!couponId) {
+              console.warn('stripeWebhook: coupon.deleted missing id')
+              break
+            }
+            await markStripeCouponDeleted(sanity, couponId, new Date().toISOString(), console)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to mark coupon deleted', err)
+          }
+          break
+        }
+
+        case 'price.created':
+        case 'price.updated': {
+          try {
+            const price = stripeEvent.data.object as Stripe.Price
+            await syncStripePrice(price)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync price event', err)
+          }
+          break
+        }
+
+        case 'price.deleted': {
+          try {
+            const deleted = stripeEvent.data.object as {
+              id: string
+              product?: string | {id?: string}
+            }
+            const productId =
+              typeof deleted.product === 'string' ? deleted.product : deleted.product?.id
+            await removeStripePrice(deleted.id, productId)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle price.deleted', err)
+          }
+          break
+        }
+
+        case 'customer.created':
+        case 'customer.updated': {
+          try {
+            const customer = stripeEvent.data.object as Stripe.Customer
+            if (!customer.deleted) {
+              await strictFindOrCreateCustomer(customer)
+            }
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync customer', err)
+          }
+          break
+        }
+
+        case 'customer.deleted': {
+          try {
+            const deleted = stripeEvent.data.object as {id: string}
+            const docId = await sanity.fetch<string | null>(
+              `*[_type == "customer" && (stripeCustomerId == $id || $id in stripeCustomerIds)][0]._id`,
+              {id: deleted.id},
+            )
+            if (docId) {
+              await sanity
+                .patch(docId)
+                .set({stripeLastSyncedAt: new Date().toISOString()})
+                .commit({autoGenerateArrayKeys: true})
+            }
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle customer.deleted', err)
+          }
+          break
+        }
+
+        case 'customer.discount.created':
+        case 'customer.discount.updated': {
+          try {
+            const discount = stripeEvent.data.object as Stripe.Discount
+            const {coupon, promotion} = await hydrateDiscountResources(stripe, discount)
+            await syncCustomerDiscountRecord({
+              sanity,
+              discount,
+              stripe,
+              coupon,
+              promotion,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync customer discount', err)
+          }
+          break
+        }
+
+        case 'customer.discount.deleted': {
+          try {
+            const discount = stripeEvent.data.object as Stripe.Discount
+            const stripeCustomerId =
+              typeof discount.customer === 'string'
+                ? discount.customer
+                : (discount.customer as Stripe.Customer | null)?.id
+            await removeCustomerDiscountRecord({
+              sanity,
+              stripeDiscountId: discount.id,
+              stripeCustomerId,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to remove customer discount', err)
+          }
+          break
+        }
+
+        case 'shipping.label.created':
+        case 'shipping.label.updated':
+        case 'shipping.tracking.updated': {
+          try {
+            const payload = stripeEvent.data.object as Record<string, any>
+            await handleShippingStatusSync(payload, {
+              eventType: stripeEvent.type,
+              stripeEventId: stripeEvent.id,
+              eventCreated: stripeEvent.created,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle shipping status event', err)
+          }
+          break
+        }
+
+        case 'invoice.created':
+        case 'invoice.deleted':
+        case 'invoice.finalization_failed':
+        case 'invoice.finalized':
+        case 'invoice.marked_uncollectible':
+        case 'invoice.overdue':
+        case 'invoice.overpaid':
+        case 'invoice.paid':
+        case 'invoice.payment_action_required':
+        case 'invoice.payment_failed':
+        case 'invoice.payment_succeeded':
+        case 'invoice.sent':
+        case 'invoice.upcoming':
+        case 'invoice.voided':
+        case 'invoice.updated':
+        case 'invoice.will_be_due': {
+          try {
+            const invoice = stripeEvent.data.object as Stripe.Invoice
+            await syncStripeInvoice(invoice)
+
+            const invoiceStatus = (invoice.status || '').toString().toLowerCase()
+            const invoiceIdentifier = (() => {
+              const raw = (invoice.number ?? invoice.id ?? '') as string | null
+              return raw ? raw.toString().trim() : ''
+            })()
+            const shouldRecordFailure =
+              stripeEvent.type === 'invoice.payment_failed' || invoiceStatus === 'uncollectible'
+
+            if (shouldRecordFailure) {
+              const paymentIntent = await fetchPaymentIntentResource(
+                (invoice as any).payment_intent,
+              )
+              if (paymentIntent) {
+                await markPaymentIntentFailure(paymentIntent)
+              }
+            } else if (stripeEvent.type === 'invoice.payment_action_required') {
+              const paymentIntent = await fetchPaymentIntentResource(
+                (invoice as any).payment_intent,
+              )
+              const paymentIntentId =
+                paymentIntent?.id ||
+                (typeof (invoice as any)?.payment_intent === 'string'
+                  ? ((invoice as any).payment_intent as string)
+                  : undefined)
+              if (paymentIntentId) {
+                await updateOrderPaymentStatus({
+                  paymentIntentId,
+                  paymentStatus: 'requires_action',
+                  invoiceStripeStatus: stripeEvent.type,
+                  metadata: (invoice.metadata || {}) as Record<string, unknown>,
+                  preserveExistingFailureDiagnostics: true,
+                  event: {
+                    eventType: stripeEvent.type,
+                    label: 'Invoice requires payment action',
+                    message: invoiceIdentifier
+                      ? `Invoice ${invoiceIdentifier} requires customer action`
+                      : 'Invoice requires customer action',
+                    stripeEventId: stripeEvent.id,
+                    occurredAt: stripeEvent.created,
+                    metadata: (invoice.metadata || {}) as Record<string, unknown>,
+                  },
+                })
+              }
+            } else if (
+              stripeEvent.type === 'invoice.payment_succeeded' ||
+              stripeEvent.type === 'invoice.paid'
+            ) {
+              const paymentIntent = await fetchPaymentIntentResource(
+                (invoice as any).payment_intent,
+              )
+              const paymentIntentId =
+                paymentIntent?.id ||
+                (typeof (invoice as any)?.payment_intent === 'string'
+                  ? ((invoice as any).payment_intent as string)
+                  : undefined)
+              if (paymentIntentId) {
+                const latestCharge = paymentIntent?.latest_charge as
+                  | string
+                  | Stripe.Charge
+                  | null
+                  | undefined
+                const chargeId =
+                  typeof latestCharge === 'string'
+                    ? latestCharge
+                    : typeof latestCharge?.id === 'string'
+                      ? latestCharge.id
+                      : undefined
+                const summary = buildStripeSummary({
+                  paymentIntent: paymentIntent || undefined,
+                  eventType: stripeEvent.type,
+                  eventCreated: stripeEvent.created,
+                })
+                const additionalOrderFields = {
+                  stripeSummary: serializeStripeSummaryData(summary),
+                  paymentFailureCode: null,
+                  paymentFailureMessage: null,
+                }
+                const additionalInvoiceFields = {
+                  paymentFailureCode: null,
+                  paymentFailureMessage: null,
+                }
+                await updateOrderPaymentStatus({
+                  paymentIntentId,
+                  chargeId,
+                  paymentStatus: 'paid',
+                  orderStatus: 'paid',
+                  invoiceStatus: 'paid',
+                  invoiceStripeStatus: stripeEvent.type,
+                  metadata: (invoice.metadata || {}) as Record<string, unknown>,
+                  additionalOrderFields,
+                  additionalInvoiceFields,
+                  event: {
+                    eventType: stripeEvent.type,
+                    label: 'Invoice payment succeeded',
+                    message: invoiceIdentifier
+                      ? `Invoice ${invoiceIdentifier} payment succeeded`
+                      : 'Invoice payment succeeded',
+                    stripeEventId: stripeEvent.id,
+                    occurredAt: stripeEvent.created,
+                    metadata: (invoice.metadata || {}) as Record<string, unknown>,
+                  },
+                })
+              }
+            }
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync invoice', err)
+          }
+          break
+        }
+
+        case 'invoiceitem.created':
+        case 'invoiceitem.deleted':
+        case 'invoiceitem.updated': {
+          try {
+            const invoiceItem = stripeEvent.data.object as Stripe.InvoiceItem
+            await syncStripeInvoiceById(
+              invoiceItem.invoice as string | Stripe.Invoice | null | undefined,
+            )
+          } catch (err) {
+            console.warn('stripeWebhook: failed to sync invoice from invoiceitem event', err)
+          }
+          break
+        }
+
+        case 'payment_intent.updated': {
+          try {
+            const pi = stripeEvent.data.object as Stripe.PaymentIntent
+            const metadata = normalizeShippingMetadata(
+              (pi.metadata || {}) as Record<string, unknown>,
+            )
+
+            const shipStatus = metadata.ship_status
+            const shipDate = metadata.ship_date
+            const trackingNumber = metadata.tracking_number
+            const trackingUrl = metadata.tracking_URL || metadata.tracking_url
+            const serviceName = metadata.service_name
+
+            const hasParcelcraftSignal = Boolean(
+              shipStatus || shipDate || trackingNumber || trackingUrl || serviceName,
+            )
+            if (!hasParcelcraftSignal) break
+
+            const orderId = await findOrderDocumentIdForEvent({
+              metadata,
+              paymentIntentId: pi.id,
+              sessionId:
+                typeof metadata.checkout_session_id === 'string'
+                  ? metadata.checkout_session_id
+                  : typeof metadata.checkout_session === 'string'
+                    ? metadata.checkout_session
+                    : null,
+            })
+
+            if (!orderId) break
+
+            const setOps: Record<string, any> = {}
+            const shippedAt = shipDate ? toIsoTimestamp(shipDate) : undefined
+            if (shippedAt) setOps.shippedAt = shippedAt
+            if (trackingNumber) setOps.trackingNumber = trackingNumber
+            if (trackingUrl) setOps.trackingUrl = trackingUrl
+            if (serviceName) setOps.service = serviceName
+            if (metadata.carrier) setOps.carrier = metadata.carrier
+
+            if (Object.keys(setOps).length) {
+              await sanity.patch(orderId).set(setOps).commit({autoGenerateArrayKeys: true})
+            }
+          } catch (err) {
+            console.warn(
+              'stripeWebhook: failed to sync Parcelcraft metadata from payment_intent.updated',
+              err,
+            )
+          }
+          break
+        }
+
+        case 'payment_intent.payment_failed': {
+          try {
+            const pi = stripeEvent.data.object as Stripe.PaymentIntent
+            await markPaymentIntentFailure(pi)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to mark payment failure', err)
+          }
+          break
+        }
+
+        case 'payment_intent.canceled': {
+          try {
+            const pi = stripeEvent.data.object as Stripe.PaymentIntent
+            const diagnostics = await resolvePaymentFailureDiagnostics(pi)
+            await updateOrderPaymentStatus({
+              paymentIntentId: pi.id,
+              stripeSessionId:
+                typeof pi.metadata?.checkout_session_id === 'string'
+                  ? pi.metadata?.checkout_session_id
+                  : undefined,
+              paymentStatus: pi.status || 'canceled',
+              orderStatus: 'cancelled',
+              invoiceStatus: 'cancelled',
+              invoiceStripeStatus: 'payment_intent.canceled',
+              metadata: (pi.metadata || {}) as Record<string, unknown>,
+              additionalOrderFields: {
+                paymentFailureCode: diagnostics.code,
+                paymentFailureMessage: diagnostics.message,
               },
-            ) || undefined
-          const rawPaymentStatus = (pi.status || '').toLowerCase()
-          let paymentStatus = rawPaymentStatus || 'pending'
-          if (['succeeded', 'paid'].includes(rawPaymentStatus)) paymentStatus = 'paid'
-          else if (['canceled', 'cancelled'].includes(rawPaymentStatus)) paymentStatus = 'cancelled'
-          let derivedOrderStatus: 'paid' | 'cancelled' =
-            paymentStatus === 'cancelled' ? 'cancelled' : 'paid'
-
-          const metadataOrderNumberRaw = extractMetadataOrderNumber(meta) || ''
-          const metadataInvoiceNumber =
-            firstString(
-              INVOICE_METADATA_NUMBER_KEYS.map((key) => meta[key as keyof typeof meta]),
-            ) || ''
-          let invoiceDocId = metadataInvoiceId || null
-          if (!invoiceDocId) {
-            const piAny = pi as any
-            const stripeInvoiceId =
-              typeof piAny.invoice === 'string'
-                ? piAny.invoice
-                : (piAny.invoice as Stripe.Invoice | undefined)?.id
-            invoiceDocId =
-              (await findInvoiceDocumentIdForEvent({
-                metadata: meta,
-                stripeInvoiceId,
-                invoiceNumber: metadataInvoiceNumber || undefined,
-                paymentIntentId: pi.id,
-              })) || null
+              additionalInvoiceFields: {
+                paymentFailureCode: diagnostics.code,
+                paymentFailureMessage: diagnostics.message,
+              },
+              preserveExistingFailureDiagnostics: true,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to mark payment cancellation', err)
           }
-          const shippingDetails = await resolveStripeShippingDetails({
-            metadata: meta,
-            paymentIntent: pi,
-            fallbackAmount: undefined,
-            stripe,
-          })
-          console.log('🧾 stripeWebhook: entering order persistence phase', {
-            stripeEventId: stripeEvent?.id,
-            sessionId: normalizedSessionId,
-            paymentIntentId: pi.id,
-          })
-          const orderNumber = await resolveOrderNumber({
-            metadataOrderNumber: metadataOrderNumberRaw,
-            invoiceNumber: metadataInvoiceNumber,
-            fallbackId: pi.id,
-          })
-          const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
-          const customerName =
+          break
+        }
+
+        case 'charge.captured':
+        case 'charge.succeeded': {
+          try {
+            const charge = stripeEvent.data.object as Stripe.Charge
+            const amountCaptured =
+              stripeEvent.type === 'charge.captured'
+                ? toMajorUnits(charge.amount_captured)
+                : toMajorUnits(charge.amount || undefined)
+            const amountLabel = formatMajorAmount(amountCaptured, charge.currency)
+            await handleChargeEvent({
+              charge,
+              event: stripeEvent!,
+              paymentStatus: 'paid',
+              orderStatus: 'paid',
+              invoiceStatus: 'paid',
+              label:
+                stripeEvent.type === 'charge.captured' ? 'Charge captured' : 'Charge succeeded',
+              messageParts: [
+                charge.id ? `Charge ${charge.id}` : null,
+                amountCaptured !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
+                charge.status ? `Stripe status ${charge.status}` : null,
+              ],
+              amountOverride: amountCaptured,
+              includeChargeContext: false,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle charge success event', err)
+          }
+          break
+        }
+
+        case 'charge.pending': {
+          try {
+            const charge = stripeEvent.data.object as Stripe.Charge
+            const amountPending = toMajorUnits(charge.amount || undefined)
+            const amountLabel = formatMajorAmount(amountPending, charge.currency)
+            await handleChargeEvent({
+              charge,
+              event: stripeEvent!,
+              paymentStatus: 'pending',
+              invoiceStatus: 'pending',
+              label: 'Charge pending',
+              messageParts: [
+                charge.id ? `Charge ${charge.id}` : null,
+                amountPending !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
+                charge.status ? `Stripe status ${charge.status}` : null,
+              ],
+              amountOverride: amountPending,
+              includeChargeContext: false,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle charge.pending', err)
+          }
+          break
+        }
+
+        case 'charge.failed': {
+          try {
+            const charge = stripeEvent.data.object as Stripe.Charge
+            const amountFailed = toMajorUnits(charge.amount || undefined)
+            const amountLabel = formatMajorAmount(amountFailed, charge.currency)
+            await handleChargeEvent({
+              charge,
+              event: stripeEvent!,
+              paymentStatus: 'failed',
+              orderStatus: 'cancelled',
+              invoiceStatus: 'cancelled',
+              label: 'Charge failed',
+              messageParts: [
+                charge.id ? `Charge ${charge.id}` : null,
+                amountFailed !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
+                charge.failure_code ? `Failure ${charge.failure_code}` : null,
+                charge.failure_message ? charge.failure_message : null,
+              ],
+              amountOverride: amountFailed,
+              additionalOrderFields: {
+                paymentFailureCode: charge.failure_code || charge.outcome?.reason || undefined,
+                paymentFailureMessage:
+                  charge.failure_message || charge.outcome?.seller_message || undefined,
+              },
+              additionalInvoiceFields: {
+                paymentFailureCode: charge.failure_code || charge.outcome?.reason || undefined,
+                paymentFailureMessage:
+                  charge.failure_message || charge.outcome?.seller_message || undefined,
+              },
+              preserveExistingFailureDiagnostics: false,
+              includeChargeContext: false,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle charge.failed', err)
+          }
+          break
+        }
+
+        case 'charge.expired': {
+          try {
+            const charge = stripeEvent.data.object as Stripe.Charge
+            const amount = toMajorUnits(charge.amount || undefined)
+            const amountLabel = formatMajorAmount(amount, charge.currency)
+            await handleChargeEvent({
+              charge,
+              event: stripeEvent!,
+              paymentStatus: 'expired',
+              orderStatus: 'expired',
+              invoiceStatus: 'cancelled',
+              label: 'Charge authorization expired',
+              messageParts: [
+                charge.id ? `Charge ${charge.id}` : null,
+                amount !== undefined && amountLabel ? `Amount ${amountLabel}` : null,
+              ],
+              amountOverride: amount,
+              includeChargeContext: false,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle charge.expired', err)
+          }
+          break
+        }
+
+        case 'charge.dispute.created': {
+          try {
+            const dispute = stripeEvent.data.object as Stripe.Dispute
+            await handleDisputeEvent({
+              dispute,
+              charge: null,
+              event: stripeEvent!,
+              paymentStatus: 'disputed',
+              label: 'Dispute opened',
+              messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle dispute.created', err)
+          }
+          break
+        }
+
+        case 'charge.dispute.updated': {
+          try {
+            const dispute = stripeEvent.data.object as Stripe.Dispute
+            await handleDisputeEvent({
+              dispute,
+              charge: null,
+              event: stripeEvent!,
+              paymentStatus: 'disputed',
+              label: 'Dispute updated',
+              messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle dispute.updated', err)
+          }
+          break
+        }
+
+        case 'charge.dispute.closed': {
+          try {
+            const dispute = stripeEvent.data.object as Stripe.Dispute
+            const status = (dispute.status || '').toLowerCase()
+            let paymentStatus: string = 'dispute_closed'
+            let orderStatus: OrderPaymentStatusInput['orderStatus'] | undefined = undefined
+            let invoiceStatus: OrderPaymentStatusInput['invoiceStatus'] | undefined = undefined
+            if (status === 'won') {
+              paymentStatus = 'dispute_won'
+              orderStatus = 'paid'
+              invoiceStatus = 'paid'
+            } else if (status === 'lost') {
+              paymentStatus = 'dispute_lost'
+              orderStatus = 'cancelled'
+              invoiceStatus = 'cancelled'
+            } else if (status === 'warning_closed') {
+              paymentStatus = 'dispute_warning_closed'
+            }
+            await handleDisputeEvent({
+              dispute,
+              charge: null,
+              event: stripeEvent!,
+              paymentStatus,
+              orderStatus,
+              invoiceStatus,
+              label: 'Dispute closed',
+              messageParts: [dispute.id ? `Dispute ${dispute.id}` : null],
+              eventStatus: paymentStatus,
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle dispute.closed', err)
+          }
+          break
+        }
+
+        case 'charge.dispute.funds_withdrawn': {
+          try {
+            const dispute = stripeEvent.data.object as Stripe.Dispute
+            await handleDisputeEvent({
+              dispute,
+              charge: null,
+              event: stripeEvent!,
+              paymentStatus: 'dispute_funds_withdrawn',
+              label: 'Dispute funds withdrawn',
+              messageParts: [
+                dispute.id ? `Dispute ${dispute.id}` : null,
+                'Stripe withdrew dispute funds',
+              ],
+              eventStatus: 'dispute_funds_withdrawn',
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle dispute.funds_withdrawn', err)
+          }
+          break
+        }
+
+        case 'charge.dispute.funds_reinstated': {
+          try {
+            const dispute = stripeEvent.data.object as Stripe.Dispute
+            await handleDisputeEvent({
+              dispute,
+              charge: null,
+              event: stripeEvent!,
+              paymentStatus: 'dispute_funds_reinstated',
+              orderStatus: 'paid',
+              invoiceStatus: 'paid',
+              label: 'Dispute funds reinstated',
+              messageParts: [
+                dispute.id ? `Dispute ${dispute.id}` : null,
+                'Stripe reinstated dispute funds',
+              ],
+              eventStatus: 'dispute_funds_reinstated',
+            })
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle dispute.funds_reinstated', err)
+          }
+          break
+        }
+
+        case 'charge.refunded':
+        case 'charge.refund.created':
+        case 'charge.refund.updated': {
+          await handleRefundWebhookEvent(stripeEvent!)
+          break
+        }
+
+        case 'refund.created':
+        case 'refund.updated':
+        case 'refund.failed': {
+          await handleRefundWebhookEvent(stripeEvent!)
+          break
+        }
+
+        case 'checkout.session.async_payment_succeeded': {
+          try {
+            const session = stripeEvent.data.object as Stripe.Checkout.Session
+            await handleCheckoutAsyncPaymentSucceeded(session, {
+              eventType: stripeEvent.type,
+              invoiceStripeStatus: stripeEvent.type,
+              stripeEventId: stripeEvent.id,
+              eventCreated: stripeEvent.created,
+            })
+          } catch (err) {
+            console.warn(
+              'stripeWebhook: failed to handle checkout.session.async_payment_succeeded',
+              err,
+            )
+          }
+          break
+        }
+
+        case 'checkout.session.async_payment_failed': {
+          try {
+            const session = stripeEvent.data.object as Stripe.Checkout.Session
+            await handleCheckoutAsyncPaymentFailed(session, {
+              eventType: stripeEvent.type,
+              invoiceStripeStatus: stripeEvent.type,
+              stripeEventId: stripeEvent.id,
+              eventCreated: stripeEvent.created,
+            })
+          } catch (err) {
+            console.warn(
+              'stripeWebhook: failed to handle checkout.session.async_payment_failed',
+              err,
+            )
+          }
+          break
+        }
+
+        case 'checkout.session.created': {
+          const session = stripeEvent.data.object as Stripe.Checkout.Session
+          try {
+            await handleCheckoutCreated(session)
+          } catch (err) {
+            console.warn('stripeWebhook: failed to handle checkout.session.created', err)
+          }
+          break
+        }
+
+        case 'checkout.session.completed': {
+          const session = stripeEvent.data.object as Stripe.Checkout.Session
+          if (!isValidCheckoutSessionId(session.id)) {
+            console.warn('stripeWebhook: invalid checkout session id for completion', {
+              sessionId: session.id,
+            })
+            webhookStatus = 'ignored'
+            webhookSummary = 'checkout.session.completed ignored (invalid session id)'
+            break
+          }
+          try {
+            const result = await createOrderFromCheckout(session)
+            if (result?.status) webhookStatus = result.status
+            if (result?.summary) webhookSummary = result.summary
+            const cartId = resolveCartIdFromSession(session)
+            if (result?.status === 'processed' && cartId) {
+              try {
+                await markCartRecovered(cartId, session.id)
+              } catch (err) {
+                console.warn('stripeWebhook: failed to mark cart recovered', err)
+              }
+            }
+          } catch (err) {
+            webhookStatus = 'error'
+            webhookSummary = 'checkout.session.completed processing error'
+            console.error('stripeWebhook: strict checkout order creation failed', err)
+          }
+          break
+        }
+
+        case 'payment_intent.succeeded': {
+          const pi = stripeEvent.data.object as Stripe.PaymentIntent
+          const meta = (pi.metadata || {}) as Record<string, string>
+          const userIdMeta =
+            (meta['auth0_user_id'] || meta['auth0_sub'] || meta['userId'] || meta['user_id'] || '')
+              .toString()
+              .trim() || undefined
+          const metadataCustomerId =
+            firstString(CUSTOMER_METADATA_ID_KEYS.map((key) => meta[key])) || undefined
+          const metadataInvoiceId = normalizeSanityId(meta['sanity_invoice_id'])
+          const checkoutSessionMeta =
             (
-              (pi as any)?.shipping?.name ||
-              meta['bill_to_name'] ||
-              chargeBillingName ||
-              email ||
+              meta['checkout_session_id'] ||
+              meta['checkoutSessionId'] ||
+              meta['stripe_checkout_session_id'] ||
+              meta['session_id'] ||
               ''
             )
               .toString()
-              .trim() || 'Guest Customer'
+              .trim() || undefined
+          const normalizedSessionId =
+            checkoutSessionMeta && isValidCheckoutSessionId(checkoutSessionMeta)
+              ? checkoutSessionMeta
+              : undefined
 
-          let cart: CartItem[] = []
-          let cartProducts: CartProductSummary[] = []
-          try {
-            const cartResult = await buildCartFromSessionLineItems(normalizedSessionId, meta)
-            cart = cartResult.items
-            cartProducts = cartResult.products
-          } catch (err) {
-            console.warn('stripeWebhook: failed to load cart from checkout metadata', err)
-          }
-          if (cart.length && !cartProducts.length) {
-            try {
-              const enriched = await enrichCartItemsFromSanity(cart, sanity, {
-                onProducts: (list: CartProductSummary[]) => {
-                  cartProducts = list
-                },
-              })
-              cart = enriched
-            } catch (err) {
-              console.warn('stripeWebhook: failed to enrich payment intent cart', err)
-            }
-          }
-          if (cart.length && !cartProducts.length) {
-            try {
-              cartProducts = await fetchProductsForCart(cart, sanity)
-            } catch (err) {
-              console.warn(
-                'stripeWebhook: failed to fetch product summaries for payment intent',
-                err,
-              )
-            }
-          }
-          cart = enforceCartRequirements(cart, cartProducts, {
-            source: 'payment_intent',
-            sessionId: normalizedSessionId,
-            orderId: normalizedOrderNumber,
-          })
-          cart = cart.map(cleanCartItemForStorage)
-
-          if (!cart.length) {
-            console.warn('stripeWebhook: payment_intent.succeeded ignored (empty cart)', {
+          if (!normalizedSessionId) {
+            console.warn('stripeWebhook: payment_intent.succeeded ignored (no checkout session)', {
               paymentIntentId: pi.id,
-              checkoutSessionId: normalizedSessionId,
+              checkoutSessionId: checkoutSessionMeta || null,
             })
-            try {
-              const checkoutDocId = await sanity.fetch<string | null>(
-                `*[_type == "checkoutSession" && sessionId == $sid][0]._id`,
-                {sid: normalizedSessionId},
-              )
-              if (checkoutDocId) {
-                await sanity
-                  .patch(checkoutDocId)
-                  .set({invalidCart: true, failureReason: 'empty_cart_payment_intent'})
-                  .commit({autoGenerateArrayKeys: true})
-              }
-            } catch (err) {
-              console.warn('stripeWebhook: failed to mark invalid cart for payment intent', err)
-            }
-            webhookStatus = 'failed_terminal'
-            webhookSummary = 'payment_intent.succeeded ignored (empty cart)'
+            webhookStatus = 'ignored'
+            webhookSummary = 'payment_intent.succeeded ignored (no checkout session)'
             break
           }
 
-          let shippingMetrics = ensureShippingMetricsFromProducts(
-            computeShippingMetrics(cart, cartProducts),
-            cart,
-            cartProducts,
-          )
-          const metaWeight = resolveShippingWeightLbs(undefined, meta)
-          if (
-            metaWeight !== undefined &&
-            (!shippingMetrics.weight ||
-              !shippingMetrics.weight.value ||
-              shippingMetrics.weight.value <= 0)
-          ) {
-            shippingMetrics = {
-              ...shippingMetrics,
-              weight: {_type: 'shipmentWeight', value: metaWeight, unit: 'pound'},
-            }
-          }
-
-          const amountShipping =
-            typeof shippingDetails.amount === 'number'
-              ? toCurrencyNumber(shippingDetails.amount)
-              : undefined
-          const amountTax =
-            toCurrencyNumber(
-              toMajorUnits(
-                ((pi as any)?.amount_details as any)?.tax ??
-                  (ch as any)?.amount_tax ??
-                  undefined,
-              ),
-            ) ?? undefined
-          const cartSubtotal = cart.reduce((sum, item) => {
-            const value = Number((item as any)?.total ?? (item as any)?.lineTotal ?? 0)
-            return Number.isFinite(value) ? sum + value : sum
-          }, 0)
-          const amountSubtotal =
-            toCurrencyNumber(cartSubtotal) ??
-            toCurrencyNumber(
-              (Number.isFinite(totalAmount)
-                ? (totalAmount as number) - (amountShipping || 0) - (amountTax || 0)
-                : undefined) as number | undefined,
-            ) ??
-            (Number.isFinite(totalAmount) ? (totalAmount as number) : undefined)
-          const amountDiscount =
-            amountSubtotal !== undefined && Number.isFinite(totalAmount)
-              ? toCurrencyNumber(
-                  Math.max(
-                    0,
-                    (amountSubtotal || 0) -
-                      ((totalAmount as number) - (amountShipping || 0) - (amountTax || 0)),
-                  ),
-                )
-              : undefined
-
-          const existingOrderId =
-            (await findOrderDocumentIdForEvent({
-              metadata: meta,
-              paymentIntentId: pi.id,
-              sessionId: normalizedSessionId,
-              invoiceDocId,
-              invoiceNumber: metadataInvoiceNumber || null,
-            })) || null
-          const existingOrder = existingOrderId
-            ? await sanity.fetch<{
-                _id: string
-                orderNumber?: string | null
-                status?: string | null
-                packingSlipUrl?: string | null
-                stripeSessionId?: string | null
-                trackingNumber?: string | null
-                trackingUrl?: string | null
-                shippingLabelUrl?: string | null
-                fulfillment?: Record<string, any> | null
-                fulfillmentWorkflow?: Record<string, any> | null
-              }>(
-                `*[_type == "order" && _id == $id][0]{_id, orderNumber, status, packingSlipUrl, stripeSessionId, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
+          // Update existing order records tied to the checkout session.
+          try {
+            const totalAmount = (Number(pi.amount_received || pi.amount || 0) || 0) / 100
+            const email =
+              (pi as any)?.charges?.data?.[0]?.billing_details?.email ||
+              (pi as any)?.receipt_email ||
+              undefined
+            const currency = ((pi as any)?.currency || '').toString().toLowerCase() || undefined
+            const ch = (pi as any)?.charges?.data?.[0]
+            const chargeId = ch?.id || undefined
+            const receiptUrl = ch?.receipt_url || undefined
+            const cardBrand = ch?.payment_method_details?.card?.brand || undefined
+            const cardLast4 = ch?.payment_method_details?.card?.last4 || undefined
+            const chargeBillingName = ch?.billing_details?.name || undefined
+            const shippingAddr: any = (pi as any)?.shipping?.address || undefined
+            const stripeCustomerIdValue =
+              resolveStripeCustomerId(
+                pi.customer as string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined,
+              ) || metadataCustomerId
+            const billingAddress =
+              normalizeStripeContactAddress(
+                ch?.billing_details?.address as Stripe.Address | undefined,
                 {
-                  id: existingOrderId,
+                  name: chargeBillingName || undefined,
+                  email,
+                  phone: ch?.billing_details?.phone || undefined,
                 },
+              ) || undefined
+            const rawPaymentStatus = (pi.status || '').toLowerCase()
+            let paymentStatus = rawPaymentStatus || 'pending'
+            if (['succeeded', 'paid'].includes(rawPaymentStatus)) paymentStatus = 'paid'
+            else if (['canceled', 'cancelled'].includes(rawPaymentStatus))
+              paymentStatus = 'cancelled'
+            let derivedOrderStatus: 'paid' | 'cancelled' =
+              paymentStatus === 'cancelled' ? 'cancelled' : 'paid'
+
+            const metadataOrderNumberRaw = extractMetadataOrderNumber(meta) || ''
+            const metadataInvoiceNumber =
+              firstString(
+                INVOICE_METADATA_NUMBER_KEYS.map((key) => meta[key as keyof typeof meta]),
+              ) || ''
+            let invoiceDocId = metadataInvoiceId || null
+            if (!invoiceDocId) {
+              const piAny = pi as any
+              const stripeInvoiceId =
+                typeof piAny.invoice === 'string'
+                  ? piAny.invoice
+                  : (piAny.invoice as Stripe.Invoice | undefined)?.id
+              invoiceDocId =
+                (await findInvoiceDocumentIdForEvent({
+                  metadata: meta,
+                  stripeInvoiceId,
+                  invoiceNumber: metadataInvoiceNumber || undefined,
+                  paymentIntentId: pi.id,
+                })) || null
+            }
+            const shippingDetails = await resolveStripeShippingDetails({
+              metadata: meta,
+              paymentIntent: pi,
+              fallbackAmount: undefined,
+              stripe,
+            })
+            console.log('🧾 stripeWebhook: entering order persistence phase', {
+              stripeEventId: stripeEvent?.id,
+              sessionId: normalizedSessionId,
+              paymentIntentId: pi.id,
+            })
+            const orderNumber = await resolveOrderNumber({
+              metadataOrderNumber: metadataOrderNumberRaw,
+              invoiceNumber: metadataInvoiceNumber,
+              fallbackId: pi.id,
+            })
+            const normalizedOrderNumber = normalizeOrderNumberForStorage(orderNumber) || orderNumber
+            const customerName =
+              (
+                (pi as any)?.shipping?.name ||
+                meta['bill_to_name'] ||
+                chargeBillingName ||
+                email ||
+                ''
               )
-            : null
-          const existingId = existingOrder?._id || null
-          if (!existingId) {
-            console.log(
-              'stripeWebhook: payment_intent.succeeded skipped (no checkout order found)',
-              {
+                .toString()
+                .trim() || 'Guest Customer'
+
+            let cart: CartItem[] = []
+            let cartProducts: CartProductSummary[] = []
+            try {
+              const cartResult = await buildCartFromSessionLineItems(normalizedSessionId, meta)
+              cart = cartResult.items
+              cartProducts = cartResult.products
+            } catch (err) {
+              console.warn('stripeWebhook: failed to load cart from checkout metadata', err)
+            }
+            if (cart.length && !cartProducts.length) {
+              try {
+                const enriched = await enrichCartItemsFromSanity(cart, sanity, {
+                  onProducts: (list: CartProductSummary[]) => {
+                    cartProducts = list
+                  },
+                })
+                cart = enriched
+              } catch (err) {
+                console.warn('stripeWebhook: failed to enrich payment intent cart', err)
+              }
+            }
+            if (cart.length && !cartProducts.length) {
+              try {
+                cartProducts = await fetchProductsForCart(cart, sanity)
+              } catch (err) {
+                console.warn(
+                  'stripeWebhook: failed to fetch product summaries for payment intent',
+                  err,
+                )
+              }
+            }
+            cart = enforceCartRequirements(cart, cartProducts, {
+              source: 'payment_intent',
+              sessionId: normalizedSessionId,
+              orderId: normalizedOrderNumber,
+            })
+            cart = cart.map(cleanCartItemForStorage)
+
+            if (!cart.length) {
+              console.warn('stripeWebhook: payment_intent.succeeded ignored (empty cart)', {
                 paymentIntentId: pi.id,
                 checkoutSessionId: normalizedSessionId,
-              },
-            )
-            break
-          }
-          const normalizedEmail = typeof email === 'string' ? email.trim() : ''
-          const shouldSendConfirmation =
-            !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
-          const resolvedStripeSessionId = existingOrder?.stripeSessionId || normalizedSessionId
-          if (existingOrder && isTerminalOrderStatus(existingOrder.status)) {
-            console.log(
-              `stripeWebhook: payment_intent.succeeded ignored for terminal order ${
-                existingOrder.orderNumber || existingOrder._id
-              }`,
-            )
-            break
-          }
-          const baseDoc: any = {
-            _type: 'order',
-            stripeSource: 'payment_intent',
-            stripeSessionId: resolvedStripeSessionId,
-            orderNumber: normalizedOrderNumber,
-            orderType: determineOrderType(meta),
-            customerName,
-            customerEmail: email || undefined,
-            ...(Number.isFinite(totalAmount) ? {totalAmount} : {}),
-            ...(amountSubtotal !== undefined ? {amountSubtotal} : {}),
-            ...(amountTax !== undefined ? {amountTax} : {}),
-            ...(amountShipping !== undefined ? {amountShipping} : {}),
-            ...(amountDiscount !== undefined ? {amountDiscount} : {}),
-            status: existingOrder?.status && isFulfillmentCompleteStatus(existingOrder.status)
-              ? existingOrder.status
-              : derivedOrderStatus,
-            createdAt: new Date().toISOString(),
-            paymentStatus,
-            stripePaymentIntentStatus: pi.status || undefined,
-            stripeLastSyncedAt: new Date().toISOString(),
-            currency,
-            paymentIntentId: pi.id,
-            stripePaymentIntentId: pi.id,
-            chargeId,
-            ...(invoiceDocId ? {invoiceRef: {_type: 'reference', _ref: invoiceDocId}} : {}),
-            stripeCustomerId: stripeCustomerIdValue || undefined,
-            checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
-            ...(userIdMeta ? {userId: userIdMeta} : {}),
-            ...(shippingAddr
-              ? {
-                  shippingAddress: {
-                    name: (pi as any)?.shipping?.name || chargeBillingName || undefined,
-                    addressLine1: shippingAddr.line1 || undefined,
-                    addressLine2: shippingAddr.line2 || undefined,
-                    city: shippingAddr.city || undefined,
-                    state: shippingAddr.state || undefined,
-                    postalCode: shippingAddr.postal_code || undefined,
-                    country: shippingAddr.country || undefined,
-                    email: email || undefined,
-                  },
-                }
-              : {}),
-            ...(billingAddress ? {billingAddress} : {}),
-            ...(cart.length ? {cart} : {}),
-          }
-          ensureRequiredPaymentDetails(
-            baseDoc,
-            {brand: cardBrand, last4: cardLast4, receiptUrl},
-            `payment_intent ${pi.id}`,
-          )
-          applyShippingMetrics(baseDoc, shippingMetrics)
-          applyPackageDimensions(baseDoc, shippingMetrics, metaWeight)
-          applyShippingDetailsToDoc(
-            baseDoc,
-            shippingDetails,
-            currency ? currency.toUpperCase() : undefined,
-          )
-          baseDoc.stripeSummary = serializeStripeSummaryData(
-            buildStripeSummary({
-              paymentIntent: pi,
-              eventType: stripeEvent.type,
-              eventCreated: stripeEvent.created,
-            }),
-          )
-          const fulfillmentResult = deriveFulfillmentFromMetadata(
-            meta,
-            shippingDetails,
-            new Date().toISOString(),
-            (existingOrder as any)?.fulfillment,
-          )
-          if (fulfillmentResult) {
-            const mergedFulfillment = existingOrder?.fulfillment
-              ? {...existingOrder.fulfillment, ...fulfillmentResult.fulfillment}
-              : fulfillmentResult.fulfillment
-            baseDoc.fulfillment = mergedFulfillment
-
-            const workflowProvided = fulfillmentResult.workflow
-            const hasExistingWorkflow =
-              existingOrder?.fulfillmentWorkflow &&
-              (existingOrder.fulfillmentWorkflow as any)?.currentStage
-            if (workflowProvided && !hasExistingWorkflow) {
-              baseDoc.fulfillmentWorkflow = workflowProvided
-            }
-
-            if (
-              fulfillmentResult.topLevelFields?.trackingNumber &&
-              !existingOrder?.trackingNumber
-            ) {
-              baseDoc.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
-            }
-            if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
-              baseDoc.trackingUrl = fulfillmentResult.topLevelFields.trackingUrl
-            }
-            if (
-              fulfillmentResult.topLevelFields?.shippingLabelUrl &&
-              !existingOrder?.shippingLabelUrl
-            ) {
-              baseDoc.shippingLabelUrl = fulfillmentResult.topLevelFields.shippingLabelUrl
-            }
-          }
-          const intentSlug = createOrderSlug(normalizedOrderNumber, pi.id)
-          if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
-
-          if (!baseDoc.customerRef) {
-            try {
-              const resolvedRef = await resolveCustomerReference(stripeCustomerIdValue, email)
-              if (resolvedRef) baseDoc.customerRef = resolvedRef
-            } catch (err) {
-              console.warn('stripeWebhook: unable to resolve customer reference for PI', err)
-            }
-          }
-
-          const normalizedBaseDoc = normalizeStripeOrderToSanityOrder(baseDoc) as typeof baseDoc
-          const orderId = existingId
-          await sanity.patch(existingId).set(normalizedBaseDoc).commit({autoGenerateArrayKeys: true})
-          console.log('✅ stripeWebhook: Sanity order write confirmed', {
-            orderId: existingId,
-            stripeEventId: stripeEvent?.id,
-            paymentIntentId: pi.id,
-          })
-
-          if (orderId) {
-            await appendOrderEvent(orderId, {
-              eventType: stripeEvent.type,
-              status: paymentStatus,
-              label: 'Payment intent succeeded',
-              message: `Payment intent ${pi.id} succeeded`,
-              amount: totalAmount,
-              currency: currency ? currency.toUpperCase() : undefined,
-              stripeEventId: stripeEvent.id,
-              occurredAt: stripeEvent.created,
-              metadata: meta,
-            })
-            await markAbandonedCheckoutRecovered(sanity, resolvedStripeSessionId, orderId)
-            try {
-              if (!existingOrder?.packingSlipUrl) {
-                const packingSlipUrl = await generatePackingSlipAsset({
-                  sanity,
-                  orderId,
-                  invoiceId: invoiceDocId || undefined,
-                })
-                if (packingSlipUrl) {
+              })
+              try {
+                const checkoutDocId = await sanity.fetch<string | null>(
+                  `*[_type == "checkoutSession" && sessionId == $sid][0]._id`,
+                  {sid: normalizedSessionId},
+                )
+                if (checkoutDocId) {
                   await sanity
-                    .patch(orderId)
-                    .set({packingSlipUrl})
+                    .patch(checkoutDocId)
+                    .set({invalidCart: true, failureReason: 'empty_cart_payment_intent'})
                     .commit({autoGenerateArrayKeys: true})
                 }
+              } catch (err) {
+                console.warn('stripeWebhook: failed to mark invalid cart for payment intent', err)
               }
-            } catch (err) {
-              console.warn('stripeWebhook: packing slip auto upload failed', err)
+              webhookStatus = 'failed_terminal'
+              webhookSummary = 'payment_intent.succeeded ignored (empty cart)'
+              break
             }
-          }
 
-          if (orderId && paymentStatus === 'paid' && cart.length) {
-            await autoReserveInventoryForOrder(orderId, cart, normalizedOrderNumber)
-          }
+            let shippingMetrics = ensureShippingMetricsFromProducts(
+              computeShippingMetrics(cart, cartProducts),
+              cart,
+              cartProducts,
+            )
+            const metaWeight = resolveShippingWeightLbs(undefined, meta)
+            if (
+              metaWeight !== undefined &&
+              (!shippingMetrics.weight ||
+                !shippingMetrics.weight.value ||
+                shippingMetrics.weight.value <= 0)
+            ) {
+              shippingMetrics = {
+                ...shippingMetrics,
+                weight: {_type: 'shipmentWeight', value: metaWeight, unit: 'pound'},
+              }
+            }
 
-          let customerDocIdForPatch =
-            ((normalizedBaseDoc as any)?.customerRef?._ref as string | undefined) || null
+            const amountShipping =
+              typeof shippingDetails.amount === 'number'
+                ? toCurrencyNumber(shippingDetails.amount)
+                : undefined
+            const amountTax =
+              toCurrencyNumber(
+                toMajorUnits(
+                  ((pi as any)?.amount_details as any)?.tax ?? (ch as any)?.amount_tax ?? undefined,
+                ),
+              ) ?? undefined
+            const cartSubtotal = cart.reduce((sum, item) => {
+              const value = Number((item as any)?.total ?? (item as any)?.lineTotal ?? 0)
+              return Number.isFinite(value) ? sum + value : sum
+            }, 0)
+            const amountSubtotal =
+              toCurrencyNumber(cartSubtotal) ??
+              toCurrencyNumber(
+                (Number.isFinite(totalAmount)
+                  ? (totalAmount as number) - (amountShipping || 0) - (amountTax || 0)
+                  : undefined) as number | undefined,
+              ) ??
+              (Number.isFinite(totalAmount) ? (totalAmount as number) : undefined)
+            const amountDiscount =
+              amountSubtotal !== undefined && Number.isFinite(totalAmount)
+                ? toCurrencyNumber(
+                    Math.max(
+                      0,
+                      (amountSubtotal || 0) -
+                        ((totalAmount as number) - (amountShipping || 0) - (amountTax || 0)),
+                    ),
+                  )
+                : undefined
 
-          if (orderId) {
-            try {
-              const updatedCustomerId = await updateCustomerProfileForOrder({
-                sanity,
-                orderId,
-                customerId: customerDocIdForPatch,
-                email: normalizedEmail || email || undefined,
-                shippingAddress: (normalizedBaseDoc as any)?.shippingAddress,
-                billingAddress,
-                stripeCustomerId: stripeCustomerIdValue,
-                stripeSyncTimestamp: new Date().toISOString(),
-                customerName,
+            const existingOrderId =
+              (await findOrderDocumentIdForEvent({
+                metadata: meta,
+                paymentIntentId: pi.id,
+                sessionId: normalizedSessionId,
+                invoiceDocId,
+                invoiceNumber: metadataInvoiceNumber || null,
+              })) || null
+            const existingOrder = existingOrderId
+              ? await sanity.fetch<{
+                  _id: string
+                  orderNumber?: string | null
+                  status?: string | null
+                  packingSlipUrl?: string | null
+                  stripeSessionId?: string | null
+                  trackingNumber?: string | null
+                  trackingUrl?: string | null
+                  shippingLabelUrl?: string | null
+                  fulfillment?: Record<string, any> | null
+                  fulfillmentWorkflow?: Record<string, any> | null
+                }>(
+                  `*[_type == "order" && _id == $id][0]{_id, orderNumber, status, packingSlipUrl, stripeSessionId, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, fulfillmentWorkflow}`,
+                  {
+                    id: existingOrderId,
+                  },
+                )
+              : null
+            const existingId = existingOrder?._id || null
+            if (!existingId) {
+              console.log(
+                'stripeWebhook: payment_intent.succeeded skipped (no checkout order found)',
+                {
+                  paymentIntentId: pi.id,
+                  checkoutSessionId: normalizedSessionId,
+                },
+              )
+              break
+            }
+            const normalizedEmail = typeof email === 'string' ? email.trim() : ''
+            const shouldSendConfirmation =
+              !existingId && Boolean(normalizedEmail) && Boolean(RESEND_API_KEY)
+            const resolvedStripeSessionId = existingOrder?.stripeSessionId || normalizedSessionId
+            if (existingOrder && isTerminalOrderStatus(existingOrder.status)) {
+              console.log(
+                `stripeWebhook: payment_intent.succeeded ignored for terminal order ${
+                  existingOrder.orderNumber || existingOrder._id
+                }`,
+              )
+              break
+            }
+            const baseDoc: any = {
+              _type: 'order',
+              stripeSource: 'payment_intent',
+              stripeSessionId: resolvedStripeSessionId,
+              orderNumber: normalizedOrderNumber,
+              orderType: determineOrderType(meta),
+              customerName,
+              customerEmail: email || undefined,
+              ...(Number.isFinite(totalAmount) ? {totalAmount} : {}),
+              ...(amountSubtotal !== undefined ? {amountSubtotal} : {}),
+              ...(amountTax !== undefined ? {amountTax} : {}),
+              ...(amountShipping !== undefined ? {amountShipping} : {}),
+              ...(amountDiscount !== undefined ? {amountDiscount} : {}),
+              status:
+                existingOrder?.status && isFulfillmentCompleteStatus(existingOrder.status)
+                  ? existingOrder.status
+                  : derivedOrderStatus,
+              createdAt: new Date().toISOString(),
+              paymentStatus,
+              stripePaymentIntentStatus: pi.status || undefined,
+              stripeLastSyncedAt: new Date().toISOString(),
+              currency,
+              paymentIntentId: pi.id,
+              stripePaymentIntentId: pi.id,
+              chargeId,
+              ...(invoiceDocId ? {invoiceRef: {_type: 'reference', _ref: invoiceDocId}} : {}),
+              stripeCustomerId: stripeCustomerIdValue || undefined,
+              checkoutDraft: derivedOrderStatus !== 'paid' ? true : undefined,
+              ...(userIdMeta ? {userId: userIdMeta} : {}),
+              ...(shippingAddr
+                ? {
+                    shippingAddress: {
+                      name: (pi as any)?.shipping?.name || chargeBillingName || undefined,
+                      addressLine1: shippingAddr.line1 || undefined,
+                      addressLine2: shippingAddr.line2 || undefined,
+                      city: shippingAddr.city || undefined,
+                      state: shippingAddr.state || undefined,
+                      postalCode: shippingAddr.postal_code || undefined,
+                      country: shippingAddr.country || undefined,
+                      email: email || undefined,
+                    },
+                  }
+                : {}),
+              ...(billingAddress ? {billingAddress} : {}),
+              ...(cart.length ? {cart} : {}),
+            }
+            ensureRequiredPaymentDetails(
+              baseDoc,
+              {brand: cardBrand, last4: cardLast4, receiptUrl},
+              `payment_intent ${pi.id}`,
+            )
+            applyShippingMetrics(baseDoc, shippingMetrics)
+            applyPackageDimensions(baseDoc, shippingMetrics, metaWeight)
+            applyShippingDetailsToDoc(
+              baseDoc,
+              shippingDetails,
+              currency ? currency.toUpperCase() : undefined,
+            )
+            baseDoc.stripeSummary = serializeStripeSummaryData(
+              buildStripeSummary({
+                paymentIntent: pi,
+                eventType: stripeEvent.type,
+                eventCreated: stripeEvent.created,
+              }),
+            )
+            const fulfillmentResult = deriveFulfillmentFromMetadata(
+              meta,
+              shippingDetails,
+              new Date().toISOString(),
+              (existingOrder as any)?.fulfillment,
+            )
+            if (fulfillmentResult) {
+              const mergedFulfillment = existingOrder?.fulfillment
+                ? {...existingOrder.fulfillment, ...fulfillmentResult.fulfillment}
+                : fulfillmentResult.fulfillment
+              baseDoc.fulfillment = mergedFulfillment
+
+              const workflowProvided = fulfillmentResult.workflow
+              const hasExistingWorkflow =
+                existingOrder?.fulfillmentWorkflow &&
+                (existingOrder.fulfillmentWorkflow as any)?.currentStage
+              if (workflowProvided && !hasExistingWorkflow) {
+                baseDoc.fulfillmentWorkflow = workflowProvided
+              }
+
+              if (
+                fulfillmentResult.topLevelFields?.trackingNumber &&
+                !existingOrder?.trackingNumber
+              ) {
+                baseDoc.trackingNumber = fulfillmentResult.topLevelFields.trackingNumber
+              }
+              if (fulfillmentResult.topLevelFields?.trackingUrl && !existingOrder?.trackingUrl) {
+                baseDoc.trackingUrl = fulfillmentResult.topLevelFields.trackingUrl
+              }
+              if (
+                fulfillmentResult.topLevelFields?.shippingLabelUrl &&
+                !existingOrder?.shippingLabelUrl
+              ) {
+                baseDoc.shippingLabelUrl = fulfillmentResult.topLevelFields.shippingLabelUrl
+              }
+            }
+            const intentSlug = createOrderSlug(normalizedOrderNumber, pi.id)
+            if (intentSlug) baseDoc.slug = {_type: 'slug', current: intentSlug}
+
+            if (!baseDoc.customerRef) {
+              try {
+                const resolvedRef = await resolveCustomerReference(stripeCustomerIdValue, email)
+                if (resolvedRef) baseDoc.customerRef = resolvedRef
+              } catch (err) {
+                console.warn('stripeWebhook: unable to resolve customer reference for PI', err)
+              }
+            }
+
+            const normalizedBaseDoc = normalizeStripeOrderToSanityOrder(baseDoc) as typeof baseDoc
+            const orderId = existingId
+            await sanity
+              .patch(existingId)
+              .set(normalizedBaseDoc)
+              .commit({autoGenerateArrayKeys: true})
+            console.log('✅ stripeWebhook: Sanity order write confirmed', {
+              orderId: existingId,
+              stripeEventId: stripeEvent?.id,
+              paymentIntentId: pi.id,
+            })
+
+            if (orderId) {
+              await appendOrderEvent(orderId, {
+                eventType: stripeEvent.type,
+                status: paymentStatus,
+                label: 'Payment intent succeeded',
+                message: `Payment intent ${pi.id} succeeded`,
+                amount: totalAmount,
+                currency: currency ? currency.toUpperCase() : undefined,
+                stripeEventId: stripeEvent.id,
+                occurredAt: stripeEvent.created,
                 metadata: meta,
               })
-              if (updatedCustomerId) customerDocIdForPatch = updatedCustomerId
-            } catch (err) {
-              console.warn('stripeWebhook: failed to refresh customer profile for PI', err)
-            }
-            await ensureCustomerStripeDetails({
-              customerId: customerDocIdForPatch,
-              stripeCustomerId: stripeCustomerIdValue,
-              billingAddress,
-            })
-            if (paymentStatus === 'paid' && customerDocIdForPatch) {
-              await updateCustomerMetricsForId(sanity, customerDocIdForPatch)
-            }
-          }
-
-          if (orderId) {
-            try {
-              if (customerDocIdForPatch) {
-                await linkOrderToCustomer(webhookSanityClient, orderId, customerDocIdForPatch)
-              }
-
-              if (!invoiceDocId) {
-                try {
-                  const invoice = await strictCreateInvoice(
-                    {
-                      ...normalizedBaseDoc,
-                      _id: orderId,
-                      orderNumber: normalizedOrderNumber,
-                      cart,
-                      amountSubtotal,
-                      amountTax,
-                      amountShipping,
-                      amountDiscount,
-                      totalAmount: Number.isFinite(totalAmount) ? totalAmount : amountSubtotal,
-                    },
-                    customerDocIdForPatch ? {_id: customerDocIdForPatch} : null,
-                    {
-                      cartProducts,
-                      amountSubtotal: amountSubtotal ?? undefined,
-                      amountDiscount: amountDiscount ?? undefined,
-                      totalAmount: Number.isFinite(totalAmount) ? totalAmount : amountSubtotal,
-                    },
-                  )
-                  invoiceDocId = invoice._id
-                } catch (err) {
-                  console.warn('stripeWebhook: failed to create invoice for payment intent order', err)
+              await markAbandonedCheckoutRecovered(sanity, resolvedStripeSessionId, orderId)
+              try {
+                if (!existingOrder?.packingSlipUrl) {
+                  const packingSlipUrl = await generatePackingSlipAsset({
+                    sanity,
+                    orderId,
+                    invoiceId: invoiceDocId || undefined,
+                  })
+                  if (packingSlipUrl) {
+                    await sanity
+                      .patch(orderId)
+                      .set({packingSlipUrl})
+                      .commit({autoGenerateArrayKeys: true})
+                  }
                 }
+              } catch (err) {
+                console.warn('stripeWebhook: packing slip auto upload failed', err)
               }
-
-              if (invoiceDocId) {
-                await linkOrderToInvoice(webhookSanityClient, orderId, invoiceDocId)
-                if (customerDocIdForPatch) {
-                  await linkInvoiceToCustomer(
-                    webhookSanityClient,
-                    invoiceDocId,
-                    customerDocIdForPatch,
-                  )
-                }
-              }
-            } catch (err) {
-              console.warn('stripeWebhook: failed to ensure order references after payment intent', err)
             }
-          }
 
-          if (shouldSendConfirmation && orderId) {
-            try {
-              await sendOrderConfirmationEmail({
-                to: normalizedEmail,
-                orderNumber,
-                customerName,
-                items: cart,
-                totalAmount,
-                shippingAmount:
-                  typeof shippingDetails.amount === 'number' ? shippingDetails.amount : undefined,
-                shippingAddress: shippingAddr,
+            if (orderId && paymentStatus === 'paid' && cart.length) {
+              await autoReserveInventoryForOrder(orderId, cart, normalizedOrderNumber)
+            }
+
+            let customerDocIdForPatch =
+              ((normalizedBaseDoc as any)?.customerRef?._ref as string | undefined) || null
+
+            if (orderId) {
+              try {
+                const updatedCustomerId = await updateCustomerProfileForOrder({
+                  sanity,
+                  orderId,
+                  customerId: customerDocIdForPatch,
+                  email: normalizedEmail || email || undefined,
+                  shippingAddress: (normalizedBaseDoc as any)?.shippingAddress,
+                  billingAddress,
+                  stripeCustomerId: stripeCustomerIdValue,
+                  stripeSyncTimestamp: new Date().toISOString(),
+                  customerName,
+                  metadata: meta,
+                })
+                if (updatedCustomerId) customerDocIdForPatch = updatedCustomerId
+              } catch (err) {
+                console.warn('stripeWebhook: failed to refresh customer profile for PI', err)
+              }
+              await ensureCustomerStripeDetails({
+                customerId: customerDocIdForPatch,
+                stripeCustomerId: stripeCustomerIdValue,
+                billingAddress,
               })
-              await sanity
-                .patch(orderId)
-                .set({confirmationEmailSent: true})
-                .commit({autoGenerateArrayKeys: true})
-            } catch (err) {
-              console.warn('stripeWebhook: PI order confirmation email failed', err)
+              if (paymentStatus === 'paid' && customerDocIdForPatch) {
+                await updateCustomerMetricsForId(sanity, customerDocIdForPatch)
+              }
             }
+
+            if (orderId) {
+              try {
+                if (customerDocIdForPatch) {
+                  await linkOrderToCustomer(webhookSanityClient, orderId, customerDocIdForPatch)
+                }
+
+                if (!invoiceDocId) {
+                  try {
+                    const invoice = await strictCreateInvoice(
+                      {
+                        ...normalizedBaseDoc,
+                        _id: orderId,
+                        orderNumber: normalizedOrderNumber,
+                        cart,
+                        amountSubtotal,
+                        amountTax,
+                        amountShipping,
+                        amountDiscount,
+                        totalAmount: Number.isFinite(totalAmount) ? totalAmount : amountSubtotal,
+                      },
+                      customerDocIdForPatch ? {_id: customerDocIdForPatch} : null,
+                      {
+                        cartProducts,
+                        amountSubtotal: amountSubtotal ?? undefined,
+                        amountDiscount: amountDiscount ?? undefined,
+                        totalAmount: Number.isFinite(totalAmount) ? totalAmount : amountSubtotal,
+                      },
+                    )
+                    invoiceDocId = invoice._id
+                  } catch (err) {
+                    console.warn(
+                      'stripeWebhook: failed to create invoice for payment intent order',
+                      err,
+                    )
+                  }
+                }
+
+                if (invoiceDocId) {
+                  await linkOrderToInvoice(webhookSanityClient, orderId, invoiceDocId)
+                  if (customerDocIdForPatch) {
+                    await linkInvoiceToCustomer(
+                      webhookSanityClient,
+                      invoiceDocId,
+                      customerDocIdForPatch,
+                    )
+                  }
+                }
+              } catch (err) {
+                console.warn(
+                  'stripeWebhook: failed to ensure order references after payment intent',
+                  err,
+                )
+              }
+            }
+
+            if (shouldSendConfirmation && orderId) {
+              try {
+                await sendOrderConfirmationEmail({
+                  to: normalizedEmail,
+                  orderNumber,
+                  customerName,
+                  items: cart,
+                  totalAmount,
+                  shippingAmount:
+                    typeof shippingDetails.amount === 'number' ? shippingDetails.amount : undefined,
+                  shippingAddress: shippingAddr,
+                })
+                await sanity
+                  .patch(orderId)
+                  .set({confirmationEmailSent: true})
+                  .commit({autoGenerateArrayKeys: true})
+              } catch (err) {
+                console.warn('stripeWebhook: PI order confirmation email failed', err)
+              }
+            }
+          } catch (e) {
+            console.warn('stripeWebhook: PI fallback order creation failed', e)
           }
-        } catch (e) {
-          console.warn('stripeWebhook: PI fallback order creation failed', e)
+          break
         }
-        break
+        default: {
+          const type = stripeEvent.type || ''
+          if (type.startsWith('source.')) {
+            await recordStripeWebhookResourceEvent(stripeEvent, 'source')
+          } else if (type.startsWith('person.')) {
+            await recordStripeWebhookResourceEvent(stripeEvent, 'person')
+          } else if (type.startsWith('issuing_dispute.')) {
+            await recordStripeWebhookResourceEvent(stripeEvent, 'issuing_dispute')
+          }
+          break
+        }
       }
-      default: {
-        const type = stripeEvent.type || ''
-        if (type.startsWith('source.')) {
-          await recordStripeWebhookResourceEvent(stripeEvent, 'source')
-        } else if (type.startsWith('person.')) {
-          await recordStripeWebhookResourceEvent(stripeEvent, 'person')
-        } else if (type.startsWith('issuing_dispute.')) {
-          await recordStripeWebhookResourceEvent(stripeEvent, 'issuing_dispute')
+    } catch (err: any) {
+      webhookStatus = 'error'
+      webhookSummary = err?.message
+        ? `Error processing ${stripeEvent.type}: ${err.message}`
+        : `Error processing ${stripeEvent.type}`
+      console.error('stripeWebhook handler error:', err)
+      processingError = err instanceof Error ? err : new Error(err?.message || 'Processing error')
+      if (eventLogId) {
+        try {
+          const retryCount =
+            (await webhookSanityClient.fetch<number | null>('*[_id == $id][0].retryCount', {
+              id: eventLogId,
+            })) || 0
+          const newRetryCount = retryCount + 1
+          const maxRetries = 3
+          isFinalFailure = newRetryCount >= maxRetries
+          await webhookSanityClient
+            .patch(eventLogId)
+            .set({
+              processingStatus: isFinalFailure ? 'failed_permanent' : 'failed_retrying',
+              error: processingError.message,
+              errorStack: processingError.stack,
+              retryCount: newRetryCount,
+              lastRetryAt: new Date().toISOString(),
+            })
+            .commit()
+        } catch (logErr) {
+          console.warn('stripeWebhook: failed to record processing error', logErr)
         }
-        break
       }
     }
-  } catch (err: any) {
-    webhookStatus = 'error'
-    webhookSummary = err?.message
-      ? `Error processing ${stripeEvent.type}: ${err.message}`
-      : `Error processing ${stripeEvent.type}`
-    console.error('stripeWebhook handler error:', err)
-    processingError = err instanceof Error ? err : new Error(err?.message || 'Processing error')
-    if (eventLogId) {
+
+    console.log(
+      `🔄 Finalizing webhook record for ${stripeEvent.type} with status: ${webhookStatus}`,
+    )
+    try {
+      await recordStripeWebhookEvent({
+        event: stripeEvent!,
+        status: webhookStatus,
+        summary: webhookSummary,
+      })
+      console.log(`✅ Webhook event recorded successfully: ${stripeEvent.type}`)
+    } catch (err) {
+      console.error(`❌ FAILED to record final webhook event for ${stripeEvent.type}:`, err)
+      console.warn('stripeWebhook: failed to log webhook event', err)
+    }
+
+    if (eventLogId && !processingError) {
       try {
-        const retryCount =
-          (await webhookSanityClient.fetch<number | null>(
-            '*[_id == $id][0].retryCount',
-            {id: eventLogId},
-          )) || 0
-        const newRetryCount = retryCount + 1
-        const maxRetries = 3
-        isFinalFailure = newRetryCount >= maxRetries
         await webhookSanityClient
           .patch(eventLogId)
-          .set({
-            processingStatus: isFinalFailure ? 'failed_permanent' : 'failed_retrying',
-            error: processingError.message,
-            errorStack: processingError.stack,
-            retryCount: newRetryCount,
-            lastRetryAt: new Date().toISOString(),
-          })
+          .set({processingStatus: 'completed', processed: true})
           .commit()
-      } catch (logErr) {
-        console.warn('stripeWebhook: failed to record processing error', logErr)
+      } catch (err) {
+        console.warn('stripeWebhook: failed to mark event completed', err)
       }
     }
-  }
 
-  console.log(`🔄 Finalizing webhook record for ${stripeEvent.type} with status: ${webhookStatus}`)
-  try {
-    await recordStripeWebhookEvent({
-      event: stripeEvent!,
-      status: webhookStatus,
+    const response = processingError
+      ? isFinalFailure
+        ? {
+            statusCode: 200,
+            body: JSON.stringify({
+              received: true,
+              hint: 'processing failed permanently after retries',
+              eventLogId,
+            }),
+          }
+        : {statusCode: 500, body: JSON.stringify({error: 'Processing failed, will retry'})}
+      : {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
+
+    if (!processingError) {
+      console.log('✅ stripeWebhook: handler completed successfully', {
+        stripeEventId: stripeEvent?.id,
+        eventType: stripeEvent?.type,
+      })
+    }
+    return await finalize(response, webhookStatus === 'error' ? 'error' : 'success', {
+      webhookStatus,
       summary: webhookSummary,
     })
-    console.log(`✅ Webhook event recorded successfully: ${stripeEvent.type}`)
-  } catch (err) {
-    console.error(`❌ FAILED to record final webhook event for ${stripeEvent.type}:`, err)
-    console.warn('stripeWebhook: failed to log webhook event', err)
-  }
-
-  if (eventLogId && !processingError) {
-    try {
-      await webhookSanityClient
-        .patch(eventLogId)
-        .set({processingStatus: 'completed', processed: true})
-        .commit()
-    } catch (err) {
-      console.warn('stripeWebhook: failed to mark event completed', err)
-    }
-  }
-
-  const response = processingError
-    ? isFinalFailure
-      ? {
-          statusCode: 200,
-          body: JSON.stringify({
-            received: true,
-            hint: 'processing failed permanently after retries',
-            eventLogId,
-          }),
-        }
-      : {statusCode: 500, body: JSON.stringify({error: 'Processing failed, will retry'})}
-    : {statusCode: 200, body: JSON.stringify({received: true, status: webhookStatus})}
-
-  if (!processingError) {
-    console.log('✅ stripeWebhook: handler completed successfully', {
-      stripeEventId: stripeEvent?.id,
-      eventType: stripeEvent?.type,
-    })
-  }
-  return await finalize(response, webhookStatus === 'error' ? 'error' : 'success', {
-    webhookStatus,
-    summary: webhookSummary,
-  })
   } catch (error) {
     console.error('stripeWebhook: internal error', error)
     console.warn('⚠️ stripeWebhook: exiting early', {
       reason: 'internal error',
       eventType: stripeEvent?.type || null,
     })
-    return await finalize(
-      {statusCode: 500, body: 'Internal error'},
-      'error',
-      undefined,
-      error,
-    )
+    return await finalize({statusCode: 500, body: 'Internal error'}, 'error', undefined, error)
   }
 }
 

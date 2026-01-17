@@ -12,7 +12,6 @@ export default defineType({
       type: 'string',
       title: 'Stripe Session ID',
       description: 'Stripe checkout session ID (cs_...)',
-      readOnly: false,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -20,7 +19,6 @@ export default defineType({
       type: 'string',
       title: 'Session Number',
       description: 'Human-readable session identifier',
-      readOnly: false,
     }),
     defineField({
       name: 'status',
@@ -34,14 +32,12 @@ export default defineType({
         ],
         layout: 'dropdown',
       },
-      readOnly: false,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'createdAt',
       type: 'datetime',
       title: 'Session Created',
-      readOnly: false,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -49,46 +45,39 @@ export default defineType({
       type: 'datetime',
       title: 'Expires At',
       description: 'When this checkout session expires',
-      readOnly: false,
     }),
     defineField({
       name: 'expiredAt',
       type: 'datetime',
       title: 'Expired At',
       description: 'When this session actually expired',
-      readOnly: false,
     }),
     defineField({
       name: 'customerEmail',
       type: 'string',
       title: 'Customer Email',
-      readOnly: false,
     }),
     defineField({
       name: 'customerName',
       type: 'string',
       title: 'Customer Name',
-      readOnly: false,
     }),
     defineField({
       name: 'customerPhone',
       type: 'string',
       title: 'Customer Phone',
-      readOnly: false,
     }),
     defineField({
       name: 'customerRef',
       type: 'reference',
       title: 'Customer Reference',
       to: [{type: 'customer'}],
-      readOnly: false,
     }),
     defineField({
       name: 'cart',
       type: 'array',
       title: 'Cart Items',
       description: 'Products added to cart before abandonment',
-      readOnly: false,
       of: [
         {
           type: 'object',
@@ -130,44 +119,178 @@ export default defineType({
       name: 'invalidCart',
       type: 'boolean',
       title: 'Invalid Cart',
-      readOnly: false,
     }),
     defineField({
       name: 'failureReason',
       type: 'string',
       title: 'Failure Reason',
-      readOnly: false,
     }),
     defineField({
       name: 'amountSubtotal',
       type: 'number',
       title: 'Subtotal',
-      readOnly: false,
     }),
     defineField({
       name: 'amountTax',
       type: 'number',
       title: 'Tax',
-      readOnly: false,
     }),
     defineField({
       name: 'amountShipping',
       type: 'number',
       title: 'Shipping',
-      readOnly: false,
     }),
     defineField({
       name: 'totalAmount',
       type: 'number',
       title: 'Total Amount',
-      readOnly: false,
     }),
     defineField({
       name: 'currency',
       type: 'string',
       title: 'Currency',
-      readOnly: false,
       initialValue: 'USD',
+    }),
+    // Shipping fields
+    defineField({
+      name: 'shippingOptions',
+      title: 'Shipping Options',
+      type: 'array',
+      description: 'Available shipping options from Stripe',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            {
+              name: 'shippingRateId',
+              title: 'Shipping Rate ID',
+              type: 'string',
+              description: 'Stripe shipping rate ID (shr_...)',
+            },
+            {
+              name: 'shippingAmount',
+              title: 'Shipping Amount',
+              type: 'number',
+              description: 'Shipping cost in cents',
+            },
+          ],
+          preview: {
+            select: {
+              rateId: 'shippingRateId',
+              amount: 'shippingAmount',
+            },
+            prepare({rateId, amount}) {
+              const amountFormatted =
+                typeof amount === 'number' ? `$${(amount / 100).toFixed(2)}` : 'N/A'
+              return {
+                title: rateId || 'Shipping Option',
+                subtitle: amountFormatted,
+              }
+            },
+          },
+        },
+      ],
+    }),
+    defineField({
+      name: 'selectedShippingRate',
+      title: 'Selected Shipping Rate',
+      type: 'string',
+      description: 'The shipping rate ID selected by the customer (shr_...)',
+    }),
+    defineField({
+      name: 'shippingCost',
+      title: 'Shipping Cost Details',
+      type: 'object',
+      description: 'Details about the selected shipping option',
+      options: {
+        collapsible: true,
+        collapsed: false,
+      },
+      fields: [
+        {
+          name: 'amount',
+          title: 'Amount',
+          type: 'number',
+          description: 'Shipping cost in cents',
+        },
+        {
+          name: 'displayName',
+          title: 'Display Name',
+          type: 'string',
+          description: 'Human-readable shipping method name',
+        },
+        {
+          name: 'deliveryEstimate',
+          title: 'Delivery Estimate',
+          type: 'object',
+          fields: [
+            {
+              name: 'minimum',
+              title: 'Minimum Days',
+              type: 'number',
+            },
+            {
+              name: 'maximum',
+              title: 'Maximum Days',
+              type: 'number',
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
+      name: 'shippingDetails',
+      title: 'Shipping Details',
+      type: 'object',
+      description: 'Customer shipping information',
+      options: {
+        collapsible: true,
+        collapsed: false,
+      },
+      fields: [
+        {
+          name: 'name',
+          title: 'Recipient Name',
+          type: 'string',
+        },
+        {
+          name: 'address',
+          title: 'Shipping Address',
+          type: 'object',
+          fields: [
+            {
+              name: 'line1',
+              title: 'Address Line 1',
+              type: 'string',
+            },
+            {
+              name: 'line2',
+              title: 'Address Line 2',
+              type: 'string',
+            },
+            {
+              name: 'city',
+              title: 'City',
+              type: 'string',
+            },
+            {
+              name: 'state',
+              title: 'State',
+              type: 'string',
+            },
+            {
+              name: 'postalCode',
+              title: 'Postal Code',
+              type: 'string',
+            },
+            {
+              name: 'country',
+              title: 'Country',
+              type: 'string',
+            },
+          ],
+        },
+      ],
     }),
     defineField({
       name: 'attribution',
@@ -178,7 +301,6 @@ export default defineType({
         collapsible: true,
         collapsed: true,
       },
-      readOnly: false,
       fields: [
         {name: 'source', type: 'string', title: 'Source'},
         {name: 'medium', type: 'string', title: 'Medium'},
@@ -203,14 +325,12 @@ export default defineType({
         collapsible: true,
         collapsed: true,
       },
-      readOnly: false,
       fields: [
         {
           name: 'raw',
           type: 'text',
           title: 'Raw Metadata (JSON)',
           rows: 5,
-          readOnly: false,
         },
       ],
     }),
@@ -225,27 +345,23 @@ export default defineType({
       name: 'recoveryEmailSentAt',
       type: 'datetime',
       title: 'Recovery Email Sent At',
-      readOnly: false,
     }),
     defineField({
       name: 'resendEmailId',
       type: 'string',
       title: 'Resend Email ID',
       description: 'Email ID from Resend for tracking',
-      readOnly: false,
     }),
     defineField({
       name: 'emailError',
       type: 'string',
       title: 'Email Error',
       description: 'Error message if email failed to send',
-      readOnly: false,
     }),
     defineField({
       name: 'emailErrorAt',
       type: 'datetime',
       title: 'Email Error At',
-      readOnly: false,
     }),
     defineField({
       name: 'recovered',
@@ -269,7 +385,6 @@ export default defineType({
       type: 'url',
       title: 'Stripe Checkout URL',
       description: 'Recovery link to resume checkout',
-      readOnly: false,
     }),
   ],
   preview: {
@@ -280,8 +395,9 @@ export default defineType({
       amount: 'totalAmount',
       createdAt: 'createdAt',
       recovered: 'recovered',
+      shippingMethod: 'shippingCost.displayName',
     },
-    prepare({email, name, status, amount, createdAt, recovered}) {
+    prepare({email, name, status, amount, createdAt, recovered, shippingMethod}) {
       const statusEmoji: Record<string, string> = {
         open: '🟢',
         expired: '⏰',
@@ -291,11 +407,13 @@ export default defineType({
       const amountFormatted =
         typeof amount === 'number' && Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
 
+      const shippingInfo = shippingMethod ? ` • ${shippingMethod}` : ''
+
       return {
         title: name || email || 'Anonymous',
         subtitle: `${statusEmoji[status || ''] || ''} ${status || 'unknown'} - $${amountFormatted}${
           recovered ? ' (Recovered)' : ''
-        }`,
+        }${shippingInfo}`,
         description: createdAt ? new Date(createdAt).toLocaleDateString() : '',
       }
     },
