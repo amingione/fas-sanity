@@ -129,15 +129,6 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  return {
-    statusCode: 410,
-    headers: {...CORS, 'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      error:
-        'Embedded checkout is disabled. Use hosted Stripe Checkout via fas-cms-fresh (src/pages/api/stripe/create-checkout-session.ts).',
-    }),
-  }
-
   if (!stripe) {
     return {
       statusCode: 500,
@@ -247,7 +238,9 @@ export const handler: Handler = async (event) => {
   let productMap = new Map<string, ProductShippingSnapshot>()
   if (productIds.length && sanity) {
     try {
-      const products = await sanity.fetch<ProductShippingSnapshot[]>(
+      const products = await (sanity as ReturnType<typeof createClient>).fetch<
+        ProductShippingSnapshot[]
+      >(
         `*[_type == "product" && _id in $ids]{
           _id,
           title,
@@ -274,10 +267,12 @@ export const handler: Handler = async (event) => {
   }
 
   let stripePriceMap = new Map<string, Stripe.Price>()
-  if (stripePriceIds.length) {
+  if (stripePriceIds.length && stripe) {
     try {
       const prices = await Promise.all(
-        stripePriceIds.map((priceId) => stripe.prices.retrieve(priceId, {expand: ['product']})),
+        stripePriceIds.map((priceId) =>
+          (stripe as Stripe).prices.retrieve(priceId, {expand: ['product']}),
+        ),
       )
       stripePriceMap = new Map(prices.filter(Boolean).map((price) => [price.id, price]))
     } catch (err) {
@@ -539,6 +534,14 @@ export const handler: Handler = async (event) => {
     shipment_ids: shipmentIds.join(','),
   }
 
+  if (!stripe) {
+    return {
+      statusCode: 500,
+      headers: {...CORS, 'Content-Type': 'application/json'},
+      body: JSON.stringify({error: 'Stripe not configured'}),
+    }
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -585,7 +588,7 @@ export const handler: Handler = async (event) => {
 
     if (sanity) {
       const nowIso = new Date().toISOString()
-      const cartSnapshot = cart.map((item: any) => {
+      const cartSnapshot = cart.map((item: any): any => {
         if (!item || typeof item !== 'object') return null
         const quantity = resolveCartQuantity(item.quantity)
         const productId = normalizeSanityId(item?._id || item?.productId)
