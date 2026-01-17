@@ -551,7 +551,7 @@ export const handler: Handler = async (event) => {
 
       // Shipping address collection is required for Parcelcraft to calculate rates.
       shipping_address_collection: {
-        allowed_countries: ['US', 'CA'],
+        allowed_countries: ['US'],
       },
 
       custom_fields: [

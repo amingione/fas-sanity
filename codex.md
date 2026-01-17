@@ -200,7 +200,7 @@ line_items: lineItems,
     // Enable tax and shipping
     automatic_tax: { enabled: true },
     shipping_address_collection: {
-      allowed_countries: ['US', 'CA']
+      allowed_countries: ['US']
     },
     // Parcelcraft app supplies dynamic shipping rates.
     // Do NOT set shipping_options here.
@@ -1426,7 +1426,7 @@ export const POST: APIRoute = async ({request}) => {
 
       automatic_tax: {enabled: true},
       shipping_address_collection: {
-        allowed_countries: ['US', 'CA'],
+        allowed_countries: ['US'],
       },
       // Parcelcraft app supplies dynamic shipping rates.
       // Do NOT set shipping_options here.
