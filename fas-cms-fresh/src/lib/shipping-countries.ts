@@ -10,7 +10,7 @@ const ENV_KEYS = [
 export type AllowedCountryCodes =
   Stripe.Checkout.SessionCreateParams.ShippingAddressCollection['allowed_countries']
 
-const DEFAULT_ALLOWED_COUNTRIES: AllowedCountryCodes = ['US', 'CA']
+const DEFAULT_ALLOWED_COUNTRIES: AllowedCountryCodes = ['US']
 
 function parseRawCountries(value?: string | null): string[] {
   if (!value) return []

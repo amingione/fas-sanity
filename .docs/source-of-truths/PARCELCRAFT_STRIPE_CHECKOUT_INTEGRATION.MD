@@ -190,7 +190,7 @@ app.post('/create-checkout-session', async (req, res) => {
       })),
       mode: 'payment',
       shipping_address_collection: {
-        allowed_countries: ['US', 'CA'], // Countries you ship to
+        allowed_countries: ['US'], // Countries you ship to
       },
       return_url: `${process.env.DOMAIN}/return?session_id={CHECKOUT_SESSION_ID}`,
       // ParcelCraft metadata for shipping integration
