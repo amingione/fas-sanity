@@ -1,0 +1,1074 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [ 11 0 R 12 0 R 13 0 R 14 0 R 15 0 R 16 0 R 17 0 R ] /Count 7 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+4 0 obj
+<< /Length 7773 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(Usage Map - Sanity Environment Variables) Tj
+0 -10 Td
+(Generated: 2026-01-03 04:14) Tj
+0 -10 Td
+() Tj
+0 -10 Td
+(| Variable | Files \(all reads\) | Runtime context | Required? |) Tj
+0 -10 Td
+(| --- | --- | --- | --- |) Tj
+0 -10 Td
+(| NEXT_PUBLIC_SANITY_API_VERSION | ./src/lib/fetchCatalogProducts.ts, ./src/lib/fetchProductRequirements.ts | App server lib | OPTIONAL |) Tj
+0 -10 Td
+(| NEXT_PUBLIC_SANITY_DATASET | ./netlify/lib/sanityEnv.ts, ./scripts/backfill-fulfillment-package.ts, | App server lib, CLI/script, Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-card-data.ts, ./scripts/fix-card-details.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchCatalogProducts.ts, ./src/lib/fetchProductRequirements.ts |  |  |) Tj
+0 -10 Td
+(| NEXT_PUBLIC_SANITY_PROJECT_ID | ./netlify/lib/sanityEnv.ts, ./scripts/backfill-abandoned-checkouts.ts, | App server lib, CLI/script, Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-fulfillment-package.ts, ./scripts/backfill-order-card-data.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-card-details.ts, ./scripts/repair-references.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchCatalogProducts.ts, ./src/lib/fetchProductRequirements.ts |  |  |) Tj
+0 -10 Td
+(| PUBLIC_SANITY_DATASET | ./scripts/backfill-order-shipping-snapshot.ts, ./src/pages/vendor-portal/messages.astro | CLI/script, Server page \(Astro\) | OPTIONAL |) Tj
+0 -10 Td
+(| PUBLIC_SANITY_PROJECT_ID | ./scripts/backfill-order-shipping-snapshot.ts, ./src/pages/vendor-portal/messages.astro | CLI/script, Server page \(Astro\) | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_ACCESS_TOKEN | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo script/tool, | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/cleanupFunctionLogs.ts, ./netlify/functions/send-vendor-invite.ts, | Server API route, Server util |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/stripe-shipping-webhook.ts, ./netlify/functions/wholesale-orders.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/sanityEnv.ts, ./netlify/lib/vendorOnboardingCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/wholesale.ts, ./scripts/backfill-abandoned-checkouts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/repair-references.ts, ./scripts/seed-vendor-onboarding-campaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/create-shipping-label.ts, ./src/pages/api/send-shipping-confirmation.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_AI_FEEDBACK_TOKEN | ./netlify/functions/ai-insights.ts, ./netlify/functions/ai-suggest-mappings.ts, | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/connector-install.ts, ./netlify/functions/enterprise-connectors.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_API_TOKEN | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo script/tool, | REQUIRED |) Tj
+0 -10 Td
+(|  | ./graphql.config.cjs, ./netlify/functions/ai-insights.ts, | Sanity Studio, Server API route, Server page \(Astro\), Server util, Tooling \(GraphQL |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/ai-suggest-mappings.ts, ./netlify/functions/autoRelatedProducts.ts, | config\) |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/calculate-profit-loss.ts, ./netlify/functions/captureOrderPayment.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/cleanupFunctionLogs.ts, ./netlify/functions/connector-install.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/createCheckout.ts, ./netlify/functions/createCheckoutSession.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/createCustomerDiscount.ts, ./netlify/functions/createRefund.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/finalizeFinancialConnection.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateCheckPDF.ts, ./netlify/functions/generateInvoicePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generatePackingSlips.ts, ./netlify/functions/generateQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateShippingQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/getShippingQuoteBySkus.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/inventoryReorderCheck.ts, ./netlify/functions/manual-fulfill-order.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/merchantFeed.ts, ./netlify/functions/productMetrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/productShippingSync.ts, ./netlify/functions/reprocessStripeSession.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/requestFreightQuote.ts, ./netlify/functions/resendInvoiceEmail.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts, ./netlify/functions/selfCheck.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-email-test.ts, ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, ./netlify/functions/sendEmailCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendQuoteEmail.ts, ./netlify/functions/stripe-shipping-webhook.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/stripeWebhook.ts, ./netlify/functions/submitVendorApplication.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMarketingAttribution.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMerchantProducts.ts, ./netlify/functions/syncStripeCatalog.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncVendorToStripe.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/updateVendorProfile.ts, ./netlify/functions/userData.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/wholesale-orders.ts, ./netlify/lib/emailAutomations.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/sanityClient.ts, ./netlify/lib/sanityEnv.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/vendorOnboardingCampaign.ts, ./netlify/lib/wholesale.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/components/studio/EnvSelfCheck.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/emailService.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/sanityClient.ts, ./scripts/add-product-type.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/agent-rewrite-product-titles-async.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-abandoned-checkouts.ts, ./scripts/backfill-clean-cart-items.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-metrics.ts, ./scripts/backfill-customer-order-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customers.js, ./scripts/backfill-email-marketing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-fulfillment-package.ts, ./scripts/backfill-invoices.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-attribution.ts, ./scripts/backfill-order-card-data.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-numbers.ts, ./scripts/backfill-order-shipping-snapshot.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-type-online.ts, ./scripts/backfill-orders.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-product-codes-and-shipping.ts, ./scripts/backfill-profit-loss.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-numbers.ts, ./scripts/backfill-vendor-portal-email.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-portal-enabled.ts, ./scripts/backfill-wholesale-pricing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillOrderCartMetadata.ts, ./scripts/backfillProductCoreFields.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillStripeSummary.ts, ./scripts/bulkSEOUpdate.ts, |  |  |) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Length 7594 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(|  | ./scripts/delete-draft-orders.ts, ./scripts/delete-products-by-title.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/delete-products.js, ./scripts/enhance-existing-vendors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/ensure-email-marketing-channel.ts, ./scripts/ensure-sanity-cors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-card-details.ts, ./scripts/fix-order-cart-item-fields.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-order-number-format.ts, ./scripts/importMerchantData.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/initialize-inventory.ts, ./scripts/migrate-category-mpn-prefixes.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-download-resource.ts, ./scripts/migrate-filters-to-refs.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-filters-to-strings.ts, ./scripts/migrate-order-cart-items.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-order-fields.ts, ./scripts/migrate-service-workflows.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-shipping-fields.js, ./scripts/migrate-vendors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrateProductShipping.ts, ./scripts/normalize-product-filters.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/remove-order-id-field.ts, ./scripts/remove-refs-to-ids.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/repair-references.ts, ./scripts/replace-product-refs.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/seed-vendor-onboarding-campaign.ts, ./scripts/setRoles.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/standardize-order-cart-items.js, ./scripts/stripe-maintenance/shared.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-resend-contacts.ts, ./scripts/sync-shipping-to-stripe.js, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/create-shipping-label.ts, ./src/pages/api/send-shipping-confirmation.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/vendor-portal/messages.astro, ./src/sanity/lib/client.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_API_VERSION | ./bulkUpdateProductUrls.ts, ./netlify/functions/captureOrderPayment.ts, | App server lib, CLI/script, Netlify function, Netlify function lib, Repo script/tool, | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/cleanupFunctionLogs.ts, ./netlify/functions/createCheckoutSession.ts, | Sanity Studio, Server API route, Server util |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateShippingQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, ./netlify/lib/sanityClient.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/vendorOnboardingCampaign.ts, ./netlify/lib/wholesale.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/sanity.config.ts, ./scripts/backfill-customer-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-order-metrics.ts, ./scripts/fixBrokenShipmentReferences.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/militaryVerification.ts, ./src/pages/api/create-shipping-label.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/send-shipping-confirmation.ts, ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_API_WRITE_TOKEN | ./scripts/backfill-email-marketing.ts | CLI/script | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_AUTH_TOKEN | ./netlify/functions/generateShippingQuotePDF.ts, | CLI/script, Netlify function, Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts, ./netlify/lib/sanityEnv.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/deploy-schema-if-token.js, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/ensure-sanity-cors.ts, ./scripts/fix-card-details.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-order-number-format.ts, ./scripts/sync-resend-contacts.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_DATASET | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | App server lib, Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo | REQUIRED |) Tj
+0 -10 Td
+(|  | ./graphql.config.cjs, ./netlify/functions/ai-insights.ts, | script/tool, Sanity Studio, Server API route, Server page \(Astro\), Server util, Tooling |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/ai-suggest-mappings.ts, ./netlify/functions/autoRelatedProducts.ts, | \(GraphQL config\) |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/calculate-profit-loss.ts, ./netlify/functions/cleanupFunctionLogs.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/connector-install.ts, ./netlify/functions/email-subscribe.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/finalizeFinancialConnection.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateCheckPDF.ts, ./netlify/functions/generateQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateShippingQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/inventoryReorderCheck.ts, ./netlify/functions/merchantFeed.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/productMetrics.ts, ./netlify/functions/productShippingSync.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/reprocessStripeSession.ts, ./netlify/functions/sanity-resend-sync.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-email-test.ts, ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, ./netlify/functions/sendQuoteEmail.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/stripe-shipping-webhook.ts, ./netlify/functions/stripeWebhook.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/submitVendorApplication.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMarketingAttribution.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMerchantProducts.ts, ./netlify/functions/syncStripeCatalog.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncVendorToStripe.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/updateVendorProfile.ts, ./netlify/functions/vendor-application.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/welcome-subscriber.ts, ./netlify/lib/sanityEnv.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/vendorOnboardingCampaign.ts, ./netlify/lib/wholesale.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/api/stripe-analytics.ts, ./packages/sanity-config/sanity.cli.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/sanity.config.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/useWorkspaceClient.ts, ./scripts/add-product-type.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/agent-rewrite-product-titles-async.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-abandoned-checkouts.ts, ./scripts/backfill-cart-product-references.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-clean-cart-items.ts, ./scripts/backfill-create-invoices.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-metrics.ts, ./scripts/backfill-customer-order-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-references.js, ./scripts/backfill-email-marketing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-fulfillment-package.ts, ./scripts/backfill-order-card-data.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-metadata.js, ./scripts/backfill-order-numbers.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-shipping-snapshot.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-product-codes-and-shipping.ts, ./scripts/backfill-profit-loss.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-stripe-payment-details.js, ./scripts/backfill-vendor-numbers.ts, |  |  |) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Length 7718 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(|  | ./scripts/backfill-vendor-portal-email.ts, ./scripts/backfill-vendor-portal-enabled.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-wholesale-pricing.ts, ./scripts/backfillOrderCartMetadata.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillOrders.ts, ./scripts/backfillProductCoreFields.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/delete-products-by-title.js, ./scripts/delete-products.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/enhance-existing-vendors.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-card-details.ts, ./scripts/fix-order-number-format.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fixBrokenShipmentReferences.ts, ./scripts/importMerchantData.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-category-mpn-prefixes.ts, ./scripts/migrate-download-resource.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-filters-to-refs.js, ./scripts/migrate-filters-to-strings.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-vendors.ts, ./scripts/migrateProductShipping.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/normalize-product-filters.js, ./scripts/remove-order-id-field.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/remove-refs-to-ids.js, ./scripts/repair-references.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/replace-product-refs.js, ./scripts/seed-vendor-onboarding-campaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/stripe-maintenance/shared.js, ./scripts/sync-gmc-status.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-google-ads-performance.ts, ./scripts/sync-resend-contacts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-shipping-to-stripe.js, ./src/lib/fetchCatalogProducts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchProductRequirements.ts, ./src/pages/api/create-shipping-label.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/send-shipping-confirmation.ts, ./src/pages/vendor-portal/messages.astro, |  |  |) Tj
+0 -10 Td
+(|  | ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_DATASET_NAME | ./netlify/lib/sanityEnv.ts | Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_DB | ./netlify/functions/sanity-resend-sync.ts, ./netlify/lib/wholesale.ts, | CLI/script, Netlify function, Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-numbers.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-resend-contacts.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_DEPLOY_TOKEN | ./scripts/deploy-schema-if-token.js, ./scripts/ensure-sanity-cors.ts | CLI/script | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_GRAPHQL_TOKEN | ./graphql.config.cjs | Tooling \(GraphQL config\) | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_HA_CHECK_ENDPOINTS | ./netlify/functions/ha-health.ts | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_HA_TARGET_SLA | ./netlify/functions/ha-health.ts | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_HOST | ./packages/sanity-config/sanity.cli.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_PROJECT | ./netlify/functions/ai-insights.ts, ./netlify/functions/ai-suggest-mappings.ts, | CLI/script, Netlify function, Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/connector-install.ts, ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts, ./netlify/lib/sanityEnv.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/wholesale.ts, ./scripts/backfill-order-numbers.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/ensure-email-marketing-channel.ts, ./scripts/sync-resend-contacts.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_PROJECT_DATASET | ./netlify/lib/sanityEnv.ts, ./scripts/backfill-abandoned-checkouts.ts, | CLI/script, Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./scripts/repair-references.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_PROJECT_DATASET_NAME | ./netlify/lib/sanityEnv.ts | Netlify function lib | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_PROJECT_ID | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | App server lib, Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo | REQUIRED |) Tj
+0 -10 Td
+(|  | ./graphql.config.cjs, ./netlify/functions/ai-insights.ts, | script/tool, Sanity Studio, Server API route, Server page \(Astro\), Server util, Tooling |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/ai-suggest-mappings.ts, ./netlify/functions/calculate-profit-loss.ts, | \(GraphQL config\) |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/cleanupFunctionLogs.ts, ./netlify/functions/connector-install.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/email-subscribe.ts, ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/finalizeFinancialConnection.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateCheckPDF.ts, ./netlify/functions/generateQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateShippingQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/inventoryReorderCheck.ts, ./netlify/functions/merchantFeed.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/productMetrics.ts, ./netlify/functions/productShippingSync.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/reprocessStripeSession.ts, ./netlify/functions/sanity-resend-sync.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-email-test.ts, ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, ./netlify/functions/sendQuoteEmail.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/stripe-shipping-webhook.ts, ./netlify/functions/stripeWebhook.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/submitVendorApplication.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMarketingAttribution.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMerchantProducts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/vendor-application.ts, ./netlify/functions/welcome-subscriber.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/sanityEnv.ts, ./netlify/lib/vendorOnboardingCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/wholesale.ts, ./packages/sanity-config/api/stripe-analytics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/sanity.cli.ts, ./packages/sanity-config/sanity.config.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/useWorkspaceClient.ts, ./scripts/add-product-type.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/agent-rewrite-product-titles-async.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-abandoned-checkouts.ts, ./scripts/backfill-cart-product-references.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-clean-cart-items.ts, ./scripts/backfill-create-invoices.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-metrics.ts, ./scripts/backfill-customer-order-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-references.js, ./scripts/backfill-email-marketing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-fulfillment-package.ts, ./scripts/backfill-order-card-data.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-metadata.js, ./scripts/backfill-order-numbers.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-shipping-snapshot.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-product-codes-and-shipping.ts, ./scripts/backfill-profit-loss.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-stripe-payment-details.js, ./scripts/backfill-vendor-numbers.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-portal-email.ts, ./scripts/backfill-vendor-portal-enabled.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-wholesale-pricing.ts, ./scripts/backfillOrderCartMetadata.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillOrders.ts, ./scripts/backfillProductCoreFields.ts, |  |  |) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Length 8211 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(|  | ./scripts/delete-products-by-title.js, ./scripts/delete-products.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/enhance-existing-vendors.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/ensure-sanity-cors.ts, ./scripts/fix-card-details.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-order-number-format.ts, ./scripts/fixBrokenShipmentReferences.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/importMerchantData.ts, ./scripts/migrate-category-mpn-prefixes.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-download-resource.ts, ./scripts/migrate-filters-to-refs.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-filters-to-strings.ts, ./scripts/migrate-vendors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrateProductShipping.ts, ./scripts/normalize-product-filters.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/remove-order-id-field.ts, ./scripts/remove-refs-to-ids.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/repair-references.ts, ./scripts/replace-product-refs.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/seed-vendor-onboarding-campaign.ts, ./scripts/stripe-maintenance/shared.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-gmc-status.ts, ./scripts/sync-google-ads-performance.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-resend-contacts.ts, ./scripts/sync-shipping-to-stripe.js, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchCatalogProducts.ts, ./src/lib/fetchProductRequirements.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/create-shipping-label.ts, ./src/pages/api/send-shipping-confirmation.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/vendor-portal/messages.astro, ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_READ_TOKEN | ./graphql.config.cjs, ./netlify/lib/sanityEnv.ts, ./src/pages/vendor-portal/messages.astro | Netlify function lib, Server page \(Astro\), Tooling \(GraphQL config\) | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_REQUIRED_CORS_ORIGINS | ./scripts/ensure-sanity-cors.ts | CLI/script | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_SCHEMA_ID | ./scripts/agent-rewrite-product-titles-async.ts | CLI/script | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_AI_INSIGHTS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/AiInsightsTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_AI_SUGGEST_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/AutoMapperTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_ANALYTICS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/AnalyticsDashboardTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_ANALYTICS_IFRAME_URL | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_API_DOCS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/ApiDocsTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_API_TOKEN | ./netlify/functions/ai-insights.ts, ./netlify/functions/ai-suggest-mappings.ts, | CLI/script, Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/connector-install.ts, ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts, ./netlify/functions/send-email-test.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-numbers.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-download-resource.ts, ./scripts/sync-resend-contacts.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_API_VERSION | ./netlify/functions/update-customer-segments.ts, | App server lib, CLI/script, Netlify function, Repo script/tool, Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/sanity.config.ts, ./scripts/backfill-customer-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-order-metrics.ts, ./src/lib/fetchCatalogProducts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchProductRequirements.ts, ./src/sanity/lib/client.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_BACKFILL_SECRET | ./netlify/functions/backfillExpiredCheckouts.ts, | Netlify function, Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/schemaTypes/documentActions/backfillActionFactory.tsx |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_BASE_URL | ./netlify/functions/notify-sms.ts | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_CANVAS_FALLBACK_ORIGIN | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_CONNECTORS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/ConnectorsHubTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_CONNECTOR_INSTALL_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/ConnectorsHubTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_DATASET | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | App server lib, Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo | REQUIRED |) Tj
+0 -10 Td
+(|  | ./graphql.config.cjs, ./netlify/functions/ai-insights.ts, | script/tool, Sanity Studio, Server API route, Server page \(Astro\), Server util, Tooling |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/ai-suggest-mappings.ts, ./netlify/functions/autoRelatedProducts.ts, | \(GraphQL config\) |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/calculate-profit-loss.ts, ./netlify/functions/captureOrderPayment.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/cleanupFunctionLogs.ts, ./netlify/functions/connector-install.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/createCheckout.ts, ./netlify/functions/createCheckoutSession.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/createCustomerDiscount.ts, ./netlify/functions/createRefund.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/finalizeFinancialConnection.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateCheckPDF.ts, ./netlify/functions/generateInvoicePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generatePackingSlips.ts, ./netlify/functions/generateQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/getShippingQuoteBySkus.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/inventoryReorderCheck.ts, ./netlify/functions/manual-fulfill-order.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/merchantFeed.ts, ./netlify/functions/productMetrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/productShippingSync.ts, ./netlify/functions/reprocessStripeSession.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/requestFreightQuote.ts, ./netlify/functions/resendInvoiceEmail.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts, ./netlify/functions/selfCheck.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-email-test.ts, ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, ./netlify/functions/sendEmailCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendQuoteEmail.ts, ./netlify/functions/stripe-shipping-webhook.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/stripeWebhook.ts, ./netlify/functions/submitVendorApplication.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMarketingAttribution.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMerchantProducts.ts, ./netlify/functions/syncStripeCatalog.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncVendorToStripe.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/updateVendorProfile.ts, ./netlify/functions/userData.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/email/renderCampaign.ts, ./netlify/lib/emailAutomations.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/sanityEnv.ts, ./netlify/lib/vendorOnboardingCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/wholesale.ts, ./packages/sanity-config/api/stripe-analytics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/sanity.cli.ts, ./packages/sanity-config/sanity.config.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/components/studio/EnvSelfCheck.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/emailService.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/sanityClient.ts, |  |  |) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Length 7972 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(|  | ./packages/sanity-config/src/utils/useWorkspaceClient.ts, ./scripts/add-product-type.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/agent-rewrite-product-titles-async.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-abandoned-checkouts.ts, ./scripts/backfill-clean-cart-items.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-metrics.ts, ./scripts/backfill-customer-order-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customers.js, ./scripts/backfill-email-marketing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-fulfillment-package.ts, ./scripts/backfill-invoices.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-attribution.ts, ./scripts/backfill-order-card-data.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-numbers.ts, ./scripts/backfill-order-shipping-snapshot.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-type-online.ts, ./scripts/backfill-orders.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-product-codes-and-shipping.ts, ./scripts/backfill-profit-loss.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-numbers.ts, ./scripts/backfill-vendor-portal-email.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-portal-enabled.ts, ./scripts/backfill-wholesale-pricing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillOrderCartMetadata.ts, ./scripts/backfillProductCoreFields.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillStripeSummary.ts, ./scripts/delete-draft-orders.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/delete-products-by-title.js, ./scripts/delete-products.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/enhance-existing-vendors.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-card-details.ts, ./scripts/fix-order-cart-item-fields.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-order-number-format.ts, ./scripts/importMerchantData.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/initialize-inventory.ts, ./scripts/migrate-category-mpn-prefixes.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-download-resource.ts, ./scripts/migrate-filters-to-refs.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-filters-to-strings.ts, ./scripts/migrate-order-cart-items.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-order-fields.ts, ./scripts/migrate-service-workflows.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-shipping-fields.js, ./scripts/migrate-vendors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrateProductShipping.ts, ./scripts/normalize-product-filters.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/remove-order-id-field.ts, ./scripts/remove-refs-to-ids.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/repair-references.ts, ./scripts/replace-product-refs.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/seed-vendor-onboarding-campaign.ts, ./scripts/setRoles.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/standardize-order-cart-items.js, ./scripts/stripe-maintenance/shared.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-resend-contacts.ts, ./scripts/sync-shipping-to-stripe.js, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchCatalogProducts.ts, ./src/lib/fetchProductRequirements.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/create-shipping-label.ts, ./src/pages/api/send-shipping-confirmation.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/vendor-portal/messages.astro, ./src/sanity/lib/client.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_DISABLE_VISION | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_DISABLE_VISUAL_EDITING | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_ENABLE_AUTO_MAPPER | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_ENABLE_VISUAL_EDITING | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_HA_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/HaStatusTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_HOSTNAME | ./packages/sanity-config/sanity.cli.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_INVOICE_PREFIX | ./functions/doc-mapping/index.ts | Serverless function | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_MARKETPLACE_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/MarketplaceTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_NETLIFY_BASE | ./archive/sanity-config/utils/netlifyBase.ts, ./netlify/functions/createCheckout.ts, | Archive/legacy, Netlify function, Netlify function lib, Sanity Studio, Server API route | REQUIRED |) Tj
+0 -10 Td
+(|  | ./netlify/functions/fulfill-order.ts, ./netlify/functions/manual-fulfill-order.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/requestFreightQuote.ts, ./netlify/functions/selfCheck.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, ./netlify/functions/sendQuoteEmail.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/packingSlip.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/components/studio/EnvSelfCheck.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/merge-label-packing-slip.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_OPENAI_API_KEY | ./netlify/functions/ai-suggest-mappings.ts | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_OPENAI_MODEL | ./netlify/functions/ai-suggest-mappings.ts | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_PORT | ./packages/sanity-config/sanity.cli.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_PRESENTATION_ENABLE_VISUAL_EDITING | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_PROJECT_ID | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | App server lib, Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo | REQUIRED |) Tj
+0 -10 Td
+(|  | ./graphql.config.cjs, ./netlify/functions/ai-insights.ts, | script/tool, Sanity Studio, Server API route, Server page \(Astro\), Server util, Tooling |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/ai-suggest-mappings.ts, ./netlify/functions/autoRelatedProducts.ts, | \(GraphQL config\) |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/calculate-profit-loss.ts, ./netlify/functions/captureOrderPayment.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/cleanupFunctionLogs.ts, ./netlify/functions/connector-install.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/createCheckout.ts, ./netlify/functions/createCheckoutSession.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/createCustomerDiscount.ts, ./netlify/functions/createRefund.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/enterprise-connectors.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/finalizeFinancialConnection.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generateCheckPDF.ts, ./netlify/functions/generateInvoicePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/generatePackingSlips.ts, ./netlify/functions/generateQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/getShippingQuoteBySkus.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/inventoryReorderCheck.ts, ./netlify/functions/manual-fulfill-order.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/merchantFeed.ts, ./netlify/functions/productMetrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/productShippingSync.ts, ./netlify/functions/reprocessStripeSession.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/requestFreightQuote.ts, ./netlify/functions/resendInvoiceEmail.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts, ./netlify/functions/selfCheck.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-email-test.ts, ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, ./netlify/functions/sendEmailCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendQuoteEmail.ts, ./netlify/functions/stripe-shipping-webhook.ts, |  |  |) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Length 8221 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(|  | ./netlify/functions/stripeWebhook.ts, ./netlify/functions/submitVendorApplication.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMarketingAttribution.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMerchantProducts.ts, ./netlify/functions/syncStripeCatalog.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncVendorToStripe.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/updateVendorProfile.ts, ./netlify/functions/userData.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/email/renderCampaign.ts, ./netlify/lib/emailAutomations.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/sanityEnv.ts, ./netlify/lib/vendorOnboardingCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/wholesale.ts, ./packages/sanity-config/api/stripe-analytics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/sanity.cli.ts, ./packages/sanity-config/sanity.config.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/components/studio/EnvSelfCheck.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/emailService.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/sanityClient.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/utils/useWorkspaceClient.ts, ./scripts/add-product-type.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/agent-rewrite-product-titles-async.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-abandoned-checkouts.ts, ./scripts/backfill-clean-cart-items.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-metrics.ts, ./scripts/backfill-customer-order-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customers.js, ./scripts/backfill-email-marketing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-fulfillment-package.ts, ./scripts/backfill-invoices.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-attribution.ts, ./scripts/backfill-order-card-data.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-numbers.ts, ./scripts/backfill-order-shipping-snapshot.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-type-online.ts, ./scripts/backfill-orders.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-product-codes-and-shipping.ts, ./scripts/backfill-profit-loss.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-numbers.ts, ./scripts/backfill-vendor-portal-email.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-portal-enabled.ts, ./scripts/backfill-wholesale-pricing.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillOrderCartMetadata.ts, ./scripts/backfillProductCoreFields.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillStripeSummary.ts, ./scripts/delete-draft-orders.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/delete-products-by-title.js, ./scripts/delete-products.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/enhance-existing-vendors.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/ensure-sanity-cors.ts, ./scripts/fix-card-details.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-order-cart-item-fields.js, ./scripts/fix-order-number-format.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/importMerchantData.ts, ./scripts/initialize-inventory.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-category-mpn-prefixes.ts, ./scripts/migrate-download-resource.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-filters-to-refs.js, ./scripts/migrate-filters-to-strings.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-order-cart-items.js, ./scripts/migrate-order-fields.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-service-workflows.ts, ./scripts/migrate-shipping-fields.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-vendors.ts, ./scripts/migrateProductShipping.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/normalize-product-filters.js, ./scripts/remove-order-id-field.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/remove-refs-to-ids.js, ./scripts/repair-references.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/replace-product-refs.js, ./scripts/seed-vendor-onboarding-campaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/setRoles.js, ./scripts/standardize-order-cart-items.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/stripe-maintenance/shared.js, ./scripts/sync-resend-contacts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-shipping-to-stripe.js, ./src/lib/fetchCatalogProducts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/lib/fetchProductRequirements.ts, ./src/pages/api/create-shipping-label.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/send-shipping-confirmation.ts, ./src/pages/vendor-portal/messages.astro, |  |  |) Tj
+0 -10 Td
+(|  | ./src/sanity/lib/client.ts, ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_REPO_SCAN_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/EnvScanTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_SCHEMA_ID | ./scripts/agent-rewrite-product-titles-async.ts | CLI/script | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_SECURITY_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/SecurityComplianceTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_SHIPPING_PROVIDER | ./packages/sanity-config/src/schemaTypes/documentActions/createEasyPostLabelAction.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_SITE_BASE_URL | ./packages/sanity-config/src/components/studio/ProductBulkEditor.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_SITE_URL | ./netlify/functions/send-vendor-invite.ts, ./netlify/lib/vendorOnboardingCampaign.ts, | Netlify function, Netlify function lib, Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/components/studio/DocumentIframePreview.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/components/studio/ProductPreview.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/documentActions/productDocumentActions.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./packages/sanity-config/src/schemaTypes/documentActions/syncMerchantFeedAction.tsx |  |  |) Tj
+0 -10 Td
+(| SANITY_STUDIO_STRIPE_ANALYTICS_CHARGE_LIMIT | ./packages/sanity-config/src/server/stripe-analytics.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_STRIPE_ANALYTICS_SESSION_LIMIT | ./packages/sanity-config/src/server/stripe-analytics.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_STRIPE_ANALYTICS_TOP_PRODUCTS_DAYS | ./packages/sanity-config/src/server/stripe-analytics.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_STRIPE_PUBLISHABLE_KEY | ./packages/sanity-config/src/components/studio/BankAccountsTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_STRIPE_SECRET_KEY | ./netlify/lib/stripeEnv.ts, ./packages/sanity-config/src/server/stripe-analytics.ts | Netlify function lib, Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_TRANSFORM_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/TransformationLibraryTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_VENDOR_PORTAL_URL | ./packages/sanity-config/src/schemaTypes/documentActions/vendorInviteAction.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_STUDIO_WEBHOOK_TEST_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/WebhookTesterTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| SANITY_TOKEN | ./netlify/lib/sanityEnv.ts, ./scripts/backfill-abandoned-checkouts.ts, | CLI/script, Netlify function lib | REQUIRED |) Tj
+0 -10 Td
+(|  | ./scripts/backfillOrders.ts, ./scripts/fix-card-details.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fixBrokenShipmentReferences.ts, ./scripts/repair-references.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_WEBHOOK_SECRET | ./netlify/functions/autoRelatedProducts.ts, ./netlify/functions/productShippingSync.ts, | Netlify function | OPTIONAL |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sanity-resend-sync.ts |  |  |) Tj
+0 -10 Td
+(| SANITY_WRITE_TOKEN | ./archive/netlify/functions/create-parcelcraft-label.ts, ./bulkUpdateProductUrls.ts, | Archive/legacy, CLI/script, Netlify function, Netlify function lib, Repo script/tool, | REQUIRED |) Tj
+0 -10 Td
+(|  | ./fix-all-order-references.js, ./fix-order-reference.js, | Server API route, Server page \(Astro\), Server util |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/calculate-profit-loss.ts, ./netlify/functions/cleanupFunctionLogs.ts, |  |  |) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Length 5724 >>
+stream
+BT
+/F1 8 Tf
+36 748 Td
+(|  | ./netlify/functions/email-subscribe.ts, ./netlify/functions/generateShippingQuotePDF.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/productMetrics.ts, ./netlify/functions/sanity-resend-sync.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/send-email-test.ts, ./netlify/functions/send-vendor-invite.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/sendAbandonedCartEmails.tsx, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/stripe-shipping-webhook.ts, ./netlify/functions/stripeWebhook.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/syncMarketingAttribution.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/update-customer-segments.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/vendor-application.ts, ./netlify/functions/welcome-subscriber.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/functions/wholesale-orders.ts, ./netlify/lib/sanityClient.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/sanityEnv.ts, ./netlify/lib/vendorOnboardingCampaign.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./netlify/lib/wholesale.ts, ./scripts/agent-rewrite-product-titles-async.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/aws-secrets-shim.cjs, ./scripts/backfill-abandoned-checkouts.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-cart-product-references.js, ./scripts/backfill-clean-cart-items.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-create-invoices.js, ./scripts/backfill-customer-metrics.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-customer-order-metrics.ts, ./scripts/backfill-customer-references.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-email-marketing.ts, ./scripts/backfill-fulfillment-package.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-card-data.ts, ./scripts/backfill-order-metadata.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-order-numbers.ts, ./scripts/backfill-order-shipping-snapshot.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-product-codes-and-shipping.ts, ./scripts/backfill-profit-loss.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-stripe-payment-details.js, ./scripts/backfill-vendor-numbers.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-vendor-portal-email.ts, ./scripts/backfill-vendor-portal-enabled.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfill-wholesale-pricing.ts, ./scripts/backfillOrderCartMetadata.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/backfillProductCoreFields.ts, ./scripts/deploy-schema-if-token.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/enhance-existing-vendors.ts, ./scripts/ensure-email-marketing-channel.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/ensure-sanity-cors.ts, ./scripts/fix-card-details.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/fix-order-number-format.ts, ./scripts/migrate-category-mpn-prefixes.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/migrate-download-resource.ts, ./scripts/migrateProductShipping.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/remove-order-id-field.ts, ./scripts/repair-references.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/seed-vendor-onboarding-campaign.ts, ./scripts/stripe-maintenance/shared.js, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-gmc-status.ts, ./scripts/sync-google-ads-performance.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./scripts/sync-resend-contacts.ts, ./src/pages/api/create-shipping-label.ts, |  |  |) Tj
+0 -10 Td
+(|  | ./src/pages/api/send-shipping-confirmation.ts, ./src/pages/vendor-portal/messages.astro, |  |  |) Tj
+0 -10 Td
+(|  | ./utils/functionLogger.ts |  |  |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_AI_INSIGHTS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/AiInsightsTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_AI_SUGGEST_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/AutoMapperTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_ANALYTICS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/AnalyticsDashboardTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_API_DOCS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/ApiDocsTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_CONNECTORS_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/ConnectorsHubTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_CONNECTOR_INSTALL_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/ConnectorsHubTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_DISABLE_VISION | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_DISABLE_VISUAL_EDITING | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_ENABLE_AUTO_MAPPER | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_ENABLE_VISUAL_EDITING | ./packages/sanity-config/sanity.config.ts | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_HA_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/HaStatusTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_MARKETPLACE_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/MarketplaceTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_REPO_SCAN_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/EnvScanTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_SECURITY_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/SecurityComplianceTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_TRANSFORM_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/TransformationLibraryTool.tsx | Sanity Studio | OPTIONAL |) Tj
+0 -10 Td
+(| VITE_SANITY_STUDIO_WEBHOOK_TEST_ENDPOINT | ./packages/sanity-config/src/autoMapper/ui/WebhookTesterTool.tsx | Sanity Studio | OPTIONAL |) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+16 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+xref
+0 18
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000160 00000 n 
+0000000228 00000 n 
+0000008053 00000 n 
+0000015699 00000 n 
+0000023469 00000 n 
+0000031732 00000 n 
+0000039756 00000 n 
+0000048029 00000 n 
+0000053806 00000 n 
+0000053933 00000 n 
+0000054060 00000 n 
+0000054187 00000 n 
+0000054314 00000 n 
+0000054441 00000 n 
+0000054568 00000 n 
+trailer
+<< /Size 18 /Root 1 0 R >>
+startxref
+54696
+%%EOF

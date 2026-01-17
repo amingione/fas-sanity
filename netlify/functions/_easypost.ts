@@ -25,12 +25,12 @@ export function verifyEasyPostSignature(rawBody: string, signature: string | nul
 export function getWarehouseAddress() {
   return {
     company: process.env.WAREHOUSE_COMPANY || 'FAS Motorsports',
-    street1: process.env.WAREHOUSE_STREET1 || '123 Main St',
+    street1: process.env.WAREHOUSE_STREET1 || '6161 Riverside Dr',
     street2: process.env.WAREHOUSE_STREET2 || '',
-    city: process.env.WAREHOUSE_CITY || 'Phoenix',
-    state: process.env.WAREHOUSE_STATE || 'AZ',
-    zip: process.env.WAREHOUSE_ZIP || '85001',
+    city: process.env.WAREHOUSE_CITY || 'Punta Gorda',
+    state: process.env.WAREHOUSE_STATE || 'FL',
+    zip: process.env.WAREHOUSE_ZIP || '33982',
     country: 'US',
-    phone: process.env.WAREHOUSE_PHONE || '555-555-5555',
+    phone: process.env.WAREHOUSE_PHONE || '812-200-9012',
   }
 }
