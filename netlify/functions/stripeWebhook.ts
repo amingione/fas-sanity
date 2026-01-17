@@ -2038,6 +2038,26 @@ function parseBooleanFlag(value: unknown): boolean | undefined {
   return undefined
 }
 
+function normalizePaymentStatus(
+  sessionStatus?: string | null,
+  paymentIntentStatus?: string | null,
+): 'pending' | 'unpaid' | 'paid' | 'failed' | 'refunded' | 'partially_refunded' | 'cancelled' {
+  const normalizedSession = (sessionStatus || '').toLowerCase().trim()
+  if (normalizedSession === 'paid') return 'paid'
+  if (normalizedSession === 'unpaid') return 'unpaid'
+  if (normalizedSession === 'no_payment_required') return 'paid'
+
+  const normalizedIntent = (paymentIntentStatus || '').toLowerCase().trim()
+  if (normalizedIntent === 'succeeded') return 'paid'
+  if (normalizedIntent === 'processing' || normalizedIntent === 'requires_capture') return 'pending'
+  if (normalizedIntent === 'requires_action' || normalizedIntent === 'requires_confirmation')
+    return 'pending'
+  if (normalizedIntent === 'requires_payment_method') return 'failed'
+  if (normalizedIntent === 'canceled' || normalizedIntent === 'cancelled') return 'cancelled'
+
+  return 'pending'
+}
+
 function normalizeLabel(raw?: string | null): string | undefined {
   if (!raw) return undefined
   const cleaned = raw.toString().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -3381,7 +3401,7 @@ async function strictCreateInvoice(
     _type: 'invoice',
     title: `Invoice for ${order.orderNumber}`,
     invoiceNumber: (order.orderNumber || '').toString().replace('FAS-', 'INV-'),
-    status: 'paid',
+    status: normalizedPaymentStatus === 'paid' ? 'paid' : 'pending',
     invoiceDate: order.createdAt,
     dueDate: order.createdAt,
     paymentTerms: 'Paid in full',
@@ -3431,6 +3451,7 @@ async function createOrderFromCheckout(
         'line_items.data.price.product',
         'payment_intent',
         'customer',
+        'shipping_cost.shipping_rate',
       ],
     })
   } catch (err) {
@@ -3858,6 +3879,10 @@ async function createOrderFromCheckout(
       : paymentCaptured
         ? nowIso
         : undefined
+  const normalizedPaymentStatus = normalizePaymentStatus(
+    session.payment_status,
+    paymentDetails.paymentIntent?.status,
+  )
 
   const baseOrderPayload: any = {
     _type: 'order',
@@ -3866,7 +3891,7 @@ async function createOrderFromCheckout(
     orderType: strictDetermineOrderType(session),
     status: 'paid',
     createdAt: nowIso,
-    paymentStatus: session.payment_status || 'paid',
+    paymentStatus: normalizedPaymentStatus,
     customerName,
     customerEmail: customerEmail || '',
     customerRef: customer?._id

@@ -129,6 +129,15 @@ export const handler: Handler = async (event) => {
     }
   }
 
+  return {
+    statusCode: 410,
+    headers: {...CORS, 'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      error:
+        'Embedded checkout is disabled. Use hosted Stripe Checkout via fas-cms-fresh (src/pages/api/stripe/create-checkout-session.ts).',
+    }),
+  }
+
   if (!stripe) {
     return {
       statusCode: 500,
@@ -533,7 +542,6 @@ export const handler: Handler = async (event) => {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      ui_mode: 'embedded',
       client_reference_id: cartId,
       customer_email: customerEmail,
       line_items: lineItems,

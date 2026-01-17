@@ -117,8 +117,56 @@ export function applyShippingDetailsToDoc(
   if (shippingDetails.estimatedDeliveryDate) {
     target.estimatedDeliveryDate = shippingDetails.estimatedDeliveryDate
   }
-  if (shippingDetails.serviceCode || shippingDetails.carrierId) {
-    target.easypostRateId = shippingDetails.serviceCode || shippingDetails.carrierId
+  const shippingMeta = shippingDetails.metadata || {}
+  const stripeShippingRateId =
+    shippingDetails.shippingRateId ||
+    pickFromMeta(shippingMeta, [
+      'shipping_rate_id',
+      'shipping_rateid',
+      'stripe_shipping_rate_id',
+      'stripeShippingRateId',
+    ])
+  if (stripeShippingRateId) {
+    target.stripeShippingRateId = stripeShippingRateId
+  }
+
+  const easyPostRateId =
+    pickFromMeta(shippingMeta, ['easypost_rate_id', 'easypostRateId', 'easypost_rate']) ||
+    (shippingDetails.serviceCode && shippingDetails.serviceCode.startsWith('rate_')
+      ? shippingDetails.serviceCode
+      : undefined) ||
+    (shippingDetails.carrierId && shippingDetails.carrierId.startsWith('rate_')
+      ? shippingDetails.carrierId
+      : undefined)
+  if (easyPostRateId) {
+    target.easypostRateId = easyPostRateId
+  }
+
+  const shippingQuoteId = pickFromMeta(shippingMeta, [
+    'shipping_quote_id',
+    'shippingQuoteId',
+    'parcelcraft_quote_id',
+  ])
+  if (shippingQuoteId) {
+    target.shippingQuoteId = shippingQuoteId
+  }
+
+  const shippingQuoteKey = pickFromMeta(shippingMeta, [
+    'shipping_quote_key',
+    'shippingQuoteKey',
+    'parcelcraft_quote_key',
+  ])
+  if (shippingQuoteKey) {
+    target.shippingQuoteKey = shippingQuoteKey
+  }
+
+  const shippingQuoteRequestId = pickFromMeta(shippingMeta, [
+    'shipping_quote_request_id',
+    'shippingQuoteRequestId',
+    'parcelcraft_quote_request_id',
+  ])
+  if (shippingQuoteRequestId) {
+    target.shippingQuoteRequestId = shippingQuoteRequestId
   }
 }
 
@@ -135,10 +183,14 @@ export const deriveFulfillmentFromMetadata = (
     pickFromMeta(meta, FULFILLMENT_SHIPMENT_ID_KEYS) ||
     shippingDetails.metadata?.['shipping_shipment_id']
   const trackerId = pickFromMeta(meta, FULFILLMENT_TRACKER_ID_KEYS)
-  const rateId =
+  const rateIdRaw =
     pickFromMeta(meta, FULFILLMENT_RATE_ID_KEYS) ||
     shippingDetails.metadata?.['shipping_rate_id'] ||
     shippingDetails.metadata?.['shipping_rateid']
+  const rateId = typeof rateIdRaw === 'string' ? rateIdRaw.trim() : undefined
+  const stripeShippingRateId =
+    shippingDetails.shippingRateId || (rateId && rateId.startsWith('shr_') ? rateId : undefined)
+  const easyPostRateId = rateId && rateId.startsWith('rate_') ? rateId : undefined
   const actualCostRaw = pickFromMeta(meta, FULFILLMENT_ACTUAL_COST_KEYS)
   const actualShippingCost = parseNumber(actualCostRaw)
   const labelPurchasedAtRaw = pickFromMeta(meta, FULFILLMENT_PURCHASED_AT_KEYS)
@@ -167,7 +219,8 @@ export const deriveFulfillmentFromMetadata = (
     labelCreatedAt: labelPurchasedAt,
     easyPostShipmentId: shipmentId,
     easyPostTrackerId: trackerId,
-    easypostRateId: rateId,
+    easypostRateId: easyPostRateId,
+    stripeShippingRateId: stripeShippingRateId,
     labelCost: actualShippingCost,
     deliveryDays:
       shippingDetails.deliveryDays !== undefined ? shippingDetails.deliveryDays : undefined,
