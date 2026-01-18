@@ -1509,7 +1509,8 @@ const convertLegacyCartEntry = (entry: unknown): CartItem | null => {
     consumeRecordValue(working, [
       'price',
       'unit_price',
-      'base_price',
+      'original_price',
+      'default_price',
       'amount',
       'total',
       'line_total',
@@ -3842,6 +3843,18 @@ async function createOrderFromCheckout(
     preliminaryStripeSummary,
     customerEmail,
   )
+  const checkoutCompany = resolveCheckoutCompany(session)
+  if (checkoutCompany && shippingAddress) {
+    const normalizedCompany = checkoutCompany.trim()
+    if (normalizedCompany) {
+      const existingLine2 = (shippingAddress.addressLine2 || '').trim()
+      if (!existingLine2) {
+        shippingAddress.addressLine2 = normalizedCompany
+      } else if (!existingLine2.toLowerCase().includes(normalizedCompany.toLowerCase())) {
+        shippingAddress.addressLine2 = `${normalizedCompany}, ${existingLine2}`
+      }
+    }
+  }
   const billingAddress =
     paymentDetails.billingAddress ||
     (sessionCharge?.billing_details?.address

@@ -22,8 +22,7 @@ const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_V
 
 const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
 
-const SANITY_STUDIO_DATASET =
-  process.env.SANITY_STUDIO_DATASET || 'production'
+const SANITY_STUDIO_DATASET = process.env.SANITY_STUDIO_DATASET || 'production'
 
 if (!SANITY_STUDIO_PROJECT_ID) {
   throw new Error('syncStripeCatalog: missing Sanity project id (set SANITY_STUDIO_PROJECT_ID).')
@@ -260,9 +259,11 @@ function resolveShippingDetails(product: SanityProduct): ShippingDetails {
   if (product.shippingConfig?.requiresShipping === false) {
     return {weightLbs: null, weightOz: null, dimensions: null, dimensionsLabel: undefined}
   }
-  const weightLbs = toPositiveNumber(product.shippingConfig?.weight) ?? toPositiveNumber(product.shippingWeight)
+  const weightLbs =
+    toPositiveNumber(product.shippingConfig?.weight) ?? toPositiveNumber(product.shippingWeight)
   const weightOz = weightLbs !== null ? Number((weightLbs * 16).toFixed(2)) : null
-  const dimensions = resolveConfigDimensions(product) || parseBoxDimensionsString(product.boxDimensions)
+  const dimensions =
+    resolveConfigDimensions(product) || parseBoxDimensionsString(product.boxDimensions)
   const dimensionsLabel = dimensions
     ? [dimensions.length, dimensions.width, dimensions.height].map(formatDimensionLabel).join('x')
     : typeof product.boxDimensions === 'string'
@@ -345,9 +346,7 @@ function buildMetadata(
       ? shippingConfig.separateShipment
       : product.shipsAlone
   const requiresShipping =
-    shippingConfig.requiresShipping !== undefined
-      ? shippingConfig.requiresShipping !== false
-      : true
+    shippingConfig.requiresShipping !== undefined ? shippingConfig.requiresShipping !== false : true
 
   const productImage =
     (product as any)?.primaryImage ||
@@ -371,10 +370,7 @@ function buildMetadata(
     length: normalizedDimensions ? String(normalizedDimensions.length) : undefined,
     width: normalizedDimensions ? String(normalizedDimensions.width) : undefined,
     height: normalizedDimensions ? String(normalizedDimensions.height) : undefined,
-    shipping_weight_lbs: typeof weight === 'number' ? weight.toString() : undefined,
     shipping_weight_oz: typeof weight === 'number' ? (weight * 16).toFixed(2) : undefined,
-    shipping_box_dimensions: dimensionsLabel,
-    shipping_weight: typeof weight === 'number' ? weight.toString() : undefined,
     shipping_dimensions: dimensionsLabel,
     shipping_class: shippingClass,
     handling_time: handlingTime !== null ? handlingTime.toString() : undefined,

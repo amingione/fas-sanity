@@ -62,9 +62,12 @@ const IGNORE_OPTION_KEYS = [
   'option2_value',
   'option3_name',
   'option3_value',
-  'base_price',
+  'default_price',
   'base_price_display',
   'baseprice',
+  'original_price',
+  'original_price_display',
+  'originalprice',
   'display',
 ]
 
@@ -416,7 +419,10 @@ const OPTION_PREFIX = /^option\s*\d*[:\-\s]*/i
 const UPGRADE_PREFIX = /^(?:upgrades?|upgrade option|add[\s-]?ons?|add[\s-]?on option)[:\-\s]*/i
 const UPGRADE_LABEL = /^(?:upgrades?|add[\s-]?ons?)$/i
 
-const normalizeOptionSegment = (raw: string, forceUpgrade = false): {value: string; isUpgrade: boolean} | null => {
+const normalizeOptionSegment = (
+  raw: string,
+  forceUpgrade = false,
+): {value: string; isUpgrade: boolean} | null => {
   let text = raw.replace(/^[•\-\s]+/, '').trim()
   if (!text) return null
 
@@ -486,7 +492,10 @@ export const normalizeOptionSelections = (input: {
   }
 
   for (const upgrade of upgradeSegments) {
-    const normalized = normalizeOptionSegment(upgrade, true) || {value: upgrade.trim(), isUpgrade: true}
+    const normalized = normalizeOptionSegment(upgrade, true) || {
+      value: upgrade.trim(),
+      isUpgrade: true,
+    }
     if (!normalized.value) continue
     appendUnique(upgrades, seenUpgrades, normalized.value)
   }
@@ -551,10 +560,7 @@ export const normalizeCartItemChoices = (input: {
     optionDetails: input.optionDetails,
     upgrades: input.upgrades,
   })
-  const explicitAddOns = uniqueStrings([
-    ...addOns,
-    ...coerceStringArray(input.addOns),
-  ])
+  const explicitAddOns = uniqueStrings([...addOns, ...coerceStringArray(input.addOns)])
 
   return {
     selectedOption: selectedVariant,
@@ -562,7 +568,19 @@ export const normalizeCartItemChoices = (input: {
   }
 }
 
-const BASE_PRICE_KEYS = ['base_price', 'base price', 'baseprice', 'base_price_display', 'base price display']
+const BASE_PRICE_KEYS = [
+  'base_price',
+  'base price',
+  'default_price',
+  'baseprice',
+  'base_price_display',
+  'base price display',
+  'original_price',
+  'original price',
+  'originalprice',
+  'original_price_display',
+  'original price display',
+]
 const UPGRADE_TOTAL_KEYS = [
   'upgrade_total',
   'upgrades_total',
@@ -571,7 +589,12 @@ const UPGRADE_TOTAL_KEYS = [
   'upgrade_total_display',
   'upgrades_total_display',
 ]
-const OPTION_UPCHARGE_KEYS = ['option_upcharge', 'option upcharge', 'option_upcharge_display', 'option upcharge display']
+const OPTION_UPCHARGE_KEYS = [
+  'option_upcharge',
+  'option upcharge',
+  'option_upcharge_display',
+  'option upcharge display',
+]
 
 const normalizeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, '')
 
@@ -691,6 +714,8 @@ export const remainingMetadataEntries = (
 const METADATA_EXCLUDE_PATTERNS = [
   /^base price/i,
   /^base price display/i,
+  /^original price/i,
+  /^original price display/i,
   /^option upcharge/i,
   /^option upcharge display/i,
   /^product image/i,

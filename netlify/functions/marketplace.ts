@@ -27,18 +27,6 @@ const PACKS: Pack[] = [
     endpoints: ['/api/easypost/rates', '/api/easypost/labels'],
   },
   {
-    name: 'shipengine-multicarrier',
-    version: '0.1.0',
-    description: 'ShipEngine multi-carrier pack with batch labels and returns.',
-    author: 'FAS Labs',
-    category: 'shipping',
-    tags: ['shipping', 'shipengine', 'returns'],
-    documentation: 'https://docs.example.com/shipengine',
-    license: 'MIT',
-    repository: 'https://github.com/example/shipengine-pack',
-    endpoints: ['/api/shipengine/labels', '/api/shipengine/returns'],
-  },
-  {
     name: 'twilio-messaging',
     version: '0.1.0',
     description: 'Twilio messaging pack for SMS updates and two-way threads.',

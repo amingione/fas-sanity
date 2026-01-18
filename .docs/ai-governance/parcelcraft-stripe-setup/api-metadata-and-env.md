@@ -11,12 +11,17 @@ Add these to your backend `.env` file for authentication:
 
 Parcelcraft uses Stripe Metadata instead of environment variables. Pass these keys in API calls like `stripe.checkout.sessions.create()`:
 
-| Metadata Key     | Value / Example | Purpose                                               |
-| ---------------- | --------------- | ----------------------------------------------------- |
-| `ship_status`    | `unshipped`     | **Critical.** Adds order to "Unshipped Invoices" list |
-| `weight`         | `1.5`           | Product weight for label calculation                  |
-| `weight_unit`    | `pound`         | Defaults to ounce if not specified                    |
-| `origin_country` | `US`            | Required for international customs forms              |
+| Metadata Key          | Value / Example                | Purpose                                               |
+| --------------------- | ------------------------------ | ----------------------------------------------------- |
+| `ship_status`         | `unshipped`                    | **Critical.** Adds order to "Unshipped Invoices" list |
+| `weight`              | `7`                            | Product weight for label calculation                  |
+| `weight_unit`         | `pounds`                       | Defaults to ounce if not specified                    |
+| `origin_country`      | `US`                           | Required for international customs forms              |
+| `is_return`           | `false`                        | Marks shipment as return if set to `true`             |
+| `tariff_code`         | `8708.99.8180`                 | Customs classification                                |
+| `customs_description` | `Automotive performance parts` | Used for international customs forms                  |
+
+|
 
 ### 3. Required Session Parameters
 
@@ -41,7 +46,7 @@ Instead:
 | --------------------- | ------------------------------ | ------------------------------------ |
 | `customs_description` | `Automotive performance parts` | Used for international customs forms |
 | `tariff_code`         | `8708.99.8180`                 | Customs classification               |
-| `is_return`           | `false`                         | Indicates shipment is a return       |
+| `is_return`           | `false`                        | Indicates shipment is a return       |
 
 ### 6. Summary
 

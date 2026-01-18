@@ -328,7 +328,6 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
       }
     }
 
-
     const metadataSummaryValue = normalizedItem.optionSummary?.trim()
     const metadataUpgradesValue = normalizedItem.upgrades
       ?.map((entry) => entry.trim())
@@ -346,10 +345,7 @@ const normalizeCartArrayValue = (value: Array<unknown>): OrderCartItem[] | undef
 
     if (nextMetadata) {
       const existingMetadata = normalizedItem.metadata
-      const upgradesChanged = !arraysEqual(
-        existingMetadata?.upgrades,
-        nextMetadata.upgrades,
-      )
+      const upgradesChanged = !arraysEqual(existingMetadata?.upgrades, nextMetadata.upgrades)
       if (existingMetadata?.option_summary !== nextMetadata.option_summary || upgradesChanged) {
         normalizedItem.metadata = nextMetadata
         changed = true
@@ -405,7 +401,9 @@ const convertLegacyCartItem = (value: unknown): OrderCartItem | null => {
     consume(source, ['productUrl', 'product_url', 'url', 'product_path']),
   )
   const image = toStringValue(consume(source, ['image', 'product_image', 'imageUrl', 'image_url']))
-  const price = toNumberValue(consume(source, ['price', 'unit_price', 'base_price']))
+  const price = toNumberValue(
+    consume(source, ['price', 'unit_price', 'original_price', 'default_price']),
+  )
   const quantity = toNumberValue(consume(source, ['quantity', 'qty', 'amount']))
   const lineTotal = toNumberValue(
     consume(source, ['lineTotal', 'line_total', 'amount_total', 'amountTotal']),

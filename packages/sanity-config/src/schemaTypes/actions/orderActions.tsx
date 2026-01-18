@@ -50,10 +50,6 @@ export const GeneratePackingSlipAction: DocumentActionComponent = (props) => {
 
 export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
   const {type, draft, published, onComplete} = props
-  if (type !== 'order') return null
-  const doc = draft || published
-  const labelAlreadyPurchased = Boolean(doc?.labelPurchased)
-  const defaultDimensions = {weight: 2, length: 10, width: 8, height: 4}
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'form' | 'message'>('form')
   const [dialogMessage, setDialogMessage] = useState('')
@@ -63,6 +59,12 @@ export const CreateShippingLabelAction: DocumentActionComponent = (props) => {
   const [widthInput, setWidthInput] = useState('')
   const [heightInput, setHeightInput] = useState('')
   const [resultLabelUrl, setResultLabelUrl] = useState<string | null>(null)
+
+  if (type !== 'order') return null
+
+  const doc = draft || published
+  const labelAlreadyPurchased = Boolean(doc?.labelPurchased)
+  const defaultDimensions = {weight: 2, length: 10, width: 8, height: 4}
 
   const openMessageDialog = (message: string) => {
     setDialogMode('message')

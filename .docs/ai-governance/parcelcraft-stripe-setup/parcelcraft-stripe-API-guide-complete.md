@@ -59,18 +59,20 @@ All values are optional. Setting product defaults helps prepare shipments accord
 
 ### Stripe Shipping Rate Metadata
 
-All values are optional. Defining defaults helps prepare shipments based on your shipping rate metadata, especially when using shipping rates in Stripe invoices.
+Defining defaults helps prepare shipments based on your shipping rate metadata, especially when using shipping rates in Stripe invoices (i would like to use 'strings' here but it breaks the table formatting???).
 
-| Metadata Key            | Example Value | Description                                                                           |
-| ----------------------- | ------------- | ------------------------------------------------------------------------------------- |
-| `carrier_id`            | `ca_c38cd24…` | Your EasyPost carrier ID                                                              |
-| `package_code`          | `Letter`      | Package code for your EasyPost carrier (defaults to `Package`)                        |
-| `packaging_weight`      | `0.26`        | Weight of the packaging                                                               |
-| `packaging_weight_unit` | `ounce`       | Unit for packaging weight (`gram`, `ounce`, `pound`, `kilogram`; defaults to `ounce`) |
-| `service_code`          | `Priority`    | Service level (e.g., `Ground`, `Priority`, `NextDayAir`)                              |
-| `width`                 | `10`          | Default package width (unit based on Parcelcraft carrier settings)                    |
-| `length`                | `5`           | Default package length                                                                |
-| `height`                | `8`           | Default package height                                                                |
+| Metadata Key      | Example Value            | Description                                                        |
+| ----------------- | ------------------------ | ------------------------------------------------------------------ |
+| `carrier_id`      | `ca_c38cd24…`            | Your EasyPost carrier ID                                           |
+| `package_code`    | `Package`                | Package code for your EasyPost carrier (defaults to `Package`)     |
+| `weight`          | `7`                      | Weight of the packaging                                            |
+| `weight_unit`     | `pound`                  | Unit for packaging weight (`ounce`, `pound`; defaults to `pound`)  |
+| `service_code`    | `standard`               | Service level (e.g., `Ground`, `Priority`, `NextDayAir`)           |
+| `width`           | `12`                     | Default package width (unit based on Parcelcraft carrier settings) |
+| `length`          | `12`                     | Default package length                                             |
+| `height`          | `8`                      | Default package height                                             |
+| `dimensions_unit` | `inch`                   | Unit for dimensions (`inch`, `cm`; defaults to `inch`)             |
+| `company`         | `F.A.S. Motorsports LLC` | Company name added to shipping address                             |
 
 ### Stripe Customer Metadata
 
@@ -78,6 +80,6 @@ Some addresses (e.g., shared office spaces) may require a company name for succe
 
 **Tip:** Add a custom field called `company` in your Stripe payment links or checkout sessions, then use that data to update the Stripe customer’s metadata.
 
-| Metadata Key | Example Value       | Description                            |
-| ------------ | ------------------- | -------------------------------------- |
-| `company`    | `Acme Incorporated` | Company name added to shipping address |
+| Metadata Key | Value  example           | Description                            |
+| ------------ | ------------------------ | -------------------------------------- |
+| `company`    | `company name here` | Company name added to shipping address |

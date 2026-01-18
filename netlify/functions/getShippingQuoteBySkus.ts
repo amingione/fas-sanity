@@ -145,14 +145,17 @@ async function readCachedQuote(
       '*[_id == $id][0]{_id, rates, easyPostShipmentId, expiresAt, packages, missingProducts, carrierId, serviceCode, source, rateCount, cartSummary, createdAt}',
       {id: docId},
     )
-    const hasRates = Array.isArray(cached.rates) && cached.rates.length
-    const hasPackages = Array.isArray(cached.packages) && cached.packages.length
-    if (!cached || (!hasRates && !hasPackages) || !isCacheValid(cached.expiresAt)) {
+    if (!cached) {
+      return null
+    }
+    const hasRates = Array.isArray(cached.rates) && cached.rates.length > 0
+    const hasPackages = Array.isArray(cached.packages) && cached.packages.length > 0
+    if ((!hasRates && !hasPackages) || !isCacheValid(cached.expiresAt)) {
       return null
     }
     return {
       docId,
-      rates: cached.rates,
+      rates: cached.rates ?? [],
       easyPostShipmentId: cached.easyPostShipmentId,
       packages: cached.packages,
       missingProducts: cached.missingProducts,

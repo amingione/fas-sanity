@@ -123,10 +123,10 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
     const filtered = item.metadataEntries.filter((entry): entry is CartMetadataEntry =>
       Boolean(
         entry &&
-          typeof entry === 'object' &&
-          entry._type === CART_METADATA_TYPE &&
-          entry.key &&
-          entry.value,
+        typeof entry === 'object' &&
+        entry._type === CART_METADATA_TYPE &&
+        entry.key &&
+        entry.value,
       ),
     )
     if (filtered.length !== item.metadataEntries.length) {
@@ -139,10 +139,10 @@ function ensureMetadataArray(item: CartItem): CartMetadataEntry[] {
     const filtered = item.metadata.filter((entry): entry is CartMetadataEntry =>
       Boolean(
         entry &&
-          typeof entry === 'object' &&
-          entry._type === CART_METADATA_TYPE &&
-          entry.key &&
-          entry.value,
+        typeof entry === 'object' &&
+        entry._type === CART_METADATA_TYPE &&
+        entry.key &&
+        entry.value,
       ),
     )
     if (filtered.length) {
@@ -405,7 +405,7 @@ function resolveDefaultDimensions(): {length: number; width: number; height: num
 function resolveDefaultWeight(): number | null {
   const envWeight = toPositiveNumber(process.env.DEFAULT_PACKAGE_WEIGHT_LBS)
   if (envWeight) return envWeight
-  return 5
+  return 8
 }
 
 export async function fetchProductsForCart(
@@ -547,10 +547,7 @@ export async function enrichCartItemsFromSanity(
       return acc
     }, {})
     if (!product) {
-      const metaProductId =
-        metadataMap.sanity_product_id ||
-        metadataMap.sanity_product_id_actual ||
-        metadataMap.sanity_product_ref
+      const metaProductId = metadataMap.sanity_product_id || metadataMap.sanity_product_ref
       if (!item.productRef && metaProductId) {
         item.productRef = {_type: 'reference', _ref: metaProductId}
       }

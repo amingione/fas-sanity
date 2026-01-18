@@ -117,13 +117,21 @@ export async function resolveStripeShippingDetails(
   const metaCurrency = normalizeCurrency(meta['shipping_currency'] || meta['shippingCurrency'])
   const metaCarrier = meta['shipping_carrier'] || meta['shippingCarrier']
   const metaCarrierId =
-    meta['shipping_carrier_id'] || meta['shippingCarrierId'] || meta['shipping_carrier_code']
+    meta['shipping_carrier_id'] ||
+    meta['shippingCarrierId'] ||
+    meta['shipping_carrier_code'] ||
+    meta['carrier_id'] ||
+    meta['carrierId']
   const metaServiceName =
     meta['shipping_service_name'] ||
     meta['shipping_service'] ||
     meta['shippingServiceName'] ||
     meta['shippingService']
-  const metaServiceCode = meta['shipping_service_code'] || meta['shippingServiceCode']
+  const metaServiceCode =
+    meta['shipping_service_code'] ||
+    meta['shippingServiceCode'] ||
+    meta['service_code'] ||
+    meta['serviceCode']
   const metaRateId = meta['shipping_rate_id']
   const metaDeliveryDays = coerceInteger(
     meta['shipping_delivery_days'] || meta['shippingDeliveryDays'],
@@ -217,13 +225,22 @@ export async function resolveStripeShippingDetails(
       carrier = rateMeta['shipping_carrier']
     }
     if (!carrierId) {
-      carrierId = rateMeta['shipping_carrier_id'] || rateMeta['shipping_carrier_code'] || carrierId
+      carrierId =
+        rateMeta['shipping_carrier_id'] ||
+        rateMeta['shipping_carrier_code'] ||
+        rateMeta['carrier_id'] ||
+        rateMeta['carrierId'] ||
+        carrierId
     }
     if (!serviceName) {
       serviceName = rateMeta['shipping_service_name'] || rateMeta['shipping_service'] || serviceName
     }
     if (!serviceCode) {
-      serviceCode = rateMeta['shipping_service_code'] || serviceCode
+      serviceCode =
+        rateMeta['shipping_service_code'] ||
+        rateMeta['service_code'] ||
+        rateMeta['serviceCode'] ||
+        serviceCode
     }
     if (deliveryDays === undefined) {
       const metaDeliveryDays = coerceInteger(rateMeta['shipping_delivery_days'])
@@ -279,6 +296,17 @@ export async function resolveStripeShippingDetails(
     'shipping_quote_key',
     'shipping_quote_request_id',
     'selected_rate_id',
+    'carrier_id',
+    'service_code',
+    'package_code',
+    'packaging_weight',
+    'packaging_weight_unit',
+    'dimensions_unit',
+    'weight',
+    'weight_unit',
+    'length',
+    'width',
+    'height',
   ]
   for (const key of passthroughKeys) {
     if (meta[key] && !metadataForDoc[key]) {

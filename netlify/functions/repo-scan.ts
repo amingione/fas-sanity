@@ -30,7 +30,6 @@ const detectPlatforms = (packages: Snapshot['packages']) => {
   check('@stripe/stripe-js', 'Stripe JS')
   check('twilio', 'Twilio')
   check('@easypost/api', 'EasyPost')
-  check('shipengine', 'ShipEngine')
   check('googleapis', 'Google APIs')
   check('axios', 'Axios')
   check('sanity', 'Sanity')
