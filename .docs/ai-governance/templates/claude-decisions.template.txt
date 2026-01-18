@@ -33,7 +33,7 @@ Anything outside this scope is OUT OF BOUNDS.
 OPTIONAL BACKEND CONTRACT ALIGNMENT (USE WHEN APPLICABLE)
 
 If this issue involves an existing backend integration
-(e.g. EasyPost, Stripe, ShipEngine, Auth, etc.):
+(e.g. EasyPost, Stripe, Auth, etc.):
 
 You MUST:
 - Identify the authoritative backend function or contract

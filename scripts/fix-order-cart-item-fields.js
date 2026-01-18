@@ -165,7 +165,12 @@ function normalizeItem(it, lookups) {
       return e ? parseAmount(e.value) : null
     }
 
-    const basePriceMeta = byKey('base_price') ?? byKey('baseprice') ?? byKey('base price')
+    const basePriceMeta =
+      byKey('base_price') ??
+      byKey('baseprice') ??
+      byKey('base price') ??
+      byKey('default_price') ??
+      byKey('default price')
     const optionUpchargeMeta = byKey('option_upcharge') ?? byKey('option upcharge')
     const upgradeTotalMeta = byKey('upgrade_total') ?? byKey('upgrades_total')
     const mLine = byKey('line_total') ?? byKey('linetotal') ?? byKey('amount_total')

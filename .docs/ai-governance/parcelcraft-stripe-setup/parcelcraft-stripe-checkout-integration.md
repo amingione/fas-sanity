@@ -58,8 +58,8 @@ Used to prepare shipments if you use shipping rates in Stripe Invoices.
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | **carrier_id**              | `ca_ec65ddeb7dcc43eca9fa42870662751f,ca_d6f01c95df834796822516afe2e05771,ca_ed4230c54cc44385a518e8274f0cdc1e` | Your EasyPost carrier id                                       |
 | **package_code**            | `Standard`                                                                                                    | The [EasyPost package code](https://www.easypost.com/carriers) |
-| **packaging_weight**        | `7`                                                                                                           | Weight of the packaging itself                                 |
-| **width / length / height** | `6`, `12`, `8`                                                                                                | Default dimensions                                             |
+| **weight**                  | `7`                                                                                                           | Weight of the packaging itself                                 |
+| **width / length / height** | `12`, `12`, `8`                                                                                               | Default dimensions                                             |
 
 ---
 

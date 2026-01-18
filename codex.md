@@ -11,6 +11,11 @@
 - If schema compliance cannot be achieved without changing a schema, STOP and ask for approval.
 - Repo‑wide enforcement is allowed; file lists are not required.
 - Only files that violate schema truth may be modified.
+- ShipEngine references are forbidden.
+- ShipStation references are forbidden.
+- Stripe uses Parcelcraft for shipping rate injection; no other shipping rate sources are allowed into stripe.checkout.sessions.create. or other checkout creation flows involving Stripe or fas-cms-fresh.
+- Fas-sanity must not reference Parcelcraft except when creating or editing stripe function documents that relate to fas-cms-fresh (storefront https://www.fasmotorsports.com).
+- EasyPost is the only allowed shipping rate provider for internal/admin shipping flows in fas-sanity (manually created invoices, fulfillment, manual label purchase).
 
 This rule overrides all other defaults unless explicitly superseded.
 
@@ -741,8 +746,9 @@ group: 'overview'
         { name: 'length', type: 'number' },
         { name: 'width', type: 'number' },
         { name: 'height', type: 'number' },
-        { name: 'weightDisplay', type: 'string' },
-        { name: 'dimensionsDisplay', type: 'string' }
+        { name: 'weight_unit', type: 'string' },
+        { name: 'dimensions_unit', type: 'string' },
+        { name: 'company', type: 'string' } // F.A.S. Motorsports LLC
       ],
       group: 'fulfillment'
     },

@@ -325,7 +325,9 @@ const buildDetailList = (opts: {
       typeof opts.upgradesTotal === 'number' ? formatCurrency(opts.upgradesTotal) : null
     if (upgrades.length) {
       const list =
-        upgrades.length === 1 && upgradesTotalText ? `${upgrades[0]} (${upgradesTotalText})` : upgrades.join(', ')
+        upgrades.length === 1 && upgradesTotalText
+          ? `${upgrades[0]} (${upgradesTotalText})`
+          : upgrades.join(', ')
       addDetail(`Upgrades: ${list}`)
     }
     if (upgradesTotalText && upgrades.length !== 1) {
@@ -931,7 +933,8 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
       const unitPrice =
         toNumber(ci.price) ||
         toNumber(getMetaValue(metaMap, 'unit_price')) ||
-        toNumber(getMetaValue(metaMap, 'base_price'))
+        toNumber(getMetaValue(metaMap, 'original_price')) ||
+        toNumber(getMetaValue(metaMap, 'default_price'))
       const currency = getMetaValue(metaMap, 'currency') || 'USD'
       const presentation = prepareItemPresentation({
         name: ci.name,
@@ -971,7 +974,8 @@ async function fetchPackingData(invoiceId?: string, orderId?: string): Promise<P
       const unitPrice =
         toNumber(li?.unitPrice) ||
         toNumber(getMetaValue(metaMap, 'unit_price')) ||
-        toNumber(getMetaValue(metaMap, 'base_price'))
+        toNumber(getMetaValue(metaMap, 'original_price')) ||
+        toNumber(getMetaValue(metaMap, 'default_price'))
       const currency = getMetaValue(metaMap, 'currency') || 'USD'
       const presentation = prepareItemPresentation({
         name: li?.description,
@@ -1025,8 +1029,12 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  let payload: {invoiceId?: string; orderId?: string; orderIds?: string[]; ids?: string | string[]} =
-    {}
+  let payload: {
+    invoiceId?: string
+    orderId?: string
+    orderIds?: string[]
+    ids?: string | string[]
+  } = {}
   try {
     payload = JSON.parse(event.body || '{}')
   } catch {

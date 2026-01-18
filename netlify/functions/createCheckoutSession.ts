@@ -339,6 +339,7 @@ export const handler: Handler = async (event) => {
         metadata.weight_unit = 'pound'
         metadata.origin_country = metadata.origin_country || 'US'
         metadata.customs_description = metadata.customs_description || 'Auto-parts'
+        metadata.company = 'F.A.S. Motorsports LLC'
 
         const shippingClass = resolveShippingClass(product)
         if (shippingClass) {
