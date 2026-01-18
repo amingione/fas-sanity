@@ -557,6 +557,12 @@ export const handler: Handler = async (event) => {
 
       custom_fields: [
         {
+          key: 'phone',
+          label: {type: 'custom', custom: 'Phone'},
+          type: 'text',
+          optional: false,
+        },
+        {
           key: 'company',
           label: {type: 'custom', custom: 'Company'},
           type: 'text',

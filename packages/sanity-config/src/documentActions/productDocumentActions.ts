@@ -11,6 +11,7 @@ import {ensureProductMetaAndStatus} from '../utils/ensureProductMeta'
 
 const API_VERSION = '2024-10-01'
 const TAG_ACTIONS_FLAG = Symbol.for('fas.productTagsApplied')
+const MAX_REFERENCE_SCAN = 1000
 
 type TagActionArray = DocumentActionComponent[] & {
   [TAG_ACTIONS_FLAG]?: boolean
@@ -73,6 +74,64 @@ const buildPreviewBaseUrl = () => {
 
 function toPublishedId(id: string) {
   return id.replace(/^drafts\./, '')
+}
+
+function replaceDraftRefs(
+  node: any,
+  draftId: string,
+  publishedId: string,
+): {node: any; changed: boolean} {
+  if (Array.isArray(node)) {
+    let changed = false
+    const next = node.map((entry) => {
+      const result = replaceDraftRefs(entry, draftId, publishedId)
+      if (result.changed) changed = true
+      return result.node
+    })
+    return {node: changed ? next : node, changed}
+  }
+
+  if (node && typeof node === 'object') {
+    if (node._type === 'reference' && node._ref === draftId) {
+      return {node: {...node, _ref: publishedId}, changed: true}
+    }
+
+    let changed = false
+    const next: Record<string, any> = {}
+    for (const [key, value] of Object.entries(node)) {
+      const result = replaceDraftRefs(value, draftId, publishedId)
+      if (result.changed) changed = true
+      next[key] = result.node
+    }
+    return {node: changed ? next : node, changed}
+  }
+
+  return {node, changed: false}
+}
+
+async function normalizeProductReferencesBeforePublish(
+  context: DocumentActionsContext,
+  props: DocumentActionProps,
+) {
+  const client = context.getClient({apiVersion: API_VERSION})
+  const baseId = toPublishedId(props.id)
+  const draftId = `drafts.${baseId}`
+
+  const refDocs: {_id: string; _type: string}[] = await client.fetch(
+    '*[references($draftId)]{_id,_type}[0...$limit]',
+    {draftId, limit: MAX_REFERENCE_SCAN},
+  )
+
+  for (const refDoc of refDocs) {
+    const doc = await client.fetch<Record<string, any> | null>(
+      '*[_id == $id][0]',
+      {id: refDoc._id},
+    )
+    if (!doc) continue
+    const result = replaceDraftRefs(doc, draftId, baseId)
+    if (!result.changed) continue
+    await client.createOrReplace(result.node as any)
+  }
 }
 
 async function refreshAndGenerateTags(
@@ -394,6 +453,7 @@ export function resolveProductDocumentActions(
         label: 'Publish with Codes, Shipping, Sales & SEO Tags',
         onHandle: async () => {
           try {
+            await normalizeProductReferencesBeforePublish(context, props)
             await ensureCodesBeforePublish(context, props)
             const result = original.onHandle?.()
             await Promise.resolve(result)
