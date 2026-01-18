@@ -112,7 +112,7 @@ function replaceDraftRefs(
 async function normalizeProductReferencesBeforePublish(
   context: DocumentActionsContext,
   props: DocumentActionProps,
-) {
+): Promise<number> {
   const client = context.getClient({apiVersion: API_VERSION})
   const baseId = toPublishedId(props.id)
   const draftId = `drafts.${baseId}`
@@ -122,6 +122,7 @@ async function normalizeProductReferencesBeforePublish(
     {draftId, limit: MAX_REFERENCE_SCAN},
   )
 
+  let updated = 0
   for (const refDoc of refDocs) {
     const doc = await client.fetch<Record<string, any> | null>(
       '*[_id == $id][0]',
@@ -131,7 +132,9 @@ async function normalizeProductReferencesBeforePublish(
     const result = replaceDraftRefs(doc, draftId, baseId)
     if (!result.changed) continue
     await client.createOrReplace(result.node as any)
+    updated += 1
   }
+  return updated
 }
 
 async function refreshAndGenerateTags(
@@ -437,6 +440,36 @@ export function resolveProductDocumentActions(
   const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
   const previewServicePackageAction = createPreviewServicePackageAction(context)
   const syncStripeAction = createSyncStripeAction(context)
+  const normalizeRefsAction: DocumentActionComponent = (props) => {
+    if (!isProduct(props)) return null
+    const toast = useToast()
+    const [busy, setBusy] = useState(false)
+    return {
+      label: 'Normalize Draft References',
+      disabled: busy,
+      onHandle: async () => {
+        setBusy(true)
+        try {
+          const updated = await normalizeProductReferencesBeforePublish(context, props)
+          toast.push({
+            status: 'success',
+            title: 'Draft references normalized',
+            description: updated ? `Updated ${updated} document(s).` : 'No draft references found.',
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          toast.push({
+            status: 'error',
+            title: 'Normalization failed',
+            description: message,
+          })
+        } finally {
+          setBusy(false)
+          props.onComplete()
+        }
+      },
+    }
+  }
 
   const enhancedList = prev.map((action) => {
     if (!action) return action
@@ -446,7 +479,9 @@ export function resolveProductDocumentActions(
       if (!original || !isProduct(props)) return original
       const originalName =
         typeof (original as any)?.name === 'string' ? (original as any).name : null
-      if (originalName !== 'publish') return original
+      const originalAction =
+        typeof (original as any)?.action === 'string' ? (original as any).action : null
+      if (originalName !== 'publish' && originalAction !== 'publish') return original
 
       return {
         ...original,
@@ -475,6 +510,7 @@ export function resolveProductDocumentActions(
     duplicateServicePackageAction,
     previewServicePackageAction,
     syncStripeAction,
+    normalizeRefsAction,
   ]
   Object.defineProperty(enhanced, TAG_ACTIONS_FLAG, {value: true})
 
