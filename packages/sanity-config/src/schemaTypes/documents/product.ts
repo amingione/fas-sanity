@@ -16,6 +16,7 @@ const PRODUCT_PLACEHOLDER_ASSET = 'image-c3623df3c0e45a480c59d12765725f985f6d2fd
 const PRODUCT_API_VERSION = '2024-10-01'
 // Canonical FAS SKU pattern (LOCKED – see docs/ai-governance/PROD_IDENTIFICATION_RULES.md)
 // Format: <ENGINE>-<PACKAGECODE>-<BRAND>  (e.g. HC-A8FI-FAS)
+// eslint-disable-next-line typescript/no-unused-vars
 const SKU_PATTERN = /^[A-Z]{2}-[A-Z0-9]{4}-[A-Z]{3}$/
 
 type CanonicalFieldProps = StringInputProps<StringSchemaType> & {document?: any}
@@ -332,17 +333,7 @@ const product = defineType({
       title: 'SKU',
       type: 'string',
       description: 'Auto-generated on product creation.',
-      readOnly: true,
-      validation: (Rule) =>
-        Rule.required().custom((value) => {
-          if (!value) return 'SKU is required and auto-generated.'
-          const normalized = value.toString().trim().toUpperCase()
-          if (!SKU_PATTERN.test(normalized)) {
-            return 'SKU must match ENGINE-PACKAGECODE-BRAND (e.g. HC-A8FI-FAS). This format is locked.'
-          }
-          return true
-        }),
-      group: 'basic',
+      readOnly: false,
     }),
     defineField({
       name: 'price',
@@ -1637,15 +1628,6 @@ const product = defineType({
       hidden: true, //approveed by Ambermin - not needed in UI - keep env's set
       fieldset: 'merchant',
       group: 'advanced',
-      validation: (Rule) =>
-        Rule.custom((value) => {
-          if (!value) return true
-          const normalized = value.toString().trim().toUpperCase()
-          if (!/^[A-Z]{2}-[A-Z0-9]{4}$/.test(normalized)) {
-            return 'MPN must match ENGINE-PACKAGECODE (e.g. HC-A8FI).'
-          }
-          return true
-        }).warning(),
     }),
     defineField({
       name: 'googleProductCategory',

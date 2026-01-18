@@ -189,7 +189,7 @@ function cleanCartItemForStorage(item: CartItem): CartItem {
     _type: 'orderCartItem',
     _key: (item as any)._key || randomUUID(),
     name: cleanedName,
-    productRef: (item as any).productRef,
+    productRef: normalizeProductRef((item as any).productRef),
     id: (item as any).id,
     sku: item.sku,
     image: (item as any).image,
@@ -1862,6 +1862,12 @@ function enforceCartRequirements(
   return cart.map((item, index) => {
     if (!item || typeof item !== 'object') return item
     const normalized: CartItem = {...item}
+    const normalizedProductRef = normalizeProductRef(normalized.productRef)
+    if (normalizedProductRef) {
+      normalized.productRef = normalizedProductRef
+    } else if (normalized.productRef) {
+      delete (normalized as any).productRef
+    }
 
     const referencedProduct = normalized.productRef?._ref
       ? productIndex.get(normalized.productRef._ref)
@@ -1870,7 +1876,10 @@ function enforceCartRequirements(
       referencedProduct || findProductForItem(normalized, products) || undefined
 
     if (!normalized.productRef && matchedProduct?._id) {
-      normalized.productRef = {_type: 'reference', _ref: matchedProduct._id}
+      const matchedId = normalizeSanityId(matchedProduct._id)
+      if (matchedId) {
+        normalized.productRef = {_type: 'reference', _ref: matchedId}
+      }
     }
 
     if (!normalized.sku && matchedProduct?.sku) {
@@ -1959,7 +1968,10 @@ async function buildCartFromSessionLineItems(
           if (!product) return item
           const nextItem = {...item}
           if (!nextItem.productRef && product._id) {
-            nextItem.productRef = {_type: 'reference', _ref: product._id}
+            const productId = normalizeSanityId(product._id)
+            if (productId) {
+              nextItem.productRef = {_type: 'reference', _ref: productId}
+            }
           }
           if (!nextItem.sku && product.sku) {
             nextItem.sku = product.sku
@@ -3309,7 +3321,9 @@ async function strictBuildCartItems(lineItems: Stripe.ApiList<Stripe.LineItem>) 
       _type: 'orderCartItem',
       _key: Math.random().toString(36).substr(2, 9),
       name: item.description ?? undefined,
-      productRef: product ? {_type: 'reference', _ref: product._id} : undefined,
+      productRef: product?._id
+        ? {_type: 'reference', _ref: normalizeSanityId(product._id) || product._id}
+        : undefined,
       sku: product?.sku || metadata.sku || '',
       optionDetails: strictParseOptions(metadata),
       upgrades: strictParseUpgrades(metadata),
@@ -3373,6 +3387,7 @@ function buildInvoiceLineItems(
       _type: 'invoiceLineItem',
       _key: item._key || Math.random().toString(36).substr(2, 9),
       description: item.name,
+      product: normalizeProductRef(item.productRef),
       sku: item.sku || '',
       quantity: quantity || 1,
       unitPrice: toCurrencyNumber(baseUnitPrice) ?? 0,
@@ -3646,7 +3661,9 @@ async function createOrderFromCheckout(
             (item as any).sku ||
             (item as any).id ||
             'Item',
-          productRef: (item as any).productRef?._ref ? (item as any).productRef : undefined,
+          productRef: (item as any).productRef?._ref
+            ? normalizeProductRef((item as any).productRef)
+            : undefined,
           sku: (item as any).sku,
           id: (item as any).id || (item as any).productId,
           productSlug: (item as any).productSlug,
@@ -3735,6 +3752,7 @@ async function createOrderFromCheckout(
 
   const normalizedCart = cartItems.map((item) => ({
     ...item,
+    productRef: normalizeProductRef(item.productRef),
     optionDetails: Array.isArray(item.optionDetails) ? item.optionDetails : [],
     upgrades: Array.isArray(item.upgrades) ? item.upgrades : [],
   }))
@@ -4309,6 +4327,19 @@ function normalizeSanityId(value?: string | null): string | undefined {
   const trimmed = value.toString().trim()
   if (!trimmed) return undefined
   return trimmed.startsWith('drafts.') ? trimmed.slice(7) : trimmed
+}
+
+function normalizeProductRef(
+  ref?: {_type?: string; _ref?: string | null} | null,
+): {_type: 'reference'; _ref: string} | undefined {
+  if (!ref || typeof ref !== 'object') return undefined
+  const normalizedId = normalizeSanityId(ref._ref || undefined)
+  if (!normalizedId) return undefined
+  return {_type: 'reference', _ref: normalizedId}
+}
+
+export const __test__ = {
+  normalizeProductRef,
 }
 
 const extractMetadataOrderNumber = (
