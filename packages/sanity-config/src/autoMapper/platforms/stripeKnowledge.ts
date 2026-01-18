@@ -51,10 +51,6 @@ export const stripeKnowledge: StripeKnowledge = {
     'customer.source.created',
     'customer.source.updated',
     'customer.source.deleted',
-    'customer.subscription.created',
-    'customer.subscription.updated',
-    'customer.subscription.deleted',
-    'customer.subscription.trial_will_end',
     // Payment Intent / Payment
     'payment_intent.created',
     'payment_intent.succeeded',
