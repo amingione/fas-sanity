@@ -89,6 +89,20 @@
   to = "/assets/:splat"
   status = 200
 
+# Redirect frontend routes to main site (if they somehow hit this backend site)
+# These routes should be handled by fas-cms-fresh, not fas-sanity
+[[redirects]]
+  from = "/checkout"
+  to = "https://www.fasmotorsports.com/checkout"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/checkout/*"
+  to = "https://www.fasmotorsports.com/checkout/:splat"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "https://www.fasmotorsports.com/:splat"
@@ -96,7 +110,10 @@
   force = true
   conditions = { Host = ["fasmotorsports.us", "www.fasmotorsports.us"] }
 
-# SPA catch-all redirect for everything else
+# SPA catch-all for Sanity Studio (served at fassanity.fasmotorsports.com)
+# NOTE: This site should NOT receive requests for www.fasmotorsports.com/checkout
+# If /checkout is returning 301, check Netlify DNS/routing configuration to ensure
+# www.fasmotorsports.com routes to fas-cms-fresh, not fas-sanity
 [[redirects]]
   from = "/*"
   to = "/index.html"
