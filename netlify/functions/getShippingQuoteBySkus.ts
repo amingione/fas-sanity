@@ -371,15 +371,18 @@ export const handler: Handler = async (event) => {
   const cartSummary = buildCartSummary(cacheCartItems)
 
   const cachedQuote = await readCachedQuote(cacheQuoteKey)
-  if (cachedQuote && !cachedQuote.rates?.length) {
+  if (cachedQuote) {
+    const rates = cachedQuote.rates || []
+    const bestRate = rates.length > 0 ? rates[0] : null
+
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
       body: JSON.stringify({
         success: true,
         freight: false,
-        bestRate: null,
-        rates: cachedQuote.rates || [],
+        bestRate,
+        rates,
         packages: cachedQuote.packages || [],
         installOnlySkus: [],
         missingProducts: cachedQuote.missingProducts || [],
@@ -688,6 +691,128 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    // Get primary package for EasyPost shipment creation
+    const primaryPackage = packages[0]
+    if (!primaryPackage) {
+      const parcelcraftMetadata = buildParcelcraftMetadata(
+        packages,
+        cacheDestination,
+        cacheQuoteKey,
+        quoteRequestId,
+      )
+      return {
+        statusCode: 200,
+        headers: {...CORS, 'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          success: true,
+          rates: [],
+          packages,
+          installOnlySkus: installOnlyItems,
+          missingProducts,
+          parcelcraftMetadata,
+        }),
+      }
+    }
+
+    // Build EasyPost addresses
+    const fromAddress = getEasyPostFromAddress()
+
+    const toAddress = {
+      name: dest.name || 'Customer',
+      phone: dest.phone,
+      email: dest.email,
+      address_line1: cacheDestination.addressLine1,
+      address_line2: dest.addressLine2 || dest.address_line2,
+      city_locality: cacheDestination.city,
+      state_province: cacheDestination.state,
+      postal_code: cacheDestination.postalCode,
+      country_code: cacheDestination.country,
+    }
+
+    const easyPostToAddress = {
+      name: toAddress.name,
+      street1: toAddress.address_line1,
+      street2: toAddress.address_line2,
+      city: toAddress.city_locality,
+      state: toAddress.state_province,
+      zip: toAddress.postal_code,
+      country: toAddress.country_code,
+      phone: toAddress.phone,
+    }
+
+    const easyPostFromAddress = {
+      name: fromAddress.name,
+      street1: fromAddress.street1,
+      street2: fromAddress.street2,
+      city: fromAddress.city,
+      state: fromAddress.state,
+      zip: fromAddress.zip,
+      country: fromAddress.country,
+      phone: fromAddress.phone,
+      email: fromAddress.email,
+    }
+
+    // Call EasyPost API to get shipping rates
+    const client = getEasyPostClient()
+    const shipment = await client.Shipment.create({
+      to_address: easyPostToAddress,
+      from_address: easyPostFromAddress,
+      parcel: {
+        length: Number(primaryPackage.dimensions.length.toFixed(2)),
+        width: Number(primaryPackage.dimensions.width.toFixed(2)),
+        height: Number(primaryPackage.dimensions.height.toFixed(2)),
+        weight: Math.max(1, Math.round(primaryPackage.weight.value * 16)), // Convert to ounces
+      },
+    } as any)
+
+    // Parse EasyPost rates
+    const ratesArr: any[] = Array.isArray(shipment?.rates) ? shipment.rates : []
+    const rates = ratesArr
+      .map((rate: any) => {
+        const amount = Number.parseFloat(rate?.rate || '0')
+        return {
+          rateId: rate?.id,
+          carrierId: rate?.carrier_account_id || '',
+          carrierCode: rate?.carrier || '',
+          carrier: rate?.carrier_display_name || rate?.carrier || '',
+          service: rate?.service || '',
+          serviceCode: rate?.service_code || '',
+          amount: Number.isFinite(amount) ? amount : 0,
+          currency: rate?.currency || 'USD',
+          deliveryDays: typeof rate?.delivery_days === 'number' ? rate.delivery_days : null,
+          estimatedDeliveryDate: rate?.delivery_date
+            ? new Date(rate.delivery_date).toISOString()
+            : null,
+          accurateDeliveryDate: rate?.est_delivery_date
+            ? new Date(rate.est_delivery_date).toISOString()
+            : null,
+          deliveryDateGuaranteed: Boolean(rate?.delivery_date_guaranteed),
+        }
+      })
+      .filter((rate) => Number.isFinite(rate.amount) && rate.amount > 0)
+      .sort((a, b) => Number(a.amount || 0) - Number(b.amount || 0))
+
+    const bestRate = rates[0] || null
+    const carrierId = bestRate?.carrierId || undefined
+    const serviceCode = bestRate?.serviceCode || undefined
+    const easyPostShipmentId = shipment?.id || ''
+
+    // Cache the quote with rates
+    const persistedQuote = await persistQuoteCache({
+      quoteKey: cacheQuoteKey,
+      quoteRequestId,
+      rates,
+      easyPostShipmentId,
+      destination: cacheDestination,
+      packages,
+      missingProducts,
+      carrierId,
+      serviceCode,
+      cartSummary,
+      rateCount: rates.length,
+      source: 'fresh',
+    })
+
     const parcelcraftMetadata = buildParcelcraftMetadata(
       packages,
       cacheDestination,
@@ -695,37 +820,25 @@ export const handler: Handler = async (event) => {
       quoteRequestId,
     )
 
-    const persistedQuote = await persistQuoteCache({
-      quoteKey: cacheQuoteKey,
-      quoteRequestId,
-      rates: [],
-      easyPostShipmentId: '',
-      destination: cacheDestination,
-      packages,
-      missingProducts,
-      carrierId: undefined,
-      serviceCode: undefined,
-      cartSummary,
-      rateCount: 0,
-      source: 'fresh',
-    })
-
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
       body: JSON.stringify({
         success: true,
         freight: false,
-        bestRate: null,
-        rates: [],
+        bestRate,
+        rates,
         packages,
         installOnlySkus: installOnlyItems,
         missingProducts,
+        carrierId,
+        serviceCode,
         shippingQuoteId: getQuoteCacheDocId(cacheQuoteKey),
+        easyPostShipmentId,
         quoteKey: cacheQuoteKey,
         quoteRequestId,
-        source: 'parcelcraft',
-        rateCount: 0,
+        source: 'fresh',
+        rateCount: rates.length,
         cartSummary,
         createdAt: persistedQuote.createdAt,
         expiresAt: persistedQuote.expiresAt,
