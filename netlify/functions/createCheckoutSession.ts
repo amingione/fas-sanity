@@ -544,7 +544,8 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    // Build session parameters
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       ui_mode: 'embedded', // Required for embedded checkout with dynamic shipping
       client_reference_id: cartId,
@@ -555,6 +556,12 @@ export const handler: Handler = async (event) => {
       shipping_address_collection: {
         allowed_countries: ['US'],
       },
+
+      // Note: We do NOT set permissions.update_shipping_details here because
+      // Parcelcraft (as a Stripe app) should automatically inject dynamic shipping
+      // rates when the customer enters their shipping address. Setting server_only
+      // would require us to implement a callback handler, which conflicts with
+      // the requirement that Parcelcraft handles rate injection automatically.
 
       custom_fields: [
         {
@@ -592,7 +599,14 @@ export const handler: Handler = async (event) => {
       billing_address_collection: 'required',
       phone_number_collection: {enabled: true},
       return_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-    })
+    }
+
+    // Note: With permissions.update_shipping_details: 'server_only', Parcelcraft
+    // (as a Stripe app) can inject dynamic shipping rates when the customer enters
+    // their shipping address. The rates are calculated based on product metadata
+    // (weight, dimensions) that we've embedded in the line items.
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
 
     if (sanity) {
       const nowIso = new Date().toISOString()
