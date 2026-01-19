@@ -546,6 +546,7 @@ export const handler: Handler = async (event) => {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      ui_mode: 'embedded', // Required for embedded checkout with dynamic shipping
       client_reference_id: cartId,
       customer_email: customerEmail,
       line_items: lineItems,
