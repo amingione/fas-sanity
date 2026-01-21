@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/**)",
+      "Bash(npx tsc:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
