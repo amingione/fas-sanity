@@ -441,9 +441,9 @@ export function resolveProductDocumentActions(
   const previewServicePackageAction = createPreviewServicePackageAction(context)
   const syncStripeAction = createSyncStripeAction(context)
   const NormalizeRefsAction: DocumentActionComponent = (props) => {
-    if (!isProduct(props)) return null
     const toast = useToast()
     const [busy, setBusy] = useState(false)
+    if (!isProduct(props)) return null
     return {
       label: 'Normalize Draft References',
       disabled: busy,
