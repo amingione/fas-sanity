@@ -1,39 +1,36 @@
 import {EarthGlobeIcon} from '@sanity/icons'
 import {collectionUrl, productUrl, productVariantUrl} from '../../utils/shopifyUrls'
 import {type DocumentActionDescription} from 'sanity'
-import type {ShopifyDocument, ShopifyDocumentActionProps} from './types'
+import type {ShopifyDocumentActionProps} from './types'
 
 export default (props: ShopifyDocumentActionProps): DocumentActionDescription | undefined => {
-  const {published, type}: {published: ShopifyDocument; type: string} = props
+  const {published, type} = props
 
-  if (!published || published?.store?.isDeleted) {
+  if (!published?.store || published.store.isDeleted) {
     return
   }
 
+  const {id, productId} = published.store
   let url: string | null = null
 
-  if (type === 'collection') {
-    url = collectionUrl(published?.store?.id)
-  }
-  if (type === 'product') {
-    url = productUrl(published?.store?.id)
-  }
-  if (type === 'productVariant') {
-    url = productVariantUrl(published?.store?.productId, published?.store?.id)
+  if (type === 'collection' && typeof id === 'number') {
+    url = collectionUrl(id)
+  } else if (type === 'product' && typeof id === 'number') {
+    url = productUrl(id)
+  } else if (type === 'productVariant' && typeof id === 'number' && typeof productId === 'number') {
+    url = productVariantUrl(productId, id)
   }
 
   if (!url) {
     return
   }
 
-  if (published && !published?.store?.isDeleted) {
-    return {
-      label: 'Edit in Shopify',
-      icon: EarthGlobeIcon,
-      onHandle: () => {
-        url ? window.open(url) : void 'No URL'
-      },
-      shortcut: 'Ctrl+Alt+E',
-    }
+  return {
+    label: 'Edit in Shopify',
+    icon: EarthGlobeIcon,
+    onHandle: () => {
+      window.open(url)
+    },
+    shortcut: 'Ctrl+Alt+E',
   }
 }

@@ -26,14 +26,11 @@ const parseNumber = (value?: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-// Legacy Parcelcraft keys kept for historical orders alongside EasyPost/Stripe shipping metadata.
 const FULFILLMENT_TRACKING_KEYS = [
   'tracking_number',
   'trackingNumber',
   'shipping_tracking_number',
   'shippingTrackingNumber',
-  'parcelcraft_tracking_number',
-  'pc_tracking_number',
   'easypost_tracking_number',
   'tracker',
   'tracker_id',
@@ -45,8 +42,6 @@ const FULFILLMENT_TRACKING_URL_KEYS = [
   'trackingUrl',
   'shipping_tracking_url',
   'shippingTrackingUrl',
-  'parcelcraft_tracking_url',
-  'pc_tracking_url',
 ]
 
 const FULFILLMENT_LABEL_URL_KEYS = [
@@ -55,23 +50,17 @@ const FULFILLMENT_LABEL_URL_KEYS = [
   'shipping_label_url',
   'shippingLabelUrl',
   'easypost_label_url',
-  'parcelcraft_label_url',
-  'pc_label_url',
 ]
 
 const FULFILLMENT_SHIPMENT_ID_KEYS = [
   'easypost_shipment_id',
   'shipment_id',
   'shipping_shipment_id',
-  'parcelcraft_shipment_id',
-  'pc_shipment_id',
 ]
 
 const FULFILLMENT_TRACKER_ID_KEYS = [
   'easypost_tracker_id',
   'shipping_tracker_id',
-  'parcelcraft_tracker_id',
-  'pc_tracker_id',
   'tracker_id',
 ]
 
@@ -145,7 +134,6 @@ export function applyShippingDetailsToDoc(
   const shippingQuoteId = pickFromMeta(shippingMeta, [
     'shipping_quote_id',
     'shippingQuoteId',
-    'parcelcraft_quote_id',
   ])
   if (shippingQuoteId) {
     target.shippingQuoteId = shippingQuoteId
@@ -154,7 +142,6 @@ export function applyShippingDetailsToDoc(
   const shippingQuoteKey = pickFromMeta(shippingMeta, [
     'shipping_quote_key',
     'shippingQuoteKey',
-    'parcelcraft_quote_key',
   ])
   if (shippingQuoteKey) {
     target.shippingQuoteKey = shippingQuoteKey
@@ -163,7 +150,6 @@ export function applyShippingDetailsToDoc(
   const shippingQuoteRequestId = pickFromMeta(shippingMeta, [
     'shipping_quote_request_id',
     'shippingQuoteRequestId',
-    'parcelcraft_quote_request_id',
   ])
   if (shippingQuoteRequestId) {
     target.shippingQuoteRequestId = shippingQuoteRequestId

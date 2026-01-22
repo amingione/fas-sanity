@@ -13,9 +13,10 @@
 - Only files that violate schema truth may be modified.
 - ShipEngine references are forbidden.
 - ShipStation references are forbidden.
-- Stripe uses Parcelcraft for shipping rate injection; no other shipping rate sources are allowed into stripe.checkout.sessions.create. or other checkout creation flows involving Stripe or fas-cms-fresh.
-- Fas-sanity must not reference Parcelcraft except when creating or editing stripe function documents that relate to fas-cms-fresh (storefront https://www.fasmotorsports.com).
-- EasyPost is the only allowed shipping rate provider for internal/admin shipping flows in fas-sanity (manually created invoices, fulfillment, manual label purchase).
+- Stripe Checkout MUST use shipping_address_collection with permissions.update_shipping_details: 'server_only' to enable dynamic rate calculation.
+- EasyPost is the allowed shipping rate provider for checkout dynamic rates AND for internal/admin shipping workflows (manually created invoices, fulfillment, manual label purchase).
+- fas-cms-fresh (storefront) and fas-sanity must use EasyPost API to calculate live shipping rates based on address and package dimensions.
+- All shipping rate calculations must call EasyPost API and map results to Stripe's shipping options or session state.
 
 This rule overrides all other defaults unless explicitly superseded.
 
@@ -207,7 +208,7 @@ line_items: lineItems,
     shipping_address_collection: {
       allowed_countries: ['US']
     },
-    // Parcelcraft app supplies dynamic shipping rates.
+    // Stripe Checkout supplies dynamic shipping rates via EasyPost webhook.
     // Do NOT set shipping_options here.
     // Static shipping rates are forbidden.
 
@@ -1434,7 +1435,7 @@ export const POST: APIRoute = async ({request}) => {
       shipping_address_collection: {
         allowed_countries: ['US'],
       },
-      // Parcelcraft app supplies dynamic shipping rates.
+      // Stripe Checkout supplies dynamic shipping rates via EasyPost webhook.
       // Do NOT set shipping_options here.
 
       customer_email: userEmail || undefined,

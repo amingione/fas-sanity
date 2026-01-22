@@ -2264,21 +2264,17 @@ async function handleShippingStatusSync(
     (payload as any)?.tracking?.number ||
     metadata.tracking_number ||
     metadata.trackingNumber
-  // Legacy Parcelcraft metadata values are still parsed for historical orders.
   const trackingUrl =
     (payload as any)?.tracking_url ||
     (payload as any)?.tracking?.url ||
     metadata.tracking_url ||
-    metadata.trackingUrl ||
-    metadata.parcelcraft_tracking_url
+    metadata.trackingUrl
   const labelUrl =
     (payload as any)?.label_url ||
     (payload as any)?.label_pdf ||
     (payload as any)?.label?.url ||
     metadata.label_url ||
-    metadata.labelUrl ||
-    metadata.parcelcraft_label_url ||
-    metadata.pc_label_url
+    metadata.labelUrl
   const carrier =
     (payload as any)?.carrier ||
     (payload as any)?.tracking?.carrier ||
@@ -7949,57 +7945,6 @@ export const handler: Handler = async (event) => {
             )
           } catch (err) {
             console.warn('stripeWebhook: failed to sync invoice from invoiceitem event', err)
-          }
-          break
-        }
-
-        case 'payment_intent.updated': {
-          try {
-            const pi = stripeEvent.data.object as Stripe.PaymentIntent
-            const metadata = normalizeShippingMetadata(
-              (pi.metadata || {}) as Record<string, unknown>,
-            )
-
-            const shipStatus = metadata.ship_status
-            const shipDate = metadata.ship_date
-            const trackingNumber = metadata.tracking_number
-            const trackingUrl = metadata.tracking_URL || metadata.tracking_url
-            const serviceName = metadata.service_name
-
-            const hasParcelcraftSignal = Boolean(
-              shipStatus || shipDate || trackingNumber || trackingUrl || serviceName,
-            )
-            if (!hasParcelcraftSignal) break
-
-            const orderId = await findOrderDocumentIdForEvent({
-              metadata,
-              paymentIntentId: pi.id,
-              sessionId:
-                typeof metadata.checkout_session_id === 'string'
-                  ? metadata.checkout_session_id
-                  : typeof metadata.checkout_session === 'string'
-                    ? metadata.checkout_session
-                    : null,
-            })
-
-            if (!orderId) break
-
-            const setOps: Record<string, any> = {}
-            const shippedAt = shipDate ? toIsoTimestamp(shipDate) : undefined
-            if (shippedAt) setOps.shippedAt = shippedAt
-            if (trackingNumber) setOps.trackingNumber = trackingNumber
-            if (trackingUrl) setOps.trackingUrl = trackingUrl
-            if (serviceName) setOps.service = serviceName
-            if (metadata.carrier) setOps.carrier = metadata.carrier
-
-            if (Object.keys(setOps).length) {
-              await sanity.patch(orderId).set(setOps).commit({autoGenerateArrayKeys: true})
-            }
-          } catch (err) {
-            console.warn(
-              'stripeWebhook: failed to sync Parcelcraft metadata from payment_intent.updated',
-              err,
-            )
           }
           break
         }

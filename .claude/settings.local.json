@@ -3,7 +3,9 @@
     "allow": [
       "Read(//Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh/**)",
       "Bash(npx tsc:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(grep:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

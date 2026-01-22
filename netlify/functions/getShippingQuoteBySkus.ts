@@ -1,6 +1,8 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import {randomUUID, createHash} from 'crypto'
+import {getEasyPostFromAddress} from '../lib/ship-from'
+import {getEasyPostClient} from '../lib/easypostClient'
 
 // CORS helper (uses CORS_ALLOW like other functions)
 const DEFAULT_ORIGINS = (
@@ -75,10 +77,11 @@ const normalizeCacheCartItems = (cart: CartItem[]): QuoteCacheCartItem[] =>
     }
   })
 
-const buildLocalQuoteKey = (cartItems: QuoteCacheCartItem[], destination: QuoteCacheDestination) => {
-  const normalizedItems = [...cartItems].sort((a, b) =>
-    a.identifier.localeCompare(b.identifier),
-  )
+const buildLocalQuoteKey = (
+  cartItems: QuoteCacheCartItem[],
+  destination: QuoteCacheDestination,
+) => {
+  const normalizedItems = [...cartItems].sort((a, b) => a.identifier.localeCompare(b.identifier))
   const canonical = {
     items: normalizedItems,
     destination: {
@@ -110,9 +113,7 @@ const isCacheValid = (expiresAt?: string | null) => {
   return timestamp > Date.now()
 }
 
-async function readCachedQuote(
-  quoteKey: string,
-): Promise<{
+async function readCachedQuote(quoteKey: string): Promise<{
   docId: string
   rates: NormalizedRate[]
   easyPostShipmentId?: string | null
@@ -192,7 +193,17 @@ async function persistQuoteCache(params: {
   rateCount: number
   source: 'fresh' | 'cache'
 }): Promise<{docId: string; createdAt: string; expiresAt?: string}> {
-  const {quoteKey, quoteRequestId, rates, easyPostShipmentId, destination, packages, missingProducts, carrierId, serviceCode} = params
+  const {
+    quoteKey,
+    quoteRequestId,
+    rates,
+    easyPostShipmentId,
+    destination,
+    packages,
+    missingProducts,
+    carrierId,
+    serviceCode,
+  } = params
   const docId = getQuoteCacheDocId(quoteKey)
   const nowIso = new Date().toISOString()
   const ttlSeconds = Number.isFinite(SHIPPING_QUOTE_CACHE_TTL_SECONDS)
@@ -260,27 +271,6 @@ const isInstallOnlyClass = (value?: string) =>
 const formatDimensions = (dims: {length: number; width: number; height: number}) =>
   `${dims.length}x${dims.width}x${dims.height}`
 
-const buildParcelcraftMetadata = (
-  packages: Array<{
-    weight: {value: number; unit: 'pound'}
-    dimensions: {length: number; width: number; height: number}
-    sku?: string
-    title?: string
-  }>,
-  destination: QuoteCacheDestination,
-  quoteKey: string,
-  quoteRequestId: string,
-) => ({
-  parcelcraft_quote_key: quoteKey,
-  parcelcraft_quote_request_id: quoteRequestId,
-  parcelcraft_destination_postal: destination.postalCode,
-  parcelcraft_packages: packages.map((pkg) => ({
-    weight_lbs: pkg.weight.value,
-    dimensions_in: formatDimensions(pkg.dimensions),
-    sku: pkg.sku,
-    title: pkg.title,
-  })),
-})
 
 type CartItem = {
   sku?: string
@@ -397,12 +387,6 @@ export const handler: Handler = async (event) => {
         cartSummary: cachedQuote.cartSummary,
         createdAt: cachedQuote.createdAt,
         expiresAt: cachedQuote.expiresAt,
-        parcelcraftMetadata: buildParcelcraftMetadata(
-          cachedQuote.packages || [],
-          cacheDestination,
-          cacheQuoteKey,
-          quoteRequestId,
-        ),
       }),
     }
   }
@@ -546,9 +530,7 @@ export const handler: Handler = async (event) => {
 
       const shippingConfig = prod?.shippingConfig || {}
       const requiresShipping = shippingConfig.requiresShipping
-      const shippingClass = (
-        shippingConfig.shippingClass || prod?.shippingClass || ''
-      ).toString()
+      const shippingClass = (shippingConfig.shippingClass || prod?.shippingClass || '').toString()
       if (requiresShipping === false || (prod?.productType || '').toLowerCase() === 'service') {
         if (!installOnlyItems.includes(identifier)) installOnlyItems.push(identifier)
         continue
@@ -559,16 +541,16 @@ export const handler: Handler = async (event) => {
       const configDims = shippingConfig?.dimensions
       const dims =
         (configDims &&
-          typeof configDims.length === 'number' &&
-          typeof configDims.width === 'number' &&
-          typeof configDims.height === 'number'
-            ? {
-                length: Number(configDims.length),
-                width: Number(configDims.width),
-                height: Number(configDims.height),
-                unit: 'inch' as const,
-              }
-            : null) ||
+        typeof configDims.length === 'number' &&
+        typeof configDims.width === 'number' &&
+        typeof configDims.height === 'number'
+          ? {
+              length: Number(configDims.length),
+              width: Number(configDims.width),
+              height: Number(configDims.height),
+              unit: 'inch' as const,
+            }
+          : null) ||
         parseDims(prod?.boxDimensions || '') ||
         null
       const shipsAlone = Boolean(
@@ -596,9 +578,7 @@ export const handler: Handler = async (event) => {
         })
 
       const anyDim = dimSource ? Math.max(dimSource.length, dimSource.width, dimSource.height) : 0
-      const combinedDims = dimSource
-        ? dimSource.length + dimSource.width + dimSource.height
-        : 0
+      const combinedDims = dimSource ? dimSource.length + dimSource.width + dimSource.height : 0
       const totalPieceWeight = weight * qty
 
       const exceedsCarrierLimits =
@@ -632,12 +612,6 @@ export const handler: Handler = async (event) => {
     }
 
     if (shippableCount === 0) {
-      const parcelcraftMetadata = buildParcelcraftMetadata(
-        [],
-        cacheDestination,
-        cacheQuoteKey,
-        quoteRequestId,
-      )
       return {
         statusCode: 200,
         headers: {...CORS, 'Content-Type': 'application/json'},
@@ -646,7 +620,6 @@ export const handler: Handler = async (event) => {
           message: 'All items are install-only; schedule installation instead of shipping.',
           installOnlySkus: installOnlyItems,
           missingProducts,
-          parcelcraftMetadata,
         }),
       }
     }
@@ -672,12 +645,6 @@ export const handler: Handler = async (event) => {
       })
 
     if (freightRequired) {
-      const parcelcraftMetadata = buildParcelcraftMetadata(
-        packages,
-        cacheDestination,
-        cacheQuoteKey,
-        quoteRequestId,
-      )
       return {
         statusCode: 200,
         headers: {...CORS, 'Content-Type': 'application/json'},
@@ -686,7 +653,6 @@ export const handler: Handler = async (event) => {
           message: 'Freight required due to weight/dimensions or product class.',
           packages,
           installOnlySkus: installOnlyItems,
-          parcelcraftMetadata,
         }),
       }
     }
@@ -694,12 +660,6 @@ export const handler: Handler = async (event) => {
     // Get primary package for EasyPost shipment creation
     const primaryPackage = packages[0]
     if (!primaryPackage) {
-      const parcelcraftMetadata = buildParcelcraftMetadata(
-        packages,
-        cacheDestination,
-        cacheQuoteKey,
-        quoteRequestId,
-      )
       return {
         statusCode: 200,
         headers: {...CORS, 'Content-Type': 'application/json'},
@@ -709,7 +669,6 @@ export const handler: Handler = async (event) => {
           packages,
           installOnlySkus: installOnlyItems,
           missingProducts,
-          parcelcraftMetadata,
         }),
       }
     }
@@ -813,13 +772,6 @@ export const handler: Handler = async (event) => {
       source: 'fresh',
     })
 
-    const parcelcraftMetadata = buildParcelcraftMetadata(
-      packages,
-      cacheDestination,
-      cacheQuoteKey,
-      quoteRequestId,
-    )
-
     return {
       statusCode: 200,
       headers: {...CORS, 'Content-Type': 'application/json'},
@@ -842,7 +794,6 @@ export const handler: Handler = async (event) => {
         cartSummary,
         createdAt: persistedQuote.createdAt,
         expiresAt: persistedQuote.expiresAt,
-        parcelcraftMetadata,
       }),
     }
   } catch (err: any) {
