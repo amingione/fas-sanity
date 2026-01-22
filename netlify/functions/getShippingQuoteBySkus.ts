@@ -268,10 +268,6 @@ function parseDims(
 const isInstallOnlyClass = (value?: string) =>
   typeof value === 'string' && value.trim().toLowerCase().startsWith('install')
 
-const formatDimensions = (dims: {length: number; width: number; height: number}) =>
-  `${dims.length}x${dims.width}x${dims.height}`
-
-
 type CartItem = {
   sku?: string
   quantity?: number

@@ -440,7 +440,7 @@ export function resolveProductDocumentActions(
   const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
   const previewServicePackageAction = createPreviewServicePackageAction(context)
   const syncStripeAction = createSyncStripeAction(context)
-  const normalizeRefsAction: DocumentActionComponent = (props) => {
+  const NormalizeRefsAction: DocumentActionComponent = (props) => {
     if (!isProduct(props)) return null
     const toast = useToast()
     const [busy, setBusy] = useState(false)
@@ -510,7 +510,7 @@ export function resolveProductDocumentActions(
     duplicateServicePackageAction,
     previewServicePackageAction,
     syncStripeAction,
-    normalizeRefsAction,
+    NormalizeRefsAction,
   ]
   Object.defineProperty(enhanced, TAG_ACTIONS_FLAG, {value: true})
 
