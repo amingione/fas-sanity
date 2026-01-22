@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import {normalizeAddress} from '@/lib/address'
 
 type PaymentLike = Stripe.PaymentIntent | null | undefined
 type SessionLike = Stripe.Checkout.Session | null | undefined
@@ -68,23 +69,12 @@ const prune = (input: CleanObject): CleanObject => {
   return output
 }
 
-const normalizeAddress = (
+const normalizeStripeAddress = (
   address?: Stripe.Address | null,
   name?: string | null,
   email?: string | null,
   phone?: string | null,
-) =>
-  prune({
-    name,
-    email,
-    phone,
-    line1: address?.line1,
-    line2: address?.line2,
-    city: address?.city,
-    state: address?.state || (address as any)?.province,
-    postalCode: address?.postal_code,
-    country: address?.country,
-  })
+) => prune(normalizeAddress((address as any) ?? undefined, {name, email, phone}) || {})
 
 const normalizeStripeEntityId = (value?: string | {id?: string | null} | null) => {
   if (!value) return undefined
@@ -309,7 +299,7 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
       ipAddress: (session as any)?.client_reference_ip || undefined,
     }),
     paymentMethod: buildPaymentMethodDetails(paymentIntent, charge || null),
-    shippingAddress: normalizeAddress(
+    shippingAddress: normalizeStripeAddress(
       piAny?.shipping?.address ||
         sessionAny?.shipping_details?.address ||
         sessionAny?.customer_details?.address,
@@ -317,7 +307,7 @@ export const buildStripeSummary = (input: SummaryInput): Record<string, any> => 
       session?.customer_details?.email || piAny?.shipping?.phone || undefined,
       session?.customer_details?.phone || piAny?.shipping?.phone,
     ),
-    billingAddress: normalizeAddress(
+    billingAddress: normalizeStripeAddress(
       piAny?.charges?.data?.[0]?.billing_details?.address ||
         session?.customer_details?.address ||
         piAny?.billing_details?.address,

@@ -4,6 +4,24 @@ import {SearchIcon} from '@sanity/icons'
 import type {BaseAutocompleteOption} from '@sanity/ui'
 import {ObjectInputProps, set, useClient, useFormValue} from 'sanity'
 
+function normalizeAddressFields(
+  raw: Record<string, any> | null | undefined,
+  meta: {name?: string; email?: string; phone?: string},
+): Record<string, any> | null {
+  if (!raw) return null
+  return {
+    line1: raw.line1 || raw.addressLine1 || raw.street || undefined,
+    line2: raw.line2 || raw.addressLine2 || undefined,
+    city: raw.city || undefined,
+    state: raw.state || undefined,
+    postalCode: raw.postalCode || raw.zip || undefined,
+    country: raw.country || undefined,
+    name: meta.name || undefined,
+    email: meta.email || undefined,
+    phone: meta.phone || undefined,
+  }
+}
+
 type AddressValue = Record<string, any> | undefined
 
 interface NormalizedAddress {
@@ -178,13 +196,9 @@ function normalizeMapboxFeature(feature: Record<string, any>): NormalizedAddress
   const city = feature?.properties?.city || place?.text
   const rawState = feature?.properties?.region || region?.text
   const countryCode =
-    feature?.properties?.short_code ||
-    countryCtx?.short_code ||
-    countryCtx?.properties?.short_code
+    feature?.properties?.short_code || countryCtx?.short_code || countryCtx?.properties?.short_code
   const state =
-    String(countryCode || '').toUpperCase() === 'US'
-      ? usStateAbbreviation(rawState)
-      : rawState
+    String(countryCode || '').toUpperCase() === 'US' ? usStateAbbreviation(rawState) : rawState
   const postalCode = feature?.properties?.postcode || postcode?.text
   const country = countryCtx?.text || feature?.properties?.country
 
@@ -211,14 +225,6 @@ function normalizeMapboxFeature(feature: Record<string, any>): NormalizedAddress
   }
 }
 
-function stringOrUndefined(value: unknown): string | undefined {
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : undefined
-  }
-  return undefined
-}
-
 function useMaybeFormValue<T = unknown>(path: (string | number)[]): T | undefined {
   try {
     return useFormValue(path) as T
@@ -234,47 +240,22 @@ function normalizeAddress(
   raw: Record<string, any> | null | undefined,
   meta: {label?: string; source?: string; defaultName?: string; email?: string; phone?: string},
 ): NormalizedAddress | null {
-  if (!raw) return null
+  const normalized = normalizeAddressFields(raw, {
+    name: meta.defaultName,
+    email: meta.email,
+    phone: meta.phone,
+  })
+  if (!normalized) return null
 
-  const line1 =
-    stringOrUndefined(raw.addressLine1) ||
-    stringOrUndefined(raw.address_line1) ||
-    stringOrUndefined(raw.street) ||
-    stringOrUndefined(raw.street1) ||
-    stringOrUndefined(raw.line1)
-
-  const line2 =
-    stringOrUndefined(raw.addressLine2) ||
-    stringOrUndefined(raw.address_line2) ||
-    stringOrUndefined(raw.street2) ||
-    stringOrUndefined(raw.line2)
-
-  const city =
-    stringOrUndefined(raw.city) ||
-    stringOrUndefined(raw.city_locality) ||
-    stringOrUndefined(raw.locality) ||
-    stringOrUndefined(raw.town)
-
-  const state =
-    stringOrUndefined(raw.state) ||
-    stringOrUndefined(raw.state_province) ||
-    stringOrUndefined(raw.region) ||
-    stringOrUndefined(raw.stateProvince)
-
-  const postalCode =
-    stringOrUndefined(raw.postalCode) ||
-    stringOrUndefined(raw.postal_code) ||
-    stringOrUndefined(raw.zip) ||
-    stringOrUndefined(raw.zipCode)
-
-  const country =
-    stringOrUndefined(raw.country) ||
-    stringOrUndefined(raw.country_code) ||
-    stringOrUndefined(raw.countryCode)
-
-  const name = stringOrUndefined(raw.name) || stringOrUndefined(raw.fullName) || meta.defaultName
-  const email = stringOrUndefined(raw.email) || meta.email
-  const phone = stringOrUndefined(raw.phone) || meta.phone
+  const line1 = normalized.line1
+  const line2 = normalized.line2
+  const city = normalized.city
+  const state = normalized.state
+  const postalCode = normalized.postalCode
+  const country = normalized.country
+  const name = normalized.name || meta.defaultName
+  const email = normalized.email || meta.email
+  const phone = normalized.phone || meta.phone
 
   if (!line1 && !city && !state && !postalCode && !country) {
     return null
@@ -357,7 +338,6 @@ function buildOptions(data: AddressQueryResult | null | undefined): AddressOptio
         label: `Customer billing — ${baseName}`,
       }),
     )
-
   })
 
   data.orders.forEach((order) => {
@@ -471,10 +451,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
   ) as string | undefined
   const autoFilledRef = useRef(false)
   const stripeSummaryValue = useMaybeFormValue(['stripeSummary']) as Record<string, any> | null
-  const stripeSummary = useMemo(
-    () => parseStripeSummary(stripeSummaryValue),
-    [stripeSummaryValue],
-  )
+  const stripeSummary = useMemo(() => parseStripeSummary(stripeSummaryValue), [stripeSummaryValue])
   const schemaOptions = schemaType.options as Record<string, any> | undefined
   const lookupSetting = schemaOptions?.showSavedAddressLookup
   const showLookup = lookupSetting === true
@@ -501,7 +478,11 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
     const searchTerm = `*${trimmed.toLowerCase()}*`
 
     client
-      .fetch<AddressQueryResult>(ADDRESS_SEARCH_QUERY, {term: searchTerm}, {signal: controller.signal})
+      .fetch<AddressQueryResult>(
+        ADDRESS_SEARCH_QUERY,
+        {term: searchTerm},
+        {signal: controller.signal},
+      )
       .then((result) => {
         if (
           controller.signal.aborted ||
@@ -586,8 +567,10 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
         const features = Array.isArray(data?.features) ? data.features : []
         const normalized = features
           .map((feature: Record<string, any>) => normalizeMapboxFeature(feature))
-          .filter((address): address is NormalizedAddress => Boolean(address))
-          .map((address) => ({
+          .filter((address: NormalizedAddress | null): address is NormalizedAddress =>
+            Boolean(address),
+          )
+          .map((address: NormalizedAddress) => ({
             value: address.key,
             address,
             label: address.label,
@@ -664,10 +647,7 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
     onChange(set(nextValue))
   }, [mapping, onChange, schemaType.name, stripeSummary, value])
 
-  const options = useMemo(() => [...savedOptions, ...mapboxOptions], [
-    savedOptions,
-    mapboxOptions,
-  ])
+  const options = useMemo(() => [...savedOptions, ...mapboxOptions], [savedOptions, mapboxOptions])
   const optionLookup = useMemo(
     () => new Map(options.map((option) => [option.value, option])),
     [options],
@@ -744,7 +724,9 @@ export default function AddressAutocompleteInput(props: ObjectInputProps<Record<
                 )
               }}
               placeholder={
-                loading ? 'Loading saved and global addresses…' : 'Type 2+ characters to search saved and global addresses'
+                loading
+                  ? 'Loading saved and global addresses…'
+                  : 'Type 2+ characters to search saved and global addresses'
               }
               suffix={
                 loading ? (

@@ -18,3 +18,4 @@ export {
   BUNDLE_PRODUCTS_QUERY,
   type CatalogProduct,
 } from './productQueries'
+export {normalizeAddress, type CanonicalAddress} from './address'
