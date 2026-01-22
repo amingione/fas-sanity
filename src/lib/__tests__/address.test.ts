@@ -2,6 +2,12 @@ import {describe, expect, it} from 'vitest'
 import {normalizeAddress} from '../address'
 
 describe('normalizeAddress', () => {
+  const extras = {
+    name: 'F.A.S. Motorsports LLC',
+    phone: '(812) 200-9012',
+    email: 'sales@fasmotorsports.com',
+  }
+
   it('normalizes Stripe-style addresses', () => {
     const input = {
       line1: '6161 Riverside Dr',
@@ -10,9 +16,10 @@ describe('normalizeAddress', () => {
       postal_code: '33982',
       country: 'US',
     }
-    expect(normalizeAddress(input)).toEqual({
+    expect(normalizeAddress(input, extras)).toEqual({
       name: 'F.A.S. Motorsports LLC',
       line1: '6161 Riverside Dr',
+      line2: undefined,
       city: 'Punta Gorda',
       state: 'FL',
       postalCode: '33982',
@@ -31,10 +38,10 @@ describe('normalizeAddress', () => {
       postalCode: '33982',
       country: 'US',
     }
-    expect(normalizeAddress(input)).toEqual({
+    expect(normalizeAddress(input, extras)).toEqual({
       name: 'F.A.S. Motorsports LLC',
       line1: '6161 Riverside Dr',
-      line2: ``,
+      line2: undefined,
       city: 'Punta Gorda',
       state: 'FL',
       postalCode: '33982',
@@ -52,11 +59,10 @@ describe('normalizeAddress', () => {
       zip: '33982',
       country: 'US',
     }
-    expect(
-      normalizeAddress(input, {name: 'F.A.S. Motorsports LLC', email: 'sales@fasmotorsports.com'}),
-    ).toEqual({
+    expect(normalizeAddress(input, extras)).toEqual({
       name: 'F.A.S. Motorsports LLC',
       line1: '6161 Riverside Dr',
+      line2: undefined,
       city: 'Punta Gorda',
       state: 'FL',
       postalCode: '33982',
