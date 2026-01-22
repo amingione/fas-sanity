@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, 'src'),
       '@fas/sanity-config': path.resolve(__dirname, 'packages/sanity-config/src'),
     },
   },

@@ -57,9 +57,11 @@
 
 ### 5. Provider Metadata Rule
 
-- Do NOT add Stripe, EasyPost, or carrier-specific metadata to schemas
-- Sanity stores only business-critical, human-meaningful fields
-- Provider-specific details must be re-fetched from the provider dashboards or APIs
+- Do NOT add new Stripe/EasyPost/carrier-specific metadata fields to schemas without approval
+- Existing provider fields are **allowed** as non-authoritative operational metadata:
+  `stripeSessionId`, `stripePaymentIntentId`, `paymentIntentId`, `stripeShippingRateId`,
+  `easypostRateId`, `easyPostShipmentId`, `easyPostTrackerId`, `stripeSummary.data`
+- Provider-specific details remain non-authoritative; re-fetch from provider APIs when needed
 - Raw provider payloads may be stored ONLY as opaque JSON for audit purposes
 
 ### Wholesale Workflow State
@@ -124,7 +126,7 @@ src/pages/api/
   createdAt: datetime,
   status: 'pending' | 'paid' | 'fulfilled' | 'delivered' | 'canceled' | 'refunded',
   orderType: 'online' | 'retail' | 'wholesale' | 'in-store' | 'phone',
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded',
+  paymentStatus: 'pending' | 'unpaid' | 'paid' | 'failed' | 'refunded' | 'partially_refunded' | 'cancelled',
 
   // Customer info
   customerRef: reference,        // Optional reference to customer doc
@@ -153,11 +155,7 @@ src/pages/api/
 
   // Stripe summary (MUST be object, not array)
   stripeSummary: {
-    data: string,                // JSON.stringify(session)
-    amountDiscount: number,
-    paymentCaptured: boolean,
-    paymentCapturedAt: datetime,
-    webhookNotified: boolean
+    data: string                 // JSON.stringify(session)
   }
 }
 ```
@@ -176,9 +174,18 @@ src/pages/api/
   unitPrice: number,             // Base unit price
   options: string,               // Variant selection
   upgrades: string[],            // Array of upgrade names/prices
-  imageUrl: url
+  imageUrl: url,
+  // Non-authoritative caches (debugging only):
+  stripePriceId?: string,
+  stripeProductId?: string
 }
 ```
+
+### Order Status Semantics
+
+- `order.status` tracks fulfillment readiness (not payment outcome).
+- Payment outcome nuances live in `paymentStatus`.
+- Webhook collapses non-paid outcomes to `pending` by design (see ADR-0001).
 
 ---
 
@@ -190,6 +197,7 @@ src/pages/api/
 | --------------------------------------- | ----------------------- | ------------------ |
 | `session.id`                            | `stripeSessionId`       | Direct             |
 | `session.payment_intent`                | `stripePaymentIntentId` | Direct (as string) |
+| `session.payment_intent`                | `paymentIntentId`       | Alias (keep in sync) |
 | `session.amount_subtotal`               | `amountSubtotal`        | **÷ 100**          |
 | `session.amount_total`                  | `totalAmount`           | **÷ 100**          |
 | `session.total_details.amount_tax`      | `amountTax`             | **÷ 100**          |
@@ -198,6 +206,11 @@ src/pages/api/
 | `session.payment_status`                | `paymentStatus`         | Direct             |
 | `session.shipping_details.address`      | `shippingAddress`       | Object map         |
 | `session.customer_details.address`      | `billingAddress`        | Object map         |
+
+### Canonical Fields (Duplicates)
+
+- `stripePaymentIntentId` is canonical; `paymentIntentId` is a legacy alias.
+- `carrier` and `service` live on the top-level order document; legacy `fulfillmentDetails.*` values are deprecated.
 
 **Address Mapping Example:**
 

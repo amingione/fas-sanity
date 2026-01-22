@@ -2,6 +2,7 @@ import type {Handler} from '@netlify/functions'
 import {getEasyPostClient, resolveDimensions, resolveWeight} from '../lib/easypostClient'
 import {getEasyPostFromAddress} from '../lib/ship-from'
 import {getEasyPostAddressMissingFields, getEasyPostParcelMissingFields} from '../lib/easypostValidation'
+import {normalizeAddress} from '@/lib/address'
 
 const DEFAULT_ORIGINS = (
   process.env.CORS_ALLOW || 'http://localhost:8888,http://localhost:3333'
@@ -24,26 +25,20 @@ function makeCORS(origin?: string) {
 type RawAddress = Record<string, unknown> | null | undefined
 type RawPackage = Record<string, unknown> | null | undefined
 
-const normalizeAddress = (input: RawAddress) => ({
-  name: typeof input?.name === 'string' ? input.name : undefined,
-  street1:
-    (input as any)?.street1 ||
-    (input as any)?.address_line1 ||
-    (input as any)?.addressLine1 ||
-    (input as any)?.line1 ||
-    (input as any)?.street,
-  street2:
-    (input as any)?.street2 ||
-    (input as any)?.address_line2 ||
-    (input as any)?.addressLine2 ||
-    (input as any)?.line2,
-  city: (input as any)?.city || (input as any)?.city_locality,
-  state: (input as any)?.state || (input as any)?.state_province,
-  zip: (input as any)?.zip || (input as any)?.postal_code || (input as any)?.postalCode,
-  country: (input as any)?.country || (input as any)?.country_code || 'US',
-  phone: typeof (input as any)?.phone === 'string' ? (input as any)?.phone : undefined,
-  email: typeof (input as any)?.email === 'string' ? (input as any)?.email : undefined,
-})
+const toEasyPostAddress = (input: RawAddress) => {
+  const normalized = normalizeAddress(input) || {}
+  return {
+    name: normalized.name,
+    street1: normalized.line1,
+    street2: normalized.line2,
+    city: normalized.city,
+    state: normalized.state,
+    zip: normalized.postalCode,
+    country: normalized.country || 'US',
+    phone: normalized.phone,
+    email: normalized.email,
+  }
+}
 
 const readNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -83,7 +78,7 @@ export const handler: Handler = async (event) => {
   const rawDimensions = (packageDetails as any)?.dimensions || body?.dimensions
   const rawWeight = (packageDetails as any)?.weight || body?.weight
 
-  const normalizedShipTo = normalizeAddress(shipToInput)
+  const normalizedShipTo = toEasyPostAddress(shipToInput)
   const shipToMissing = getEasyPostAddressMissingFields(normalizedShipTo)
   if (shipToMissing.length) {
     return {
@@ -94,7 +89,7 @@ export const handler: Handler = async (event) => {
   }
 
   const fallbackFrom = getEasyPostFromAddress()
-  const shipFromResolved = shipFromInput ? normalizeAddress(shipFromInput) : fallbackFrom
+  const shipFromResolved = shipFromInput ? toEasyPostAddress(shipFromInput) : fallbackFrom
   const shipFromMissing = getEasyPostAddressMissingFields(shipFromResolved)
   if (shipFromMissing.length) {
     return {
