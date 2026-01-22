@@ -1,6 +1,6 @@
 <!-- CODEX_ENFORCEMENT_HEADER: BEGIN
 contract_id: checkout-shipping-authority
-contract_version: 1.0.0
+contract_version: 2.0.0
 enforcement: hard-fail
 scope:
   repos:
@@ -13,21 +13,19 @@ scope:
 invariants:
   - "Exactly one Stripe Checkout Session creation path exists across the system."
   - "Customers choose live shipping rates inside Stripe Checkout after entering address."
-  - "Application must not calculate, define, or override shipping options."
+  - "Application must not define static shipping options."
 forbidden_code_patterns:
   - "shipping_options"
   - "shipping_rate_data"
   - "fixed_amount"
-  - "permissions.update_shipping_details"
-  - "update_shipping_details"
   - "stripe.checkout.sessions.update(.*shipping_options"
-  - "ui_mode:\\s*['\\\"]embedded['\\\"]"
 required_code_patterns:
   - "shipping_address_collection"
-  - "expand=\\['shipping_cost.shipping_rate'\\]"
+  - "permissions.update_shipping_details"
+  - "ui_mode:\\s*['\\\"]embedded['\\\"]"
   - "shipping_cost.shipping_rate"
 required_webhook_behavior:
-  - "On checkout completion, retrieve the Checkout Session and expand shipping_cost.shipping_rate, then persist carrier/service/cost and Parcelcraft identifiers."
+  - "On checkout completion, retrieve the Checkout Session and expand shipping_cost.shipping_rate, then persist carrier/service/cost and EasyPost identifiers."
 codex_instructions:
   - "Reject any patch that introduces forbidden_code_patterns."
   - "If multiple checkout creators exist, stop and ask user which one is canonical; do not 'merge' flows."
@@ -36,9 +34,9 @@ CODEX_ENFORCEMENT_HEADER: END -->
 
 # Checkout + Shipping Authority Contract
 
-## Parcelcraft × Stripe Dynamic Checkout Shipping
+## EasyPost × Stripe Dynamic Checkout Shipping
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Status:** ACTIVE — ENFORCEMENT REQUIRED  
 **Authority:** Commerce Architecture
 
@@ -54,7 +52,7 @@ It exists to prevent:
 - conflicting shipping models
 - AI drift
 - silent Stripe overrides
-- broken Parcelcraft rate injection
+- broken EasyPost rate injection
 - inconsistent customer checkout experiences
 
 This contract supersedes:
@@ -73,7 +71,7 @@ Non-compliance is a defect.
 The customer experience MUST be:
 
 1. Customer proceeds to checkout
-2. Stripe Checkout page loads (front-facing, Stripe-hosted UI)
+2. Stripe Embedded Checkout loads (Stripe-hosted UI)
 3. Customer enters shipping address
 4. Live carrier shipping rates appear automatically
 5. Customer selects preferred shipping option
@@ -82,7 +80,7 @@ The customer experience MUST be:
 
 At no time may the application:
 
-- calculate shipping rates
+- calculate shipping rates on the client
 - display shipping outside Stripe Checkout
 - require a secondary shipping step
 - override Stripe’s shipping UI
@@ -91,13 +89,11 @@ At no time may the application:
 
 ## SHIPPING OWNERSHIP MODEL
 
-Stripe owns shipping calculation.
+Stripe owns shipping selection UI.
 
-Parcelcraft supplies shipping rates.
+EasyPost supplies shipping rates via the Stripe shipping rates webhook.
 
-The application does NOT participate in rate calculation.
-
-This system operates using Stripe’s native dynamic shipping UI with a connected Stripe App (Parcelcraft).
+The application does NOT participate in rate calculation outside the EasyPost webhook.
 
 ---
 
@@ -109,18 +105,17 @@ The application MAY:
 
 - create a Stripe Checkout Session
 - enable shipping address collection
-- receive webhook events
+- provide a shipping rates webhook for Stripe
+- receive Stripe webhook events
 - persist selected shipping data
 - display shipping details post-checkout
 
 The application MUST NOT:
 
-- calculate shipping costs
-- define shipping options
-- update shipping rates
-- inject carrier logic
-- simulate shipping behavior
-- provide fallback shipping choices
+- define static shipping options
+- calculate shipping rates client-side
+- inject fixed or placeholder rates
+- override selected shipping after checkout
 
 ---
 
@@ -129,22 +124,20 @@ The application MUST NOT:
 Stripe is responsible for:
 
 - detecting shipping address changes
-- triggering shipping recalculation
+- triggering shipping rate recalculation
 - rendering shipping UI
 - enforcing customer selection
 - attaching the selected shipping rate to the session
 
 ---
 
-### Parcelcraft Responsibilities
+### EasyPost Responsibilities
 
-Parcelcraft is responsible for:
+EasyPost is responsible for:
 
-- responding to Stripe shipping recalculation events
-- returning live carrier rates
-- injecting rates into Checkout UI
-- attaching metadata to the selected shipping rate
-- enabling downstream fulfillment
+- returning live carrier rates to the shipping rates webhook
+- providing shipment and rate identifiers
+- enabling downstream fulfillment data
 
 ---
 
@@ -154,12 +147,12 @@ Parcelcraft is responsible for:
 
 All Checkout Sessions MUST:
 
-- use Stripe Checkout (hosted UI)
+- use Stripe Checkout (embedded UI)
 - enable shipping_address_collection
+- set permissions.update_shipping_details to server_only
 - NOT define shipping_options
 - NOT calculate shipping server-side
-- NOT modify shipping after creation
-- allow Stripe Apps to inject rates
+- allow Stripe to request rates via webhook
 
 ### FORBIDDEN (HARD FAIL)
 
@@ -173,8 +166,6 @@ A Checkout Session MUST NEVER include:
 - fallback shipping
 - server-calculated shipping
 
-Presence of any of the above disables Parcelcraft injection.
-
 ---
 
 ## SINGLE CHECKOUT AUTHORITY RULE
@@ -182,8 +173,6 @@ Presence of any of the above disables Parcelcraft injection.
 There MUST be exactly one Checkout Session creation path.
 
 Multiple checkout creators are forbidden.
-
-If more than one checkout creator exists, the system is invalid.
 
 ---
 
@@ -216,7 +205,7 @@ Required persisted data includes:
 - cost
 - currency
 - delivery estimate (if provided)
-- Parcelcraft metadata identifiers
+- EasyPost metadata identifiers (easypost_rate_id, easypost_shipment_id)
 
 Failure to persist selected shipping data is a defect.
 
@@ -230,7 +219,7 @@ Sanity order documents MUST store:
 - selected shipping service
 - shipping cost
 - Stripe shipping_rate ID
-- Parcelcraft identifiers (if present)
+- EasyPost identifiers (if present)
 
 Sanity MUST NOT:
 
@@ -268,8 +257,7 @@ Fallback shipping is not allowed.
 The following are permanently forbidden:
 
 - dual checkout flows
-- embedded checkout experiments
-- shipping calculation endpoints
+- shipping calculation endpoints outside the EasyPost webhook
 - shipping preview pages
 - metadata-based shipping selection
 - post-checkout shipping choice
@@ -303,8 +291,8 @@ Any change requires:
 
 - Customers choose shipping at checkout
 - Stripe renders shipping UI
-- Parcelcraft injects live rates
-- Application does not calculate shipping
+- EasyPost supplies live rates via webhook
+- Application does not define static rates
 - One checkout path exists
 - Selected shipping is final
 - Sanity stores, never alters
