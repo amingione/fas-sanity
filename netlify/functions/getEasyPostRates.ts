@@ -83,7 +83,8 @@ export const handler: Handler = async (event) => {
   const rawDimensions = (packageDetails as any)?.dimensions || body?.dimensions
   const rawWeight = (packageDetails as any)?.weight || body?.weight
 
-  const shipToMissing = getEasyPostAddressMissingFields(shipToInput)
+  const normalizedShipTo = normalizeAddress(shipToInput)
+  const shipToMissing = getEasyPostAddressMissingFields(normalizedShipTo)
   if (shipToMissing.length) {
     return {
       statusCode: 400,
@@ -130,7 +131,7 @@ export const handler: Handler = async (event) => {
   try {
     const client = getEasyPostClient()
     const shipment = await client.Shipment.create({
-      to_address: normalizeAddress(shipToInput),
+      to_address: normalizedShipTo,
       from_address: shipFromResolved,
       parcel,
     } as any)
