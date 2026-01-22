@@ -118,6 +118,14 @@ describe('stripeWebhook checkout.session.expired', () => {
 
     const response = await handler(event as any, {} as any)
 
+    if (!response) {
+      throw new Error('Expected handler response for checkout.session.expired')
+    }
+
+    if (!response.body) {
+      throw new Error('Expected response body for checkout.session.expired')
+    }
+
     expect(response.statusCode).toBe(200)
     expect(JSON.parse(response.body)).toEqual({
       received: true,

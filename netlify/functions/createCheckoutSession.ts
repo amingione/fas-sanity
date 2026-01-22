@@ -165,7 +165,7 @@ export const handler: Handler = async (event) => {
   const customerEmail =
     typeof payload.customerEmail === 'string' ? payload.customerEmail.trim() : undefined
 
-  // Embedded Checkout with Parcelcraft dynamic rates (no static shipping options).
+  // Embedded Checkout with dynamic rates (no static shipping options).
   if (!cart.length) {
     return {
       statusCode: 400,
@@ -285,8 +285,7 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  // Product metadata (weight, dimensions) is embedded in line items for Parcelcraft to read.
-  // Parcelcraft calculates shipping dynamically based on this metadata and the shipping address.
+  // Product metadata (weight, dimensions) is embedded in line items for rate calculation.
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
   for (const item of normalizedCart) {
     if (item.stripePriceId) {
@@ -485,14 +484,14 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  // Product metadata (weight, dimensions) is set in line items for Parcelcraft.
+  // Product metadata (weight, dimensions) is set in line items for rate calculation.
 
   const itemCount = normalizedCart.reduce((total, item) => total + item.quantity, 0)
   const subtotalEstimate = normalizedCart.reduce((total, item) => {
     if (typeof item.price !== 'number') return total
     return total + item.price * item.quantity
   }, 0)
-  // Shipping cost will be calculated by Parcelcraft and added to the session total
+  // Shipping cost will be calculated by Stripe Checkout and added to the session total
   const estimatedTotal = subtotalEstimate
 
   const sessionMetadata: Stripe.MetadataParam = {
@@ -552,16 +551,18 @@ export const handler: Handler = async (event) => {
       customer_email: customerEmail,
       line_items: lineItems,
 
-      // Shipping address collection is required for Parcelcraft to calculate rates.
+      // Shipping address collection is required for dynamic rate calculation.
+      // When customer enters/updates address, Stripe calls our webhook to calculate rates.
       shipping_address_collection: {
         allowed_countries: ['US'],
       },
 
-      // Note: We do NOT set permissions.update_shipping_details here because
-      // Parcelcraft (as a Stripe app) should automatically inject dynamic shipping
-      // rates when the customer enters their shipping address. Setting server_only
-      // would require us to implement a callback handler, which conflicts with
-      // the requirement that Parcelcraft handles rate injection automatically.
+      // Enable server-side rate calculation: when customer enters shipping address,
+      // Stripe will call our webhook handler to fetch live EasyPost rates.
+      // See: fas-cms-fresh Stripe shipping rates webhook
+      permissions: {
+        update_shipping_details: 'server_only',
+      },
 
       custom_fields: [
         {
@@ -578,8 +579,8 @@ export const handler: Handler = async (event) => {
         },
       ],
 
-      // 4. PARCELCRAFT REQUIREMENTS
-      // invoice_creation is required so Parcelcraft can read the weight/dims later
+      // 4. INVOICE CREATION
+      // Metadata includes weight/dimensions for EasyPost rate calculation
       invoice_creation: {
         enabled: true,
         invoice_data: {
@@ -601,10 +602,9 @@ export const handler: Handler = async (event) => {
       return_url: `${baseUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
     }
 
-    // Note: With permissions.update_shipping_details: 'server_only', Parcelcraft
-    // (as a Stripe app) can inject dynamic shipping rates when the customer enters
-    // their shipping address. The rates are calculated based on product metadata
-    // (weight, dimensions) that we've embedded in the line items.
+    // With permissions.update_shipping_details: 'server_only', Stripe will call our
+    // webhook when the customer enters their shipping address. Handler lives in fas-cms-fresh.
+    // calls EasyPost to calculate live rates based on product metadata (weight, dimensions).
 
     const session = await stripe.checkout.sessions.create(sessionParams)
 
@@ -651,7 +651,7 @@ export const handler: Handler = async (event) => {
             customerEmail: customerEmail || undefined,
             cart: cleanCart.length ? cleanCart : undefined,
             amountSubtotal: subtotalEstimate || undefined,
-            // Shipping amount will be determined by Parcelcraft and available after checkout completion
+            // Shipping amount will be determined by Stripe Checkout and available after checkout completion
             totalAmount: estimatedTotal || undefined,
             currency: 'USD',
             stripeCheckoutUrl: session.url || undefined,

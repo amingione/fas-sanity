@@ -27,7 +27,7 @@
 
 ## Rollback Plan
 - [ ] If label creation fails broadly, unset `SHIPPING_PROVIDER` (defaults to easypost UI) and disable label actions in Studio
-- [ ] Re-enable Parcelcraft only if Stripe Shipping Labels becomes available and archived code is restored
+- [ ] Keep EasyPost as the only shipping provider
 
 ## Monitoring
 - [ ] Check Netlify function logs for `easypostCreateLabel`, `getEasyPostRates`, `easypostWebhook`
