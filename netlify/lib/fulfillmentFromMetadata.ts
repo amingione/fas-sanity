@@ -120,13 +120,9 @@ export function applyShippingDetailsToDoc(
   }
 
   const easyPostRateId =
-    pickFromMeta(shippingMeta, ['easypost_rate_id', 'easypostRateId', 'easypost_rate']) ||
-    (shippingDetails.serviceCode && shippingDetails.serviceCode.startsWith('rate_')
-      ? shippingDetails.serviceCode
-      : undefined) ||
-    (shippingDetails.carrierId && shippingDetails.carrierId.startsWith('rate_')
-      ? shippingDetails.carrierId
-      : undefined)
+    pickFromMeta(shippingMeta, ['easypost_rate_id', 'easypostRateId']) ||
+    shippingDetails.metadata?.['easypost_rate_id'] ||
+    undefined
   if (easyPostRateId) {
     target.easypostRateId = easyPostRateId
   }
@@ -176,7 +172,10 @@ export const deriveFulfillmentFromMetadata = (
   const rateId = typeof rateIdRaw === 'string' ? rateIdRaw.trim() : undefined
   const stripeShippingRateId =
     shippingDetails.shippingRateId || (rateId && rateId.startsWith('shr_') ? rateId : undefined)
-  const easyPostRateId = rateId && rateId.startsWith('rate_') ? rateId : undefined
+  const easyPostRateId =
+    pickFromMeta(meta, ['easypost_rate_id', 'easypostRateId']) ||
+    shippingDetails.metadata?.['easypost_rate_id'] ||
+    undefined
   const actualCostRaw = pickFromMeta(meta, FULFILLMENT_ACTUAL_COST_KEYS)
   const actualShippingCost = parseNumber(actualCostRaw)
   const labelPurchasedAtRaw = pickFromMeta(meta, FULFILLMENT_PURCHASED_AT_KEYS)
