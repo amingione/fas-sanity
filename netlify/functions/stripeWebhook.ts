@@ -2554,6 +2554,111 @@ const markCartRecovered = async (
     .commit({autoGenerateArrayKeys: true})
 }
 
+/**
+ * Update checkoutSession document status to 'complete' when checkout succeeds
+ */
+const updateCheckoutSessionOnComplete = async (
+  session: Stripe.Checkout.Session,
+  cartId?: string | null,
+): Promise<void> => {
+  if (!cartId) return
+  const trimmed = cartId.trim()
+  if (!trimmed) return
+
+  try {
+    const existingSession = await sanityClient.fetch<{
+      _id: string
+      status?: string
+    } | null>(`*[_type == "checkoutSession" && _id == $id][0]{_id, status}`, {id: trimmed})
+
+    if (!existingSession?._id) {
+      console.warn('updateCheckoutSessionOnComplete: checkoutSession not found', {cartId: trimmed})
+      return
+    }
+
+    // Extract customer details from session
+    const customerDetails = session.customer_details
+    const shippingDetails = session.shipping_details
+    const shippingCost = session.shipping_cost
+
+    const updateData: Record<string, any> = {
+      status: 'complete',
+    }
+
+    // Add customer details if available
+    if (customerDetails?.email) updateData.customerEmail = customerDetails.email
+    if (customerDetails?.name) updateData.customerName = customerDetails.name
+    if (customerDetails?.phone) updateData.customerPhone = customerDetails.phone
+
+    // Add shipping details if available
+    if (shippingDetails) {
+      updateData.shippingDetails = {
+        name: shippingDetails.name || undefined,
+        address: shippingDetails.address
+          ? {
+              line1: shippingDetails.address.line1 || undefined,
+              line2: shippingDetails.address.line2 || undefined,
+              city: shippingDetails.address.city || undefined,
+              state: shippingDetails.address.state || undefined,
+              postalCode: shippingDetails.address.postal_code || undefined,
+              country: shippingDetails.address.country || undefined,
+            }
+          : undefined,
+      }
+    }
+
+    // Add shipping cost details if available
+    if (shippingCost) {
+      const shippingRate =
+        typeof shippingCost.shipping_rate === 'object' && shippingCost.shipping_rate
+          ? (shippingCost.shipping_rate as Stripe.ShippingRate)
+          : undefined
+
+      updateData.shippingCost = {
+        amount: shippingCost.amount_total || undefined,
+        displayName: shippingRate?.display_name || undefined,
+        deliveryEstimate: shippingRate?.delivery_estimate
+          ? {
+              minimum: (shippingRate.delivery_estimate as any)?.minimum?.value || undefined,
+              maximum: (shippingRate.delivery_estimate as any)?.maximum?.value || undefined,
+            }
+          : undefined,
+      }
+
+      if (shippingRate?.id) {
+        updateData.selectedShippingRate = shippingRate.id
+      }
+    }
+
+    // Add amount details from session
+    if (session.amount_total !== undefined) {
+      updateData.totalAmount = session.amount_total / 100 // Convert cents to dollars
+    }
+    if (session.amount_subtotal !== undefined) {
+      updateData.amountSubtotal = session.amount_subtotal / 100
+    }
+    if (session.total_details?.amount_tax !== undefined) {
+      updateData.amountTax = session.total_details.amount_tax / 100
+    }
+    if (session.total_details?.amount_shipping !== undefined) {
+      updateData.amountShipping = session.total_details.amount_shipping / 100
+    }
+
+    await sanityClient
+      .patch(existingSession._id)
+      .set(updateData)
+      .setIfMissing({recovered: true})
+      .commit({autoGenerateArrayKeys: true})
+
+    console.log('updateCheckoutSessionOnComplete: updated checkoutSession', {
+      cartId: trimmed,
+      sessionId: session.id,
+    })
+  } catch (err) {
+    console.warn('updateCheckoutSessionOnComplete: failed to update checkoutSession', err)
+  }
+}
+
 // Dedicated client for strict order creation + backfill requirements.
 const webhookSanityClient = createClient({
   projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
@@ -8300,8 +8405,9 @@ export const handler: Handler = async (event) => {
             if (result?.status === 'processed' && cartId) {
               try {
                 await markCartRecovered(cartId, session.id)
+                await updateCheckoutSessionOnComplete(session, cartId)
               } catch (err) {
-                console.warn('stripeWebhook: failed to mark cart recovered', err)
+                console.warn('stripeWebhook: failed to mark cart recovered or update checkoutSession', err)
               }
             }
           } catch (err) {
