@@ -164,6 +164,28 @@ export const handler: Handler = async (event) => {
         : 'storefront'
   const customerEmail =
     typeof payload.customerEmail === 'string' ? payload.customerEmail.trim() : undefined
+  const customerName =
+    typeof payload.customerName === 'string' ? payload.customerName.trim() : undefined
+  const customerPhone =
+    typeof payload.customerPhone === 'string' ? payload.customerPhone.trim() : undefined
+
+  // Extract attribution data from payload if available
+  const attribution = payload.attribution
+    ? {
+        source: typeof payload.attribution.source === 'string' ? payload.attribution.source : undefined,
+        medium: typeof payload.attribution.medium === 'string' ? payload.attribution.medium : undefined,
+        campaign: typeof payload.attribution.campaign === 'string' ? payload.attribution.campaign : undefined,
+        content: typeof payload.attribution.content === 'string' ? payload.attribution.content : undefined,
+        term: typeof payload.attribution.term === 'string' ? payload.attribution.term : undefined,
+        landingPage: typeof payload.attribution.landingPage === 'string' ? payload.attribution.landingPage : undefined,
+        referrer: typeof payload.attribution.referrer === 'string' ? payload.attribution.referrer : undefined,
+        device: typeof payload.attribution.device === 'string' ? payload.attribution.device : undefined,
+        browser: typeof payload.attribution.browser === 'string' ? payload.attribution.browser : undefined,
+        os: typeof payload.attribution.os === 'string' ? payload.attribution.os : undefined,
+        sessionId: typeof payload.attribution.sessionId === 'string' ? payload.attribution.sessionId : undefined,
+        capturedAt: new Date().toISOString(),
+      }
+    : undefined
 
   // Embedded Checkout with dynamic rates (no static shipping options).
   if (!cart.length) {
@@ -649,12 +671,16 @@ export const handler: Handler = async (event) => {
               ? new Date(session.expires_at * 1000).toISOString()
               : undefined,
             customerEmail: customerEmail || undefined,
+            customerName: customerName || undefined,
+            customerPhone: customerPhone || undefined,
             cart: cleanCart.length ? cleanCart : undefined,
             amountSubtotal: subtotalEstimate || undefined,
             // Shipping amount will be determined by Stripe Checkout and available after checkout completion
             totalAmount: estimatedTotal || undefined,
             currency: 'USD',
             stripeCheckoutUrl: session.url || undefined,
+            attribution: attribution || undefined,
+            metadata: sessionMetadata ? {raw: JSON.stringify(sessionMetadata)} : undefined,
           })
           .setIfMissing({recoveryEmailSent: false, recovered: false})
           .commit({autoGenerateArrayKeys: true})

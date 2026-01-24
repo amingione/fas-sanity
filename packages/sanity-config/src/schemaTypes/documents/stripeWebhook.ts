@@ -1,4 +1,10 @@
 // NOTE: orderId is deprecated; prefer orderNumber for identifiers.
+/**
+ * Primary webhook event document type with complete event data.
+ * This is the authoritative store for Stripe webhook events.
+ * 
+ * For processing tracking only, see 'stripeWebhookEvent' (deprecated).
+ */
 import {defineField, defineType} from 'sanity'
 import {PlugIcon} from '@sanity/icons'
 
