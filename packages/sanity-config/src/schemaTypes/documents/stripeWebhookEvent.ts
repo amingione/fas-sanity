@@ -24,8 +24,9 @@ const humanize = (value?: string | null) => {
  * - Retry attempts
  * - Processing timestamps
  * 
- * Other fields (status, summary, occurredAt, resourceId) are intentionally left null
- * as they are not used for processing tracking. Use 'stripeWebhook' for complete event data.
+ * Non-processing fields on this type (for example, summary or category) may be left null
+ * as they are not used for processing tracking. The occurredAt field exists on 'stripeWebhook'
+ * only; use that document type for complete event data.
  */
 export default defineType({
   name: 'stripeWebhookEvent',
