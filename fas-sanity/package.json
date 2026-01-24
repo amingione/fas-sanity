@@ -1,0 +1,7 @@
+{
+  "name": "fas-sanity",
+  "version": "1.0.0",
+  "devDependencies": {
+    "vitest": "^0.0.0"
+  }
+}
