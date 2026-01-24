@@ -15,9 +15,21 @@ const humanize = (value?: string | null) => {
     .join(' ')
 }
 
+/**
+ * DEPRECATED: This document type is used only for webhook processing tracking.
+ * The 'stripeWebhook' document type is the primary webhook event store with complete data.
+ * 
+ * This type creates minimal documents during webhook processing to track:
+ * - Processing status (pending, processing, completed, failed)
+ * - Retry attempts
+ * - Processing timestamps
+ * 
+ * Other fields (status, summary, occurredAt, resourceId) are intentionally left null
+ * as they are not used for processing tracking. Use 'stripeWebhook' for complete event data.
+ */
 export default defineType({
   name: 'stripeWebhookEvent',
-  title: 'Stripe Webhook Event',
+  title: 'Stripe Webhook Event (Processing Log)',
   type: 'document',
   readOnly: false,
   fields: [
