@@ -2578,7 +2578,7 @@ const updateCheckoutSessionOnComplete = async (
 
     // Extract customer details from session
     const customerDetails = session.customer_details
-    const shippingDetails = session.shipping_details
+    const shippingDetails = (session as any)?.shipping_details
     const shippingCost = session.shipping_cost
 
     const updateData: Record<string, any> = {
@@ -2615,7 +2615,7 @@ const updateCheckoutSessionOnComplete = async (
           : undefined
 
       updateData.shippingCost = {
-        amount: shippingCost.amount_total || undefined,
+        amount: toMajorUnits(shippingCost.amount_total),
         displayName: shippingRate?.display_name || undefined,
         deliveryEstimate: shippingRate?.delivery_estimate
           ? {
@@ -2631,23 +2631,26 @@ const updateCheckoutSessionOnComplete = async (
     }
 
     // Add amount details from session
-    if (session.amount_total !== undefined) {
-      updateData.totalAmount = session.amount_total / 100 // Convert cents to dollars
+    if (session.amount_total !== undefined && session.amount_total !== null) {
+      updateData.totalAmount = (session.amount_total ?? 0) / 100 // Convert cents to dollars
     }
-    if (session.amount_subtotal !== undefined) {
+    if (session.amount_subtotal !== undefined && session.amount_subtotal !== null) {
       updateData.amountSubtotal = session.amount_subtotal / 100
     }
-    if (session.total_details?.amount_tax !== undefined) {
+    if (
+      session.total_details?.amount_tax !== undefined &&
+      session.total_details.amount_tax !== null
+    ) {
       updateData.amountTax = session.total_details.amount_tax / 100
     }
-    if (session.total_details?.amount_shipping !== undefined) {
-      updateData.amountShipping = session.total_details.amount_shipping / 100
-    }
+    if (
+      session.total_details?.amount_shipping !== undefined &&
+      session.total_details.amount_shipping !== null
+      .set({...updateData, recovered: true})
 
     await sanityClient
       .patch(existingSession._id)
-      .set(updateData)
-      .setIfMissing({recovered: true})
+      .set({...updateData, recovered: true})
       .commit({autoGenerateArrayKeys: true})
 
     console.log('updateCheckoutSessionOnComplete: updated checkoutSession', {
@@ -8407,7 +8410,10 @@ export const handler: Handler = async (event) => {
                 await markCartRecovered(cartId, session.id)
                 await updateCheckoutSessionOnComplete(session, cartId)
               } catch (err) {
-                console.warn('stripeWebhook: failed to mark cart recovered or update checkoutSession', err)
+                console.warn(
+                  'stripeWebhook: failed to mark cart recovered or update checkoutSession',
+                  err,
+                )
               }
             }
           } catch (err) {
