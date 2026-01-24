@@ -2646,8 +2646,7 @@ const updateCheckoutSessionOnComplete = async (
 
     await sanityClient
       .patch(existingSession._id)
-      .set(updateData)
-      .setIfMissing({recovered: true})
+      .set({...updateData, recovered: true})
       .commit({autoGenerateArrayKeys: true})
 
     console.log('updateCheckoutSessionOnComplete: updated checkoutSession', {
