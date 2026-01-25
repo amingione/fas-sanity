@@ -2557,7 +2557,7 @@ const markCartRecovered = async (
 /**
  * Update checkoutSession document status to 'complete' when checkout succeeds
  */
-const updateCheckoutSessionOnComplete = async (
+export const updateCheckoutSessionOnComplete = async (
   session: Stripe.Checkout.Session,
   cartId?: string | null,
 ): Promise<void> => {

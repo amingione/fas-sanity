@@ -96,6 +96,7 @@ vi.mock('stripe', () => {
           metadata: {cart_id: 'cart_123'},
           client_reference_id: 'cart_123',
         }),
+        listLineItems: vi.fn().mockResolvedValue({data: []}),
       },
     },
     paymentIntents: {
