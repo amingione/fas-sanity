@@ -2638,15 +2638,20 @@ const updateCheckoutSessionOnComplete = async (
       updateData.amountSubtotal = session.amount_subtotal / 100
     }
     if (
-      session.total_details?.amount_tax !== undefined &&
-      session.total_details.amount_tax !== null
+      session.total_details?.amount_tax != null &&
+      session.total_details.amount_shipping != null
     ) {
       updateData.amountTax = session.total_details.amount_tax / 100
     }
     if (
       session.total_details?.amount_shipping !== undefined &&
       session.total_details.amount_shipping !== null
-      .set({...updateData, recovered: true})
+    ) {
+      await sanityClient
+        .patch(existingSession._id)
+        .set({...updateData, recovered: true})
+        .commit({autoGenerateArrayKeys: true})
+    }
 
     await sanityClient
       .patch(existingSession._id)
