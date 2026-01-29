@@ -26,7 +26,6 @@ export interface Rate {
 export interface Shipment {
   _id: string
   _type: 'shipment'
-  easypostId: string
   createdAt: string
   status: string
   trackingCode?: string
@@ -42,7 +41,6 @@ export interface Shipment {
 export interface Pickup {
   _id: string
   _type: 'pickup'
-  easypostId?: string
   status: 'scheduled' | 'in_progress' | 'completed' | 'canceled'
   confirmation?: string
   carrier: string

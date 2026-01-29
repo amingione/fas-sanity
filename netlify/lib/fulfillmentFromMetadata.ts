@@ -31,7 +31,6 @@ const FULFILLMENT_TRACKING_KEYS = [
   'trackingNumber',
   'shipping_tracking_number',
   'shippingTrackingNumber',
-  'easypost_tracking_number',
   'tracker',
   'tracker_id',
   'tracking',
@@ -49,23 +48,9 @@ const FULFILLMENT_LABEL_URL_KEYS = [
   'labelUrl',
   'shipping_label_url',
   'shippingLabelUrl',
-  'easypost_label_url',
-]
-
-const FULFILLMENT_SHIPMENT_ID_KEYS = [
-  'easypost_shipment_id',
-  'shipment_id',
-  'shipping_shipment_id',
-]
-
-const FULFILLMENT_TRACKER_ID_KEYS = [
-  'easypost_tracker_id',
-  'shipping_tracker_id',
-  'tracker_id',
 ]
 
 const FULFILLMENT_RATE_ID_KEYS = [
-  'easypost_rate_id',
   'shipping_rate_id',
   'shipping_rateid',
   'rate_id',
@@ -119,14 +104,6 @@ export function applyShippingDetailsToDoc(
     target.stripeShippingRateId = stripeShippingRateId
   }
 
-  const easyPostRateId =
-    pickFromMeta(shippingMeta, ['easypost_rate_id', 'easypostRateId']) ||
-    shippingDetails.metadata?.['easypost_rate_id'] ||
-    undefined
-  if (easyPostRateId) {
-    target.easypostRateId = easyPostRateId
-  }
-
   const shippingQuoteId = pickFromMeta(shippingMeta, [
     'shipping_quote_id',
     'shippingQuoteId',
@@ -161,10 +138,6 @@ export const deriveFulfillmentFromMetadata = (
   const trackingNumber = pickFromMeta(meta, FULFILLMENT_TRACKING_KEYS)
   const trackingUrl = pickFromMeta(meta, FULFILLMENT_TRACKING_URL_KEYS)
   const labelUrl = pickFromMeta(meta, FULFILLMENT_LABEL_URL_KEYS)
-  const shipmentId =
-    pickFromMeta(meta, FULFILLMENT_SHIPMENT_ID_KEYS) ||
-    shippingDetails.metadata?.['shipping_shipment_id']
-  const trackerId = pickFromMeta(meta, FULFILLMENT_TRACKER_ID_KEYS)
   const rateIdRaw =
     pickFromMeta(meta, FULFILLMENT_RATE_ID_KEYS) ||
     shippingDetails.metadata?.['shipping_rate_id'] ||
@@ -172,10 +145,6 @@ export const deriveFulfillmentFromMetadata = (
   const rateId = typeof rateIdRaw === 'string' ? rateIdRaw.trim() : undefined
   const stripeShippingRateId =
     shippingDetails.shippingRateId || (rateId && rateId.startsWith('shr_') ? rateId : undefined)
-  const easyPostRateId =
-    pickFromMeta(meta, ['easypost_rate_id', 'easypostRateId']) ||
-    shippingDetails.metadata?.['easypost_rate_id'] ||
-    undefined
   const actualCostRaw = pickFromMeta(meta, FULFILLMENT_ACTUAL_COST_KEYS)
   const actualShippingCost = parseNumber(actualCostRaw)
   const labelPurchasedAtRaw = pickFromMeta(meta, FULFILLMENT_PURCHASED_AT_KEYS)
@@ -202,9 +171,6 @@ export const deriveFulfillmentFromMetadata = (
     carrier,
     service,
     labelCreatedAt: labelPurchasedAt,
-    easyPostShipmentId: shipmentId,
-    easyPostTrackerId: trackerId,
-    easypostRateId: easyPostRateId,
     stripeShippingRateId: stripeShippingRateId,
     labelCost: actualShippingCost,
     deliveryDays:

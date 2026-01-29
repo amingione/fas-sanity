@@ -58,8 +58,7 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
       deliveryDays,
       estimatedDeliveryDate,
       trackingNumber,
-      trackingUrl,
-      easypostRateId
+      trackingUrl
     },
     billTo,
     shipTo,
@@ -94,8 +93,7 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
         trackingNumber,
         trackingUrl,
         shippedAt,
-        deliveredAt,
-        easypostRateId
+        deliveredAt
       },
       cart[]{
         _key,
@@ -130,8 +128,7 @@ async function fetchInvoiceFromSanity(invoiceId: string) {
         trackingNumber,
         trackingUrl,
         shippedAt,
-        deliveredAt,
-        easypostRateId
+        deliveredAt
       },
       cart[]{
         _key,

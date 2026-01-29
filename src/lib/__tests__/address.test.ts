@@ -51,7 +51,7 @@ describe('normalizeAddress', () => {
     })
   })
 
-  it('normalizes EasyPost-style addresses and extras', () => {
+  it('normalizes provider-style addresses and extras', () => {
     const input = {
       street1: '6161 Riverside Dr',
       city: 'Punta Gorda',

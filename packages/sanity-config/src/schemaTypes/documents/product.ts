@@ -185,6 +185,7 @@ const product = defineType({
     {name: 'wholesale', title: 'Wholesale Pricing'},
     {name: 'seo', title: 'SEO & Marketing'},
     {name: 'stripe', title: 'Stripe Sync'},
+    {name: 'technical', title: 'Technical'},
     {name: 'advanced', title: 'Advanced'},
   ],
   fieldsets: [
@@ -1562,6 +1563,18 @@ const product = defineType({
       readOnly: true,
       fieldset: 'stripe',
       group: 'stripe',
+    }),
+    defineField({
+      name: 'medusaProductId',
+      type: 'string',
+      readOnly: true,
+      group: 'technical',
+    }),
+    defineField({
+      name: 'medusaVariantId',
+      type: 'string',
+      readOnly: true,
+      group: 'technical',
     }),
     defineField({
       name: 'relatedProducts',

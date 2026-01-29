@@ -61,7 +61,6 @@ type FulfillmentDetails = {
   service?: string
   deliveryDays?: number
   estimatedDeliveryDate?: string
-  easypostRateId?: string
   trackingNumber?: string
   trackingUrl?: string
   shippingLabelUrl?: string
@@ -339,7 +338,6 @@ const extractStateFromDoc = (doc: InvoiceDocument | null | undefined): EditorSta
     if (Number.isFinite(days)) normalized.deliveryDays = days
     if (trimString(input.estimatedDeliveryDate))
       normalized.estimatedDeliveryDate = trimString(input.estimatedDeliveryDate)
-    if (trimString(input.easypostRateId)) normalized.easypostRateId = trimString(input.easypostRateId)
     if (trimString((input as any).trackingNumber))
       normalized.trackingNumber = trimString((input as any).trackingNumber)
     if (trimString((input as any).trackingUrl))
@@ -1496,14 +1494,6 @@ const InvoiceVisualEditor: React.FC<DocumentViewProps> = ({document}) => {
                       <dt>Est. Delivery</dt>
                       <dd className="font-medium text-[var(--studio-text)]">
                         {formatDate(state.fulfillmentDetails.estimatedDeliveryDate)}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {state.fulfillmentDetails?.easypostRateId ? (
-                    <div className="flex justify-between gap-4">
-                      <dt>Rate ID</dt>
-                      <dd className="font-medium text-[var(--studio-text)]">
-                        {state.fulfillmentDetails.easypostRateId}
                       </dd>
                     </div>
                   ) : null}

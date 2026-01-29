@@ -162,8 +162,6 @@ if (disableShim) {
       'SANITY_API_TOKEN',
       'STRIPE_SECRET_KEY',
       'STRIPE_WEBHOOK_SECRET',
-      'EASYPOST_API_KEY',
-      'EASYPOST_WEBHOOK_SECRET',
     ]
 
     const summary = requiredKeys.map((key) => `${key}:${process.env[key] ? '✅' : '❌'}`).join(', ')

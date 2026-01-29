@@ -51,7 +51,6 @@ import AppointmentCalendarPane from '../components/studio/AppointmentCalendarPan
 import AppointmentBookingPane from '../components/studio/AppointmentBookingPane'
 import WorkOrderManagementPane from '../components/studio/WorkOrderManagementPane'
 import WholesaleOrdersPane from '../components/studio/WholesaleOrdersPane'
-import ShipmentsPanel from '../components/shipments/ShipmentsPanel'
 import PickupsPanel from '../components/pickups/PickupsPanel'
 import SalesAnalyticsDashboard from '../components/studio/SalesAnalyticsDashboard'
 import OperationsDashboard from '../components/studio/OperationsDashboard'
@@ -183,7 +182,7 @@ const createShippingSection = (S: any) =>
       S.component()
         .id('shipments-panel')
         .title('Shipments')
-        .component(ShipmentsPanel as ComponentType),
+        .component(ComingSoonPane as ComponentType),
     )
 
 const createAdminSection = (S: any) =>
@@ -1056,7 +1055,6 @@ const createFunctionLogsSection = (S: any) =>
                 .items(
                   [
                     'stripeWebhook',
-                    'easypostWebhook',
                     'sendAbandonedCartEmails',
                     'manual-fulfill-order',
                     'cleanupFunctionLogs',

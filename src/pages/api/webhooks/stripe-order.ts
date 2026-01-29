@@ -240,8 +240,6 @@ export async function handleStripeCheckoutComplete(
       shippingRateMetadata.carrier_id ||
       (shippingRateObject ? 'Stripe Checkout' : undefined),
     service: shippingRateMetadata.service || shippingRateObject?.display_name || undefined,
-    easypostRateId: shippingRateMetadata.easypost_rate_id || shippingRateId,
-    easypostShipmentId: shippingRateMetadata.easypost_shipment_id || undefined,
     carrierId: shippingRateMetadata.carrier_id || undefined,
     serviceCode: shippingRateMetadata.service_code || undefined,
     estimatedDeliveryDate: shippingDeliveryEstimate,

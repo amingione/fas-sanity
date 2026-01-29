@@ -9,7 +9,7 @@ This document audits your Sanity schemas to identify areas where adding descript
 - Most schema types lack comprehensive `description` fields
 - Field-level descriptions are minimal or missing
 - AI agents struggle without context about data relationships
-- Complex business logic (Stripe integration, EasyPost shipping) not documented in schemas
+- Complex business logic (Stripe integration, Shippo shipping) not documented in schemas
 
 ### Impact
 Without rich schema descriptions:
@@ -58,12 +58,12 @@ export default {
 **Critical for:**
 - Order fulfillment workflows
 - Stripe payment tracking
-- EasyPost shipping label generation
+- Shippo shipping label generation
 - Multi-system data consistency
 
 **Recommended:**
 ```typescript
-description: 'Customer orders flowing through multiple fulfillment states. Syncs with Stripe for payments and EasyPost for shipping labels. DO NOT manually edit Stripe-managed fields.',
+description: 'Customer orders flowing through multiple fulfillment states. Syncs with Stripe for payments and Shippo for shipping labels. DO NOT manually edit Stripe-managed fields.',
 ```
 
 ### 3. **Customer Schema**
@@ -87,7 +87,7 @@ description: 'Customer accounts with purchase history, vehicles, and pricing tie
 
 ### 5. **Shipment Schema**
 **Critical for:**
-- EasyPost integration
+- Shippo integration
 - Tracking number management
 - Shipping status updates
 
@@ -146,7 +146,7 @@ export default {
 },
 {
   name: 'shippingAddress',
-  description: 'Validated shipping address. Used for EasyPost label generation and carrier rate calculations.',
+  description: 'Validated shipping address. Used for Shippo label generation and carrier rate calculations.',
 },
 ```
 
@@ -253,7 +253,7 @@ export default {
   title: 'Order',
   type: 'document',
   description: `
-Customer orders with integrated Stripe payment and EasyPost shipping.
+Customer orders with integrated Stripe payment and Shippo shipping.
 Orders flow through statuses: NEW → Processing → Fulfilled → Completed.
 CRITICAL: Stripe fields (IDs, payment status) are auto-synced by webhooks.
 Manual edits to Stripe-related fields can break payment reconciliation.

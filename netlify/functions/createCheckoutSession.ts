@@ -580,7 +580,7 @@ export const handler: Handler = async (event) => {
       },
 
       // Enable server-side rate calculation: when customer enters shipping address,
-      // Stripe will call our webhook handler to fetch live EasyPost rates.
+      // Stripe will call our webhook handler to fetch live shipping rates.
       // See: fas-cms-fresh Stripe shipping rates webhook
       permissions: {
         update_shipping_details: 'server_only',
@@ -602,7 +602,7 @@ export const handler: Handler = async (event) => {
       ],
 
       // 4. INVOICE CREATION
-      // Metadata includes weight/dimensions for EasyPost rate calculation
+      // Metadata includes weight/dimensions for shipping rate calculation
       invoice_creation: {
         enabled: true,
         invoice_data: {
@@ -626,7 +626,7 @@ export const handler: Handler = async (event) => {
 
     // With permissions.update_shipping_details: 'server_only', Stripe will call our
     // webhook when the customer enters their shipping address. Handler lives in fas-cms-fresh.
-    // calls EasyPost to calculate live rates based on product metadata (weight, dimensions).
+    // Calls the shipping provider to calculate live rates based on product metadata (weight, dimensions).
 
     const session = await stripe.checkout.sessions.create(sessionParams)
 

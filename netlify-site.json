@@ -108,22 +108,6 @@
     "deploy_time": 80,
     "available_functions": [
       {
-        "n": "_easypost",
-        "d": "7c1c3ed98f72c9f643f0e966316bc775c02977ab0f1c8d16ceee0da7a6636744",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "38be68fdd89dd12bf20abc476302c36b01f335cb37824ebcd74ddbf65db13182",
-        "s": 414407,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:20.288Z",
-        "a": "242038277235",
-        "oid": "c99334bfddbff76bd6f423463924c1ba80c41ff46fc1a7df48b847126a443234"
-      },
-      {
         "n": "ai-insights",
         "d": "59d4c24fcc06c46082bca682dffdaf0789ee0012dc170f849abe70a5c0a1c72a",
         "dn": null,
@@ -550,70 +534,6 @@
         "c": "2026-01-04T02:58:26.529Z",
         "a": "432846551745",
         "oid": "aeed4c3ad2c19cae28d526e0dd2c7f0fce55eac1ac64354fc842fe515723f8ec"
-      },
-      {
-        "n": "easypost-webhook",
-        "d": "166a14ccec5b9c7e73896403b14aa89ab0356988775be17b7cf71b594322d00b",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "2e54bcd513803896fdb2780708f3baca7e4683d545a802aa7f5c89f20f0a8409",
-        "s": 573151,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:26.430Z",
-        "a": "517870325001",
-        "oid": "f59183585e79c34f3c518a2f354e6e8f87f2c7f528dc5e3f967d1043f9ed94c2"
-      },
-      {
-        "n": "easypostCreateLabel",
-        "d": "31911ed896d58999477440c2c7730fa6173ab693207781302bf957e7a95bdec4",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "ab617068420ba9c094be9499d8c9f8fa828579d4c5ca18ef84d534a0e65da83d",
-        "s": 573328,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:26.574Z",
-        "a": "948273276571",
-        "oid": "3f4629abb48feffaf73c12b0dc9e905617b12f2cd33849f17ae89054cd3c674f"
-      },
-      {
-        "n": "easypostGetRates",
-        "d": "e78a13fcdb037fb27038e239824efaece0a72b782b0417938e5bad3e0f7b728a",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "b308b37f95751c5b90ca0d50b148c507fa41d1390e66372b7bb53ee34712c9c1",
-        "s": 415655,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:26.448Z",
-        "a": "924105187622",
-        "oid": "cd61b0ffbfbb0e48d2b1de06b08fb5fa08e844b3ae08d6ef676eb174207031c4"
-      },
-      {
-        "n": "easypostWebhook",
-        "d": "549d952cc8389469806835adf45e5181e3ed6c6d8b381157ba2dbb49d573608e",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "5432466ac985f42f6bb5a725d86b55a9445f39925bd4c7b19111afb874490368",
-        "s": 573083,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:26.421Z",
-        "a": "073635757191",
-        "oid": "0d2cadd694223ba806e3d9e143572b50285b31d72c991e49e8fd7c5f771f0b66"
       },
       {
         "n": "email-health",

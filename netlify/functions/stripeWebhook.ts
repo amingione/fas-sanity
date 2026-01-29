@@ -3631,9 +3631,6 @@ async function createOrderFromCheckout(
     labelCreatedAt?: string | null
     deliveryDays?: number | null
     estimatedDeliveryDate?: string | null
-    easyPostShipmentId?: string | null
-    easyPostTrackerId?: string | null
-    easypostRateId?: string | null
     labelCost?: number | null
     labelPurchased?: boolean | null
     labelPurchasedAt?: string | null
@@ -3643,7 +3640,7 @@ async function createOrderFromCheckout(
       stripeSessionId == $sid ||
       paymentIntentId == $pid ||
       stripePaymentIntentId == $pid
-    )][0]{_id, status, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, carrier, service, labelCreatedAt, deliveryDays, estimatedDeliveryDate, easyPostShipmentId, easyPostTrackerId, easypostRateId, labelCost, labelPurchased, labelPurchasedAt, labelPurchasedBy}`,
+    )][0]{_id, status, invoiceRef, orderNumber, cart, trackingNumber, trackingUrl, shippingLabelUrl, fulfillment, carrier, service, labelCreatedAt, deliveryDays, estimatedDeliveryDate, labelCost, labelPurchased, labelPurchasedAt, labelPurchasedBy}`,
     {sid: session.id, pid: paymentIntentId},
   )
 
@@ -4124,15 +4121,6 @@ async function createOrderFromCheckout(
     }
     if (topFields.estimatedDeliveryDate && !existingOrder?.estimatedDeliveryDate) {
       baseOrderPayload.estimatedDeliveryDate = topFields.estimatedDeliveryDate
-    }
-    if (topFields.easyPostShipmentId && !existingOrder?.easyPostShipmentId) {
-      baseOrderPayload.easyPostShipmentId = topFields.easyPostShipmentId
-    }
-    if (topFields.easyPostTrackerId && !existingOrder?.easyPostTrackerId) {
-      baseOrderPayload.easyPostTrackerId = topFields.easyPostTrackerId
-    }
-    if (topFields.easypostRateId && !existingOrder?.easypostRateId) {
-      baseOrderPayload.easypostRateId = topFields.easypostRateId
     }
     if (typeof topFields.labelCost === 'number' && existingOrder?.labelCost === undefined) {
       baseOrderPayload.labelCost = topFields.labelCost
@@ -8409,6 +8397,157 @@ export const handler: Handler = async (event) => {
             const result = await createOrderFromCheckout(session)
             if (result?.status) webhookStatus = result.status
             if (result?.summary) webhookSummary = result.summary
+            const paymentIntentId =
+              typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : (session.payment_intent as Stripe.PaymentIntent | null | undefined)?.id
+            let sanityOrderId: string | null = null
+            try {
+              const sanityOrder = await webhookSanityClient.fetch<{
+                _id: string
+              } | null>(
+                `*[_type == "order" && (
+                  stripeSessionId == $sid ||
+                  paymentIntentId == $pid ||
+                  stripePaymentIntentId == $pid
+                )][0]{_id}`,
+                {sid: session.id, pid: paymentIntentId},
+              )
+              sanityOrderId = sanityOrder?._id || null
+            } catch (err) {
+              console.warn('stripeWebhook: failed to resolve Sanity order for Medusa linkage', err)
+            }
+
+            const handleMedusaCompletion = async () => {
+              if (!sanityOrderId) {
+                console.warn('[MEDUSA] No Sanity order resolved for completion', {
+                  sanityOrderId,
+                  stripeSessionId: session.id,
+                })
+                return
+              }
+
+              try {
+                const existingOrder = await webhookSanityClient.fetch<{
+                  medusaOrderId?: string | null
+                } | null>(
+                  '*[_type == "order" && _id == $id][0]{ medusaOrderId }',
+                  {id: sanityOrderId},
+                )
+                if (existingOrder?.medusaOrderId) {
+                  console.log('[MEDUSA] Order already completed', {
+                    cartId: session.metadata?.medusa_cart_id,
+                    orderId: existingOrder.medusaOrderId,
+                    sanityOrderId,
+                    stripeSessionId: session.id,
+                  })
+                  return
+                }
+
+                const MEDUSA_API_URL = process.env.MEDUSA_API_URL
+                const MEDUSA_PUBLISHABLE_KEY = process.env.MEDUSA_PUBLISHABLE_KEY
+                if (!MEDUSA_API_URL || !MEDUSA_PUBLISHABLE_KEY) {
+                  console.error('[MEDUSA] Missing required environment variables', {
+                    hasApiUrl: Boolean(MEDUSA_API_URL),
+                    hasPublishableKey: Boolean(MEDUSA_PUBLISHABLE_KEY),
+                    sanityOrderId,
+                    stripeSessionId: session.id,
+                  })
+                  return
+                }
+
+                const medusaCartId = session.metadata?.medusa_cart_id
+                if (!medusaCartId || typeof medusaCartId !== 'string' || !medusaCartId.trim()) {
+                  console.warn('[MEDUSA] No valid cart ID in session metadata', {
+                    sanityOrderId,
+                    stripeSessionId: session.id,
+                    metadataKeys: Object.keys(session.metadata || {}),
+                  })
+                  return
+                }
+
+                console.log('[MEDUSA] Completing cart', {
+                  cartId: medusaCartId,
+                  sanityOrderId,
+                  stripeSessionId: session.id,
+                })
+
+                const res = await fetch(
+                  `${MEDUSA_API_URL}/store/carts/${medusaCartId}/complete`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
+                    },
+                  },
+                )
+
+                if (!res.ok) {
+                  const errorText = await res.text()
+                  console.error('[MEDUSA] Cart completion failed', {
+                    status: res.status,
+                    statusText: res.statusText,
+                    cartId: medusaCartId,
+                    sanityOrderId,
+                    stripeSessionId: session.id,
+                    error: errorText,
+                  })
+                  if (res.status === 400 && errorText.includes('already completed')) {
+                    console.log('[MEDUSA] Cart already completed, skipping', {
+                      cartId: medusaCartId,
+                      sanityOrderId,
+                      stripeSessionId: session.id,
+                    })
+                  }
+                  return
+                }
+
+                const data = await res.json()
+                if (!data?.order?.id) {
+                  console.error('[MEDUSA] Cart completion succeeded but no order ID returned', {
+                    cartId: medusaCartId,
+                    sanityOrderId,
+                    stripeSessionId: session.id,
+                    responseKeys: Object.keys(data || {}),
+                  })
+                  return
+                }
+
+                const medusaOrder = data.order
+                console.log('[MEDUSA] Cart completed successfully', {
+                  cartId: medusaCartId,
+                  orderId: medusaOrder.id,
+                  sanityOrderId,
+                  stripeSessionId: session.id,
+                })
+
+                await webhookSanityClient
+                  .patch(sanityOrderId)
+                  .set({
+                    medusaCartId,
+                    medusaOrderId: medusaOrder.id,
+                  })
+                  .commit()
+
+                console.log('[MEDUSA] Sanity order updated with Medusa IDs', {
+                  cartId: medusaCartId,
+                  orderId: medusaOrder.id,
+                  sanityOrderId,
+                  stripeSessionId: session.id,
+                })
+              } catch (err) {
+                console.error('[MEDUSA] Critical error completing cart', {
+                  error: err instanceof Error ? err.message : String(err),
+                  stack: err instanceof Error ? err.stack : undefined,
+                  cartId: session.metadata?.medusa_cart_id,
+                  sanityOrderId,
+                  stripeSessionId: session.id,
+                })
+              }
+            }
+
+            await handleMedusaCompletion()
             const cartId = resolveCartIdFromSession(session)
             if (result?.status === 'processed' && cartId) {
               try {

@@ -88,7 +88,6 @@ export type InvoiceLike = {
     estimatedDeliveryDate?: string | null
     trackingNumber?: string | null
     trackingUrl?: string | null
-    easypostRateId?: string | null
   } | null
   order?: {
     cart?: OrderCartItem[] | null
@@ -105,7 +104,6 @@ export type InvoiceLike = {
       estimatedDeliveryDate?: string | null
       trackingNumber?: string | null
       trackingUrl?: string | null
-      easypostRateId?: string | null
     } | null
     selectedService?: {
       carrier?: string | null
@@ -128,7 +126,6 @@ export type InvoiceLike = {
       estimatedDeliveryDate?: string | null
       trackingNumber?: string | null
       trackingUrl?: string | null
-      easypostRateId?: string | null
     } | null
     selectedService?: {
       carrier?: string | null

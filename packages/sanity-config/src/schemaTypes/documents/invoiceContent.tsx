@@ -264,20 +264,6 @@ export default defineType({
           },
         },
         {
-          name: 'easypostRateId',
-          type: 'string',
-          title: 'EasyPost Rate ID',
-          description: 'Selected rate from EasyPost quote (rate_...)',
-          readOnly: true,
-        },
-        {
-          name: 'easypostShipmentId',
-          type: 'string',
-          title: 'EasyPost Shipment ID',
-          description: 'Created shipment reference (shp_...)',
-          readOnly: true,
-        },
-        {
           name: 'packageWeight',
           type: 'number',
           title: 'Package Weight (lbs)',
@@ -314,7 +300,7 @@ export default defineType({
           name: 'availableRates',
           type: 'array',
           title: 'Available Shipping Rates',
-          description: 'Rates fetched from EasyPost',
+          description: 'Rates fetched from the shipping provider',
           readOnly: true,
           of: [
             {

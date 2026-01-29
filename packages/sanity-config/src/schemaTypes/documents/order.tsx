@@ -431,6 +431,25 @@ export default defineType({
       hidden: true,
     }),
     defineField({
+      name: 'medusaCartId',
+      title: 'Medusa Cart ID',
+      type: 'string',
+      readOnly: true,
+      group: 'technical',
+      description: 'Medusa cart ID from checkout session. Links to backend cart before completion.',
+      hidden: ({document}) => !document?.medusaCartId,
+    }),
+    defineField({
+      name: 'medusaOrderId',
+      title: 'Medusa Order ID',
+      type: 'string',
+      readOnly: true,
+      group: 'technical',
+      description:
+        'Medusa order ID after cart completion. Used to trigger fulfillment and generate shipping labels.',
+      hidden: ({document}) => !document?.medusaOrderId,
+    }),
+    defineField({
       name: 'sourceInvoice',
       title: 'Source Invoice',
       type: 'reference',
@@ -446,14 +465,6 @@ export default defineType({
       to: [{type: 'quote'}],
       description: 'Quote that generated this order (manual workflow)',
       group: 'technical',
-      hidden: true,
-    }),
-    defineField({
-      name: 'easyPostShipmentId',
-      title: 'EasyPost Shipment ID',
-      type: 'string',
-      group: 'technical',
-      readOnly: true,
       hidden: true,
     }),
     defineField({
@@ -637,7 +648,6 @@ export default defineType({
     defineField({name: 'shippedAt', type: 'datetime', readOnly: true, hidden: true}),
     defineField({name: 'deliveredAt', type: 'date', readOnly: true, hidden: true}),
     defineField({name: 'estimatedDeliveryDate', type: 'date', readOnly: true, hidden: true}),
-    defineField({name: 'easypostRateId', type: 'string', hidden: true}),
     defineField({name: 'stripeShippingRateId', type: 'string', hidden: true}),
     defineField({
       name: 'shippingQuoteId',
@@ -726,7 +736,6 @@ export default defineType({
       hidden: true,
     }),
     defineField({name: 'deliveryDays', type: 'number', hidden: true}),
-    defineField({name: 'easyPostTrackerId', type: 'string', hidden: true}),
     defineField({
       name: 'fulfillmentStatusDisplay',
       type: 'object',

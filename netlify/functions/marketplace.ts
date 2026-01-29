@@ -15,18 +15,6 @@ type Pack = {
 
 const PACKS: Pack[] = [
   {
-    name: 'easypost-shipping',
-    version: '0.1.0',
-    description: 'EasyPost shipping pack with rates, labels, and tracking webhooks.',
-    author: 'FAS Labs',
-    category: 'shipping',
-    tags: ['shipping', 'labels', 'tracking', 'easypost'],
-    documentation: 'https://docs.example.com/easypost',
-    license: 'MIT',
-    repository: 'https://github.com/example/easypost-pack',
-    endpoints: ['/api/easypost/rates', '/api/easypost/labels'],
-  },
-  {
     name: 'twilio-messaging',
     version: '0.1.0',
     description: 'Twilio messaging pack for SMS updates and two-way threads.',

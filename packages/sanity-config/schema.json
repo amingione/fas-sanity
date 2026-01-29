@@ -1055,7 +1055,7 @@
         "value": {"type": "inline", "name": "packageDetails"},
         "optional": true
       },
-      "easyPostService": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
+      "shippoService": {"type": "objectAttribute", "value": {"type": "string"}, "optional": true},
       "shippingCost": {"type": "objectAttribute", "value": {"type": "number"}, "optional": true}
     }
   },

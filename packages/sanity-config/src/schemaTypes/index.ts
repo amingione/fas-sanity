@@ -242,13 +242,7 @@ import {productBundle} from './documents/productBundle'
 import filterTag from './documents/filterTag'
 import quote from './documents/quote'
 import paymentLink from './documents/paymentLink'
-import shippingLabel from './documents/shippingLabel'
-import shipment from './documents/shipment'
-import pickup from './documents/pickup'
-import schedulePickup from './documents/schedulePickup'
-import senderAddress from './documents/senderAddress'
 import createLabel from './documents/createLabel'
-import shippingQuote from './documents/shippingQuote'
 import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
 import stripeCoupon from './documents/stripeCoupon'
@@ -265,7 +259,6 @@ import vendorReturn from './documents/vendorReturn'
 import vendorFeedback from './documents/vendorFeedback'
 import vendorQuote from './documents/vendorQuote'
 import customer from './documents/customer'
-import shippingOption from './documents/shippingOption'
 import freightQuote from './documents/freightQuote'
 import {bankAccountType} from './documents/bankAccount'
 import {checkType} from './documents/check'
@@ -273,7 +266,6 @@ import expense from './documents/expense'
 import profitLoss from './documents/profitLoss'
 import cashFlow from './documents/cashFlow'
 import stripeWebhookEvent from './documents/stripeWebhookEvent'
-import easypostWebhookEvent from './documents/easypostWebhookEvent'
 import emailCampaign from './documents/emailCampaign'
 import emailTemplate from './documents/emailTemplate'
 import emailAutomation from './documents/emailAutomation'
@@ -317,7 +309,6 @@ const documents = [
   productVariantType,
   quote,
   paymentLink,
-  shippingLabel,
   invoice,
   stripeCoupon,
   stripeWebhook,
@@ -360,13 +351,7 @@ const documents = [
   customer,
   customerPortalAccess,
   vehicle,
-  shippingOption,
-  shipment,
-  pickup,
-  schedulePickup,
-  senderAddress,
   createLabel,
-  shippingQuote,
   freightQuote,
   vehicleModel,
   filterTag,
@@ -376,7 +361,6 @@ const documents = [
   profitLoss,
   cashFlow,
   stripeWebhookEvent,
-  easypostWebhookEvent,
   emailCampaign,
   emailTemplate,
   emailAutomation,
@@ -403,14 +387,12 @@ const documents = [
 import {homeType} from './singletons/homeType'
 import {settingsType as siteSettingsType} from './singletons/siteSettingsType'
 import {dashboardViewType} from './singletons/dashboardViewType'
-import {shippingSettingsType} from './singletons/shippingSettings'
 import printSettings from './documents/printSettings'
 
 const singletons = [
   homeType,
   siteSettingsType,
   dashboardViewType,
-  shippingSettingsType,
   analyticsSettingsType,
   searchSettingsType,
 ]

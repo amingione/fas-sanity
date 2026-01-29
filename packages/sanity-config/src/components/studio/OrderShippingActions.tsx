@@ -4,7 +4,6 @@ import {Button, Flex} from '@sanity/ui'
 import {useClient, useFormValue} from 'sanity'
 import {decodeBase64ToArrayBuffer} from '../../utils/base64'
 import {getNetlifyFunctionBaseCandidates} from '../../utils/netlifyBase'
-import ShippingLabelActions from './ShippingLabelActions'
 
 const SANITY_API_VERSION =
   (typeof process !== 'undefined'
@@ -193,7 +192,6 @@ export default function OrderShippingActions() {
 
   return (
     <Flex direction="column" gap={3}>
-      <ShippingLabelActions doc={doc} />
       <Button
         text={isGenerating ? 'Generating packing slip…' : '🧾 Download Packing Slip'}
         tone="primary"

@@ -1,6 +1,5 @@
 // resolveDocumentActions.ts
 import type {DocumentActionsResolver} from 'sanity'
-import {createShippingLabel} from './schemaTypes/documentActions/invoiceActions'
 import {reprocessStripeSessionAction} from './schemaTypes/documentActions/reprocessStripeAction'
 import {backfillInvoicesAction} from './schemaTypes/documentActions/backfillInvoicesAction'
 import {backfillCustomersAction} from './schemaTypes/documentActions/backfillCustomersAction'
@@ -9,7 +8,6 @@ import {backfillProductAction} from './schemaTypes/documentActions/backfillProdu
 import {
   refundStripeInvoiceAction,
 } from './schemaTypes/documentActions/refundStripeAction'
-import {getShippingRatesAction} from './schemaTypes/documentActions/getShippingRates'
 import {orderActions} from './schemaTypes/documents/order.actions'
 import {
   approveVendorApplicationAction,
@@ -45,16 +43,10 @@ import {
   createManufacturingOrderAction,
   completeManufacturingOrderAction,
 } from './schemaTypes/documentActions/inventoryActions'
-import {
-  printMergedShipmentDocumentsAction,
-  printShipmentLabelAction,
-} from './schemaTypes/documentActions/shipmentPrintActions'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
-import {purchaseShippingLabelAction} from './schemaTypes/documentActions/purchaseShippingLabel'
 import {syncVendorToStripeAction} from './schemaTypes/documentActions/syncVendorToStripeAction'
 import {
   GeneratePackingSlipAction,
-  CreateShippingLabelAction,
   SendShippingConfirmationAction,
 } from './schemaTypes/actions/orderActions'
 
@@ -63,19 +55,12 @@ const isOrderSchemaType = (schemaType: string): schemaType is 'order' => schemaT
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
   if (context.schemaType === 'invoice') {
-    list.push(createShippingLabel)
-    list.push(purchaseShippingLabelAction)
-    list.push(getShippingRatesAction)
     list.push(reprocessStripeSessionAction)
     list.push(backfillInvoicesAction)
     list.push(refundStripeInvoiceAction)
   }
   if (isOrderSchemaType(context.schemaType)) {
-    list.push(
-      GeneratePackingSlipAction,
-      CreateShippingLabelAction,
-      SendShippingConfirmationAction,
-    )
+    list.push(GeneratePackingSlipAction, SendShippingConfirmationAction)
     return orderActions(list, context)
   }
   if (context.schemaType === 'vendorApplication') {
@@ -101,10 +86,6 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   }
   if (context.schemaType === 'appointment') {
     list.push(startWorkOrderAction)
-  }
-  if (context.schemaType === 'shipment') {
-    list.push(printShipmentLabelAction)
-    list.push(printMergedShipmentDocumentsAction)
   }
   if (context.schemaType === 'workOrder') {
     list.push(manageWorkOrderAction)

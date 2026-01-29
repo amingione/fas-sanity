@@ -57,10 +57,10 @@
 
 ### 5. Provider Metadata Rule
 
-- Do NOT add new Stripe/EasyPost/carrier-specific metadata fields to schemas without approval
+- Do NOT add new Stripe/Shippo/carrier-specific metadata fields to schemas without approval
 - Existing provider fields are **allowed** as non-authoritative operational metadata:
   `stripeSessionId`, `stripePaymentIntentId`, `paymentIntentId`, `stripeShippingRateId`,
-  `easypostRateId`, `easyPostShipmentId`, `easyPostTrackerId`, `stripeSummary.data`
+  `shippoRateId`, `shippoShipmentId`, `shippoTrackerId`, `stripeSummary.data`
 - Provider-specific details remain non-authoritative; re-fetch from provider APIs when needed
 - Raw provider payloads may be stored ONLY as opaque JSON for audit purposes
 
@@ -369,7 +369,7 @@ SANITY_API_TOKEN=skxxx
 STRIPE_SECRET_KEY=<real_api_key>
 SANITY_STUDIO_STRIPE_PUBLISHABLE_KEY=<publishable_key>
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-EASYPOST_API_KEY=EZAK_xxx
+SHIPPO_API_KEY=EZAK_xxx
 ```
 
 ---
@@ -428,7 +428,7 @@ stripe listen --forward-to localhost:4321/api/webhooks
 
 - **Stripe:** `2024-11-20` (apiVersion in code)
 - **Sanity:** `2024-01-01` (apiVersion for queries/mutations)
-- **EasyPost:** Latest (no version pinning)
+- **Shippo:** Latest (no version pinning)
 
 ---
 

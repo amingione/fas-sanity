@@ -109,7 +109,7 @@ export default function ShippingCalculatorPreview(props: ObjectInputProps) {
       </Text>
       <Text size={1} muted>
         Uses weight, box size, handling time, and shipping class to project sample rates. Actual
-        EasyPost quotes may vary.
+        shipping quotes may vary.
       </Text>
       {warnings.length > 0 && (
         <Stack space={2}>

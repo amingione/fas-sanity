@@ -1,12 +1,11 @@
 import type {Handler} from '@netlify/functions'
 
-type Group = 'sanity' | 'stripe' | 'resend' | 'easypost' | 'cors' | 'base'
+type Group = 'sanity' | 'stripe' | 'resend' | 'cors' | 'base'
 
 const REQUIRED: Record<Group, string[]> = {
   sanity: ['SANITY_STUDIO_PROJECT_ID', 'SANITY_STUDIO_DATASET', 'SANITY_API_TOKEN'],
   stripe: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
   resend: ['RESEND_API_KEY', 'RESEND_FROM'],
-  easypost: ['EASYPOST_API_KEY', 'EASYPOST_WEBHOOK_SECRET'],
   cors: ['CORS_ALLOW'],
   base: ['SANITY_STUDIO_NETLIFY_BASE'],
 }

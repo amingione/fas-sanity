@@ -175,8 +175,7 @@ const handler: Handler = async (event) => {
         deliveryDays,
         estimatedDeliveryDate,
         trackingNumber,
-        trackingUrl,
-        easypostRateId
+        trackingUrl
       },
       billTo,
       shipTo,
@@ -211,8 +210,7 @@ const handler: Handler = async (event) => {
           trackingNumber,
           trackingUrl,
           shippedAt,
-          deliveredAt,
-          easypostRateId
+          deliveredAt
         },
         cart[]{
             _key,
@@ -246,8 +244,7 @@ const handler: Handler = async (event) => {
           trackingNumber,
           trackingUrl,
           shippedAt,
-          deliveredAt,
-          easypostRateId
+          deliveredAt
         },
         cart[]{
             _key,

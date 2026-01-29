@@ -39,11 +39,6 @@
         "limit": "1"
       },
       "requiredEnv": ["SANITY_STUDIO_PROJECT_ID", "SANITY_API_TOKEN"]
-    },
-    "easypostWebhook": {
-      "headers": {
-        "x-easypost-signature": "$ENV:EASYPOST_WEBHOOK_SECRET"
-      }
     }
   }
 }

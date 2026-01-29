@@ -28,7 +28,6 @@ type InvoiceDoc = {
 type ShipmentDoc = {
   _id: string
   reference?: string | null
-  easypostId?: string | null
   trackingCode?: string | null
   trackingNumber?: string | null
   stripePaymentIntentId?: string | null
@@ -330,7 +329,7 @@ async function repairInvoicesMissingOrderRefsFromOrders(sanity: SanityClient) {
 
 async function repairShipmentsWithoutOrders(sanity: SanityClient) {
   const shipments = await sanity.fetch<ShipmentDoc[]>(
-    `*[_type == "shipment" && !defined(order)]{_id, reference, easypostId, trackingCode, trackingNumber, stripePaymentIntentId}`,
+    `*[_type == "shipment" && !defined(order)]{_id, reference, trackingCode, trackingNumber, stripePaymentIntentId}`,
   )
 
   let linked = 0
@@ -346,14 +345,12 @@ async function repairShipmentsWithoutOrders(sanity: SanityClient) {
       orderId =
         (await sanity.fetch<string | null>(
           `*[_type == "order" && (
-            easyPostShipmentId == $easypostId ||
             trackingNumber == $tracking ||
-          orderNumber == $reference ||
-          paymentIntentId == $paymentIntent ||
-          stripePaymentIntentId == $paymentIntent
-        )][0]._id`,
+            orderNumber == $reference ||
+            paymentIntentId == $paymentIntent ||
+            stripePaymentIntentId == $paymentIntent
+          )][0]._id`,
           {
-            easypostId: shipment.easypostId || null,
             tracking: tracking,
             reference,
             paymentIntent: shipment.stripePaymentIntentId || null,

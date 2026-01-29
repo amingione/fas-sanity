@@ -541,7 +541,7 @@ const buildMappingSummary = (document: NormalizedDocument): Record<string, unkno
         service: toCleanString(document.service),
         deliveryDays: toCleanNumber(document.deliveryDays),
         estimatedDeliveryDate: toCleanString(document.estimatedDeliveryDate),
-        rateId: toCleanString(document.easypostRateId),
+        rateId: toCleanString(document.stripeShippingRateId),
       }),
       fulfillment: cleanValue({
         carrier: toCleanString(document.carrier || document.shippingCarrier),

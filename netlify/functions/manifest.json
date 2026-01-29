@@ -224,33 +224,6 @@
     {
       "bundler": "esbuild",
       "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostCreateLabel.ts",
-      "name": "easypostCreateLabel",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostCreateLabel.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostGetRates.ts",
-      "name": "easypostGetRates",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostGetRates.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
-      "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostWebhook.ts",
-      "name": "easypostWebhook",
-      "priority": 10,
-      "path": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/easypostWebhook.zip",
-      "runtime": "js"
-    },
-    {
-      "bundler": "esbuild",
-      "buildData": {"runtimeAPIVersion": 1},
       "mainFile": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/netlify/functions/email-subscribe.ts",
       "name": "email-subscribe",
       "priority": 10,
