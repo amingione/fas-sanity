@@ -243,6 +243,7 @@ import filterTag from './documents/filterTag'
 import quote from './documents/quote'
 import paymentLink from './documents/paymentLink'
 import createLabel from './documents/createLabel'
+import senderAddress from './documents/senderAddress'
 import invoice from './documents/invoice'
 import stripeWebhook from './documents/stripeWebhook'
 import stripeCoupon from './documents/stripeCoupon'
@@ -352,6 +353,7 @@ const documents = [
   customerPortalAccess,
   vehicle,
   createLabel,
+  senderAddress,
   freightQuote,
   vehicleModel,
   filterTag,
