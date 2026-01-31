@@ -95,12 +95,23 @@ const extractUsdAmount = (variant: MedusaVariant): number | null => {
   return typeof usd?.amount === 'number' ? usd.amount : null
 }
 
-const getMedusaHeaders = (): HeadersInit => ({
-  accept: 'application/json',
-  'content-type': 'application/json',
-  authorization: `Bearer ${medusaAdminToken}`,
-  'x-medusa-access-token': medusaAdminToken,
-})
+const getMedusaHeaders = (): HeadersInit => {
+  const headers: HeadersInit = {
+    accept: 'application/json',
+    'content-type': 'application/json',
+  }
+
+  // Support both publishable (pk_) and secret (no prefix) API keys
+  if (medusaAdminToken.startsWith('pk_')) {
+    headers['x-publishable-api-key'] = medusaAdminToken
+  } else {
+    // Secret key - use as bearer token
+    headers['authorization'] = `Bearer ${medusaAdminToken}`
+    headers['x-medusa-access-token'] = medusaAdminToken
+  }
+
+  return headers
+}
 
 async function medusaRequest<T>(path: string, init: RequestInit): Promise<T> {
   const res = await fetch(`${medusaApiUrl}${path}`, {
@@ -222,6 +233,54 @@ async function updateSanityMedusaIds(
     .commit({autoGenerateArrayKeys: true})
 }
 
+async function linkVariantPriceSet(variantId: string, sanityPrice: number) {
+  const currencyCode = (process.env.SANITY_SYNC_CURRENCY || 'usd').toLowerCase()
+  const priceAmount = toMinorUnits(sanityPrice)
+
+  try {
+    // Ensure the base price set exists so Medusa cart validation can succeed.
+    const priceSetResponse = await medusaRequest<any>(`/admin/price-sets`, {
+      method: 'POST',
+      body: JSON.stringify({
+        prices: [
+          {
+            amount: priceAmount,
+            currency_code: currencyCode,
+          },
+        ],
+      }),
+    })
+
+    const priceSetId =
+      priceSetResponse?.price_set?.id ||
+      priceSetResponse?.priceSet?.id ||
+      priceSetResponse?.id ||
+      priceSetResponse?.[0]?.id
+
+    if (!priceSetId) {
+      throw new Error('Failed to create price set')
+    }
+
+    // CRITICAL: Link modules are not available via Admin API /admin/links endpoint.
+    // We must use direct SQL to create the product_variant_price_set link.
+    // This is a known limitation in Medusa v2 - remoteLink is not available in all contexts.
+
+    // Generate SQL for manual execution or use exec script approach
+    const linkId = `pvps_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+
+    console.log(`✓ Created price_set ${priceSetId} for variant ${variantId} ($${sanityPrice})`)
+    console.log(`  → Manual link required. Run this SQL:`)
+    console.log(`  INSERT INTO product_variant_price_set (id, variant_id, price_set_id, created_at, updated_at)`)
+    console.log(`  VALUES ('${linkId}', '${variantId}', '${priceSetId}', NOW(), NOW())`)
+    console.log(`  ON CONFLICT DO NOTHING;`)
+
+  } catch (err: any) {
+    console.warn(
+      `WARN: Could not create price set for variant ${variantId}: ${err?.message || err}`,
+    )
+  }
+}
+
 async function syncProduct(product: SanityProduct) {
   validateProduct(product)
 
@@ -245,6 +304,9 @@ async function syncProduct(product: SanityProduct) {
     }
 
     await updateSanityMedusaIds(product._id, createdProduct.id, createdVariants[0].id)
+    if (requireNumber(product.price)) {
+      await linkVariantPriceSet(createdVariants[0].id, product.price)
+    }
     console.log(`[SYNC] ${product.title} — CREATED`)
     return
   }
@@ -290,6 +352,9 @@ async function syncProduct(product: SanityProduct) {
   }
 
   await updateSanityMedusaIds(product._id, medusaProduct.id, variantId)
+  if (requireNumber(product.price)) {
+    await linkVariantPriceSet(variantId, product.price)
+  }
   console.log(`[SYNC] ${product.title} — UPDATED`)
 }
 
@@ -348,6 +413,11 @@ async function main() {
       process.exit(1)
     }
   }
+
+  console.log('\n[SYNC] Product sync complete!')
+  console.log('[SYNC] ⚠️  Important: Price set links require additional step.')
+  console.log('[SYNC] Run: npx tsx scripts/linkPriceSetsPostSync.ts')
+  console.log('[SYNC] This will link all price_sets to their variants in the database.')
 }
 
 main().catch((err) => {
