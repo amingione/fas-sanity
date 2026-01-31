@@ -10,6 +10,8 @@ export default defineType({
   title: 'Order',
   type: 'document',
   icon: PackageIcon as unknown as ComponentType,
+  description:
+    'Office dashboard record. Commerce source of truth is Medusa; totals/payment/shipping are mirrors. Edits here must be limited to ops notes/flags and operational annotations.',
   groups: [
     {name: 'overview', title: 'Overview', default: true},
     {name: 'fulfillment', title: 'Fulfillment'},
@@ -64,7 +66,10 @@ export default defineType({
       title: 'Order Status',
       type: 'string',
       group: 'overview',
+      readOnly: true,
       hidden: false,
+      description:
+        'Read-only mirror of the Medusa order state. Do not edit in Sanity; use ops flags/notes for internal workflow.',
       options: {
         list: [
           {title: 'Pending', value: 'pending'},
@@ -147,11 +152,58 @@ export default defineType({
       description: 'Internal ops/support notes. UX-only; not used by integrations.',
     }),
     defineField({
+      name: 'opsFlags',
+      title: 'Ops Flags (Internal)',
+      type: 'object',
+      group: 'overview',
+      options: {collapsible: true, collapsed: true},
+      description:
+        'Internal-only flags for staff triage. These do not change pricing, tax, shipping, payment, or fulfillment in Medusa.',
+      fields: [
+        {name: 'needsReview', title: 'Needs Review', type: 'boolean', initialValue: false},
+        {
+          name: 'needsReviewReason',
+          title: 'Review Reason',
+          type: 'string',
+          hidden: ({parent}) => !parent?.needsReview,
+        },
+        {
+          name: 'refundRequested',
+          title: 'Refund Requested (Note)',
+          type: 'boolean',
+          initialValue: false,
+        },
+        {
+          name: 'refundRequestNotes',
+          title: 'Refund Request Notes',
+          type: 'text',
+          rows: 3,
+          hidden: ({parent}) => !parent?.refundRequested,
+        },
+        {
+          name: 'adjustmentRequested',
+          title: 'Adjustment Requested (Note)',
+          type: 'boolean',
+          initialValue: false,
+        },
+        {
+          name: 'adjustmentNotes',
+          title: 'Adjustment Notes',
+          type: 'text',
+          rows: 3,
+          hidden: ({parent}) => !parent?.adjustmentRequested,
+        },
+      ],
+    }),
+    defineField({
       name: 'cart',
       title: 'Order Items',
       type: 'array',
       group: 'overview',
       of: [{type: 'orderCartItem'}],
+      readOnly: true,
+      description:
+        'Read-only mirror of Medusa line items at time of purchase (snapshot). Do not edit in Sanity.',
       validation: (Rule) => Rule.required().min(1),
     }),
     defineField({
@@ -161,6 +213,7 @@ export default defineType({
       group: 'overview',
       readOnly: true,
       hidden: false,
+      description: 'Read-only mirror of the Medusa order total.',
     }),
     defineField({
       name: 'amountSubtotal',
@@ -169,6 +222,7 @@ export default defineType({
       group: 'overview',
       readOnly: true,
       hidden: true,
+      description: 'Read-only mirror of the Medusa subtotal.',
     }),
     defineField({
       name: 'amountTax',
@@ -177,6 +231,7 @@ export default defineType({
       group: 'overview',
       readOnly: true,
       hidden: false,
+      description: 'Read-only mirror of tax calculated in Medusa.',
     }),
     defineField({
       name: 'amountShipping',
@@ -185,6 +240,7 @@ export default defineType({
       group: 'overview',
       readOnly: true,
       hidden: false,
+      description: 'Read-only mirror of shipping calculated in Medusa.',
     }),
     defineField({
       name: 'invoiceRef',
@@ -272,7 +328,8 @@ export default defineType({
       title: 'Wholesale Details',
       type: 'object',
       group: 'fulfillment',
-      description: 'Wholesale-specific workflow and pricing details',
+      description:
+        'Legacy wholesale workflow fields. Treat as transitional; long-term wholesale commerce should be Medusa-owned.',
       hidden: ({document}) => document?.orderType !== 'wholesale',
       fields: [
         {
@@ -405,6 +462,34 @@ export default defineType({
       group: 'technical',
       readOnly: true,
       hidden: true,
+    }),
+    defineField({
+      name: 'source',
+      title: 'Source System',
+      type: 'string',
+      group: 'technical',
+      readOnly: true,
+      initialValue: 'medusa',
+      options: {
+        list: [
+          {title: 'Medusa (authoritative)', value: 'medusa'},
+          {title: 'Legacy Stripe/Sanity (transitional)', value: 'legacy_stripe'},
+          {title: 'Manual (office workflow)', value: 'manual'},
+        ],
+        layout: 'radio',
+      },
+      description:
+        'Indicates where this Sanity record originated. Regardless of source, Medusa is the commerce engine and authority for totals/state.',
+    }),
+    defineField({
+      name: 'authoritative',
+      title: 'Authoritative Commerce Record',
+      type: 'boolean',
+      group: 'technical',
+      readOnly: true,
+      initialValue: false,
+      description:
+        'Always false in Sanity. This record is a UI mirror/snapshot; Medusa remains the source of truth for commerce.',
     }),
     defineField({
       name: 'paymentIntentId',
@@ -599,8 +684,10 @@ export default defineType({
       title: 'Tracking Number',
       type: 'string',
       group: 'fulfillment',
-      readOnly: true,
+      readOnly: false,
       hidden: false,
+      description:
+        'Ops annotation. Does not execute fulfillment or update Medusa automatically; may be overwritten by future Medusa-to-Sanity sync.',
     }),
     defineField({
       name: 'shippingStatus',
@@ -676,7 +763,13 @@ export default defineType({
       hidden: true,
       fields: [{name: 'data', type: 'text', title: 'Stripe Data (JSON)'}],
     }),
-    defineField({name: 'amountDiscount', type: 'number', hidden: true}),
+    defineField({
+      name: 'amountDiscount',
+      type: 'number',
+      readOnly: true,
+      hidden: true,
+      description: 'Read-only mirror of discounts applied in Medusa.',
+    }),
     defineField({name: 'paymentCaptured', type: 'boolean', hidden: true}),
     defineField({name: 'paymentCapturedAt', type: 'datetime', hidden: true}),
     defineField({name: 'cardBrand', type: 'string', hidden: true}),

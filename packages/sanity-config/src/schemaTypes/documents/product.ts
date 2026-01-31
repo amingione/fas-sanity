@@ -42,6 +42,14 @@ type VisibilityContext = {
   parent?: Record<string, any>
 }
 
+const isMedusaBacked = (document?: Record<string, any> | null): boolean => {
+  if (!document) return false
+  return Boolean(
+    (typeof document.medusaProductId === 'string' && document.medusaProductId.trim()) ||
+      (typeof document.medusaVariantId === 'string' && document.medusaVariantId.trim()),
+  )
+}
+
 const resolveProductType = (context?: VisibilityContext): string => {
   const docType = context?.document?.productType || context?.parent?.productType
   return docType || 'physical'
@@ -173,6 +181,8 @@ const product = defineType({
   name: 'product',
   title: 'Product',
   type: 'document',
+  description:
+    'Sanity is the office/content UI. Medusa is authoritative for pricing, inventory, and shipping rules. Commerce-like fields here are transitional mirrors unless explicitly migrated.',
   groups: [
     {name: 'basic', title: 'Basic Info', default: true},
     {name: 'details', title: 'Product Details'},
@@ -340,7 +350,9 @@ const product = defineType({
       name: 'price',
       title: 'Price (USD)',
       type: 'number',
-      description: 'Base price in USD. Sale pricing or shipping fees are managed elsewhere.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy pricing field. Medusa is authoritative for pricing; when linked to Medusa this becomes read-only and should be edited in Medusa.',
       validation: (Rule) => Rule.required().min(0),
       group: 'basic',
     }),
@@ -349,6 +361,7 @@ const product = defineType({
       title: 'Manufacturing Cost (USD)',
       type: 'number',
       description: 'Internal cost to produce or assemble this product. Used for margin analysis.',
+      readOnly: ({document}) => isMedusaBacked(document),
       validation: (Rule) => Rule.min(0),
       group: 'wholesale',
       fieldset: 'wholesalePricing',
@@ -365,7 +378,9 @@ const product = defineType({
       name: 'wholesalePriceStandard',
       title: 'Wholesale Price – Standard',
       type: 'number',
-      description: 'Pricing for standard vendors.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy wholesale pricing field. Medusa should own wholesale pricing enforcement; treat as transitional when linked to Medusa.',
       validation: (Rule) => Rule.min(0),
       group: 'wholesale',
       fieldset: 'wholesalePricing',
@@ -375,7 +390,9 @@ const product = defineType({
       name: 'wholesalePricePreferred',
       title: 'Wholesale Price – Preferred',
       type: 'number',
-      description: 'Pricing for preferred vendors.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy wholesale pricing field. Medusa should own wholesale pricing enforcement; treat as transitional when linked to Medusa.',
       validation: (Rule) => Rule.min(0),
       group: 'wholesale',
       fieldset: 'wholesalePricing',
@@ -385,7 +402,9 @@ const product = defineType({
       name: 'wholesalePricePlatinum',
       title: 'Wholesale Price – Platinum',
       type: 'number',
-      description: 'Pricing for platinum vendors.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy wholesale pricing field. Medusa should own wholesale pricing enforcement; treat as transitional when linked to Medusa.',
       validation: (Rule) => Rule.min(0),
       group: 'wholesale',
       fieldset: 'wholesalePricing',
@@ -415,7 +434,9 @@ const product = defineType({
       name: 'onSale',
       title: 'On Sale?',
       type: 'boolean',
-      description: 'Toggle to show a sale price badge on the storefront.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy merchandising toggle. Medusa should be authoritative for sale pricing; when linked to Medusa treat this as display-only.',
       initialValue: false,
       group: 'basic',
     }),
@@ -423,6 +444,7 @@ const product = defineType({
       name: 'discountType',
       type: 'string',
       title: 'Discount Type',
+      readOnly: ({document}) => isMedusaBacked(document),
       options: {
         list: [
           {title: 'Percentage Off', value: 'percentage'},
@@ -446,6 +468,7 @@ const product = defineType({
       title: 'Discount Value',
       description:
         'Enter percentage (e.g., 10 for 10% off) or dollar amount (e.g., 100 for $100 off).',
+      readOnly: ({document}) => isMedusaBacked(document),
       hidden: ({document}) => !document?.onSale,
       validation: (Rule) =>
         Rule.custom((value, context) => {
@@ -463,7 +486,9 @@ const product = defineType({
       name: 'salePrice',
       type: 'number',
       title: 'Sale Price (USD)',
-      description: 'Auto-calculated from discount type and value.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy sale price helper. Medusa should be authoritative for sale pricing; when linked to Medusa treat this as display-only.',
       components: {input: SalePricingInput},
       validation: (Rule) =>
         Rule.min(0).custom((salePrice, context) => {
@@ -486,7 +511,9 @@ const product = defineType({
       name: 'compareAtPrice',
       type: 'number',
       title: 'Compare At Price (USD)',
-      description: 'Original price to show strikethrough. Defaults to regular price if not set.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy compare-at price helper. Medusa should be authoritative for pricing; when linked to Medusa treat this as display-only.',
       validation: (Rule) => Rule.min(0),
       hidden: ({document}) => !document?.onSale,
       group: 'basic',
@@ -505,6 +532,7 @@ const product = defineType({
       type: 'datetime',
       title: 'Sale Start Date',
       description: 'When the sale begins. Leave empty for immediate start.',
+      readOnly: ({document}) => isMedusaBacked(document),
       options: {
         dateFormat: 'YYYY-MM-DD',
         timeFormat: 'HH:mm',
@@ -518,6 +546,7 @@ const product = defineType({
       type: 'datetime',
       title: 'Sale End Date',
       description: 'When the sale ends. Leave empty for no end date.',
+      readOnly: ({document}) => isMedusaBacked(document),
       validation: (Rule) =>
         Rule.custom((endDate, context) => {
           const startDate = (context.document as any)?.saleStartDate
@@ -1009,7 +1038,9 @@ const product = defineType({
       name: 'shippingConfig',
       type: 'object',
       title: 'Shipping Configuration',
-      description: 'Physical attributes for shipping rate calculation',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy shipping attributes. Medusa is authoritative for shipping profiles and rate calculation; when linked to Medusa treat these as read-only mirrors.',
       fieldset: 'productDetails',
       group: 'shipping',
       options: {
@@ -1296,6 +1327,8 @@ const product = defineType({
       name: 'shippingPreview',
       title: 'Shipping Cost Preview',
       type: 'object',
+      description:
+        'Display-only preview for staff reference. Not authoritative and must not be used as checkout shipping calculation (Medusa owns shipping).',
       fields: [
         {
           name: 'placeholder',
@@ -1333,7 +1366,9 @@ const product = defineType({
       name: 'trackInventory',
       title: 'Track Inventory',
       type: 'boolean',
-      description: 'Disable only for made-to-order items. When off, quantity is ignored.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy inventory toggle. Medusa is authoritative for inventory; when linked to Medusa this becomes read-only.',
       initialValue: true,
       fieldset: 'inventorySettings',
       group: 'inventory',
@@ -1342,7 +1377,9 @@ const product = defineType({
       name: 'manualInventoryCount',
       title: 'Quantity on Hand',
       type: 'number',
-      description: 'Only required when inventory tracking is enabled.',
+      readOnly: ({document}) => isMedusaBacked(document),
+      description:
+        'Legacy inventory field. Medusa is authoritative for stock levels; when linked to Medusa treat this as read-only.',
       hidden: ({document, parent}) => {
         const track = document?.trackInventory ?? parent?.trackInventory ?? true
         return track === false

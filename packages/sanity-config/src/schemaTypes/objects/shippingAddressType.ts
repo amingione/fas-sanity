@@ -6,6 +6,8 @@ export const shippingAddressType = defineType({
   title: 'Shipping Address',
   type: 'object',
   components: {input: AddressAutocompleteInput},
+  description:
+    'Address snapshot for office visibility. Edits here do not recalculate shipping/tax or change Medusa fulfillment unless a separate sync process is implemented.',
   options: {
     collapsible: true,
     collapsed: true,

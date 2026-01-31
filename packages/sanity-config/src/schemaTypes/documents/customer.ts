@@ -17,6 +17,8 @@ export default defineType({
   name: 'customer',
   title: 'Customer',
   type: 'document',
+  description:
+    'Office dashboard customer record. Medusa is authoritative for commerce identity and order history; Sanity is for notes, segmentation, and internal workflow context.',
   groups: CUSTOMER_GROUPS,
   fieldsets: [
     {
@@ -32,6 +34,35 @@ export default defineType({
   ],
   fields: [
     // Identity
+    defineField({
+      name: 'medusaCustomerId',
+      title: 'Medusa Customer ID',
+      type: 'string',
+      readOnly: true,
+      hidden: true,
+      group: 'profile',
+      description: 'Read-only mirror identifier used to link this record to Medusa.',
+    }),
+    defineField({
+      name: 'source',
+      title: 'Source System',
+      type: 'string',
+      readOnly: true,
+      hidden: true,
+      initialValue: 'medusa',
+      group: 'profile',
+      description: 'Where this customer record originated. Medusa remains authoritative for commerce.',
+    }),
+    defineField({
+      name: 'authoritative',
+      title: 'Authoritative Commerce Record',
+      type: 'boolean',
+      readOnly: true,
+      hidden: true,
+      initialValue: false,
+      group: 'profile',
+      description: 'Always false in Sanity. This document is an ops-facing mirror + annotation layer.',
+    }),
     defineField({
       name: 'userId',
       title: 'External User ID',
@@ -142,6 +173,7 @@ export default defineType({
       name: 'customerStatus',
       title: 'Customer Status',
       type: 'string',
+      readOnly: true,
       initialValue: 'visitor',
       options: {
         list: [
@@ -151,7 +183,7 @@ export default defineType({
         ],
       },
       description:
-        'Tracks whether this contact is a visitor, customer, or VIP based on orders and lifetime spend.',
+        'Legacy/derived classification for reporting only. Do not use this field to drive commerce behavior; Medusa is authoritative.',
       group: 'profile',
     }),
     defineField({
@@ -206,6 +238,8 @@ export default defineType({
       type: 'array',
       of: [{type: 'customerOrderSummary'}],
       group: 'activity',
+      readOnly: true,
+      description: 'Read-only mirror summaries for office context. Medusa is the authoritative order system.',
     }),
     defineField({
       hidden: true,
@@ -221,6 +255,8 @@ export default defineType({
       type: 'array',
       of: [{type: 'customerQuoteSummary'}],
       group: 'activity',
+      readOnly: true,
+      description: 'Read-only mirror summaries for office context.',
     }),
     defineField({
       name: 'addresses',
@@ -334,7 +370,8 @@ export default defineType({
         ],
       },
       group: 'activity',
-      
+      description:
+        'Derived/display-only segmentation for staff context. Must not drive pricing, discounts, checkout, or fulfillment decisions.',
     }),
     defineField({
       name: 'lifetimeValue',
@@ -342,6 +379,7 @@ export default defineType({
       type: 'number',
       readOnly: true,
       group: 'activity',
+      description: 'Derived/display-only KPI. Not used as a commerce authority.',
     }),
     defineField({
       name: 'totalOrders',
@@ -406,23 +444,26 @@ export default defineType({
       type: 'number',
       readOnly: true,
       group: 'activity',
+      description: 'Derived/display-only KPI. Not used to compute discounts or checkout totals.',
     }),
     defineField({
       name: 'discounts',
       title: 'Stripe Discounts',
       type: 'array',
       of: [{type: 'customerDiscount'}],
-      readOnly: false,
+      readOnly: true,
       group: 'discounts',
       components: {input: CustomerDiscountsInput as any},
-      description: 'Synced customer-level coupons and promotions from Stripe.',
+      description:
+        'Legacy Stripe-synced discounts. Not authoritative for checkout; discounts must be enforced in Medusa.',
     }),
     defineField({
       name: 'shippingQuotes',
       title: 'Shipping Quotes',
       type: 'array',
       group: 'activity',
-      description: 'Saved shipping quote PDFs and supporting notes.',
+      description:
+        'Ops attachments/notes for manual quoting only. Not used to calculate live checkout shipping (Medusa owns shipping).',
       of: [
         {
           type: 'file',

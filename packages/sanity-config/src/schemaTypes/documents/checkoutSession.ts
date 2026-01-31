@@ -6,12 +6,15 @@ export default defineType({
   type: 'document',
   title: 'Checkout Session',
   icon: BasketIcon,
+  description:
+    'Legacy Stripe checkout session snapshot for office visibility (abandoned carts, recovery context). Not authoritative for pricing/tax/shipping; Medusa is the commerce engine.',
   fields: [
     defineField({
       name: 'sessionId',
       type: 'string',
       title: 'Stripe Session ID',
       description: 'Stripe checkout session ID (cs_...)',
+      readOnly: true,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -19,11 +22,13 @@ export default defineType({
       type: 'string',
       title: 'Session Number',
       description: 'Human-readable session identifier',
+      readOnly: true,
     }),
     defineField({
       name: 'status',
       type: 'string',
       title: 'Session Status',
+      readOnly: true,
       options: {
         list: [
           {title: '🟢 Open', value: 'open'},
@@ -38,6 +43,7 @@ export default defineType({
       name: 'createdAt',
       type: 'datetime',
       title: 'Session Created',
+      readOnly: true,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -45,39 +51,46 @@ export default defineType({
       type: 'datetime',
       title: 'Expires At',
       description: 'When this checkout session expires',
+      readOnly: true,
     }),
     defineField({
       name: 'expiredAt',
       type: 'datetime',
       title: 'Expired At',
       description: 'When this session actually expired',
+      readOnly: true,
     }),
     defineField({
       name: 'customerEmail',
       type: 'string',
       title: 'Customer Email',
+      readOnly: true,
     }),
     defineField({
       name: 'customerName',
       type: 'string',
       title: 'Customer Name',
+      readOnly: true,
     }),
     defineField({
       name: 'customerPhone',
       type: 'string',
       title: 'Customer Phone',
+      readOnly: true,
     }),
     defineField({
       name: 'customerRef',
       type: 'reference',
       title: 'Customer Reference',
       to: [{type: 'customer'}],
+      readOnly: true,
     }),
     defineField({
       name: 'cart',
       type: 'array',
       title: 'Cart Items',
       description: 'Products added to cart before abandonment',
+      readOnly: true,
       of: [
         {
           type: 'object',
@@ -119,37 +132,44 @@ export default defineType({
       name: 'invalidCart',
       type: 'boolean',
       title: 'Invalid Cart',
+      readOnly: true,
     }),
     defineField({
       name: 'failureReason',
       type: 'string',
       title: 'Failure Reason',
+      readOnly: true,
     }),
     defineField({
       name: 'amountSubtotal',
       type: 'number',
       title: 'Subtotal',
+      readOnly: true,
     }),
     defineField({
       name: 'amountTax',
       type: 'number',
       title: 'Tax',
+      readOnly: true,
     }),
     defineField({
       name: 'amountShipping',
       type: 'number',
       title: 'Shipping',
+      readOnly: true,
     }),
     defineField({
       name: 'totalAmount',
       type: 'number',
       title: 'Total Amount',
+      readOnly: true,
     }),
     defineField({
       name: 'currency',
       type: 'string',
       title: 'Currency',
       initialValue: 'USD',
+      readOnly: true,
     }),
     // Shipping fields
     defineField({
@@ -157,6 +177,7 @@ export default defineType({
       title: 'Shipping Options',
       type: 'array',
       description: 'Available shipping options from Stripe',
+      readOnly: true,
       of: [
         {
           type: 'object',
@@ -196,12 +217,14 @@ export default defineType({
       title: 'Selected Shipping Rate',
       type: 'string',
       description: 'The shipping rate ID selected by the customer (shr_...)',
+      readOnly: true,
     }),
     defineField({
       name: 'shippingCost',
       title: 'Shipping Cost Details',
       type: 'object',
       description: 'Details about the selected shipping option',
+      readOnly: true,
       options: {
         collapsible: true,
         collapsed: false,
@@ -243,6 +266,7 @@ export default defineType({
       title: 'Shipping Details',
       type: 'object',
       description: 'Customer shipping information',
+      readOnly: true,
       options: {
         collapsible: true,
         collapsed: false,
