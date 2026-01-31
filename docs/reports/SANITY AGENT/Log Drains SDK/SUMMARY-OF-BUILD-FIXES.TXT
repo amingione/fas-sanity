@@ -1,0 +1,353 @@
+# Log Drains SDK Integration
+
+**Status:** ✅ Approved for Build  
+**Version:** 1.0.0  
+**Last Updated:** 2026-01-09
+
+---
+
+## Overview
+
+Complete Sanity Log Drains SDK integration for structured logging with external drain support.
+
+**Supported Providers:**
+- Datadog
+- Logflare
+- Custom HTTP endpoints
+
+---
+
+## Project Structure
+
+```
+fas-sanity/
+├── packages/
+│   ├── sanity-log-drains/          # Core SDK package
+│   │   ├── src/
+│   │   │   ├── [index.ts](http://_vscodecontentref_/14)            # Main SDK export
+│   │   │   ├── types.ts            # TypeScript types
+│   │   │   └── __tests__/          # Unit tests
+│   │   ├── [package.json](http://_vscodecontentref_/15)
+│   │   └── [tsconfig.json](http://_vscodecontentref_/16)
+│   └── sanity-config/
+│       └── src/
+│           └── schemaTypes/
+│               └── documents/
+│                   └── logDrain.ts  # Sanity schema
+├── netlify/
+│   └── functions/
+│       └── logDrainProxy.ts        # Proxy function
+└── docs/
+    └── SANITY AGENT/
+        └── Log Drains SDK/
+            ├── [README.md](http://_vscodecontentref_/17)           # This file
+            ├── codex-build-prompt.md
+            ├── sample-environment-vars.md
+            └── [approval-contract.md](http://_vscodecontentref_/18)
+```
+
+---
+
+## Installation
+
+### 1. Install SDK Package
+
+```bash
+cd packages/sanity-log-drains
+pnpm install
+pnpm build
+```
+
+### 2. Configure Environment
+
+Copy environment variables from sample-environment-vars.md to your [.env.local](http://_vscodecontentref_/19) file.
+
+### 3. Deploy Netlify Function
+
+The `logDrainProxy` function will be deployed automatically with your next Netlify deployment.
+
+---
+
+## Usage
+
+### Create a Log Drain in Sanity Studio
+
+1. Navigate to "System" → "Log Drains"
+2. Click "Create Log Drain"
+3. Configure:
+   - **Name:** Descriptive name (e.g., "Production Datadog")
+   - **Provider:** Select from dropdown
+   - **URL:** Endpoint URL
+   - **Headers:** Add authentication headers if needed
+   - **Enabled:** Toggle on/off
+
+### Send Logs via SDK
+
+```typescript
+import {LogDrainSDK} from '@fas/sanity-log-drains'
+
+const sdk = new LogDrainSDK({
+  projectId: process.env.SANITY_STUDIO_PROJECT_ID!,
+  dataset: process.env.SANITY_STUDIO_DATASET!,
+  token: process.env.SANITY_API_TOKEN!,
+})
+
+// List all drains
+const drains = await sdk.listDrains()
+
+// Create new drain
+const drain = await sdk.createDrain({
+  name: 'My Datadog Drain',
+  url: 'https://http-intake.logs.datadoghq.com/v1/input',
+  headers: {
+    'DD-API-KEY': process.env.LOG_DRAIN_DATADOG_API_KEY!,
+  },
+  enabled: true,
+})
+
+// Test drain
+const success = await sdk.testDrain(drain.id)
+console.log(`Drain test: ${success ? 'passed' : 'failed'}`)
+```
+
+### Send Logs via Netlify Function
+
+```typescript
+// From any Netlify function
+await fetch('/.netlify/functions/logDrainProxy', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: 'info',
+    message: 'Order processed successfully',
+    metadata: {
+      orderId: 'FAS-12345',
+      amount: 299.99,
+    },
+    source: 'checkout',
+  }),
+})
+```
+
+---
+
+## Provider-Specific Setup
+
+### Datadog
+
+1. Get API key from [Datadog API Keys page](https://app.datadoghq.com/organization-settings/api-keys)
+2. Add to [.env.local](http://_vscodecontentref_/20):
+   ```bash
+   LOG_DRAIN_DATADOG_API_KEY=your_key
+   LOG_DRAIN_DATADOG_SITE=datadoghq.com
+   ```
+3. Create drain with URL: `https://http-intake.logs.datadoghq.com/v1/input`
+4. Add header: `DD-API-KEY: your_key`
+
+### Logflare
+
+1. Create source at [Logflare Dashboard](https://logflare.app/sources)
+2. Copy source token
+3. Add to [.env.local](http://_vscodecontentref_/21):
+   ```bash
+   LOG_DRAIN_LOGFLARE_SOURCE_TOKEN=your_token
+   ```
+4. Create drain with URL from Logflare source settings
+5. Add header: `X-API-KEY: your_token`
+
+### Custom Endpoint
+
+1. Deploy your own log ingestion endpoint
+2. Create drain with your URL
+3. Add any required authentication headers
+
+---
+
+## Testing
+
+### Unit Tests
+
+```bash
+cd packages/sanity-log-drains
+pnpm test
+```
+
+### Integration Test
+
+```bash
+# Test drain creation
+pnpm tsx scripts/test-log-drain.ts
+```
+
+### Manual Testing
+
+1. Create test drain in Studio
+2. Use "Test Drain" action
+3. Verify logs appear in provider dashboard
+
+---
+
+## Troubleshooting
+
+### Drain Test Fails
+
+**Check:**
+- URL is correct and accessible
+- Authentication headers are valid
+- Provider API is not rate-limiting
+
+### Logs Not Appearing
+
+**Check:**
+- Drain is enabled in Studio
+- `LOG_DRAIN_ENABLED=true` in environment
+- Netlify function deployed successfully
+- Provider account has active subscription
+
+### TypeScript Errors
+
+**Solution:**
+```bash
+cd packages/sanity-log-drains
+pnpm build
+```
+
+---
+
+## API Reference
+
+### LogDrainSDK
+
+#### Constructor
+
+```typescript
+new LogDrainSDK(config: LogDrainConfig)
+```
+
+**Parameters:**
+- [config.projectId](http://_vscodecontentref_/22) (string): Sanity project ID
+- [config.dataset](http://_vscodecontentref_/23) (string): Dataset name
+- [config.token](http://_vscodecontentref_/24) (string): Write token
+- [config.apiVersion](http://_vscodecontentref_/25) (string, optional): API version (default: '2024-04-10')
+
+#### Methods
+
+##### `listDrains()`
+
+Returns array of all log drains.
+
+```typescript
+const drains = await sdk.listDrains()
+```
+
+##### `createDrain(drain)`
+
+Creates new log drain.
+
+```typescript
+const drain = await sdk.createDrain({
+  name: 'Production Logs',
+  url: 'https://example.com/logs',
+  headers: {'Authorization': 'Bearer token'},
+  enabled: true,
+})
+```
+
+##### [updateDrain(id, updates)](http://_vscodecontentref_/26)
+
+Updates existing drain.
+
+```typescript
+await sdk.updateDrain(drainId, {
+  enabled: false,
+})
+```
+
+##### [deleteDrain(id)](http://_vscodecontentref_/27)
+
+Deletes drain.
+
+```typescript
+await sdk.deleteDrain(drainId)
+```
+
+##### [testDrain(id)](http://_vscodecontentref_/28)
+
+Tests drain connectivity.
+
+```typescript
+const success = await sdk.testDrain(drainId)
+```
+
+---
+
+## Schema Reference
+
+### logDrain Document
+
+**Fields:**
+- [name](http://_vscodecontentref_/29) (string, required): Display name
+- `provider` (string, required): Provider type (datadog|logflare|custom)
+- [url](http://_vscodecontentref_/30) (url, required): Endpoint URL
+- [headers](http://_vscodecontentref_/31) (array): HTTP headers for authentication
+- `enabled` (boolean): Enable/disable drain
+- `lastTestedAt` (datetime): Last test timestamp
+- `lastTestResult` (string): Last test result (success|failed)
+
+---
+
+## Security Considerations
+
+1. **Token Management:**
+   - Use environment variables for all tokens
+   - Rotate tokens regularly
+   - Use read-only tokens where possible
+
+2. **Network Security:**
+   - All drains use HTTPS only
+   - Validate SSL certificates
+   - Implement rate limiting
+
+3. **Data Privacy:**
+   - Never log sensitive customer data
+   - Implement log scrubbing for PII
+   - Follow GDPR requirements
+
+---
+
+## Performance Optimization
+
+1. **Batching:**
+   - Logs are batched before sending
+   - Configure `LOG_DRAIN_BATCH_SIZE`
+
+2. **Async Processing:**
+   - All drain operations are non-blocking
+   - Failed sends are retried with exponential backoff
+
+3. **Monitoring:**
+   - Track drain success/failure rates
+   - Monitor API quota usage
+   - Alert on persistent failures
+
+---
+
+## Related Documentation
+
+- [Sanity Log Drains API](https://www.sanity.io/docs/http-api/log-drains)
+- [Datadog Log Collection](https://docs.datadoghq.com/logs/log_collection/)
+- [Logflare API Documentation](https://logflare.app/guides/api)
+
+---
+
+## Support
+
+**Issues:** File issues in the main fas-sanity repository  
+**Questions:** Contact development team
+
+---
+
+**Last Updated:** 2026-01-09  
+**Version:** 1.0.0
+```

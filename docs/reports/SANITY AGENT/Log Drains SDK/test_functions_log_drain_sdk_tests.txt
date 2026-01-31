@@ -1,0 +1,241 @@
+// tests/FunctionsLogDrainSDK.test.ts
+import { FunctionsLogDrainSDK } from '../src/index';
+import { SanityClient } from '@sanity/client';
+
+const mockCreate = jest.fn();
+const mockSanityClient: jest.Mocked<SanityClient> = {
+    create: mockCreate,
+    config: jest.fn(),
+    fetch: jest.fn(),
+    getDocument: jest.fn(),
+    patch: jest.fn(),
+    delete: jest.fn(),
+    mutate: jest.fn(),
+    transaction: jest.fn(),
+    dataRequest: jest.fn(),
+    getUrl: jest.fn(),
+    listen: jest.fn(),
+    request: jest.fn(),
+    observable: {} as any,
+    clientConfig: {} as any,
+} as any;
+
+describe('FunctionsLogDrainSDK', () => {
+    let sdk: FunctionsLogDrainSDK;
+    const mockFunctionId = 'test-function-123';
+    const mockExecutionId = 'exec-456';
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockCreate.mockResolvedValue({ _id: 'log-123', _type: 'functionLog' });
+        sdk = new FunctionsLogDrainSDK(mockSanityClient, mockFunctionId);
+    });
+
+    describe('Constructor', () => {
+        it('should initialize with valid client and function ID', () => {
+            expect(sdk).toBeInstanceOf(FunctionsLogDrainSDK);
+        });
+
+        it('should throw when client is null', () => {
+            expect(() => new FunctionsLogDrainSDK(null as any, mockFunctionId)).toThrow();
+        });
+
+        it('should throw when function ID is empty', () => {
+            expect(() => new FunctionsLogDrainSDK(mockSanityClient, '')).toThrow();
+        });
+    });
+
+    describe('logSuccess', () => {
+        it('should log with all fields', async () => {
+            const result = await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: 'Success',
+                duration: 1250,
+                metadata: { userId: 'user-789' },
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    _type: 'functionLog',
+                    status: 'success',
+                    functionId: mockFunctionId,
+                    executionId: mockExecutionId,
+                    message: 'Success',
+                    duration: 1250,
+                    timestamp: expect.any(String),
+                })
+            );
+            expect(result._id).toBe('log-123');
+        });
+
+        it('should log with minimal fields', async () => {
+            await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: 'Success',
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    status: 'success',
+                    message: 'Success',
+                    executionId: mockExecutionId,
+                })
+            );
+        });
+    });
+
+    describe('logError', () => {
+        it('should log error with stack trace', async () => {
+            const error = new Error('DB failed');
+            error.stack = 'Error: DB failed\n    at connect (db.ts:45:10)';
+
+            await sdk.logError({
+                executionId: mockExecutionId,
+                error,
+                metadata: { dbHost: 'localhost' },
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    status: 'error',
+                    message: 'DB failed',
+                    errorStack: expect.stringContaining('at connect'),
+                })
+            );
+        });
+
+        it('should handle string errors', async () => {
+            await sdk.logError({
+                executionId: mockExecutionId,
+                error: 'String error',
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    status: 'error',
+                    message: 'String error',
+                })
+            );
+        });
+    });
+
+    describe('Metadata', () => {
+        it('should handle nested objects', async () => {
+            await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: 'Success',
+                metadata: {
+                    request: { method: 'POST', path: '/api/data' },
+                    response: { statusCode: 200 },
+                },
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    metadata: expect.objectContaining({
+                        request: expect.any(Object),
+                        response: expect.any(Object),
+                    }),
+                })
+            );
+        });
+
+        it('should handle arrays in metadata', async () => {
+            await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: 'Success',
+                metadata: {
+                    ids: ['id1', 'id2', 'id3'],
+                    tags: ['urgent', 'prod'],
+                },
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    metadata: expect.objectContaining({
+                        ids: ['id1', 'id2', 'id3'],
+                        tags: ['urgent', 'prod'],
+                    }),
+                })
+            );
+        });
+    });
+
+    describe('Batch Operations', () => {
+        it('should log multiple operations', async () => {
+            const ops = [
+                { executionId: 'exec-1', message: 'First' },
+                { executionId: 'exec-2', message: 'Second' },
+            ];
+
+            await Promise.all(ops.map(op => sdk.logSuccess(op)));
+
+            expect(mockCreate).toHaveBeenCalledTimes(2);
+        });
+
+        it('should handle mixed success/error batch', async () => {
+            await sdk.logSuccess({ executionId: 'exec-1', message: 'Success' });
+            await sdk.logError({ executionId: 'exec-2', error: new Error('Failed') });
+
+            expect(mockCreate).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('Edge Cases', () => {
+        it('should handle zero duration', async () => {
+            await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: 'Instant',
+                duration: 0,
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({ duration: 0 })
+            );
+        });
+
+        it('should handle very long messages', async () => {
+            const longMsg = 'A'.repeat(10000);
+
+            await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: longMsg,
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({ message: longMsg })
+            );
+        });
+
+        it('should handle special characters', async () => {
+            const special = 'Error: <script>alert("XSS")</script> \n\t\r';
+
+            await sdk.logSuccess({
+                executionId: mockExecutionId,
+                message: special,
+            });
+
+            expect(mockCreate).toHaveBeenCalled();
+        });
+    });
+
+    describe('Error Handling', () => {
+        it('should propagate Sanity errors', async () => {
+            mockCreate.mockRejectedValueOnce(new Error('Sanity API error'));
+
+            await expect(
+                sdk.logSuccess({ executionId: mockExecutionId, message: 'Test' })
+            ).rejects.toThrow('Sanity API error');
+        });
+
+        it('should handle network timeouts', async () => {
+            const timeoutErr = new Error('Timeout');
+            (timeoutErr as any).code = 'ETIMEDOUT';
+            mockCreate.mockRejectedValueOnce(timeoutErr);
+
+            await expect(
+                sdk.logError({ executionId: mockExecutionId, error: new Error('Test') })
+            ).rejects.toThrow('Timeout');
+        });
+    });
+});

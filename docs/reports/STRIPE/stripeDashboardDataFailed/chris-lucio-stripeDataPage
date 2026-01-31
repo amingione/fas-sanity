@@ -1,0 +1,97 @@
+{
+  "transaction_details": {
+    "payment_id": "pi_3SoBANP1CiCjkLwl0GBOxulb",
+    "status": "Failed",
+    "date": "2026-01-10T18:01:00",
+    "last_updated": "2026-01-10T18:05:00",
+    "statement_descriptor": "F.A.S. MOTORSPORTS",
+    "risk_evaluation": "Normal",
+    "failure_code": "card_declined",
+    "network_decline_code": "51",
+    "failure_message": "insufficient funds"
+  },
+  "financial_summary": {
+    "total_amount": 370.83,
+    "currency": "USD",
+    "subtotal": 350,
+    "shipping_fee": 20.83,
+    "sales_tax": 0,
+    "net_amount": 0
+  },
+  "customer_info": {
+    "customer_id": "cus_TlibOsbLDzOeX7",
+    "name": "chris lucio",
+    "email": "cl7219626@gmail.com",
+    "phone": "+43 3334 237",
+    "ip_address": "174.214.126.14",
+    "billing_address": {
+      "line1": "319 Northwest County Road 2005th",
+      "city": "Corsicana",
+      "state": "TX",
+      "postal_code": "75110",
+      "country_code": "US"
+    }
+  },
+  "shipping_details": {
+    "recipient": "chris lucio",
+    "address": {
+      "line1": "319 Northwest County Road 2005th",
+      "city": "Corsicana",
+      "state": "TX",
+      "postal_code": "75110",
+      "country_code": "US"
+    }
+  },
+  "items": [
+    {
+      "description": "FAS 2.4L / 2.7L Hellcat Snout Rebuild",
+      "quantity": 1,
+      "unit_price": 350,
+      "amount": 350
+    }
+  ],
+  "payment_method": {
+    "method_id": "pm_1SoBDuP1CiCjkLwlapvUkjN5",
+    "type": "Visa debit card",
+    "last4": "9029",
+    "fingerprint": "Ee4ewiB3XN6wm9vq",
+    "issuer": "JPMORGAN CHASE BANK N.A. - DEBIT",
+    "expiry": "06 / 2028",
+    "origin": "United States",
+    "checks": {
+      "cvc_check": "Passed",
+      "street_check": "Passed",
+      "zip_check": "Passed"
+    }
+  },
+  "connections": {
+    "latest_charge": "ch_3SoBANP1CiCjkLwl0dgcSNMK"
+  },
+  "recent_activity_log": [
+    {
+      "time": "6:05 PM",
+      "event": "Payment failed because of insufficient funds"
+    },
+    {
+      "time": "6:03 PM",
+      "event": "Failed payment with Visa •••• 9029"
+    },
+    {
+      "time": "6:02 PM",
+      "event": "Failed payment with Visa •••• 9029"
+    },
+    {
+      "time": "6:01 PM",
+      "event": "Payment started"
+    }
+  ],
+  "tax_details": {
+    "calculation_status": "Complete",
+    "location": "Texas, United States",
+    "taxability": "Nontaxable",
+    "tax_amount": 0
+  },
+  "metadata": {
+    "cart_id": "2e6e9cc6-310c-44d0-8c54-8a4489c7d4df"
+  }
+}

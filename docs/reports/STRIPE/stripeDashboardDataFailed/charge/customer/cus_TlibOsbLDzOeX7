@@ -1,0 +1,48 @@
+{
+  "id": "cus_TlibOsbLDzOeX7",
+  "object": "customer",
+  "address": {
+    "city": "Corsicana",
+    "country": "US",
+    "line1": "319 Northwest County Road 2005th",
+    "line2": null,
+    "postal_code": "75110",
+    "state": "TX"
+  },
+  "balance": 0,
+  "created": 1768086115,
+  "currency": null,
+  "customer_account": null,
+  "default_source": null,
+  "delinquent": false,
+  "description": null,
+  "discount": null,
+  "email": "cl7219626@gmail.com",
+  "invoice_prefix": "NIXAUGWV",
+  "invoice_settings": {
+    "custom_fields": null,
+    "default_payment_method": null,
+    "footer": null,
+    "rendering_options": null
+  },
+  "livemode": true,
+  "metadata": {},
+  "name": "chris lucio",
+  "next_invoice_sequence": 1,
+  "phone": "+433334237",
+  "preferred_locales": ["en-US", "en"],
+  "shipping": {
+    "address": {
+      "city": "Corsicana",
+      "country": "US",
+      "line1": "319 Northwest County Road 2005th",
+      "line2": null,
+      "postal_code": "75110",
+      "state": "TX"
+    },
+    "name": "chris lucio",
+    "phone": null
+  },
+  "tax_exempt": "none",
+  "test_clock": null
+}

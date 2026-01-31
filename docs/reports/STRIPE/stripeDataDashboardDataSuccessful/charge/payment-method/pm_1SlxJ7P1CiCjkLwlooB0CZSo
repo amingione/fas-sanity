@@ -1,0 +1,59 @@
+{
+  "id": "pm_1SlxJ7P1CiCjkLwlooB0CZSo",
+  "object": "payment_method",
+  "allow_redisplay": "limited",
+  "billing_details": {
+    "address": {
+      "city": "Athens",
+      "country": "US",
+      "line1": "17205 Menefee Rd",
+      "line2": "",
+      "postal_code": "35613",
+      "state": "AL"
+    },
+    "email": "tom.spangler@outlook.com",
+    "name": "tom  spangler",
+    "phone": "2565411871",
+    "tax_id": null
+  },
+  "card": {
+    "brand": "amex",
+    "checks": {
+      "address_line1_check": "pass",
+      "address_postal_code_check": "pass",
+      "cvc_check": null
+    },
+    "country": "US",
+    "display_brand": "american_express",
+    "exp_month": 6,
+    "exp_year": 2029,
+    "fingerprint": "zzvVqVq1QBF5qvzj",
+    "funding": "credit",
+    "generated_from": null,
+    "issuer": "AMERICAN EXPRESS US CONSUMER",
+    "last4": "1004",
+    "networks": {
+      "available": [
+        "amex"
+      ],
+      "preferred": null
+    },
+    "regulated_status": "unregulated",
+    "three_d_secure_usage": {
+      "supported": true
+    },
+    "wallet": {
+      "apple_pay": {
+        "type": "apple_pay"
+      },
+      "dynamic_last4": "4261",
+      "type": "apple_pay"
+    }
+  },
+  "created": 1767556185,
+  "customer": null,
+  "customer_account": null,
+  "livemode": true,
+  "metadata": {},
+  "type": "card"
+}

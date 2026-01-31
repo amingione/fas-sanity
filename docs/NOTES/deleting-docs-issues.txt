@@ -1,0 +1,28 @@
+sanity-2IYeeT00.js:1169 WebSocket connection to 'wss://r4og35qd.api.sanity.io/v2022-06-30/socket/production?tag=sanity.studio' failed: WebSocket is closed before the connection is established.
+(anonymous) @ sanity-2IYeeT00.js:1169
+sanity-2IYeeT00.js:1169 WebSocket connection to 'wss://r4og35qd.api.sanity.io/v2022-06-30/socket/production?tag=sanity.studio' failed: WebSocket is closed before the connection is established.
+(anonymous) @ sanity-2IYeeT00.js:1169
+sanity-2IYeeT00.js:1169 WebSocket connection to 'wss://r4og35qd.api.sanity.io/v2022-06-30/socket/production?tag=sanity.studio' failed: WebSocket is closed before the connection is established.
+(anonymous) @ sanity-2IYeeT00.js:1169
+r4og35qd.api.sanity.io/v2024-10-01/data/mutate/production?tag=sanity.studio&returnIds=true&visibility=sync&autoGenerateArrayKeys=true:1  Failed to load resource: the server responded with a status of 409 ()
+sanity-2IYeeT00.js:7329 Failed to delete orders BX: Mutation failed: Document "bsdaB5yTTfnN2hUF2OtXIa" cannot be deleted as there are references to it from "stripeWebhook.evt_3SdTsfP1CiCjkLwl1jH83ikk", "stripeWebhook.evt_3SdipjP1CiCjkLwl15WKt0ET":
+- Document "bsdaB5yTTfnN2hUF2OtXIa" cannot be deleted as there are references to it from "stripeWebhook.evt_3SdTsfP1CiCjkLwl1jH83ikk", "stripeWebhook.evt_3SdipjP1CiCjkLwl15WKt0ET"
+    at onResponse (sanity-2IYeeT00.js:1166:1081)
+    at sanity-2IYeeT00.js:1156:5179
+    at sanity-2IYeeT00.js:1156:5396
+    at sanity-2IYeeT00.js:1156:5505
+    at sanity-2IYeeT00.js:1158:1458
+    at Qin.o.onreadystatechange (sanity-2IYeeT00.js:1158:1664)
+(anonymous) @ sanity-2IYeeT00.js:7329
+
+
+
+
+
+
+stripeWebhook.evt_3SdTsfP1CiCjkLwl1jH83ikk", 
+"stripeWebhook.evt_3SdipjP1CiCjkLwl15WKt0ET":
+- Document "bsdaB5yTTfnN2hUF2OtXIa" 
+cannot be deleted as there are references to it from
+ "stripeWebhook.evt_3SdTsfP1CiCjkLwl1jH83ikk", 
+ "stripeWebhook.evt_3SdipjP1CiCjkLwl15WKt0ET"

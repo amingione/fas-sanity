@@ -1,0 +1,135 @@
+{
+  "id": "ch_3SlxJ7P1CiCjkLwl14YUTmWw",
+  "object": "charge",
+  "amount": 91443,
+  "amount_captured": 91443,
+  "amount_refunded": 0,
+  "application": null,
+  "application_fee": null,
+  "application_fee_amount": null,
+  "balance_transaction": "txn_3SlxJ7P1CiCjkLwl1Z3WeDOa",
+  "billing_details": {
+    "address": {
+      "city": "Athens",
+      "country": "US",
+      "line1": "17205 Menefee Rd",
+      "line2": "",
+      "postal_code": "35613",
+      "state": "AL"
+    },
+    "email": "tom.spangler@outlook.com",
+    "name": "tom  spangler",
+    "phone": "2565411871",
+    "tax_id": null
+  },
+  "calculated_statement_descriptor": "F.A.S. MOTORSPORTS",
+  "captured": true,
+  "created": 1767556186,
+  "currency": "usd",
+  "customer": "cus_TjQ97PEaSasbvq",
+  "description": null,
+  "destination": null,
+  "dispute": null,
+  "disputed": false,
+  "failure_balance_transaction": null,
+  "failure_code": null,
+  "failure_message": null,
+  "fraud_details": {},
+  "invoice": null,
+  "livemode": true,
+  "metadata": {
+    "cart_id": "0385c2a8-a566-4727-a53c-8bf34df9e6f5"
+  },
+  "on_behalf_of": null,
+  "order": null,
+  "outcome": {
+    "advice_code": null,
+    "network_advice_code": null,
+    "network_decline_code": null,
+    "network_status": "approved_by_network",
+    "reason": null,
+    "risk_level": "normal",
+    "seller_message": "Payment complete.",
+    "type": "authorized"
+  },
+  "paid": true,
+  "payment_intent": "pi_3SlxJ7P1CiCjkLwl1Gaot6wO",
+  "payment_method": "pm_1SlxJ7P1CiCjkLwlooB0CZSo",
+  "payment_method_details": {
+    "card": {
+      "amount_authorized": 91443,
+      "authorization_code": "134588",
+      "brand": "amex",
+      "checks": {
+        "address_line1_check": "pass",
+        "address_postal_code_check": "pass",
+        "cvc_check": null
+      },
+      "country": "US",
+      "exp_month": 6,
+      "exp_year": 2029,
+      "extended_authorization": {
+        "status": "disabled"
+      },
+      "fingerprint": "zzvVqVq1QBF5qvzj",
+      "funding": "credit",
+      "incremental_authorization": {
+        "status": "unavailable"
+      },
+      "installments": null,
+      "issuer": "AMERICAN EXPRESS US CONSUMER",
+      "last4": "1004",
+      "mandate": null,
+      "moto": null,
+      "multicapture": {
+        "status": "unavailable"
+      },
+      "network": "amex",
+      "network_token": {
+        "used": false
+      },
+      "network_transaction_id": "017709714232060",
+      "overcapture": {
+        "maximum_amount_capturable": 91443,
+        "status": "unavailable"
+      },
+      "regulated_status": "unregulated",
+      "three_d_secure": null,
+      "wallet": {
+        "apple_pay": {
+          "type": "apple_pay"
+        },
+        "dynamic_last4": "4261",
+        "type": "apple_pay"
+      }
+    },
+    "type": "card"
+  },
+  "radar_options": {},
+  "receipt_email": "tom.spangler@outlook.com",
+  "receipt_number": "1616-4414",
+  "receipt_url": "https://pay.stripe.com/receipts/payment/CAcQARoXChVhY2N0XzFSQ1ZyUVAxQ2lDamtMd2wogf6LywYyBnK1u6JwLzosFiWEcTNKut90Ku4PdqTy9RQxaSIvf3az-ncfBEC5rcYQfKDlvH4WXAkrFT0",
+  "refunded": false,
+  "review": null,
+  "shipping": {
+    "address": {
+      "city": "Athens",
+      "country": "US",
+      "line1": "17205 Menefee Rd",
+      "line2": "",
+      "postal_code": "35613",
+      "state": "AL"
+    },
+    "carrier": null,
+    "name": "tom spangler",
+    "phone": null,
+    "tracking_number": null
+  },
+  "source": null,
+  "source_transfer": null,
+  "statement_descriptor": null,
+  "statement_descriptor_suffix": null,
+  "status": "succeeded",
+  "transfer_data": null,
+  "transfer_group": null
+}

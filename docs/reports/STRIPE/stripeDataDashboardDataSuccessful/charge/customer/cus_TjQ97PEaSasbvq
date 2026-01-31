@@ -1,0 +1,51 @@
+{
+  "id": "cus_TjQ97PEaSasbvq",
+  "object": "customer",
+  "address": {
+    "city": "Athens",
+    "country": "US",
+    "line1": "17205 Menefee Rd",
+    "line2": "",
+    "postal_code": "35613",
+    "state": "AL"
+  },
+  "balance": 0,
+  "created": 1767556185,
+  "currency": null,
+  "customer_account": null,
+  "default_source": null,
+  "delinquent": false,
+  "description": null,
+  "discount": null,
+  "email": "tom.spangler@outlook.com",
+  "invoice_prefix": "UHEP8IN5",
+  "invoice_settings": {
+    "custom_fields": null,
+    "default_payment_method": null,
+    "footer": null,
+    "rendering_options": null
+  },
+  "livemode": true,
+  "metadata": {},
+  "name": "tom  spangler",
+  "next_invoice_sequence": 1,
+  "phone": "2565411871",
+  "preferred_locales": [
+    "en-US",
+    "en"
+  ],
+  "shipping": {
+    "address": {
+      "city": "Athens",
+      "country": "US",
+      "line1": "17205 Menefee Rd",
+      "line2": "",
+      "postal_code": "35613",
+      "state": "AL"
+    },
+    "name": "tom spangler",
+    "phone": null
+  },
+  "tax_exempt": "none",
+  "test_clock": null
+}

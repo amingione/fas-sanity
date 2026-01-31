@@ -1,0 +1,57 @@
+{
+  "id": "pm_1SoBDuP1CiCjkLwlapvUkjN5",
+  "object": "payment_method",
+  "allow_redisplay": "limited",
+  "billing_details": {
+    "address": {
+      "city": "Corsicana",
+      "country": "US",
+      "line1": "319 Northwest County Road 2005th",
+      "line2": null,
+      "postal_code": "75110",
+      "state": "TX"
+    },
+    "email": "cl7219626@gmail.com",
+    "name": "chris lucio",
+    "phone": null,
+    "tax_id": null
+  },
+  "card": {
+    "brand": "visa",
+    "checks": {
+      "address_line1_check": "pass",
+      "address_postal_code_check": "pass",
+      "cvc_check": "pass"
+    },
+    "country": "US",
+    "display_brand": "visa",
+    "exp_month": 6,
+    "exp_year": 2028,
+    "fingerprint": "Ee4ewiB3XN6wm9vq",
+    "funding": "debit",
+    "generated_from": null,
+    "issuer": "JPMORGAN CHASE BANK N.A. - DEBIT",
+    "last4": "9029",
+    "networks": {
+      "available": [
+        "visa"
+      ],
+      "preferred": null
+    },
+    "regulated_status": "regulated",
+    "three_d_secure_usage": {
+      "supported": true
+    },
+    "wallet": {
+      "dynamic_last4": null,
+      "link": {},
+      "type": "link"
+    }
+  },
+  "created": 1768086334,
+  "customer": null,
+  "customer_account": null,
+  "livemode": true,
+  "metadata": {},
+  "type": "card"
+}

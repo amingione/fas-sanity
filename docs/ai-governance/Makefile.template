@@ -1,0 +1,94 @@
+# =========================================================
+# fas-* Repo Makefile (Governance-Safe Template)
+# =========================================================
+#
+# IMPORTANT:
+# - Make NEVER executes Codex directly.
+# - Make ONLY generates prompts and guardrails.
+# - Codex MUST be run manually from a real terminal.
+#
+# This prevents:
+# - stdin/stdout TTY failures
+# - recursive Codex invocation
+# - CI / sandbox execution issues
+#
+# Governance logic lives in shared includes.
+# =========================================================
+
+# ---------------------------------------------------------
+# Repo identity
+# ---------------------------------------------------------
+REPO_NAME := $(notdir $(CURDIR))
+
+# ---------------------------------------------------------
+# Includes (authoritative)
+# ---------------------------------------------------------
+include ./codex-enforce.mk
+include ./governance-guards.mk
+
+# ---------------------------------------------------------
+# Canonical Governance Targets
+# ---------------------------------------------------------
+
+.PHONY: new-ai-cycle verify-enforcement fast-path
+
+# ---------------------------------------------------------
+# Initialize a new AI governance cycle
+# ---------------------------------------------------------
+new-ai-cycle:
+	@if [ -z "$(ISSUE)" ]; then \
+		echo "❌ ISSUE not specified."; \
+		echo "Usage: make new-ai-cycle ISSUE=<issue-name>"; \
+		exit 1; \
+	fi
+	@echo "🧠 Initializing AI governance cycle for $(REPO_NAME)"
+	@mkdir -p docs/prompts docs/reports
+	@echo "✔ Directories ensured:"
+	@echo "  docs/prompts/"
+	@echo "  docs/reports/"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  make gemini-$(ISSUE)-audit"
+	@echo "  make claude-$(ISSUE)-decide"
+	@echo "  make codex-$(ISSUE)-enforce"
+
+# ---------------------------------------------------------
+# Post-enforcement verification
+# ---------------------------------------------------------
+verify-enforcement: governance-guard
+	@echo "🔍 POST-ENFORCEMENT VERIFICATION"
+	@echo ""
+	@echo "Confirm that:"
+	@echo " - Codex changes match approved contract decisions"
+	@echo " - No unapproved files were modified"
+	@echo " - No UX or data drift introduced"
+	@echo ""
+	@echo "If verified, commit the changes."
+	@echo "✔ Verification acknowledged."
+
+# ---------------------------------------------------------
+# Fast path (non-governed changes only)
+# ---------------------------------------------------------
+fast-path:
+	@echo "⚡ FAST PATH MODE"
+	@echo ""
+	@echo "Allowed:"
+	@echo " - UI copy / layout"
+	@echo " - Comments / docs"
+	@echo " - Tests"
+	@echo ""
+	@echo "NOT allowed:"
+	@echo " - Schemas"
+	@echo " - Data models"
+	@echo " - Stripe / auth / sync logic"
+	@echo ""
+	@read -p "Confirm this change is TRIVIAL (y/N): " CONFIRM; \
+	if [ "$$CONFIRM" != "y" ]; then \
+		echo "❌ Fast path aborted."; \
+		exit 1; \
+	fi
+	@echo "✔ Fast path confirmed."
+
+# =========================================================
+# END TEMPLATE
+# =========================================================

@@ -1,0 +1,116 @@
+{
+  "transaction_details": {
+    "payment_id": "pi_3SlxJ7P1CiCjkLwl1Gaot6wO",
+    "status": "Succeeded",
+    "date": "2026-01-04T14:49:00",
+    "statement_descriptor": "F.A.S. MOTORSPORTS",
+    "risk_evaluation": "Normal",
+    "description": null
+  },
+  "financial_summary": {
+    "total_amount": 914.43,
+    "currency": "USD",
+    "subtotal": 899.99,
+    "shipping_fee": 14.44,
+    "sales_tax": 0.0,
+    "stripe_fee": 26.82,
+    "net_amount": 887.61
+  },
+  "customer_info": {
+    "customer_id": "cus_TjQ97PEaSasbvq",
+    "name": "tom spangler",
+    "email": "tom.spangler@outlook.com",
+    "phone": "2565411871",
+    "ip_address": "172.56.70.63",
+    "country": "United States",
+    "billing_address": {
+      "line1": "17205 Menefee Rd",
+      "city": "Athens",
+      "state": "AL",
+      "postal_code": "35613",
+      "country_code": "US"
+    }
+  },
+  "shipping_details": {
+    "recipient": "tom spangler",
+    "address": {
+      "line1": "17205 Menefee Rd",
+      "city": "Athens",
+      "state": "AL",
+      "postal_code": "35613",
+      "country_code": "US"
+    }
+  },
+  "items": [
+    {
+      "description": "F.A.S. Predator Lower Pulley",
+      "variant": "TRX",
+      "quantity": 1,
+      "unit_price": 899.99,
+      "amount": 899.99
+    }
+  ],
+  "payment_method": {
+    "method_id": "pm_1SlxJ7P1CiCjkLwlooB0CZSo",
+    "type": "American Express credit card",
+    "last4": "1004",
+    "fingerprint": "zzvVqVq1QBF5qvzj",
+    "issuer": "AMERICAN EXPRESS US CONSUMER",
+    "expiry": "06 / 2029",
+    "origin": "United States",
+    "checks": {
+      "street_check": "Passed",
+      "zip_check": "Passed"
+    }
+  },
+  "connections": {
+    "latest_charge": "ch_3SlxJ7P1CiCjkLwl14YUTmWw",
+    "payout": "po_1SmknNP1CiCjkLwl7KlYJXDF"
+  },
+  "receipt_history": [
+    {
+      "type": "Payment",
+      "sent_to": "tom.spangler@outlook.com",
+      "date": "2026-01-04T14:51:00"
+    }
+  ],
+  "events": [
+    {
+      "description": "A $914.43 payment for ch_3SlxJ7P1CiCjkLwl14YUTmWw was updated",
+      "timestamp": "2026-01-04T14:49:50"
+    },
+    {
+      "description": "A Checkout Session was completed",
+      "timestamp": "2026-01-04T14:49:48"
+    },
+    {
+      "description": "The payment pi_3SlxJ7P1CiCjkLwl1Gaot6wO for $914.43 has succeeded",
+      "timestamp": "2026-01-04T14:49:47"
+    },
+    {
+      "description": "ch_3SlxJ7P1CiCjkLwl14YUTmWw was charged $914.43",
+      "timestamp": "2026-01-04T14:49:47"
+    },
+    {
+      "description": "A new payment pi_3SlxJ7P1CiCjkLwl1Gaot6wO for $914.43 was created",
+      "timestamp": "2026-01-04T14:49:45"
+    }
+  ],
+  "logs": [
+    {
+      "method": "POST",
+      "endpoint": "/v1/checkout/sessions",
+      "status": 200,
+      "timestamp": "2026-01-04T14:47:46"
+    }
+  ],
+  "metadata": {
+    "cart_id": "0385c2a8-a566-4727-a53c-8bf34df9e6f5"
+  },
+  "tax_details": {
+    "calculation_status": "Complete",
+    "location": "Alabama, United States",
+    "taxability": "Nontaxable",
+    "tax_amount": 0.0
+  }
+}

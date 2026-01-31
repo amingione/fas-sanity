@@ -56,7 +56,6 @@ gmc-key.json
 netlify/functions/*.zip
 
 # Local audit outputs
-/docs
 /tools
 
 # Sanity build output

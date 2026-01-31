@@ -1,0 +1,10 @@
+# FAS Motorsports Sanity Studio - Complete Context for Auto-Mapper Development
+
+Description: Comprehensive technical reference documenting the FAS Motorsports Sanity environment, including schema structure, integrations, pain points, and requirements for Auto-Mapper plugin development.
+Category: technical
+Version: v1.0
+Tags: development, sanity, schema, integrations, stripe, easypost, auto-mapper, technical-reference
+
+---
+
+

@@ -1,0 +1,691 @@
+{
+  "id": "pi_3SoBANP1CiCjkLwl0GBOxulb",
+  "object": "payment_intent",
+  "amount": 37083,
+  "amount_capturable": 0,
+  "amount_details": {
+    "shipping": {
+      "amount": 2083,
+      "from_postal_code": null,
+      "to_postal_code": null
+    },
+    "tax": {
+      "total_tax_amount": 0
+    },
+    "tip": {}
+  },
+  "amount_received": 0,
+  "application": null,
+  "application_fee_amount": null,
+  "automatic_payment_methods": null,
+  "canceled_at": null,
+  "cancellation_reason": null,
+  "capture_method": "automatic_async",
+  "charges": {
+    "object": "list",
+    "data": [
+      {
+        "id": "ch_3SoBANP1CiCjkLwl0dgcSNMK",
+        "object": "charge",
+        "amount": 37083,
+        "amount_captured": 0,
+        "amount_refunded": 0,
+        "application": null,
+        "application_fee": null,
+        "application_fee_amount": null,
+        "balance_transaction": null,
+        "billing_details": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 Northwest County Road 2005th",
+            "line2": null,
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "email": "cl7219626@gmail.com",
+          "name": "chris lucio",
+          "phone": null,
+          "tax_id": null
+        },
+        "calculated_statement_descriptor": "F.A.S. MOTORSPORTS",
+        "captured": false,
+        "created": 1768086335,
+        "currency": "usd",
+        "customer": "cus_TlibOsbLDzOeX7",
+        "description": null,
+        "destination": null,
+        "dispute": null,
+        "disputed": false,
+        "failure_balance_transaction": null,
+        "failure_code": "card_declined",
+        "failure_message": "Your card has insufficient funds.",
+        "fraud_details": {},
+        "invoice": null,
+        "livemode": true,
+        "metadata": {
+          "cart_id": "2e6e9cc6-310c-44d0-8c54-8a4489c7d4df"
+        },
+        "on_behalf_of": null,
+        "order": null,
+        "outcome": {
+          "advice_code": "try_again_later",
+          "network_advice_code": "02",
+          "network_decline_code": "51",
+          "network_status": "declined_by_network",
+          "reason": "insufficient_funds",
+          "risk_level": "normal",
+          "seller_message": "The bank returned the decline code `insufficient_funds`.",
+          "type": "issuer_declined"
+        },
+        "paid": false,
+        "payment_intent": "pi_3SoBANP1CiCjkLwl0GBOxulb",
+        "payment_method": "pm_1SoBDuP1CiCjkLwlapvUkjN5",
+        "payment_method_details": {
+          "card": {
+            "amount_authorized": null,
+            "authorization_code": null,
+            "brand": "visa",
+            "checks": {
+              "address_line1_check": "pass",
+              "address_postal_code_check": "pass",
+              "cvc_check": "pass"
+            },
+            "country": "US",
+            "exp_month": 6,
+            "exp_year": 2028,
+            "extended_authorization": {
+              "status": "disabled"
+            },
+            "fingerprint": "Ee4ewiB3XN6wm9vq",
+            "funding": "debit",
+            "incremental_authorization": {
+              "status": "unavailable"
+            },
+            "installments": null,
+            "issuer": "JPMORGAN CHASE BANK N.A. - DEBIT",
+            "last4": "9029",
+            "mandate": null,
+            "moto": null,
+            "multicapture": {
+              "status": "unavailable"
+            },
+            "network": "visa",
+            "network_token": {
+              "used": false
+            },
+            "network_transaction_id": "306010831368530",
+            "overcapture": {
+              "maximum_amount_capturable": 37083,
+              "status": "unavailable"
+            },
+            "regulated_status": "regulated",
+            "three_d_secure": null,
+            "wallet": {
+              "dynamic_last4": null,
+              "link": {},
+              "type": "link"
+            }
+          },
+          "type": "card"
+        },
+        "radar_options": {},
+        "receipt_email": "cl7219626@gmail.com",
+        "receipt_number": null,
+        "receipt_url": null,
+        "refunded": false,
+        "review": null,
+        "shipping": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 Northwest County Road 2005th",
+            "line2": null,
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "carrier": null,
+          "name": "chris lucio",
+          "phone": null,
+          "tracking_number": null
+        },
+        "source": null,
+        "source_transfer": null,
+        "statement_descriptor": null,
+        "statement_descriptor_suffix": null,
+        "status": "failed",
+        "transfer_data": null,
+        "transfer_group": null
+      },
+      {
+        "id": "ch_3SoBANP1CiCjkLwl0ghKyfVz",
+        "object": "charge",
+        "amount": 37083,
+        "amount_captured": 0,
+        "amount_refunded": 0,
+        "application": null,
+        "application_fee": null,
+        "application_fee_amount": null,
+        "balance_transaction": null,
+        "billing_details": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 NW County Road 2005",
+            "line2": "",
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "email": "cl7219626@gmail.com",
+          "name": "Chris  Lucio",
+          "phone": "4303334237",
+          "tax_id": null
+        },
+        "calculated_statement_descriptor": "F.A.S. MOTORSPORTS",
+        "captured": false,
+        "created": 1768086216,
+        "currency": "usd",
+        "customer": "cus_TlibOsbLDzOeX7",
+        "description": null,
+        "destination": null,
+        "dispute": null,
+        "disputed": false,
+        "failure_balance_transaction": null,
+        "failure_code": "card_declined",
+        "failure_message": "Your card has insufficient funds.",
+        "fraud_details": {},
+        "invoice": null,
+        "livemode": true,
+        "metadata": {
+          "cart_id": "2e6e9cc6-310c-44d0-8c54-8a4489c7d4df"
+        },
+        "on_behalf_of": null,
+        "order": null,
+        "outcome": {
+          "advice_code": "try_again_later",
+          "network_advice_code": "02",
+          "network_decline_code": "51",
+          "network_status": "declined_by_network",
+          "reason": "insufficient_funds",
+          "risk_level": "normal",
+          "seller_message": "The bank returned the decline code `insufficient_funds`.",
+          "type": "issuer_declined"
+        },
+        "paid": false,
+        "payment_intent": "pi_3SoBANP1CiCjkLwl0GBOxulb",
+        "payment_method": "pm_1SoBBzP1CiCjkLwlL2aICy0x",
+        "payment_method_details": {
+          "card": {
+            "amount_authorized": null,
+            "authorization_code": null,
+            "brand": "visa",
+            "checks": {
+              "address_line1_check": "pass",
+              "address_postal_code_check": "pass",
+              "cvc_check": null
+            },
+            "country": "US",
+            "exp_month": 6,
+            "exp_year": 2031,
+            "extended_authorization": {
+              "status": "disabled"
+            },
+            "fingerprint": "yqsJehnrHwX1TDB7",
+            "funding": "debit",
+            "incremental_authorization": {
+              "status": "unavailable"
+            },
+            "installments": null,
+            "issuer": "JPMorgan Chase Bank N.A. - Debit",
+            "last4": "9029",
+            "mandate": null,
+            "moto": null,
+            "multicapture": {
+              "status": "unavailable"
+            },
+            "network": "visa",
+            "network_token": {
+              "used": false
+            },
+            "network_transaction_id": "466010830164544",
+            "overcapture": {
+              "maximum_amount_capturable": 37083,
+              "status": "unavailable"
+            },
+            "regulated_status": "regulated",
+            "three_d_secure": null,
+            "wallet": {
+              "apple_pay": {
+                "type": "apple_pay"
+              },
+              "dynamic_last4": "3106",
+              "type": "apple_pay"
+            }
+          },
+          "type": "card"
+        },
+        "radar_options": {},
+        "receipt_email": "cl7219626@gmail.com",
+        "receipt_number": null,
+        "receipt_url": null,
+        "refunded": false,
+        "review": null,
+        "shipping": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 Northwest County Road 2005th",
+            "line2": "",
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "carrier": null,
+          "name": "chris lucio",
+          "phone": null,
+          "tracking_number": null
+        },
+        "source": null,
+        "source_transfer": null,
+        "statement_descriptor": null,
+        "statement_descriptor_suffix": null,
+        "status": "failed",
+        "transfer_data": null,
+        "transfer_group": null
+      },
+      {
+        "id": "ch_3SoBANP1CiCjkLwl0ZBdQCBS",
+        "object": "charge",
+        "amount": 37083,
+        "amount_captured": 0,
+        "amount_refunded": 0,
+        "application": null,
+        "application_fee": null,
+        "application_fee_amount": null,
+        "balance_transaction": null,
+        "billing_details": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 NW County Road 2005",
+            "line2": "",
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "email": "cl7219626@gmail.com",
+          "name": "Chris  Lucio",
+          "phone": "4303334237",
+          "tax_id": null
+        },
+        "calculated_statement_descriptor": "F.A.S. MOTORSPORTS",
+        "captured": false,
+        "created": 1768086160,
+        "currency": "usd",
+        "customer": "cus_TlibOsbLDzOeX7",
+        "description": null,
+        "destination": null,
+        "dispute": null,
+        "disputed": false,
+        "failure_balance_transaction": null,
+        "failure_code": "card_declined",
+        "failure_message": "Your card has insufficient funds.",
+        "fraud_details": {},
+        "invoice": null,
+        "livemode": true,
+        "metadata": {
+          "cart_id": "2e6e9cc6-310c-44d0-8c54-8a4489c7d4df"
+        },
+        "on_behalf_of": null,
+        "order": null,
+        "outcome": {
+          "advice_code": "try_again_later",
+          "network_advice_code": "02",
+          "network_decline_code": "51",
+          "network_status": "declined_by_network",
+          "reason": "insufficient_funds",
+          "risk_level": "normal",
+          "seller_message": "The bank returned the decline code `insufficient_funds`.",
+          "type": "issuer_declined"
+        },
+        "paid": false,
+        "payment_intent": "pi_3SoBANP1CiCjkLwl0GBOxulb",
+        "payment_method": "pm_1SoBB5P1CiCjkLwlUfdkJKLp",
+        "payment_method_details": {
+          "card": {
+            "amount_authorized": null,
+            "authorization_code": null,
+            "brand": "visa",
+            "checks": {
+              "address_line1_check": "pass",
+              "address_postal_code_check": "pass",
+              "cvc_check": null
+            },
+            "country": "US",
+            "exp_month": 6,
+            "exp_year": 2031,
+            "extended_authorization": {
+              "status": "disabled"
+            },
+            "fingerprint": "yqsJehnrHwX1TDB7",
+            "funding": "debit",
+            "incremental_authorization": {
+              "status": "unavailable"
+            },
+            "installments": null,
+            "issuer": "JPMorgan Chase Bank N.A. - Debit",
+            "last4": "9029",
+            "mandate": null,
+            "moto": null,
+            "multicapture": {
+              "status": "unavailable"
+            },
+            "network": "visa",
+            "network_token": {
+              "used": false
+            },
+            "network_transaction_id": "346010829600601",
+            "overcapture": {
+              "maximum_amount_capturable": 37083,
+              "status": "unavailable"
+            },
+            "regulated_status": "regulated",
+            "three_d_secure": null,
+            "wallet": {
+              "apple_pay": {
+                "type": "apple_pay"
+              },
+              "dynamic_last4": "3106",
+              "type": "apple_pay"
+            }
+          },
+          "type": "card"
+        },
+        "radar_options": {},
+        "receipt_email": "cl7219626@gmail.com",
+        "receipt_number": null,
+        "receipt_url": null,
+        "refunded": false,
+        "review": null,
+        "shipping": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 NW County Road 2005",
+            "line2": "",
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "carrier": null,
+          "name": "Chris  Lucio",
+          "phone": null,
+          "tracking_number": null
+        },
+        "source": null,
+        "source_transfer": null,
+        "statement_descriptor": null,
+        "statement_descriptor_suffix": null,
+        "status": "failed",
+        "transfer_data": null,
+        "transfer_group": null
+      },
+      {
+        "id": "ch_3SoBANP1CiCjkLwl05JMyNEP",
+        "object": "charge",
+        "amount": 37083,
+        "amount_captured": 0,
+        "amount_refunded": 0,
+        "application": null,
+        "application_fee": null,
+        "application_fee_amount": null,
+        "balance_transaction": null,
+        "billing_details": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 NW County Road 2005",
+            "line2": "",
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "email": "cl7219626@gmail.com",
+          "name": "Chris  Lucio",
+          "phone": "4303334237",
+          "tax_id": null
+        },
+        "calculated_statement_descriptor": "F.A.S. MOTORSPORTS",
+        "captured": false,
+        "created": 1768086116,
+        "currency": "usd",
+        "customer": "cus_TlibOsbLDzOeX7",
+        "description": null,
+        "destination": null,
+        "dispute": null,
+        "disputed": false,
+        "failure_balance_transaction": null,
+        "failure_code": "card_declined",
+        "failure_message": "Your card has insufficient funds.",
+        "fraud_details": {},
+        "invoice": null,
+        "livemode": true,
+        "metadata": {
+          "cart_id": "2e6e9cc6-310c-44d0-8c54-8a4489c7d4df"
+        },
+        "on_behalf_of": null,
+        "order": null,
+        "outcome": {
+          "advice_code": "try_again_later",
+          "network_advice_code": "02",
+          "network_decline_code": "51",
+          "network_status": "declined_by_network",
+          "reason": "insufficient_funds",
+          "risk_level": "normal",
+          "seller_message": "The bank returned the decline code `insufficient_funds`.",
+          "type": "issuer_declined"
+        },
+        "paid": false,
+        "payment_intent": "pi_3SoBANP1CiCjkLwl0GBOxulb",
+        "payment_method": "pm_1SoBAMP1CiCjkLwlv3FUvxvV",
+        "payment_method_details": {
+          "card": {
+            "amount_authorized": null,
+            "authorization_code": null,
+            "brand": "visa",
+            "checks": {
+              "address_line1_check": "pass",
+              "address_postal_code_check": "pass",
+              "cvc_check": null
+            },
+            "country": "US",
+            "exp_month": 6,
+            "exp_year": 2031,
+            "extended_authorization": {
+              "status": "disabled"
+            },
+            "fingerprint": "yqsJehnrHwX1TDB7",
+            "funding": "debit",
+            "incremental_authorization": {
+              "status": "unavailable"
+            },
+            "installments": null,
+            "issuer": "JPMorgan Chase Bank N.A. - Debit",
+            "last4": "9029",
+            "mandate": null,
+            "moto": null,
+            "multicapture": {
+              "status": "unavailable"
+            },
+            "network": "visa",
+            "network_token": {
+              "used": false
+            },
+            "network_transaction_id": "466010829168723",
+            "overcapture": {
+              "maximum_amount_capturable": 37083,
+              "status": "unavailable"
+            },
+            "regulated_status": "regulated",
+            "three_d_secure": null,
+            "wallet": {
+              "apple_pay": {
+                "type": "apple_pay"
+              },
+              "dynamic_last4": "3106",
+              "type": "apple_pay"
+            }
+          },
+          "type": "card"
+        },
+        "radar_options": {},
+        "receipt_email": "cl7219626@gmail.com",
+        "receipt_number": null,
+        "receipt_url": null,
+        "refunded": false,
+        "review": null,
+        "shipping": {
+          "address": {
+            "city": "Corsicana",
+            "country": "US",
+            "line1": "319 NW County Road 2005",
+            "line2": "",
+            "postal_code": "75110",
+            "state": "TX"
+          },
+          "carrier": null,
+          "name": "Chris  Lucio",
+          "phone": null,
+          "tracking_number": null
+        },
+        "source": null,
+        "source_transfer": null,
+        "statement_descriptor": null,
+        "statement_descriptor_suffix": null,
+        "status": "failed",
+        "transfer_data": null,
+        "transfer_group": null
+      }
+    ],
+    "has_more": false,
+    "total_count": 4,
+    "url": "/v1/charges?payment_intent=pi_3SoBANP1CiCjkLwl0GBOxulb"
+  },
+  "client_secret": "pi_3SoBANP1CiCjkLwl0GBOxulb_secret_XuuOBqzFK2qnPTVblawje0Qeq",
+  "confirmation_method": "automatic",
+  "created": 1768086115,
+  "currency": "usd",
+  "customer": "cus_TlibOsbLDzOeX7",
+  "customer_account": null,
+  "description": null,
+  "excluded_payment_method_types": null,
+  "invoice": null,
+  "last_payment_error": {
+    "advice_code": "try_again_later",
+    "charge": "ch_3SoBANP1CiCjkLwl0dgcSNMK",
+    "code": "card_declined",
+    "decline_code": "insufficient_funds",
+    "doc_url": "https://stripe.com/docs/error-codes/card-declined",
+    "message": "Your card has insufficient funds.",
+    "network_advice_code": "02",
+    "network_decline_code": "51",
+    "payment_method": {
+      "id": "pm_1SoBDuP1CiCjkLwlapvUkjN5",
+      "object": "payment_method",
+      "allow_redisplay": "limited",
+      "billing_details": {
+        "address": {
+          "city": "Corsicana",
+          "country": "US",
+          "line1": "319 Northwest County Road 2005th",
+          "line2": null,
+          "postal_code": "75110",
+          "state": "TX"
+        },
+        "email": "cl7219626@gmail.com",
+        "name": "chris lucio",
+        "phone": null,
+        "tax_id": null
+      },
+      "card": {
+        "brand": "visa",
+        "checks": {
+          "address_line1_check": "pass",
+          "address_postal_code_check": "pass",
+          "cvc_check": "pass"
+        },
+        "country": "US",
+        "display_brand": "visa",
+        "exp_month": 6,
+        "exp_year": 2028,
+        "fingerprint": "Ee4ewiB3XN6wm9vq",
+        "funding": "debit",
+        "generated_from": null,
+        "issuer": "JPMORGAN CHASE BANK N.A. - DEBIT",
+        "last4": "9029",
+        "networks": {
+          "available": ["visa"],
+          "preferred": null
+        },
+        "regulated_status": "regulated",
+        "three_d_secure_usage": {
+          "supported": true
+        },
+        "wallet": {
+          "dynamic_last4": null,
+          "link": {},
+          "type": "link"
+        }
+      },
+      "created": 1768086334,
+      "customer": null,
+      "customer_account": null,
+      "livemode": true,
+      "metadata": {},
+      "type": "card"
+    },
+    "type": "card_error"
+  },
+  "latest_charge": "ch_3SoBANP1CiCjkLwl0dgcSNMK",
+  "livemode": true,
+  "metadata": {
+    "cart_id": "2e6e9cc6-310c-44d0-8c54-8a4489c7d4df"
+  },
+  "next_action": null,
+  "on_behalf_of": null,
+  "payment_details": {
+    "customer_reference": null,
+    "order_reference": "prod_TliYheOsKIeXlM"
+  },
+  "payment_method": null,
+  "payment_method_configuration_details": null,
+  "payment_method_options": {
+    "card": {
+      "installments": null,
+      "mandate_options": null,
+      "network": null,
+      "request_three_d_secure": "automatic"
+    }
+  },
+  "payment_method_types": ["card"],
+  "processing": null,
+  "receipt_email": "cl7219626@gmail.com",
+  "review": null,
+  "setup_future_usage": null,
+  "shipping": {
+    "address": {
+      "city": "Corsicana",
+      "country": "US",
+      "line1": "319 Northwest County Road 2005th",
+      "line2": null,
+      "postal_code": "75110",
+      "state": "TX"
+    },
+    "carrier": null,
+    "name": "chris lucio",
+    "phone": null,
+    "tracking_number": null
+  },
+  "source": null,
+  "statement_descriptor": null,
+  "statement_descriptor_suffix": null,
+  "status": "requires_payment_method",
+  "transfer_data": null,
+  "transfer_group": null
+}
