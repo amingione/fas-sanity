@@ -29,9 +29,23 @@
 
 ## Core Principles
 
+## 🚨 Architecture Authority (Non‑Negotiable)
+
+This system operates under a **Medusa‑first commerce model**.
+
+- **Medusa** is the single source of truth for:
+  products, variants, pricing, inventory, cart, checkout, orders, shipping.
+- **Sanity** is content‑only and record‑keeping only:
+  product content, media, SEO, and non‑authoritative order records.
+- **Stripe and Shippo are accessed exclusively via Medusa.**
+- **fas‑cms‑fresh consumes Medusa APIs and renders UI only.**
+
+If any rule below conflicts with this section, **this section overrides it**.
+
 ### 1. Schema-First Development ⭐
 
-- **All data structures originate in `fas-sanity/schemas/`**
+- Sanity schemas are authoritative for **content and record storage only**
+- Commerce data structures originate in Medusa
 - API routes must match Sanity schema types exactly
 - Never invent fields that don't exist in schemas
 - **ALWAYS check the schema first before making changes**
@@ -51,7 +65,7 @@
 
 ### 4. Data Integrity ✅
 
-- Stripe totals MUST match Sanity order totals
+- Medusa order totals are authoritative; Sanity stores a non‑authoritative snapshot
 - No undefined or null fields in created documents
 - All references must resolve to valid documents
 
@@ -102,6 +116,11 @@ src/pages/api/
 
 ### Integration Flow: Stripe Checkout → Order
 
+⚠️ NOTE:
+Orders are CREATED and VALIDATED in Medusa.
+Sanity order documents are downstream records and must never be treated
+as a pricing, tax, or shipping authority.
+
 ```
 1. Customer → checkout.ts → Create Stripe Checkout Session
 2. Stripe → webhooks.ts → Verify signature
@@ -116,6 +135,10 @@ src/pages/api/
 ## Order Schema - Critical Fields
 
 **File:** `fas-sanity/schemas/order.tsx` (⚠️ TSX file, contains React components)
+
+These fields represent a **persisted snapshot** of a Medusa order.
+They must exactly mirror Medusa output but must never be used to
+re‑compute prices, taxes, shipping, or payment state.
 
 ### Required Fields for Order Creation
 
@@ -193,19 +216,19 @@ src/pages/api/
 
 **⚠️ All Stripe amounts are in CENTS - divide by 100 before storing in Sanity**
 
-| Stripe Field                            | Sanity Field            | Transform          |
-| --------------------------------------- | ----------------------- | ------------------ |
-| `session.id`                            | `stripeSessionId`       | Direct             |
-| `session.payment_intent`                | `stripePaymentIntentId` | Direct (as string) |
+| Stripe Field                            | Sanity Field            | Transform            |
+| --------------------------------------- | ----------------------- | -------------------- |
+| `session.id`                            | `stripeSessionId`       | Direct               |
+| `session.payment_intent`                | `stripePaymentIntentId` | Direct (as string)   |
 | `session.payment_intent`                | `paymentIntentId`       | Alias (keep in sync) |
-| `session.amount_subtotal`               | `amountSubtotal`        | **÷ 100**          |
-| `session.amount_total`                  | `totalAmount`           | **÷ 100**          |
-| `session.total_details.amount_tax`      | `amountTax`             | **÷ 100**          |
-| `session.total_details.amount_shipping` | `amountShipping`        | **÷ 100**          |
-| `session.total_details.amount_discount` | `amountDiscount`        | **÷ 100**          |
-| `session.payment_status`                | `paymentStatus`         | Direct             |
-| `session.shipping_details.address`      | `shippingAddress`       | Object map         |
-| `session.customer_details.address`      | `billingAddress`        | Object map         |
+| `session.amount_subtotal`               | `amountSubtotal`        | **÷ 100**            |
+| `session.amount_total`                  | `totalAmount`           | **÷ 100**            |
+| `session.total_details.amount_tax`      | `amountTax`             | **÷ 100**            |
+| `session.total_details.amount_shipping` | `amountShipping`        | **÷ 100**            |
+| `session.total_details.amount_discount` | `amountDiscount`        | **÷ 100**            |
+| `session.payment_status`                | `paymentStatus`         | Direct               |
+| `session.shipping_details.address`      | `shippingAddress`       | Object map           |
+| `session.customer_details.address`      | `billingAddress`        | Object map           |
 
 ### Canonical Fields (Duplicates)
 
@@ -443,7 +466,8 @@ stripe listen --forward-to localhost:4321/api/webhooks
 
 ## Remember
 
-- **Schema is king** 👑 - Everything flows from Sanity schemas
+- Medusa is king 👑 — commerce truth lives there
+- Sanity stores content and historical records only
 - **Minimal changes** 🎯 - Don't over-engineer or refactor unnecessarily
 - **Test thoroughly** ✅ - Especially order creation and totals
 - **When in doubt, ask** 💬 - Clarify before making assumptions

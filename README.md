@@ -4,6 +4,18 @@
 
 ## About
 
+> ⚠️ Architecture Note (Project-Specific)
+>
+> This repository originated from a Shopify-focused Sanity Studio template.
+>
+> In the current FAS Motorsports architecture:
+>
+> - **Medusa** is the source of truth for products, variants, pricing, inventory, cart, checkout, and shipping
+> - **Sanity** is used for content, media, SEO, and editorial extensions only
+> - Shopify assumptions below are legacy template context and do not reflect the active commerce stack
+>
+> The documentation below is retained for reference but should be read with this context in mind.
+
 This Sanity Studio is configured for headless Shopify projects that use the official [Sanity Connect app][sanity-shopify], allowing you to extend Shopify products and collections with your own rich editorial content.
 
 It contains examples of customizing your [structure][docs-structure], [document actions][docs-document-actions] and [input components][docs-input-components].

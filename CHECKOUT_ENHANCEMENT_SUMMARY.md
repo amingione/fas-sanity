@@ -1,253 +1,87 @@
-# Stripe Checkout Session Enhancement - Implementation Summary
+# Copilot Instructions for fas-cms-fresh
 
-## Overview
-This document summarizes the changes made to fix the Stripe checkout configuration issues identified in the problem statement.
+## 🚨 Architecture Authority Notice
 
-## Problem Statement Summary
-1. **CheckoutSession documents were not being created properly** - Missing customer info, cart data, and attribution
-2. **Two separate document types with overlapping purpose** - checkoutSession and abandonedCheckout not properly linked
-3. **StripeWebhookEvent vs StripeWebhook confusion** - One had empty data, the other was working correctly
-4. **Need to track checkout funnel** - From session creation → completion/abandonment
+This project follows a **Medusa-first commerce architecture**.
 
-## Solutions Implemented
+- **Medusa** is the single source of truth for all commerce data and logic:
+  products, variants, pricing, inventory, cart, checkout, orders, shipping.
+- **Sanity** is content-only: descriptions, images, SEO, marketing copy.
+- **Stripe and Shippo are accessed exclusively via Medusa.**
+- **fas-cms-fresh is UI + API consumer only.**
 
-### 1. Enhanced CheckoutSession Creation (Priority 1)
-**File:** `netlify/functions/createCheckoutSession.ts`
+If any instruction, comment, or legacy code path conflicts with this rule,  
+**this notice overrides it.**
 
-**Changes:**
-- Extract additional fields from payload:
-  - `customerName` - Customer name if provided
-  - `customerPhone` - Customer phone if provided
-  - `attribution` - UTM parameters, referrer, device, browser, OS, etc.
-  
-- Update checkoutSession document on creation to include:
-  - All customer information available
-  - Full cart data (already present, no change)
-  - Attribution data for marketing analysis
-  - Session metadata for debugging
-  - Stripe checkout URL for recovery
+## 🏗️ Architecture Overview
 
-**Impact:**
-- ✅ Every checkout session now captures complete customer and attribution data from the start
-- ✅ Marketing team can track conversion funnel from first touch
-- ✅ Abandoned cart recovery has complete customer contact information
+### Source of Truth by Responsibility
 
-### 2. Update CheckoutSession on Completion (Priority 2a)
-**File:** `netlify/functions/stripeWebhook.ts`
+| Concern                                | System              |
+| -------------------------------------- | ------------------- |
+| Products, variants, pricing, inventory | Medusa              |
+| Cart, checkout, orders, shipping       | Medusa              |
+| Payments                               | Stripe (via Medusa) |
+| Shipping labels & live rates           | Shippo (via Medusa) |
+| Content, images, SEO, marketing pages  | Sanity              |
+| Storefront UI                          | fas-cms-fresh       |
 
-**Changes:**
-- Added `updateCheckoutSessionOnComplete()` function (lines 2557-2653)
-  - Updates status from 'open' → 'complete'
-  - Adds final customer details from Stripe session
-  - Adds shipping details (address, selected rate)
-  - Adds shipping cost information
-  - Adds final amount details (total, subtotal, tax, shipping)
-  - Marks session as recovered
-  
-- Updated `checkout.session.completed` handler (line 8408)
-  - Now calls `updateCheckoutSessionOnComplete()` after order creation
-  - Maintains backward compatibility with existing flow
+### Required Data Flow
 
-**Impact:**
-- ✅ Complete checkout sessions now have full lifecycle data
-- ✅ Can track which shipping options customers selected
-- ✅ Can analyze final vs estimated amounts
+Sanity (content only)  
+→ Medusa (commerce engine)  
+→ fas-cms-fresh (UI)  
+→ Medusa checkout  
+→ Stripe payment  
+→ Shippo shipping
 
-### 3. Enhanced Expired Session Handling (Priority 2b & 4)
-**File:** `netlify/functions/handlers/checkoutSessionExpired.ts`
+## In-Flight Systems (Open for Changes)
 
-**Changes:**
-- Enhanced data fetching to include cart, amounts, and attribution
-- Update checkoutSession with customer details if not already present
-- **Create abandonedCheckout document** when:
-  - Cart has items
-  - Customer email is available OR cart has value
-  
-- AbandonedCheckout includes:
-  - Complete cart data
-  - Cart summary (human-readable)
-  - Customer contact information
-  - Session metadata (device, browser, referrer)
-  - Timestamps for created/expired
-  - Recovery status tracking
+- `src/pages/api/medusa/*`: Active integration layer with Medusa backend.
+- `src/pages/api/stripe/*`: **LEGACY – DO NOT EXTEND**. Stripe is accessed only through Medusa now.
+- `src/pages/api/shipping/*`: **LEGACY – DO NOT EXTEND**. Shippo is accessed only through Medusa now.
 
-**Impact:**
-- ✅ Abandoned cart emails can now be sent (has email addresses)
-- ✅ Can track abandoned cart value
-- ✅ Can analyze which products are frequently abandoned
-- ✅ Recovery workflows can be implemented
+> Note: Any references to “Sanity order schema” or “Sanity checkout logic” are deprecated and must not be expanded or maintained. All commerce logic and state belong to Medusa.
 
-### 4. Documented Webhook Event Types (Priority 3)
-**Files:** 
-- `packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts`
-- `packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts`
+## Protected Areas
 
-**Changes:**
-- Added deprecation notice to `stripeWebhookEvent` schema
-- Clarified that `stripeWebhookEvent` is only for processing tracking
-- Documented that `stripeWebhook` is the primary event store with complete data
-- Explained why certain fields in `stripeWebhookEvent` remain null (by design)
+### Backend & Logic
 
-**Impact:**
-- ✅ Clear documentation prevents confusion
-- ✅ Developers know which type to use for what purpose
-- ✅ No breaking changes to existing code
+- Any logic that computes prices, shipping, taxes, or order state outside Medusa
 
-## Data Flow After Changes
+- Order validation and state transitions must only be handled by Medusa.
 
-### Successful Checkout Flow
-```
-1. Frontend → createCheckoutSession
-   ├─ Creates Stripe session
-   └─ Creates checkoutSession document with:
-      ├─ Customer info (email, name, phone)
-      ├─ Cart data
-      ├─ Attribution data
-      └─ Status: 'open'
+### Frontend
 
-2. Customer completes payment → Stripe webhook
-   ├─ checkout.session.completed event received
-   ├─ Order created (existing logic)
-   ├─ checkoutSession updated with:
-   │  ├─ Status: 'complete'
-   │  ├─ Final customer details
-   │  ├─ Shipping details & cost
-   │  └─ Final amounts
-   └─ Cart marked as recovered
-```
+- Direct calls to Stripe or Shippo APIs are prohibited; always use Medusa APIs.
+- Commerce data mutations must go through Medusa endpoints.
 
-### Abandoned Checkout Flow
-```
-1. Frontend → createCheckoutSession
-   ├─ Creates Stripe session
-   └─ Creates checkoutSession document with:
-      ├─ Customer info (email, name, phone)
-      ├─ Cart data
-      ├─ Attribution data
-      └─ Status: 'open'
+## Governance & Safety Rules
 
-2. 24 hours pass → Stripe webhook
-   ├─ checkout.session.expired event received
-   ├─ checkoutSession updated:
-   │  ├─ Status: 'expired'
-   │  └─ Add any missing customer details
-   └─ abandonedCheckout created with:
-      ├─ Customer email (for recovery)
-      ├─ Complete cart data
-      ├─ Cart summary
-      ├─ Session metadata
-      └─ Timestamps
-```
+- Medusa is authoritative for all commerce data and validation
+- Sanity is authoritative for content only
+
+- No split-commerce logic is allowed; all pricing, inventory, and order state must come from Medusa.
+
+- Legacy code paths that bypass Medusa must be removed or isolated and not extended.
 
 ## Testing & Validation
 
-### Manual Validation Script
-Created `scripts/test-checkout-session-enhancement.ts` to validate:
-- CheckoutSession documents have required fields
-- Customer information is captured
-- Cart data is present
-- Attribution data is included
-- AbandonedCheckout documents are created for expired sessions
+- Use the existing test suites under `tests/` to ensure compliance with Medusa-first architecture.
 
-### Existing Tests
-- `netlify/functions/__tests__/stripeWebhookExpired.test.ts` - Still passes
-  - Validates checkout.session.expired doesn't create orders
-  - Validates cart data is recorded
-  - Compatible with new abandonedCheckout creation
+- Validate that no direct commerce mutations occur outside Medusa integration layers.
 
-## Expected Outcomes (from Problem Statement)
+## Workflows & Automation
 
-All issues from the problem statement have been addressed:
+- CI workflows verify that no new legacy Stripe or shipping API usage is introduced.
 
-✅ **Issue 1: CheckoutSession not created properly**
-- NOW: Created immediately with complete data
-- BEFORE: Created with minimal data, missing customer info
+- Pull requests touching commerce logic require explicit approval from Medusa architecture leads.
 
-✅ **Issue 2: Two document types disconnected**
-- NOW: checkoutSession → abandonedCheckout on expiration with all data
-- BEFORE: Disconnected, missing data
+## Directory Structure & Responsibilities
 
-✅ **Issue 3: StripeWebhookEvent confusion**
-- NOW: Documented as processing log only
-- BEFORE: Unclear purpose, appeared broken
-
-✅ **Issue 4: Can't track checkout funnel**
-- NOW: Complete tracking from creation → completion/abandonment
-- BEFORE: Missing lifecycle data
-
-## Benefits Achieved
-
-1. **Abandoned Cart Recovery**
-   - ✅ Email addresses captured for expired sessions
-   - ✅ Cart contents and value tracked
-   - ✅ Recovery emails can be implemented
-
-2. **Marketing Attribution**
-   - ✅ UTM parameters captured on session creation
-   - ✅ Can track conversion rates by source/medium/campaign
-   - ✅ Device and browser data for optimization
-
-3. **Analytics & Reporting**
-   - ✅ Complete checkout funnel metrics
-   - ✅ Abandonment rate by product
-   - ✅ Shipping option selection analysis
-   - ✅ Estimated vs actual amounts
-
-4. **Customer Support**
-   - ✅ Full session history for support tickets
-   - ✅ Recovery URLs for helping customers complete checkout
-   - ✅ Complete data for refund/dispute resolution
-
-## Migration Notes
-
-### Backward Compatibility
-All changes are **backward compatible**:
-- Existing checkoutSession documents continue to work
-- New fields are optional (undefined if not present)
-- Existing webhooks continue to process correctly
-- No changes to order creation flow
-
-### Future Sessions
-New checkout sessions created after deployment will have:
-- Complete customer information (if provided by frontend)
-- Attribution data (if provided by frontend)
-- Metadata for debugging
-- Enhanced tracking on completion/expiration
-
-### No Data Migration Required
-- Existing documents don't need updating
-- New fields will populate naturally as new sessions are created
-- Old expired sessions won't retroactively create abandonedCheckout
-
-## Files Changed
-
-1. `netlify/functions/createCheckoutSession.ts` - Enhanced session creation
-2. `netlify/functions/stripeWebhook.ts` - Added completion update handler
-3. `netlify/functions/handlers/checkoutSessionExpired.ts` - Enhanced expiration handling
-4. `packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts` - Documentation
-5. `packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts` - Documentation
-6. `scripts/test-checkout-session-enhancement.ts` - Validation script (new)
-
-## Next Steps (Recommended)
-
-1. **Deploy to Production**
-   - Changes are minimal and backward compatible
-   - No migration required
-
-2. **Update Frontend**
-   - Pass attribution data to createCheckoutSession API
-   - Include customerName and customerPhone if collected
-
-3. **Implement Recovery Emails**
-   - Use abandonedCheckout documents to send recovery emails
-   - Link to stripeCheckoutUrl for easy recovery
-
-4. **Setup Analytics Dashboards**
-   - Track conversion rates by attribution source
-   - Monitor abandonment rates
-   - Analyze shipping option selection
-
-5. **Monitor & Optimize**
-   - Review checkoutSession data quality
-   - Adjust attribution tracking as needed
-   - Iterate on recovery email timing/content
+- `src/pages/api/medusa/*`: Medusa API proxy and integration endpoints.
+- `src/pages/api/stripe/*`: Legacy Stripe endpoints, read-only, no new features.
+- `src/pages/api/shipping/*`: Legacy shipping endpoints, read-only, no new features.
+- `src/components/*`: React components consuming Medusa and Sanity data.
+- `src/lib/*`: Utility functions, API clients for Medusa and Sanity.
+- `src/sanity/*`: Content schemas and queries; no commerce logic allowed.

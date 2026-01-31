@@ -1,6 +1,28 @@
 # AI Development Guidelines
 
+## 🚨 Architecture Authority Notice
+
+This repository follows a **Medusa-first commerce architecture**.
+
+- **Medusa** is the single source of truth for all commerce data (products, variants, pricing, inventory, cart, checkout, orders, shipping).
+- **Sanity** is content-only (descriptions, images, SEO, marketing content).
+- **Sanity must NEVER implement or duplicate commerce logic.**
+
+If any UI, schema, or code guidance conflicts with this rule, this notice overrides it.
+
 ## UI Development Standards
+
+### Scope Clarification (Important)
+
+The UI standards in this document apply **only to Sanity Studio UI** (admin/editor interfaces).
+
+They do NOT apply to:
+
+- Storefront UI (fas-cms-fresh)
+- Checkout, cart, pricing, or shipping logic
+- Any Medusa-owned commerce behavior
+
+UI consistency must never introduce or imply commerce responsibility inside Sanity.
 
 All UI development in this repository must follow the Sanity UI Enforcement Policy.
 
@@ -114,3 +136,11 @@ Add any other coding standards, architecture decisions, or process notes here as
 
 Refer to the docs/ai-governance/PROD_IDENTIFICATION_RULES.md for:
 | SKU | MPN |
+
+### Commerce Boundaries (Non-Negotiable)
+
+- Sanity schemas must not contain prices, inventory counts, shipping rules, cart state, or order lifecycle logic.
+- Any field that mirrors Medusa commerce data must be explicitly labeled as **read-only**, **derived**, or **content-only**.
+- If a feature requires pricing, checkout, inventory, or shipping decisions, it belongs in **Medusa**, not Sanity.
+
+If unsure, stop and ask before adding fields or logic.
