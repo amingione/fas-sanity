@@ -1539,24 +1539,24 @@ COOKIE_SECRET=...                                 # Medusa-specific
 
 #### DATABASE & INFRASTRUCTURE (18 Variables)
 
-bash
-
-```bash
 DATABASE_URL=postgres://medusa:medusa@localhost:5432/medusa
 DB_NAME=medusa-v2
 REDIS_URL=redis://localhost:6379
 
 # AWS
+
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-east-2
 AWS_SECRETS_MANAGER_SECRET_IDS=...
 
 # Netlify
+
 NETLIFY_AUTH_TOKEN=...
 NETLIFY_SITE_ID=5e03aa15-d491-4b76-81f6-085e11678e9f
 NETLIFY_BASE_URL=...
-```
+
+````
 
 ---
 
@@ -1573,7 +1573,7 @@ SITE_URL=https://fasmotorsports.com
 ENABLE_SANITY=true
 CORS_ALLOW=...                                    # Comma-separated origins
 SHIPPING_PROVIDER=shippo                          # or easypost
-```
+````
 
 ---
 
