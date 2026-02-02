@@ -251,6 +251,7 @@ export async function handleStripeCheckoutComplete(
     labelPurchased: false,
     confirmationEmailSent: false,
     webhookNotified: true,
+    stripeShippingRateId: shippingRateId || undefined,
     stripeSummary: buildStripeSummary(session),
   }
 
