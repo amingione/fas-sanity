@@ -46,7 +46,7 @@ const isMedusaBacked = (document?: Record<string, any> | null): boolean => {
   if (!document) return false
   return Boolean(
     (typeof document.medusaProductId === 'string' && document.medusaProductId.trim()) ||
-      (typeof document.medusaVariantId === 'string' && document.medusaVariantId.trim()),
+    (typeof document.medusaVariantId === 'string' && document.medusaVariantId.trim()),
   )
 }
 
@@ -352,8 +352,18 @@ const product = defineType({
       type: 'number',
       readOnly: ({document}) => isMedusaBacked(document),
       description:
-        'Legacy pricing field. Medusa is authoritative for pricing; when linked to Medusa this becomes read-only and should be edited in Medusa.',
-      validation: (Rule) => Rule.required().min(0),
+        'Legacy pricing field. Medusa is authoritative for pricing; when linked to Medusa this becomes read-only and should be edited in Medusa. Enter dollars (e.g., 21.00 for $21.00), not cents.',
+      validation: (Rule) =>
+        Rule.required()
+          .min(0)
+          .custom((value) => {
+            if (typeof value !== 'number') return true
+            if (value >= 1000 && value % 100 === 0) {
+              return 'Price looks like cents. Enter dollars (e.g., 21.00 for $21.00).'
+            }
+            return true
+          })
+          .warning(),
       group: 'basic',
     }),
     defineField({
