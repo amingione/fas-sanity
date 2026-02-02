@@ -51,6 +51,101 @@ vi.mock('../../../utils/functionLogger', () => ({
   logFunctionExecution: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../../lib/stripeEnv', () => ({
+  resolveStripeSecretKey: vi.fn().mockReturnValue('sk_test_123'),
+  STRIPE_SECRET_ENV_KEY: 'STRIPE_SECRET_KEY',
+}))
+
+vi.mock('../../shared/resendEnv', () => ({
+  resolveResendApiKey: vi.fn().mockReturnValue('re_test'),
+}))
+
+vi.mock('../../lib/stripeConfig', () => ({
+  STRIPE_API_VERSION: '2024-11-20',
+}))
+
+vi.mock('../../lib/packingSlip', () => ({
+  generatePackingSlipAsset: vi.fn().mockResolvedValue({
+    _type: 'file',
+    asset: {_ref: 'file-123'},
+  }),
+}))
+
+vi.mock('../../lib/cartEnrichment', () => ({
+  enrichCartItemsFromSanity: vi.fn().mockImplementation(async (items: any, _client: any, opts: any) => {
+    if (opts?.onProducts) opts.onProducts([])
+    return items
+  }),
+  computeShippingMetrics: vi.fn().mockReturnValue({}),
+  fetchProductsForCart: vi.fn().mockResolvedValue([]),
+  findProductForItem: vi.fn().mockReturnValue(null),
+}))
+
+vi.mock('../../lib/stripeCartItem', () => ({
+  mapStripeLineItem: vi.fn().mockReturnValue({
+    _type: 'orderCartItem',
+    _key: 'item-1',
+    name: 'Test Item',
+    quantity: 1,
+    price: 100,
+    total: 100,
+    sku: 'SKU_TEST',
+    productRef: {_type: 'reference', _ref: 'product_123'},
+    image: {_type: 'image', asset: {_ref: 'image-123'}},
+  }),
+  sanitizeOrderCartItem: vi.fn((item) => item),
+}))
+
+vi.mock('../../lib/customerSnapshot', () => ({
+  updateCustomerProfileForOrder: vi.fn(),
+}))
+
+vi.mock('../../lib/stripeShipping', () => ({
+  resolveStripeShippingDetails: vi.fn().mockResolvedValue({}),
+}))
+
+vi.mock('../../lib/customerSegments', () => ({
+  CUSTOMER_METRICS_QUERY: 'some_query',
+  buildCustomerMetricsPatch: vi.fn(),
+  metricsChanged: vi.fn().mockReturnValue(false),
+}))
+
+vi.mock('../../lib/customerDiscounts', () => ({
+  hydrateDiscountResources: vi.fn(),
+  removeCustomerDiscountRecord: vi.fn(),
+  syncCustomerDiscountRecord: vi.fn(),
+}))
+
+vi.mock('../../lib/attribution', () => ({
+  buildAttributionDocument: vi.fn(),
+  extractAttributionFromMetadata: vi.fn(),
+  hasAttributionData: vi.fn().mockReturnValue(false),
+}))
+
+vi.mock('../../shared/inventory', () => ({
+  reserveInventoryForItems: vi.fn(),
+}))
+
+vi.mock('../../lib/fulfillmentFromMetadata', () => ({
+  applyShippingDetailsToDoc: vi.fn(),
+  deriveFulfillmentFromMetadata: vi.fn(),
+}))
+
+vi.mock('../../lib/abandonedCheckouts', () => ({
+  markAbandonedCheckoutRecovered: vi.fn(),
+}))
+
+vi.mock('../../lib/emailIdempotency', () => ({
+  markEmailLogFailed: vi.fn(),
+  markEmailLogSent: vi.fn(),
+  reserveEmailLog: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../../lib/stripeCoupons', () => ({
+  markStripeCouponDeleted: vi.fn(),
+  syncStripeCouponById: vi.fn(),
+}))
+
 // Mock Stripe module
 vi.mock('stripe', () => {
   const MockStripe = vi.fn().mockImplementation(() => ({
@@ -96,7 +191,7 @@ vi.mock('stripe', () => {
           metadata: {cart_id: 'cart_123'},
           client_reference_id: 'cart_123',
         }),
-        listLineItems: vi.fn().mockResolvedValue({data: []}),
+        listLineItems: vi.fn().mockResolvedValue({data: [{id: 'li_test_123'}]}),
       },
     },
     paymentIntents: {
@@ -176,13 +271,35 @@ describe('stripeWebhook checkout.session.completed', () => {
   it('updates checkoutSession with final details on completion', async () => {
     vi.resetModules()
     
-    // Mock fetch responses for different queries
-    fetchMock
-      .mockResolvedValueOnce(null) // No existing order
-      .mockResolvedValueOnce({_id: 'customer_123', email: 'customer@example.com'}) // Customer lookup
-      .mockResolvedValueOnce({_id: 'cart_123', status: 'open'}) // CheckoutSession lookup
-      .mockResolvedValueOnce(null) // Product table
-      .mockResolvedValue({_id: 'cart_123', status: 'open'}) // Default for other calls
+    fetchMock.mockImplementation(async (query: string) => {
+      if (query.startsWith('count(')) return 0
+      if (query.includes('*[_type == "customer"')) {
+        return {_id: 'customer_123', email: 'customer@example.com'}
+      }
+      if (query.includes('*[_type == "checkoutSession"')) {
+        return {
+          _id: 'cart_123',
+          status: 'open',
+          customerEmail: 'customer@example.com',
+          customerName: 'Test Customer',
+          cart: [
+            {
+              _type: 'orderCartItem',
+              _key: 'item-1',
+              name: 'Test Item',
+              quantity: 1,
+              price: 100,
+              total: 100,
+              sku: 'SKU_TEST',
+              productRef: {_type: 'reference', _ref: 'product_123'},
+              image: {_type: 'image', asset: {_ref: 'image-123'}},
+            },
+          ],
+        }
+      }
+      if (query.includes('*[_id == "productTable"')) return null
+      return null
+    })
 
     const {handler} = await import('../stripeWebhook')
 
