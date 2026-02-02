@@ -75,7 +75,7 @@
 
 [[redirects]]
   from = "/webhooks/shippo"
-  to = "/.netlify/functions/shippoWebhook"
+  to = "/.netlify/functions/shippo-webhook"
   status = 200
   force = true
 
