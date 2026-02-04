@@ -1,7 +1,7 @@
 # AI Governance & Enforcement Workflow
 
 This document defines the **authoritative, repeatable workflow** for using AI
-(Gemini, Claude, Codex) across the fas-sanity and fas-cms-fresh repositories.
+(Gemini, Claude, Codex) across the fas-sanity, fas-medusa, and fas-cms-fresh repositories.
 
 This workflow is mandatory for any cross-repo change, schema decision,
 integration refactor, or Studio UX change.

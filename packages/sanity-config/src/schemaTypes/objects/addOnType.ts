@@ -38,6 +38,55 @@ export const addOnType = defineType({
       title: 'Pre-selected by Default?',
       initialValue: false,
     }),
+    // Medusa Sync Metadata (read-only)
+    defineField({
+      name: 'medusaOptionId',
+      type: 'string',
+      title: 'Medusa Option ID',
+      description: 'Synced from Medusa product option',
+      readOnly: true,
+      hidden: ({parent}) => !parent?.medusaOptionId,
+    }),
+    defineField({
+      name: 'medusaOptionValueId',
+      type: 'string',
+      title: 'Medusa Option Value ID',
+      description: 'Synced from Medusa option value',
+      readOnly: true,
+      hidden: ({parent}) => !parent?.medusaOptionValueId,
+    }),
+    defineField({
+      name: 'syncedPriceCents',
+      type: 'number',
+      title: 'Synced Price (cents)',
+      description: 'Price delta synced to Medusa (in cents)',
+      readOnly: true,
+      hidden: ({parent}) => !parent?.syncedPriceCents,
+    }),
+    defineField({
+      name: 'lastSyncedAt',
+      type: 'datetime',
+      title: 'Last Synced',
+      description: 'When this addOn was last synced to Medusa',
+      readOnly: true,
+      hidden: ({parent}) => !parent?.lastSyncedAt,
+    }),
+    defineField({
+      name: 'syncStatus',
+      type: 'string',
+      title: 'Sync Status',
+      description: 'Current sync status with Medusa',
+      options: {
+        list: [
+          {title: 'Pending', value: 'pending'},
+          {title: 'Synced', value: 'synced'},
+          {title: 'Error', value: 'error'},
+        ],
+      },
+      initialValue: 'pending',
+      readOnly: true,
+      hidden: ({parent}) => !parent?.syncStatus || parent?.syncStatus === 'pending',
+    }),
   ],
   preview: {
     select: {
