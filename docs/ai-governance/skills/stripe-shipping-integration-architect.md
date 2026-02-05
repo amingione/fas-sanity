@@ -1,121 +1,182 @@
-CODEX TASK — ENFORCE & TEST STRIPE CHECKOUT + PARCELCRAFT DYNAMIC SHIPPING (AUTHORITATIVE, SINGLE SOURCE)
+CODEX TASK — ENFORCE & TEST STRIPE PAYMENT + SHIPPO SHIPPING (AUTHORITATIVE, SINGLE SOURCE)
 READ FIRST — NON-NEGOTIABLE
 You MUST follow and enforce: docs/ai-governance/skills/stripe-shipping-integration-architect.md
 
-This governed skill contract is the single source of truth for all Stripe, Legacy provider, EasyPost, checkout, and fulfillment behavior.
+This governed skill contract is the single source of truth for all Stripe, Shippo, checkout, and fulfillment behavior.
 If any requested change conflicts with the contract, STOP and request explicit approval. Silent substitutions are forbidden.
 
 OBJECTIVE
-Create a deterministic, regression-proof test + reference implementation that proves the storefront checkout flow works exactly as designed:
+Create a deterministic, regression-proof test + reference implementation that proves the checkout and shipping flow works exactly as designed:
 
-- Stripe Checkout is canonical for payment + checkout-time shipping selection
-- Legacy provider (Stripe app) injects live carrier rates inside Stripe Checkout
-- Storefront must NOT calculate, define, or override shipping options
-- No shipment creation or label purchase during checkout
-- EasyPost is used only in Sanity for manual post-checkout label creation/printing
-- Webhook must persist the customer-selected Stripe shipping rate details into Sanity
+- Medusa is the commerce engine (canonical system of record)
+- Stripe handles payment only via Medusa (via Stripe integration plugin)
+- Shippo provides live carrier shipping rates requested by Medusa via Shippo integration plugin
+- Storefront (fas-cms-fresh) must NOT calculate, define, or directly call shipping APIs
+- Sanity is content/metadata only—no transactional shipping data
+- No direct Stripe or Shippo calls from fas-cms-fresh or Sanity
+- Shipment creation and label purchase happen post-checkout via Medusa fulfillment APIs
 
 SCOPE (WHAT TO BUILD)
 You will add tests and fixtures only (no product logic redesign):
 
 Checkout API contract test
-Validates stripe.createCheckoutSession behavior end-to-end
+Validates Medusa checkout + Shippo integration behavior end-to-end
 Negative guard tests
-Prove forbidden behaviors cannot reappear
+Prove forbidden behaviors (direct API calls from storefront, transactional data in Sanity) cannot reappear
 Minimal reference payload
-Canonical example input for checkout
+Canonical example input for checkout from storefront
 Documentation note
-Brief explanation of guarantees (no duplication of governance rules)
+Brief explanation of architecture and guarantees
 REQUIRED FLOW (AUTHORITATIVE)
 The flow you must enforce and test is:
 
 Storefront (fas-cms-fresh)
 
-Normalized cart
-Customer info (name, email)
-Stripe Checkout collects shipping + billing address
-Customer selects ONE live Legacy provider-injected rate inside Stripe Checkout
-
-Server behavior
-
-Creates Stripe Checkout Session with:
-mode: 'payment'
-line_items from cart
-shipping_address_collection enabled
-NO shipping_options and NO shipping_rate_data (Legacy provider injects rates)
+Sends normalized cart + customer info to Medusa checkout API
 MUST NOT:
-Calculate shipping
-Define shipping options
-Create Stripe Shipping Rate objects
-Create invoices
+Call Stripe directly
+Call Shippo directly
+Calculate shipping rates or options
 Create shipments
-Buy labels
 
-Stripe Checkout
+Medusa (Commerce Engine)
 
-Displays live Legacy provider-injected shipping options after address entry
-Charges the customer-selected shipping cost as part of payment
+Receives checkout request with:
+cart items (product IDs, quantities, prices)
+customer info (name, email, address)
+Calls Shippo API plugin to fetch live shipping rates for customer address
+Creates Stripe Payment Intent via Stripe plugin:
+amount: subtotal + shipping cost
+currency: specified currency
+Accepts customer selection of shipping method before final payment
+Charges customer for product + selected shipping cost via Stripe
+On successful payment:
+Creates Order record
+Stores selected shippo_rate_id + carrier/service/cost metadata
+Does NOT immediately create shipment or purchase label
 
-Webhook
+Shippo (Shipping Provider)
 
-Retrieves the completed Checkout Session and expands shipping_cost.shipping_rate
-Persists order + selected shipping rate details into Sanity
-NO shipment creation and NO label purchase
+Returns live carrier rates in response to Medusa rate request
+Receives shipment creation requests from Medusa ONLY (post-checkout fulfillment)
+Generates tracking numbers and labels when requested
+
+Webhook (Medusa Fulfillment Flow)
+
+After payment completes and order is created in Medusa
+Operators or fulfillment system triggers shipment creation
+Medusa calls Shippo to create shipment + purchase label
+Shippo returns tracking number
+Medusa stores tracking number in Order
+
+Sanity (Content Layer)
+
+Stores product descriptions, images, SEO metadata
+NO order tracking, payment, shipping rate, or shipment data
+NO transactional logic
 TESTS TO IMPLEMENT (MANDATORY)
 
-1. Happy-path unit/integration test
+1. Happy-path integration test — Medusa checkout with Shippo rates
    Create a test that:
 
-Calls stripe.createCheckoutSession with a valid payload
+Sends checkout request to Medusa API with cart + customer address
 Asserts:
-Session created
-Checkout Session includes shipping_address_collection
-On webhook ingestion, shipping_cost.shipping_rate is retrieved/expanded
-Persisted order contains stripeShippingRateId + carrier/service/cost fields (if provided)
-No shipment_id, tracking_number, or ship_date exists pre-fulfillment 2) Guard test — NO manual shipping options
+Medusa calls Shippo API to fetch live shipping rates
+Shippo mock returns multiple carrier rate options
+Medusa includes shipping rates in checkout response
+Medusa creates Stripe Payment Intent with correct total (subtotal + shipping)
+Customer selects one shipping rate
+Medusa creates Order with shippo_rate_id + carrier/service/cost metadata
+No shipment is created during checkout
+No label is purchased during checkout 2) Guard test — NO direct Stripe calls from storefront
 Fail the test if:
 
-shipping_options is passed to stripe.checkout.sessions.create
-shipping_rate_data is passed to stripe.checkout.sessions.create
-stripe.shippingRates.create is called 3) Guard test — NO invoices
+fas-cms-fresh calls stripe.createPaymentIntent
+fas-cms-fresh calls stripe.createCheckoutSession
+fas-cms-fresh calls stripe.charges.create 3) Guard test — NO direct Shippo calls from storefront or Sanity
 Fail the test if:
 
-stripe.invoices.create is called
-Checkout session includes invoice_creation 4) Guard test — NO EasyPost during checkout
+fas-cms-fresh calls shippo.rates.create
+fas-cms-fresh calls shippo.parcels.create
+Sanity webhook calls Shippo API
+Any shipment creation happens during checkout phase 4) Guard test — NO shipping calculation in Sanity
 Fail the test if:
 
-Any EasyPost shipment, rate, or label API is invoked during checkout or webhook ingestion
-Any shipment_id metadata is present pre-fulfillment
+Sanity stores order cart items with pricing/weight/dimensions
+Sanity stores transactional shipping rate data
+Sanity modifies shipping selections
+Sanity calls fulfillment APIs
 CANONICAL INPUT PAYLOAD (REFERENCE)
 Use this as the golden example in tests and docs:
 
+Storefront sends to Medusa checkout:
 {
 "cartId": "cart_test_123",
-"customerEmail": "test@example.com",
-"cart": [
+"customer": {
+"email": "test@example.com",
+"firstName": "John",
+"lastName": "Doe",
+"phone": "+1234567890"
+},
+"shippingAddress": {
+"addressLine1": "123 Main St",
+"city": "Portland",
+"province": "OR",
+"postalCode": "97214",
+"countryCode": "US"
+},
+"cartItems": [
 {
-"productId": "sanity_product_1",
+"productId": "medusa_prod_123",
+"variantId": "medusa_variant_456",
 "title": "6\" Axel-Back Exhaust",
 "price": 899.99,
 "quantity": 1,
-"sku": "FAS-AXL-6"
+"weight": 15.5,
+"dimensions": {"length": 24, "width": 8, "height": 6}
 }
 ]
 }
+
+Medusa calls Shippo API:
+{
+"parcels": [{"length": 24, "width": 8, "height": 6, "weight": 15.5, "distanceUnit": "in", "massUnit": "lb"}],
+"addressTo": {"name": "John Doe", "street1": "123 Main St", "city": "Portland", "state": "OR", "zip": "97214", "country": "US"}
+}
+
+Medusa returns checkout with rates:
+{
+"shippingRates": [
+{"shippoRateId": "rate_123", "carrier": "UPS", "service": "Ground", "cost": 15.00, "estimatedDays": 5},
+{"shippoRateId": "rate_124", "carrier": "FedEx", "service": "2Day", "cost": 25.00, "estimatedDays": 2}
+],
+"paymentIntent": {"id": "pi_123", "amount": 939.99, "status": "requires_action"}
+}
 ACCEPTANCE CRITERIA (ALL REQUIRED)
 All tests pass
-Forbidden APIs are never called
-No manual shipping options (shipping_options/shipping_rate_data) exist
-No shipment or label is created during checkout
-Selected Stripe shipping rate is persisted into Sanity (stripeShippingRateId + carrier/service/cost when available)
+Medusa calls Shippo API and receives live carrier rates
+Stripe is called only from Medusa (never directly from fas-cms-fresh)
+Shippo is called only from Medusa (never from storefront or Sanity)
+Storefront sends normalized cart + address to Medusa (NO shipping calculations)
+Sanity stores content and order metadata ONLY (NO transactional shipping data, NO rates, NO shipment IDs pre-fulfillment)
+Selected shipping rate is stored in Medusa Order with shippo_rate_id + carrier/service/cost
+No shipment or label is created during checkout (shipment creation is post-checkout fulfillment only)
 Governance contract is respected exactly
 OUTPUT REQUIRED
-Files created/modified (tests, fixtures, minimal docs note)
+Files created/modified (Medusa tests, fixtures, minimal docs note)
 Test names and locations
-Confirmation that no runtime logic was redesigned
+Confirmation that storefront, Sanity, and Medusa responsibilities are enforced precisely
+Confirmation that Shippo is accessed only via Medusa
+Confirmation that Stripe is accessed only via Medusa
 Confirmation that governance rules were enforced verbatim
 FINAL INSTRUCTION
-Implement only what is required to enforce and test the approved architecture.
+Implement only what is required to enforce and test the approved Medusa + Stripe + Shippo architecture.
+
+Medusa is the single system of record for commerce (products, cart, orders, fulfillment).
+Stripe handles payment only—accessed via Medusa plugin.
+Shippo handles shipping rates and labels only—accessed via Medusa plugin.
+Sanity is content only—transactional data lives in Medusa only.
+fas-cms-fresh is UI only—no direct Stripe or Shippo calls.
 
 Do not redesign. Do not optimize. Do not “improve.”
 
