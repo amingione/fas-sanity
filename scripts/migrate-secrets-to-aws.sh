@@ -15,11 +15,6 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-echo "Loading .env into shell (non-exported values ignored)…"
-set -o allexport
-source "$ENV_FILE"
-set +o allexport
-
 echo "Parsing .env and building JSON payload…"
 
 SECRET_JSON=$(pnpm exec tsx scripts/serialize-secrets.ts "$ENV_FILE")
