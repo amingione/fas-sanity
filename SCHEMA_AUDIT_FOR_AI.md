@@ -130,7 +130,6 @@ export default {
 ```typescript
 {
   name: 'stripeCheckoutId',
-  description: 'Stripe Checkout Session ID. Auto-populated by webhook. DO NOT edit manually.',
 },
 {
   name: 'stripePaymentIntentId',  

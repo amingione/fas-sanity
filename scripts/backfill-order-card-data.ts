@@ -257,7 +257,7 @@ async function fetchCheckoutSession(
       ],
     })
   } catch (err) {
-    console.warn(`Failed to load checkout session ${normalized}`, err)
+    console.warn(`Failed to load session ${normalized}`, err)
     return null
   }
 }
@@ -338,7 +338,7 @@ async function processOrder(
   const {paymentIntent, session} = await loadStripeDetails(stripe, order)
   if (!paymentIntent && !session) {
     console.warn(
-      `Skipping ${describeOrder(order)} (unable to load payment intent or checkout session)`,
+      `Skipping ${describeOrder(order)} (unable to load payment intent or session)`,
     )
     return false
   }

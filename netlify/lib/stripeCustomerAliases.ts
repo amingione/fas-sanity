@@ -35,7 +35,7 @@ export function buildStripeCustomerAliasPatch(
     !existingAliases.includes(normalizedIncoming)
 
   if (didAppend) {
-    console.warn('stripeWebhook: customer stripe alias appended', {
+    console.warn('stripeSync: customer stripe alias appended', {
       customerEmail,
       existingPrimaryStripeId: existingPrimary || null,
       newStripeId: normalizedIncoming,

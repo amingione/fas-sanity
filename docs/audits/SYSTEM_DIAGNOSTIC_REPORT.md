@@ -43,7 +43,6 @@ Customer → Checkout → ??? (Missing Link) → ??? → Order Created
 
 The system is **architecturally fragmented** with THREE independent shipping implementations that do not communicate:
 
-1. **Stripe Checkout (fas-cms-fresh)**: Claims to use "EasyPost + Stripe Adaptive Pricing" but the webhook endpoint does not exist
 2. **EasyPost Integration (fas-sanity)**: Working `getShippingQuoteBySkus` endpoint that is not connected to checkout
 3. **Shippo Fulfillment (fas-medusa)**: Fully implemented fulfillment provider that is not used by checkout
 
@@ -65,7 +64,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 #### F2: Checkout Not Integrated with Medusa (MAJOR)
 - **File:** `src/pages/api/stripe/create-checkout-session.ts`
-- **Evidence:** No `medusaFetch` calls in checkout session creation (lines 1-1357)
 - **Impact:** Medusa shipping options never called during checkout
 - **Available But Unused:**
   - `/api/medusa/cart/shipping-options.ts` (exists, proxies to Medusa)
@@ -115,20 +113,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 - **Impact:** Functional shipping calculator exists but checkout doesn't call it
 - **Classification:** Contract mismatch - Endpoint exists, checkout ignores it
 
-#### S2: Disabled Stripe Webhook (INFORMATIONAL)
-- **File:** `netlify/functions/stripeShippingRateCalculation.ts`
-- **Status:** DISABLED (returns 410)
-- **Evidence:** Lines 37-41 return hardcoded error:
-  ```typescript
-  return {
-    statusCode: 410,
-    headers: {...CORS, 'Content-Type': 'application/json'},
-    body: JSON.stringify({error: 'Stripe shipping rate calculation is disabled in fas-sanity.'}),
-  }
-  ```
-- **Impact:** Intentionally disabled, likely replaced by `getShippingQuoteBySkus`
-- **Classification:** Expected - Deprecation in progress
-
 ---
 
 ## 3. Root Causes
@@ -137,8 +121,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 **Evidence:**
 1. **Old Pattern (Being Phased Out):**
-   - Stripe Adaptive Pricing webhook (`stripeShippingRateCalculation.ts` - DISABLED)
-   - Direct EasyPost calls from Stripe webhooks
    - Documented in IMPLEMENTATION_STATUS.md as "COMPLETE" but actually disabled
 
 2. **New Pattern (Partially Implemented):**
@@ -169,7 +151,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 ### RC3: Missing Integration Layer
 
-**Gap:** Checkout session creation → Shipping rate calculation
 
 **Available But Disconnected:**
 - Checkout creates session (fas-cms-fresh/create-checkout-session.ts)
@@ -187,7 +168,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 1. IMPLEMENTATION_STATUS.md claims webhook exists at `src/pages/api/stripe/shipping-rates-webhook.ts` (line 20) but file does not exist
 2. IMPLEMENTATION_STATUS.md claims "Status: READY FOR DEPLOYMENT" (line 328) but critical files missing
 3. shipping-architecture-lock.md describes fas-sanity ownership but checkout doesn't use it
-4. Deployment checklist shows "Stripe webhook configured in dashboard" unchecked (line 170)
 
 **Root Issue:** Documentation updated before implementation completed, or implementation changed after docs written.
 
@@ -197,7 +177,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 ### HB1: No Shipping Rate Calculation During Checkout
 
-**Problem:** Checkout session creation does not call ANY shipping rate endpoint.
 
 **Evidence:**
 - `create-checkout-session.ts` lines 1-1357: No calls to Medusa, Sanity, or EasyPost APIs
@@ -239,7 +218,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 ### HB3: Missing Cart Management (If Choosing Medusa Path)
 
-**Problem:** Stripe checkout does not create Medusa cart before session creation.
 
 **Evidence:**
 - `create-checkout-session.ts` receives cart items from request body
@@ -251,7 +229,7 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 2. Add items to cart via POST `/store/carts/{id}/line-items`
 3. Add shipping address via POST `/store/carts/{id}/shipping-address`
 4. THEN call shipping-options endpoint with cart_id
-5. THEN create Stripe session with calculated rates
+5. THEN create Stripe PaymentIntent using Medusa cart totals
 
 **Blocker Classification:** CRITICAL - Medusa path requires cart context
 
@@ -259,19 +237,13 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 ## 5. Non-Blocking Issues (Can Ship Without Fixing)
 
-### NB1: Disabled Sanity Webhook (stripeShippingRateCalculation.ts)
-
-**Status:** Already disabled (returns 410)
-**Impact:** None - Endpoint not in use
-**Action:** Remove file after confirming no external references
-
-### NB2: IMPLEMENTATION_STATUS.md Documentation Inaccuracy
+### NB1: IMPLEMENTATION_STATUS.md Documentation Inaccuracy
 
 **Status:** Documents non-existent webhook
 **Impact:** Confusion during development
 **Action:** Update or delete after choosing final architecture
 
-### NB3: Orphaned Medusa Proxy Endpoints
+### NB2: Orphaned Medusa Proxy Endpoints
 
 **Files:** `/api/medusa/cart/shipping-options.ts`, `/api/medusa/cart/select-shipping.ts`
 **Status:** Implemented but unused
@@ -340,7 +312,7 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 - Location: After receiving shipping options
 - Transform:
   ```typescript
-  const stripeShippingOptions = medusaShippingOptions.map(option => ({
+  const shippingOptions = medusaShippingOptions.map(option => ({
     shipping_rate_data: {
       type: 'fixed_amount',
       fixed_amount: {
@@ -363,7 +335,7 @@ The system is **architecturally fragmented** with THREE independent shipping imp
   ```typescript
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     // ... existing params
-    shipping_options: stripeShippingOptions,
+    shipping_options: shippingOptions,
     shipping_address_collection: {
       allowed_countries: ['US']
     }
@@ -381,7 +353,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
   ```
 
 **STEP 7: Update Order Webhook to Create Medusa Order**
-- File: `fas-sanity/src/pages/api/webhooks/stripe-order.ts`
 - After Sanity order creation, call Medusa to complete cart → order
 - Extract medusa_cart_id from session metadata
 - Call Medusa's `/store/carts/{id}/complete` endpoint
@@ -445,7 +416,7 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 **STEP 3: Convert EasyPost Rates to Stripe Format**
 - Transform response.rates array:
   ```typescript
-  const stripeShippingOptions = quoteData.rates.map(rate => ({
+  const shippingOptions = quoteData.rates.map(rate => ({
     shipping_rate_data: {
       type: 'fixed_amount',
       fixed_amount: {
@@ -483,7 +454,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
   ```
 
 **STEP 6: Extract Selected Rate in Webhook**
-- File: `fas-sanity/src/pages/api/webhooks/stripe-order.ts`
 - From `session.shipping_cost.shipping_rate`, extract metadata
 - Store in Sanity order document for label creation
 
@@ -499,7 +469,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 **Test Sequence:**
 1. Enter shipping address in pre-checkout form
 2. Verify rates fetched from fas-sanity
-3. Proceed to Stripe checkout
 4. Verify rates displayed
 5. Complete test payment
 6. Verify order in Sanity with easyPostShipmentId
@@ -549,7 +518,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 - ❌ EASYPOST_* vars - May be used by other functions
 - ❌ SHIPPO_* vars - Required for Medusa fulfillment
 - ❌ WAREHOUSE_* vars - May be used by multiple systems
-- ❌ STRIPE_SHIPPING_WEBHOOK_SECRET - Reserved for future use
 
 **Rationale:** These may have dependencies in code paths not analyzed in this audit.
 
@@ -597,18 +565,16 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 
 **Key Files Read (Complete Analysis):**
 
-1. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/src/pages/api/stripe/create-checkout-session.ts` (1357 lines)
-2. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/src/pages/api/medusa/cart/shipping-options.ts` (86 lines)
-3. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/src/pages/api/medusa/cart/select-shipping.ts` (45 lines)
-4. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/docs/reports/shipping-architecture-lock.md` (66 lines)
-5. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/.env.example` (100 lines)
-6. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/IMPLEMENTATION_STATUS.md` (335 lines)
-7. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/src/modules/fulfillment-shippo/index.ts` (9 lines)
-8. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/src/modules/fulfillment-shippo/service.ts` (488 lines)
-9. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/medusa-config.ts` (lines 27-30 analyzed)
-10. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/.env.template` (35 lines)
-11. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-sanity/netlify/functions/getShippingQuoteBySkus.ts` (807 lines)
-12. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-sanity/netlify/functions/stripeShippingRateCalculation.ts` (DISABLED, returns 410)
+1. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/src/pages/api/medusa/cart/shipping-options.ts` (86 lines)
+2. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/src/pages/api/medusa/cart/select-shipping.ts` (45 lines)
+3. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/docs/reports/shipping-architecture-lock.md` (66 lines)
+4. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/.env.example` (100 lines)
+5. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/IMPLEMENTATION_STATUS.md` (335 lines)
+6. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/src/modules/fulfillment-shippo/index.ts` (9 lines)
+7. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/src/modules/fulfillment-shippo/service.ts` (488 lines)
+8. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/medusa-config.ts` (lines 27-30 analyzed)
+9. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-medusa/.env.template` (35 lines)
+10. `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-sanity/netlify/functions/getShippingQuoteBySkus.ts` (807 lines)
 
 **Files Confirmed Missing:**
 - `/sessions/loving-inspiring-heisenberg/mnt/GitHub/fas-cms-fresh/src/pages/api/stripe/shipping-rates-webhook.ts` (DOES NOT EXIST)
@@ -621,7 +587,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 | **Runtime** | Node.js (Netlify) | Node.js | Node.js (Netlify) |
 | **Shipping Provider** | EasyPost (configured) | Shippo (implemented) | EasyPost (implemented) |
 | **Database** | None (stateless) | PostgreSQL | Sanity CMS |
-| **Payment** | Stripe Checkout | Stripe (via storefront) | Stripe Webhooks |
 | **Product Data** | Sanity (read) | Medusa DB (planned) | Sanity (source) |
 
 ### C. Environment Variable Cross-Reference
@@ -629,7 +594,6 @@ The system is **architecturally fragmented** with THREE independent shipping imp
 | Variable | fas-cms-fresh | fas-medusa | Purpose |
 |----------|---------------|------------|---------|
 | STRIPE_SECRET_KEY | ✅ Required | ✅ Required | Stripe API auth |
-| STRIPE_SHIPPING_WEBHOOK_SECRET | ✅ Defined | ✅ Defined | Webhook validation |
 | EASYPOST_API_KEY | ✅ Defined | ❌ Not used | EasyPost auth |
 | SHIPPO_API_KEY | ❌ Not used | ✅ Required | Shippo auth |
 | WAREHOUSE_* | ✅ Defined | ❌ Not used | EasyPost origin |
@@ -662,9 +626,7 @@ The system is architecturally sound but **integration incomplete**. Three separa
 
 1. **Medusa Shippo Provider:** Complete, production-ready (488 lines)
 2. **Sanity EasyPost Endpoint:** Complete, cached, working (807 lines)
-3. **Stripe Checkout Session:** Configured but not connected to either provider
 
-**Critical Gap:** Checkout session creation does not call ANY shipping rate calculation endpoint.
 
 **Minimum Fix:** Choose ONE path (Medusa recommended) and add 7 integration points (Section 6).
 

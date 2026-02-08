@@ -855,7 +855,6 @@ export default defineConfig({
 
 ### 2.4 Refactor syncStripeCustomer for Vendor Detection
 
-**File**: `fas-sanity/netlify/functions/stripeWebhook.ts`
 
 **Current Issue**: `syncStripeCustomer` doesn't check for vendor match
 

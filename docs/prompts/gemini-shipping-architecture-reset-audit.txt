@@ -13,7 +13,6 @@ Your sole responsibility is to OBSERVE, TRACE, and REPORT factual findings.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ISSUE:
-Shipping architecture reset — conflicting EasyPost, Legacy provider, and Stripe checkout logic causing AI governance contamination and unstable checkout assumptions.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -33,7 +32,6 @@ It is only the evaluation lens.
 • EasyPost is used to quote live shipping rates for online checkout.
 • Stripe Embedded Checkout collects shipping address.
 • Shipping address is NOT collected in cart UI.
-• Live shipping rates appear inside Stripe Checkout.
 • No automatic label purchasing occurs anywhere.
 • All label purchases are manual-only.
 • Legacy provider is NOT part of runtime checkout logic.

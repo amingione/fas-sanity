@@ -205,7 +205,7 @@ async function fetchPaymentIntent(order: OrderDoc, logger?: (message: string) =>
       }
     } catch (err) {
       logger?.(
-        `⚠️ Unable to load Checkout session ${order.stripeSessionId} (${order.orderNumber || order._id}): ${
+        `⚠️ Unable to load session ${order.stripeSessionId} (${order.orderNumber || order._id}): ${
           (err as any)?.message || err
         }`,
       )
@@ -224,7 +224,7 @@ async function fetchCheckoutSession(id: string, logger?: (message: string) => vo
   try {
     return await stripe.checkout.sessions.retrieve(id, {expand: ['payment_intent']})
   } catch (err) {
-    logger?.(`⚠️ Unable to load Checkout session ${id}: ${(err as any)?.message || err}`)
+    logger?.(`⚠️ Unable to load session ${id}: ${(err as any)?.message || err}`)
     return null
   }
 }
@@ -246,7 +246,7 @@ function resolveCheckoutExpirationDiagnostics(
       ? new Date(session.expires_at * 1000).toISOString()
       : null
 
-  let message = 'Checkout session expired before payment was completed.'
+  let message = 'session expired before payment was completed.'
   if (email) message = `${message} Customer: ${email}.`
   if (expiresAt) message = `${message} Expired at ${expiresAt}.`
   message = `${message} (session ${session.id})`
@@ -494,7 +494,7 @@ async function processOrder(
   } else if (order.stripeSessionId) {
     session = await fetchCheckoutSession(order.stripeSessionId, logger)
     if (!session) {
-      logger?.('   • Skipped (checkout session not found)')
+      logger?.('   • Skipped (session not found)')
       return {changed: false, skippedReason: 'session_not_found'}
     }
     const sessionResult = resolveCheckoutExpirationDiagnostics(session)

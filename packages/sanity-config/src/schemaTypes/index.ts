@@ -245,7 +245,6 @@ import paymentLink from './documents/paymentLink'
 import createLabel from './documents/createLabel'
 import senderAddress from './documents/senderAddress'
 import invoice from './documents/invoice'
-import stripeWebhook from './documents/stripeWebhook'
 import stripeCoupon from './documents/stripeCoupon'
 import functionLog from './documents/functionLog'
 import vendor from './documents/vendor'
@@ -266,7 +265,6 @@ import {checkType} from './documents/check'
 import expense from './documents/expense'
 import profitLoss from './documents/profitLoss'
 import cashFlow from './documents/cashFlow'
-import stripeWebhookEvent from './documents/stripeWebhookEvent'
 import emailCampaign from './documents/emailCampaign'
 import emailTemplate from './documents/emailTemplate'
 import emailAutomation from './documents/emailAutomation'
@@ -312,7 +310,6 @@ const documents = [
   paymentLink,
   invoice,
   stripeCoupon,
-  stripeWebhook,
   functionLog,
   logDrain,
   vendorApplication,
@@ -362,7 +359,6 @@ const documents = [
   expense,
   profitLoss,
   cashFlow,
-  stripeWebhookEvent,
   emailCampaign,
   emailTemplate,
   emailAutomation,

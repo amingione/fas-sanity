@@ -15,46 +15,25 @@ Suggested guard configuration (JSON):
 ```json
 {
   "ruleId": "stripe-legacy provider-shipping",
-  "description": "Control where Stripe Checkout + Legacy provider shipping metadata can be written vs. only read for legacy/backfill.",
   "enforced": true,
   "allowedWriteSurfaces": [
-    {
-      "path": "netlify/functions/createCheckoutSession.ts",
-      "reason": "Primary Stripe Checkout + Legacy provider shipping configuration for fas-cms-fresh storefront carts."
-    },
     {
       "path": "netlify/functions/getShippingQuoteBySkus.ts",
       "reason": "Computes shipping packages and Legacy provider-compatible metadata for fas-cms-fresh; EasyPost used only behind fas-sanity backend."
     },
     {
-      "path": "netlify/functions/createCheckout.ts",
-      "reason": "Invoice-style Stripe Checkout creation (no shipping options; invoice metadata only)."
-    },
-    {
       "path": "netlify/functions/resendInvoiceEmail.ts",
-      "reason": "Ensures/rehydrates invoice Stripe Checkout URLs; does not configure shipping itself."
     }
   ],
   "legacyReadOnlySurfaces": [
     {
-      "path": "netlify/lib/fulfillmentFromMetadata.ts",
-      "reason": "Reads legacy Legacy provider and EasyPost keys to derive unified fulfillment; no new Legacy provider metadata is written."
-    },
-    {
-      "path": "netlify/lib/stripeShipping.ts",
-      "reason": "Maps Stripe shipping metadata into Sanity documents; no new Stripe metadata is authored."
-    },
-    {
-      "path": "netlify/functions/stripeWebhook.ts",
       "reason": "Consumes Stripe/Legacy provider/EasyPost metadata to create/update orders after checkout; does not originate shipping config."
     },
     {
-      "path": "src/pages/api/webhooks/stripe-order.ts",
       "reason": "Reads Stripe shipping metadata to derive order fields; read-only consumption."
     },
     {
       "path": "netlify/functions/backfillOrders.ts",
-      "reason": "Reads Stripe Checkout shipping details for historical sessions (backfill only)."
     }
   ],
   "ignoredForThisRule": [

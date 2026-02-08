@@ -97,8 +97,6 @@ Vendors that are also Stripe customers are currently duplicated across the syste
   4. Update `vendor.customerRef` to canonical customer
 
 **Affected Functions:**
-- `netlify/functions/stripeWebhook.ts:syncStripeCustomer`
-- `netlify/functions/stripeWebhook.ts:strictFindOrCreateCustomer`
 
 ### 6. Roles 🏷️
 
@@ -135,7 +133,6 @@ Vendors that are also Stripe customers are currently duplicated across the syste
 
 **NON-BREAKING CONSTRAINTS:**
 - MUST NOT alter existing Stripe customer sync flow for non-vendors
-- MUST NOT change Stripe webhook signature verification
 - MUST NOT modify completed order documents
 
 ## Implementation Requirements
@@ -144,7 +141,6 @@ Vendors that are also Stripe customers are currently duplicated across the syste
 
 #### 1. Unify Sync Logic
 
-**File:** `netlify/functions/stripeWebhook.ts`
 
 **Action:** Replace `syncStripeCustomer` with vendor-aware logic
 
@@ -341,13 +337,11 @@ Before marking implementation complete, verify:
 - [ ] `vendor.customerRef` is never set manually (readOnly enforced)
 - [ ] Email matching is case-insensitive
 - [ ] Existing completed orders are unaffected
-- [ ] Stripe webhook signature verification still works
 
 ## Testing Strategy
 
 ### Unit Tests
 
-**File:** `netlify/functions/stripeWebhook.test.ts` (create if missing)
 
 **Test Cases:**
 1. `resolveCustomerIdentity` with existing stripeCustomerId
@@ -362,9 +356,6 @@ Before marking implementation complete, verify:
 ### Integration Tests
 
 **Scenarios:**
-1. Stripe webhook `customer.created` for new vendor email → creates customer, links vendor
-2. Stripe webhook `customer.updated` for existing vendor → updates customer, preserves link
-3. Stripe webhook `checkout.session.completed` for vendor → reuses existing customer
 4. Manual vendor creation in Studio → does NOT auto-create customer (webhook-driven only)
 5. Duplicate customer detection → merges and archives duplicate
 
@@ -383,7 +374,6 @@ Before marking implementation complete, verify:
 3. Implement `linkVendorToCustomer` function
 4. Update `customer.created` and `customer.updated` handlers
 5. Deploy webhook function
-6. Monitor Stripe webhook logs for errors
 
 ### Phase 3: Reconciliation (Cleanup)
 
@@ -421,7 +411,6 @@ Implementation is successful when:
 - **Audit Report:** [docs/reports/vendor-customer-stripe-audit.md](../reports/vendor-customer-stripe-audit.md)
 - **Vendor Schema:** [packages/sanity-config/src/schemaTypes/documents/vendor.ts](../../packages/sanity-config/src/schemaTypes/documents/vendor.ts)
 - **Customer Schema:** [packages/sanity-config/src/schemaTypes/documents/customer.ts](../../packages/sanity-config/src/schemaTypes/documents/customer.ts)
-- **Webhook Handler:** [netlify/functions/stripeWebhook.ts](../../netlify/functions/stripeWebhook.ts)
 
 ## Approval
 

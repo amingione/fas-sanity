@@ -238,7 +238,7 @@ const StripeAnalyticsDashboard = forwardRef<HTMLDivElement>((_props, ref) => {
           <header style={styles.panelHeader}>
             <div>
               <p style={styles.panelLabel}>Top products</p>
-              <p style={styles.cardHelper}>Based on checkout sessions</p>
+              <p style={styles.cardHelper}>Based on payment intents</p>
             </div>
           </header>
           {topProducts.length ? (

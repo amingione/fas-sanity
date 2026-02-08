@@ -141,7 +141,7 @@ export default React.forwardRef<HTMLDivElement, Record<string, never>>(
               title="Sanity"
               keys={['SANITY_STUDIO_PROJECT_ID', 'SANITY_STUDIO_DATASET', 'SANITY_API_TOKEN']}
             />
-            <Section title="Stripe" keys={['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']} />
+            <Section title="Stripe" keys={['STRIPE_SECRET_KEY']} />
             <Section title="Resend" keys={['RESEND_API_KEY', 'RESEND_FROM']} />
             <Section title="CORS" keys={['CORS_ALLOW']} />
             <Section title="Base URL" keys={['SANITY_STUDIO_NETLIFY_BASE']} />

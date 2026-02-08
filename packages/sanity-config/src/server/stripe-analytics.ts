@@ -180,6 +180,8 @@ async function collectTopProducts(
   stripe: Stripe,
   now: number,
 ): Promise<StripeAnalyticsProductRow[]> {
+  console.warn('stripe-analytics: checkout-session aggregation disabled; use payment-intent based reporting.')
+  return []
   const lookbackSeconds = Math.max(1, DEFAULT_TOP_PRODUCTS_WINDOW_DAYS) * DAY_SECONDS
   const since = now - lookbackSeconds
   const aggregates = new Map<
@@ -236,7 +238,7 @@ async function collectTopProducts(
       }
     }
   } catch (err) {
-    console.error('stripe-analytics: failed to iterate checkout sessions', err)
+    console.error('stripe-analytics: failed to iterate legacy sessions', err)
   }
 
   const rows = Array.from(aggregates.values())

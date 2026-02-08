@@ -21,7 +21,6 @@ Assign these agents explicitly per step. Codex (this agent) executes only the fi
 - Agent A: "Audit-Map" (canonical inventory + dataflow mapping)
   - Deliverable: full webhook/function inventory, ownership map, event routing matrix, and data-write destinations.
 - Agent B: "Contracts-Guard" (contract/spec alignment)
-  - Deliverable: normalized metadata key map, Stripe webhook event contract, Legacy provider metadata contract, and schema alignment summary.
 - Agent C: "Ops-Verify" (deployment + routing verification)
   - Deliverable: Stripe Dashboard endpoint list, Netlify/hosting routes, env var audit, and runtime verification plan.
 - Agent D: "Risk-Archive" (deprecation plan + safety checks)
@@ -34,7 +33,6 @@ Owner: Ops-Verify
 - Confirm shipping issues resolved.
 - Verify `fas-sanity` webhook endpoint is receiving all required Stripe events (test + live).
 - Ensure `fas-cms-fresh` webhook endpoints are not configured in Stripe.
-- Snapshot current Stripe webhook endpoint list (test + live) with timestamps.
 
 ## Phase 1: Canonical inventory and dataflow map
 Owner: Audit-Map
@@ -55,7 +53,6 @@ Owner: Contracts-Guard
 
 ## Phase 3: Ops verification (routing + env)
 Owner: Ops-Verify
-- Verify Stripe webhook endpoints (live/test) and signing secrets.
 - Confirm no `fas-cms-fresh` webhook endpoints are live in Stripe.
 - Validate hosting routes for `fas-sanity` webhook functions.
 - Check envs for both repos to ensure only `fas-sanity` has webhook secrets in use.

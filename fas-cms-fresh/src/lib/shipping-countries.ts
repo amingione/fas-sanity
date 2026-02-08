@@ -1,14 +1,9 @@
-import type Stripe from 'stripe'
-
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/
 const ENV_KEYS = [
-  'STRIPE_SHIPPING_ALLOWED_COUNTRIES',
-  'PUBLIC_STRIPE_SHIPPING_ALLOWED_COUNTRIES',
   'PUBLIC_SHIPPING_ALLOWED_COUNTRIES',
 ] as const
 
-export type AllowedCountryCodes =
-  Stripe.Checkout.SessionCreateParams.ShippingAddressCollection['allowed_countries']
+export type AllowedCountryCodes = string[]
 
 const DEFAULT_ALLOWED_COUNTRIES: AllowedCountryCodes = ['US']
 

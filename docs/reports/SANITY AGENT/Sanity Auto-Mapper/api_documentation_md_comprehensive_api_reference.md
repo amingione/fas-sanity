@@ -745,7 +745,6 @@ for await (const batch of connector.streamData('customers', { batchSize: 100 }))
 
 handleWebhook()
 
-Processes and validates Stripe webhook events.
 
 handleWebhook(
   payload: string | Buffer,

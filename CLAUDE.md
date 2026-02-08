@@ -73,7 +73,7 @@ If any rule below conflicts with this section, **this section overrides it**.
 
 - Do NOT add new Stripe/Shippo/carrier-specific metadata fields to schemas without approval
 - Existing provider fields are **allowed** as non-authoritative operational metadata:
-  `stripeSessionId`, `stripePaymentIntentId`, `paymentIntentId`, `stripeShippingRateId`,
+  `stripeSessionId`, `stripePaymentIntentId`, `paymentIntentId`,
   `shippoRateId`, `shippoShipmentId`, `shippoTrackerId`, `stripeSummary.data`
 - Provider-specific details remain non-authoritative; re-fetch from provider APIs when needed
 - Raw provider payloads may be stored ONLY as opaque JSON for audit purposes
@@ -105,8 +105,6 @@ schemas/
 
 ```
 src/pages/api/
-├── checkout.ts          # Stripe checkout session creation
-├── webhooks.ts          # Stripe webhook handler (creates orders)
 ├── shipping/
 │   └── rates.ts         # shipping rates
 └── military-verify/
@@ -114,7 +112,6 @@ src/pages/api/
     └── check-status.ts  # Verification status check
 ```
 
-### Integration Flow: Stripe Checkout → Order
 
 ⚠️ NOTE:
 Orders are CREATED and VALIDATED in Medusa.
@@ -122,7 +119,6 @@ Sanity order documents are downstream records and must never be treated
 as a pricing, tax, or shipping authority.
 
 ```
-1. Customer → checkout.ts → Create Stripe Checkout Session
 2. Stripe → webhooks.ts → Verify signature
 3. webhooks.ts → createOrderFromSession() → Sanity order document
 4. ✅ Order created in Sanity

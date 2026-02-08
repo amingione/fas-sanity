@@ -11,8 +11,6 @@ scope:
     - dynamic_shipping_injection
     - webhook_shipping_persistence
 invariants:
-  - "Exactly one Stripe Checkout Session creation path exists across the system."
-  - "Customers choose live shipping rates inside Stripe Checkout after entering address."
   - "Application must not define static shipping options."
 forbidden_code_patterns:
   - "shipping_options"
@@ -25,7 +23,6 @@ required_code_patterns:
   - "ui_mode:\\s*['\\\"]embedded['\\\"]"
   - "shipping_cost.shipping_rate"
 required_webhook_behavior:
-  - "On checkout completion, retrieve the Checkout Session and expand shipping_cost.shipping_rate, then persist carrier/service/cost and EasyPost identifiers."
 codex_instructions:
   - "Reject any patch that introduces forbidden_code_patterns."
   - "If multiple checkout creators exist, stop and ask user which one is canonical; do not 'merge' flows."
@@ -81,7 +78,6 @@ The customer experience MUST be:
 At no time may the application:
 
 - calculate shipping rates on the client
-- display shipping outside Stripe Checkout
 - require a secondary shipping step
 - override Stripe’s shipping UI
 
@@ -91,7 +87,6 @@ At no time may the application:
 
 Stripe owns shipping selection UI.
 
-EasyPost supplies shipping rates via the Stripe shipping rates webhook.
 
 The application does NOT participate in rate calculation outside the EasyPost webhook.
 
@@ -103,10 +98,7 @@ The application does NOT participate in rate calculation outside the EasyPost we
 
 The application MAY:
 
-- create a Stripe Checkout Session
 - enable shipping address collection
-- provide a shipping rates webhook for Stripe
-- receive Stripe webhook events
 - persist selected shipping data
 - display shipping details post-checkout
 
@@ -135,19 +127,15 @@ Stripe is responsible for:
 
 EasyPost is responsible for:
 
-- returning live carrier rates to the shipping rates webhook
 - providing shipment and rate identifiers
 - enabling downstream fulfillment data
 
 ---
 
-## CHECKOUT SESSION CREATION RULES
 
 ### REQUIRED
 
-All Checkout Sessions MUST:
 
-- use Stripe Checkout (embedded UI)
 - enable shipping_address_collection
 - set permissions.update_shipping_details to server_only
 - NOT define shipping_options
@@ -156,7 +144,6 @@ All Checkout Sessions MUST:
 
 ### FORBIDDEN (HARD FAIL)
 
-A Checkout Session MUST NEVER include:
 
 - shipping_options
 - shipping_rate_data
@@ -170,7 +157,6 @@ A Checkout Session MUST NEVER include:
 
 ## SINGLE CHECKOUT AUTHORITY RULE
 
-There MUST be exactly one Checkout Session creation path.
 
 Multiple checkout creators are forbidden.
 
@@ -181,7 +167,6 @@ Multiple checkout creators are forbidden.
 Shipping rates are selected:
 
 - by the customer
-- inside Stripe Checkout
 - in real time
 - after address entry
 - before payment
@@ -194,7 +179,6 @@ The selected rate is authoritative and immutable.
 
 On checkout completion, the webhook handler MUST:
 
-- retrieve the Checkout Session
 - expand shipping_cost.shipping_rate
 - persist all relevant shipping fields
 

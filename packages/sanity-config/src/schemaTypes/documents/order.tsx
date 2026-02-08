@@ -521,7 +521,7 @@ export default defineType({
       type: 'string',
       readOnly: true,
       group: 'technical',
-      description: 'Medusa cart ID from checkout session. Links to backend cart before completion.',
+      description: 'Medusa cart ID from checkout flow. Links to backend cart before completion.',
       hidden: ({document}) => !document?.medusaCartId,
     }),
     defineField({
@@ -735,7 +735,6 @@ export default defineType({
     defineField({name: 'shippedAt', type: 'datetime', readOnly: true, hidden: true}),
     defineField({name: 'deliveredAt', type: 'date', readOnly: true, hidden: true}),
     defineField({name: 'estimatedDeliveryDate', type: 'date', readOnly: true, hidden: true}),
-    defineField({name: 'stripeShippingRateId', type: 'string', hidden: true}),
     defineField({
       name: 'shippingQuoteId',
       title: 'Shipping Quote ID',

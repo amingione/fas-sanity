@@ -1,6 +1,5 @@
 // resolveDocumentActions.ts
 import type {DocumentActionsResolver} from 'sanity'
-import {reprocessStripeSessionAction} from './schemaTypes/documentActions/reprocessStripeAction'
 import {backfillInvoicesAction} from './schemaTypes/documentActions/backfillInvoicesAction'
 import {backfillCustomersAction} from './schemaTypes/documentActions/backfillCustomersAction'
 import {forceDeleteUnlinkAction} from './schemaTypes/documentActions/forceDeleteUnlinkAction'
@@ -55,7 +54,6 @@ const isOrderSchemaType = (schemaType: string): schemaType is 'order' => schemaT
 const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   const list = [...prev]
   if (context.schemaType === 'invoice') {
-    list.push(reprocessStripeSessionAction)
     list.push(backfillInvoicesAction)
     list.push(refundStripeInvoiceAction)
   }

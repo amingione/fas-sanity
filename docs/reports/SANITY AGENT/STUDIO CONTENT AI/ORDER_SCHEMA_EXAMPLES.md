@@ -30,7 +30,6 @@ defineField({
   to: [{type: 'customer'}],
   group: 'overview',
   readOnly: true,
-  description: 'Reference to customer document. Auto-populated when order is created from Stripe checkout. Customer accountType (retail/wholesale) determines pricing tier. Required for order processing and CANNOT be changed after order creation.',  // ✅ Specific & helpful
 }),
 ```
 
@@ -160,7 +159,6 @@ CAUTION: Status changes have real-world consequences. Verify before updating.`,
 ```typescript
 defineField({
   name: 'stripeCheckoutId',
-  title: 'Stripe Checkout ID',
   type: 'string',
   group: 'technical',
   readOnly: true,
@@ -181,11 +179,9 @@ defineField({
 ```typescript
 defineField({
   name: 'stripeCheckoutId',
-  title: 'Stripe Checkout ID',
   type: 'string',
   group: 'technical',
   readOnly: true,
-  description: 'Stripe Checkout Session ID (cs_xxx). Auto-populated by stripe-webhook handler on checkout.session.completed event. Links to full Stripe Checkout Session for viewing payment details, customer info, and line items. DO NOT edit - used for Stripe API lookups and refund processing.',
 }),
 
 defineField({

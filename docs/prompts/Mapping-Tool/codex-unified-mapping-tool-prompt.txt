@@ -185,7 +185,6 @@ K) External ID integrity (read-only)
 - Output PASS|FAIL based on hard checks (duplicates, missing required id fields if required).
 
 L) Webhook drift report (static)
-- Find webhook handlers in repo (stripe webhook, shipengine webhook, easypost/resend if any)
 - Report:
   - whether handlers are idempotent (presence of dedupe key or guard)
   - whether payload fields are accessed without guards

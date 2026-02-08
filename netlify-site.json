@@ -188,26 +188,6 @@
         "oid": "792b40a4cf48da1a8cfbacebcde8b463882301c0514971c4c66a5620da116682"
       },
       {
-        "n": "backfillCheckoutAsyncPayments",
-        "d": "7bc473ccb2c80603f25896ba34e89a448f43e4690236215025b8e6e0260bac23",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "05ae810000f4b549e5ba21c418c1eb23d32592a721344ab9b8d42b27fa9dde9a",
-        "a": "837451400009",
-        "c": "2026-01-04T08:33:02.466Z",
-        "m": 1024,
-        "obl": "netlify-observability-extension",
-        "oblv": 34,
-        "oid": "b354daeafedf24e121ac119d99dbf228a0cab20bf04e8283666a1f82e34c80a9",
-        "r": "nodejs20.x",
-        "rg": "us-east-2",
-        "s": 1116849
-      },
-      {
         "n": "backfillCustomers",
         "d": "683b0c8300f2b7e70979e0196306321042cdb4e662e830d64b6d0de4c7ee7fb5",
         "dn": null,
@@ -224,22 +204,6 @@
         "oid": "0f19167e1038781cb32cc30a0124daa36f707e5735bbb891b448e092a54fcb0d"
       },
       {
-        "n": "backfillExpiredCheckouts",
-        "d": "126b6de0dd8f2806784099321bb7b5e4d741281523b266a1fbb1d5d4b768e16a",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "3350153cdd4ebea554309399fcea5742d4a733c74517db79e5079144ba1ccddc",
-        "s": 539888,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:20.389Z",
-        "a": "022731369924",
-        "oid": "521975c20dbf5a6797369041d0b9704a140bdce1b273fea7d0a4c87889dce76e"
-      },
-      {
         "n": "backfillInvoices",
         "d": "a8e86a602c6bcb5654ebd29defe514db631bc83669a9bba21af7d81420f84cc4",
         "dn": null,
@@ -254,38 +218,6 @@
         "c": "2026-01-04T02:58:20.411Z",
         "a": "042287751506",
         "oid": "1927bce26382e77f69d706b9223ec952cb17516e99e92ffcf19359149df6c99e"
-      },
-      {
-        "n": "backfillOrderShipping",
-        "d": "85a7d6172677f360550ea0180a44784c638ad71d6187e5ef1d3f2d455da173bb",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "8095ab9a2f282ed718c75a687a7dc6394ffdab0c39c91b8213e42d5ceb8c0de6",
-        "s": 539718,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:20.329Z",
-        "a": "719837505512",
-        "oid": "3b2f76106bdf0471a9b6367273e37e1b1bf624cb591baa91c0f7e025fd369953"
-      },
-      {
-        "n": "backfillOrderStripe",
-        "d": "f96ad5f0063641a700f9b4ebc3e9662ac8f66f0e9383d648f9ff75ac64e74a42",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "5b5756e2037cefe76c960be58f233267465ea53952452d2d31312292f0ac69d3",
-        "s": 539698,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:20.417Z",
-        "a": "368064623203",
-        "oid": "63f07292a186315129735093823372f9c9d7a6438b5e2b24c425ef40ca133a71"
       },
       {
         "n": "backfillOrders",
@@ -318,26 +250,6 @@
         "c": "2026-01-04T02:58:20.217Z",
         "a": "449440118093",
         "oid": "560110fc7e535f4798c85823fd58c810af31dd18f812416dacdfd905685cbf6c"
-      },
-      {
-        "n": "backfillRefunds",
-        "d": "5d660b04f0694874c2c182ed387927be216480d70e70af29fedeac18412cc9c7",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "22e2b49885cee1e76fdd9957e5e5584ff17b770d792cb82bc7383b16bf39601d",
-        "a": "622137718745",
-        "c": "2026-01-04T08:33:02.506Z",
-        "m": 1024,
-        "obl": "netlify-observability-extension",
-        "oblv": 34,
-        "oid": "e29b6b5eec22a10fec9904108de5b068a1c4e95e38c0c07ab42ad815b8a2fdfa",
-        "r": "nodejs20.x",
-        "rg": "us-east-2",
-        "s": 1119780
       },
       {
         "n": "backfillStripeProducts",
@@ -450,38 +362,6 @@
         "c": "2026-01-04T02:58:26.431Z",
         "a": "414361165742",
         "oid": "0300d1a929059f19a7f6a29bb7207e684a1f72a4ca56582cf05b714551faf86b"
-      },
-      {
-        "n": "createCheckout",
-        "d": "862e999d19785994e592625ecb68b1d8d78de61949bbb8b13d7f9b9f13cd3492",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "5dce5eb4751b2b2f29f0748ad8857f49f93bb006856ed65b5cc48aff3865853a",
-        "s": 501404,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T04:52:58.522Z",
-        "a": "169879185114",
-        "oid": "3342a28efe0e4eed3cb9bb67c51841db13db54530d4f4d68cb650d122ae0ec0d"
-      },
-      {
-        "n": "createCheckoutSession",
-        "d": "48f0cccc783326e7100a70bd127b5b39b90722b745103e3a07647b55b0c6cc05",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "5b21b61eddbc312783dbf35a6528867d72816903f8cc18179ab1b0b433cb07e5",
-        "s": 498071,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T04:52:58.480Z",
-        "a": "029622199099",
-        "oid": "f5cb3f9719042e9fe4a3fdc58873d16046f6167d50061a6c50d31e46a9dff688"
       },
       {
         "n": "createCustomerDiscount",
@@ -971,22 +851,6 @@
         "s": 285136
       },
       {
-        "n": "reprocessStripeSession",
-        "d": "cfb65499aeb5de34e85cd31a7e0fe08752f7abf6ea7a2a82e65910f59b667e91",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "8e0c0a9e0eb2a64a02969db2112e9dd9212fbb6617b144c9fce035fa658a7ec7",
-        "s": 527702,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:38.687Z",
-        "a": "828341494297",
-        "oid": "1ec0c0a8b6f611b696b5e440cb05a7ee5e48d95af7565a865b5512381dddf4cf"
-      },
-      {
         "n": "requestFreightQuote",
         "d": "d9148137d7951e3a31845f16416ad580b809970a57c8f6485d975af364c45e1a",
         "dn": null,
@@ -1115,22 +979,6 @@
         "oid": "36668ac6299f120dc63b7ff01426f9a6dac81020552c7574daa614f4dc84fa78"
       },
       {
-        "n": "sendAbandonedCartEmails",
-        "d": "170f1d83a79c732458554c943fde5ff215598dfb17b11abdd153a623b0a8b704",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "c0b32b7694bc88d23ada2a37aebe2d80e554372ca9039af8e1edd5a460821ace",
-        "s": 944289,
-        "r": "nodejs20.x",
-        "c": "2026-01-04T02:58:38.872Z",
-        "a": "365020585580",
-        "oid": "5c053930d885405405d9f792d708db7d23ad0a6aeda4793f15e5ca98dae223a4"
-      },
-      {
         "n": "sendCustomerEmail",
         "d": "6f014a7789636c10c24cd0611f93f1a1a0ddc11391c497d5052396a1e9ea29f9",
         "dn": null,
@@ -1213,26 +1061,6 @@
         "c": "2026-01-04T02:58:38.990Z",
         "a": "505538967386",
         "oid": "df08ddb35ab9597c2a5d19110c33fd7d4bfe131b56a0fad6e9dd0af981ed90ff"
-      },
-      {
-        "n": "stripeWebhook",
-        "d": "2fd229c12d47c594821796611ff2711a8b7d870b267ddcb52e4d1987ed434389",
-        "dn": null,
-        "g": null,
-        "bd": {
-          "runtimeAPIVersion": 1
-        },
-        "p": 10,
-        "id": "f0387b0780ffc1866809de92b6fe31b3b28790388d745312c4e0efdfe8fa1dfb",
-        "a": "177933589360",
-        "c": "2026-01-04T08:33:02.348Z",
-        "m": 1024,
-        "obl": "netlify-observability-extension",
-        "oblv": 34,
-        "oid": "ebfcae1b01c86d96f78e0ba833aa01c5130e74c56a706c50d13915dbf7bdf5f6",
-        "r": "nodejs20.x",
-        "rg": "us-east-2",
-        "s": 1101971
       },
       {
         "n": "submitVendorApplication",

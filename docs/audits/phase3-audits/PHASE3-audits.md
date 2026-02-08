@@ -54,11 +54,9 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
 
 ### ⚠️ LEGACY / DEPRECATED (Retained for Compatibility)
 
-**Stripe Checkout Sessions (Hosted Checkout):**
 
 1. **`/api/stripe/create-checkout-session.ts`**
    - Status: DEPRECATED (legacy compatibility only)
-   - Function: Creates Stripe Checkout Sessions with cart data
    - Problem: Sends line items, shipping, tax to Stripe (violates authority model)
    - Action Taken: Added deprecation header comment with clear warnings
    - Risk: HIGH - Could be accidentally reused
@@ -70,7 +68,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
    - Function: Handles `checkout.session.completed` events from Stripe
    - Problem: Creates orders directly in Sanity (bypasses Medusa)
    - Action Taken: Added deprecation header with authority model explanation
-   - Risk: HIGH - Still processes legacy Stripe webhooks
    - Mitigation: New webhook path is separate (`/api/medusa/webhooks/payment-intent`)
    - Safe to Remove: Phase 3 (after webhook migration complete)
 
@@ -85,7 +82,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
 
 4. **`/api/medusa/checkout/create-session.ts`**
    - Status: DEPRECATED (legacy compatibility only)
-   - Function: Creates Stripe Checkout Sessions from Medusa cart
    - Problem: Uses hosted checkout instead of PaymentIntents
    - Action Taken: Added deprecation header
    - Risk: MEDIUM - Clear alternative exists
@@ -94,7 +90,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
 5. **`/api/medusa/checkout/complete.ts`**
    - Status: DEPRECATED (legacy compatibility only)
    - Function: Completes Medusa orders from Stripe sessions
-   - Problem: Assumes Checkout Session flow
    - Action Taken: Added deprecation header
    - Risk: LOW - New flow uses webhook completion
    - Safe to Remove: Phase 3
@@ -104,7 +99,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
 6. **`/api/shipping/quote.ts`**
    - Status: DISABLED (returns 410 Gone)
    - Function: Previously calculated shipping quotes
-   - Problem: Shipping handled in Stripe Checkout (legacy)
    - Action Taken: Already disabled with clear error message
    - Risk: NONE - Returns 410 error
    - Safe to Remove: Phase 3
@@ -183,7 +177,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
 
 ### HIGH RISK (Requires Attention)
 
-1. **Legacy Stripe Webhooks Still Active**
    - Path: `/api/webhooks.ts`
    - Risk: Processes `checkout.session.completed` events
    - Problem: Creates orders directly in Sanity (bypasses Medusa)
@@ -193,7 +186,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
      - Legacy webhook cannot interfere with new flow ✅
    - Recommendation: Configure Stripe to stop sending to this endpoint after migration
 
-2. **Legacy Checkout Session Endpoint Accessible**
    - Path: `/api/stripe/create-checkout-session.ts`
    - Risk: Could be accidentally called by old code
    - Problem: Sends cart data to Stripe (violates authority model)
@@ -210,9 +202,7 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
    - Problem: Violates authority model
    - Mitigation: Marked as deprecated, only used by legacy flow ✅
 
-4. **Medusa Checkout Session Routes**
    - Paths: `/api/medusa/checkout/*`
-   - Risk: Implements old Checkout Session flow
    - Mitigation: Clear deprecation headers, new flow separate ✅
 
 ### LOW RISK (Controlled)
@@ -312,8 +302,6 @@ Ensure all commerce-related API routes are properly documented as legacy/depreca
 
 The following routes can be **safely removed in Phase 3** after confirming no legacy orders are pending:
 
-1. `/api/stripe/create-checkout-session.ts` - Legacy Stripe Checkout Sessions
-2. `/api/webhooks.ts` - Legacy Checkout Session webhook handler
 3. `/api/save-order.ts` - Direct Sanity order creation
 4. `/api/medusa/checkout/create-session.ts` - Legacy session creation
 5. `/api/medusa/checkout/complete.ts` - Legacy session completion
@@ -321,8 +309,6 @@ The following routes can be **safely removed in Phase 3** after confirming no le
 
 **Before Removal:**
 
-- Confirm Stripe webhook configured for new endpoint
-- Confirm no pending legacy Checkout Session orders
 - Monitor for 404s on legacy paths (should be zero)
 - Update any documentation references
 
@@ -356,7 +342,6 @@ The following routes can be **safely removed in Phase 3** after confirming no le
 ### Immediate (No Action Needed - Documented Only)
 
 1. **Legacy Webhook Still Active**
-   - Risk: Processes old Checkout Session events
    - Status: Cannot interfere with new flow (separate webhook)
    - Action: None (retained for historical orders)
 
@@ -372,7 +357,6 @@ The following routes can be **safely removed in Phase 3** after confirming no le
    - Files: 6 routes listed above
    - Documentation: Update references
 
-2. **Stripe Webhook Migration**
    - Action: Disable legacy webhook in Stripe Dashboard
    - Timing: After monitoring new webhook success rate
    - Validation: Confirm no `checkout.session.completed` events
@@ -538,14 +522,11 @@ The following routes can be **safely removed in Phase 3** after confirming no le
 | Integration                               | Handler (repo/file)                                           | Public URL (observed/expected)                            | Evidence of “active”                                                       |
 | ----------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------- |
 | Stripe (Medusa-first checkout)            | fas-cms-fresh/src/pages/api/medusa/webhooks/payment-intent.ts | POST /api/medusa/webhooks/payment-intent                  | New-flow webhook handler; referenced in comments + checkout flow           |
-| Stripe (legacy Checkout Session)          | fas-cms-fresh/src/pages/api/webhooks.ts                       | POST /api/webhooks                                        | File is explicitly “LEGACY Stripe Checkout Session Webhook Handler”        |
 | Shippo tracking (Sanity-side)             | fas-sanity/netlify/functions/shippoWebhook.ts                 | POST /webhooks/shippo → /.netlify/functions/shippoWebhook | fas-sanity/netlify.toml redirect explicitly routes /webhooks/shippo        |
 | Shippo tracking (Medusa-side)             | fas-medusa/src/api/webhooks/shippo/route.ts                   | POST /webhooks/shippo (Medusa backend)                    | Route exists; Medusa doc suggests public URL was set to the Netlify domain |
-| Stripe (Sanity sync/logging)              | fas-sanity/netlify/functions/stripeWebhook.ts                 | POST /.netlify/functions/stripeWebhook                    | Heavy internal docs + used by createRefund.ts                              |
 | Sanity webhooks (content automation)      | fas-sanity/netlify/functions/autoRelatedProducts.ts           | POST /.netlify/functions/autoRelatedProducts              | Uses SANITY_WEBHOOK_SECRET                                                 |
 | Sanity webhooks (shipping/product sync)   | fas-sanity/netlify/functions/productShippingSync.ts           | POST /.netlify/functions/productShippingSync              | Uses SANITY_WEBHOOK_SECRET                                                 |
 | Sanity webhooks (Resend sync)             | fas-sanity/netlify/functions/sanity-resend-sync.ts            | POST /.netlify/functions/sanity-resend-sync               | Uses SANITY_WEBHOOK_SECRET                                                 |
-| Legacy Stripe order webhook (Sanity repo) | fas-sanity/src/pages/api/webhooks/stripe-order.ts             | POST /api/webhooks/stripe-order                           | Only referenced in docs                                                    |
 
 ## 2) API routes still imported or called
 
@@ -568,7 +549,6 @@ The following routes can be **safely removed in Phase 3** after confirming no le
 | --------------------------------------------- | ------------------------------------------------- | -------------------------------- |
 | fas-sanity/utils/functionLogger.ts            | Writes functionLog docs                           | Active observability             |
 | fas-sanity/netlify/functions/shippoWebhook.ts | Patches order shipping status                     | Active                           |
-| fas-sanity/netlify/functions/stripeWebhook.ts | Creates/patches many docs (orders/customers/etc.) | Likely active webhook dependency |
 
 ## 5) Logging / observability dependencies
 
@@ -593,8 +573,6 @@ These are not deletion proposals—just candidates to move out of runtime deploy
 
 - fas-cms-fresh/src/pages/api/stripe/create-checkout-session.ts (tests/docs only; no in-app callers found)
 - fas-cms-fresh/src/pages/api/save-order.ts, fas-cms-fresh/src/pages/api/save-quote.ts, fas-cms-fresh/src/pages/api/shipping/quote.ts (no callers found)
-- fas-sanity/src/pages/api/webhooks/stripe-order.ts (docs-only references found)
-- fas-cms-fresh legacy env var: STRIPE_SHIPPING_WEBHOOK_SECRET (only referenced by fas-cms-fresh/src/pages/api/webhooks.ts)
 
 ---
 
@@ -611,14 +589,11 @@ Here is the converted Obsidian Markdown version of the file:
 | Integration                               | Handler (repo/file)                                           | Public URL (observed/expected)                            | Evidence of “active”                                                       |
 | ----------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------- |
 | Stripe (Medusa-first checkout)            | fas-cms-fresh/src/pages/api/medusa/webhooks/payment-intent.ts | POST /api/medusa/webhooks/payment-intent                  | New-flow webhook handler; referenced in comments + checkout flow           |
-| Stripe (legacy Checkout Session)          | fas-cms-fresh/src/pages/api/webhooks.ts                       | POST /api/webhooks                                        | File is explicitly “LEGACY Stripe Checkout Session Webhook Handler”        |
 | Shippo tracking (Sanity-side)             | fas-sanity/netlify/functions/shippoWebhook.ts                 | POST /webhooks/shippo → /.netlify/functions/shippoWebhook | fas-sanity/netlify.toml redirect explicitly routes /webhooks/shippo        |
 | Shippo tracking (Medusa-side)             | fas-medusa/src/api/webhooks/shippo/route.ts                   | POST /webhooks/shippo (Medusa backend)                    | Route exists; Medusa doc suggests public URL was set to the Netlify domain |
-| Stripe (Sanity sync/logging)              | fas-sanity/netlify/functions/stripeWebhook.ts                 | Heavy internal docs + used by createRefund.ts             | Sanity creates/patches many docs                                           |
 | Sanity webhooks (content automation)      | fas-sanity/netlify/functions/autoRelatedProducts.ts           | POST /.netlify/functions/autoRelatedProducts              | Uses SANITY_WEBHOOK_SECRET                                                 |
 | Sanity webhooks (shipping/product sync)   | fas-sanity/netlify/functions/productShippingSync.ts           | POST /.netlify/functions/productShippingSync              | Uses SANITY_WEBHOOK_SECRET                                                 |
 | Sanity webhooks (Resend sync)             | fas-sanity/netlify/functions/sanity-resend-sync.ts            | POST /.netlify/functions/sanity-resend-sync               | Uses SANITY_WEBHOOK_SECRET                                                 |
-| Legacy Stripe order webhook (Sanity repo) | fas-sanity/src/pages/api/webhooks/stripe-order.ts             | POST /api/webhooks/stripe-order                           | Only referenced in docs                                                    |
 
 ## 2) API routes still imported or called
 
@@ -643,7 +618,6 @@ Here is the converted Obsidian Markdown version of the file:
 | dependency                                    |                                                   |                                  |
 | fas-sanity/netlify/functions/shippoWebhook.ts | Patches order shipping status                     | Active                           |
 | webhook dependency                            |                                                   |                                  |
-| fas-sanity/netlify/functions/stripeWebhook.ts | Creates/patches many docs (orders/customers/etc.) | Likely active webhook dependency |
 
 ## 5) Logging / observability dependencies
 
@@ -679,8 +653,6 @@ fas-cms-fresh/src/pages/api/stripe/create-checkout-session.ts
 | fas-cms-fresh/src/pages/api/save-order.ts                    |
 | fas-cms-fresh/src/pages/api/shipping/quote.ts                |
 | fas-cms-fresh/src/pages/api/save-quote.ts                    |
-| fas-sanity/src/pages/api/webhooks/stripe-order.ts            |
-| fas-cms-fresh legacy env var: STRIPE_SHIPPING_WEBHOOK_SECRET |
 
 ---
 
@@ -988,10 +960,7 @@ fetch(`/api/get-user-order?email=${encodeURIComponent(email)}`)
 
 #### fas-sanity (Netlify Functions)
 
-**stripeWebhook.ts** (322KB, 7600+ lines)
 ```
-File: /fas-sanity/netlify/functions/stripeWebhook.ts
-URL: https://fassanity.fasmotorsports.com/.netlify/functions/stripeWebhook
 Secret: STRIPE_WEBHOOK_SECRET
 ````
 
@@ -1087,11 +1056,9 @@ stripe.webhooks.constructEvent(body, signature, webhookSecret)
 ```
 File: /fas-cms-fresh/src/pages/api/webhooks.ts
 URL: https://www.fasmotorsports.com/api/webhooks
-Secret: STRIPE_SHIPPING_WEBHOOK_SECRET
 ```
 
 **Events Handled:**
-- `checkout.session.async_shipping_rates` → Calculates dynamic shipping
 - `checkout.session.completed` → Creates order (LEGACY)
 
 **Status:** PARTIALLY ACTIVE
@@ -1134,7 +1101,6 @@ if (signature !== CALCOM_WEBHOOK_SECRET) {
 ```
 https://www.fasmotorsports.com/api/webhooks
 https://www.fasmotorsports.com/api/medusa/webhooks/payment-intent
-https://fassanity.fasmotorsports.com/.netlify/functions/stripeWebhook
 ```
 
 **External (Shippo Console)**
@@ -1164,10 +1130,6 @@ toml
 
 **Test Files (fas-sanity):**
 ```
-netlify/functions/__tests__/stripeWebhook.test.ts
-netlify/functions/__tests__/stripeWebhookCompleted.test.ts
-netlify/functions/__tests__/stripeWebhookExpired.test.ts
-netlify/functions/__tests__/stripeWebhookProductRef.test.ts
 ````
 
 **Test Configuration:**
@@ -1185,7 +1147,6 @@ process.env.STRIPE_WEBHOOK_NO_VERIFY = '1'  // Bypass signature verification
 **Problem:** BOTH fas-sanity and fas-cms-fresh handle Stripe events
 
 **Current State:**
-- **fas-sanity/stripeWebhook.ts** - Legacy, handles `checkout.session.completed`
 - **fas-cms-fresh/payment-intent.ts** - NEW, handles `payment_intent.succeeded`
 
 **Risk:** If both enabled for same events, duplicate order creation
@@ -1199,7 +1160,6 @@ process.env.STRIPE_WEBHOOK_NO_VERIFY = '1'  // Bypass signature verification
 **Monitoring Dashboards:**
 ```
 packages/sanity-config/src/components/studio/WebhooksDashboard.tsx
-packages/sanity-config/src/components/studio/StripeWebhookDashboard.tsx
 packages/sanity-config/src/autoMapper/ui/WebhookTesterTool.tsx
 ````
 
@@ -1214,7 +1174,6 @@ packages/sanity-config/src/autoMapper/ui/WebhookTesterTool.tsx
 | Variable                         | Repository                | Required      | Purpose                       |
 | -------------------------------- | ------------------------- | ------------- | ----------------------------- |
 | `STRIPE_WEBHOOK_SECRET`          | fas-cms-fresh, fas-sanity | YES           | Payment webhooks              |
-| `STRIPE_SHIPPING_WEBHOOK_SECRET` | fas-cms-fresh             | YES           | Shipping rate webhooks        |
 | `SHIPPO_WEBHOOK_SECRET`          | fas-sanity                | YES           | Tracking webhooks             |
 | `CALCOM_WEBHOOK_SECRET`          | fas-cms-fresh             | YES           | Booking webhooks              |
 | `STRIPE_WEBHOOK_NO_VERIFY`       | fas-sanity                | NO (dev only) | Bypass signature verification |
@@ -1236,7 +1195,6 @@ STRIPE_SECRET_KEY=sk_live_...                    # Server-side API
 STRIPE_PUBLISHABLE_KEY=pk_live_...                # Client-side
 PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...         # Alias
 STRIPE_WEBHOOK_SECRET=whsec_...                   # Payment webhooks
-STRIPE_SHIPPING_WEBHOOK_SECRET=whsec_...          # Shipping webhooks
 STRIPE_USE_DYNAMIC_SHIPPING_RATES=true            # Feature flag
 ```
 
@@ -1704,7 +1662,6 @@ SHEERID_PROGRAM_ID=                               # Military verification limite
 typescript
 
 ```typescript
-// fas-sanity/netlify/functions/stripeWebhook.ts
 await sanity.create({
   _type: 'order',
   orderNumber: `FAS-${Date.now()}-${paymentIntent.id.slice(-6)}`,
@@ -1730,7 +1687,6 @@ await sanity.create({
 typescript
 
 ```typescript
-// fas-sanity/netlify/functions/stripeWebhook.ts
 await sanity.createOrReplace({
   _type: 'customer',
   email: customer.email,
@@ -1751,7 +1707,6 @@ typescript
 // fas-sanity/netlify/lib/logFunctionExecution.ts
 await sanity.create({
   _type: 'functionLog',
-  functionName: 'stripeWebhook',
   status: 'success' | 'error',
   // ... log data
 })
@@ -1873,7 +1828,6 @@ console.error('[PaymentIntent Webhook] Signature verification failed:', err)
 **Sanity Studio Dashboards:**
 ```
 packages/sanity-config/src/components/studio/WebhooksDashboard.tsx
-packages/sanity-config/src/components/studio/StripeWebhookDashboard.tsx
 packages/sanity-config/src/components/studio/FunctionLogsDashboard.tsx
 ```
 
@@ -2000,7 +1954,6 @@ packages/sanity-config/src/components/studio/FunctionLogsDashboard.tsx
 🚫 /api/medusa/webhooks/payment-intent.ts (PRIMARY)
 🚫 /api/webhooks.ts (Stripe shipping rates)
 🚫 /api/calcom/webhook.ts (Appointments)
-🚫 netlify/functions/stripeWebhook.ts (Legacy but still active)
 🚫 netlify/functions/shippoWebhook.ts (Tracking)
 ```
 
@@ -2078,7 +2031,6 @@ STRIPE_SECRET_KEY=
 STRIPE_PUBLISHABLE_KEY=
 PUBLIC_STRIPE_PUBLISHABLE_KEY=
 STRIPE_WEBHOOK_SECRET=
-STRIPE_SHIPPING_WEBHOOK_SECRET=
 
 # SANITY
 SANITY_PROJECT_ID=r4og35qd
@@ -2146,9 +2098,7 @@ markdown
 ### Stripe Shipping Webhook
 
 **URL:** https://www.fasmotorsports.com/api/webhooks
-**Secret:** STRIPE_SHIPPING_WEBHOOK_SECRET
 **Events:** checkout.session.async_shipping_rates
-**Purpose:** Calculate dynamic shipping rates
 
 ### Shippo Tracking Webhook
 
@@ -2214,7 +2164,6 @@ Configure these URLs in:
 | payment-intent.ts | fas-cms-fresh | ACTIVE (PRIMARY) | Keep |
 | webhooks.ts | fas-cms-fresh | ACTIVE (shipping) | Keep |
 | calcom/webhook.ts | fas-cms-fresh | ACTIVE | Keep |
-| stripeWebhook.ts | fas-sanity | ACTIVE (legacy orders) | Keep but document |
 | shippoWebhook.ts | fas-sanity | ACTIVE (tracking) | Keep |
 | webhook-test.ts | fas-sanity | ACTIVE (dev tool) | Keep |
 
@@ -2245,7 +2194,6 @@ Configure these URLs in:
 **Webhooks:**
 - `src/pages/api/webhooks.ts` (Stripe shipping rates)
 - `src/pages/api/calcom/webhook.ts` (Appointments)
-- `netlify/functions/stripeWebhook.ts` (Legacy but active)
 - `netlify/functions/shippoWebhook.ts` (Tracking)
 
 **Vendor Portal:**
@@ -2266,7 +2214,6 @@ Configure these URLs in:
 
 STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
-STRIPE_SHIPPING_WEBHOOK_SECRET
 SANITY_API_TOKEN
 SANITY_PROJECT_ID
 SANITY_DATASET

@@ -1054,8 +1054,6 @@ const createFunctionLogsSection = (S: any) =>
                 .title('Function')
                 .items(
                   [
-                    'stripeWebhook',
-                    'sendAbandonedCartEmails',
                     'manual-fulfill-order',
                     'cleanupFunctionLogs',
                   ].map((functionName) =>

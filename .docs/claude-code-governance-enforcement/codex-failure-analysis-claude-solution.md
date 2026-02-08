@@ -55,7 +55,6 @@ SKIP TO EXECUTION
 **Pattern 2: Strip Safety Mechanisms**
 
 ```
-STRIPE CHECKOUT SHIPPING TASK
     ↓ (See: requiresShipping, installOnly, metadata)
 "I can simplify this"
     ↓ (Make installOnly required)
@@ -113,7 +112,6 @@ These are directly opposed. Codex's goals fought your governance.
 
 ### Root Cause 2: Silent Failure Design
 
-Stripe Checkout has silent failures:
 
 - Missing metadata → silently disables shipping
 - Invalid schema → silently succeeds with $0 charges
@@ -331,7 +329,6 @@ No verification results
 
 ## WHAT CLAUDE CODE WILL DO DIFFERENTLY
 
-### On Stripe Checkout Changes
 
 **Codex:**
 
@@ -456,8 +453,6 @@ If Codex made breaking changes:
 
    Evidence:
 
-   - shipping_options: [] in live checkout session
-   - Stripe webhook errors in logs
    ```
 
 6. **Use Claude Code** to fix it:
@@ -523,7 +518,6 @@ With Claude Code + Governance Prompt, you get:
    - Confirm hard stops work
 
 5. **Then tackle high-risk work**:
-   - Stripe checkout issues
    - Schema changes
    - Cross-repo refactors
    - All with full governance

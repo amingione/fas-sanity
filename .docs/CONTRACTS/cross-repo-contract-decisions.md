@@ -295,7 +295,6 @@ paymentStatus: 'pending' | 'unpaid' | 'paid' | 'partially_refunded' | 'refunded'
 
 **Read/Write Direction:**
 - **Write**: fas-cms-fresh → Sanity (order creation with 'pending')
-- **Update**: Stripe webhooks → Sanity (pending → paid)
 - **Update**: Fulfillment flow → Sanity (unfulfilled → processing → fulfilled)
 
 **Allowed Transitions:**

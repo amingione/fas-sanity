@@ -52,7 +52,6 @@ Use `pnpm tsx` for scripts that import TypeScript files (webhook tests) and plai
    node scripts/stripe-maintenance/link-invoices.js
    ```
 
-6. **Re-run tests on a new Stripe checkout** and verify the checklist:
    - stripeCustomerId populated on the Customer doc
    - billingAddress filled in
    - cardBrand, cardLast4, and receiptUrl filled in on the Order doc

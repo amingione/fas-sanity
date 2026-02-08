@@ -13,7 +13,6 @@ This audit confirms that the "All Stripe Coupons" list in Sanity Studio is empty
 
 ### 2.2. Existing Stripe Sync Patterns
 
-- **Finding:** Stripe data is synced via Netlify Functions, primarily `stripeWebhook.ts` and `syncStripeCatalog.ts`. The `stripeWebhook.ts` function handles `customer.discount.*` events, which is how customer-specific discounts are updated in Sanity. However, there is no mechanism to sync all coupons from Stripe.
 - **Impact:** The current sync pattern is reactive and customer-centric, not proactive or global.
 
 ### 2.3. Recommended Document Ownership

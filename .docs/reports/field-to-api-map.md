@@ -30,8 +30,6 @@ These actions are handled by downstream enforcement layers.
 ## Inconsistencies and drift risks
 - Address schemas diverge on field naming: `order.shippingAddress`/`order.billingAddress` use camelCase (`addressLine1`, `postalCode`) in `packages/sanity-config/src/schemaTypes/documents/order.tsx`, while `shipTo`/`shipToAddress`/`shippingOptionCustomerAddress` use snake_case (`address_line1`, `postal_code`) in `packages/sanity-config/src/schemaTypes/objects/shipToType.ts`, `packages/sanity-config/src/schemaTypes/objects/shipToSnakeType.ts`, and `packages/sanity-config/src/schemaTypes/objects/shippingOptionCustomerAddressType.ts`. `customerBillingAddress` and `customerAddress` use `street`/`postalCode` or `zip` in `packages/sanity-config/src/schemaTypes/objects/customerBillingAddressType.ts` and `packages/sanity-config/src/schemaTypes/objects/customerAddressType.ts`. This split increases the chance of using the wrong schema and rendering blank address fields.
 - `shipTo` includes `email`, but `shipToAddress` does not; mixing these schemas can drop emails from fulfillment views. See `packages/sanity-config/src/schemaTypes/objects/shipToType.ts` and `packages/sanity-config/src/schemaTypes/objects/shipToSnakeType.ts`.
-- `orderCartItem` lacks a `productName` field in `packages/sanity-config/src/schemaTypes/objects/orderCartItemType.ts`, yet `productName` is referenced across runtime types and render logic (`packages/sanity-config/src/types/order.ts`, `netlify/functions/stripeWebhook.ts`, `netlify/lib/invoicePdf.ts`). This mismatch can lead to missing product names or fallback labels in UI and PDFs.
-- `order.cart` is the schema field in `packages/sanity-config/src/schemaTypes/documents/order.tsx`, but webhook parsing accepts `cartItems`/`cart_items` in `src/pages/api/webhooks/stripe-order.ts` and `netlify/functions/stripeWebhook.ts`. This mismatch can route data into the wrong field or skip expected cart hydration if the mapper uses the wrong key.
 - `order.shippingAddress` and `order.billingAddress` are inline object definitions instead of reusing `shippingAddressType`/`customerBillingAddressType`, so edits to shared address schemas will not propagate to order fields without manual alignment, increasing drift risk.
 
 ### Cart Key Normalization — RESOLVED
@@ -39,7 +37,6 @@ These actions are handled by downstream enforcement layers.
 Status: RESOLVED  
 Date: 2026-01-04  
 Normalization boundary: `normalizeStripeOrderToSanityOrder`  
-Applies to: Stripe webhook order ingestion
 
 Resolved aliases:
 - cartItems
@@ -50,7 +47,6 @@ Resolved aliases:
 Canonical field:
 - order.cart
 
-Resolution is enforced at the Stripe webhook boundary only.
 No backfills or schema renames were performed.
 
 This closes the loop required by Part C.
@@ -324,8 +320,6 @@ Final status:
 ### `shippingOption`
 - `easyPostService`
 
-## `packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts`
-### `stripeWebhook`
 - `summary`
 - `eventType`
 - `occurredAt`
@@ -344,8 +338,6 @@ Final status:
 - `metadata`
 - `rawPayload`
 
-## `packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts`
-### `stripeWebhookEvent`
 - `eventId`
 - `eventType`
 - `summary`
@@ -772,7 +764,6 @@ Final status:
 ### `shippingOption` (packages/sanity-config/src/schemaTypes/documents/shippingOption.ts)
 - `shippingCost`
 
-### `stripeWebhookEvent` (packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts)
 - `amount`
 
 ### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
@@ -825,10 +816,8 @@ Final status:
 - `shipsAlone`
 - `stripeActive`
 
-### `stripeWebhook` (packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts)
 - `livemode`
 
-### `stripeWebhookEvent` (packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts)
 - `livemode`
 
 ### `vendor` (packages/sanity-config/src/schemaTypes/documents/vendor.ts)
@@ -880,11 +869,9 @@ Final status:
 - `lastEmailedAt`
 - `stripeLastSyncedAt`
 
-### `stripeWebhook` (packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts)
 - `occurredAt`
 - `processedAt`
 
-### `stripeWebhookEvent` (packages/sanity-config/src/schemaTypes/documents/stripeWebhookEvent.ts)
 - `createdAt`
 - `receivedAt`
 

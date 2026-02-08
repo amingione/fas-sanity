@@ -1,7 +1,6 @@
 # Shipping Architecture Lock (Do Not Regress)
 
 ## Purpose
-This document is a hard guardrail: the storefront must show live carrier rates in Stripe Checkout and charge shipping via Stripe, without duplicate shipments or duplicate label purchases.
 
 ## Single Source of Truth
 Carrier quoting and shipment creation are owned exclusively by **fas-sanity**:
@@ -17,7 +16,6 @@ The storefront (fas-cms-fresh) MUST NOT:
 - create shipments or purchase labels
 
 ## Required Checkout Properties (Storefront)
-When creating Stripe Checkout Sessions, the storefront MUST:
 1) Require a validated shipping destination pre-session.
 2) Proxy cart + destination to `getShippingQuoteBySkus`.
 3) Build `shipping_options` using Stripe `shipping_rate_data` from returned live rates.
@@ -39,7 +37,6 @@ For the same cart + destination:
 - MUST NOT create a new carrier shipment
 
 ### Webhook Idempotency
-Stripe webhooks MUST:
 - guard against replay/duplicates (same session should not create multiple orders)
 - preserve canonical quote metadata when writing to Sanity orders
 

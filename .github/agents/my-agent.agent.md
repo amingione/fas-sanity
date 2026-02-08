@@ -26,12 +26,9 @@ and automatic recognition of existing repo structures.
 
 ---
 
-## Stripe Webhook Enforcement Responsibilities
 
 The FAS Codex agent MUST perform the following Stripe-specific enforcement and diagnostics when requested:
 
-1. Stripe Webhook Audit
-   - Enumerate all active Stripe webhook endpoints
    - Verify endpoint URLs match deployed Netlify functions
    - Verify required event types are enabled:
      - checkout.session.completed

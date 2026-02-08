@@ -368,12 +368,10 @@ fas-sanity uses EasyPost ONLY for:
 
 ## EXAMPLE WORKFLOW
 
-### Scenario: "Fix Stripe Checkout Shipping"
 
 **Step 1: Task Request**
 
 ```
-Task: Fix Stripe Checkout shipping metadata
 Repo: fas-cms-fresh
 ```
 

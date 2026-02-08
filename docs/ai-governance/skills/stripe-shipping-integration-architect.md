@@ -92,7 +92,6 @@ No label is purchased during checkout 2) Guard test — NO direct Stripe calls f
 Fail the test if:
 
 fas-cms-fresh calls stripe.createPaymentIntent
-fas-cms-fresh calls stripe.createCheckoutSession
 fas-cms-fresh calls stripe.charges.create 3) Guard test — NO direct Shippo calls from storefront or Sanity
 Fail the test if:
 

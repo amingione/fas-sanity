@@ -527,41 +527,31 @@ These are **standard Medusa v2 core endpoints** that fas-cms-fresh calls.
 | SAN-EN-10 | sendQuoteEmail | /.netlify/functions/sendQuoteEmail | HTTP Function | active |
 | SAN-EN-11 | sendVendorEmail | /.netlify/functions/sendVendorEmail | HTTP Function | active |
 
-**Data Migration** (10 functions)
+**Data Migration** (7 functions)
 
 | ID | Function Name | Public Path | Type | Status |
 |----|---------------|-------------|------|--------|
-| SAN-DM-01 | backfillCheckoutAsyncPayments | /.netlify/functions/backfillCheckoutAsyncPayments | HTTP Function | active |
 | SAN-DM-02 | backfillCustomers | /.netlify/functions/backfillCustomers | HTTP Function | active |
-| SAN-DM-03 | backfillExpiredCheckouts | /.netlify/functions/backfillExpiredCheckouts | HTTP Function | active |
 | SAN-DM-04 | backfillInvoices | /.netlify/functions/backfillInvoices | HTTP Function | active |
-| SAN-DM-05 | backfillOrderShipping | /.netlify/functions/backfillOrderShipping | HTTP Function | active |
-| SAN-DM-06 | backfillOrderStripe | /.netlify/functions/backfillOrderStripe | HTTP Function | active |
 | SAN-DM-07 | backfillOrders | /.netlify/functions/backfillOrders | HTTP Function | active |
 | SAN-DM-08 | backfillPaymentFailures | /.netlify/functions/backfillPaymentFailures | HTTP Function | active |
-| SAN-DM-09 | backfillRefunds | /.netlify/functions/backfillRefunds | HTTP Function | active |
 | SAN-DM-10 | backfillStripeProducts | /.netlify/functions/backfillStripeProducts | HTTP Function | active |
 
-**Payment/Stripe** (9 functions)
+**Payment/Stripe** (7 functions)
 
 | ID | Function Name | Public Path | Type | Status |
 |----|---------------|-------------|------|--------|
 | SAN-PS-01 | captureOrderPayment | /.netlify/functions/captureOrderPayment | HTTP Function | active |
 | SAN-PS-02 | create-wholesale-payment-link | /.netlify/functions/create-wholesale-payment-link | HTTP Function | active |
 | SAN-PS-03 | fetchStripePayouts | /.netlify/functions/fetchStripePayouts | HTTP Function | active |
-| SAN-PS-04 | reprocessStripeSession | /.netlify/functions/reprocessStripeSession | HTTP Function | active |
-| SAN-PS-05 | stripeShippingRateCalculation | /.netlify/functions/stripeShippingRateCalculation | HTTP Function | active |
-| SAN-PS-06 | stripeWebhook | /.netlify/functions/stripeWebhook | HTTP Function | active |
 | SAN-PS-07 | syncStripeCatalog | /.netlify/functions/syncStripeCatalog | HTTP Function | active |
 | SAN-PS-08 | syncStripeCoupons | /.netlify/functions/syncStripeCoupons | Scheduled Function | active |
 | SAN-PS-09 | syncVendorToStripe | /.netlify/functions/syncVendorToStripe | HTTP Function | active |
 
-**Financial Documents** (9 functions)
+**Financial Documents** (7 functions)
 
 | ID | Function Name | Public Path | Type | Status |
 |----|---------------|-------------|------|--------|
-| SAN-FD-01 | createCheckout | /.netlify/functions/createCheckout | HTTP Function | active |
-| SAN-FD-02 | createCheckoutSession | /.netlify/functions/createCheckoutSession | HTTP Function | active |
 | SAN-FD-03 | generateCheckPDF | /.netlify/functions/generateCheckPDF | HTTP Function | active |
 | SAN-FD-04 | generateInvoicePDF | /.netlify/functions/generateInvoicePDF | HTTP Function | active |
 | SAN-FD-05 | generateQuotePDF | /.netlify/functions/generateQuotePDF | HTTP Function | active |
@@ -667,7 +657,6 @@ These are **standard Medusa v2 core endpoints** that fas-cms-fresh calls.
 | SAN-CRON-01 | syncMarketingAttribution | `0 2 * * *` | Daily at 2 AM - Sync marketing attribution data |
 | SAN-CRON-02 | update-customer-segments | `30 3 * * *` | Daily at 3:30 AM - Update customer segments |
 | SAN-CRON-03 | inventoryReorderCheck | `0 9 * * *` | Daily at 9 AM - Check inventory reorder levels |
-| SAN-CRON-04 | sendAbandonedCartEmails | `0 * * * *` | Hourly - Send abandoned cart recovery emails |
 
 ---
 
@@ -697,7 +686,6 @@ _Note: Detailed flow traces will be added in Phase 2-5._
 
 **Migration Notes:**
 - All legacy routes in `/api/legacy/` should be migrated to Medusa v2 core endpoints
-- Stripe checkout sessions should use Medusa payment providers
 - Legacy webhooks should be consolidated with Medusa webhook handlers
 
 ---

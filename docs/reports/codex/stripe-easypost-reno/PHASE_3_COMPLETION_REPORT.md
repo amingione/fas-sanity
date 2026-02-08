@@ -1,7 +1,6 @@
 # Phase 3 Completion Report - Make Order Persistence Robust
 
 Date: 2025-02-14
-Scope: Stripe webhook robustness and duplicate handler consolidation
 
 ## Resolved Issues
 - 3.1: Sanity client config is validated at webhook entry (fail fast with clear 500)
@@ -22,6 +21,5 @@ Task 3.3 - duplicate webhook consolidation
 - No webhook replay executed in this phase.
 
 ## Recommendations for Phase 4
-- Run Stripe webhook replay once environment allows (see `fas-sanity/scripts/stripe-maintenance/test-webhook.js`).
 - Confirm Stripe dashboard uses a single webhook endpoint.
 

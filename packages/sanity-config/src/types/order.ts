@@ -129,7 +129,6 @@ export interface OrderDocument {
   service?: string | null
   deliveryDays?: number | null
   estimatedDeliveryDate?: string | null
-  stripeShippingRateId?: string | null
   shippingQuoteId?: string | null
   shippingQuoteKey?: string | null
   shippingQuoteRequestId?: string | null

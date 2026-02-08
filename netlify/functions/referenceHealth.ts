@@ -24,7 +24,6 @@ const handler: Handler = async (event) => {
     invoicesWithoutCustomers: number
     invoicesWithoutOrders: number
     shipmentsWithoutOrders: number
-    checkoutSessionsWithoutCustomers: number
     paidOrdersMissingCart: number
   }>(
     `{
@@ -33,7 +32,6 @@ const handler: Handler = async (event) => {
       "invoicesWithoutCustomers": count(*[_type == "invoice" && !defined(customerRef)]),
       "invoicesWithoutOrders": count(*[_type == "invoice" && !defined(orderRef)]),
       "shipmentsWithoutOrders": count(*[_type == "shipment" && !defined(order)]),
-      "checkoutSessionsWithoutCustomers": count(*[_type == "checkoutSession" && !defined(customerRef)]),
       "paidOrdersMissingCart": count(*[_type == "order" && status in ["paid","fulfilled","shipped","completed"] && (!defined(cart) || length(cart) == 0)])
     }`,
   )
@@ -50,7 +48,6 @@ const handler: Handler = async (event) => {
         counts.invoicesWithoutCustomers ? `${counts.invoicesWithoutCustomers} invoices missing customers` : null,
         counts.invoicesWithoutOrders ? `${counts.invoicesWithoutOrders} invoices missing orders` : null,
         counts.shipmentsWithoutOrders ? `${counts.shipmentsWithoutOrders} shipments missing orders` : null,
-        counts.checkoutSessionsWithoutCustomers ? `${counts.checkoutSessionsWithoutCustomers} checkout sessions missing customers` : null,
         counts.paidOrdersMissingCart ? `${counts.paidOrdersMissingCart} paid orders missing carts` : null,
       ].filter(Boolean),
     }),

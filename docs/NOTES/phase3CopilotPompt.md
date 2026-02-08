@@ -75,7 +75,6 @@ Move (DO NOT DELETE) the following files exactly as listed:
 # Stripe Hosted Checkout (legacy)
 mv src/pages/api/stripe/create-checkout-session.ts src/pages/api/legacy/stripe/
 
-# Legacy Medusa checkout sessions
 mv src/pages/api/medusa/checkout/create-session.ts src/pages/api/legacy/medusa/
 mv src/pages/api/medusa/checkout/complete.ts src/pages/api/legacy/medusa/
 
@@ -123,7 +122,6 @@ Specifically REMOVE:
 DO NOT remove:
 	•	STRIPE_SECRET_KEY
 	•	STRIPE_WEBHOOK_SECRET
-	•	STRIPE_SHIPPING_WEBHOOK_SECRET
 	•	SANITY_API_TOKEN
 	•	SANITY_PROJECT_ID
 	•	SANITY_DATASET

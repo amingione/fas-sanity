@@ -2,7 +2,6 @@
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
-import {handleRefundWebhookEvent} from './stripeWebhook'
 import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 
 const DEFAULT_ORIGINS = (
@@ -322,22 +321,45 @@ export const handler: Handler = async (event) => {
 
     const refund = await stripe.refunds.create(refundParams)
 
-    // best-effort immediate sync using shared webhook handler
+    // best-effort immediate sync without webhook dependencies
     try {
-      const eventPayload = {
-        id: `evt_refund_${refund.id}_${Date.now()}`,
-        object: 'event',
-        api_version: '2024-06-20',
-        created: refund.created || Math.floor(Date.now() / 1000),
-        data: {object: refund},
-        livemode: Boolean((refund as any)?.livemode),
-        pending_webhooks: 0,
-        request: {id: null, idempotency_key: null},
-        type: eventTypeForRefund(refund.status || undefined),
-      } as unknown as Stripe.Event
-      await handleRefundWebhookEvent(eventPayload)
+      const refundAmount = typeof refund.amount === 'number' ? refund.amount / 100 : 0
+      const total = order?.totalAmount ?? invoice?.total ?? invoice?.amountSubtotal ?? undefined
+      const already = order?.amountRefunded ?? 0
+      const nextRefunded = refundAmount > 0 ? already + refundAmount : already
+      const isFullRefund =
+        typeof total === 'number' && total > 0 ? nextRefunded >= total - 0.01 : false
+      const nextPaymentStatus =
+        refund.status === 'failed'
+          ? order?.paymentStatus || 'paid'
+          : isFullRefund
+            ? 'refunded'
+            : refundAmount > 0
+              ? 'partially_refunded'
+              : order?.paymentStatus || 'paid'
+
+      if (order?._id && sanity) {
+        await sanity
+          .patch(order._id)
+          .set({
+            paymentStatus: nextPaymentStatus,
+            amountRefunded: nextRefunded,
+            updatedAt: new Date().toISOString(),
+          })
+          .commit({autoGenerateArrayKeys: true})
+      }
+
+      if (!order && invoice?._id && sanity) {
+        await sanity
+          .patch(invoice._id)
+          .set({
+            status: nextPaymentStatus,
+            updatedAt: new Date().toISOString(),
+          })
+          .commit({autoGenerateArrayKeys: true})
+      }
     } catch (err) {
-      console.warn('createRefund: failed to invoke local refund handler', err)
+      console.warn('createRefund: failed to sync refund status', err)
     }
 
     return {

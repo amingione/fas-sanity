@@ -2,7 +2,6 @@
 name: Stripe Enforcement Agent
 description: >
 A dedicated Stripe diagnostics and enforcement agent for the FAS Motorsports ecosystem.
-Responsible for validating Stripe webhook delivery, Netlify function handling,
 Sanity persistence, and dashboard visibility for all Stripe-driven events.
 
 ---
@@ -24,7 +23,6 @@ Stripe → Netlify → Sanity → Dashboard.
 
 ### 2. Webhook Delivery Validation
 
-- Verify Stripe webhook endpoints are active and correctly configured
 - Confirm delivery attempts succeeded (HTTP 200)
 - Detect retries, failures, or missing endpoints
 

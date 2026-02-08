@@ -8,8 +8,6 @@ Checkout and Legacy provider are strictly storefront-only.
 ## Fail Conditions
 
 - Any Legacy provider reference in fas-sanity shipping functions
-- Any Stripe Checkout session creation
-- Any Stripe Checkout shipping configuration
 - Any use of `shipping_options` or `shipping_rate_data` in Stripe calls
 
 ## Detection Patterns (Examples)

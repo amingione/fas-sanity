@@ -15,9 +15,7 @@
 - ✅ Sanity product catalog is comprehensive and well-structured
 - ✅ Storefront successfully creates Medusa carts with line items
 - ✅ Medusa Shippo fulfillment provider is production-ready (488 lines, fully implemented)
-- ✅ Shipping rate calculation works (Medusa → Shippo → Stripe Checkout)
 - ✅ Stripe payment processing completes successfully
-- ✅ Sanity order creation from Stripe webhook works
 
 **Critical Gap:**
 
@@ -108,7 +106,6 @@
 
 #### STRIPE SYNC FIELDS - READ-ONLY, DO NOT REMOVE
 
-**Purpose:** These fields are written by Stripe webhooks to track sync status.
 
 - `stripeProductId` (string) - Stripe product ID
 - `stripeDefaultPriceId` (string) - Default price in Stripe
@@ -193,7 +190,6 @@
 
 **Impact:**
 
-1. When Stripe webhook creates Sanity order, it doesn't store the `medusa_cart_id` from Stripe metadata
 2. No way to link Sanity order → Medusa cart for completion
 3. No way to trigger Medusa order fulfillment from Sanity
 4. **Result:** Medusa order is never completed, fulfillment never happens
@@ -202,7 +198,6 @@
 
 - Checkout creates Medusa cart (ID: `cart_01JN...`)
 - Checkout stores `medusa_cart_id` in Stripe session metadata (line 1335 in create-checkout-session.ts)
-- Stripe webhook receives session.metadata.medusa_cart_id
 - **BUT:** Webhook does NOT extract or store this value in the Sanity order
 
 **Recommendation:** Add `medusaCartId` (string) field to order schema to store the Medusa cart ID.
@@ -265,7 +260,6 @@ throw new MedusaError(
 
 ### 1.4 Stripe Metadata Analysis
 
-**Checkout Session Metadata** (`create-checkout-session.ts` lines 1335-1337):
 
 ```typescript
 metadataForSession.medusa_cart_id = medusaCartId
@@ -291,7 +285,6 @@ metadata: {
 
 **Verdict:** ✅ Stripe metadata is comprehensive and includes all necessary IDs for Medusa integration.
 
-**Problem:** Stripe webhook does NOT read `medusa_cart_id` from metadata or use it to complete the Medusa cart.
 
 ---
 
@@ -365,17 +358,14 @@ Products are authored in Sanity with full details:
 
 1. ✅ Customer completes Stripe payment
 2. ✅ Stripe sends `checkout.session.completed` webhook
-3. ✅ Webhook creates Sanity order (`fas-sanity/netlify/functions/stripeWebhook.ts` line 8409)
 4. ❌ **Webhook does NOT call Medusa to complete cart**
 5. ❌ **Medusa cart remains in "incomplete" state forever**
 6. ❌ **No `order.placed` event emitted**
 7. ❌ **Fulfillment subscriber never triggers**
 8. ❌ **No Shippo label created**
 
-**Proof:** No Medusa references in Stripe webhook:
 
 ```bash
-$ grep -i "medusa" /fas-sanity/netlify/functions/stripeWebhook.ts
 (no results)
 ```
 
@@ -414,13 +404,11 @@ if (medusaCartId) {
 
 ## Part 3: Checkout & Payment Flow
 
-### 3.1 Checkout Session Creation
 
 **File:** `/fas-cms-fresh/src/pages/api/stripe/create-checkout-session.ts`
 
 **Configuration:**
 
-- `ui_mode: 'embedded'` - Embedded Stripe Checkout (customer stays on site)
 - `mode: 'payment'` - One-time payment
 - `payment_method_types: ['card', 'affirm']` - Cards + Buy Now Pay Later
 - `automatic_tax: { enabled: true }` - Stripe Tax integration
@@ -431,14 +419,12 @@ if (medusaCartId) {
 
 ### 3.2 Payment Completion
 
-**Stripe Webhook Events Handled:**
 
 1. `checkout.session.completed` (line 8398) - Creates Sanity order
 2. `checkout.session.expired` (line 7592) - Marks abandoned checkout
 3. `payment_intent.succeeded` (line 8432) - Updates payment status
 4. `charge.succeeded` / `charge.captured` - Updates charge details
 
-**Verdict:** ✅ Stripe webhook handles all necessary payment events.
 
 ### 3.3 Order Creation Logic
 
@@ -604,7 +590,6 @@ SHIPPO_DIMENSION_UNIT=in      # Dimension unit (in, cm, mm)
 **Structure:** Monorepo with packages
 
 - `packages/sanity-config` - Schema definitions, Studio config
-- `netlify/functions` - Serverless endpoints (Stripe webhook, shipping quotes, etc.)
 - `shared/` - Shared utilities
 
 **Verdict:** ✅ Well-organized, follows Sanity conventions.
@@ -654,7 +639,6 @@ SHIPPO_DIMENSION_UNIT=in      # Dimension unit (in, cm, mm)
 - ✅ Fails loudly when dimensions are missing (no silent fallbacks)
 - ✅ Validates carrier selection (only USPS/UPS allowed)
 
-**Stripe Webhook:**
 
 - ✅ Comprehensive error logging
 - ✅ Idempotency checks (duplicate event handling)
@@ -708,7 +692,6 @@ SHIPPO_DIMENSION_UNIT=in      # Dimension unit (in, cm, mm)
 
 #### C1: Medusa Cart Never Completed
 
-**Location:** `/fas-sanity/netlify/functions/stripeWebhook.ts` line 8409
 **Problem:** After Stripe payment, webhook creates Sanity order but does NOT complete Medusa cart
 **Impact:** No Medusa orders created, no fulfillments triggered, no shipping labels purchased
 **Fix Required:** Add Medusa cart completion call in webhook after creating Sanity order
@@ -763,7 +746,6 @@ defineField({
   type: 'string',
   group: 'technical',
   readOnly: true,
-  description: 'Medusa cart ID (from checkout session)',
 }),
 ```
 
@@ -876,7 +858,6 @@ defineField({
 - Shipping rate calculation works
 - Stripe session creation works
 
-### ✅ Stripe Webhook (Partial)
 
 - Handles all necessary Stripe events
 - Creates Sanity orders correctly
@@ -936,7 +917,6 @@ defineField({
 
 **Problem:** Currently only Sanity orders are created. Medusa orders never created.
 
-**Fix:** Complete Medusa cart in Stripe webhook.
 
 ---
 
@@ -944,8 +924,6 @@ defineField({
 
 ### Immediate (Before Next Checkout Test)
 
-1. **Add Medusa cart completion to Stripe webhook**
-   - Location: `/fas-sanity/netlify/functions/stripeWebhook.ts`
    - After: `createOrderFromCheckout(session)` succeeds
    - Action: POST to `/store/carts/{id}/complete`
 
@@ -1060,7 +1038,6 @@ defineField({
 - Shipping labels never purchased ❌
 - Customers never get tracking info ❌
 
-**Root Cause:** ONE missing integration point in the Stripe webhook
 
 **Fix Complexity:** LOW - Approximately 30 lines of code to add Medusa cart completion
 
@@ -1111,13 +1088,10 @@ With the Medusa cart completion added, the system will be production-ready for:
 
 - `/packages/sanity-config/src/schemaTypes/documents/product.ts` (1777 lines)
 - `/packages/sanity-config/src/schemaTypes/documents/order.tsx` (840 lines)
-- `/netlify/functions/stripeWebhook.ts` (9090 lines)
 - `/netlify/functions/getShippingQuoteBySkus.ts` (807 lines - UNUSED)
-- `/netlify/functions/stripeShippingRateCalculation.ts` (DISABLED, returns 410)
 
 **fas-cms-fresh:**
 
-- `/src/pages/api/stripe/create-checkout-session.ts` (1357 lines)
 - `/src/pages/api/medusa/cart/shipping-options.ts` (86 lines)
 - `/src/pages/api/medusa/cart/add-item.ts` (169 lines)
 - `/src/pages/api/medusa/cart/create.ts`
@@ -1203,7 +1177,6 @@ With the Medusa cart completion added, the system will be production-ready for:
    Stripe Embedded Checkout
    Customer enters payment info, completes payment
 
-5. STRIPE WEBHOOK: checkout.session.completed
 
    ┌─────────────────────────────────────────────┐
    │ ✅ Current Behavior:                        │
@@ -1241,7 +1214,6 @@ With the Medusa cart completion added, the system will be production-ready for:
 **Report Generated:** January 29, 2026
 **Auditor:** Claude (Anthropic AI)
 **Audit Duration:** Comprehensive cross-repository analysis
-**Next Steps:** Implement Medusa cart completion in Stripe webhook (HIGH PRIORITY)
 
 ---
 
@@ -1257,7 +1229,6 @@ The Good News:
 
 The Critical Issue:
 
-❌ ONE missing integration: Stripe webhook doesn't complete Medusa cart
 ❌ Result: Orders are paid but never fulfilled (no labels, no tracking)
 
 Critical Finding: The Missing Link
@@ -1272,15 +1243,12 @@ No Medusa order created ❌
 Fulfillment never triggers ❌
 No shipping label purchased ❌
 
-Proof: I verified there are ZERO references to "medusa" in your 9,090-line Stripe webhook.
 Fix Complexity: LOW - About 30 lines of code
-Fix Location: /fas-sanity/netlify/functions/stripeWebhook.ts line 8409
 Estimated Time: 1-2 hours
 
 Key Findings by Severity
 CRITICAL (Fix Before Production)
 
-Missing Medusa cart completion in Stripe webhook
 
 Impact: Customers pay but orders never ship
 Fix: Add POST to /store/carts/{id}/complete after creating Sanity order
@@ -1355,7 +1323,6 @@ Context (Authoritative)
 • Checkout creates a Medusa cart successfully.
 • Shipping rates are calculated via Medusa + Shippo successfully.
 • Stripe payment completes successfully.
-• Stripe webhook creates a Sanity order successfully.
 • CRITICAL FAILURE: Medusa cart is never completed after payment.
 • Result:
 • No Medusa order created
@@ -1382,7 +1349,6 @@ You MUST:
 You MAY:
 • ✅ Add the minimum required code to complete the Medusa cart
 • ✅ Add read-only linkage fields to Sanity order schema
-• ✅ Add Medusa API calls only inside Stripe webhook
 • ✅ Add environment variable usage if missing
 
 ⸻
@@ -1402,11 +1368,9 @@ Acceptance Criteria (ALL must pass)
 
 Execution Steps (MANDATORY ORDER)
 
-STEP 1 — Locate Stripe webhook
 
 File:
 
-fas-sanity/netlify/functions/stripeWebhook.ts
 
 Find the logic handling:
 
@@ -1538,7 +1502,6 @@ Output Requirements
 
 Final Goal
 
-After execution: 1. Customer completes Stripe payment 2. Stripe webhook runs 3. Sanity order created 4. Medusa cart completed 5. Medusa order created 6. order.placed fires 7. Shippo label purchased automatically
 
 ⸻
 
@@ -1582,7 +1545,6 @@ You should be able to check every box before closing Phase 2.
 
 A. Checkout & Payment (Storefront → Stripe)
 • Product added to cart from storefront
-• Stripe Checkout session created successfully
 • Shipping rates displayed (USPS + UPS)
 • Stripe payment completes (test card)
 • checkout.session.completed webhook fires
@@ -1601,7 +1563,6 @@ B. Sanity Order Creation
 
 C. Medusa Order Creation (CRITICAL)
 • medusa_cart_id present in Stripe metadata
-• Stripe webhook calls
 POST /store/carts/{cartId}/complete
 • Medusa order created successfully
 • order.placed event emitted
@@ -1853,7 +1814,6 @@ Phase 2 Verification Checklist
 A. Checkout & Payment (Storefront → Stripe)
 
 Product added to cart from storefront
-Stripe Checkout session created successfully
 Shipping rates displayed (USPS + UPS)
 Stripe payment completes (test card)
 checkout.session.completed webhook fires
@@ -1870,7 +1830,6 @@ Customer record linked / created
 C. Medusa Order Creation (CRITICAL)
 
 medusa_cart_id present in Stripe metadata
-Stripe webhook calls POST /store/carts/{cartId}/complete
 Medusa order created successfully
 order.placed event emitted
 Sanity order updated with:
@@ -1922,7 +1881,6 @@ You MUST:
 
 ❌ NOT modify checkout logic
 ❌ NOT modify shipping logic
-❌ NOT modify Stripe webhook logic
 ❌ NOT introduce UI changes
 ❌ NOT guess defaults for missing dimensions
 ❌ NOT stop on first error (collect all failures)
@@ -2396,7 +2354,6 @@ DO NOT:
 
 Modify checkout logic
 Modify shipping logic
-Modify Stripe webhook (beyond what Phase 2C already added)
 Guess defaults for missing data
 Skip validation
 Stop on first error

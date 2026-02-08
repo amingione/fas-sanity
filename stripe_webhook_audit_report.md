@@ -1,10 +1,7 @@
-# Stripe Webhook Auditor's Report
 
 ## 1. Findings
 
-This report details the operational assumptions of the `stripeWebhook` Netlify function and their departures from observed Stripe API and webhook behavior, leading to "Customer identity conflict" errors.
 
-### Assumptions in `stripeWebhook` Logic
 
 The core logic, particularly within the `strictFindOrCreateCustomer` and `strictFindOrCreateCustomerFromStripeCustomer` functions, operates on a set of assumptions about customer identity and data flow.
 
@@ -13,11 +10,8 @@ The core logic, particularly within the `strictFindOrCreateCustomer` and `strict
 *   **Observed Behavior:** The logic attempts to reconcile users by email and Stripe Customer ID. A conflict is thrown if a lookup by Stripe ID finds `Customer A`, but a lookup by email finds `Customer B`, and `Customer B` is also linked to a `vendor` record. This indicates an assumption that a vendor's Stripe ID and email will always resolve to the same Sanity customer document.
 
 #### B. Email Reuse
-*   **System Assumption:** A single email address is treated as a durable, unique identifier for a single logical customer in Sanity. The system assumes that if a Stripe customer object or checkout session provides an email, that email should resolve to exactly one existing Sanity `customer`.
 *   **Observed Behavior:** The logic aggressively attempts to find a customer by email (`fetchCustomerByEmail`). If a Stripe Customer ID is not found in Sanity, the system falls back to an email lookup. This becomes problematic when a user checks out as a guest with an email that already exists in the system under a different Stripe Customer ID.
 
-#### C. Checkout Session Retries
-*   **System Assumption:** The system does not explicitly account for a user retrying a checkout session after a failure. It treats each `checkout.session.completed` event as a distinct transaction that should resolve to a single, consistent customer record.
 *   **Observed Behavior:** If a user's first payment attempt fails and they retry with a different email or payment method, Stripe may create a new Guest Customer object. The webhook handler then receives a new `checkout.session.completed` event, potentially with a new Stripe Customer ID but a familiar email, triggering the conflict condition.
 
 #### D. Abandoned Checkout Flows

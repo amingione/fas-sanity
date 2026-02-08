@@ -163,7 +163,6 @@ packages/sanity-config/src/schemaTypes/
    - Payment processing
    - Webhook handling
    - Customer management
-   - **NEED TO ADD: Legacy provider dynamic shipping rates integration for stripe orders ONLY**
 
 2. **EasyPost Integration**
    - Shipping label creation

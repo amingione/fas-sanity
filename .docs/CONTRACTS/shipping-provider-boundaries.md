@@ -15,9 +15,6 @@ not be crossed without explicit human approval.
 ## Provider Responsibilities
 
 ### fas-cms-fresh (Online Storefront)
-- Provider: EasyPost (via Stripe shipping rates webhook)
-- Uses Stripe Checkout only (embedded UI)
-- Address collection and rate selection occur inside Stripe Checkout
 - EasyPost rates are calculated server-side in `src/pages/api/stripe/shipping-rates-webhook.ts`
 - No pre-checkout shipping rate pages
 
@@ -34,8 +31,6 @@ Must not:
 - Stores shipment metadata for internal tracking
 
 Must not:
-- Create Stripe Checkout sessions
-- Configure Stripe Checkout shipping options
 - Influence online checkout shipping
 
 ## Non-Overlapping Flows
@@ -45,7 +40,6 @@ Must not:
 
 ## Deprecated Endpoints
 - `stripeShippingRateCalculation` is intentionally disabled (returns 410)
-- Shipping rates are calculated exclusively by the Stripe shipping rates webhook
 
 ## Enforcement Rules (Critical)
 - If a request violates these boundaries, stop and request explicit human

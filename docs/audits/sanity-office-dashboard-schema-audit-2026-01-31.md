@@ -109,7 +109,6 @@ Change applied:
 Change applied:
 - Added strong descriptions indicating checkout discounts are enforced in Medusa.
 
-## `stripeWebhook` (`fas-sanity/packages/sanity-config/src/schemaTypes/documents/stripeWebhook.ts`)
 
 - **Authoritative UI Fields**
   - `summary` (human label)
@@ -148,7 +147,6 @@ Change applied:
 - Keep Sanity focused on content; treat pricing/shipping/inventory as mirrors when Medusa IDs exist.
 - Follow-up (later phase): migrate remaining dependencies (Merchant feeds, shipping previews) to consume Medusa-owned product attributes.
 
-## Checkout Session
 
 - Keep as read-only for historical/abandonment reporting.
 - Follow-up (later phase): rename or relocate in desk structure to “Legacy / Stripe” to avoid implying authority.
@@ -158,10 +156,8 @@ Change applied:
 - Keep as marketing copy/schedule.
 - Follow-up (later phase): create a “Medusa Discount Mapping” reference (promotion → Medusa discount code) so staff can manage campaigns without inventing checkout logic in Sanity.
 
-## Stripe Webhook Logs
 
 - Treat as immutable audit trail.
-- Follow-up (later phase): ensure Stripe webhooks ultimately terminate in Medusa, with Sanity receiving only mirrored state/events.
 
 ---
 

@@ -4,7 +4,7 @@ type Group = 'sanity' | 'stripe' | 'resend' | 'cors' | 'base'
 
 const REQUIRED: Record<Group, string[]> = {
   sanity: ['SANITY_STUDIO_PROJECT_ID', 'SANITY_STUDIO_DATASET', 'SANITY_API_TOKEN'],
-  stripe: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
+  stripe: ['STRIPE_SECRET_KEY'],
   resend: ['RESEND_API_KEY', 'RESEND_FROM'],
   cors: ['CORS_ALLOW'],
   base: ['SANITY_STUDIO_NETLIFY_BASE'],

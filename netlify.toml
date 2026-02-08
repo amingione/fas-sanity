@@ -63,10 +63,6 @@
   name = "inventoryReorderCheck"
   schedule = "0 9 * * *"
 
-[[scheduled_function]]
-  name = "sendAbandonedCartEmails"
-  schedule = "0 * * * *"
-
 # Bypass redirect for known static assets
 [[redirects]]
   from = "/site.webmanifest"
