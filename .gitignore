@@ -39,6 +39,8 @@ Thumbs.db
 
 # Dotenv and similar local-only files
 .env
+.env.test
+.env.local
 .env.*
 !.env.example
 !.env.development.example

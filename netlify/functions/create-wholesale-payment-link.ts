@@ -137,6 +137,14 @@ const createVendorMessage = async (params: {
 }
 
 const handler: Handler = async (event) => {
+  return {
+    statusCode: 410,
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      error:
+        'Deprecated: Wholesale payment links are disabled. Use Stripe Elements on vendor order payment.',
+    }),
+  }
   if (event.httpMethod === 'OPTIONS') {
     return {statusCode: 204, headers: corsHeaders}
   }

@@ -6,7 +6,6 @@ import {useClient} from 'sanity'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
 import {calculateVendorItemSubtotal} from '../../../../../shared/vendorPricing'
 import {getNetlifyFnBase} from './netlifyFnBase'
-import {formatInvoiceNumberFromOrder, formatOrderNumber} from '../../utils/orderNumber'
 
 const API_VERSION = '2024-10-01'
 
@@ -45,30 +44,11 @@ const computeDueDate = (paymentTerms?: string) => {
 
 type CalculatedOrderItem = {
   source: any
-  order: any
   invoice: any
   unitPrice: number
   subtotal: number
   quantity: number
   _key: string
-}
-
-const buildOrderCartItem = (item: any, unitPrice: number, subtotal: number) => {
-  const product = item.product || {}
-  const title = product.title || item.description || 'Product'
-  return {
-    _type: 'orderCartItem',
-    _key: item._key || createKey(),
-    name: title,
-    productRef: product._id ? {_type: 'reference', _ref: product._id} : undefined,
-    sku: product.sku,
-    price: unitPrice,
-    quantity: item.quantity || 1,
-    lineTotal: subtotal,
-    total: subtotal,
-    id: product._id,
-    productName: title,
-  }
 }
 
 const buildInvoiceLineItem = (item: any, unitPrice: number, subtotal: number) => ({
@@ -155,7 +135,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
 
   if (props.type !== 'vendorQuote') return null
   const docId = props.id.replace(/^drafts\./, '')
-  const hasOrder = Boolean((props.draft || props.published)?.convertedToOrder)
+  const hasInvoice = Boolean((props.draft || props.published)?.convertedToInvoice)
 
   const handleConvert = async () => {
     setBusy(true)
@@ -189,7 +169,6 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
         )
         return {
           source: item,
-          order: buildOrderCartItem(item, unitPrice, subtotal),
           invoice: buildInvoiceLineItem(item, unitPrice, subtotal),
           unitPrice,
           subtotal,
@@ -204,54 +183,23 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       const total = Number.isFinite(Number(quote.total)) ? Number(quote.total) : subtotal + shipping + tax
 
       const nowIso = new Date().toISOString()
-      const normalizedOrderNumber = formatOrderNumber(quote.quoteNumber) || quote.quoteNumber
-      const orderDoc: DocumentStub<Record<string, any>> = {
-        _type: 'order',
-        orderNumber: normalizedOrderNumber || undefined,
-        orderType: 'wholesale',
-        status: 'pending',
-        paymentStatus: 'unpaid',
-        currency: 'USD',
-        wholesaleDetails: {
-          workflowStatus: 'requested',
-        },
-        customerRef: {
-          _type: 'reference',
-          _ref: vendor.customerRef._ref,
-        },
-        customerName: vendor.companyName,
-        customerEmail: vendor.primaryContact?.email,
-        cart: orderItems.map((item) => item.order),
-        amountSubtotal: subtotal,
-        amountTax: tax,
-        amountDiscount: 0,
-        amountShipping: shipping,
-        totalAmount: total,
-        notes: quote.notes,
-        createdAt: nowIso,
-      }
-
-      const createdOrder = await client.create(orderDoc, {autoGenerateArrayKeys: true})
-
-      const invoiceNumber =
-        formatInvoiceNumberFromOrder(createdOrder.orderNumber) ||
-        (await generateReferenceCode(client, {
-          prefix: 'INV-',
-          typeName: 'invoice',
-          fieldName: 'invoiceNumber',
-        }))
+      const invoiceNumber = await generateReferenceCode(client, {
+        prefix: 'INV-',
+        typeName: 'invoice',
+        fieldName: 'invoiceNumber',
+      })
       const billTo = toBillAddress(vendor.businessAddress)
       const shipTo = toBillAddress(vendor.shippingAddress || vendor.businessAddress)
-      const invoiceTitle =
-        createdOrder.orderNumber && vendor.companyName
-          ? `${vendor.companyName} • ${createdOrder.orderNumber}`
-          : `Wholesale order ${quote.quoteNumber || ''}`
+      const invoiceTitle = vendor.companyName
+        ? `${vendor.companyName} • ${quote.quoteNumber || invoiceNumber}`
+        : `Wholesale invoice ${quote.quoteNumber || ''}`
       const invoiceDoc: DocumentStub<Record<string, any>> = {
         _type: 'invoice',
         title: invoiceTitle,
         invoiceNumber,
-        orderNumber: createdOrder.orderNumber || undefined,
-        orderRef: {_type: 'reference', _ref: createdOrder._id},
+        orderNumber: quote.quoteNumber || undefined,
+        customerRef: {_type: 'reference', _ref: vendor.customerRef._ref},
+        vendorRef: {_type: 'reference', _ref: vendor._id},
         billTo: billTo
           ? {
               name: vendor.companyName,
@@ -271,21 +219,31 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
         lineItems: orderItems.map((item) => item.invoice),
         subtotal,
         total,
-        amountShipping: shipping,
+        shipping,
+        tax,
         taxRate: subtotal > 0 ? (tax / subtotal) * 100 : undefined,
-        status: 'pending',
+        status: 'payable',
         invoiceDate: new Date().toISOString().slice(0, 10),
         dueDate: computeDueDate(vendor.paymentTerms),
         paymentTerms: vendor.paymentTerms,
         customerNotes: quote.notes,
+        amountPaid: 0,
+        amountDue: total,
       }
       const createdInvoice = await client.create(invoiceDoc, {autoGenerateArrayKeys: true})
-      await client
-        .patch(createdOrder._id)
-        .set({
-          invoiceRef: {_type: 'reference', _ref: createdInvoice._id},
-        })
-        .commit({autoGenerateArrayKeys: true})
+
+      const base = getNetlifyFnBase().replace(/\/$/, '')
+      const paymentIntentRes = await fetch(`${base}/.netlify/functions/createVendorInvoicePaymentIntent`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({invoiceId: createdInvoice._id}),
+      })
+      const paymentIntentPayload = (await paymentIntentRes.json().catch(() => ({}))) as {
+        error?: string
+      }
+      if (!paymentIntentRes.ok || paymentIntentPayload?.error) {
+        throw new Error(paymentIntentPayload?.error || 'Stripe PaymentIntent creation failed')
+      }
 
       const updatedItems = orderItems.map((item) => ({
         _key: item._key,
@@ -305,7 +263,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
             shipping,
             tax,
             total,
-            convertedToOrder: {_type: 'reference', _ref: createdOrder._id},
+            convertedToInvoice: {_type: 'reference', _ref: createdInvoice._id},
             items: updatedItems,
             approvedAt: quote.approvedAt || nowIso,
           }),
@@ -319,7 +277,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
             shipping,
             tax,
             total,
-            convertedToOrder: {_type: 'reference', _ref: createdOrder._id},
+            convertedToInvoice: {_type: 'reference', _ref: createdInvoice._id},
             items: updatedItems,
             approvedAt: quote.approvedAt || nowIso,
           }),
@@ -327,25 +285,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       }
       await tx.commit({autoGenerateArrayKeys: true})
 
-      await client
-        .patch(vendor._id)
-        .setIfMissing({totalOrders: 0, totalRevenue: 0, currentBalance: 0})
-        .set({lastOrderDate: nowIso})
-        .inc({totalOrders: 1, totalRevenue: total, currentBalance: total})
-        .commit({autoGenerateArrayKeys: true})
-
-      await sendVendorEmail(vendor.primaryContact?.email, {
-        template: 'order',
-        data: {
-          companyName: vendor.companyName,
-          contactName: vendor.primaryContact?.name,
-          orderNumber: createdOrder.orderNumber || createdOrder._id,
-          total,
-          paymentTerms: vendor.paymentTerms,
-        },
-      })
-
-      toast.push({status: 'success', title: 'Order and invoice created'})
+      toast.push({status: 'success', title: 'Invoice created (payment ready)'})
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       toast.push({status: 'error', title: 'Conversion failed', description: message})
@@ -357,14 +297,14 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
   }
 
   return {
-    label: 'Convert to Order',
+    label: 'Convert to Invoice',
     tone: 'primary',
-    disabled: hasOrder,
+    disabled: hasInvoice,
     onHandle: () => setOpen(true),
     dialog: open
       ? {
           type: 'dialog',
-          header: 'Convert quote to wholesale order',
+          header: 'Convert quote to invoice',
           onClose: () => {
             setOpen(false)
             props.onComplete()
@@ -372,7 +312,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
           content: (
             <Box padding={4}>
               <Stack space={4}>
-                <Text>Creates a wholesale order and invoice using this quote. Continue?</Text>
+                <Text>Creates a vendor invoice using this quote. Continue?</Text>
                 <Flex justify="flex-end" gap={3}>
                   <Button text="Cancel" mode="ghost" disabled={busy} onClick={() => setOpen(false)} />
                   <Button text="Convert" tone="primary" loading={busy} onClick={handleConvert} />

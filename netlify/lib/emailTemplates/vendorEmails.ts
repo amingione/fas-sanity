@@ -32,6 +32,7 @@ export type VendorOrderEmailData = {
   total?: number | null
   paymentTerms?: string
   portalUrl?: string
+  paymentUrl?: string
 }
 
 export type VendorEmailTemplateInput =
@@ -190,6 +191,7 @@ export const buildVendorOrderEmail = ({
   total,
   paymentTerms,
   portalUrl,
+  paymentUrl,
 }: VendorOrderEmailData) => {
   const greeting = contactName ? `Hi ${contactName},` : 'Hello,'
   const html = baseHtml(
@@ -205,6 +207,11 @@ export const buildVendorOrderEmail = ({
       ${
         portalUrl
           ? `<p style="margin:0 0 16px"><a href="${portalUrl}" style="display:inline-block;padding:12px 20px;background:#6366f1;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;">View order</a></p>`
+          : ''
+      }
+      ${
+        paymentUrl
+          ? `<p style="margin:0 0 16px"><a href="${paymentUrl}" style="display:inline-block;padding:12px 20px;background:#0f172a;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;">Pay invoice</a></p>`
           : ''
       }
       <p style="margin:0">Reach out if you need any adjustments.</p>

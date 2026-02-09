@@ -17,6 +17,7 @@ import {
   convertVendorQuoteAction,
   sendVendorQuoteEmailAction,
 } from './schemaTypes/documentActions/vendorQuoteActions'
+import {convertVendorInvoiceToOrderAction} from './schemaTypes/documentActions/vendorInvoiceActions'
 import {sendVendorInviteAction} from './schemaTypes/documentActions/vendorInviteAction'
 import {
   manageWorkOrderAction,
@@ -43,7 +44,6 @@ import {
   completeManufacturingOrderAction,
 } from './schemaTypes/documentActions/inventoryActions'
 import {INVENTORY_DOCUMENT_TYPE} from '../../../shared/docTypes'
-import {syncVendorToStripeAction} from './schemaTypes/documentActions/syncVendorToStripeAction'
 import {
   GeneratePackingSlipAction,
   SendShippingConfirmationAction,
@@ -56,6 +56,7 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   if (context.schemaType === 'invoice') {
     list.push(backfillInvoicesAction)
     list.push(refundStripeInvoiceAction)
+    list.push(convertVendorInvoiceToOrderAction)
   }
   if (isOrderSchemaType(context.schemaType)) {
     list.push(GeneratePackingSlipAction, SendShippingConfirmationAction)
@@ -107,7 +108,6 @@ const resolveDocumentActions: DocumentActionsResolver = (prev, context) => {
   if (context.schemaType === 'vendor') {
     list.push(generateVendorNumberAction)
     list.push(sendVendorInviteAction)
-    list.push(syncVendorToStripeAction)
   }
   return list
 }

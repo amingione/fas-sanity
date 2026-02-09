@@ -102,6 +102,7 @@ import campaign from './marketing/campaigns/campaign'
 import marketingChannel from './marketing/marketingChannel'
 import altText from './documents/altText'
 import customerPortalAccess from './documents/customerPortalAccess'
+import vendorOrder from './documents/vendorOrder'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -323,6 +324,7 @@ const documents = [
   vendorReturn,
   vendorFeedback,
   vendorQuote,
+  vendorOrder,
   vendorPost,
   vendorPostCategory,
   vendorEmailLog,

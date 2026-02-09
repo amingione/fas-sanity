@@ -97,6 +97,15 @@ export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin || '') as string
   const CORS = makeCORS(origin)
 
+  return {
+    statusCode: 410,
+    headers: {...CORS, 'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      error:
+        'Deprecated: Vendor Stripe sync is disabled. Stripe objects are created only when invoices convert to vendor orders.',
+    }),
+  }
+
   if (event.httpMethod === 'OPTIONS') {
     return {statusCode: 200, headers: CORS, body: ''}
   }

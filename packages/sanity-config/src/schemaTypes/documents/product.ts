@@ -728,6 +728,15 @@ const product = defineType({
       group: 'details',
     }),
     defineField({
+      name: 'promoCardShowPrice',
+      title: 'Show Price on Promo Cards',
+      type: 'boolean',
+      description:
+        'Controls whether this product shows a price on promo cards (Medusa remains authoritative).',
+      initialValue: false,
+      group: 'details',
+    }),
+    defineField({
       name: 'keyFeatures',
       title: 'Key Features',
       type: 'array',
