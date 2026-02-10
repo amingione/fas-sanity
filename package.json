@@ -125,6 +125,7 @@
     "sanity": "^5.1.0",
     "sanity-plugin-hotspot-array": "^3.0.2",
     "sanity-plugin-media": "^4.1.1",
+    "shippo": "^2.5.0",
     "slug": "^8.2.3",
     "ssh2-sftp-client": "^10.0.3",
     "stripe": "^18.5.0",

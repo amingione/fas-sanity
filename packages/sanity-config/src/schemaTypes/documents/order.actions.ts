@@ -70,6 +70,28 @@ const callFn = async (fn: string, json?: unknown) => {
   throw lastErr ?? new Error(`Unable to call ${fn}`)
 }
 
+const formatUserLabel = (user?: {name?: string; email?: string}) =>
+  user?.name || user?.email || 'user'
+
+const normalizeRateList = (rates: any[] | undefined | null) =>
+  Array.isArray(rates)
+    ? rates
+        .map((rate: any) => ({
+          rateId: String(rate?.rateId || rate?.objectId || rate?.object_id || '').trim(),
+          amount: typeof rate?.amount === 'number' ? rate.amount : Number(rate?.amount),
+          currency: String(rate?.currency || 'USD'),
+          carrier: String(rate?.carrier || rate?.provider || ''),
+          provider: String(rate?.provider || rate?.carrier || ''),
+          service: String(rate?.service || rate?.servicelevel || ''),
+          estimatedDays:
+            typeof rate?.estimatedDays === 'number'
+              ? rate.estimatedDays
+              : Number(rate?.estimatedDays || NaN),
+          durationTerms: String(rate?.durationTerms || ''),
+        }))
+        .filter((rate) => rate.rateId)
+    : []
+
 const detachInvoiceReferences = async (client: any, orderId: string) => {
   try {
     const invoices: string[] =
@@ -96,6 +118,190 @@ export const orderActions: DocumentActionsResolver = (prev, context) => {
 
   return [
     ...prev,
+    // Shippo: Get rates for this order.
+    (props) => {
+      const doc = props.draft || props.published
+      if (!doc) return null
+      const status = typeof doc.status === 'string' ? doc.status : ''
+      const eligible = status === 'paid'
+      return {
+        name: 'shippoGetRates',
+        label: 'Get Shipping Rates',
+        icon: DocumentIcon,
+        tone: 'primary',
+        title: eligible ? undefined : 'Order must be paid before fetching shipping rates.',
+        disabled: !eligible,
+        hidden: !eligible,
+        onHandle: async () => {
+          const orderId = normalizeId(doc._id)
+          if (!orderId || doc._id?.startsWith('drafts.')) {
+            alert('Publish this order before fetching rates.')
+            props.onComplete()
+            return
+          }
+
+          try {
+            const res = await callFn('shippoGetRatesForOrder', {orderId})
+            if (!res.ok) throw new Error(await readResponseMessage(res))
+            const payload = await res.json()
+            const rates = normalizeRateList(payload?.rates)
+            if (!rates.length) {
+              alert('No UPS or FedEx rates returned.')
+              props.onComplete()
+              return
+            }
+            const now = new Date().toISOString()
+            const userLabel = formatUserLabel(currentUser)
+            const client = getClient({apiVersion: SANITY_API_VERSION})
+            await client
+              .patch(orderId)
+              .set({
+                shippoRates: rates,
+                shippoRatesFetchedAt: now,
+                shippoRatesFetchedBy: userLabel,
+              })
+              .commit({autoGenerateArrayKeys: true})
+            alert(`Loaded ${rates.length} rates.`)
+          } catch (error: any) {
+            console.error('shippoGetRates action failed', error)
+            alert(error?.message || 'Unable to fetch Shippo rates')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Shippo: Choose a rate from the cached list.
+    (props) => {
+      const doc = props.draft || props.published
+      if (!doc) return null
+      const status = typeof doc.status === 'string' ? doc.status : ''
+      const eligible = status === 'paid'
+      return {
+        name: 'shippoChooseRate',
+        label: 'Choose Shipping Rate',
+        icon: DocumentIcon,
+        tone: 'primary',
+        title: eligible ? undefined : 'Order must be paid before selecting rates.',
+        disabled: !eligible,
+        hidden: !eligible,
+        onHandle: async () => {
+          const orderId = normalizeId(doc._id)
+          if (!orderId || doc._id?.startsWith('drafts.')) {
+            alert('Publish this order before selecting rates.')
+            props.onComplete()
+            return
+          }
+          const rates = normalizeRateList((doc as any)?.shippoRates)
+          if (!rates.length) {
+            alert('No rates cached. Use "Get Shipping Rates" first.')
+            props.onComplete()
+            return
+          }
+
+          const options = rates
+            .map(
+              (rate, idx) =>
+                `${idx + 1}. ${rate.carrier.toUpperCase()} ${rate.service} — ` +
+                `$${Number(rate.amount || 0).toFixed(2)} ${rate.currency}`,
+            )
+            .join('\n')
+          const input = window.prompt(
+            `Choose a rate by number:\n\n${options}\n\n(Example: 1)`,
+          )
+          if (!input) {
+            props.onComplete()
+            return
+          }
+          const index = Number(input) - 1
+          const selected = Number.isFinite(index) ? rates[index] : rates.find((r) => r.rateId === input)
+          if (!selected) {
+            alert('Invalid rate selection.')
+            props.onComplete()
+            return
+          }
+
+          try {
+            const now = new Date().toISOString()
+            const userLabel = formatUserLabel(currentUser)
+            const client = getClient({apiVersion: SANITY_API_VERSION})
+            await client
+              .patch(orderId)
+              .set({
+                shippoRateId: selected.rateId,
+                shippoRateAmount: Number(selected.amount),
+                shippoRateCurrency: selected.currency,
+                shippoServicelevel: selected.service,
+                shippoCarrier: selected.carrier,
+                shippoProvider: selected.provider,
+                shippoRateEstimatedDays: Number.isFinite(selected.estimatedDays)
+                  ? selected.estimatedDays
+                  : undefined,
+                shippoRateSelectedAt: now,
+                shippoRateSelectedBy: userLabel,
+              })
+              .commit({autoGenerateArrayKeys: true})
+            alert(`Selected ${selected.carrier.toUpperCase()} ${selected.service}.`)
+          } catch (error: any) {
+            console.error('shippoChooseRate action failed', error)
+            alert(error?.message || 'Unable to save selected rate')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
+
+    // Shippo: Purchase & print label.
+    (props) => {
+      const doc = props.draft || props.published
+      if (!doc) return null
+      const status = typeof doc.status === 'string' ? doc.status : ''
+      const eligible = status === 'paid'
+      return {
+        name: 'shippoPurchaseLabel',
+        label: 'Purchase & Print Label',
+        icon: PackageIcon,
+        tone: 'primary',
+        title: eligible ? undefined : 'Order must be paid before purchasing labels.',
+        disabled: !eligible,
+        hidden: !eligible,
+        onHandle: async () => {
+          const orderId = normalizeId(doc._id)
+          const rateId = String((doc as any)?.shippoRateId || '').trim()
+          if (!orderId || doc._id?.startsWith('drafts.')) {
+            alert('Publish this order before purchasing labels.')
+            props.onComplete()
+            return
+          }
+          if (!rateId) {
+            alert('Choose a shipping rate first.')
+            props.onComplete()
+            return
+          }
+
+          try {
+            const res = await callFn('shippoPurchaseLabelForOrder', {
+              orderId,
+              rateId,
+              purchasedBy: formatUserLabel(currentUser),
+            })
+            if (!res.ok) throw new Error(await readResponseMessage(res))
+            const payload = await res.json()
+            if (payload?.labelUrl) {
+              window.open(payload.labelUrl, '_blank', 'noopener')
+            }
+            alert('Shipping label purchased.')
+          } catch (error: any) {
+            console.error('shippoPurchaseLabel action failed', error)
+            alert(error?.message || 'Unable to purchase label')
+          } finally {
+            props.onComplete()
+          }
+        },
+      }
+    },
     // Fulfill order: creates shipment, buys label, emails customer.
     (props) => {
       const doc = props.draft || props.published

@@ -156,19 +156,27 @@ type OrdersDocumentTableProps = {
 }
 
 function resolveOrderNumber(data: OrderRowData & {_id: string}) {
-  const identifiers = [data.orderNumber, data.invoiceNumber, data.stripeSessionId].filter(
-    (candidate): candidate is string => Boolean(candidate && candidate.trim()),
-  )
+  const normalize = (value: unknown): string | null => {
+    if (value === null || value === undefined) return null
+    const text = typeof value === 'string' ? value : String(value)
+    const trimmed = text.trim()
+    return trimmed ? trimmed : null
+  }
+
+  const identifiers = [data.orderNumber, data.invoiceNumber, data.stripeSessionId]
+    .map(normalize)
+    .filter((candidate): candidate is string => Boolean(candidate))
+
   const candidate = identifiers.find((id) => formatOrderNumber(id))
   if (candidate) {
     const formatted = formatOrderNumber(candidate)
     if (formatted) return formatted
   }
 
-  const fallback = identifiers.find((id) => id && id.trim())
+  const fallback = identifiers.find((id) => id)
   if (fallback) return fallback
 
-  const sessionFormatted = formatOrderNumber(data.stripeSessionId)
+  const sessionFormatted = formatOrderNumber(normalize(data.stripeSessionId) || '')
   if (sessionFormatted) return sessionFormatted
 
   return '—'
@@ -193,7 +201,9 @@ function formatOrderTimestamp(value?: string | null): string {
 function getCustomerLabel(data: OrderRowData) {
   const candidates = [data.customerName, data.shippingName, data.customerEmail]
   for (const value of candidates) {
-    if (value && value.trim()) return value
+    if (!value) continue
+    const text = typeof value === 'string' ? value : String(value)
+    if (text.trim()) return text
   }
   return '—'
 }
