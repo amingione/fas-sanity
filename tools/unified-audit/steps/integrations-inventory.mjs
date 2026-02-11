@@ -4,7 +4,6 @@ import {cleanSnippet, stableSort, uniqueArray} from '../lib/utils.mjs'
 
 const SIGNATURES = [
   {category: 'sanity', match: /@sanity\/client|createClient\(/},
-  {category: 'easypost', match: /easypost|EasyPost|EASYPOST_/i},
   {category: 'resend', match: /resend|RESEND_/i},
   {category: 'shipengine', match: /shipengine|SHIPENGINE_/i},
   {category: 'stripe', match: /stripe|STRIPE_/i},

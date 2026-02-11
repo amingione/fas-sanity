@@ -2,7 +2,6 @@ import path from 'node:path'
 import { ensureDir, writeText } from '../lib/utils.mjs'
 
 const SERVICES = [
-  { repo: 'fas-cms', service: 'easypost', inputs: ['api-contract-violations.json'] },
   { repo: 'fas-cms', service: 'resend', inputs: ['api-contract-violations.json'] },
   { repo: 'fas-cms', service: 'schemas', inputs: ['schema-index.json', 'query-index.json', 'schema-vs-query.json', 'sanity-runtime-scan.json'] },
   { repo: 'fas-cms', service: 'env', inputs: ['env-resolution-matrix.json'] },

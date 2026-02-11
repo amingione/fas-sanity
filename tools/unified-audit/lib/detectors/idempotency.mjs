@@ -6,7 +6,6 @@ const SIDE_EFFECT_PATTERNS = [
   /client\.createIfNotExists\(/,
   /transaction\.create\(/,
   /resend\.emails\.send\(/,
-  /easypost\.Shipment\.create\(/,
   /\.patch\(.*\)\.set\(/,
 ]
 
@@ -14,7 +13,6 @@ const GUARD_PATTERNS = [
   /createIfNotExists/,
   /\*\[webhookEventId\s*==\s*\$id\]/,
   /\*\[stripeEventId\s*==\s*\$id\]/,
-  /\*\[easypostEventId\s*==\s*\$id\]/,
   /const\s+existing\s*=.*fetch.*event\.id/,
   /if\s*\(existing\)/,
   /idempotency[_-]?key/i,

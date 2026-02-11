@@ -1,10 +1,10 @@
-import { Project, SyntaxKind } from 'ts-morph'
-import { lineNumberForIndex } from '../utils.mjs'
+import {Project, SyntaxKind} from 'ts-morph'
+import {lineNumberForIndex} from '../utils.mjs'
 
 const project = new Project({
   useInMemoryFileSystem: true,
   skipFileDependencyResolution: true,
-  compilerOptions: { allowJs: true },
+  compilerOptions: {allowJs: true},
 })
 
 function getSourceFile(filePath, fileContent) {
@@ -73,7 +73,7 @@ export function extractInlineObjectFields(startIndex, fileContent) {
       }
       continue
     }
-    if (char === '"' || char === '\'' || char === '`') {
+    if (char === '"' || char === "'" || char === '`') {
       inString = true
       stringChar = char
       continue
@@ -104,9 +104,7 @@ function parseObjectKeys(objectLiteral) {
     const trimmed = buffer.trim()
     buffer = ''
     if (!trimmed || trimmed.startsWith('...')) return
-    const keyMatch = trimmed.match(
-      /^"([^"]+)"\s*:|^'([^']+)'\s*:|^([A-Za-z0-9_]+)\s*:/,
-    )
+    const keyMatch = trimmed.match(/^"([^"]+)"\s*:|^'([^']+)'\s*:|^([A-Za-z0-9_]+)\s*:/)
     if (keyMatch) {
       const key = keyMatch[1] || keyMatch[2] || keyMatch[3]
       if (key) keys.add(key)
@@ -126,7 +124,7 @@ function parseObjectKeys(objectLiteral) {
       if (depth === 1) buffer += char
       continue
     }
-    if (char === '"' || char === '\'' || char === '`') {
+    if (char === '"' || char === "'" || char === '`') {
       inString = true
       stringChar = char
       if (depth === 1) buffer += char
@@ -169,7 +167,6 @@ export function checkRequiredFields(objectFields, required) {
 
 export function detectApiContractViolation(filePath, fileContent, ast) {
   if (/(Validation|validator)\.ts$/.test(filePath)) return []
-  if (/easypostValidation\.ts$/.test(filePath)) return []
   if (/resendValidation\.ts$/.test(filePath)) return []
 
   const sourceFile = ast || getSourceFile(filePath, fileContent)
@@ -177,12 +174,6 @@ export function detectApiContractViolation(filePath, fileContent, ast) {
   const violations = []
 
   const apiContracts = [
-    {
-      pattern: /easypost\.Shipment\.create\s*\(\s*(\w+|\{)/gi,
-      service: 'easypost',
-      operation: 'Shipment.create',
-      required: ['to_address', 'from_address', 'parcel'],
-    },
     {
       pattern: /resend\.emails\.send\s*\(\s*(\w+|\{)/gi,
       service: 'resend',

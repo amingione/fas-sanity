@@ -2,7 +2,6 @@ import { lineNumberForIndex, uniqueSorted } from './utils.mjs'
 
 const INTEGRATION_PATTERNS = [
   { category: 'sanity', regex: /@sanity\/client|createClient\s*\(|sanityClient/ },
-  { category: 'easypost', regex: /easypost|EasyPost|api\.easypost\.com|EASYPOST_/ },
   { category: 'resend', regex: /resend|RESEND_/ },
   { category: 'shipengine', regex: /shipengine|ShipEngine|SHIPENGINE_/ },
   { category: 'stripe', regex: /Stripe\b|STRIPE_/ },

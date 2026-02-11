@@ -40,7 +40,6 @@ const BUILTIN_MODULES = new Set([
 
 const EXTERNAL_API_KEYWORDS = [
   {label: 'stripe', pattern: /stripe/i},
-  {label: 'easypost', pattern: /easypost/i},
   {label: 'resend', pattern: /resend/i},
   {label: 'sendgrid', pattern: /sendgrid/i},
   {label: 'mailgun', pattern: /mailgun/i},
@@ -66,12 +65,6 @@ const CONTRACTS = [
     envKeys: ['STRIPE_WEBHOOK_SECRET', 'STRIPE_WEBHOOK_SIGNING_SECRET'],
     matchFn: (fn) =>
       fn.externalApis.includes('stripe') && fn.name.toLowerCase().includes('webhook'),
-  },
-  {
-    name: 'easypost-webhook',
-    envKeys: ['EASYPOST_WEBHOOK_SECRET', 'EASYPOST_WEBHOOK_SIGNING_KEY'],
-    matchFn: (fn) =>
-      fn.externalApis.includes('easypost') && fn.name.toLowerCase().includes('webhook'),
   },
   {
     name: 'resend-webhook',

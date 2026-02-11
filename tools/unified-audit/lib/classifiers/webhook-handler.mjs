@@ -59,7 +59,6 @@ export function isWebhookHandler(filePath, fileContent = '') {
     /src\/pages\/api\/webhooks\//,
     /netlify\/functions\/.*webhook.*\.(ts|mjs)$/i,
     /netlify\/functions\/stripe.*\.ts$/,
-    /netlify\/functions\/easypost.*\.ts$/,
     /netlify\/functions\/.*Events\.ts$/,
   ]
 
@@ -72,10 +71,9 @@ export function isWebhookHandler(filePath, fileContent = '') {
   const hasHandler =
     /export\s+default\s+(async\s+)?function.*\(req,\s*res\)/.test(fileContent) ||
     /handler\s*=\s*async\s*\(event/.test(fileContent)
-  const hasSignature =
-    /(constructEvent|verifySignature|stripe-signature|x-easypost-signature|svix-signature)/.test(
-      fileContent,
-    )
+  const hasSignature = /(constructEvent|verifySignature|stripe-signature|svix-signature)/.test(
+    fileContent,
+  )
   const hasEventRef =
     (/event\.id/.test(fileContent) && /event\.type/.test(fileContent)) ||
     /payload\.event_type/.test(fileContent) ||
