@@ -166,6 +166,7 @@ export function checkRequiredFields(objectFields, required) {
 }
 
 export function detectApiContractViolation(filePath, fileContent, ast) {
+  if (typeof filePath !== 'string' || typeof fileContent !== 'string') return []
   if (/(Validation|validator)\.ts$/.test(filePath)) return []
   if (/resendValidation\.ts$/.test(filePath)) return []
 

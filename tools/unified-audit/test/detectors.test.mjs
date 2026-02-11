@@ -27,6 +27,7 @@ describe('unified audit detectors', () => {
   it('webhook handler classification', () => {
     const cases = [
       {
+        filePath: 'netlify/functions/shippo-webhook.ts',
         content: '',
         expected: true,
       },
@@ -71,6 +72,7 @@ describe('unified audit detectors', () => {
         expected: false,
       },
       {
+        filePath: 'src/lib/shippoWebhook.ts',
         content: webhookContent,
         expected: false,
       },
@@ -245,7 +247,11 @@ await resend.emails.send({ to, from, subject, text: 'Hi' })
     )
     expect(violationsD.length).toBe(0)
 
-    const skipValidation = detectApiContractViolation(null, null, null)
+    const skipValidation = detectApiContractViolation(
+      'netlify/functions/resendValidation.ts',
+      resendMissing,
+      null,
+    )
     expect(skipValidation.length).toBe(0)
 
     const inlineFields = extractInlineObjectFields(0, 'foo({ to_address, from_address, parcel })')

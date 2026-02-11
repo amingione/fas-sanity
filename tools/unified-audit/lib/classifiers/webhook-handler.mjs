@@ -1,6 +1,7 @@
 import path from 'node:path'
 
 function normalizePath(filePath) {
+  if (typeof filePath !== 'string' || filePath.length === 0) return ''
   return filePath.split(path.sep).join('/')
 }
 
@@ -52,6 +53,7 @@ export function isExcluded(filePath, fileContent = '') {
 }
 
 export function isWebhookHandler(filePath, fileContent = '') {
+  if (typeof fileContent !== 'string') fileContent = ''
   const normalized = normalizePath(filePath)
   const pathPatterns = [
     /src\/pages\/api\/webhooks\.ts$/,
