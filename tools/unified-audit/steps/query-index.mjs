@@ -1,19 +1,19 @@
 import fs from 'node:fs/promises'
-import { parse } from 'groq-js'
-import { listRepoFiles, relativeToRepo } from '../lib/file-scan.mjs'
-import { cleanSnippet, stableSort, uniqueArray } from '../lib/utils.mjs'
+import {parse} from 'groq-js'
+import {listRepoFiles, relativeToRepo} from '../lib/file-scan.mjs'
+import {cleanSnippet, stableSort, uniqueArray} from '../lib/utils.mjs'
 
 function extractQueriesFromContent(content) {
   const queries = []
   const groqRegex = /groq`([\s\S]*?)`/g
   let match
   while ((match = groqRegex.exec(content))) {
-    queries.push({ query: match[1], kind: 'groq' })
+    queries.push({query: match[1], kind: 'groq'})
   }
 
   const fetchRegex = /\.fetch\((`|')([\s\S]*?)\1\s*[),]/g
   while ((match = fetchRegex.exec(content))) {
-    queries.push({ query: match[2], kind: 'fetch' })
+    queries.push({query: match[2], kind: 'fetch'})
   }
 
   return queries
@@ -68,44 +68,51 @@ function extractProjectionFields(query) {
     }
   }
 
-  return { fields: [...fields], parseError }
+  return {fields: [...fields], parseError}
 }
 
-export async function runQueryIndex({ repos }) {
+const CODE_PATTERNS = ['**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}']
+
+export async function runQueryIndex({repos}) {
   const result = {
     status: 'PASS',
     requiresEnforcement: false,
     enforcementApproved: false,
     queries: [],
     fieldsUsed: {},
-    parseErrors: []
+    parseErrors: [],
   }
 
   const files = []
   for (const repo of repos) {
-    const repoFiles = await listRepoFiles(repo.path, ['**/*.{ts,tsx,js,jsx}'])
-    for (const file of repoFiles) files.push({ repo, file })
+    const repoFiles = await listRepoFiles(repo.path, CODE_PATTERNS)
+    for (const file of repoFiles) files.push({repo, file})
   }
 
-  for (const { repo, file } of files) {
+  if (files.length === 0) {
+    result.note = 'No code files matched query scan patterns.'
+    return result
+  }
+
+  for (const {repo, file} of files) {
     const content = await fs.readFile(file, 'utf8')
     const queries = extractQueriesFromContent(content)
     if (queries.length === 0) continue
 
     const relPath = relativeToRepo(repo.path, file)
     for (const query of queries) {
-      const { fields, parseError } = extractProjectionFields(query.query)
+      const {fields, parseError} = extractProjectionFields(query.query)
       result.queries.push({
         repo: repo.name,
         file: relPath,
         kind: query.kind,
         query: query.query,
         fields,
-        parseError
+        parseError,
       })
       for (const field of fields) {
         if (!result.fieldsUsed[field]) {
-          result.fieldsUsed[field] = { files: [] }
+          result.fieldsUsed[field] = {files: []}
         }
         result.fieldsUsed[field].files.push(`${repo.name}/${relPath}`)
       }
@@ -114,7 +121,7 @@ export async function runQueryIndex({ repos }) {
           repo: repo.name,
           file: relPath,
           error: parseError,
-          snippet: cleanSnippet(query.query)
+          snippet: cleanSnippet(query.query),
         })
       }
     }
@@ -125,9 +132,9 @@ export async function runQueryIndex({ repos }) {
     result.fieldsUsed[field] = usage
   }
 
-  result.queries = result.queries.map(entry => ({
+  result.queries = result.queries.map((entry) => ({
     ...entry,
-    fields: stableSort(uniqueArray(entry.fields))
+    fields: stableSort(uniqueArray(entry.fields)),
   }))
   result.queries = result.queries.sort((a, b) => {
     const aKey = `${a.repo}/${a.file}`

@@ -1,37 +1,41 @@
 import fs from 'node:fs/promises'
-import { listRepoFiles, relativeToRepo } from '../lib/file-scan.mjs'
-import { cleanSnippet, stableSort, uniqueArray } from '../lib/utils.mjs'
+import {listRepoFiles, relativeToRepo} from '../lib/file-scan.mjs'
+import {cleanSnippet, stableSort, uniqueArray} from '../lib/utils.mjs'
 
 const SIGNATURES = [
-  { category: 'sanity', match: /@sanity\/client|createClient\(/ },
-  { category: 'easypost', match: /easypost|EasyPost|EASYPOST_/i },
-  { category: 'resend', match: /resend|RESEND_/i },
-  { category: 'shipengine', match: /shipengine|SHIPENGINE_/i },
-  { category: 'stripe', match: /stripe|STRIPE_/i },
-  { category: 'twilio', match: /twilio|TWILIO_/i },
-  { category: 'netlify', match: /netlify\/functions|Netlify/i },
-  { category: 'vercel', match: /vercel|Vercel/i }
+  {category: 'sanity', match: /@sanity\/client|createClient\(/},
+  {category: 'easypost', match: /easypost|EasyPost|EASYPOST_/i},
+  {category: 'resend', match: /resend|RESEND_/i},
+  {category: 'shipengine', match: /shipengine|SHIPENGINE_/i},
+  {category: 'stripe', match: /stripe|STRIPE_/i},
+  {category: 'twilio', match: /twilio|TWILIO_/i},
+  {category: 'netlify', match: /netlify\/functions|Netlify/i},
+  {category: 'vercel', match: /vercel|Vercel/i},
 ]
 
-const ENV_REGEX = [
-  /process\.env\.([A-Z0-9_]+)/g,
-  /import\.meta\.env\.([A-Z0-9_]+)/g
-]
+const ENV_REGEX = [/process\.env\.([A-Z0-9_]+)/g, /import\.meta\.env\.([A-Z0-9_]+)/g]
 
-export async function runIntegrationsInventory({ repos }) {
+const CODE_PATTERNS = ['**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}']
+
+export async function runIntegrationsInventory({repos}) {
   const result = {
     status: 'PASS',
     hits: [],
-    envKeys: {}
+    envKeys: {},
   }
 
   const files = []
   for (const repo of repos) {
-    const repoFiles = await listRepoFiles(repo.path, ['**/*.{ts,tsx,js,jsx,mjs,cjs}'])
-    for (const file of repoFiles) files.push({ repo, file })
+    const repoFiles = await listRepoFiles(repo.path, CODE_PATTERNS)
+    for (const file of repoFiles) files.push({repo, file})
   }
 
-  for (const { repo, file } of files) {
+  if (files.length === 0) {
+    result.note = 'No code files matched integration scan patterns.'
+    return result
+  }
+
+  for (const {repo, file} of files) {
     const content = await fs.readFile(file, 'utf8')
     const lines = content.split(/\r?\n/)
 
@@ -44,7 +48,7 @@ export async function runIntegrationsInventory({ repos }) {
             repo: repo.name,
             file: relativeToRepo(repo.path, file),
             lineNo: i + 1,
-            snippet: cleanSnippet(line)
+            snippet: cleanSnippet(line),
           })
         }
       }
@@ -54,7 +58,7 @@ export async function runIntegrationsInventory({ repos }) {
       let match
       while ((match = regex.exec(content))) {
         const key = match[1]
-        if (!result.envKeys[key]) result.envKeys[key] = { files: [] }
+        if (!result.envKeys[key]) result.envKeys[key] = {files: []}
         result.envKeys[key].files.push(`${repo.name}/${relativeToRepo(repo.path, file)}`)
       }
     }

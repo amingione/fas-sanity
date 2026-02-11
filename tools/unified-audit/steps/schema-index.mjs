@@ -1,6 +1,6 @@
-import { Project, SyntaxKind } from 'ts-morph'
-import { listRepoFiles, relativeToRepo } from '../lib/file-scan.mjs'
-import { stableSort, uniqueArray } from '../lib/utils.mjs'
+import {Project, SyntaxKind} from 'ts-morph'
+import {listRepoFiles, relativeToRepo} from '../lib/file-scan.mjs'
+import {stableSort, uniqueArray} from '../lib/utils.mjs'
 
 function getStringLiteral(node) {
   if (!node) return null
@@ -40,14 +40,14 @@ function extractFieldsFromArray(arrayLiteral) {
     if (nameValue) {
       fields.push({
         name: nameValue,
-        required: hasRequiredValidation(element)
+        required: hasRequiredValidation(element),
       })
     }
     if (getPropertyValue(element, 'fields')) {
       hasNested = true
     }
   }
-  return { fields, hasNested }
+  return {fields, hasNested}
 }
 
 function extractSchemaFromObject(objectLiteral) {
@@ -56,18 +56,18 @@ function extractSchemaFromObject(objectLiteral) {
   const fieldsProp = getPropertyValue(objectLiteral, 'fields')
   if (!nameValue || !typeValue || !fieldsProp) return null
   if (fieldsProp.getKind() !== SyntaxKind.ArrayLiteralExpression) return null
-  const { fields, hasNested } = extractFieldsFromArray(fieldsProp)
-  return { name: nameValue, type: typeValue, fields, hasNested }
+  const {fields, hasNested} = extractFieldsFromArray(fieldsProp)
+  return {name: nameValue, type: typeValue, fields, hasNested}
 }
 
-export async function runSchemaIndex({ repos }) {
-  const sanityRepo = repos.find(repo => repo.role === 'sanity')
+export async function runSchemaIndex({repos}) {
+  const sanityRepo = repos.find((repo) => repo.role === 'sanity')
   const result = {
     status: 'PASS',
     requiresEnforcement: false,
     enforcementApproved: false,
     schemas: {},
-    errors: []
+    errors: [],
   }
 
   if (!sanityRepo) {
@@ -76,7 +76,14 @@ export async function runSchemaIndex({ repos }) {
     return result
   }
 
-  const schemaFiles = await listRepoFiles(sanityRepo.path, ['schemas/**/*.{ts,tsx,js,jsx}'])
+  const schemaFiles = await listRepoFiles(sanityRepo.path, [
+    'schemas/**/*.{ts,tsx,js,jsx}',
+    'schema/**/*.{ts,tsx,js,jsx}',
+    'schemaTypes/**/*.{ts,tsx,js,jsx}',
+    'packages/**/schema/**/*.{ts,tsx,js,jsx}',
+    'packages/**/schemas/**/*.{ts,tsx,js,jsx}',
+    'packages/**/schemaTypes/**/*.{ts,tsx,js,jsx}',
+  ])
   if (schemaFiles.length === 0) {
     result.status = 'SKIPPED'
     result.reason = 'No schema files found'
@@ -85,14 +92,14 @@ export async function runSchemaIndex({ repos }) {
 
   const project = new Project({
     skipAddingFilesFromTsConfig: true,
-    useInMemoryFileSystem: false
+    useInMemoryFileSystem: false,
   })
 
   for (const filePath of schemaFiles) {
     const sourceFile = project.addSourceFileAtPath(filePath)
     const objects = []
 
-    sourceFile.forEachDescendant(node => {
+    sourceFile.forEachDescendant((node) => {
       if (node.getKind() === SyntaxKind.ObjectLiteralExpression) {
         objects.push(node)
       }
@@ -117,11 +124,11 @@ export async function runSchemaIndex({ repos }) {
         fields: [],
         required: [],
         sources: [],
-        partial: false
+        partial: false,
       }
 
-      existing.fields.push(...schema.fields.map(field => field.name))
-      existing.required.push(...schema.fields.filter(f => f.required).map(f => f.name))
+      existing.fields.push(...schema.fields.map((field) => field.name))
+      existing.required.push(...schema.fields.filter((f) => f.required).map((f) => f.name))
       existing.sources.push(relativeToRepo(sanityRepo.path, filePath))
       if (schema.hasNested) existing.partial = true
 
