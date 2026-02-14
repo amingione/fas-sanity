@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/.." && pwd)"
+cd "${repo_root}"
+
 base_sha="${1:-${BASE_SHA:-}}"
 head_sha="${2:-${HEAD_SHA:-}}"
 
@@ -16,10 +20,21 @@ if [[ -z "${base_sha}" ]]; then
   base_sha="${head_sha}"
 fi
 
-mapfile -t files < <(
-  git diff --name-only --diff-filter=ACMRT "${base_sha}" "${head_sha}" -- \
-    '*.tsx' '*.jsx' '*.ts' '*.js' '*.astro' '*.html'
-)
+tmp_diff="$(mktemp)"
+trap 'rm -f "${tmp_diff}"' EXIT HUP INT TERM
+
+if ! git diff --name-only --diff-filter=ACMRT "${base_sha}" "${head_sha}" -- \
+  '*.tsx' '*.jsx' '*.ts' '*.js' '*.astro' '*.html' > "${tmp_diff}"; then
+  echo "css-baseline: unable to compute git diff for ${base_sha}..${head_sha}" >&2
+  echo "css-baseline: ensure both commits exist locally and checkout uses sufficient history." >&2
+  exit 1
+fi
+
+files=()
+while IFS= read -r file; do
+  [[ -z "${file}" ]] && continue
+  files+=("${file}")
+done < "${tmp_diff}"
 
 if [[ "${#files[@]}" -eq 0 ]]; then
   echo "css-baseline: no changed files to check."

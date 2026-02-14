@@ -1,8 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import {fileURLToPath} from 'node:url'
 
-const schemaPath = path.resolve('packages/sanity-config/schema.json')
-const reportPath = path.resolve('.docs/reports/field-to-api-map.md')
+const scriptDir = path.dirname(fileURLToPath(import.meta.url))
+const repoRoot = path.resolve(scriptDir, '..')
+const schemaPath = path.join(repoRoot, 'packages/sanity-config/schema.json')
+const reportPath = path.join(repoRoot, '.docs/reports/field-to-api-map.md')
 const args = process.argv.slice(2)
 const modeIndex = args.indexOf('--mode')
 const modeValue = modeIndex !== -1 ? args[modeIndex + 1] : null
@@ -11,7 +14,7 @@ const mode = (modeValue || (modeInline ? modeInline.split('=')[1] : null) || '')
 const ciMode = mode === 'ci'
 
 if (!fs.existsSync(schemaPath)) {
-  const message = 'Schema Drift Check: missing schema.json'
+  const message = `Schema Drift Check: missing schema.json at ${schemaPath}`
   if (ciMode) {
     console.error(`❌ ${message}`)
     process.exit(1)
@@ -21,7 +24,7 @@ if (!fs.existsSync(schemaPath)) {
 }
 
 if (!fs.existsSync(reportPath)) {
-  const message = 'Schema Drift Check: missing field-to-api map report'
+  const message = `Schema Drift Check: missing field-to-api map report at ${reportPath}`
   if (ciMode) {
     console.error(`❌ ${message}`)
     process.exit(1)
@@ -30,7 +33,22 @@ if (!fs.existsSync(reportPath)) {
   process.exit(0)
 }
 
-const schemaTypes = JSON.parse(fs.readFileSync(schemaPath, 'utf8'))
+const readJsonFile = (filePath) => {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'))
+  } catch (error) {
+    console.error(`❌ Schema Drift Check: failed to parse JSON at ${filePath}`)
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
+}
+
+const schemaTypes = readJsonFile(schemaPath)
+if (!Array.isArray(schemaTypes)) {
+  console.error(`❌ Schema Drift Check: expected schema array in ${schemaPath}`)
+  process.exit(1)
+}
+
 const reportLines = fs.readFileSync(reportPath, 'utf8').split(/\r?\n/)
 
 const reportBySchema = new Map()

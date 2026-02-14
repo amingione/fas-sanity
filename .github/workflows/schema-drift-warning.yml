@@ -12,5 +12,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Warn on schema drift
-        run: node scripts/check-schema-drift.mjs
+      - name: Enforce schema drift contract
+        run: node scripts/check-schema-drift.mjs --mode=ci

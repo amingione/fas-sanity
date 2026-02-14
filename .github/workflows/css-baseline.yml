@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set diff range
         run: |
@@ -22,4 +24,4 @@ jobs:
           fi
 
       - name: Check CSS baseline
-        run: scripts/check-css-baseline.sh "$BASE_SHA" "$HEAD_SHA"
+        run: bash scripts/check-css-baseline.sh "$BASE_SHA" "$HEAD_SHA"

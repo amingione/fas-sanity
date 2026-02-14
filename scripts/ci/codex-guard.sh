@@ -1,14 +1,21 @@
 #!/bin/sh
 set -eu
 
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/../.." && pwd)
+cd "$repo_root"
+
 fail=0
 
-files=$(find . -type f \( -name 'Makefile' -o -name '*.mk' \) \
+tmp_files=$(mktemp)
+trap 'rm -f "$tmp_files"' EXIT HUP INT TERM
+
+find . -type f \( -name 'Makefile' -o -name '*.mk' \) \
   -not -path './node_modules/*' \
   -not -path './dist/*' \
-  -not -path './archive/*')
+  -not -path './archive/*' > "$tmp_files"
 
-for file in $files; do
+while IFS= read -r file; do
   awk '
     BEGIN { bad = 0 }
     {
@@ -26,9 +33,10 @@ for file in $files; do
     }
     END { if (bad) exit 1 }
   ' "$file" || fail=1
- done
+done < "$tmp_files"
 
 if [ "$fail" -ne 0 ]; then
+  echo "Governance guard failed: one or more unsafe codex invocations were found."
   echo "Codex must be run interactively from a real terminal."
   exit 1
 fi
