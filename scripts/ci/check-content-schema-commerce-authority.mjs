@@ -3,7 +3,9 @@ import path from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {
   contentSchemaFiles,
+  forbiddenDocumentTypeReferences,
   forbiddenFieldNames,
+  referenceLookaheadLines,
   forbiddenTypeNames,
 } from './content-schema-commerce-authority.config.mjs'
 
@@ -11,6 +13,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(scriptDir, '../..')
 
 const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const referenceTypeMatcher = /\btype\s*:\s*['"`]reference['"`]/
 
 const findMatches = ({lines, matcher, filePath, kind, token}) => {
   const matches = []
@@ -66,6 +69,32 @@ for (const relativePath of contentSchemaFiles) {
       }),
     )
   }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!referenceTypeMatcher.test(lines[index])) {
+      continue
+    }
+
+    const windowEnd = Math.min(lines.length, index + referenceLookaheadLines + 1)
+    const windowLines = lines.slice(index, windowEnd)
+
+    for (const documentTypeName of forbiddenDocumentTypeReferences) {
+      const pattern = new RegExp(`\\btype\\s*:\\s*['"\`]${escapeForRegex(documentTypeName)}['"\`]`)
+      for (let offset = 0; offset < windowLines.length; offset += 1) {
+        if (!pattern.test(windowLines[offset])) {
+          continue
+        }
+
+        violations.push({
+          kind: 'reference',
+          token: documentTypeName,
+          filePath: relativePath,
+          lineNumber: index + offset + 1,
+          line: windowLines[offset].trim(),
+        })
+      }
+    }
+  }
 }
 
 if (missingFiles.length > 0) {
@@ -79,13 +108,15 @@ if (missingFiles.length > 0) {
 
 if (violations.length > 0) {
   console.error('❌ Commerce authority guard failed for content-focused Sanity schemas.')
-  console.error('Medusa-owned pricing/inventory/commerce authority fields or types were detected.\n')
+  console.error('Medusa-owned pricing/inventory/commerce authority fields, types, or document references were detected.\n')
   for (const violation of violations) {
     console.error(
       ` - [${violation.kind}] ${violation.token} at ${violation.filePath}:${violation.lineNumber} -> ${violation.line}`,
     )
   }
-  console.error('\nAction: move commerce authority fields/types to Medusa-owned schemas or update guard config intentionally.')
+  console.error(
+    '\nAction: move commerce authority fields/types/references to Medusa-owned schemas or update guard config intentionally.',
+  )
   process.exit(1)
 }
 

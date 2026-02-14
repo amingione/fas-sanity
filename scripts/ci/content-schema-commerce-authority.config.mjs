@@ -64,3 +64,15 @@ export const forbiddenTypeNames = [
   'stripePriceSnapshot',
   'stripeOrderSummary',
 ]
+
+// Keep this denylist explicit to avoid noisy pattern matching.
+export const forbiddenDocumentTypeReferences = [
+  'order',
+  'invoice',
+  'quote',
+  'vendorOrder',
+  'purchaseOrder',
+]
+
+// Scan only a short window after `type: "reference"` to keep false positives low.
+export const referenceLookaheadLines = 12
