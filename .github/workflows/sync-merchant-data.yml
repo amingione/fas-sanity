@@ -27,9 +27,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Write GMC service account key
-        if: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY != '' }}
+        env:
+          GMC_SERVICE_ACCOUNT_KEY: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}
         run: |
-          echo "${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}" > /tmp/gmc-key.json
+          if [ -n "$GMC_SERVICE_ACCOUNT_KEY" ]; then
+            printf '%s' "$GMC_SERVICE_ACCOUNT_KEY" > /tmp/gmc-key.json
+          fi
         shell: bash
 
       - name: Sync GMC Status

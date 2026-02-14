@@ -13,4 +13,4 @@ jobs:
         with:
           node-version: '20'
       - name: Enforce schema drift contract
-        run: node scripts/check-schema-drift.mjs --mode=ci
+        run: node scripts/check-schema-drift.mjs
