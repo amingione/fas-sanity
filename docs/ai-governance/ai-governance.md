@@ -141,6 +141,7 @@ Checks:
 - Embedded objects are NOT documents.
 - No top-level abstractions may be introduced without explicit approval.
 - All decisions must live in docs/reports/.
+- CI enforces content-schema commerce boundaries via `node scripts/ci/check-content-schema-commerce-authority.mjs`.
 
 ---
 

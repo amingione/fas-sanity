@@ -27,6 +27,7 @@
     "ai:apply": "node scripts/ai-gated/apply.mjs",
     "ai:rollback": "node scripts/ai-gated/rollback.mjs",
     "ai:check": "pnpm lint && pnpm exec tsc -p tsconfig.runtime.json",
+    "guard:content-schema-authority": "node scripts/ci/check-content-schema-commerce-authority.mjs",
     "inspect-checkout": "tsx scripts/inspect-checkout-session.ts",
     "netlify:functions": "tsx scripts/netlify-functions-serve.ts",
     "netlify:functions-local": "env -u NODE_OPTIONS -u NETLIFY_AUTH_TOKEN tsx scripts/local-functions-server.ts",

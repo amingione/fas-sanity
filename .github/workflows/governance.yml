@@ -9,5 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Enforce content schema commerce authority guard
+        run: node scripts/ci/check-content-schema-commerce-authority.mjs
       - name: Run governance guard
         run: ./scripts/check-governance.sh

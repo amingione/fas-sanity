@@ -25,5 +25,7 @@ jobs:
         run: node scripts/ai-gated/verify-provenance.mjs
       - name: Enforce schema contract (drift = fail)
         run: node scripts/check-schema-drift.mjs --mode=ci
+      - name: Enforce content schema commerce authority guard
+        run: node scripts/ci/check-content-schema-commerce-authority.mjs
       - name: Run tests
         run: pnpm test
