@@ -62,6 +62,20 @@ import FinancialReports from '../components/studio/FinancialReports'
 
 const API_VERSION = '2024-10-01'
 const EMAIL_SUBSCRIBER_FILTER = '_type == "customer" && emailMarketing.subscribed == true'
+const CONTENT_ONLY_DESK_ENV = 'SANITY_STUDIO_CONTENT_ONLY_DESK'
+
+const parseBooleanFlag = (value: string | undefined, fallback: boolean) => {
+  if (!value) return fallback
+  const normalized = value.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true
+  if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false
+  return fallback
+}
+
+const isContentOnlyDesk = parseBooleanFlag(
+  typeof process !== 'undefined' ? process.env?.[CONTENT_ONLY_DESK_ENV] : undefined,
+  true,
+)
 
 const startOfMonth = (date: Date) =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
@@ -1347,6 +1361,98 @@ const createBlogSection = (S: any) =>
         ]),
     )
 
+const createMarketingContentSection = (S: any) =>
+  S.listItem()
+    .id('marketing-content')
+    .title('Marketing Content')
+    .icon(BarChartIcon)
+    .child(
+      S.list()
+        .title('Marketing Content')
+        .items([
+          S.documentTypeListItem('shoppingCampaign').title('Campaigns').icon(BulbOutlineIcon),
+          S.documentTypeListItem('emailCampaign').title('Email Campaigns').icon(EnvelopeIcon),
+          S.documentTypeListItem('emailTemplate').title('Email Templates').icon(DocumentTextIcon),
+          S.documentTypeListItem('emailAutomation').title('Email Automations').icon(BoltIcon),
+          S.documentTypeListItem('marketingChannel').title('Marketing Channels').icon(TagIcon),
+          S.documentTypeListItem('attribution').title('Attribution Records').icon(LinkIcon),
+        ]),
+    )
+
+const CONTENT_ONLY_SCHEMA_TYPES = new Set([
+  'altText',
+  'attribution',
+  'blogCategory',
+  'collection',
+  'colorTheme',
+  'downloadResource',
+  'emailAutomation',
+  'emailCampaign',
+  'emailTemplate',
+  'empPortal',
+  'empProfile',
+  'empResources',
+  'filterTag',
+  'home',
+  'marketingChannel',
+  'page',
+  'post',
+  'product',
+  'productBundle',
+  'settings',
+  'shoppingCampaign',
+  'siteSettings',
+  'tune',
+  'user',
+  'vehicleModel',
+  'vendorPost',
+  'vendorPostCategory',
+  'workspace',
+])
+
+const CONTENT_ONLY_CURATED_SCHEMA_TYPES = new Set([
+  'attribution',
+  'blogCategory',
+  'collection',
+  'colorTheme',
+  'downloadResource',
+  'emailAutomation',
+  'emailCampaign',
+  'emailTemplate',
+  'empPortal',
+  'empProfile',
+  'empResources',
+  'home',
+  'marketingChannel',
+  'page',
+  'post',
+  'product',
+  'productBundle',
+  'settings',
+  'shoppingCampaign',
+  'tune',
+  'user',
+  'vehicleModel',
+])
+
+const createAdditionalContentTypesSection = (S: any) =>
+  S.listItem()
+    .id('additional-content-types')
+    .title('Additional Content Types')
+    .icon(DocumentTextIcon)
+    .child(
+      S.list()
+        .title('Additional Content Types')
+        .items(
+          S.documentTypeListItems().filter((listItem: any) => {
+            const id = listItem.getId?.()
+            if (!id || id.startsWith('media.')) return false
+            if (!CONTENT_ONLY_SCHEMA_TYPES.has(id)) return false
+            return !CONTENT_ONLY_CURATED_SCHEMA_TYPES.has(id)
+          }),
+        ),
+    )
+
 const employeeHubSection = (S: any) =>
   S.listItem()
     .id('employee')
@@ -1512,63 +1618,80 @@ const buildVendorApplicationsList = (S: any) => {
     .canHandleIntent(baseList.getCanHandleIntent())
 }
 
-export const deskStructure: StructureResolver = (S) =>
-  S.list()
-    .title('F.A.S. Motorsports')
-    .items([
-      S.listItem()
-        .id('home')
-        .title('Home')
-        .icon(HomeIcon)
-        .child(
-          S.component()
-            .id('home-pane')
-            .title('Home')
-            .component(HomePane as any),
-        ),
-      createProductsSection(S),
-      createOrdersSection(S),
-      createCustomersSection(S),
-      discountsStructure(S),
-      createShippingSection(S),
-      S.documentTypeListItem('invoice').title('Invoices').icon(ClipboardIcon),
-      S.documentTypeListItem('quote').title('Quotes').icon(DocumentIcon),
+export const deskStructure: StructureResolver = (S) => {
+  const contentItems = [
+    S.listItem()
+      .id('home')
+      .title('Home')
+      .icon(HomeIcon)
+      .child(
+        S.component()
+          .id('home-pane')
+          .title('Home')
+          .component(HomePane as any),
+      ),
+    S.documentTypeListItem('page').title('Pages').icon(DocumentIcon),
+    createProductsSection(S),
+    createBlogSection(S),
+    createMarketingContentSection(S),
+    downloadsStructure(S),
+    employeeHubSection(S),
+    S.divider().title('SETTINGS'),
+    S.documentTypeListItem('settings').title('Site Settings').icon(CogIcon),
+    S.documentTypeListItem('colorTheme').title('Color Themes').icon(PresentationIcon),
+    createAdditionalContentTypesSection(S),
+  ]
 
-      S.divider().title('Vendor Portal'),
-      createVendorPortalSection(S),
+  const legacyItems = [
+    S.listItem()
+      .id('home')
+      .title('Home')
+      .icon(HomeIcon)
+      .child(
+        S.component()
+          .id('home-pane')
+          .title('Home')
+          .component(HomePane as any),
+      ),
+    createProductsSection(S),
+    createOrdersSection(S),
+    createCustomersSection(S),
+    discountsStructure(S),
+    createShippingSection(S),
+    S.documentTypeListItem('invoice').title('Invoices').icon(ClipboardIcon),
+    S.documentTypeListItem('quote').title('Quotes').icon(DocumentIcon),
+    S.divider().title('Vendor Portal'),
+    createVendorPortalSection(S),
+    S.divider().title('F.A.S. Service Dept.'),
+    createInStoreOperationsSection(S),
+    S.divider().title('F.A.S. Resources'),
+    employeeHubSection(S),
+    createBlogSection(S),
+    downloadsStructure(S),
+    S.divider().title('SETTINGS'),
+    S.listItem()
+      .id('print-settings')
+      .title('Print Settings')
+      .icon(CogIcon)
+      .child(
+        S.document().schemaType('printSettings').documentId('printSettings').title('Print & PDF Settings'),
+      ),
+    S.listItem()
+      .id('log-drains')
+      .title('Log Drains')
+      .icon(DatabaseIcon)
+      .child(
+        S.documentList()
+          .apiVersion(API_VERSION)
+          .title('Log Drains')
+          .schemaType('logDrain')
+          .filter('_type == "logDrain"'),
+      ),
+    createAdminSection(S),
+  ]
 
-      S.divider().title('F.A.S. Service Dept.'),
-      createInStoreOperationsSection(S),
-
-      S.divider().title('F.A.S. Resources'),
-      employeeHubSection(S),
-      createBlogSection(S),
-      downloadsStructure(S),
-
-      S.divider().title('SETTINGS'),
-      S.listItem()
-        .id('print-settings')
-        .title('Print Settings')
-        .icon(CogIcon)
-        .child(
-          S.document()
-            .schemaType('printSettings')
-            .documentId('printSettings')
-            .title('Print & PDF Settings'),
-        ),
-      S.listItem()
-        .id('log-drains')
-        .title('Log Drains')
-        .icon(DatabaseIcon)
-        .child(
-          S.documentList()
-            .apiVersion(API_VERSION)
-            .title('Log Drains')
-            .schemaType('logDrain')
-            .filter('_type == "logDrain"'),
-        ),
-      createAdminSection(S),
-    ])
+  return S.list().title('F.A.S. Motorsports').items(isContentOnlyDesk ? contentItems : legacyItems)
+}
 export default deskStructure
 const createVendorApplicationsSubSection = (S: any) =>
   S.listItem()

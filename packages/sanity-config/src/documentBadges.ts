@@ -14,6 +14,86 @@ const toTitleCase = (value: string) =>
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
     .join(' ')
 
+const getPathValue = (source: unknown, path: string): unknown => {
+  if (!source || typeof source !== 'object') return undefined
+  return path.split('.').reduce<unknown>((current, segment) => {
+    if (!current || typeof current !== 'object') return undefined
+    return (current as Record<string, unknown>)[segment]
+  }, source)
+}
+
+const hasContentValue = (value: unknown) => {
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  return value !== null && value !== undefined
+}
+
+type ContentCompletenessRule = {
+  label: string
+  requiredPaths: string[]
+}
+
+const CONTENT_COMPLETENESS_RULES: Record<string, ContentCompletenessRule> = {
+  home: {
+    label: 'Home',
+    requiredPaths: ['hero', 'modules', 'seo.title'],
+  },
+  settings: {
+    label: 'Settings',
+    requiredPaths: ['menu', 'footer', 'seo.title'],
+  },
+  page: {
+    label: 'Page',
+    requiredPaths: ['title', 'slug.current', 'body', 'seo.title'],
+  },
+  post: {
+    label: 'Blog Post',
+    requiredPaths: ['title', 'slug.current', 'featuredImage', 'content', 'seo.metaTitle'],
+  },
+  product: {
+    label: 'Product',
+    requiredPaths: ['title', 'slug.current', 'shortDescription', 'images', 'metaTitle'],
+  },
+  collection: {
+    label: 'Collection',
+    requiredPaths: ['store.title', 'store.slug.current', 'modules'],
+  },
+  downloadResource: {
+    label: 'Download',
+    requiredPaths: ['title', 'documentType', 'description'],
+  },
+}
+
+const contentCompletenessBadge: DocumentBadgeComponent = (props) => {
+  const rule = CONTENT_COMPLETENESS_RULES[props.type]
+  if (!rule) return null
+
+  const source = props.draft || props.published || null
+  if (!source) return null
+
+  const completed = rule.requiredPaths.filter((path) => hasContentValue(getPathValue(source, path)))
+  const missing = rule.requiredPaths.filter(
+    (path) => !hasContentValue(getPathValue(source, path)),
+  )
+
+  if (!missing.length) {
+    return {
+      label: 'Content Ready',
+      title: `${rule.label} content is complete`,
+      color: 'success',
+    }
+  }
+
+  const completionLabel = `Content ${completed.length}/${rule.requiredPaths.length}`
+  const color: BadgeColor = completed.length >= 2 ? 'warning' : 'danger'
+
+  return {
+    label: completionLabel,
+    title: `Missing: ${missing.join(', ')}`,
+    color,
+  }
+}
+
 /* -------------------------
   PRODUCT BADGES (unchanged)
 ------------------------- */
@@ -564,6 +644,7 @@ const BADGE_ORDER: Record<string, number> = {
   'Wholesale Missing': 104,
   'Stripe Synced': 105,
   'Stripe Missing': 106,
+  'Content Ready': 107,
 }
 
 /* -------------------------
@@ -577,6 +658,7 @@ export const resolveDocumentBadges: DocumentBadgesResolver = (prevBadges, contex
     ...(context.schemaType === 'product' ? productBadges : []),
     ...(context.schemaType === 'shipment' ? shipmentBadges : []),
     ...(context.schemaType === 'pickup' ? pickupBadges : []),
+    ...(CONTENT_COMPLETENESS_RULES[context.schemaType] ? [contentCompletenessBadge] : []),
   ]
 
   return badgeComponents
