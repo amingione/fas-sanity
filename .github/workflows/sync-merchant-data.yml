@@ -8,6 +8,18 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      SANITY_STUDIO_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+      SANITY_STUDIO_DATASET: ${{ secrets.SANITY_DATASET }}
+      SANITY_API_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+      GMC_SERVICE_ACCOUNT_KEY_FILE: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY_FILE }}
+      GMC_SERVICE_ACCOUNT_KEY: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}
+      GMC_CONTENT_API_MERCHANT_ID: ${{ secrets.GMC_CONTENT_API_MERCHANT_ID }}
+      GOOGLE_ADS_CLIENT_ID: ${{ secrets.GOOGLE_ADS_CLIENT_ID }}
+      GOOGLE_ADS_CLIENT_SECRET: ${{ secrets.GOOGLE_ADS_CLIENT_SECRET }}
+      GOOGLE_ADS_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_ADS_DEVELOPER_TOKEN }}
+      GOOGLE_ADS_CUSTOMER_ID: ${{ secrets.GOOGLE_ADS_CUSTOMER_ID }}
+      GOOGLE_ADS_REFRESH_TOKEN: ${{ secrets.GOOGLE_ADS_REFRESH_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,9 +36,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Preflight credential check
+        id: preflight
+        run: |
+          missing=()
+          required=(
+            SANITY_STUDIO_PROJECT_ID
+            SANITY_STUDIO_DATASET
+            SANITY_API_TOKEN
+            GMC_CONTENT_API_MERCHANT_ID
+            GOOGLE_ADS_CLIENT_ID
+            GOOGLE_ADS_CLIENT_SECRET
+            GOOGLE_ADS_DEVELOPER_TOKEN
+            GOOGLE_ADS_CUSTOMER_ID
+            GOOGLE_ADS_REFRESH_TOKEN
+          )
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+          if [ -z "$GMC_SERVICE_ACCOUNT_KEY_FILE" ] && [ -z "$GMC_SERVICE_ACCOUNT_KEY" ]; then
+            missing+=("GMC_SERVICE_ACCOUNT_KEY_FILE|GMC_SERVICE_ACCOUNT_KEY")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping sync jobs; missing secrets/env: ${missing[*]}"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write GMC service account key
+        if: ${{ steps.preflight.outputs.ready == 'true' }}
         env:
-          GMC_SERVICE_ACCOUNT_KEY: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}
+          GMC_SERVICE_ACCOUNT_KEY: ${{ env.GMC_SERVICE_ACCOUNT_KEY }}
         run: |
           if [ -n "$GMC_SERVICE_ACCOUNT_KEY" ]; then
             printf '%s' "$GMC_SERVICE_ACCOUNT_KEY" > /tmp/gmc-key.json
@@ -34,23 +78,13 @@ jobs:
         shell: bash
 
       - name: Sync GMC Status
+        if: ${{ steps.preflight.outputs.ready == 'true' }}
         run: pnpm sync:gmc-status
-        env:
-          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
-          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_WRITE_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
-          GMC_SERVICE_ACCOUNT_KEY_FILE: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY_FILE }}
-          GMC_SERVICE_ACCOUNT_KEY: ${{ secrets.GMC_SERVICE_ACCOUNT_KEY }}
-          GMC_CONTENT_API_MERCHANT_ID: ${{ secrets.GMC_CONTENT_API_MERCHANT_ID }}
 
       - name: Sync Google Ads Performance
+        if: ${{ steps.preflight.outputs.ready == 'true' }}
         run: pnpm sync:ads-performance
-        env:
-          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
-          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_WRITE_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
-          GOOGLE_ADS_CLIENT_ID: ${{ secrets.GOOGLE_ADS_CLIENT_ID }}
-          GOOGLE_ADS_CLIENT_SECRET: ${{ secrets.GOOGLE_ADS_CLIENT_SECRET }}
-          GOOGLE_ADS_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_ADS_DEVELOPER_TOKEN }}
-          GOOGLE_ADS_CUSTOMER_ID: ${{ secrets.GOOGLE_ADS_CUSTOMER_ID }}
-          GOOGLE_ADS_REFRESH_TOKEN: ${{ secrets.GOOGLE_ADS_REFRESH_TOKEN }}
+
+      - name: Sync skipped
+        if: ${{ steps.preflight.outputs.ready != 'true' }}
+        run: echo "Merchant/Ads sync skipped due to missing required secrets."
