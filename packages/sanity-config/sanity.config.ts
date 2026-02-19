@@ -31,14 +31,7 @@ import {resolveDownloadDocumentActions} from './src/documentActions/downloadDocu
 import {resolveProductDocumentActions} from './src/documentActions/productDocumentActions'
 import resolveDocumentBadges from './src/documentBadges'
 import StudioLayout from './src/components/studio/StudioLayout'
-import {orderView} from './src/views/orderView'
-import CustomerDashboard from './src/components/studio/CustomerDashboard'
-import VehicleServiceHistory from './src/components/studio/VehicleServiceHistory'
 import './src/runtimeEnvBootstrap'
-import {OrderFulfillmentWidget} from './src/plugins/orderFulfillmentWidget'
-import {AppointmentCalendarWidget} from './src/plugins/appointmentCalendarWidget'
-import StripeAnalyticsWidget from './src/components/StripeAnalyticsWidget'
-import {RevenueMetricsWidget} from './src/plugins/revenueMetricsWidget'
 import {autoMapperPlugin} from './src/plugins/autoMapper'
 import {documentListWidget} from './src/plugins/documentListWidget'
 import './src/styles/studio.css'
@@ -214,39 +207,7 @@ if (hasProcess && process.env.DEBUG_STUDIO_ENV) {
   console.info('[sanity-config] deskStructure configured:', deskStructureConfigured)
 }
 
-const defaultDocumentNode = (S: any, {schemaType}: {schemaType: string}) => {
-  if (schemaType === 'order') {
-    return S.document().views([
-      S.view.form(),
-      S.view
-        .component(orderView as any)
-        .title('Order Management')
-        .id('order-management-view'),
-    ])
-  }
-
-  if (schemaType === 'customer') {
-    return S.document().views([
-      S.view.form(),
-      S.view
-        .component(CustomerDashboard as any)
-        .title('Customer Dashboard')
-        .id('customer-dashboard'),
-    ])
-  }
-
-  if (schemaType === 'vehicle') {
-    return S.document().views([
-      S.view.form(),
-      S.view
-        .component(VehicleServiceHistory as any)
-        .title('Vehicle Service History')
-        .id('vehicle-history'),
-    ])
-  }
-
-  return S.document()
-}
+const defaultDocumentNode = (S: any) => S.document()
 
 const configuredPlugins = [
   deskTool({
@@ -261,58 +222,35 @@ const configuredPlugins = [
   dashboardTool({
     widgets: [
       documentListWidget({
-        title: 'Recent Orders',
-        query: '*[_type == "order"] | order(_createdAt desc) [0...8]',
+        title: 'Recent Products',
+        query: '*[_type == "product"] | order(_updatedAt desc) [0...8]',
         layout: {width: 'small', height: 'small'},
       }),
       documentListWidget({
-        title: 'Pending Orders',
-        query:
-          '*[_type == "order" && status in ["NEW", "Need Fullfillment"]] | order(_createdAt desc) [0...8]',
+        title: 'Recent Pages',
+        query: '*[_type == "page"] | order(_updatedAt desc) [0...8]',
         layout: {width: 'small', height: 'small'},
       }),
       documentListWidget({
-        title: 'Upcoming Appointments',
-        query:
-          '*[_type == "appointment" && scheduledDate > now()] | order(scheduledDate asc) [0...8]',
+        title: 'Recent Blog Posts',
+        query: '*[_type == "post"] | order(_updatedAt desc) [0...8]',
         layout: {width: 'small', height: 'small'},
       }),
       documentListWidget({
-        title: 'Active Work Orders',
-        query:
-          '*[_type == "workOrder" && status in ["in-progress", "pending"]] | order(_createdAt desc) [0...8]',
+        title: 'Marketing Campaigns',
+        query: '*[_type == "campaign"] | order(_updatedAt desc) [0...8]',
         layout: {width: 'small', height: 'small'},
       }),
       documentListWidget({
-        title: 'Unpaid Invoices',
-        query: '*[_type == "invoice" && status != "paid"] | order(dueDate asc) [0...8]',
+        title: 'Navigation Menus',
+        query: '*[_type == "navigationMenu"] | order(_updatedAt desc) [0...8]',
         layout: {width: 'small', height: 'small'},
       }),
       documentListWidget({
-        title: 'New Customers',
-        query: '*[_type == "customer"] | order(_createdAt desc) [0...6]',
+        title: 'Legal Content',
+        query: '*[_type == "legalContent"] | order(_updatedAt desc) [0...6]',
         layout: {width: 'small', height: 'small'},
       }),
-      {
-        name: 'revenue-metrics',
-        component: RevenueMetricsWidget,
-        layout: {width: 'medium', height: 'large'},
-      },
-      {
-        name: 'order-fulfillment',
-        component: OrderFulfillmentWidget,
-        layout: {width: 'large', height: 'large'},
-      },
-      {
-        name: 'appointment-calendar',
-        component: AppointmentCalendarWidget,
-        layout: {width: 'full', height: 'large'},
-      },
-      {
-        name: 'stripe-analytics',
-        layout: {width: 'full', height: 'large'},
-        component: StripeAnalyticsWidget,
-      },
       {
         name: 'team-notes',
         layout: {width: 'medium'},

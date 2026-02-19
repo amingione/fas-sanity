@@ -138,18 +138,6 @@ export default defineType({
       type: 'number',
     }),
     defineField({
-      name: 'customer',
-      title: 'Customer',
-      type: 'reference',
-      to: [{type: 'customer'}],
-    }),
-    defineField({
-      name: 'order',
-      title: 'Linked Order',
-      type: 'reference',
-      to: [{type: 'order'}],
-    }),
-    defineField({
       name: 'sessionId',
       title: 'Session ID',
       type: 'string',

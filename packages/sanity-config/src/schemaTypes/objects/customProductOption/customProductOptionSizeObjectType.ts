@@ -2,25 +2,13 @@ import {defineField} from 'sanity'
 
 export const customProductOptionSizeObjectType = defineField({
   name: 'customProductOptionSizeObject',
-  title: 'Size',
+  title: 'Size Choice',
   type: 'object',
   fields: [
-    defineField({
-      name: 'title',
-      type: 'string',
-      description: 'Shopify product option value (case sensitive)',
-      validation: (Rule) => Rule.required(),
-    }),
+    defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required()}),
+    defineField({name: 'description', type: 'string'}),
   ],
   preview: {
-    select: {
-      title: 'title',
-    },
-    prepare({title}) {
-      return {
-        subtitle: undefined,
-        title,
-      }
-    },
+    select: {title: 'title'},
   },
 })

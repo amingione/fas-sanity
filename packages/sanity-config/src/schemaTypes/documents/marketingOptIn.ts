@@ -71,13 +71,6 @@ export default defineType({
       description: 'Optional segmentation tags or interests (e.g. tuning, wheels).',
     }),
     defineField({
-      name: 'customerRef',
-      title: 'Linked Customer',
-      type: 'reference',
-      to: [{type: 'customer'}],
-      description: 'Associate a subscriber with an existing customer when applicable.',
-    }),
-    defineField({
       name: 'notes',
       title: 'Internal Notes',
       type: 'text',

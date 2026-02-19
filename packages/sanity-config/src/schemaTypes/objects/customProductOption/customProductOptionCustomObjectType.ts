@@ -2,29 +2,17 @@ import {defineField} from 'sanity'
 
 export const customProductOptionCustomObjectType = defineField({
   name: 'customProductOptionCustomObject',
-  title: 'Custom Option Choice',
+  title: 'Custom Choice',
   type: 'object',
   fields: [
-    defineField({
-      name: 'title',
-      type: 'string',
-      title: 'Label',
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'value',
-      type: 'string',
-      title: 'Value override',
-      description: 'Optional value to send to the storefront/checkout; defaults to the label.',
-    }),
+    defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required()}),
+    defineField({name: 'value', type: 'string'}),
+    defineField({name: 'description', type: 'string'}),
   ],
   preview: {
     select: {title: 'title', value: 'value'},
-    prepare({title, value}: {title?: string; value?: string}) {
-      return {
-        title: title || 'Choice',
-        subtitle: value && value !== title ? value : undefined,
-      }
+    prepare({title, value}) {
+      return {title, subtitle: value && value !== title ? value : undefined}
     },
   },
 })

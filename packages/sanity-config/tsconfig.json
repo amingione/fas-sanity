@@ -15,7 +15,6 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "noEmit": true,
-    "types": ["react", "react-dom"],
     "paths": {
       "@fas/sanity-config/*": ["./src/*"]
     }

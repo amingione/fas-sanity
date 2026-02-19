@@ -9,13 +9,13 @@ export const DEFAULT_CURRENCY_CODE = 'USD'
 // Document types which:
 // - cannot be created in the 'new document' menu
 // - cannot be duplicated, unpublished or deleted
-export const LOCKED_DOCUMENT_TYPES = ['settings', 'home', 'media.tag', 'stripeCoupon']
+export const LOCKED_DOCUMENT_TYPES = ['settings', 'home', 'media.tag']
 
 // Document types which:
 // - cannot be created in the 'new document' menu
 // - cannot be duplicated, unpublished or deleted
 // - are from the Sanity Connect Shopify app - and can be linked to on Shopify
-export const SHOPIFY_DOCUMENT_TYPES = ['product', 'productVariant', 'collection']
+export const SHOPIFY_DOCUMENT_TYPES: string[] = []
 
 // References to include in 'internal' links
 export const PAGE_REFERENCES = [
@@ -48,11 +48,7 @@ export const GROUPS = [
     title: 'Editorial',
     icon: ComposeIcon,
   },
-  {
-    name: 'shopifySync',
-    title: 'Shopify sync',
-    icon: ShopifyIcon,
-  },
+  {name: 'shopifySync', title: 'Legacy Sync', icon: ShopifyIcon},
   {
     name: 'seo',
     title: 'SEO',

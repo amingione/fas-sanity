@@ -1,6 +1,9 @@
 export const contentSchemaFiles = [
-  'packages/sanity-config/src/schemaTypes/documents/page.ts',
+  'packages/sanity-config/src/schemaTypes/documents/product.ts',
+  'packages/sanity-config/src/schemaTypes/documents/productVariant.tsx',
+  'packages/sanity-config/src/schemaTypes/documents/productBundle.ts',
   'packages/sanity-config/src/schemaTypes/documents/collection.tsx',
+  'packages/sanity-config/src/schemaTypes/documents/page.ts',
   'packages/sanity-config/src/schemaTypes/documents/colorTheme.tsx',
   'packages/sanity-config/src/schemaTypes/documents/blog/blogPost.ts',
   'packages/sanity-config/src/schemaTypes/documents/blog/blogCategory.ts',
@@ -8,18 +11,15 @@ export const contentSchemaFiles = [
   'packages/sanity-config/src/schemaTypes/documents/altText.ts',
   'packages/sanity-config/src/schemaTypes/singletons/homeType.ts',
   'packages/sanity-config/src/schemaTypes/singletons/siteSettingsType.ts',
+  'packages/sanity-config/src/schemaTypes/documents/navigationMenu.ts',
+  'packages/sanity-config/src/schemaTypes/documents/legalContent.ts',
+  'packages/sanity-config/src/schemaTypes/documents/storePolicy.ts',
 ]
 
 export const forbiddenFieldNames = [
   'price',
   'compareAtPrice',
   'cost',
-  'sku',
-  'mpn',
-  'medusaProductId',
-  'medusaVariantId',
-  'medusaOrderId',
-  'medusaCartId',
   'inventory',
   'inventoryQuantity',
   'quantityOnHand',
@@ -46,6 +46,8 @@ export const forbiddenFieldNames = [
   'taxCents',
   'discountCents',
   'currencyCode',
+  'stripeProductId',
+  'stripePriceId',
 ]
 
 export const forbiddenTypeNames = [
@@ -65,14 +67,6 @@ export const forbiddenTypeNames = [
   'stripeOrderSummary',
 ]
 
-// Keep this denylist explicit to avoid noisy pattern matching.
-export const forbiddenDocumentTypeReferences = [
-  'order',
-  'invoice',
-  'quote',
-  'vendorOrder',
-  'purchaseOrder',
-]
+export const forbiddenDocumentTypeReferences = ['order', 'invoice', 'quote', 'vendorOrder', 'purchaseOrder']
 
-// Scan only a short window after `type: "reference"` to keep false positives low.
 export const referenceLookaheadLines = 12

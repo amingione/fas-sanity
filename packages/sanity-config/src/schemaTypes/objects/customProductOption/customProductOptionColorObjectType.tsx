@@ -1,52 +1,38 @@
 import {defineField} from 'sanity'
 
-const ColorPreview = ({color}: {color: string}) => {
-  return (
-    <div
-      style={{
-        backgroundColor: color,
-        borderRadius: 'inherit',
-        display: 'flex',
-        height: '100%',
-        width: '100%',
-      }}
-    />
-  )
-}
+const ColorPreview = ({color}: {color: string}) => (
+  <div
+    style={{
+      backgroundColor: color,
+      borderRadius: 'inherit',
+      display: 'flex',
+      height: '100%',
+      width: '100%',
+    }}
+  />
+)
 
 export const customProductOptionColorObjectType = defineField({
   name: 'customProductOptionColorObject',
-  title: 'Color',
+  title: 'Color Choice',
   type: 'object',
   fields: [
-    defineField({
-      name: 'title',
-      type: 'string',
-      description: 'Shopify product option value (case sensitive)',
-      validation: (Rule) => Rule.required(),
-    }),
+    defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required()}),
     defineField({
       name: 'color',
       type: 'string',
-      title: 'Hex color',
-      description: 'Hex value like #RRGGBB or #RGB',
+      title: 'Hex Color',
       validation: (Rule) =>
         Rule.required()
-          .regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/, {name: 'hex color', invert: false})
-          .error('Enter a valid hex color like #FF0000 or #F00'),
+          .regex(/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/)
+          .error('Enter a valid hex color like #FF0000'),
     }),
+    defineField({name: 'description', type: 'string'}),
   ],
   preview: {
-    select: {
-      color: 'color',
-      title: 'title',
-    },
+    select: {color: 'color', title: 'title'},
     prepare({color, title}) {
-      return {
-        media: <ColorPreview color={color} />,
-        subtitle: color,
-        title,
-      }
+      return {title, subtitle: color, media: <ColorPreview color={color} />}
     },
   },
 })

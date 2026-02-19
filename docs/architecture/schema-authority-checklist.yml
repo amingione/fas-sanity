@@ -1,0 +1,11 @@
+version: 1
+name: sanity-schema-authority-checklist
+checks:
+  - id: authority-owner-required
+    rule: Every new schema PR must state authority owner (Sanity, Medusa, or external).
+  - id: no-commerce-authority-in-content
+    rule: Content schemas must not add price, inventory, checkout, order, payment, or shipping authority fields.
+  - id: bridge-fields-allowed
+    rule: Medusa bridge identifiers are allowed as read-only link fields.
+  - id: integration-contract-update
+    rule: If schema interfaces change, update cross-repo contract docs in docs/fas-dash-sanity-plan.

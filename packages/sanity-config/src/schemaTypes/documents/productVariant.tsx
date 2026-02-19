@@ -1,67 +1,37 @@
-import {CopyIcon} from '@sanity/icons'
 import {defineField, defineType} from 'sanity'
-
-import ProductVariantHiddenInput from '../../components/inputs/ProductVariantHidden'
-import ShopifyDocumentStatus from '../../components/media/ShopifyDocumentStatus'
-import {GROUPS} from '../../constants'
 
 export const productVariantType = defineType({
   name: 'productVariant',
-  title: 'Product variant',
+  title: 'Product Variant',
   type: 'document',
-  icon: CopyIcon,
-  groups: GROUPS,
+  description: 'Content-only variant enrichment tied to a Medusa variant.',
   fields: [
+    defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required()}),
     defineField({
-      name: 'hidden',
+      name: 'product',
+      type: 'reference',
+      to: [{type: 'product'}],
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({name: 'description', type: 'portableTextSimple'}),
+    defineField({
+      name: 'images',
+      type: 'array',
+      of: [{type: 'image', options: {hotspot: true}}],
+    }),
+    defineField({
+      name: 'contentStatus',
       type: 'string',
-      components: {
-        field: ProductVariantHiddenInput,
+      options: {
+        list: [
+          {title: 'Draft', value: 'draft'},
+          {title: 'Review', value: 'review'},
+          {title: 'Published', value: 'published'},
+        ],
       },
-      hidden: ({parent}) => {
-        const isDeleted = parent?.store?.isDeleted
-
-        return !isDeleted
-      },
+      initialValue: 'draft',
     }),
-    defineField({
-      title: 'Title',
-      name: 'titleProxy',
-      type: 'proxyString',
-      options: {field: 'store.title'},
-    }),
-    defineField({
-      name: 'store',
-      title: 'Shopify',
-      description: 'Variant data from Shopify (read-only)',
-      type: 'shopifyProductVariant',
-      group: 'shopifySync',
-    }),
+    defineField({name: 'medusaVariantId', type: 'string', readOnly: true, validation: (Rule) => Rule.required()}),
+    defineField({name: 'lastSyncedFromMedusa', type: 'datetime', readOnly: true}),
   ],
-  preview: {
-    select: {
-      isDeleted: 'store.isDeleted',
-      previewImageUrl: 'store.previewImageUrl',
-      sku: 'store.sku',
-      status: 'store.status',
-      title: 'store.title',
-    },
-    prepare(selection) {
-      const {isDeleted, previewImageUrl, sku, status, title} = selection
-
-      return {
-        media: (
-          <ShopifyDocumentStatus
-            isActive={status === 'active'}
-            isDeleted={isDeleted}
-            type="productVariant"
-            url={previewImageUrl}
-            title={title}
-          />
-        ),
-        subtitle: sku,
-        title,
-      }
-    },
-  },
 })
