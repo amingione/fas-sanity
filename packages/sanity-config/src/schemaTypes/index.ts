@@ -14,6 +14,7 @@ import {imageFeatureType} from './objects/module/imageFeatureType'
 import {imageFeaturesType} from './objects/module/imageFeaturesType'
 import {instagramType} from './objects/module/instagramType'
 import {productFeaturesType} from './objects/module/productFeaturesType'
+import {productWithVariantType} from './objects/module/productWithVariantType'
 import {productReferenceType} from './objects/module/productReferenceType'
 
 import {collectionGroupType} from './objects/collection/collectionGroupType'
@@ -123,6 +124,7 @@ const objects = [
   imageFeaturesType,
   imageWithProductHotspotsType,
   instagramType,
+  productWithVariantType,
   productFeaturesType,
   productHotspotsType,
   productReferenceType,
