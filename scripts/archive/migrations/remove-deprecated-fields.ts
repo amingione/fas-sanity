@@ -4,12 +4,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient, type SanityClient} from '@sanity/client'
-import {requireSanityCredentials} from '../../netlify/lib/sanityEnv'
+import {requireSanityCredentials} from '../../../netlify/lib/sanityEnv'
 
 type OrderRecord = {
   _id: string
   orderNumber?: string
   fulfillmentDetails?: {
+    shippingAddress?: string | null
     trackingNumber?: string | null
   } | null
 }
@@ -17,6 +18,7 @@ type OrderRecord = {
 type CliOptions = {
   limit?: number
   dryRun?: boolean
+  confirm?: boolean
 }
 
 const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
@@ -45,6 +47,10 @@ function parseArgs(): CliOptions {
       options.dryRun = true
       continue
     }
+    if (arg === '--confirm') {
+      options.confirm = true
+      continue
+    }
   }
   return options
 }
@@ -55,58 +61,58 @@ function createSanityClient(): SanityClient {
 }
 
 async function fetchOrders(sanity: SanityClient, limit: number): Promise<OrderRecord[]> {
-  const query = `*[_type == "order" && defined(fulfillmentDetails.trackingNumber) && !defined(trackingNumber)]
+  const query = `*[_type == "order" && (defined(fulfillmentDetails.shippingAddress) || defined(fulfillmentDetails.trackingNumber))]
     | order(_createdAt asc)[0...$limit]{
       _id,
       orderNumber,
-      fulfillmentDetails{trackingNumber}
+      fulfillmentDetails{shippingAddress, trackingNumber}
     }`
   return sanity.fetch<OrderRecord[]>(query, {limit})
 }
 
 async function main() {
   const options = parseArgs()
+  if (!options.confirm) {
+    console.log('This script removes deprecated fields. Re-run with --confirm to apply changes.')
+    process.exit(1)
+  }
+
   const sanity = createSanityClient()
   const limit = options.limit ?? 200
   const dryRun = Boolean(options.dryRun)
 
   const orders = await fetchOrders(sanity, limit)
   if (!orders.length) {
-    console.log('No orders require tracking backfill.')
+    console.log('No orders contain deprecated fields.')
     return
   }
 
-  console.log(`Found ${orders.length} order(s) with deprecated fulfillmentDetails.trackingNumber.`)
+  console.log(`Found ${orders.length} order(s) with deprecated fulfillmentDetails fields.`)
 
   let updated = 0
-  let skipped = 0
 
   for (const order of orders) {
-    const legacy = order.fulfillmentDetails?.trackingNumber?.trim()
-    if (!legacy) {
-      skipped += 1
-      console.log(`Skipping ${order._id} (empty legacy tracking number)`)
-      continue
-    }
-
     if (dryRun) {
       updated += 1
-      console.log(`[dry-run] Would set trackingNumber on ${order._id} -> ${legacy}`)
+      console.log(`[dry-run] Would unset deprecated fields on ${order._id}`)
       continue
     }
 
-    await sanity.patch(order._id).set({trackingNumber: legacy}).commit()
+    await sanity
+      .patch(order._id)
+      .unset(['fulfillmentDetails.shippingAddress', 'fulfillmentDetails.trackingNumber'])
+      .commit()
     updated += 1
     console.log(`Updated ${order._id} (${order.orderNumber || 'no orderNumber'})`)
   }
 
-  console.log(`Done. updated=${updated}, skipped=${skipped}, total=${orders.length}`)
+  console.log(`Done. updated=${updated}, total=${orders.length}`)
   if (dryRun) {
     console.log('Dry-run complete. Run without --dry-run to apply changes.')
   }
 }
 
 main().catch((error) => {
-  console.error('Tracking backfill failed:', error)
+  console.error('Remove deprecated fields failed:', error)
   process.exit(1)
 })

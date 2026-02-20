@@ -4,13 +4,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient, type SanityClient} from '@sanity/client'
-import {requireSanityCredentials} from '../../netlify/lib/sanityEnv'
+import {requireSanityCredentials} from '../../../netlify/lib/sanityEnv'
 
 type OrderRecord = {
   _id: string
   orderNumber?: string
   fulfillmentDetails?: {
-    shippingAddress?: string | null
+    trackingNumber?: string | null
   } | null
 }
 
@@ -54,30 +54,12 @@ function createSanityClient(): SanityClient {
   return createClient({projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false})
 }
 
-function parseLegacyAddress(raw?: string | null) {
-  if (!raw || !raw.trim()) return null
-  const lines = raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  if (!lines.length) return null
-
-  const addressLine1 = lines[0]
-  const addressLine2 = lines.length > 1 ? lines.slice(1).join(' ') : undefined
-
-  return {
-    addressLine1,
-    addressLine2,
-  }
-}
-
 async function fetchOrders(sanity: SanityClient, limit: number): Promise<OrderRecord[]> {
-  const query = `*[_type == "order" && defined(fulfillmentDetails.shippingAddress) && !defined(shippingAddress.addressLine1)]
+  const query = `*[_type == "order" && defined(fulfillmentDetails.trackingNumber) && !defined(trackingNumber)]
     | order(_createdAt asc)[0...$limit]{
       _id,
       orderNumber,
-      fulfillmentDetails{shippingAddress}
+      fulfillmentDetails{trackingNumber}
     }`
   return sanity.fetch<OrderRecord[]>(query, {limit})
 }
@@ -85,39 +67,35 @@ async function fetchOrders(sanity: SanityClient, limit: number): Promise<OrderRe
 async function main() {
   const options = parseArgs()
   const sanity = createSanityClient()
-  const limit = options.limit ?? 100
+  const limit = options.limit ?? 200
   const dryRun = Boolean(options.dryRun)
 
   const orders = await fetchOrders(sanity, limit)
   if (!orders.length) {
-    console.log('No orders require address backfill.')
+    console.log('No orders require tracking backfill.')
     return
   }
 
-  console.log(`Found ${orders.length} order(s) with deprecated fulfillmentDetails.shippingAddress.`)
+  console.log(`Found ${orders.length} order(s) with deprecated fulfillmentDetails.trackingNumber.`)
 
   let updated = 0
   let skipped = 0
 
   for (const order of orders) {
-    const legacy = parseLegacyAddress(order.fulfillmentDetails?.shippingAddress)
+    const legacy = order.fulfillmentDetails?.trackingNumber?.trim()
     if (!legacy) {
       skipped += 1
-      console.log(`Skipping ${order._id} (empty legacy address)`)
+      console.log(`Skipping ${order._id} (empty legacy tracking number)`)
       continue
     }
 
     if (dryRun) {
       updated += 1
-      console.log(`[dry-run] Would set shippingAddress on ${order._id}`, legacy)
+      console.log(`[dry-run] Would set trackingNumber on ${order._id} -> ${legacy}`)
       continue
     }
 
-    await sanity
-      .patch(order._id)
-      .set({shippingAddress: legacy})
-      .commit()
-
+    await sanity.patch(order._id).set({trackingNumber: legacy}).commit()
     updated += 1
     console.log(`Updated ${order._id} (${order.orderNumber || 'no orderNumber'})`)
   }
@@ -129,6 +107,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Address backfill failed:', error)
+  console.error('Tracking backfill failed:', error)
   process.exit(1)
 })

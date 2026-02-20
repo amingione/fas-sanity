@@ -4,21 +4,19 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient, type SanityClient} from '@sanity/client'
-import {requireSanityCredentials} from '../../netlify/lib/sanityEnv'
+import {requireSanityCredentials} from '../../../netlify/lib/sanityEnv'
 
 type OrderRecord = {
   _id: string
   orderNumber?: string
   fulfillmentDetails?: {
     shippingAddress?: string | null
-    trackingNumber?: string | null
   } | null
 }
 
 type CliOptions = {
   limit?: number
   dryRun?: boolean
-  confirm?: boolean
 }
 
 const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
@@ -47,10 +45,6 @@ function parseArgs(): CliOptions {
       options.dryRun = true
       continue
     }
-    if (arg === '--confirm') {
-      options.confirm = true
-      continue
-    }
   }
   return options
 }
@@ -60,56 +54,78 @@ function createSanityClient(): SanityClient {
   return createClient({projectId, dataset, apiVersion: '2024-04-10', token, useCdn: false})
 }
 
+function parseLegacyAddress(raw?: string | null) {
+  if (!raw || !raw.trim()) return null
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (!lines.length) return null
+
+  const addressLine1 = lines[0]
+  const addressLine2 = lines.length > 1 ? lines.slice(1).join(' ') : undefined
+
+  return {
+    addressLine1,
+    addressLine2,
+  }
+}
+
 async function fetchOrders(sanity: SanityClient, limit: number): Promise<OrderRecord[]> {
-  const query = `*[_type == "order" && (defined(fulfillmentDetails.shippingAddress) || defined(fulfillmentDetails.trackingNumber))]
+  const query = `*[_type == "order" && defined(fulfillmentDetails.shippingAddress) && !defined(shippingAddress.addressLine1)]
     | order(_createdAt asc)[0...$limit]{
       _id,
       orderNumber,
-      fulfillmentDetails{shippingAddress, trackingNumber}
+      fulfillmentDetails{shippingAddress}
     }`
   return sanity.fetch<OrderRecord[]>(query, {limit})
 }
 
 async function main() {
   const options = parseArgs()
-  if (!options.confirm) {
-    console.log('This script removes deprecated fields. Re-run with --confirm to apply changes.')
-    process.exit(1)
-  }
-
   const sanity = createSanityClient()
-  const limit = options.limit ?? 200
+  const limit = options.limit ?? 100
   const dryRun = Boolean(options.dryRun)
 
   const orders = await fetchOrders(sanity, limit)
   if (!orders.length) {
-    console.log('No orders contain deprecated fields.')
+    console.log('No orders require address backfill.')
     return
   }
 
-  console.log(`Found ${orders.length} order(s) with deprecated fulfillmentDetails fields.`)
+  console.log(`Found ${orders.length} order(s) with deprecated fulfillmentDetails.shippingAddress.`)
 
   let updated = 0
+  let skipped = 0
 
   for (const order of orders) {
-    if (dryRun) {
-      updated += 1
-      console.log(`[dry-run] Would unset deprecated fields on ${order._id}`)
+    const legacy = parseLegacyAddress(order.fulfillmentDetails?.shippingAddress)
+    if (!legacy) {
+      skipped += 1
+      console.log(`Skipping ${order._id} (empty legacy address)`)
       continue
     }
 
-    await sanity.patch(order._id).unset(['fulfillmentDetails.shippingAddress', 'fulfillmentDetails.trackingNumber']).commit()
+    if (dryRun) {
+      updated += 1
+      console.log(`[dry-run] Would set shippingAddress on ${order._id}`, legacy)
+      continue
+    }
+
+    await sanity.patch(order._id).set({shippingAddress: legacy}).commit()
+
     updated += 1
     console.log(`Updated ${order._id} (${order.orderNumber || 'no orderNumber'})`)
   }
 
-  console.log(`Done. updated=${updated}, total=${orders.length}`)
+  console.log(`Done. updated=${updated}, skipped=${skipped}, total=${orders.length}`)
   if (dryRun) {
     console.log('Dry-run complete. Run without --dry-run to apply changes.')
   }
 }
 
 main().catch((error) => {
-  console.error('Remove deprecated fields failed:', error)
+  console.error('Address backfill failed:', error)
   process.exit(1)
 })
