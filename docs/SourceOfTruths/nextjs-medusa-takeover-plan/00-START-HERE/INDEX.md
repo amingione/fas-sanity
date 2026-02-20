@@ -33,9 +33,7 @@
 ├── 02-Medusa-Backend-Overview.md           ← Medusa architecture
 └── 03-Stable-Architecture-Model.md         ← Target architecture
 
-03-STRIPE-MIGRATION/    ← Checkout flow modernization
-├── 01-Medusa-Migration-Plan.md             ← Stripe + Shippo integration
-└── 02-Unified-Checkout-Implementation.md   ← Single-page checkout
+03-STRIPE-MIGRATION/    ← Archived (authority cleanup; non-authoritative)
 
 04-CONTEXT/             ← Historical planning (reference only)
 ├── pre-planning/                            ← Early brainstorming
@@ -166,8 +164,14 @@
 **"How do I set up environment variables?"**
 → `05-ENV-SETUP/ENV Setup.md`
 
-**"What about Stripe Elements checkout?"**
-→ `03-STRIPE-MIGRATION/02-Unified-Checkout-Implementation.md`
+**"Where is checkout migration guidance now?"**
+→ `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` (authoritative phase flow)
+
+---
+
+## 🔒 Sanity Guardrail
+
+Sanity never stores or mirrors transactional commerce records.
 
 ---
 
@@ -342,8 +346,8 @@ After each phase, verify:
 - **Use**: Phase 4 execution (Next.js ops console)
 
 ### Stripe + Shippo Integration
-- **Read**: `/03-STRIPE-MIGRATION/` folder
-- **Use**: When modernizing checkout flow (later phase)
+- **Read**: `/01-FINAL-PLANS/01-Strategic-Execution-Plan.md`
+- **Use**: Follow authoritative phase flow; archived Stripe migration docs are non-authoritative.
 
 ---
 

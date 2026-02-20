@@ -58,9 +58,7 @@ nextjs-medusa-takeover-plan/
 │   ├── 02-Medusa-Backend-Overview.md           ← Medusa architecture
 │   └── 03-Stable-Architecture-Model.md         ← Target architecture
 │
-├── 03-STRIPE-MIGRATION/              ← Checkout modernization
-│   ├── 01-Medusa-Migration-Plan.md             ← Stripe + Shippo integration
-│   └── 02-Unified-Checkout-Implementation.md   ← Single-page checkout
+├── 03-STRIPE-MIGRATION/              ← Archived (authority cleanup; non-authoritative)
 │
 ├── 04-CONTEXT/                       ← Historical planning (reference only)
 │   ├── pre-planning/                            ← Early brainstorming
@@ -208,16 +206,12 @@ nextjs-medusa-takeover-plan/
 
 ---
 
-### 03-STRIPE-MIGRATION/ (Checkout Modernization)
-**Contents**: 2 files
-- 01-Medusa-Migration-Plan.md (Stripe + Shippo integration)
-- 02-Unified-Checkout-Implementation.md (single-page checkout)
+### 03-STRIPE-MIGRATION/ (Archived)
+**Status**: Archived during authority cleanup.
 
-**Purpose**: Specialized plans for checkout flow (later phase)
+**Purpose**: Historical reference only (non-authoritative).
 
-**Priority**: LOW initially, HIGH in Phase 6+
-
-**Use When**: Working on checkout flow modernization
+**Use When**: You need historical context; do not use for active implementation guidance.
 
 ---
 
@@ -293,7 +287,7 @@ nextjs-medusa-takeover-plan/
 - Pre-Implementation Audit → `02-ARCHITECTURE/01-...`
 - Medusa Backend Overview → `02-ARCHITECTURE/02-...`
 - Stable Architecture Model → `02-ARCHITECTURE/03-...`
-- Stripe migration docs → `03-STRIPE-MIGRATION/`
+- Stripe migration guidance → `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` (active)
 
 ---
 
@@ -303,7 +297,7 @@ nextjs-medusa-takeover-plan/
 - [x] 00-START-HERE/ folder with 4 files
 - [x] 01-FINAL-PLANS/ folder with 2 files
 - [x] 02-ARCHITECTURE/ folder with 3 files
-- [x] 03-STRIPE-MIGRATION/ folder with 2 files
+- [x] 03-STRIPE-MIGRATION/ marked archived (non-authoritative)
 - [x] 04-CONTEXT/ folder with historical docs
 - [x] 05-ENV-SETUP/ folder with 3 files
 - [x] README.md at root
@@ -324,7 +318,7 @@ nextjs-medusa-takeover-plan/
 ### Nothing Missing
 - [x] All 21 original files accounted for
 - [x] ENV setup guides included
-- [x] Stripe migration plans included
+- [x] Stripe migration plans archived for historical reference
 - [x] Pre-planning context preserved
 - [x] All audit docs included
 

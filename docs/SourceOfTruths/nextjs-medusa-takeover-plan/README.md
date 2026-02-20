@@ -43,9 +43,7 @@ nextjs-medusa-takeover-plan/
 │   ├── 02-Medusa-Backend-Overview.md
 │   └── 03-Stable-Architecture-Model.md
 │
-├── 03-STRIPE-MIGRATION/         ← Checkout modernization
-│   ├── 01-Medusa-Migration-Plan.md
-│   └── 02-Unified-Checkout-Implementation.md
+├── 03-STRIPE-MIGRATION/         ← Archived (authority cleanup; non-authoritative)
 │
 ├── 04-CONTEXT/                  ← Historical planning (reference)
 │   ├── pre-planning/
@@ -211,7 +209,7 @@ Architecture is locked. No adding new systems mid-flight.
 | fas-dash migration | `01-FINAL-PLANS/02-fas-dash-Implementation-Plan.md` |
 | System audit | `02-ARCHITECTURE/01-Pre-Implementation-Audit.md` |
 | Medusa details | `02-ARCHITECTURE/02-Medusa-Backend-Overview.md` |
-| Checkout flow | `03-STRIPE-MIGRATION/02-Unified-Checkout-Implementation.md` |
+| Checkout flow | `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` |
 
 ---
 

@@ -10,7 +10,7 @@
 
 ### ✅ Phase 1: File Creation & Structure
 
-- [x] Created `System_Architecture_And_API_Reference.md`
+- [x] Created consolidated architecture reference document (later archived during authority cleanup)
 - [x] Document includes all 7 required sections
 - [x] Executive Summary present
 - [x] Architecture Principles section complete
@@ -114,7 +114,7 @@
 
 **Instructions for Reviewer:** Check that all internal links work correctly.
 
-- [ ] README link to System_Architecture_And_API_Reference.md works
+- [ ] Active README links to current authoritative entry points
 - [ ] Archive links in README point to correct archived files
 - [ ] No broken links within the consolidated document
 
