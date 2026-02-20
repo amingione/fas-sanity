@@ -82,6 +82,14 @@ function assertAddress(address: ReturnType<typeof pickAddress>) {
   }
 }
 
+function readString(source: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = source[key]
+    if (typeof value === "string" && value.trim()) return value
+  }
+  return ""
+}
+
 export const handler: Handler = async (event) => {
   const origin = (event.headers?.origin || event.headers?.Origin) as string | undefined
   if (event.httpMethod === "OPTIONS") {
@@ -134,7 +142,7 @@ export const handler: Handler = async (event) => {
     const transaction = await shippo.transactions.create({
       rate: rateId,
       async: false,
-      label_file_type: "PDF",
+      labelFileType: "PDF",
     })
 
     const status = String(transaction?.status || "").toUpperCase()
@@ -143,16 +151,26 @@ export const handler: Handler = async (event) => {
       return json(400, origin, { error: message, shippoStatus: status })
     }
 
-    const labelUrl = String(transaction?.label_url || transaction?.labelUrl || "")
-    const trackingNumber = String(transaction?.tracking_number || transaction?.trackingNumber || "")
-    const trackingUrl = String(transaction?.tracking_url_provider || transaction?.trackingUrl || "")
-    const carrier = String(transaction?.carrier || order.shippoCarrier || "")
-    const service = String(transaction?.servicelevel?.name || order.shippoServicelevel || "")
-    const amount = Number(transaction?.rate?.amount || transaction?.rate_amount || transaction?.amount || 0)
-    const currency = String(transaction?.rate?.currency || transaction?.currency || "USD")
-    const transactionId = String(
-      transaction?.object_id || transaction?.objectId || transaction?.transaction_id || "",
+    const txRecord = (transaction || {}) as Record<string, unknown>
+    const txRate =
+      txRecord.rate && typeof txRecord.rate === "object"
+        ? (txRecord.rate as Record<string, unknown>)
+        : null
+    const txServiceLevel =
+      txRecord.serviceLevel && typeof txRecord.serviceLevel === "object"
+        ? (txRecord.serviceLevel as Record<string, unknown>)
+        : null
+
+    const labelUrl = readString(txRecord, "labelUrl", "label_url")
+    const trackingNumber = readString(txRecord, "trackingNumber", "tracking_number")
+    const trackingUrl = readString(txRecord, "trackingUrlProvider", "tracking_url_provider", "trackingUrl")
+    const carrier = readString(txRecord, "carrier") || order.shippoCarrier || ""
+    const service = (txServiceLevel ? readString(txServiceLevel, "name", "token") : "") || order.shippoServicelevel || ""
+    const amount = Number(
+      (txRate ? txRate.amount : undefined) || txRecord.rateAmount || txRecord.rate_amount || txRecord.amount || 0,
     )
+    const currency = (txRate ? readString(txRate, "currency") : "") || readString(txRecord, "currency") || "USD"
+    const transactionId = readString(txRecord, "objectId", "object_id", "transactionId", "transaction_id")
 
     const purchasedBy = String(payload?.purchasedBy || "").trim() || "system"
     const now = new Date().toISOString()

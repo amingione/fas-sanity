@@ -195,7 +195,7 @@ export const handler: Handler = async (event) => {
       length: String(length),
       width: String(width),
       height: String(height),
-      distanceUnit: "in",
+      distanceUnit: "in" as const,
       weight: String(weightValue),
       massUnit: normalizeUnit(order.weight?.unit),
     }

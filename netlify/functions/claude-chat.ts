@@ -45,7 +45,7 @@ export const handler: Handler = async (event) => {
 
   let body: ClaudeRequest
   try {
-    body = typeof event.body === 'string' ? JSON.parse(event.body) : (event.body as ClaudeRequest)
+    body = ((event.body ? JSON.parse(event.body) : {}) || {}) as ClaudeRequest
   } catch {
     return {statusCode: 400, body: 'Invalid JSON body'}
   }
