@@ -10,8 +10,7 @@
     "createFinancialConnectionSession": {
       "payload": {
         "returnUrl": "https://example.com"
-      },
-      "requiredEnv": ["STRIPE_SECRET_KEY"]
+      }
     },
     "sendEmail": {
       "payload": {

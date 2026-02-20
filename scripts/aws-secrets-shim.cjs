@@ -157,12 +157,7 @@ if (disableShim) {
       error('Failed to copy prefixed secrets', err)
     }
 
-    const requiredKeys = [
-      'RESEND_API_KEY',
-      'SANITY_API_TOKEN',
-      'STRIPE_SECRET_KEY',
-      'STRIPE_WEBHOOK_SECRET',
-    ]
+    const requiredKeys = ['RESEND_API_KEY', 'SANITY_API_TOKEN']
 
     const summary = requiredKeys.map((key) => `${key}:${process.env[key] ? '✅' : '❌'}`).join(', ')
     log(`Runtime env availability -> ${summary}`)
