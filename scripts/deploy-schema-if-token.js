@@ -21,8 +21,6 @@ const args = [
   'schema',
   'deploy',
   '--non-interactive',
-  '--manifest-dir',
-  './dist/static',
 ]
 
 const child = spawn(pnpmCmd, args, {

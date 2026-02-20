@@ -1,6 +1,25 @@
 import type {DocumentBadgeComponent, DocumentBadgeDescription, DocumentBadgesResolver} from 'sanity'
 
 type BadgeColor = NonNullable<DocumentBadgeDescription['color']>
+type ContentLifecycleStatus = 'draft' | 'review' | 'published'
+
+const normalizeContentStatus = (value: unknown): ContentLifecycleStatus | null => {
+  if (typeof value !== 'string') return null
+  const normalized = value.toLowerCase().trim()
+  if (normalized === 'draft' || normalized === 'review' || normalized === 'published') {
+    return normalized
+  }
+
+  const legacyMap: Record<string, ContentLifecycleStatus> = {
+    active: 'published',
+    archived: 'draft',
+    inactive: 'draft',
+    live: 'published',
+    preview: 'review',
+  }
+
+  return legacyMap[normalized] || null
+}
 
 const getPathValue = (source: unknown, path: string): unknown => {
   if (!source || typeof source !== 'object') return undefined
@@ -59,7 +78,7 @@ const contentCompletenessBadge: DocumentBadgeComponent = (props) => {
 const contentStatusBadge: DocumentBadgeComponent = (props) => {
   if (props.type !== 'product' && props.type !== 'productVariant') return null
   const source = props.draft || props.published || null
-  const status = typeof source?.contentStatus === 'string' ? source.contentStatus : ''
+  const status = normalizeContentStatus(source?.contentStatus) || normalizeContentStatus(source?.status)
   if (!status) return null
 
   const toneMap: Record<string, BadgeColor> = {

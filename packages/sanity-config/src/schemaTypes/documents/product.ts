@@ -1,5 +1,4 @@
 import LegacyContentStatusInput from '../../components/inputs/LegacyContentStatusInput'
-import LegacyShortDescriptionInput from '../../components/inputs/LegacyShortDescriptionInput'
 import {defineArrayMember, defineField, defineType} from 'sanity'
 
 const product = defineType({
@@ -41,9 +40,7 @@ const product = defineType({
     }),
     defineField({
       name: 'shortDescription',
-      type: 'text',
-      rows: 3,
-      components: {input: LegacyShortDescriptionInput},
+      type: 'portableTextSimple',
       group: 'content',
     }),
     defineField({name: 'description', type: 'portableText', group: 'content'}),
@@ -199,11 +196,24 @@ const product = defineType({
       title: 'displayTitle',
       fallbackTitle: 'title',
       subtitle: 'contentStatus',
+      legacyStatus: 'status',
       media: 'images.0',
     },
     prepare(selection) {
       const title = selection.title || selection.fallbackTitle || 'Untitled product'
-      const subtitle = selection.subtitle ? `Content: ${selection.subtitle}` : 'Content enrichment'
+      const legacyMap: Record<string, string> = {
+        active: 'published',
+        archived: 'draft',
+        inactive: 'draft',
+        live: 'published',
+        preview: 'review',
+      }
+      const resolvedStatus =
+        selection.subtitle ||
+        (typeof selection.legacyStatus === 'string'
+          ? legacyMap[selection.legacyStatus.toLowerCase()] || selection.legacyStatus
+          : '')
+      const subtitle = resolvedStatus ? `Content: ${resolvedStatus}` : 'Content enrichment'
       return {title, subtitle, media: selection.media}
     },
   },
