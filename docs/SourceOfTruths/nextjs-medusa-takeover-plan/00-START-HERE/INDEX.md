@@ -1,8 +1,8 @@
 # FAS Motorsports E-Commerce Restructure
 ## Master Implementation Index for Codex
 
-**Last Updated**: February 14, 2026
-**Current Status**: Pre-Implementation Planning Complete
+**Last Updated**: February 20, 2026
+**Current Status**: Phase 1 (Stabilize Medusa) In Progress
 **Executor**: Codex (AI Agent)
 **Project Owner**: Amber Mingione
 
@@ -67,7 +67,7 @@
   - **Sanity** = content + experience only
   - **Astro** = storefront render layer
 
-#### **Phase 1: Stabilize Medusa** ⏳ NEXT
+#### **Phase 1: Stabilize Medusa** 🚧 IN PROGRESS
 **Objective**: Make Medusa boring and stable before touching UI
 
 **Critical Path**:
@@ -87,7 +87,7 @@
 
 **Reference**: `/02-ARCHITECTURE/01-Pre-Implementation-Audit.md` section "fas-medusa"
 
-#### **Phase 2: Sanity Restructure** 🔜
+#### **Phase 2: Sanity Restructure** 🔜 NEXT
 **Objective**: Strip Sanity down to content-only role
 
 **Tasks**:

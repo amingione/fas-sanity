@@ -1,12 +1,12 @@
 # Current Phase Tracker
 ## FAS E-Commerce Restructure
 
-**Last Updated**: February 14, 2026
-**Updated By**: Claude (Coordinator)
+**Last Updated**: February 20, 2026
+**Updated By**: Codex (Execution)
 
 ---
 
-## 📍 Current Status: Pre-Implementation
+## 📍 Current Status: Phase 1 In Progress
 
 ### Phase 0: Lock Architecture ✅ COMPLETE
 **Completed**: February 12, 2026
@@ -25,30 +25,28 @@
 
 ## 🎯 Next Phase: Phase 1 - Stabilize Medusa
 
-### Phase 1: Stabilize Medusa ⏳ PENDING START
-**Status**: Awaiting prerequisites verification
-**Expected Start**: TBD (after prerequisites met)
+### Phase 1: Stabilize Medusa 🚧 IN PROGRESS
+**Status**: Active execution
+**Actual Start**: February 20, 2026
 **Expected Duration**: 1-2 weeks
 **Owner**: Codex
 
 ### Prerequisites Before Starting
-**Status**: 🔴 NOT VERIFIED
+**Status**: 🟡 PARTIALLY VERIFIED (runtime/deploy confirmed; full workflow validation pending)
 
-**Action Required**: Complete `PREREQUISITES.md` checklist
+**Action Required**: Complete remaining API workflow verification checklist
 
 **Critical Blockers to Resolve**:
-1. ❓ Verify Medusa running locally with all env vars
-2. ❓ Confirm Sanity project ID (r4og35qd vs ps4wgpv9 mismatch)
-3. ❓ Generate Medusa Admin API key
-4. ❓ Verify Shippo UPS carrier account connected
-5. ❓ Confirm test products exist with dimensions
-6. ❓ Verify sales channel and shipping profile IDs
+1. ⏳ Complete full API-only workflow pass (product/cart/shipping/payment/order) and capture evidence
+2. ⏳ Confirm/store publishable key propagation for clients using `/store/*` routes
+3. ⏳ Confirm canonical Sanity project ID and lock env values across services
+4. ⏳ Verify Shippo UPS carrier linkage and test-product shipping metadata
 
 ### Phase 1 Objectives
 **Goal**: Make Medusa boring and stable before touching UI
 
 **Done Means**:
-- [ ] Medusa deployed to real host (not localhost, not Netlify)
+- [x] Medusa deployed to real host (Railway)
 - [ ] All workflows tested via curl/Postman without frontend:
   - [ ] Product creation
   - [ ] Variant ↔ price linking
@@ -143,13 +141,18 @@ curl -X POST http://localhost:9000/store/carts
 ## 📊 Progress Tracking
 
 ### Completed Tasks
-*None yet - awaiting Phase 1 start*
+- [x] Railway deployment is live and boots successfully
+- [x] Medusa runtime healthy (`/health` returns `OK` on production domain)
+- [x] Custom domain routing configured for API host
+- [x] Confirmed `/store/*` hard-fails without `x-publishable-api-key` (expected)
 
 ### In Progress
-- [ ] Verifying prerequisites (see PREREQUISITES.md)
+- [ ] API-only workflow verification checklist
+- [ ] Environment contract finalization (`.env` vs `.env-railway`)
+- [ ] fas-dash/consumer env propagation for Medusa publishable key
 
 ### Blocked
-*No blockers yet*
+- [ ] Phase 2 start is blocked until Phase 1 “Done Means” are fully complete
 
 ---
 
@@ -164,14 +167,13 @@ curl -X POST http://localhost:9000/store/carts
 **Impact**: Blocks Sanity sync verification
 
 ### 2. Medusa Deployment Target
-**Decision Needed**: Where to deploy Medusa?
-**Options**:
-- Railway (easiest)
-- Render (good free tier)
-- AWS (most control, more setup)
-- Vercel (won't work - needs long-running processes)
+**Decision**: Railway selected and active.
+**Notes**:
+- Production API domain is live
+- Health endpoint is reachable
+- Continue Phase 1 validation on Railway deployment
 
-**Action Needed**: Amber to choose hosting
+**Action Needed**: None (decision complete)
 
 ### 3. Historical Order Migration
 **Decision Needed**: Migrate old orders from Sanity to Medusa?
@@ -188,7 +190,7 @@ curl -X POST http://localhost:9000/store/carts
 | Phase | Duration | Start Date | End Date | Status |
 |-------|----------|------------|----------|--------|
 | 0: Lock Architecture | - | - | Feb 12, 2026 | ✅ Complete |
-| 1: Stabilize Medusa | 1-2 weeks | TBD | TBD | ⏳ Pending |
+| 1: Stabilize Medusa | 1-2 weeks | Feb 20, 2026 | TBD | 🚧 In Progress |
 | 2: Sanity Restructure | 2 weeks | TBD | TBD | 🔜 Next |
 | 3: Define Sync Contracts | 1 week | TBD | TBD | 🔜 Next |
 | 4: Build Next.js Console | 3-4 weeks | TBD | TBD | 🔜 Next |
