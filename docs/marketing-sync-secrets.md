@@ -21,19 +21,10 @@ Set `MARKETING_API_BLOB` to a **base64-encoded JSON** string that matches the te
     "adAccountId": "1234567890",
   },
   "email": {
-    "provider": "sendgrid",
-    "sendgrid": {
-      "apiKey": "SG.xxxxx",
-      "category": "All Email", // optional
+    "provider": "resend",
+    "resend": {
+      "apiKey": "re_xxxxx",
     },
-    /*
-    // Alternate provider usage:
-    "provider": "klaviyo",
-    "klaviyo": {
-      "privateKey": "pk_xxxxx",
-      "metricId": "abcd1234"
-    }
-    */
   },
   "affiliate": {
     "endpoint": "https://api.affiliatenetwork.com/report",
