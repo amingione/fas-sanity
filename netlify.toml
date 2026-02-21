@@ -76,6 +76,12 @@
   force = true
 
 [[redirects]]
+  from = "/webhooks/sanity-product-sync"
+  to = "/.netlify/functions/sanity-product-sync-webhook"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/favicon.ico"
   to = "/favicon.ico"
   status = 200
