@@ -15,6 +15,7 @@
 | Postgres database running | ❓ | Install Postgres, create database |
 | Redis instance running | ❓ | Install Redis, start service |
 | `.env` file exists | ❓ | Copy from `.env.template` in repo |
+| Hosted runtime config validated with `.env-railway` | ✅ | See `PHASE1-VALIDATION-2026-02-21.md` |
 | Medusa running on `localhost:9000` | ❓ | `npm run dev` in fas-medusa |
 | Medusa Admin API accessible | ❓ | Test: `curl http://localhost:9000/admin/auth` |
 
@@ -119,7 +120,7 @@ STRIPE_SECRET_KEY=sk_test_...
 | Credential | Status | How to Get |
 |-----------|--------|------------|
 | Admin API key | ❓ | Run `create-api-key.ts` script in fas-medusa |
-| Publishable API key | ❓ | In Medusa admin dashboard |
+| Publishable API key | ❓ | In Medusa admin dashboard (must be valid for active sales channel) |
 | Sales channel ID | ❓ | Query: `GET /admin/sales-channels` |
 | Shipping profile ID | ❓ | Query: `GET /admin/shipping-profiles` |
 
@@ -162,8 +163,9 @@ curl http://localhost:9000/admin/products
 # Should return 401 (need auth) - this is correct
 
 # Store routes accessible
-curl http://localhost:9000/store/products
-# Should return product list (no auth needed)
+curl http://localhost:9000/store/products \
+  -H "x-publishable-api-key: pk_..."
+# Should return product list when key is valid for active sales channel
 ```
 
 #### Sanity Health Check
@@ -214,6 +216,17 @@ curl https://api.goshippo.com/parcels/ \
 - ✅ All health checks pass
 
 **If ANY item is ❌, do NOT proceed to Phase 1.**
+
+## 🔒 Vendor Transition Prerequisite (For Later Phases)
+
+This does not block Phase 1 Medusa stabilization, but it blocks vendor decommission work:
+- Do not remove existing vendor integration in Sanity until cutover sign-off is complete.
+- Vendor timeline must be webhook-first, signed, idempotent, and replayable before cutover.
+
+References:
+- `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+- `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
+- `docs/SourceOfTruths/vendor-cutover-checklist.md`
 
 ---
 

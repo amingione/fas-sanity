@@ -7,6 +7,7 @@ Owner: fas-sanity
 - `Medusa` owns commerce truth (pricing, inventory, cart, checkout, orders, shipping, payments).
 - `Sanity` owns marketing/content/editorial truth only.
 - `fas-cms-fresh` consumes Sanity content; commerce values are read from Medusa.
+- Vendor transition: Sanity may temporarily host vendor relationship metadata and read-only webhook timeline mirror until cutover sign-off.
 
 ## Schema Classification
 
@@ -31,6 +32,12 @@ Owner: fas-sanity
 - Transactional, operational, accounting, inventory, shipping, vendor, customer ops schemas
 - Legacy `shopify/*` object schema set
 - Stripe/order/shipping/pricing object schema set used for transaction authority
+
+### DEFERRED REMOVE (Vendor Transition Scope)
+- Vendor portal schemas required for in-flight operations remain until:
+  - webhook-first vendor timeline is live and verified
+  - replacement vendor workspace is accepted
+  - `docs/SourceOfTruths/vendor-cutover-checklist.md` is signed off
 
 ## Exit Criteria Mapping
 - Every schema in registry is tagged `KEEP`, `REFACTOR`, or `REMOVE`.

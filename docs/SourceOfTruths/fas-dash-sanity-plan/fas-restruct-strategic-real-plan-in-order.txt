@@ -1,3 +1,6 @@
+NON-AUTHORITATIVE LEGACY SNAPSHOT
+Use `docs/SourceOfTruths/nextjs-medusa-takeover-plan/01-FINAL-PLANS/01-Strategic-Execution-Plan.md` for active guidance.
+
 FAS Restructure — Strategic Execution Plan (In Order)
 
 This is the correct sequence. Do not skip steps. Do not build UI before backend is locked.

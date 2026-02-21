@@ -1,7 +1,7 @@
 # Current Phase Tracker
 ## FAS E-Commerce Restructure
 
-**Last Updated**: February 20, 2026
+**Last Updated**: February 21, 2026
 **Updated By**: Codex (Execution)
 
 ---
@@ -41,6 +41,7 @@
 2. ⏳ Confirm/store publishable key propagation for clients using `/store/*` routes
 3. ⏳ Confirm canonical Sanity project ID and lock env values across services
 4. ⏳ Verify Shippo UPS carrier linkage and test-product shipping metadata
+5. ⏳ Rotate and propagate a valid publishable key for `/store/*` (current key is rejected as invalid)
 
 ### Phase 1 Objectives
 **Goal**: Make Medusa boring and stable before touching UI
@@ -145,14 +146,18 @@ curl -X POST http://localhost:9000/store/carts
 - [x] Medusa runtime healthy (`/health` returns `OK` on production domain)
 - [x] Custom domain routing configured for API host
 - [x] Confirmed `/store/*` hard-fails without `x-publishable-api-key` (expected)
+- [x] Hosted setup validation passes when using `.env-railway` config source
+- [x] Phase 1 validation run logged: `00-START-HERE/PHASE1-VALIDATION-2026-02-21.md`
 
 ### In Progress
 - [ ] API-only workflow verification checklist
 - [ ] Environment contract finalization (`.env` vs `.env-railway`)
 - [ ] fas-dash/consumer env propagation for Medusa publishable key
+- [ ] Publishable key rotation + propagation validation for `/store/products` and `/store/regions`
 
 ### Blocked
 - [ ] Phase 2 start is blocked until Phase 1 “Done Means” are fully complete
+- [ ] Vendor schema/path removal is blocked until Vendor Preservation Gate is complete (webhook timeline + replacement workspace + rollback plan)
 
 ---
 
@@ -175,6 +180,18 @@ curl -X POST http://localhost:9000/store/carts
 
 **Action Needed**: None (decision complete)
 
+### 2b. Store Publishable Key Mismatch (Active Blocker) ⚠️
+**Issue**: Store resource endpoints are reachable but reject requests due to an invalid publishable key while health/admin baselines are reachable.
+- `GET /health` = 200
+- `GET /admin/products` = 401 (expected unauthenticated)
+- `GET /store` = 400 publishable-key-required (expected)
+- `GET /store/products?limit=1` = 400 invalid publishable key
+- `GET /store/regions` = 400 invalid publishable key
+
+**Action Needed**: Rotate and propagate the correct publishable key before continuing cart/shipping/payment flow tests.
+**Evidence**: `00-START-HERE/PHASE1-VALIDATION-2026-02-21.md`
+**Execution Note (2026-02-21)**: Local rotation is currently blocked by missing admin API auth and private Railway DB networking from local runner.
+
 ### 3. Historical Order Migration
 **Decision Needed**: Migrate old orders from Sanity to Medusa?
 **Options**:
@@ -182,6 +199,17 @@ curl -X POST http://localhost:9000/store/carts
 - Option B: Migrate recent orders (last 90 days)
 
 **Recommendation**: Option A (start fresh)
+
+### 4. Vendor Transition Guardrail
+**Rule**: Do not remove current vendor integration in Sanity yet.
+**Required before removal**:
+- Webhook-first vendor timeline is live (signed/idempotent/replayable)
+- Replacement vendor workspace is accepted by ops
+- Rollback path is documented and tested
+**Reference docs**:
+- `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+- `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
+- `docs/SourceOfTruths/vendor-cutover-checklist.md`
 
 ---
 

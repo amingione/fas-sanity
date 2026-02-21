@@ -50,7 +50,9 @@ Objective: Strip Sanity down to its correct role.
 	•	Inventory fields
 	•	Stripe IDs
 	•	Shipping objects
-	3.	Remove transactional schemas (orders, invoices, quotes, vendor ops, etc.).
+	3.	Remove transactional schemas with safe replacement already available (orders, invoices, quotes, etc.).
+	•	Vendor portal schemas are NOT removed in Phase 2.
+	•	Vendor schemas remain only as transitional read/write support until the Vendor Preservation Gate is passed.
 	4.	Add new content-focused schemas:
 	•	brandAsset
 	•	legalContent
@@ -75,6 +77,7 @@ Objective: Make integration predictable.
 	3.	Sanity → Next:
 	•	Templates fetched at runtime
 	4.	Sanity never writes commerce logic.
+	5.	Lock vendor timeline webhook contract (signed events, idempotency, replay).
 
 Done means: All integration flows are documented and deterministic.
 
@@ -110,10 +113,16 @@ Module 4: Customer Panel
 	•	Vendor flags
 	•	Manual overrides (audited)
 
+Module 5: Vendor Portal Replacement (Required before vendor removal)
+	•	Vendor profile and account views
+	•	Vendor timeline fed by Medusa webhooks
+	•	Vendor communication tooling (non-transactional authority)
+	•	No direct transactional writes to Sanity
+
 Important rule:
 Next calls Medusa. It never calculates anything itself.
 
-Done means: Ops team can handle phone + vendor + in-store without Sanity.
+Done means: Ops team can handle phone + vendor + in-store without Sanity transactional authority.
 
 ⸻
 
@@ -125,8 +134,15 @@ Objective: Eliminate dead weight.
 	3.	Remove webhook proxies that are no longer needed.
 	4.	Remove duplicate shipping logic.
 	5.	Update documentation.
+	6.	Remove vendor portal schemas/routes only after Vendor Preservation Gate passes.
 
 Done means: No overlapping authority anywhere.
+
+Vendor Preservation Gate (Mandatory before vendor removal)
+	1.	Webhook timeline path is live (signed + idempotent + replayable).
+	2.	Replacement vendor workspace is running and accepted by ops.
+	3.	No critical vendor workflow depends on legacy Sanity transactional paths.
+	4.	Rollback plan is documented and tested.
 
 ⸻
 
@@ -163,6 +179,9 @@ You must follow this exact order:
 	6.	Remove legacy
 	7.	Harden governance
 
+Vendor-specific constraint:
+	•	Do not remove vendor portal integration in Sanity until Vendor Preservation Gate is complete.
+
 If you reverse 3 and 5, chaos returns.
 If you build Next before Medusa is stable, it breaks again.
 
@@ -176,4 +195,3 @@ UI is paint.
 Medusa is concrete.
 
 You were painting before the concrete cured.
-

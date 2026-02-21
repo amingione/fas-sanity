@@ -110,7 +110,7 @@ FAS Motorsports has a **split-brain architecture** where commerce data lives in 
 ### Phase 0: Lock Architecture ✅ COMPLETE
 Architecture frozen, governance established, roles defined.
 
-### Phase 1: Stabilize Medusa ⏳ NEXT
+### Phase 1: Stabilize Medusa 🚧 IN PROGRESS
 Deploy Medusa, verify all workflows via API, lock env vars.
 
 **Duration**: 1-2 weeks
@@ -133,6 +133,11 @@ Rewire fas-dash to read from Medusa, not Sanity.
 
 **Duration**: 3-4 weeks
 **Done means**: Ops team can work without Sanity Studio.
+
+Vendor transition note:
+- Keep current vendor integration paths in Sanity during transition.
+- Move to webhook-first read-only timeline model before decommission.
+- Require operational sign-off before vendor decommission.
 
 ### Phase 5-7: Cleanup, Optimization, Hardening
 Remove legacy, optimize UX, add governance.
@@ -196,6 +201,10 @@ Architecture is locked. No adding new systems mid-flight.
    - Document every decision
    - Ask questions early
 
+6. **Vendor Decommission Gate**
+   - Do not remove vendor integration until cutover checklist is signed off.
+   - Use webhook-first timeline contract for vendor activity sync.
+
 ---
 
 ## 📚 Key Documents Quick Reference
@@ -207,6 +216,9 @@ Architecture is locked. No adding new systems mid-flight.
 | Prerequisites | `00-START-HERE/PREREQUISITES.md` |
 | Phase sequence | `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` |
 | fas-dash migration | `01-FINAL-PLANS/02-fas-dash-Implementation-Plan.md` |
+| Vendor transition guardrail | `../fas-sanity-vendor-portal-keep.md` |
+| Vendor webhook contract | `../vendor-portal-webhook-contract.md` |
+| Vendor cutover sign-off | `../vendor-cutover-checklist.md` |
 | System audit | `02-ARCHITECTURE/01-Pre-Implementation-Audit.md` |
 | Medusa details | `02-ARCHITECTURE/02-Medusa-Backend-Overview.md` |
 | Checkout flow | `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` |

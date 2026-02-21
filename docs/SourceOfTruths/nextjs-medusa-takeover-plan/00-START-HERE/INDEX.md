@@ -1,7 +1,7 @@
 # FAS Motorsports E-Commerce Restructure
 ## Master Implementation Index for Codex
 
-**Last Updated**: February 20, 2026
+**Last Updated**: February 21, 2026
 **Current Status**: Phase 1 (Stabilize Medusa) In Progress
 **Executor**: Codex (AI Agent)
 **Project Owner**: Amber Mingione
@@ -95,7 +95,8 @@
    - Inventory fields
    - Stripe IDs
    - Shipping objects
-   - Transactional schemas (orders, invoices, quotes, vendor ops)
+   - Transactional schemas (orders, invoices, quotes)
+   - Vendor ops are deferred until Vendor Preservation Gate is complete
 3. **ADD** content-focused schemas:
    - `brandAsset`
    - `legalContent`
@@ -126,6 +127,7 @@
 2. Quote Builder
 3. Shipping Console
 4. Customer Panel
+5. Vendor Portal Replacement (required before vendor schema/path removal)
 
 **Golden Rule**: Next calls Medusa. It never calculates anything itself.
 
@@ -145,6 +147,9 @@
 
 **"What phase am I in?"**
 → `00-START-HERE/CURRENT-PHASE.md`
+
+**"What was validated most recently in Phase 1?"**
+→ `00-START-HERE/PHASE1-VALIDATION-2026-02-21.md`
 
 **"What's the exact execution order?"**
 → `01-FINAL-PLANS/01-Strategic-Execution-Plan.md`
@@ -172,6 +177,19 @@
 ## 🔒 Sanity Guardrail
 
 Sanity never stores or mirrors transactional commerce records.
+
+## 🔒 Vendor Transition Guardrail
+
+Keep the existing vendor integration until all of the following are true:
+- Vendor timeline webhook path is live and verified (signed + idempotent + replayable)
+- Replacement vendor workspace is accepted by ops
+- No critical vendor workflow depends on legacy Sanity transactional endpoints
+- Rollback plan is documented
+
+Transition docs:
+- `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+- `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
+- `docs/SourceOfTruths/vendor-cutover-checklist.md`
 
 ---
 

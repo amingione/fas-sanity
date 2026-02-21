@@ -177,6 +177,11 @@ nextjs-medusa-takeover-plan/
 
 **Purpose**: Single entry point for Codex with all coordination documents
 
+Vendor transition companion docs (active):
+- `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+- `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
+- `docs/SourceOfTruths/vendor-cutover-checklist.md`
+
 ---
 
 ### 01-FINAL-PLANS/ (Canonical Implementation)
@@ -189,6 +194,7 @@ nextjs-medusa-takeover-plan/
 **Priority**: HIGH - These documents define execution order and tasks
 
 **Key Rule**: Follow these plans exactly. No deviations without approval.
+Additional rule: vendor decommission follows the Vendor Preservation Gate and cutover checklist sign-off.
 
 ---
 

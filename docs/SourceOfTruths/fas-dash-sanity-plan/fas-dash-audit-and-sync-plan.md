@@ -1,5 +1,17 @@
 # fas-dash Audit & Cross-Repo Sync Implementation Plan
 
+## Alignment Addendum (2026-02-21)
+
+This document is aligned to the active Medusa takeover sequence and vendor transition guardrails:
+- Keep existing vendor integration during transition.
+- Move vendor timeline to webhook-first read-only events in Sanity.
+- Do not remove vendor schemas/routes until operational sign-off completes.
+
+Required companion docs:
+- `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+- `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
+- `docs/SourceOfTruths/vendor-cutover-checklist.md`
+
 ## The Problem
 
 fas-dash currently treats **Sanity as its sole database**. Every API route (`/api/orders`, `/api/products`, `/api/customers`, `/api/invoices`, `/api/inventory`, `/api/shipping`, `/api/fulfillment`, `/api/quotes`, `/api/returns`, `/api/vendors`, `/api/purchase-orders`) does `sanityClient.fetch(someGROQquery)` and `sanityClient.create(doc)`.
@@ -104,6 +116,8 @@ This is the exact split-brain problem that the restructure is meant to solve. fa
 | Quote/invoice templates | Sanity-authored document templates |
 | Calendar events | Lightweight internal tool, OK in Sanity for now |
 | Product content (descriptions, images, SEO) | Content enrichment read-only in admin context |
+| Vendor relationship metadata | Transitional vendor profile/ownership/preferences only (non-transactional) |
+| Vendor activity timeline mirror | Read-only webhook event log from Medusa |
 
 ---
 
@@ -165,6 +179,7 @@ Everything transactional:
 |-----------|---------|------------|
 | **Medusa → Sanity** | Webhook on product.created | Creates stub product doc in Sanity (title, SKU, medusaProductId) for content enrichment |
 | **Medusa → Sanity** | Webhook on product.updated | Updates `lastSyncedFromMedusa` timestamp in Sanity |
+| **Medusa → Sanity** | Vendor lifecycle webhooks | Writes read-only vendor timeline events (order/payment/shipping/return/refund status) |
 | **Sanity → fas-cms-fresh** | Webhook on publish | Triggers Astro rebuild (ISR or full rebuild) for content pages |
 | **Sanity → fas-dash** | Direct GROQ query | Blog content, email templates, product content (descriptions, images) for display in admin |
 | **Medusa → fas-dash** | Medusa Admin API | All transactional data: orders, customers, inventory, shipping, returns |
@@ -377,6 +392,10 @@ Custom Medusa modules:
 - `fas-purchase-orders` — PO lifecycle
 
 These don't map to any standard Medusa module, so they need custom development in fas-medusa.
+
+Transition rule:
+- Keep current vendor integration in Sanity until replacement vendor workspace and webhook timeline are verified.
+- Decommission only after `docs/SourceOfTruths/vendor-cutover-checklist.md` is fully signed off.
 
 ---
 
@@ -654,6 +673,7 @@ For fas-dash to work against Medusa for everything, these custom modules need to
 | **6** | Webhooks, email templates, print templates | 1 | Sanity restructure complete |
 | **7** | Remove dead code, delete store/landing routes, clean queries.ts | 1 | All phases stable |
 | **8** | Auth migration (optional) | 1 | Everything else stable |
+| **9** | Vendor cutover sign-off + decommission | 1 | `vendor-cutover-checklist.md` fully signed off |
 
 **Total: ~14 weeks** if executed sequentially. Phases 4+5 can run in parallel with Phase 3.
 
@@ -668,6 +688,8 @@ For fas-dash to work against Medusa for everything, these custom modules need to
 3. **fas-dash writes to Medusa** for all operational mutations (order status, fulfillment, inventory adjustments, returns).
 
 4. **fas-dash writes to Sanity** only for: blog post CRUD and calendar event CRUD.
+
+5. **Vendor decommission is gated.** Legacy vendor integration is removed only after checklist sign-off and webhook timeline verification.
 
 5. **Email workflow:** Sanity writes templates → fas-dash fetches template + Medusa data → sends via Resend.
 

@@ -14,6 +14,11 @@ Shippo     → Shipping execution
 **Sanity's role**: owns words, media, page composition, and marketing content.  
 **Sanity does NOT own**: prices, inventory, order state, customer records, payment data, shipping execution.
 
+Transition guardrail:
+- Do not remove current vendor integration until replacement workspace and webhook timeline contract are verified.
+- See `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`.
+- See `docs/SourceOfTruths/vendor-portal-webhook-contract.md`.
+
 ---
 
 ## Current Schema Audit
@@ -30,7 +35,7 @@ Shippo     → Shipping execution
 | **Shipping ops** | `freightQuote`, `createLabel`, `senderAddress` | **REMOVE** → Next.js + Shippo |
 | **Inventory ops** | `inventoryRecord`, `inventoryTransaction` | **REMOVE** → Medusa |
 | **Manufacturing** | `manufacturingOrder`, `workOrder` | **REMOVE** → Next.js |
-| **Vendor portal** | `vendor`, `vendorApplication`, `vendorOrder`, `vendorQuote`, `vendorProduct`, `vendorMessage`, `vendorNotification`, `vendorEmailLog`, `vendorDocument`, `vendorReturn`, `vendorFeedback`, `vendorPost`, `vendorPostCategory`, `vendorAuthToken`, `purchaseOrder` | **REMOVE** → Next.js vendor portal |
+| **Vendor portal** | `vendor`, `vendorApplication`, `vendorOrder`, `vendorQuote`, `vendorProduct`, `vendorMessage`, `vendorNotification`, `vendorEmailLog`, `vendorDocument`, `vendorReturn`, `vendorFeedback`, `vendorPost`, `vendorPostCategory`, `vendorAuthToken`, `purchaseOrder` | **DEFERRED REMOVE** → keep during transition, remove only after Next.js vendor portal replacement + webhook timeline gate |
 | **Customer ops** | `customer`, `customerMessage`, `customerPortalAccess`, `militaryVerification` | **REMOVE** → Medusa + Next.js |
 | **Services/appointments** | `appointment`, `service`, `vehicle` | **REMOVE** → Next.js or separate system |
 | **Employee portal** | `empProfile`, `empResources`, `empPortal`, `empFormSubmission` | **REMOVE** → Next.js admin |

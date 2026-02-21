@@ -1,3 +1,6 @@
+NON-AUTHORITATIVE LEGACY SNAPSHOT
+Use `fas-dash-audit-and-sync-plan.md` for active guidance.
+
 # fas-dash Audit & Cross-Repo Sync Implementation Plan
 
 ## The Problem
