@@ -42,6 +42,33 @@ if (disableShim) {
     log(`Set ${key} from ${source}`)
   }
 
+  const normalizeAliasKeys = () => {
+    const aliasMap = [
+      {canonical: 'SANITY_API_TOKEN', aliases: ['SANITY_ACCESS_TOKEN', 'SANITY_WRITE_TOKEN', 'SANITY_AUTH_TOKEN', 'SANITY_STUDIO_API_TOKEN']},
+    ]
+
+    let normalized = 0
+    for (const {canonical, aliases} of aliasMap) {
+      const canonicalValue = process.env[canonical]
+      if (canonicalValue !== undefined && String(canonicalValue).trim() !== '') continue
+
+      const alias = aliases.find((name) => {
+        const value = process.env[name]
+        return value !== undefined && String(value).trim() !== ''
+      })
+
+      if (!alias) continue
+      process.env[canonical] = process.env[alias]
+      resolvedKeys.add(canonical)
+      normalized += 1
+      log(`Normalized ${canonical} from alias ${alias}`)
+    }
+
+    if (normalized === 0) {
+      log('ℹ️ No alias normalization applied')
+    }
+  }
+
   const copyPrefixedSecrets = () => {
     const prefix = process.env.NETLIFY_AWS_SECRET_PREFIX || 'NETLIFY_AWS_SECRET_'
     if (!prefix) {
@@ -155,6 +182,12 @@ if (disableShim) {
       copyPrefixedSecrets()
     } catch (err) {
       error('Failed to copy prefixed secrets', err)
+    }
+
+    try {
+      normalizeAliasKeys()
+    } catch (err) {
+      error('Failed to normalize env aliases', err)
     }
 
     const requiredKeys = ['RESEND_API_KEY', 'SANITY_API_TOKEN']
