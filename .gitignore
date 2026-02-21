@@ -66,6 +66,8 @@ dist
 node_modules
 .env.development
 .ai-stack-trace/
+.env-aws-tracking
+
 
 # Allow specific AI-gated artifacts
 !.ai-stack-trace/
