@@ -32,10 +32,11 @@ if (disableShim) {
   warn('Shim disabled via NETLIFY_DISABLE_SECRETS_SHIM')
 } else {
   const resolvedKeys = new Set()
+  const isMissing = (value) => value === undefined || String(value).trim() === ''
 
   const applyKey = (key, value, source) => {
     if (!key || value === undefined) return
-    if (process.env[key] === undefined) {
+    if (isMissing(process.env[key])) {
       process.env[key] = value
       resolvedKeys.add(key)
     }
@@ -80,7 +81,7 @@ if (disableShim) {
     for (const [key, value] of Object.entries(process.env)) {
       if (!key.startsWith(prefix)) continue
       const unprefixed = key.slice(prefix.length)
-      if (unprefixed && process.env[unprefixed] === undefined) {
+      if (unprefixed && isMissing(process.env[unprefixed])) {
         process.env[unprefixed] = value
         resolvedKeys.add(unprefixed)
         copied += 1
