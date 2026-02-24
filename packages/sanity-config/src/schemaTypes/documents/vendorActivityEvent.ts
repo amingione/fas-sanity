@@ -15,7 +15,7 @@ export default defineType({
   title: 'Vendor Activity Events',
   type: 'document',
   icon: ActivityIcon,
-  // System document — programmatic-only; all fields are readOnly so Studio users cannot create/edit
+  // System document — fields are read-only and written by integration flows only.
   fields: [
     defineField({
       name: 'eventId',

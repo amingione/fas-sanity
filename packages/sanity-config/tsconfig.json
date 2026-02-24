@@ -13,7 +13,6 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "noEmit": true,
     "paths": {
       "@fas/sanity-config/*": ["./src/*"]
