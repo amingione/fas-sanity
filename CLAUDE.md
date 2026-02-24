@@ -1,8 +1,42 @@
 # Claude AI Assistant Guide - FAS Motorsports
 
-**Version:** 1.2.1
-**Last Updated:** 2025-12-26
+**Version:** 2.0.0
+**Last Updated:** 2026-02-24
 **For:** Claude Code, Cursor, and other AI assistants
+
+---
+
+## ⚡ CURRENT STATUS (2026-02-24)
+
+**Active Phase**: Phase 1 Stabilization → Vendor Timeline Live
+
+### ✅ NEW (2026-02-24)
+- `vendorActivityEvent` schema — `packages/sanity-config/src/schemaTypes/documents/vendorActivityEvent.ts`
+  - Read-only system document, registered in schema index
+- `vendor-timeline-webhook.ts` Netlify function — `netlify/functions/vendor-timeline-webhook.ts`
+  - Verifies HMAC (VENDOR_WEBHOOK_SECRET), idempotency on eventId, writes vendorActivityEvent docs
+
+### 🔴 Manual Steps Required (env/infra — not code)
+- Set `VENDOR_WEBHOOK_SECRET` in Netlify (fas-sanity) — same value as Railway fas-medusa
+  - Generate: `openssl rand -hex 32`
+  - Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §3`
+- Register Sanity Studio webhooks (product-sync + order-sync → Medusa)
+  - Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §1`
+- Publishable key rotation (needs Railway shell) — see runbook §2
+
+### ⏳ Still Pending
+- Full curl workflow pass (product → cart → shipping → payment → order)
+- Sanity project ID canonical lock (confirmed `r4og35qd` — needs env audit)
+- Shippo UPS carrier linkage verification
+
+**Sanity Project**: `r4og35qd` | Dataset: `production`
+**Netlify Site IDs**: fassanity=`43b3d2f9-45f1-444a-8672-48a8694cba5b` | ingress=`334cf000-980e-414d-9450-dc983ac92279`
+
+See full phase plan: `docs/SourceOfTruths/nextjs-medusa-takeover-plan/00-START-HERE/CURRENT-PHASE.md`
+See vendor portal rules: `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+See integration status: `../docs/INTEGRATION_STATUS.md`
+
+---
 
 > **📖 Full Documentation:** See [codex.md](./codex.md) for comprehensive patterns, examples, and integration details.
 

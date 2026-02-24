@@ -105,6 +105,7 @@ import orderEmailTemplate from './documents/orderEmailTemplate'
 import quoteTemplate from './documents/quoteTemplate'
 import invoiceTemplate from './documents/invoiceTemplate'
 import redirect from './documents/redirect'
+import vendorActivityEvent from './documents/vendorActivityEvent'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -201,6 +202,7 @@ const documents = [
   quoteTemplate,
   invoiceTemplate,
   redirect,
+  vendorActivityEvent,
 ]
 
 export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents]
