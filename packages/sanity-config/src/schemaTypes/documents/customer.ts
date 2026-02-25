@@ -17,6 +17,32 @@ export default defineType({
       validation: (Rule) => Rule.required().email(),
     }),
     defineField({
+      name: 'medusaCustomerId',
+      title: 'Medusa Customer ID',
+      type: 'string',
+      description: 'Set automatically by the Medusa → Sanity sync subscriber. Do not edit manually.',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'stripeCustomerId',
+      title: 'Stripe Customer ID',
+      type: 'string',
+      description: 'Stripe customer identifier. Set by checkout flow.',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'resendContactId',
+      title: 'Resend Contact ID',
+      type: 'string',
+      description: 'Resend contact identifier. Set by sanity-resend-sync function.',
+      readOnly: true,
+    }),
+    defineField({
+      name: 'phone',
+      title: 'Phone',
+      type: 'string',
+    }),
+    defineField({
       name: 'roles',
       title: 'Roles',
       type: 'array',
