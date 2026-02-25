@@ -94,6 +94,7 @@ import {dashboardViewType} from './singletons/dashboardViewType'
 import {colorThemeType} from './documents/colorTheme'
 
 import brandAsset from './documents/brandAsset'
+import customer from './documents/customer'
 import legalContent from './documents/legalContent'
 import storePolicy from './documents/storePolicy'
 import reusableSnippet from './documents/reusableSnippet'
@@ -106,6 +107,8 @@ import quoteTemplate from './documents/quoteTemplate'
 import invoiceTemplate from './documents/invoiceTemplate'
 import redirect from './documents/redirect'
 import vendorActivityEvent from './documents/vendorActivityEvent'
+import vendor from './documents/vendor'
+import vendorApplication from './documents/vendorApplication'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -191,6 +194,7 @@ const documents = [
   merchantFeed,
   shoppingCampaign,
   brandAsset,
+  customer,
   legalContent,
   storePolicy,
   reusableSnippet,
@@ -202,7 +206,11 @@ const documents = [
   quoteTemplate,
   invoiceTemplate,
   redirect,
+  vendor,
+  vendorApplication,
   vendorActivityEvent,
 ]
 
 export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents]
+
+export default schemaTypes
