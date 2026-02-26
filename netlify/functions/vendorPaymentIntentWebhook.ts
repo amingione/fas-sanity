@@ -1,3 +1,4 @@
+import {createHmac} from 'crypto'
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'
@@ -6,6 +7,51 @@ import {STRIPE_API_VERSION} from '../lib/stripeConfig'
 const stripeSecret = process.env.STRIPE_SECRET_KEY || ''
 const webhookSecret = process.env.STRIPE_VENDOR_WEBHOOK_SECRET || ''
 const stripe = stripeSecret ? new Stripe(stripeSecret, {apiVersion: STRIPE_API_VERSION}) : null
+
+// ─── Medusa notification config ───────────────────────────────────────────────
+const MEDUSA_API_BASE = (
+  process.env.MEDUSA_API_BASE ||
+  process.env.MEDUSA_URL ||
+  'https://api.fasmotorsports.com'
+).trim().replace(/\/$/, '')
+const VENDOR_WEBHOOK_SECRET = (process.env.VENDOR_WEBHOOK_SECRET || '').trim()
+
+/**
+ * Notify Medusa that a vendor invoice has been paid.
+ * Medusa will create an order and dispatch vendor timeline events.
+ * Non-blocking — failure is logged but never throws.
+ */
+async function notifyMedusaVendorOrderPaid(payload: Record<string, unknown>): Promise<string | null> {
+  const url = `${MEDUSA_API_BASE}/api/webhooks/vendor-order-paid`
+  const body = JSON.stringify(payload)
+  const signature = VENDOR_WEBHOOK_SECRET
+    ? createHmac('sha256', VENDOR_WEBHOOK_SECRET).update(body).digest('hex')
+    : ''
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(signature ? {'x-vendor-signature': signature} : {}),
+      },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      console.error(`[vendorPaymentIntentWebhook] Medusa vendor-order-paid returned ${res.status}: ${text.slice(0, 200)}`)
+      return null
+    }
+
+    const json = (await res.json().catch(() => ({}))) as {medusa_order_id?: string}
+    return json.medusa_order_id ?? null
+  } catch (err) {
+    console.error('[vendorPaymentIntentWebhook] Failed to notify Medusa:', err instanceof Error ? err.message : String(err))
+    return null
+  }
+}
 
 const SANITY_STUDIO_PROJECT_ID = process.env.SANITY_STUDIO_PROJECT_ID || ''
 const SANITY_STUDIO_DATASET = process.env.SANITY_STUDIO_DATASET || 'production'
@@ -144,6 +190,31 @@ export const handler: Handler = async (event) => {
           .patch(invoiceId)
           .set({vendorOrderRef: {_type: 'reference', _ref: createdOrder._id}})
           .commit()
+
+        // Notify Medusa — creates the official Medusa order so fas-dash can fulfill
+        const medusaOrderId = await notifyMedusaVendorOrderPaid({
+          sanity_invoice_id: invoiceId,
+          sanity_vendor_order_id: createdOrder._id,
+          vendor_id: invoice.vendorRef?._id || '',
+          vendor_name: invoice.vendorRef?.companyName || null,
+          vendor_email: invoice.vendorRef?.primaryContact?.email || null,
+          line_items: (invoice.lineItems || []).map((item: any) => ({
+            title: item.description || 'Item',
+            sku: item.sku || null,
+            quantity: Number(item.quantity) || 1,
+            unit_price: Math.round((Number(item.unitPrice) || 0) * 100),
+          })),
+          total_cents: Math.round(total * 100),
+          subtotal_cents: Math.round(subtotal * 100),
+          tax_cents: Math.round(tax * 100),
+          shipping_cents: Math.round(shipping * 100),
+          currency_code: 'usd',
+          stripe_payment_intent_id: payload.id,
+        })
+
+        if (medusaOrderId) {
+          await sanity.patch(createdOrder._id).set({medusaOrderId}).commit()
+        }
 
         if (invoice.vendorRef?._id) {
           await sanity
