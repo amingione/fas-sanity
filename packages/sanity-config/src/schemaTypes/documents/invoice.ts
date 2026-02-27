@@ -52,7 +52,7 @@ export default defineType({
     }),
     defineField({name: 'customerRef', title: 'Customer', type: 'reference', to: [{type: 'customer'}]}),
     defineField({name: 'vendorRef', title: 'Vendor', type: 'reference', to: [{type: 'vendor'}]}),
-    defineField({name: 'orderRef', title: 'Order', type: 'reference', to: [{type: 'order'}]}),
+    defineField({name: 'orderRef', title: 'Order', type: 'reference', to: [{type: 'vendorOrder'}]}),
     defineField({
       name: 'lineItems',
       title: 'Line Items',

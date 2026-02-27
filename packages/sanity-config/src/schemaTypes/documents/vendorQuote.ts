@@ -62,7 +62,7 @@ export default defineType({
     defineField({name: 'tax', title: 'Tax', type: 'number'}),
     defineField({name: 'total', title: 'Total', type: 'number'}),
     defineField({name: 'approvedAt', title: 'Approved At', type: 'datetime'}),
-    defineField({name: 'convertedToOrder', title: 'Converted To Order', type: 'reference', to: [{type: 'order'}]}),
+    defineField({name: 'convertedToOrder', title: 'Converted To Order', type: 'reference', to: [{type: 'vendorOrder'}]}),
     defineField({name: 'notes', title: 'Notes', type: 'text', rows: 4}),
   ],
   preview: {

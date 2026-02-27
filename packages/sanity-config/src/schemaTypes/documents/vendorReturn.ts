@@ -15,7 +15,7 @@ export default defineType({
   fields: [
     defineField({name: 'returnNumber', title: 'Return Number', type: 'string'}),
     defineField({name: 'vendor', title: 'Vendor', type: 'reference', to: [{type: 'vendor'}]}),
-    defineField({name: 'orderRef', title: 'Related Order', type: 'reference', to: [{type: 'vendorOrder'}, {type: 'order'}]}),
+    defineField({name: 'orderRef', title: 'Related Order', type: 'reference', to: [{type: 'vendorOrder'}]}),
     defineField({
       name: 'status',
       title: 'Status',
