@@ -4,14 +4,6 @@ const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2025-08-27.basil'
 const DAY_SECONDS = 60 * 60 * 24
 const DAY_BUCKETS = 30
 const DEFAULT_CHARGE_SCAN_LIMIT = getNumericEnv('SANITY_STUDIO_STRIPE_ANALYTICS_CHARGE_LIMIT', 5000)
-const DEFAULT_SESSION_SCAN_LIMIT = getNumericEnv(
-  'SANITY_STUDIO_STRIPE_ANALYTICS_SESSION_LIMIT',
-  400,
-)
-const DEFAULT_TOP_PRODUCTS_WINDOW_DAYS = getNumericEnv(
-  'SANITY_STUDIO_STRIPE_ANALYTICS_TOP_PRODUCTS_DAYS',
-  90,
-)
 
 export type StripeAnalyticsSummary = {
   currency: string
@@ -177,79 +169,9 @@ function getNumericEnv(name: string, fallback: number) {
 }
 
 async function collectTopProducts(
-  stripe: Stripe,
-  now: number,
+  _stripe: Stripe,
+  _now: number,
 ): Promise<StripeAnalyticsProductRow[]> {
   console.warn('stripe-analytics: checkout-session aggregation disabled; use payment-intent based reporting.')
   return []
-  const lookbackSeconds = Math.max(1, DEFAULT_TOP_PRODUCTS_WINDOW_DAYS) * DAY_SECONDS
-  const since = now - lookbackSeconds
-  const aggregates = new Map<
-    string,
-    {
-      name: string
-      total: number
-      units: number
-    }
-  >()
-
-  try {
-    const sessionIterator = stripe.checkout.sessions.list({
-      limit: 100,
-      status: 'complete',
-      created: {gte: since},
-      expand: ['data.line_items'],
-    }) as Stripe.ApiListPromise<Stripe.Checkout.Session>
-
-    let inspectedSessions = 0
-    for await (const session of sessionIterator) {
-      const items = session.line_items?.data || []
-      for (const item of items) {
-        const quantity = item.quantity ?? 1
-        const amount =
-          typeof item.amount_total === 'number'
-            ? item.amount_total
-            : (item.price?.unit_amount || 0) * quantity
-        if (quantity <= 0 || amount <= 0) continue
-        const productKey =
-          (typeof item.price?.product === 'string' && item.price.product) ||
-          item.description ||
-          item.price?.id ||
-          `unknown-${aggregates.size}`
-
-        const priceProductName =
-          (item.price && (item.price as any)?.product_data?.name) ||
-          (typeof item.price?.product === 'object'
-            ? ((item.price.product as Stripe.Product)?.name ?? null)
-            : null)
-        const name =
-          item.description || priceProductName || item.price?.nickname || 'Untitled product'
-
-        const aggregate = aggregates.get(productKey) || {name, total: 0, units: 0}
-        aggregate.name = aggregate.name || name
-        aggregate.total += amount
-        aggregate.units += quantity
-        aggregates.set(productKey, aggregate)
-      }
-
-      inspectedSessions += 1
-      if (inspectedSessions >= DEFAULT_SESSION_SCAN_LIMIT) {
-        break
-      }
-    }
-  } catch (err) {
-    console.error('stripe-analytics: failed to iterate legacy sessions', err)
-  }
-
-  const rows = Array.from(aggregates.values())
-    .filter((entry) => entry.total > 0 && entry.units > 0)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5)
-    .map<StripeAnalyticsProductRow>((entry) => ({
-      name: entry.name,
-      revenue: centsToAmount(entry.total),
-      unitsSold: entry.units,
-    }))
-
-  return rows
 }

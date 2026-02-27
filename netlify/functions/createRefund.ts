@@ -73,13 +73,6 @@ type InvoiceDoc = {
   orderRef?: {_id?: string | null; paymentIntentId?: string | null; chargeId?: string | null} | null
 }
 
-const eventTypeForRefund = (status?: string): Stripe.Event.Type => {
-  const normalized = (status || '').toLowerCase()
-  if (normalized === 'failed') return 'refund.failed'
-  if (normalized === 'pending') return 'refund.updated'
-  return 'refund.created'
-}
-
 const parseAmount = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value === 'string') {
