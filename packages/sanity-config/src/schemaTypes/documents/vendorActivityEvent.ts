@@ -35,6 +35,15 @@ export default defineType({
       options: {
         list: [
           {title: 'Quote Created', value: 'vendor.quote.created'},
+          {title: 'Order Processing', value: 'vendor.order.processing'},
+          {title: 'Order Backordered', value: 'vendor.order.backordered'},
+          {title: 'Order Partially Fulfilled', value: 'vendor.order.partially_fulfilled'},
+          {title: 'Payment Link Sent', value: 'vendor.payment.link_sent'},
+          {title: 'Shipment In Transit', value: 'vendor.shipment.in_transit'},
+          {title: 'Shipment Delivered', value: 'vendor.shipment.delivered'},
+          {title: 'Message Sent', value: 'vendor.message.sent'},
+          {title: 'Message Opened', value: 'vendor.message.opened'},
+          // Backward-compatible legacy events retained during cutover:
           {title: 'Quote Approved', value: 'vendor.quote.approved'},
           {title: 'Quote Rejected', value: 'vendor.quote.rejected'},
           {title: 'Order Placed', value: 'vendor.order.placed'},
@@ -112,6 +121,13 @@ export default defineType({
       options: {disableNew: true},
     }),
     defineField({
+      name: 'orderRef',
+      title: 'Order Reference',
+      type: 'string',
+      description: 'Optional order identifier for quick filtering/debugging.',
+      readOnly: true,
+    }),
+    defineField({
       name: 'summary',
       title: 'Summary',
       type: 'string',
@@ -125,6 +141,15 @@ export default defineType({
       description: 'Full JSON payload from Medusa for audit/debugging purposes.',
       readOnly: true,
       rows: 6,
+    }),
+    defineField({
+      name: 'readOnly',
+      title: 'Read Only Mirror',
+      type: 'boolean',
+      description: 'Always true for webhook mirrored timeline events.',
+      readOnly: true,
+      initialValue: true,
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'version',

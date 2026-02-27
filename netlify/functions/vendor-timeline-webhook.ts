@@ -55,6 +55,8 @@ type VendorTimelinePayload = {
   signature?: string
 }
 
+const ACCEPTED_VERSIONS = new Set(['1.0', '2026-02-21.v1'])
+
 // ─── HMAC verification ─────────────────────────────────────────────────────────
 
 function verifySignature(rawBody: string, signature: string, secret: string): boolean {
@@ -75,6 +77,11 @@ function verifySignature(rawBody: string, signature: string, secret: string): bo
 function buildSummary(eventType: string, data: Record<string, unknown>): string {
   const map: Record<string, (d: Record<string, unknown>) => string> = {
     'vendor.quote.created': (d) => `Quote created${d.order_number ? ` #${d.order_number}` : ''}`,
+    'vendor.order.processing': (d) => `Order processing${d.order_id ? ` (${d.order_id})` : ''}`,
+    'vendor.order.backordered': (d) => `Order backordered${d.order_id ? ` (${d.order_id})` : ''}`,
+    'vendor.order.partially_fulfilled': (d) =>
+      `Order partially fulfilled${d.order_id ? ` (${d.order_id})` : ''}`,
+    'vendor.payment.link_sent': (d) => `Payment link sent${d.invoice_id ? ` (${d.invoice_id})` : ''}`,
     'vendor.quote.approved': (d) => `Quote approved${d.order_number ? ` #${d.order_number}` : ''}`,
     'vendor.quote.rejected': (d) => `Quote rejected${d.order_number ? ` #${d.order_number}` : ''}`,
     'vendor.order.placed': (d) => `Order placed${d.order_id ? ` (${d.order_id})` : ''}`,
@@ -83,6 +90,10 @@ function buildSummary(eventType: string, data: Record<string, unknown>): string 
     'vendor.order.cancelled': (d) => `Order cancelled${d.order_id ? ` (${d.order_id})` : ''}`,
     'vendor.shipment.label_purchased': (d) =>
       `Shipping label purchased${d.tracking_number ? ` — ${d.tracking_number}` : ''}`,
+    'vendor.shipment.in_transit': (d) =>
+      `Shipment in transit${d.tracking_number ? ` — ${d.tracking_number}` : ''}`,
+    'vendor.shipment.delivered': (d) =>
+      `Shipment delivered${d.tracking_number ? ` — ${d.tracking_number}` : ''}`,
     'vendor.shipment.tracking_updated': (d) =>
       `Tracking updated${d.tracking_number ? ` — ${d.tracking_number}` : ''}`,
     'vendor.payment.received': (d) => {
@@ -98,6 +109,8 @@ function buildSummary(eventType: string, data: Record<string, unknown>): string 
       const amt = d.amount_cents != null ? ` $${((Number(d.amount_cents)) / 100).toFixed(2)}` : ''
       return `Refund completed${amt}`
     },
+    'vendor.message.sent': (d) => `Message sent${d.message_id ? ` (${d.message_id})` : ''}`,
+    'vendor.message.opened': (d) => `Message opened${d.message_id ? ` (${d.message_id})` : ''}`,
   }
   return map[eventType]?.(data) ?? eventType
 }
@@ -136,8 +149,15 @@ export const handler: Handler = async (event) => {
 
   const {event_id, event_type, occurred_at, source, version, aggregate, data} = payload
 
-  if (!event_id || !event_type || !aggregate?.vendor_id) {
-    return {statusCode: 400, body: 'Missing required fields: event_id, event_type, aggregate.vendor_id'}
+  if (!event_id || !event_type || !aggregate?.vendor_id || !version) {
+    return {
+      statusCode: 400,
+      body: 'Missing required fields: event_id, event_type, version, aggregate.vendor_id',
+    }
+  }
+
+  if (!ACCEPTED_VERSIONS.has(String(version))) {
+    return {statusCode: 400, body: `Unsupported version: ${version}`}
   }
 
   // ── Sanity client ──
@@ -193,10 +213,12 @@ export const handler: Handler = async (event) => {
       version: version || '1.0',
       aggregateType: aggregate.type || 'order',
       aggregateId: aggregate.id || '',
+      ...(aggregate.type === 'order' && aggregate.id ? {orderRef: String(aggregate.id)} : {}),
       vendorId,
       ...(vendorRef ? {vendorRef} : {}),
       summary,
       payload: JSON.stringify(data, null, 2),
+      readOnly: true,
       processingStatus: 'processed',
     })
   } catch (err) {
