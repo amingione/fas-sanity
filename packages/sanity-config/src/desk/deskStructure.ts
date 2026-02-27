@@ -121,6 +121,28 @@ export const deskStructure: StructureResolver = (S) =>
               S.documentTypeListItem('invoiceTemplate').title('Invoice Templates'),
             ]),
         ),
+      S.listItem()
+        .id('vendor-ops')
+        .title('Vendor Ops')
+        .icon(BillIcon)
+        .child(
+          S.list()
+            .title('Vendor Ops')
+            .items([
+              S.documentTypeListItem('vendor').title('Vendor Accounts'),
+              S.documentTypeListItem('vendorApplication').title('Vendor Applications'),
+              S.documentTypeListItem('vendorOrder').title('Vendor Orders'),
+              S.documentTypeListItem('vendorQuote').title('Vendor Quotes'),
+              S.documentTypeListItem('invoice').title('Invoices'),
+              S.documentTypeListItem('bill').title('Bills'),
+              S.documentTypeListItem('vendorReturn').title('Vendor Returns'),
+              S.documentTypeListItem('vendorDocument').title('Vendor Documents'),
+              S.documentTypeListItem('vendorNotification').title('Vendor Notifications'),
+              S.documentTypeListItem('vendorMessage').title('Vendor Messages'),
+              S.documentTypeListItem('vendorActivityEvent').title('Vendor Timeline'),
+              S.documentTypeListItem('customer').title('Customers'),
+            ]),
+        ),
     ])
 
 export default deskStructure

@@ -109,6 +109,14 @@ import redirect from './documents/redirect'
 import vendorActivityEvent from './documents/vendorActivityEvent'
 import vendor from './documents/vendor'
 import vendorApplication from './documents/vendorApplication'
+import invoice from './documents/invoice'
+import vendorQuote from './documents/vendorQuote'
+import vendorOrder from './documents/vendorOrder'
+import bill from './documents/bill'
+import vendorNotification from './documents/vendorNotification'
+import vendorDocument from './documents/vendorDocument'
+import vendorReturn from './documents/vendorReturn'
+import vendorMessage from './documents/vendorMessage'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -209,6 +217,14 @@ const documents = [
   vendor,
   vendorApplication,
   vendorActivityEvent,
+  invoice,
+  vendorQuote,
+  vendorOrder,
+  bill,
+  vendorNotification,
+  vendorDocument,
+  vendorReturn,
+  vendorMessage,
 ]
 
 export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents]
