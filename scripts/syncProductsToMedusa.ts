@@ -86,29 +86,24 @@ const slugify = (value: string): string =>
     .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
 
 /**
- * Convert Sanity price (always in dollars) to Medusa price (always in cents).
- * 
- * CRITICAL: Sanity stores prices as dollars (e.g., 21.00 = $21.00).
- * This function converts to cents for Medusa: 21.00 * 100 = 2100 cents.
- * 
- * GUARD AGAINST DOUBLE CONVERSION:
- * If a value looks like it's already in cents (> 1000 and close to a round hundred),
- * we assume it was already converted and pass it through.
+ * Convert Sanity price to Medusa minor units (cents), with a guard against
+ * double-conversion loops from legacy datasets.
  */
 const toMinorUnits = (value: number): number => {
-  // If value is suspiciously large (> $1000), check if it's already in cents
-  if (value > 1000) {
-    // If it's close to a round hundred (likely already converted), don't convert again
-    const remainder = value % 100;
-    if (remainder < 1) {
-      console.warn(
-        `[PRICE] Value ${value} appears to already be in cents (divisible by 100). Passing through without conversion.`,
-      );
-      return Math.round(value);
-    }
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`Invalid price value: ${value}`)
   }
-  
-  return Math.round(value * 100);
+
+  // Guard: large integer values in Sanity price fields are usually already cents
+  // (e.g. 89999 accidentally written to a dollars field).
+  if (Number.isInteger(value) && value >= 50000) {
+    console.warn(
+      `[PRICE] Value ${value} looks like already-cents integer. Passing through unchanged to prevent 100x inflation.`,
+    )
+    return Math.round(value)
+  }
+
+  return Math.round(value * 100)
 }
 
 const requireNumber = (value: unknown): value is number =>
