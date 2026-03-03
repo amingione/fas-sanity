@@ -58,7 +58,7 @@ nextjs-medusa-takeover-plan/
 │   ├── 02-Medusa-Backend-Overview.md           ← Medusa architecture
 │   └── 03-Stable-Architecture-Model.md         ← Target architecture
 │
-├── 03-STRIPE-MIGRATION/              ← Archived (authority cleanup; non-authoritative)
+├── 03-STRIPE-MIGRATION/              ← Archived (authority cleanup; historical reference)
 │
 ├── 04-CONTEXT/                       ← Historical planning (reference only)
 │   ├── pre-planning/                            ← Early brainstorming
@@ -189,12 +189,12 @@ Vendor transition companion docs (active):
 - 01-Strategic-Execution-Plan.md (phase sequence)
 - 02-fas-dash-Implementation-Plan.md (detailed migration)
 
-**Purpose**: These are the **CANONICAL** implementation plans Codex must follow
+**Purpose**: These are the **core** implementation plans Codex must follow
 
 **Priority**: HIGH - These documents define execution order and tasks
 
 **Key Rule**: Follow these plans exactly. No deviations without approval.
-Additional rule: vendor decommission follows the Vendor Preservation Gate and cutover checklist sign-off.
+Additional rule: vendor decommission follows the Vendor Preservation Gate and cutover checklist verification.
 
 ---
 
@@ -215,7 +215,7 @@ Additional rule: vendor decommission follows the Vendor Preservation Gate and cu
 ### 03-STRIPE-MIGRATION/ (Archived)
 **Status**: Archived during authority cleanup.
 
-**Purpose**: Historical reference only (non-authoritative).
+**Purpose**: Historical reference only (historical reference).
 
 **Use When**: You need historical context; do not use for active implementation guidance.
 
@@ -303,7 +303,7 @@ Additional rule: vendor decommission follows the Vendor Preservation Gate and cu
 - [x] 00-START-HERE/ folder with 4 files
 - [x] 01-FINAL-PLANS/ folder with 2 files
 - [x] 02-ARCHITECTURE/ folder with 3 files
-- [x] 03-STRIPE-MIGRATION/ marked archived (non-authoritative)
+- [x] 03-STRIPE-MIGRATION/ marked archived (historical reference)
 - [x] 04-CONTEXT/ folder with historical docs
 - [x] 05-ENV-SETUP/ folder with 3 files
 - [x] README.md at root

@@ -1,17 +1,17 @@
-# Vendor Cutover Checklist (Operational Sign-Off)
+# Vendor Cutover Checklist (Operational Readiness)
 
 Last updated: 2026-02-21
 Scope: `fas-medusa`, `fas-sanity`, `fas-cms-fresh`, replacement vendor workspace
 
 ## Purpose
-Define the mandatory go/no-go checklist before disabling legacy vendor integration paths in Sanity.
+Define the readiness checklist before disabling legacy vendor integration paths in Sanity.
 
-This checklist must be fully completed and signed off before:
+Complete and verify this checklist before:
 - Removing vendor schemas/routes
 - Disabling legacy vendor API paths
 - Turning off fallback vendor timeline/message flows
 
-## Cutover Gate (All Required)
+## Cutover Readiness (All Required)
 
 ### 1) Webhook Timeline Readiness
 - [ ] Vendor timeline webhook endpoint is live in Sanity.
@@ -23,9 +23,10 @@ This checklist must be fully completed and signed off before:
 ### 2) Replacement Workspace Readiness
 - [ ] Replacement vendor workspace is deployed.
 - [ ] Salesperson can view vendor profile/account data.
+- [ ] Vendor B2B account records are clearly separated from shopper customer records.
 - [ ] Salesperson can view vendor timeline events.
 - [ ] Salesperson can send approved non-transactional vendor communications.
-- [ ] Medusa-owned commerce status is read-only in Sanity timeline views.
+- [ ] Medusa-owned commerce status is mirrored in Sanity timeline views.
 
 ### 3) Data Integrity + Reconciliation
 - [ ] Vendor-to-salesperson mapping is verified.
@@ -47,18 +48,18 @@ This checklist must be fully completed and signed off before:
 - [ ] Removal PR includes rollback strategy and owner.
 - [ ] Post-cutover validation checklist is prepared.
 
-## Go/No-Go Decision
-- [ ] GO approved for vendor cutover
-- [ ] NO-GO (blockers remain)
+## Decision
+- [ ] GO for vendor cutover
+- [ ] HOLD (blockers remain)
 
-## Sign-Off
+## Review
 
 | Role | Name | Decision | Date | Notes |
 |---|---|---|---|---|
-| Product Owner |  | GO / NO-GO |  |  |
-| Commerce Engineering |  | GO / NO-GO |  |  |
-| Ops Lead |  | GO / NO-GO |  |  |
-| QA / Validation |  | GO / NO-GO |  |  |
+| Product Owner |  | GO / HOLD |  |  |
+| Commerce Engineering |  | GO / HOLD |  |  |
+| Ops Lead |  | GO / HOLD |  |  |
+| QA / Validation |  | GO / HOLD |  |  |
 
 ## Related Documents
 - `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`

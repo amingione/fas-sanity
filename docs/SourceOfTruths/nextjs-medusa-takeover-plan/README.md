@@ -43,7 +43,7 @@ nextjs-medusa-takeover-plan/
 │   ├── 02-Medusa-Backend-Overview.md
 │   └── 03-Stable-Architecture-Model.md
 │
-├── 03-STRIPE-MIGRATION/         ← Archived (authority cleanup; non-authoritative)
+├── 03-STRIPE-MIGRATION/         ← Archived (authority cleanup; historical reference)
 │
 ├── 04-CONTEXT/                  ← Historical planning (reference)
 │   ├── pre-planning/
@@ -67,13 +67,13 @@ nextjs-medusa-takeover-plan/
 FAS Motorsports has a **split-brain architecture** where commerce data lives in multiple places:
 - Products in **both** Sanity AND Medusa (sync hell)
 - Orders created in **Sanity** (via Netlify Functions)
-- Pricing, inventory, shipping all in **Sanity** (wrong source of truth)
+- Pricing, inventory, shipping all in **Sanity** (wrong system of record)
 - fas-dash (admin panel) reads **only from Sanity** (no Medusa integration)
 
 **Result**: Data inconsistency, complex sync logic, manual processes, fragile system.
 
 ### The Solution
-**Restructure to a clean, single-source-of-truth architecture**:
+**Restructure to a clean, clear system-of-record architecture**:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -117,7 +117,7 @@ Deploy Medusa, verify all workflows via API, lock env vars.
 **Done means**: Every commerce workflow works via curl/Postman.
 
 ### Phase 2: Sanity Restructure
-Strip Sanity schemas down to content-only. Remove all commerce fields.
+Restructure Sanity schemas around content + vendor workspace data. Remove transactional commerce fields.
 
 **Duration**: 2 weeks
 **Done means**: Sanity Studio is clean and content-focused.
@@ -137,7 +137,7 @@ Rewire fas-dash to read from Medusa, not Sanity.
 Vendor transition note:
 - Keep current vendor integration paths in Sanity during transition.
 - Move to webhook-first read-only timeline model before decommission.
-- Require operational sign-off before vendor decommission.
+- Require operational verification before vendor decommission.
 
 ### Phase 5-7: Cleanup, Optimization, Hardening
 Remove legacy, optimize UX, add governance.
@@ -202,7 +202,7 @@ Architecture is locked. No adding new systems mid-flight.
    - Ask questions early
 
 6. **Vendor Decommission Gate**
-   - Do not remove vendor integration until cutover checklist is signed off.
+   - Do not remove vendor integration until cutover checklist is verified.
    - Use webhook-first timeline contract for vendor activity sync.
 
 ---
@@ -218,7 +218,7 @@ Architecture is locked. No adding new systems mid-flight.
 | fas-dash migration | `01-FINAL-PLANS/02-fas-dash-Implementation-Plan.md` |
 | Vendor transition guardrail | `../fas-sanity-vendor-portal-keep.md` |
 | Vendor webhook contract | `../vendor-portal-webhook-contract.md` |
-| Vendor cutover sign-off | `../vendor-cutover-checklist.md` |
+| Vendor cutover verification | `../vendor-cutover-checklist.md` |
 | System audit | `02-ARCHITECTURE/01-Pre-Implementation-Audit.md` |
 | Medusa details | `02-ARCHITECTURE/02-Medusa-Backend-Overview.md` |
 | Checkout flow | `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` |
@@ -237,7 +237,7 @@ Architecture is locked. No adding new systems mid-flight.
 
 **fas-sanity** (Sanity CMS)
 - 87 document schemas (TOO MANY)
-- Target: ~38 schemas (content-only)
+- Target: ~38 schemas (content + vendor workspace)
 - 170+ Netlify Functions (many obsolete)
 
 **fas-dash** (Next.js 15 + NextAuth)
@@ -261,12 +261,12 @@ Architecture is locked. No adding new systems mid-flight.
 
 ### Phase 4 Success (End State)
 - [ ] fas-dash reads 100% from Medusa for commerce
-- [ ] fas-dash reads only content from Sanity
+- [ ] fas-dash reads content and vendor workspace data from Sanity
 - [ ] No commerce data in Sanity schemas
 - [ ] Ops team productive without Sanity Studio
 
 ### Overall Success
-- [ ] Single source of truth (Medusa)
+- [ ] primary system of record (Medusa)
 - [ ] Clean separation (commerce vs. content)
 - [ ] Predictable sync flows
 - [ ] Zero manual processes

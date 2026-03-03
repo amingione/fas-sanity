@@ -24,7 +24,7 @@
 ├── PREREQUISITES.md    ← Pre-flight checklist
 └── CURRENT-PHASE.md    ← Active phase tracker
 
-01-FINAL-PLANS/         ← CANONICAL IMPLEMENTATION PLANS
+01-FINAL-PLANS/         ← core IMPLEMENTATION PLANS
 ├── 01-Strategic-Execution-Plan.md          ← Phase sequence (FOLLOW THIS ORDER)
 ├── 02-fas-dash-Implementation-Plan.md      ← Detailed fas-dash migration
 
@@ -33,7 +33,7 @@
 ├── 02-Medusa-Backend-Overview.md           ← Medusa architecture
 └── 03-Stable-Architecture-Model.md         ← Target architecture
 
-03-STRIPE-MIGRATION/    ← Archived (authority cleanup; non-authoritative)
+03-STRIPE-MIGRATION/    ← Archived (authority cleanup; historical reference)
 
 04-CONTEXT/             ← Historical planning (reference only)
 ├── pre-planning/                            ← Early brainstorming
@@ -86,7 +86,7 @@
 **Reference**: `/02-ARCHITECTURE/01-Pre-Implementation-Audit.md` section "fas-medusa"
 
 #### **Phase 2: Sanity Restructure** 🔜 NEXT
-**Objective**: Strip Sanity down to content-only role
+**Objective**: Focus Sanity on content + vendor workspace role
 
 **Tasks**:
 1. Fork and refactor product schema
@@ -170,7 +170,7 @@
 → `05-ENV-SETUP/ENV Setup.md`
 
 **"Where is checkout migration guidance now?"**
-→ `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` (authoritative phase flow)
+→ `01-FINAL-PLANS/01-Strategic-Execution-Plan.md` (current reference phase flow)
 
 ---
 
@@ -239,7 +239,7 @@ fas-medusa already has:
 ### **fas-sanity** (Sanity CMS) ⚠️ NEEDS RESTRUCTURE
 - **Location**: Separate repo
 - **Current**: 87 document schemas (bloated)
-- **Target**: ~38 document schemas (content-only)
+- **Target**: ~38 document schemas (content + vendor workspace)
 - **Project ID**: `r4og35qd` (verify vs. hardcoded `ps4wgpv9`)
 
 ### **fas-dash** (Next.js 15) 🔴 NEEDS FULL REWRITE
@@ -365,7 +365,7 @@ After each phase, verify:
 
 ### Stripe + Shippo Integration
 - **Read**: `/01-FINAL-PLANS/01-Strategic-Execution-Plan.md`
-- **Use**: Follow authoritative phase flow; archived Stripe migration docs are non-authoritative.
+- **Use**: Follow current reference phase flow; archived Stripe migration docs are historical reference.
 
 ---
 

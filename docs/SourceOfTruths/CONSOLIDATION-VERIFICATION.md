@@ -114,7 +114,7 @@
 
 **Instructions for Reviewer:** Check that all internal links work correctly.
 
-- [ ] Active README links to current authoritative entry points
+- [ ] Active README links to current reference entry points
 - [ ] Archive links in README point to correct archived files
 - [ ] No broken links within the consolidated document
 
@@ -136,7 +136,7 @@ After completing all verification tasks above:
 
 1. **If NO issues found:**
    - [ ] Mark consolidation as APPROVED
-   - [ ] Document can be used as single source of truth
+   - [ ] Document can be used as primary system of record
    - [ ] Archive can remain in current state
 
 2. **If issues found:**
@@ -158,7 +158,7 @@ _Document any discrepancies, missing data, or errors discovered during verificat
 
 ---
 
-## Reviewer Sign-Off
+## Reviewer Review
 
 **Reviewer Name:** _____________________________
 **Date Reviewed:** _____________________________

@@ -220,7 +220,7 @@ curl https://api.goshippo.com/parcels/ \
 ## 🔒 Vendor Transition Prerequisite (For Later Phases)
 
 This does not block Phase 1 Medusa stabilization, but it blocks vendor decommission work:
-- Do not remove existing vendor integration in Sanity until cutover sign-off is complete.
+- Do not remove existing vendor integration in Sanity until cutover verification is complete.
 - Vendor timeline must be webhook-first, signed, idempotent, and replayable before cutover.
 
 References:

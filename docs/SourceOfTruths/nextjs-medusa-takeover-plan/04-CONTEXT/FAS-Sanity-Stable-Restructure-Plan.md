@@ -507,7 +507,7 @@ This is the working tree your content team sees in Sanity Studio:
 
   
 
-**Sanity product doc acts as enrichment layer.** Content team fills in descriptions, images, features, SEO. Medusa remains source of truth for price, stock, variants.
+**Sanity product doc acts as enrichment layer.** Content team fills in descriptions, images, features, SEO. Medusa remains system of record for price, stock, variants.
 
   
 
@@ -573,7 +573,7 @@ This is the working tree your content team sees in Sanity Studio:
 
   
 
-### → Medusa (source of truth)
+### → Medusa (system of record)
 
   
 

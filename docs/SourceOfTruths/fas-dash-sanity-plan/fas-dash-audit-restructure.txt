@@ -7,7 +7,7 @@ Use `fas-dash-audit-and-sync-plan.md` for active guidance.
 
 fas-dash currently treats **Sanity as its sole database**. Every API route (`/api/orders`, `/api/products`, `/api/customers`, `/api/invoices`, `/api/inventory`, `/api/shipping`, `/api/fulfillment`, `/api/quotes`, `/api/returns`, `/api/vendors`, `/api/purchase-orders`) does `sanityClient.fetch(someGROQquery)` and `sanityClient.create(doc)`.
 
-This is the exact split-brain problem that the restructure is meant to solve. fas-dash needs to be rewired so that **Medusa is the source of truth for commerce data** and Sanity is only consulted for content.
+This is the exact split-brain problem that the restructure is meant to solve. fas-dash needs to be rewired so that **Medusa is the system of record for commerce data** and Sanity is only consulted for content.
 
 ---
 
@@ -173,7 +173,7 @@ Everything transactional:
 | **Medusa → fas-dash** | Medusa Admin API | All transactional data: orders, customers, inventory, shipping, returns |
 | **Medusa → fas-cms-fresh** | Medusa Store API | Cart, checkout, pricing, product availability |
 | **fas-dash → Medusa** | Medusa Admin API | Write operations: order status changes, inventory adjustments, fulfillment updates |
-| **fas-dash → Sanity** | Sanity client (limited) | Blog post CRUD, calendar events — content only |
+| **fas-dash → Sanity** | Sanity client (limited) | Blog post CRUD, calendar events, vendor workspace content |
 | **fas-dash → Stripe** | Stripe SDK | Refund processing, payment details lookup |
 | **fas-dash → Shippo** | Shippo SDK | Label creation, tracking lookup, rate quotes |
 | **fas-dash → Resend** | Resend SDK | Transactional email sending (using Sanity-authored templates) |
@@ -664,7 +664,7 @@ For fas-dash to work against Medusa for everything, these custom modules need to
 
 ## Key Decisions to Lock In
 
-1. **Medusa is the ONLY source of truth for commerce data.** fas-dash never writes prices, inventory, orders, or customer records to Sanity.
+1. **Medusa is the primary system of record for commerce data.** fas-dash never writes prices, inventory, orders, or customer records to Sanity.
 
 2. **Sanity supplies content to fas-dash** for: blog, email templates, document templates, product descriptions/images (read-only in admin context), and calendar events.
 

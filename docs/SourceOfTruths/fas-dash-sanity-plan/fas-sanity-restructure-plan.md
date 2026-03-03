@@ -256,7 +256,7 @@ This is the working tree your content team sees in Sanity Studio:
 | Product deleted/archived | Flag Sanity doc as archived (don't delete — preserve content) |
 | Collection created | Create stub `collection` doc linked to Medusa collection |
 
-**Sanity product doc acts as enrichment layer.** Content team fills in descriptions, images, features, SEO. Medusa remains source of truth for price, stock, variants.
+**Sanity product doc acts as enrichment layer.** Content team fills in descriptions, images, features, SEO. Medusa remains system of record for price, stock, variants.
 
 ### Sanity → Astro (GROQ queries at build/ISR time)
 
@@ -289,7 +289,7 @@ This is the working tree your content team sees in Sanity Studio:
 
 ## What Gets Removed (and Where It Goes)
 
-### → Medusa (source of truth)
+### → Medusa (system of record)
 
 | Current Sanity Schema | New Home |
 |----------------------|----------|

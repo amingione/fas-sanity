@@ -1,21 +1,21 @@
 # Sanity <=> Medusa Test Plan
 
-This document outlines the testing strategy for the Sanity <=> Medusa data synchronization.
+Testing checklist for Sanity/Medusa sync behavior.
 
-## Phase 2: Products Sync
+## Product Sync
 
-### Unit Tests
-- **How to run:** `npm run contract:test:transforms`
-- **Expected output:** Successful test run.
-- **Validates:** Correctness of data transformations between Sanity, Medusa, and the canonical format.
+### Unit
+- Run: `npm run contract:test:transforms`
+- Expect: tests pass.
+- Verifies: Sanity/Medusa/canonical transforms are correct.
 
-### Integration Tests
-- **How to run:** `npm run sync:products:dry`
-- **Expected output:** A dry run of the product sync, showing proposed changes.
-- **Validates:** The end-to-end product sync process.
+### Integration
+- Run: `npm run sync:products:dry`
+- Expect: dry-run output with proposed changes.
+- Verifies: end-to-end product sync pipeline.
 
-## Phase 3: Customers Sync
-_(Tests to be defined)_
+## Customer Sync
+- Tests pending.
 
-## Phase 4: Orders + Fulfillment Sync
-_(Tests to be defined)_
+## Orders + Fulfillment Sync
+- Tests pending.

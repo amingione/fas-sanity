@@ -5,7 +5,7 @@
 This document is aligned to the active Medusa takeover sequence and vendor transition guardrails:
 - Keep existing vendor integration during transition.
 - Move vendor timeline to webhook-first read-only events in Sanity.
-- Do not remove vendor schemas/routes until operational sign-off completes.
+- Do not remove vendor schemas/routes until operational verification completes.
 
 Required companion docs:
 - `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
@@ -16,7 +16,7 @@ Required companion docs:
 
 fas-dash currently treats **Sanity as its sole database**. Every API route (`/api/orders`, `/api/products`, `/api/customers`, `/api/invoices`, `/api/inventory`, `/api/shipping`, `/api/fulfillment`, `/api/quotes`, `/api/returns`, `/api/vendors`, `/api/purchase-orders`) does `sanityClient.fetch(someGROQquery)` and `sanityClient.create(doc)`.
 
-This is the exact split-brain problem that the restructure is meant to solve. fas-dash needs to be rewired so that **Medusa is the source of truth for commerce data** and Sanity is only consulted for content.
+This is the exact split-brain problem that the restructure is meant to solve. fas-dash needs to be rewired so that **Medusa is the system of record for commerce data** and Sanity is only consulted for content.
 
 ---
 
@@ -185,7 +185,7 @@ Everything transactional:
 | **Medusa → fas-dash** | Medusa Admin API | All transactional data: orders, customers, inventory, shipping, returns |
 | **Medusa → fas-cms-fresh** | Medusa Store API | Cart, checkout, pricing, product availability |
 | **fas-dash → Medusa** | Medusa Admin API | Write operations: order status changes, inventory adjustments, fulfillment updates |
-| **fas-dash → Sanity** | Sanity client (limited) | Blog post CRUD, calendar events — content only |
+| **fas-dash → Sanity** | Sanity client (limited) | Blog post CRUD, calendar events, vendor workspace content |
 | **fas-dash → Stripe** | Stripe SDK | Refund processing, payment details lookup |
 | **fas-dash → Shippo** | Shippo SDK | Label creation, tracking lookup, rate quotes |
 | **fas-dash → Resend** | Resend SDK | Transactional email sending (using Sanity-authored templates) |
@@ -395,7 +395,7 @@ These don't map to any standard Medusa module, so they need custom development i
 
 Transition rule:
 - Keep current vendor integration in Sanity until replacement vendor workspace and webhook timeline are verified.
-- Decommission only after `docs/SourceOfTruths/vendor-cutover-checklist.md` is fully signed off.
+- Decommission only after `docs/SourceOfTruths/vendor-cutover-checklist.md` is fully verified.
 
 ---
 
@@ -673,7 +673,7 @@ For fas-dash to work against Medusa for everything, these custom modules need to
 | **6** | Webhooks, email templates, print templates | 1 | Sanity restructure complete |
 | **7** | Remove dead code, delete store/landing routes, clean queries.ts | 1 | All phases stable |
 | **8** | Auth migration (optional) | 1 | Everything else stable |
-| **9** | Vendor cutover sign-off + decommission | 1 | `vendor-cutover-checklist.md` fully signed off |
+| **9** | Vendor cutover verification + decommission | 1 | `vendor-cutover-checklist.md` fully verified |
 
 **Total: ~14 weeks** if executed sequentially. Phases 4+5 can run in parallel with Phase 3.
 
@@ -681,7 +681,7 @@ For fas-dash to work against Medusa for everything, these custom modules need to
 
 ## Key Decisions to Lock In
 
-1. **Medusa is the ONLY source of truth for commerce data.** fas-dash never writes prices, inventory, orders, or customer records to Sanity.
+1. **Medusa is the primary system of record for commerce data.** fas-dash never writes prices, inventory, orders, or customer records to Sanity.
 
 2. **Sanity supplies content to fas-dash** for: blog, email templates, document templates, product descriptions/images (read-only in admin context), and calendar events.
 
@@ -689,7 +689,7 @@ For fas-dash to work against Medusa for everything, these custom modules need to
 
 4. **fas-dash writes to Sanity** only for: blog post CRUD and calendar event CRUD.
 
-5. **Vendor decommission is gated.** Legacy vendor integration is removed only after checklist sign-off and webhook timeline verification.
+5. **Vendor decommission is sequenced.** Legacy vendor integration is removed only after checklist verification and webhook timeline verification.
 
 5. **Email workflow:** Sanity writes templates → fas-dash fetches template + Medusa data → sends via Resend.
 

@@ -1,6 +1,6 @@
 # Global Local Secrets Setup (Canonical)
 
-This is the authoritative workflow for syncing repo env files to `~/.local_secrets`.
+This is the current reference workflow for syncing repo env files to `~/.local_secrets`.
 
 ## 1) Create/refresh vault files
 

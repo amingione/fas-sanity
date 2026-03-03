@@ -1,11 +1,11 @@
 # FAS SourceOfTruths (Active)
 
-This directory contains active, authority-aligned documentation for FAS architecture and execution.
+This directory contains active documentation for FAS architecture and execution.
 
-## Canonical Rules
-- Medusa is authoritative for commerce data and workflows.
-- Sanity is content + identifiers only.
-- Sanity never stores or mirrors transactional commerce records.
+## Core Rules
+- Medusa handles commerce transaction state and workflows.
+- Sanity handles content plus vendor relationship workspace data.
+- Sanity can mirror commerce events for visibility, but does not own transactional commerce state.
 
 ## Start Here
 - `docs/SourceOfTruths/nextjs-medusa-takeover-plan/00-START-HERE/INDEX.md`
@@ -15,8 +15,8 @@ This directory contains active, authority-aligned documentation for FAS architec
 - `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
 - `docs/SourceOfTruths/vendor-cutover-checklist.md`
 
-## Archived for Authority Cleanup
+## Archived for Cleanup
 Conflicting historical docs were archived on 2026-02-20 under:
 - `docs/archive/authority-cleanup/2026-02-20/SourceOfTruths/`
 
-These archived files are non-authoritative and retained only for historical reference.
+These archived files are kept only for historical reference.

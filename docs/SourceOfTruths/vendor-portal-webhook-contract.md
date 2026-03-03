@@ -1,21 +1,22 @@
-# Vendor Portal Webhook Contract (Webhook-First)
+# Vendor Portal Webhook Contract
 
 Last aligned: 2026-02-21
 Applies to: `fas-medusa`, `fas-cms-fresh`, `fas-sanity`
 
 ## Goal
-Ensure vendor portal timeline and communications in Sanity are fed by authoritative commerce events, not direct transactional writes.
+Feed Sanity vendor timeline/communications from Medusa commerce events instead of direct transactional writes.
 
-## Authority
-- Medusa: commerce source of truth (quote/order/payment/fulfillment/shipping/refund state).
-- Sanity: vendor relationship workspace + read-only mirrored timeline.
-- fas-cms-fresh: frontend/API consumer only.
+## Ownership
+- Medusa: source of commerce state (quote/order/payment/fulfillment/shipping/refund).
+- Sanity: vendor relationship workspace + mirrored timeline for vendor ops visibility.
+- fas-cms-fresh: frontend/API consumer.
 
-## Contract Rules
-- All commerce lifecycle updates to Sanity must arrive through signed webhook events.
-- Event ingestion in Sanity must be idempotent (`event_id` uniqueness).
-- Event ordering must tolerate out-of-order delivery (`occurred_at` + sequence per aggregate).
-- No event may grant Sanity commerce authority.
+## Event Rules
+- Commerce lifecycle updates to Sanity are sent by signed webhook events.
+- Receiver is idempotent by `event_id`.
+- Receiver supports out-of-order delivery (`occurred_at` + sequence per aggregate).
+- Events do not grant commerce authority to Sanity.
+- Vendor account/profile/document data can be managed in Sanity outside this event stream.
 
 ## Canonical Event Envelope
 ```json
@@ -48,80 +49,77 @@ Ensure vendor portal timeline and communications in Sanity are fed by authoritat
 - `vendor.shipment.delivered`
 - `vendor.return.started`
 - `vendor.refund.completed`
-- `vendor.message.sent` (optional visibility event for timeline)
-- `vendor.message.opened` (optional visibility event from email provider relay)
+- `vendor.message.sent` (optional)
+- `vendor.message.opened` (optional)
 
-## Minimum `data` Fields by Domain
-- Quote/order events: `quote_number` or `order_number`, `status`, `salesperson_id`.
-- Payment events: `payment_link_id` or `invoice_id`, `payment_status`, `amount`, `currency`.
-- Shipment events: `tracking_number`, `carrier`, `service`, `shipment_status`.
-- Return/refund events: `return_id` or `refund_id`, `reason`, `amount`, `currency`.
-- Message visibility events: `message_id`, `template_id`, `delivery_status`.
+## Minimum `data` Fields
+- Quote/order: `quote_number` or `order_number`, `status`, `salesperson_id`.
+- Payment: `payment_link_id` or `invoice_id`, `payment_status`, `amount`, `currency`.
+- Shipment: `tracking_number`, `carrier`, `service`, `shipment_status`.
+- Return/refund: `return_id` or `refund_id`, `reason`, `amount`, `currency`.
+- Message visibility: `message_id`, `template_id`, `delivery_status`.
 
-## Security + Reliability Requirements
-- HMAC verification using shared secret per source.
-- Reject unsigned/invalid events with `401`.
-- Idempotency store in Sanity integration layer keyed by `event_id`.
-- Retry policy from sender: exponential backoff + DLQ after max attempts.
+## Delivery Requirements
+- HMAC verify with shared secret.
+- Reject invalid signature with `401`.
+- Store/process idempotently by `event_id`.
+- Sender retries with backoff and dead-letter handling.
 - Receiver returns `2xx` only after durable write.
-- Replay endpoint for manual recovery.
+- Support replay for recovery.
 
-## Cross-Repo Endpoint Checklist
+## Cross-Repo Checklist
 
-## `fas-medusa`
+### `fas-medusa`
 - [ ] Emit canonical vendor events at workflow transitions.
-- [ ] Add webhook dispatcher module for Sanity timeline target.
+- [ ] Add Sanity timeline webhook dispatcher.
 - [ ] Sign payload with `VENDOR_WEBHOOK_SECRET`.
-- [ ] Include `event_id`, `occurred_at`, and `version`.
+- [ ] Include `event_id`, `occurred_at`, `version`.
 - [ ] Add retry + dead-letter handling.
-- [ ] Add replay command by date range and by aggregate id.
+- [ ] Add replay by date range and aggregate id.
 
 Suggested endpoints/jobs:
-- `POST /internal/webhooks/vendor-timeline-dispatch` (internal dispatcher)
-- `POST /admin/vendor-events/replay` (admin secured replay)
+- `POST /internal/webhooks/vendor-timeline-dispatch`
+- `POST /admin/vendor-events/replay`
 
-## `fas-sanity`
-- [ ] Add webhook receiver for vendor timeline events.
+### `fas-sanity`
+- [ ] Add vendor timeline webhook receiver.
 - [ ] Verify signature and version.
 - [ ] Enforce idempotency (`event_id` uniqueness).
-- [ ] Write timeline entries as read-only mirror records.
-- [ ] Map `aggregate.vendor_id` to vendor/salesperson references.
+- [ ] Write read-only timeline mirror records.
+- [ ] Map `aggregate.vendor_id` to vendor/salesperson refs.
 - [ ] Provide reconciliation report for missing sequences.
 
 Suggested endpoint/functions:
 - `/.netlify/functions/vendor-timeline-webhook`
 - `/.netlify/functions/vendor-timeline-reconcile`
 
-## `fas-cms-fresh`
-- [ ] Remove direct transactional writes to Sanity for vendor order/payment/shipping state.
-- [ ] Keep only non-transactional vendor profile/relationship writes if required.
-- [ ] Route all commerce actions to Medusa APIs.
-- [ ] Expose no endpoint that mutates Sanity order/payment/shipping authority fields.
+### `fas-cms-fresh`
+- [ ] Remove direct transactional writes to Sanity for order/payment/shipping state.
+- [ ] Keep only non-transactional vendor relationship writes where needed.
+- [ ] Route commerce actions to Medusa APIs.
+- [ ] Do not expose endpoints that mutate Sanity commerce-authority fields.
 
-## Sanity Data Shape (Read-Only Timeline)
+## Sanity Timeline Shape
 - `vendorActivityEvent.eventId` (unique)
 - `vendorActivityEvent.eventType`
 - `vendorActivityEvent.occurredAt`
 - `vendorActivityEvent.vendorRef`
-- `vendorActivityEvent.orderRef` (optional reference/identifier only)
+- `vendorActivityEvent.orderRef` (optional)
 - `vendorActivityEvent.summary`
-- `vendorActivityEvent.payload` (non-authoritative snapshot)
+- `vendorActivityEvent.payload` (snapshot only)
 - `vendorActivityEvent.readOnly = true`
 
-## Exception Policy
-Direct write bypassing webhook flow is allowed only for essential vendor DB operations:
+## Exceptions
+Direct writes that bypass webhook flow are limited to vendor relationship operations:
 - Vendor profile fields
 - Salesperson assignment
 - Relationship notes/preferences/consent
+- Vendor business documents and communication records
 
-Any exception must include:
-- reason
-- scope
-- expiration date
-- owner
+For each exception, record: reason, scope, expiration date, owner.
 
-## Acceptance Criteria
-- No direct Sanity transactional mutations from storefront/vendor APIs.
-- Timeline is fully event-driven and read-only for commerce state.
-- Backfill/replay can reconstruct timeline for a vendor/order range.
-- Signature failures and duplicates are observable in logs/metrics.
+## Done Criteria
+- No direct transactional Sanity mutations from storefront/vendor APIs.
+- Timeline is event-driven and read-only for commerce state.
+- Replay/backfill can rebuild timeline for vendor/order ranges.
+- Signature failures and duplicates are visible in logs/metrics.

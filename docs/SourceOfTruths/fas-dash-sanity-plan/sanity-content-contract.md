@@ -1,9 +1,9 @@
 # Sanity Content Contract for fas-cms-fresh and fas-medusa
 
 ## Consumers
-- `fas-cms-fresh`: reads content-only fields from Sanity.
+- `fas-cms-fresh`: reads content and approved vendor workspace fields from Sanity.
 - `fas-medusa`: remains commerce authority and writes product sync bridge data.
-- Vendor workspace consumers: may read non-transactional vendor relationship fields and read-only timeline mirror events.
+- Vendor workspace consumers: may read/write non-transactional vendor relationship data and read mirrored lifecycle events.
 
 ## Product Contract
 - Required bridge fields: `medusaProductId`, `medusaVariantId`.
@@ -14,13 +14,14 @@
 - `Medusa -> Sanity`:
   - Product created: create/update stub content doc with bridge ID.
   - Product updated: refresh `lastSyncedFromMedusa` and optional display-only mirrors.
-  - Vendor lifecycle events: write read-only timeline records only.
+  - Vendor lifecycle events: write timeline mirror records for vendor visibility.
 - `Sanity -> fas-cms-fresh`:
   - Publish triggers content rebuild/revalidation.
 
-## Non-Negotiable
+## Boundaries
 - Sanity does not own or enforce prices, inventory, order state, payment, or shipping calculations.
-- Vendor transitional exception scope is relationship metadata only; no transactional authority.
+- Sanity may own vendor profile, account, communication, and business-document metadata for B2B workflows.
+- Shopper customer commerce records and transaction state stay in Medusa.
 
 ## References
 - `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`

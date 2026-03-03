@@ -10,7 +10,7 @@
     • Rich media: galleries, lifestyle images, diagrams, embeds, manuals/PDFs
     • Merchandising fields: badges, highlight flags, comparison copy, “good/better/best” groupings, curated bundles text.
 
-Medusa stays the source of truth for SKU, price, stock, etc., while Sanity enriches that for Astro
+Medusa stays the system of record for SKU, price, stock, etc., while Sanity enriches that for Astro
 
 2. Marketing, campaigns, and pages
 Sanity shines at anything the marketing/brand side needs to move fast on:

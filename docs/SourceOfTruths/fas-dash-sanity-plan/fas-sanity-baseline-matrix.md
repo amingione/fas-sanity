@@ -1,13 +1,13 @@
-# FAS Sanity Baseline Matrix (Content-Only Authority)
+# FAS Sanity Baseline Matrix (Content + Vendor Workspace)
 
 Date: 2026-02-18
 Owner: fas-sanity
 
 ## Authority Rules
 - `Medusa` owns commerce truth (pricing, inventory, cart, checkout, orders, shipping, payments).
-- `Sanity` owns marketing/content/editorial truth only.
+- `Sanity` owns marketing/content/editorial data plus vendor relationship workspace data.
 - `fas-cms-fresh` consumes Sanity content; commerce values are read from Medusa.
-- Vendor transition: Sanity may temporarily host vendor relationship metadata and read-only webhook timeline mirror until cutover sign-off.
+- Vendor transition: Sanity may host vendor relationship metadata and mirrored lifecycle timeline events until cutover verification.
 
 ## Schema Classification
 
@@ -29,7 +29,7 @@ Owner: fas-sanity
 - `addOn`, `productAddOn`, `customProductOption*` -> remove price modifiers
 
 ### REMOVE
-- Transactional, operational, accounting, inventory, shipping, vendor, customer ops schemas
+- Transactional, operational, accounting, inventory, shipping, and shopper-customer ops schemas
 - Legacy `shopify/*` object schema set
 - Stripe/order/shipping/pricing object schema set used for transaction authority
 
@@ -37,8 +37,8 @@ Owner: fas-sanity
 - Vendor portal schemas required for in-flight operations remain until:
   - webhook-first vendor timeline is live and verified
   - replacement vendor workspace is accepted
-  - `docs/SourceOfTruths/vendor-cutover-checklist.md` is signed off
+  - `docs/SourceOfTruths/vendor-cutover-checklist.md` is verified
 
 ## Exit Criteria Mapping
 - Every schema in registry is tagged `KEEP`, `REFACTOR`, or `REMOVE`.
-- No ambiguity remains about source-of-truth ownership.
+- No ambiguity remains about system-of-record ownership.

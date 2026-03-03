@@ -150,7 +150,7 @@ The landing pages (hero, features, testimonials, pricing, FAQ) appear to be from
 
 ## Locked-In Decisions (Confirmed)
 
-1. **Medusa = sole source of truth** for all commerce data (orders, customers, products/pricing/inventory, shipping, returns, payments)
+1. **Medusa = primary system of record** for all commerce data (orders, customers, products/pricing/inventory, shipping, returns, payments)
 2. **Sanity = content + experience layer** — product descriptions/images/SEO, blog, email templates, document templates, marketing campaigns, calendar events
 3. **Email workflow:** Sanity authors templates → fas-dash/Next.js fetches template + Medusa data → sends via Resend
 4. **Marketing email content stays in Sanity** (`emailCampaign`, `emailTemplate`). Execution tracking (`emailLog`, `emailAutomation`) moves out.

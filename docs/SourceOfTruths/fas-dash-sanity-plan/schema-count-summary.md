@@ -9,4 +9,4 @@ Note: Not every file is registered in schemaTypes index; this is a raw file coun
 
 Alignment note:
 - Vendor schema de-registration is deferred during transition.
-- Final counts can change after `docs/SourceOfTruths/vendor-cutover-checklist.md` sign-off.
+- Final counts can change after `docs/SourceOfTruths/vendor-cutover-checklist.md` verification.
