@@ -34,6 +34,8 @@ export default defineType({
       type: 'array',
       of: [
         defineField({
+          name: 'cartItem',
+          title: 'Cart Item',
           type: 'object',
           fields: [
             defineField({name: 'productRef', title: 'Product', type: 'reference', to: [{type: 'product'}]}),

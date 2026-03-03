@@ -74,8 +74,11 @@ type ProductForMeta = {
   metaTitle?: string
   metaDescription?: string
   focusKeyword?: string
+  seoKeywords?: string[]
   canonicalUrl?: string
   socialImage?: {asset?: {_ref?: string}}
+  socialImageAlt?: string
+  metaRobots?: string
   merchantCenterStatus?: Record<string, unknown>
   gtin?: string
   mpn?: string
@@ -103,8 +106,11 @@ export const ensureProductMetaAndStatus = async (
       metaTitle,
       metaDescription,
       focusKeyword,
+      seoKeywords,
       canonicalUrl,
       socialImage,
+      socialImageAlt,
+      metaRobots,
       merchantCenterStatus,
       gtin,
       mpn,
@@ -139,6 +145,14 @@ export const ensureProductMetaAndStatus = async (
     if (keyword) updates.focusKeyword = keyword
   }
 
+  if (
+    (!Array.isArray(product.seoKeywords) || product.seoKeywords.length === 0) &&
+    (typeof updates.focusKeyword === 'string' || product.focusKeyword)
+  ) {
+    const keyword = (updates.focusKeyword as string) || product.focusKeyword
+    if (keyword) updates.seoKeywords = [keyword]
+  }
+
   if (!product.canonicalUrl) {
     const canonical = buildCanonicalUrl(product.slug?.current)
     if (canonical) updates.canonicalUrl = canonical
@@ -146,6 +160,14 @@ export const ensureProductMetaAndStatus = async (
 
   if (!product.socialImage && Array.isArray(product.images) && product.images[0]?.asset) {
     updates.socialImage = product.images[0]
+  }
+
+  if (!product.socialImageAlt && product.title) {
+    updates.socialImageAlt = truncate(`${product.title} product image`, 125)
+  }
+
+  if (!product.metaRobots) {
+    updates.metaRobots = 'index,follow'
   }
 
   const merchantStatus = buildMerchantStatus({

@@ -44,6 +44,8 @@ export default defineType({
       type: 'array',
       of: [
         defineField({
+          name: 'quoteItem',
+          title: 'Quote Item',
           type: 'object',
           fields: [
             defineField({name: 'product', title: 'Product', type: 'reference', to: [{type: 'product'}]}),

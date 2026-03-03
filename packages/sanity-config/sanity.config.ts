@@ -21,6 +21,7 @@ import {visionTool} from '@sanity/vision'
 import {codeInput} from '@sanity/code-input'
 import {dashboardTool} from '@sanity/dashboard'
 import {media} from 'sanity-plugin-media'
+import {cloudinaryAssetSourcePlugin} from 'sanity-plugin-cloudinary'
 import {assist} from '@sanity/assist'
 // Removed presentation/preview tool
 import schemaTypes from './src/schemaTypes/index'
@@ -218,6 +219,7 @@ const configuredPlugins = [
   }),
   deskStructureBuilderTool(),
   media(),
+  cloudinaryAssetSourcePlugin(),
   codeInput(),
   dashboardTool({
     widgets: [

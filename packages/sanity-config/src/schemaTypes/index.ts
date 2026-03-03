@@ -109,6 +109,8 @@ import redirect from './documents/redirect'
 import vendorActivityEvent from './documents/vendorActivityEvent'
 import vendor from './documents/vendor'
 import vendorApplication from './documents/vendorApplication'
+import vendorAuthToken from './documents/vendorAuthToken'
+import vendorContract from './documents/vendorContract'
 import invoice from './documents/invoice'
 import vendorQuote from './documents/vendorQuote'
 import vendorOrder from './documents/vendorOrder'
@@ -217,6 +219,8 @@ const documents = [
   vendor,
   vendorApplication,
   vendorActivityEvent,
+  vendorAuthToken,
+  vendorContract,
   invoice,
   vendorQuote,
   vendorOrder,

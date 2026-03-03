@@ -15,8 +15,7 @@ export default defineType({
   title: 'Vendor Activity Events',
   type: 'document',
   icon: ActivityIcon,
-  // System document — keep this type view-only in Studio
-  __experimental_actions: [],
+  // System document — programmatic-only; all fields are readOnly so Studio users cannot create/edit
   fields: [
     defineField({
       name: 'eventId',

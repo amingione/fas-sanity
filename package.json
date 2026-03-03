@@ -100,6 +100,7 @@
     "refractor": "^5.0.0",
     "resend": "^4.8.0",
     "sanity": "^5.1.0",
+    "sanity-plugin-cloudinary": "^1.4.1",
     "sanity-plugin-hotspot-array": "^3.0.2",
     "sanity-plugin-media": "^4.1.1",
     "shippo": "^2.5.0",

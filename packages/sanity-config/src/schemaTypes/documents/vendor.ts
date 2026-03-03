@@ -168,12 +168,38 @@ export default defineType({
       type: 'string',
     }),
     defineField({
+      name: 'portalEnabled',
+      title: 'Portal Enabled',
+      type: 'boolean',
+      description: 'Top-level flag: vendor can log in to the portal when true.',
+      initialValue: false,
+    }),
+    defineField({
       name: 'portalAccess',
       title: 'Portal Access',
       type: 'object',
       fields: [
         defineField({name: 'enabled', title: 'Enabled', type: 'boolean', initialValue: false}),
         defineField({name: 'email', title: 'Portal Email', type: 'string'}),
+        defineField({
+          name: 'permissions',
+          title: 'Permissions',
+          type: 'array',
+          of: [{type: 'string'}],
+          description: 'Granted permission scopes. See backfill-vendor-portal-permissions.ts for valid values.',
+          options: {
+            list: [
+              {title: 'View Own Orders', value: 'view_own_orders'},
+              {title: 'Create Wholesale Orders', value: 'create_wholesale_orders'},
+              {title: 'View Own Quotes', value: 'view_own_quotes'},
+              {title: 'View Wholesale Catalog', value: 'view_wholesale_catalog'},
+              {title: 'Send Support Messages', value: 'send_support_messages'},
+              {title: 'View Payments', value: 'view_payments'},
+              {title: 'View Analytics', value: 'view_analytics'},
+              {title: 'Upload Invoices', value: 'upload_invoices'},
+            ],
+          },
+        }),
         defineField({name: 'invitedAt', title: 'Invited At', type: 'datetime'}),
         defineField({name: 'lastLogin', title: 'Last Login', type: 'datetime', readOnly: true}),
         defineField({name: 'userSub', title: 'Portal User Sub', type: 'string', hidden: true}),
@@ -187,11 +213,57 @@ export default defineType({
       ],
     }),
     defineField({
+      name: 'shippingAddresses',
+      title: 'Shipping Addresses',
+      type: 'array',
+      description: 'One or more shipping addresses for wholesale order deliveries.',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            defineField({name: 'label', title: 'Label', type: 'string', description: 'e.g. "Warehouse", "HQ"'}),
+            defineField({name: 'isDefault', title: 'Default', type: 'boolean', initialValue: false}),
+            defineField({name: 'street', title: 'Address Line 1', type: 'string'}),
+            defineField({name: 'address2', title: 'Address Line 2', type: 'string'}),
+            defineField({name: 'city', title: 'City', type: 'string'}),
+            defineField({name: 'state', title: 'State', type: 'string'}),
+            defineField({name: 'zip', title: 'ZIP Code', type: 'string'}),
+            defineField({name: 'country', title: 'Country', type: 'string', initialValue: 'US'}),
+          ],
+          preview: {
+            select: {label: 'label', city: 'city', state: 'state', isDefault: 'isDefault'},
+            prepare({label, city, state, isDefault}: {label?: string; city?: string; state?: string; isDefault?: boolean}) {
+              return {
+                title: label || 'Address',
+                subtitle: [city, state].filter(Boolean).join(', ') + (isDefault ? ' (default)' : ''),
+              }
+            },
+          },
+        },
+      ],
+    }),
+    defineField({
+      name: 'notificationPreferences',
+      title: 'Notification Preferences',
+      type: 'object',
+      description: 'Controls which portal events trigger email notifications to the vendor.',
+      fields: [
+        defineField({name: 'orderUpdates', title: 'Order Updates', type: 'boolean', initialValue: true}),
+        defineField({name: 'quoteActivity', title: 'Quote Activity', type: 'boolean', initialValue: true}),
+        defineField({name: 'paymentReminders', title: 'Payment Reminders', type: 'boolean', initialValue: true}),
+        defineField({name: 'shipmentTracking', title: 'Shipment Tracking', type: 'boolean', initialValue: true}),
+        defineField({name: 'invoiceAlerts', title: 'Invoice Alerts', type: 'boolean', initialValue: true}),
+        defineField({name: 'marketingEmails', title: 'Marketing Emails', type: 'boolean', initialValue: false}),
+      ],
+    }),
+    defineField({
       name: 'portalUsers',
       title: 'Portal Users',
       type: 'array',
       of: [
         defineField({
+          name: 'portalUser',
+          title: 'Portal User',
           type: 'object',
           fields: [
             defineField({name: 'email', title: 'Email', type: 'string'}),
