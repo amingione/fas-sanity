@@ -171,6 +171,14 @@ export default defineType({
       },
     }),
     defineField({
+      name: 'internalCategory',
+      title: 'Internal Category',
+      type: 'reference',
+      to: [{type: 'internalDocCategory'}],
+      description: 'Links to the Internal Documents Hub category',
+      group: 'content',
+    }),
+    defineField({
       name: 'accessLevel',
       title: 'Who Can Access',
       type: 'string',

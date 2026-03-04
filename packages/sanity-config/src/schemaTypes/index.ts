@@ -69,6 +69,7 @@ import tune from './documents/tune'
 import vehicleModel from './documents/vehicleModel'
 import altText from './documents/altText'
 import downloadResource from './documents/downloadResource'
+import internalDocCategory from './documents/internalDocCategory'
 import productTable from './documents/productTable'
 import wheelQuote from './documents/wheelQuote'
 
@@ -191,6 +192,7 @@ const documents = [
   vehicleModel,
   altText,
   downloadResource,
+  internalDocCategory,
   productTable,
   wheelQuote,
   campaign,

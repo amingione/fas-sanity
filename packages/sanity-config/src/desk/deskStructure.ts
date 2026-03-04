@@ -11,6 +11,7 @@ import {
   PresentationIcon,
   TagIcon,
 } from '@sanity/icons'
+import DocumentsHubDashboard from '../components/studio/DocumentsHubDashboard'
 
 const singleton = (S: any, type: string, id: string, title: string, icon?: any) =>
   S.listItem().id(id).title(title).icon(icon).child(S.editor().id(id).schemaType(type).documentId(id))
@@ -19,6 +20,26 @@ export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('F.A.S. Content')
     .items([
+      S.listItem()
+        .id('documents-hub')
+        .title('📁 Documents Hub')
+        .child(
+          S.component()
+            .id('documents-hub-dashboard')
+            .title('Internal Documents Hub')
+            .component(DocumentsHubDashboard as any),
+        ),
+      S.listItem()
+        .id('hub-categories')
+        .title('Hub Categories')
+        .icon(DocumentIcon)
+        .child(S.documentTypeList('internalDocCategory').title('Hub Categories')),
+      S.listItem()
+        .id('all-documents')
+        .title('All Documents')
+        .icon(DocumentTextIcon)
+        .child(S.documentTypeList('downloadResource').title('All Documents')),
+      S.divider(),
       singleton(S, 'home', 'home', 'Homepage', HomeIcon),
       S.divider(),
       S.listItem()
