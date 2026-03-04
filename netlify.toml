@@ -117,6 +117,12 @@
   force = true
 
 [[redirects]]
+  from = "/vendor-portal/*"
+  to = "https://www.fasmotorsports.com/vendor-portal/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "https://www.fasmotorsports.com/:splat"
   status = 301

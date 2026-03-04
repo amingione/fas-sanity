@@ -16,6 +16,34 @@ import DocumentsHubDashboard from '../components/studio/DocumentsHubDashboard'
 const singleton = (S: any, type: string, id: string, title: string, icon?: any) =>
   S.listItem().id(id).title(title).icon(icon).child(S.editor().id(id).schemaType(type).documentId(id))
 
+const DOWNLOADS_BASE_FILTER = '_type == "downloadResource" && isArchived != true'
+const DOWNLOADS_DEFAULT_ORDERING = [{field: 'lastUpdated', direction: 'desc' as const}]
+
+const buildHubCategoryFilter = (slug: string) =>
+  `${DOWNLOADS_BASE_FILTER} && references(*[_type == "internalDocCategory" && slug.current == "${slug}"][0]._id)`
+
+const buildHubCategoryListItem = (
+  S: any,
+  paneId: string,
+  title: string,
+  slug: string,
+  icon?: string,
+) =>
+  S.listItem()
+    .id(paneId)
+    .title(icon ? `${icon} ${title}` : title)
+    .child(
+      S.documentTypeList('downloadResource')
+        .id(paneId)
+        .title(title)
+        .filter(buildHubCategoryFilter(slug))
+        .defaultOrdering([
+          ...DOWNLOADS_DEFAULT_ORDERING,
+          {field: '_updatedAt', direction: 'desc' as const},
+          {field: '_createdAt', direction: 'desc' as const},
+        ]),
+    )
+
 export const deskStructure: StructureResolver = (S) =>
   S.list()
     .title('F.A.S. Content')
@@ -23,22 +51,80 @@ export const deskStructure: StructureResolver = (S) =>
       S.listItem()
         .id('documents-hub')
         .title('📁 Documents Hub')
-        .child(
-          S.component()
-            .id('documents-hub-dashboard')
-            .title('Internal Documents Hub')
-            .component(DocumentsHubDashboard as any),
-        ),
-      S.listItem()
-        .id('hub-categories')
-        .title('Hub Categories')
         .icon(DocumentIcon)
-        .child(S.documentTypeList('internalDocCategory').title('Hub Categories')),
-      S.listItem()
-        .id('all-documents')
-        .title('All Documents')
-        .icon(DocumentTextIcon)
-        .child(S.documentTypeList('downloadResource').title('All Documents')),
+        .child(
+          S.list()
+            .title('Documents Hub')
+            .items([
+              S.listItem()
+                .id('documents-hub-dashboard')
+                .title('Dashboard')
+                .child(
+                  S.component()
+                    .id('documents-hub-dashboard-pane')
+                    .title('Internal Documents Hub')
+                    .component(DocumentsHubDashboard as any),
+                ),
+              S.divider(),
+              S.listItem()
+                .id('hub-categories')
+                .title('Hub Categories')
+                .icon(DocumentIcon)
+                .child(S.documentTypeList('internalDocCategory').title('Hub Categories')),
+              S.listItem()
+                .id('all-documents')
+                .title('All Documents')
+                .icon(DocumentTextIcon)
+                .child(
+                  S.documentTypeList('downloadResource')
+                    .id('all-documents-list')
+                    .title('All Documents')
+                    .filter(DOWNLOADS_BASE_FILTER)
+                    .defaultOrdering([
+                      ...DOWNLOADS_DEFAULT_ORDERING,
+                      {field: '_updatedAt', direction: 'desc' as const},
+                      {field: '_createdAt', direction: 'desc' as const},
+                    ]),
+                ),
+              S.divider(),
+              buildHubCategoryListItem(
+                S,
+                'hub-category-technical-docs',
+                'Technical Documents',
+                'technical',
+                '🔧',
+              ),
+              buildHubCategoryListItem(
+                S,
+                'hub-category-operations-docs',
+                'Operations Documents',
+                'operations',
+                '📋',
+              ),
+              buildHubCategoryListItem(
+                S,
+                'hub-category-marketing-docs',
+                'Marketing Documents',
+                'marketing',
+                '📣',
+              ),
+              buildHubCategoryListItem(S, 'hub-category-legal-docs', 'Legal Documents', 'legal', '⚖️'),
+              buildHubCategoryListItem(
+                S,
+                'hub-category-templates-docs',
+                'Template Documents',
+                'templates',
+                '📄',
+              ),
+              buildHubCategoryListItem(
+                S,
+                'hub-category-integration-docs',
+                'Integration Documents',
+                'integration',
+                '🔌',
+              ),
+            ]),
+        ),
       S.divider(),
       singleton(S, 'home', 'home', 'Homepage', HomeIcon),
       S.divider(),

@@ -28,16 +28,34 @@ const resendClient = resendApiKey ? new Resend(resendApiKey) : null
 const DEFAULT_TEMPLATE_ID =
   process.env.VENDOR_INVITE_TEMPLATE_ID || '72dd79eb-5279-4c86-a375-cd3e3b42ef57'
 const DEFAULT_PORTAL_URL =
+  process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
   process.env.PUBLIC_SITE_URL ||
   ''
 const SITE_URL =
-  process.env.SANITY_STUDIO_SITE_URL ||
-  process.env.PUBLIC_SITE_URL ||
+  process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
+  process.env.PUBLIC_SITE_URL ||
+  process.env.SANITY_STUDIO_SITE_URL ||
   ''
+
+const resolveVendorPortalBase = (...candidates: string[]) => {
+  for (const candidate of candidates) {
+    const normalized = String(candidate || '').trim();
+    if (!normalized) continue;
+    try {
+      const parsed = new URL(normalized);
+      const host = parsed.hostname.toLowerCase();
+      if (host === 'fassanity.fasmotorsports.com') continue;
+      return parsed.origin;
+    } catch {
+      // ignore invalid values
+    }
+  }
+  return '';
+}
 
 const sanity =
   PROJECT_ID && DATASET && TOKEN
@@ -212,8 +230,17 @@ const handler: Handler = async (event) => {
     DEFAULT_PORTAL_URL ||
     ''
   const templateId: string = (payload.templateId || '').trim() || DEFAULT_TEMPLATE_ID
-  const siteUrlEnv = (process.env.SANITY_STUDIO_SITE_URL || payload.siteUrl || '').trim()
-  const setupBase = siteUrlEnv || portalUrl || SITE_URL || DEFAULT_PORTAL_URL || ''
+  const setupBase = resolveVendorPortalBase(
+    portalUrl,
+    (payload.siteUrl || '').trim(),
+    process.env.SANITY_STUDIO_VENDOR_PORTAL_URL || '',
+    process.env.VENDOR_PORTAL_URL || '',
+    process.env.PUBLIC_VENDOR_PORTAL_URL || '',
+    process.env.PUBLIC_SITE_URL || '',
+    process.env.SANITY_STUDIO_SITE_URL || '',
+    SITE_URL,
+    DEFAULT_PORTAL_URL,
+  )
 
   const shouldHydrateVendor = (!email || !companyName || !contactName || !vendorNumber) && vendorId
 
@@ -244,9 +271,17 @@ const handler: Handler = async (event) => {
   // Generate secure setup token + expiry
   const setupToken = crypto.randomBytes(32).toString('hex')
   const setupTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-  const setupLink = setupBase
-    ? `${setupBase.replace(/\/$/, '')}/vendor-portal/setup?token=${setupToken}`
-    : ''
+  if (!setupBase) {
+    return {
+      statusCode: 500,
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        error:
+          'Vendor portal URL is not configured. Set SANITY_STUDIO_VENDOR_PORTAL_URL or VENDOR_PORTAL_URL to the storefront host.',
+      }),
+    }
+  }
+  const setupLink = `${setupBase.replace(/\/$/, '')}/vendor-portal/setup?token=${setupToken}`
 
   const variables = {
     companyName: companyName || 'your team',

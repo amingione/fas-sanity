@@ -9,12 +9,28 @@ const token = process.env.SANITY_API_TOKEN || ''
 const apiVersion = process.env.SANITY_STUDIO_API_VERSION || '2024-10-01'
 const resendApiKey = resolveResendApiKey() || ''
 const SITE_URL =
-  process.env.SANITY_STUDIO_SITE_URL ||
-  process.env.PUBLIC_SITE_URL ||
+  process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
+  process.env.PUBLIC_SITE_URL ||
+  process.env.SANITY_STUDIO_SITE_URL ||
   ''
 const FROM_EMAIL = process.env.RESEND_FROM || 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
+
+const resolveVendorPortalBase = (...candidates: string[]) => {
+  for (const candidate of candidates) {
+    const normalized = String(candidate || '').trim()
+    if (!normalized) continue
+    try {
+      const parsed = new URL(normalized)
+      if (parsed.hostname.toLowerCase() === 'fassanity.fasmotorsports.com') continue
+      return parsed.origin
+    } catch {
+      // ignore invalid candidates
+    }
+  }
+  return ''
+}
 
 const sanityClient =
   projectId && dataset && token
@@ -63,10 +79,11 @@ export const sendCampaignEmail = async (params: {
   )
   if (!vendor?.portalAccess?.email) throw new Error('Vendor email not found')
 
+  const portalBase = resolveVendorPortalBase(SITE_URL)
   const resolvedSetupLink =
     setupLink ||
-    (vendor.portalAccess?.setupToken
-      ? `${SITE_URL.replace(/\/$/, '')}/vendor-portal/setup?token=${vendor.portalAccess.setupToken}`
+    (portalBase && vendor.portalAccess?.setupToken
+      ? `${portalBase.replace(/\/$/, '')}/vendor-portal/setup?token=${vendor.portalAccess.setupToken}`
       : undefined)
 
   const htmlContent = replaceVariables(email.htmlContent || '', {
@@ -104,8 +121,9 @@ export const triggerOnboardingCampaign = async (vendorId: string, setupToken: st
     throw new Error('Vendor onboarding campaign not found')
   }
 
-  const setupLink = SITE_URL
-    ? `${SITE_URL.replace(/\/$/, '')}/vendor-portal/setup?token=${setupToken}`
+  const campaignPortalBase = resolveVendorPortalBase(SITE_URL)
+  const setupLink = campaignPortalBase
+    ? `${campaignPortalBase.replace(/\/$/, '')}/vendor-portal/setup?token=${setupToken}`
     : undefined
 
   await sendCampaignEmail({

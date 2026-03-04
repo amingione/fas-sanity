@@ -1,10 +1,12 @@
 import React, {useEffect, useState} from 'react'
 import {useClient} from 'sanity'
+import {useRouter} from 'sanity/router'
 import {Badge, Box, Card, Flex, Grid, Heading, Stack, Text} from '@sanity/ui'
 import {FolderIcon} from '@sanity/icons'
 
 interface Category {
   _id: string
+  slug?: {current?: string}
   title: string
   description?: string
   icon?: string
@@ -23,6 +25,7 @@ const API_VERSION = '2024-10-01'
 
 export default function DocumentsHubDashboard() {
   const client = useClient({apiVersion: API_VERSION})
+  const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [stats, setStats] = useState<HubStats>({total: 0, internal: 0, public: 0, admin: 0})
   const [loading, setLoading] = useState(true)
@@ -34,6 +37,7 @@ export default function DocumentsHubDashboard() {
           `
             *[_type == "internalDocCategory" && active == true] | order(order asc) {
               _id,
+              slug,
               title,
               description,
               icon,
@@ -56,6 +60,30 @@ export default function DocumentsHubDashboard() {
 
     void fetchData()
   }, [client])
+
+  const CATEGORY_PATHS: Record<string, string> = {
+    technical: '/desk/documents-hub;hub-category-technical-docs',
+    operations: '/desk/documents-hub;hub-category-operations-docs',
+    marketing: '/desk/documents-hub;hub-category-marketing-docs',
+    legal: '/desk/documents-hub;hub-category-legal-docs',
+    templates: '/desk/documents-hub;hub-category-templates-docs',
+    integration: '/desk/documents-hub;hub-category-integration-docs',
+  }
+
+  const handleCategoryClick = (slug?: string) => {
+    if (!slug) return
+    const path = CATEGORY_PATHS[slug]
+    if (!path) return
+
+    if (router.navigateUrl) {
+      router.navigateUrl({path})
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      window.location.hash = `#${path}`
+    }
+  }
 
   if (loading) {
     return (
@@ -131,12 +159,16 @@ export default function DocumentsHubDashboard() {
           {categories.map((cat) => (
             <Card
               key={cat._id}
+              as="button"
               padding={4}
               radius={3}
               border
               tone="default"
+              onClick={() => handleCategoryClick(cat.slug?.current)}
               style={{
                 borderLeft: cat.color ? `4px solid ${cat.color}` : '4px solid var(--card-border-color)',
+                cursor: cat.slug?.current ? 'pointer' : 'default',
+                textAlign: 'left',
               }}
             >
               <Stack space={3}>
