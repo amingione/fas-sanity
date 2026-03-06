@@ -1,3 +1,24 @@
+/**
+ * ⚠️  DEPRECATED — Stripe product/price sync via Sanity Netlify functions is no longer the
+ * canonical approach. Stripe product and price records must be owned and managed by Medusa
+ * (via the @medusajs/payment-stripe plugin and Medusa's product catalog module).
+ *
+ * WHY: Direct Sanity→Stripe sync bypasses Medusa's price/inventory model and causes
+ *      divergence between Medusa's internal price records and what is registered in Stripe.
+ *      It also duplicates product-creation logic that Medusa owns.
+ *
+ * CANONICAL PATH:
+ *   - Products are created/updated in Sanity (content source of truth)
+ *   - Medusa's product import workflow syncs them into Medusa (products + variants + prices)
+ *   - Medusa's payment-stripe plugin creates Stripe payment intents using Medusa's own price IDs
+ *   - Stripe product/price objects are managed exclusively by Medusa
+ *
+ * This function may still be used as a ONE-TIME back-fill tool only, with explicit
+ * operator approval, to seed Stripe product IDs into historical Sanity documents
+ * BEFORE the Medusa migration completes. After migration, disable/remove this function.
+ *
+ * TODO: Remove after Medusa product catalog migration is complete.
+ */
 import type {Handler} from '@netlify/functions'
 import {createClient} from '@sanity/client'
 import Stripe from 'stripe'

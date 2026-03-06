@@ -1,3 +1,12 @@
+/**
+ * ⚠️  DEPRECATED — One-time backfill wrapper for syncStripeCatalog.
+ *
+ * See syncStripeCatalog.ts for the full deprecation notice.
+ * Direct Sanity→Stripe product/price creation is no longer canonical.
+ * Medusa's @medusajs/payment-stripe plugin is the sole owner of Stripe product/price records.
+ *
+ * TODO: Remove after Medusa product catalog migration is complete.
+ */
 import type {Handler} from '@netlify/functions'
 import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../lib/stripeEnv'
 import syncStripeCatalog from './syncStripeCatalog'
