@@ -78,3 +78,4 @@ This architecture reflects the **target and enforced end state**.
 Legacy systems (direct Stripe, direct Shippo, Sanity‑as‑commerce) may still exist during migration but are **deprecated** and must not be expanded.
 
 Any new work MUST conform to the architecture above.
+- **fas-dash**: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-dash`

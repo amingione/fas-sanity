@@ -1,115 +1,44 @@
-# Sanity Studio for Shopify Projects
+# FAS Sanity (`fas-sanity`)
 
-<img width="1072" alt="Sanity Studio with Shopify products" src="https://github.com/sanity-io/learn/assets/9684022/13aed6ff-a028-4c3f-bc4b-15bf9ba4c6ff">
+DOCS_VERSION: v2026.03.07  
+Role: Content system
 
-## About
+## Purpose
+`fas-sanity` is the content/editorial platform for FAS.
 
-> ⚠️ Architecture Note (Project-Specific)
->
-> This repository originated from a Shopify-focused Sanity Studio template.
->
-> In the current FAS Motorsports architecture:
->
-> - **Medusa** is the source of truth for products, variants, pricing, inventory, cart, checkout, and shipping
-> - **Sanity** is used for content, media, SEO, and editorial extensions only
-> - Shopify assumptions below are legacy template context and do not reflect the active commerce stack
->
-> The documentation below is retained for reference but should be read with this context in mind.
+It owns:
+- marketing and editorial content
+- SEO copy and media content structures
+- content workflows, templates, and internal documentation content
+- optional passive mirrors/annotations that explicitly defer to Medusa
 
-This Sanity Studio is configured for headless Shopify projects that use the official [Sanity Connect app][sanity-shopify], allowing you to extend Shopify products and collections with your own rich editorial content.
+## System boundaries
+- `fas-medusa` = commerce source of truth
+- `fas-dash` = internal operations/admin UI
+- `fas-cms-fresh` = storefront UI
+- Stripe = payment processor only
+- Sanity = content only
 
-It contains examples of customizing your [structure][docs-structure], [document actions][docs-document-actions] and [input components][docs-input-components].
+## Non-negotiable rules
+Sanity must not be described or implemented as authority for:
+- products/variants
+- pricing/inventory
+- cart/checkout/orders
+- shipping execution
 
-This studio can be used with any front end, or anywhere else you want your e-commerce content to go.
+## Legacy template note
+This repository originated from template material that referenced Shopify-centric assumptions.
+Those assumptions are superseded and archived; active docs must follow the Medusa-authoritative model.
 
-## Features
+## Canonical docs
+- `docs/governance/checkout-architecture-governance.md`
+- `docs/governance/commerce-authority-checklist.md`
+- `docs/architecture/canonical-commerce-architecture.md`
+- `docs/architecture/migration-status.md`
 
-This studio comes configured with Shopify-friendly content schema types and a whole host of customizations to make managing Shopify data in your Sanity studio easier.
+## Commands
+Use existing scripts in `package.json`.
 
-It also comes with several convenient layout modules which can be re-used across various pages.
-
-**[View studio features][studio-features]**
-
-## Repository layout
-
-Core studio code lives inside `packages/` while deployable infrastructure such as Netlify functions remains untouched.
-
-- `packages/sanity-config` contains the Studio configuration, schema, custom desk structure, themes, and supporting utilities.
-- `netlify/functions` continues to host the existing serverless endpoints with their original paths.
-
-## Assumptions
-
-No two custom storefronts are the same, and we've taken a few strong opinions on how we've approached this studio.
-
-- Synced Shopify data for `collection`, `product` and `productVariant` documents are stored in a read-only object, `store`
-- Shopify is the source of truth for both product titles, slugs (handles) and thumbnail images
-- Shopify is the source of truth for collections
-- Sanity is used as an additional presentational layer to add custom metadata to both Shopify collections and products
-  - For products: this includes a portable text field with support for editorial modules
-  - For collections: this includes a customizable array of editorial modules
-- Some images (such as product and cart line item thumbnails) are served by Shopify's CDN whilst other images (such as those served in editorial modules) are handled by Sanity's Image API
-- We only concern ourselves with incoming data from Shopify _collections_, _products_ and _product variants_
-
-We believe these rules work well for simpler use cases, and keeping product titles, images and slugs handled by Shopify helps keep content consistent as you navigate from your product views to the cart and ultimately checkout. Managing collections in Shopify gives you the flexibility to take full advantage of manual and automated collections.
-
-You may have differing opinions on how content best be modeled to fit your particular needs – this is normal and encouraged! Fortunately, Sanity was built with this flexibility in mind, and we've written [a guide on structured content patterns of e-commerce][structured-content-patterns] which may help inform how to tackle this challenge.
-
-## Setup
-
-If you're reading this on GitHub, chances are you haven't initialized the studio locally yet. To do so, run the following shell command:
-
-```sh
-# run a one-off initializing script:
-npx @sanity/cli init --template shopify
-```
-
-Make sure to run the tagged release! (`@sanity/cli`)
-
-## Secrets
-
-- Build secrets that exceed Netlify's 4 KB env var limit are pulled from AWS Secrets Manager via `@netlify/plugin-secrets-manager`. See `docs/netlify-secrets-manager.md` for setup.
-
-## Local Development
-
-### Node.js runtime
-
-This repo enforces Node 20.19.1 for local development. Use `nvm use` (reads `.nvmrc`), and ensure VS Code runs the "Sanity Dev" launch config so `sanity dev` always uses Node 20.
-
-### Starting development server
-
-```sh
-npm run dev
-```
-
-### Google Merchant SFTP feed
-
-See [`docs/merchant-sftp.md`](docs/merchant-sftp.md) for configuring the automated SFTP feed upload.
-
-### Deploying the studio
-
-```sh
-npm run deploy
-```
-
-### Upgrading Sanity Studio
-
-```sh
-npm run upgrade
-```
-
-If you have the [Sanity CLI][docs-cli] installed, you can also run this with `sanity start|deploy|upgrade`. It comes with additional useful functionality.
-
-## License
-
-This repository is published under the [MIT](license) license.
-
-[docs-cli]: https://www.sanity.io/docs/cli
-[docs-custom-input-components]: https://www.sanity.io/docs/custom-input-components
-[docs-structure]: https://www.sanity.io/docs/structure-builder
-[docs-document-actions]: https://www.sanity.io/docs/document-actions
-[docs-input-components]: https://www.sanity.io/docs/custom-input-widgets
-[docs-string-input]: https://www.sanity.io/docs/string-type
-[license]: https://github.com/sanity-io/sanity/blob/next/LICENSE
-[sanity-shopify]: https://apps.shopify.com/sanity-connect
-[structured-content-patterns]: https://www.sanity.io/guides/structured-content-patterns-for-e-commerce
-[studio-features]: docs/features.md
+Common checks:
+- `node ../scripts/docs-drift-check.mjs --repo fas-sanity`
+- `pnpm build`

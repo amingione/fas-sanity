@@ -45,7 +45,8 @@
     "migrate:email-marketing": "tsx scripts/backfill-email-marketing.ts",
     "repair:references": "tsx scripts/repair-references.ts",
     "auto-mapper:audit": "tsx packages/sanity-config/src/autoMapper/cli/autoMapperAudit.ts",
-    "mcp:sanity": "pnpm exec sanity-mcp-server"
+    "mcp:sanity": "pnpm exec sanity-mcp-server",
+    "docs:check": "node ./scripts/docs-drift-check.mjs"
   },
   "keywords": [
     "sanity"
