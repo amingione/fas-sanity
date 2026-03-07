@@ -1,188 +1,45 @@
-_Purpose:_
-Prevent architecture drift in the FAS ecosystem by enforcing the Medusa-authoritative commerce model.
+# Commerce Authority Checklist
 
-_Applies to:_
-fas-medusa, fas-cms-fresh, fas-dash, fas-sanity
+Status: Canonical  
+Last updated: 2026-03-07
 
-⸻
+Use this checklist to prevent architecture drift.
 
-1. Commerce Source of Truth
+## Core Authority Rules
 
-The following must always remain true.
+- `fas-medusa` owns products, variants, pricing, inventory, carts, checkout, shipping logic, and orders.
+- `fas-dash` is the internal admin and operations UI and must act through `fas-medusa`.
+- `fas-cms-fresh` is the storefront and must not become commerce authority.
+- Stripe is payment processor only.
+- Sanity is content only.
+- Sanity must never be framed or implemented as commerce authority.
 
-Domain Authority
-Products Medusa
-Variants Medusa
-Pricing Medusa
-Inventory Medusa
-Cart Medusa
-Checkout Medusa
-Orders Medusa
-Shipping Medusa
-Payment execution Stripe
-Content / marketing Sanity
+## Storefront Checklist
 
-Sanity must never control commerce state.
+- Product visibility, price, inventory, and checkout state come from `fas-medusa`.
+- Sanity enrichment is optional and must never block a valid Medusa product from rendering.
+- `fas-cms-fresh` does not authoritatively calculate tax, shipping, totals, or order state.
 
-⸻
+## Dashboard Checklist
 
-2. Storefront Runtime Rule
+- `fas-dash` writes commerce changes through `fas-medusa` APIs only.
+- `fas-dash` does not use Sanity as a transactional commerce database.
+- Internal operations workflows defer to `fas-medusa` for authoritative order and inventory state.
 
-A valid Medusa product must always render on storefront.
+## Sanity Checklist
 
-Medusa product
-→ sales channel publish
-→ storefront query
-→ optional Sanity enrichment
-→ PDP
-→ cart
-→ checkout
-→ PaymentIntent
-→ Stripe webhook
-→ Medusa order
+- Allowed: editorial content, SEO, media, templates, annotations, and read-only mirrors.
+- Not allowed: authoritative product creation, variant ownership, pricing, inventory, carts, checkout, orders, or shipping execution.
+- If Sanity stores mirrored commerce data, that data must explicitly defer to `fas-medusa`.
 
-Rules:
-• A missing Sanity document must never block product visibility
-• Sanity fields may enrich only
-• Medusa fields always override Sanity
+## Stripe Checklist
 
-⸻
+- Stripe receives final amounts and metadata from `fas-medusa`.
+- Stripe does not own catalog, checkout, tax, shipping, or order state.
+- Payment success does not replace Medusa order creation authority.
 
-3. Sanity Restrictions
+## Legacy Cleanup Checklist
 
-Sanity must not mutate or control:
-• product creation
-• variant definitions
-• price
-• inventory
-• checkout
-• order creation
-• payment confirmation
-• shipping logic
-
-Allowed:
-• product descriptions
-• images
-• SEO
-• blog
-• campaigns
-• email templates
-
-Sanity may store Medusa IDs only as references.
-
-⸻
-
-4. Stripe Restrictions
-
-Stripe is not a commerce authority.
-
-Stripe must never:
-• create products as catalog source
-• calculate tax
-• calculate shipping
-• calculate totals
-
-Stripe only receives:
-
-amount
-currency
-metadata
-
-from Medusa.
-
-⸻
-
-5. Storefront Rules
-
-fas-cms-fresh must:
-• read product visibility from Medusa
-• render PDP using Medusa product data
-• use canonical cart state
-• send checkout operations to Medusa
-
-fas-cms-fresh must never:
-• calculate price
-• calculate shipping
-• calculate tax
-• create orders
-• confirm payments
-
-⸻
-
-6. Dashboard Rules
-
-fas-dash is the admin control surface.
-
-It must operate through:
-
-Medusa Admin API
-
-It must not:
-• mutate commerce data through Sanity
-• bypass Medusa APIs
-• maintain a separate catalog
-
-⸻
-
-7. Legacy Sanity Sync
-
-If these exist, they are technical debt:
-
-/api/webhooks/sanity-product-sync
-Sanity → Medusa upsert workflows
-Sanity inventory mutation logic
-Sanity order overlays
-
-Migration path: 1. Freeze mutation 2. Convert to content linkage 3. Remove infrastructure 4. Validate Medusa-only commerce
-
-⸻
-
-8. Merge Gate Checklist
-
-Before merging commerce-related changes verify:
-• No Sanity → Medusa mutation paths added
-• No storefront dependency on Sanity product records
-• No Sanity fields overriding Medusa commerce fields
-• No Stripe catalog creation logic introduced
-• Checkout flow still matches canonical runtime flow
-• Medusa remains single source of truth
-
-⸻
-
-9. Quick Repo Audit Commands
-
-Run these before approving architecture changes:
-
-Detect Sanity commerce reads
-
-rg sanity src | rg -E "price|inventory|variant|order"
-
-Detect Sanity writes
-
-rg "sanityClient.create|sanityClient.patch"
-
-Detect Stripe catalog usage
-
-rg "stripe.products.create|stripe.prices.create"
-
-⸻
-
-10. Failure Conditions
-
-Stop implementation immediately if:
-• a storefront feature requires a Sanity product document to render
-• pricing comes from anywhere except Medusa
-• checkout totals are calculated outside Medusa
-• orders are created outside Medusa
-
-These indicate architecture regression.
-
-⸻
-
-Governance
-
-This checklist supplements:
-
-docs/governance/checkout-architecture-governance.md
-
-If any rule conflicts with implementation behavior, the architecture document takes precedence and the implementation must be corrected.
+- Archived planning docs are not cited as implementation authority.
+- New architecture references point to the canonical governance and architecture package.
+- Any legacy sync or mirror path that conflicts with this checklist is superseded by `fas-medusa` authority.

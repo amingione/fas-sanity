@@ -1,8 +1,11 @@
 # fas-sanity — Phase Progress Log
 _Last updated: 2026-02-25_
 
-Tracks completion against the Strategic Execution Plan and fas-sanity restructure goals.
-Full plan: `docs/SourceOfTruths/nextjs-medusa-takeover-plan/`
+Tracks completion against the canonical architecture package:
+- `docs/governance/checkout-architecture-governance.md`
+- `docs/governance/commerce-authority-checklist.md`
+- `docs/architecture/canonical-commerce-architecture.md`
+- `docs/architecture/migration-status.md`
 
 ---
 
@@ -45,7 +48,6 @@ Full plan: `docs/SourceOfTruths/nextjs-medusa-takeover-plan/`
 
 ### Governance
 - ✅ `docs/NO_NEW_COMMERCE_FIELDS_IN_SANITY.md` — enforced rule
-- ✅ `docs/SourceOfTruths/` — canonical architecture decisions
 - ✅ `AI_GUIDELINES.md` — AI assistant boundaries
 - ✅ `AGENTS.md` — agent configuration
 

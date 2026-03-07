@@ -64,5 +64,6 @@ Complete and verify this checklist before:
 ## Related Documents
 - `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
 - `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
-- `docs/SourceOfTruths/nextjs-medusa-takeover-plan/00-START-HERE/INDEX.md`
-- `docs/SourceOfTruths/nextjs-medusa-takeover-plan/00-START-HERE/CURRENT-PHASE.md`
+- `docs/governance/checkout-architecture-governance.md`
+- `docs/architecture/canonical-commerce-architecture.md`
+- `docs/architecture/migration-status.md`

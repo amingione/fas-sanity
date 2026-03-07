@@ -32,7 +32,7 @@
 **Sanity Project**: `r4og35qd` | Dataset: `production`
 **Netlify Site IDs**: fassanity=`43b3d2f9-45f1-444a-8672-48a8694cba5b` | ingress=`334cf000-980e-414d-9450-dc983ac92279`
 
-See full phase plan: `docs/SourceOfTruths/nextjs-medusa-takeover-plan/00-START-HERE/CURRENT-PHASE.md`
+See canonical architecture package: `docs/architecture/canonical-commerce-architecture.md` and `docs/architecture/migration-status.md`
 See vendor portal rules: `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
 See integration status: `../docs/INTEGRATION_STATUS.md`
 

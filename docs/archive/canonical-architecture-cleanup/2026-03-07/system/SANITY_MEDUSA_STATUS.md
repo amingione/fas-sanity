@@ -1,3 +1,14 @@
+# ARCHIVED DOCUMENT
+
+This file is superseded by the canonical architecture package:
+
+- docs/governance/checkout-architecture-governance.md
+- docs/governance/commerce-authority-checklist.md
+- docs/architecture/canonical-commerce-architecture.md
+
+Do not use this file as implementation authority.
+
+
 # Sanity <=> Medusa Sync Status
 
 ## PHASE 0 — Discovery (NO BEHAVIOR CHANGES)
