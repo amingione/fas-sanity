@@ -1,0 +1,712 @@
+# ARCHIVED DOCUMENT
+
+This file is superseded by the canonical architecture package:
+
+- docs/governance/checkout-architecture-governance.md
+- docs/governance/commerce-authority-checklist.md
+- docs/architecture/canonical-commerce-architecture.md
+
+Do not use this file as implementation authority.
+
+---
+
+# fas-dash Audit & Cross-Repo Sync Implementation Plan
+
+## Alignment Addendum (2026-02-21)
+
+This document is aligned to the active Medusa takeover sequence and vendor transition guardrails:
+- Keep existing vendor integration during transition.
+- Move vendor timeline to webhook-first read-only events in Sanity.
+- Do not remove vendor schemas/routes until operational verification completes.
+
+Required companion docs:
+- `docs/SourceOfTruths/fas-sanity-vendor-portal-keep.md`
+- `docs/SourceOfTruths/vendor-portal-webhook-contract.md`
+- `docs/SourceOfTruths/vendor-cutover-checklist.md`
+
+## The Problem
+
+fas-dash currently treats **Sanity as its sole database**. Every API route (`/api/orders`, `/api/products`, `/api/customers`, `/api/invoices`, `/api/inventory`, `/api/shipping`, `/api/fulfillment`, `/api/quotes`, `/api/returns`, `/api/vendors`, `/api/purchase-orders`) does `sanityClient.fetch(someGROQquery)` and `sanityClient.create(doc)`.
+
+This is the exact split-brain problem that the restructure is meant to solve. fas-dash needs to be rewired so that **Medusa is the system of record for commerce data** and Sanity is only consulted for content.
+
+---
+
+## Current fas-dash State
+
+### What exists
+
+**Route Groups:**
+- `(auth)` — Login/register via NextAuth + Sanity `user` docs
+- `(landing)` — Marketing pages (blog, brand, pricing, about, products preview)
+- `(store)` — Product listing and detail pages (reads from Sanity)
+- `dashboard/` — Full admin panel: orders, customers, inventory, fulfillment, shipping, returns, reports, vendors, purchase orders, blog, calendar, collections, settings
+
+**API Routes (28 total, ALL hit Sanity):**
+
+| Route | CRUD | Current Source | New Source |
+|-------|------|---------------|------------|
+| `/api/orders` | R/W | Sanity `order` | **Medusa** |
+| `/api/orders/[id]` | R/U | Sanity `order` | **Medusa** |
+| `/api/orders/[id]/status` | U | Sanity `order` | **Medusa** |
+| `/api/orders/analytics` | R | Sanity `order` | **Medusa** |
+| `/api/orders/bulk` | U | Sanity `order` | **Medusa** |
+| `/api/products` | R/W | Sanity `product` | **Medusa** (commerce) + **Sanity** (content) |
+| `/api/products/[id]` | R/U/D | Sanity `product` | **Medusa** + **Sanity** |
+| `/api/products/search` | R | Sanity `product` | **Medusa** |
+| `/api/customers` | R | Sanity `customer` | **Medusa** |
+| `/api/customers/[id]` | R/U | Sanity `customer` | **Medusa** |
+| `/api/customers/[id]/orders` | R | Sanity join | **Medusa** |
+| `/api/customers/[id]/invoices` | R | Sanity join | **Medusa** |
+| `/api/customers/[id]/vehicles` | R/W | Sanity `customer.vehicles` | **Medusa metadata** |
+| `/api/customers/analytics` | R | Sanity aggregation | **Medusa** |
+| `/api/customers/bulk` | U | Sanity mutations | **Medusa** |
+| `/api/inventory` | R | Sanity `product` fields | **Medusa inventory** |
+| `/api/inventory/adjust` | U | Sanity mutation | **Medusa inventory** |
+| `/api/inventory/alerts` | R | Sanity query | **Medusa inventory** |
+| `/api/inventory/history` | R | Sanity `inventoryLog` | **Medusa inventory** |
+| `/api/invoices` | R/W | Sanity `invoice` | **Medusa** (or custom table) |
+| `/api/invoices/[id]` | R/U | Sanity `invoice` | **Medusa** |
+| `/api/quotes` | R/W | Sanity `quote` | **Medusa** (draft orders or custom) |
+| `/api/quotes/[id]` | R/U | Sanity `quote` | **Medusa** |
+| `/api/quotes/[id]/convert` | U | Sanity → Sanity | **Medusa** (quote → order) |
+| `/api/returns` | R/W | Sanity `return` | **Medusa** |
+| `/api/returns/[id]/approve` | U | Sanity mutation | **Medusa** |
+| `/api/returns/[id]/refund` | U | Sanity mutation | **Medusa + Stripe** |
+| `/api/shipping` | R | Sanity `order.shipping` | **Medusa + Shippo** |
+| `/api/shipping/[id]` | R/U | Sanity `order.shipping` | **Medusa + Shippo** |
+| `/api/shipping/[id]/tracking` | R | Sanity `order.shipping` | **Shippo** |
+| `/api/shipping/analytics` | R | Sanity aggregation | **Medusa + Shippo** |
+| `/api/fulfillment` | R | Sanity `order.fulfillment` | **Medusa fulfillment** |
+| `/api/fulfillment/pick` | U | Sanity mutation | **Medusa fulfillment** |
+| `/api/fulfillment/pack` | U | Sanity mutation | **Medusa fulfillment** |
+| `/api/fulfillment/assign` | U | Sanity mutation | **Medusa fulfillment** |
+| `/api/fulfillment/complete` | U | Sanity mutation | **Medusa fulfillment** |
+| `/api/vendors` | R/W | Sanity `vendor` | **Medusa** (custom module or metadata) |
+| `/api/vendors/[id]` | R/U | Sanity `vendor` | **Medusa** |
+| `/api/vendors/[id]/portal` | R/U | Sanity `vendor.portalAccess` | **Medusa** |
+| `/api/vendor-portal/auth/login` | Auth | Sanity `vendorAuthToken` | **Medusa auth** or custom |
+| `/api/vendor-messages` | R/W | Sanity `vendorMessage` | **Custom DB or Medusa** |
+| `/api/purchase-orders` | R/W | Sanity `purchaseOrder` | **Medusa** (custom module) |
+| `/api/purchase-orders/[id]` | R/U | Sanity `purchaseOrder` | **Medusa** |
+| `/api/reports/*` | R | Sanity aggregation | **Medusa** |
+| `/api/users` | R/W | Sanity `user` | **Medusa admin users** or keep Sanity |
+| `/api/notifications` | R/W | Sanity `notification` | **Custom DB or Medusa** |
+| `/api/calendar/events` | R/W | Sanity `calendarEvent` | **Custom DB** (keep Sanity OK for now) |
+| `/api/communication/email` | W | Resend SDK | **Keep** (just sends, no Sanity) |
+| `/api/settings/*` | R/U | Sanity `shippingCarrier`, `taxRate` | **Medusa settings** |
+| `/api/bulk/*` | U | Sanity mutations | **Medusa** |
+| `/api/print/*` | R | Sanity queries | **Medusa** + **Sanity templates** |
+| `/api/barcode/lookup` | R | External API | **Keep** |
+| `/api/activity` | R | Sanity `activityLog` | **Medusa events** or custom |
+| `/api/blog/*` | R/W | Sanity `post` | **Keep Sanity** (content) |
+| `/api/categories` | R/W | Sanity `category` | **Keep Sanity** (content taxonomy) |
+| `/api/og/*` | R | External/generated | **Keep** |
+| `/api/auth/*` | Auth | NextAuth + Sanity `user` | **Migrate to Medusa admin auth** |
+| `/api/ai/gateway` | R/W | AI SDK | **Keep** |
+
+**Data Layer:**
+- `lib/sanity.ts` — Sanity client (single client, used everywhere)
+- `lib/queries.ts` — ~50 GROQ queries, ALL against Sanity
+- `lib/store-adapter.ts` — Transforms Sanity product docs into UI types
+- `lib/auth/options.ts` — NextAuth credentials provider, authenticates against Sanity `user` docs
+- `lib/auth/permissions.ts` — RBAC with 5 roles (admin, manager, sales, warehouse, support)
+
+**Key Dependencies:** `@sanity/client`, `@sanity/image-url`, `next-auth`, `resend`, `chart.js`, `bcryptjs`, `jsonwebtoken`
+
+**Missing:** No Medusa SDK, no Medusa client, no Shippo client, no Stripe SDK.
+
+---
+
+## What Stays in Sanity (fas-dash reads from Sanity)
+
+| Data | Why |
+|------|-----|
+| Blog posts, categories | Content |
+| Product categories (taxonomy) | Content taxonomy |
+| Email templates | Sanity-authored content for email rendering |
+| Quote/invoice templates | Sanity-authored document templates |
+| Calendar events | Lightweight internal tool, OK in Sanity for now |
+| Product content (descriptions, images, SEO) | Content enrichment read-only in admin context |
+| Vendor relationship metadata | Transitional vendor profile/ownership/preferences only (non-transactional) |
+| Vendor activity timeline mirror | Read-only webhook event log from Medusa |
+
+---
+
+## What Moves to Medusa (fas-dash reads/writes via Medusa API)
+
+Everything transactional:
+
+| Domain | Medusa Module |
+|--------|---------------|
+| Orders (CRUD, status, fulfillment) | `@medusajs/order` |
+| Customers (CRUD, addresses, groups) | `@medusajs/customer` |
+| Products (pricing, variants, stock) | `@medusajs/product` + `@medusajs/pricing` |
+| Inventory (levels, adjustments, alerts) | `@medusajs/inventory` + `@medusajs/stock-location` |
+| Shipping (labels, tracking, rates) | `@medusajs/fulfillment` + Shippo module |
+| Returns & refunds | `@medusajs/order` (return flow) |
+| Payments | `@medusajs/payment` + Stripe module |
+| Invoices | Custom Medusa module or Stripe invoices |
+| Quotes | Medusa draft orders or custom module |
+| Vendors / Purchase Orders | Custom Medusa module |
+| Settings (tax, shipping config) | `@medusajs/tax` + `@medusajs/fulfillment` |
+
+---
+
+## Architecture: How the 4 Repos Sync
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        DATA FLOW                                 │
+│                                                                  │
+│  ┌──────────┐    webhooks     ┌──────────┐    GROQ/API          │
+│  │  MEDUSA  │ ──────────────► │  SANITY  │ ◄──────────┐        │
+│  │ (truth)  │ ◄────────────── │(content) │             │        │
+│  │          │   publish hook  │          │             │        │
+│  └────┬─────┘                 └──────────┘             │        │
+│       │                            │                   │        │
+│       │ Medusa Admin API           │ GROQ              │        │
+│       │ + JS SDK                   │ queries           │        │
+│       ▼                            ▼                   │        │
+│  ┌──────────┐              ┌──────────────┐           │        │
+│  │ fas-dash │              │ fas-cms-fresh│           │        │
+│  │ (Next.js)│              │   (Astro)    │           │        │
+│  │  admin   │              │  storefront  │───────────┘        │
+│  └──────────┘              └──────────────┘                     │
+│       │                            │                            │
+│       │ Stripe SDK                 │ Medusa Store API           │
+│       │ Shippo SDK                 │ (cart, checkout)           │
+│       │ Resend SDK                 │                            │
+│       ▼                            ▼                            │
+│  ┌──────────┐              ┌──────────────┐                     │
+│  │  STRIPE  │              │   SHIPPO     │                     │
+│  │(payments)│              │  (shipping)  │                     │
+│  └──────────┘              └──────────────┘                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Sync Direction Rules
+
+| From → To | Trigger | What syncs |
+|-----------|---------|------------|
+| **Medusa → Sanity** | Webhook on product.created | Creates stub product doc in Sanity (title, SKU, medusaProductId) for content enrichment |
+| **Medusa → Sanity** | Webhook on product.updated | Updates `lastSyncedFromMedusa` timestamp in Sanity |
+| **Medusa → Sanity** | Vendor lifecycle webhooks | Writes read-only vendor timeline events (order/payment/shipping/return/refund status) |
+| **Sanity → fas-cms-fresh** | Webhook on publish | Triggers Astro rebuild (ISR or full rebuild) for content pages |
+| **Sanity → fas-dash** | Direct GROQ query | Blog content, email templates, product content (descriptions, images) for display in admin |
+| **Medusa → fas-dash** | Medusa Admin API | All transactional data: orders, customers, inventory, shipping, returns |
+| **Medusa → fas-cms-fresh** | Medusa Store API | Cart, checkout, pricing, product availability |
+| **fas-dash → Medusa** | Medusa Admin API | Write operations: order status changes, inventory adjustments, fulfillment updates |
+| **fas-dash → Sanity** | Sanity client (limited) | Blog post CRUD, calendar events, vendor workspace content |
+| **fas-dash → Stripe** | Stripe SDK | Refund processing, payment details lookup |
+| **fas-dash → Shippo** | Shippo SDK | Label creation, tracking lookup, rate quotes |
+| **fas-dash → Resend** | Resend SDK | Transactional email sending (using Sanity-authored templates) |
+
+---
+
+## Implementation Plan
+
+### Phase 0: Add Medusa Client to fas-dash
+
+**Install:**
+```bash
+cd fas-dash
+pnpm add @medusajs/js-sdk @medusajs/types
+```
+
+**Create `src/lib/medusa.ts`:**
+```typescript
+import Medusa from "@medusajs/js-sdk";
+
+export const medusa = new Medusa({
+  baseUrl: process.env.MEDUSA_BACKEND_URL || "http://localhost:9000",
+  auth: {
+    type: "session",
+    // For admin API, use API key or JWT
+  },
+});
+```
+
+**Create `src/lib/medusa-admin.ts`:**
+```typescript
+// Server-side only — uses admin API key
+const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "http://localhost:9000";
+const ADMIN_API_KEY = process.env.MEDUSA_ADMIN_API_KEY;
+
+export async function medusaAdminFetch(
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  return fetch(`${MEDUSA_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "x-medusa-access-token": ADMIN_API_KEY || "",
+      ...options.headers,
+    },
+  });
+}
+
+// Typed helpers
+export async function medusaGet<T>(path: string): Promise<T> {
+  const res = await medusaAdminFetch(path);
+  if (!res.ok) throw new Error(`Medusa ${path}: ${res.status}`);
+  return res.json();
+}
+
+export async function medusaPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await medusaAdminFetch(path, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Medusa POST ${path}: ${res.status}`);
+  return res.json();
+}
+```
+
+**Update `.env`:**
+```
+MEDUSA_BACKEND_URL=http://localhost:9000
+MEDUSA_ADMIN_API_KEY=sk_...
+SHIPPO_API_KEY=shippo_...
+```
+
+---
+
+### Phase 1: Rewire Core Commerce Routes (Orders, Customers, Products)
+
+Priority order: **Orders → Customers → Products → Inventory**
+
+These are the most-used routes and the ones where split-brain hurts the most.
+
+#### Orders (`/api/orders/*`)
+
+**Before:** `sanityClient.fetch(allOrdersQuery)`
+**After:** `medusaGet('/admin/orders?limit=100&offset=0')`
+
+Every order route rewires:
+- `GET /api/orders` → `GET /admin/orders`
+- `GET /api/orders/[id]` → `GET /admin/orders/:id`
+- `PATCH /api/orders/[id]/status` → `POST /admin/orders/:id` (update status)
+- `GET /api/orders/analytics` → Aggregate from Medusa order list
+- `POST /api/orders/bulk` → Loop Medusa admin API
+
+**Adapter needed:** `medusaOrderToFasDashOrder()` — maps Medusa order shape to what the existing dashboard components expect (orderNumber, customerName, status, fulfillmentOverview, etc.)
+
+#### Customers (`/api/customers/*`)
+
+**Before:** `sanityClient.fetch(allCustomersQuery)`
+**After:** `medusaGet('/admin/customers')`
+
+- Customer vehicles can be stored as Medusa customer metadata
+- Customer analytics (segments, LTV) computed from Medusa order history
+
+#### Products (`/api/products/*`)
+
+**Hybrid route** — this is the one that needs both Medusa AND Sanity:
+
+```typescript
+// GET /api/products
+// 1. Fetch commerce data from Medusa (price, stock, variants)
+const { products } = await medusaGet('/admin/products?limit=100');
+
+// 2. Fetch content data from Sanity (descriptions, images, SEO)
+const sanityContent = await sanityClient.fetch(
+  `*[_type == "product" && medusaProductId in $ids]{
+    medusaProductId,
+    title,
+    images,
+    shortDescription,
+    description,
+    keyFeatures,
+    specifications,
+    "categories": category[]->title
+  }`,
+  { ids: products.map(p => p.id) }
+);
+
+// 3. Merge
+const merged = products.map(medusaProduct => ({
+  ...mapMedusaProduct(medusaProduct),
+  content: sanityContent.find(s => s.medusaProductId === medusaProduct.id) || null,
+}));
+```
+
+#### Inventory (`/api/inventory/*`)
+
+**Before:** Reads `product.quantityAvailable` from Sanity
+**After:** `medusaGet('/admin/inventory-items')` + `medusaGet('/admin/stock-locations')`
+
+Adjustment: `POST /admin/inventory-items/:id/location-levels` with quantity delta
+
+---
+
+### Phase 2: Rewire Fulfillment, Shipping, Returns
+
+#### Fulfillment (`/api/fulfillment/*`)
+
+Medusa has a built-in fulfillment flow:
+- Pick → `POST /admin/orders/:id/fulfillments` (create fulfillment)
+- Pack → update fulfillment metadata
+- Ship → `POST /admin/orders/:id/fulfillments/:fulfillment_id/shipments`
+
+#### Shipping (`/api/shipping/*`)
+
+**Dual source:**
+- Shipment data: Medusa fulfillment records
+- Label creation & tracking: Shippo API directly (fas-medusa already has `fulfillment-shippo` module)
+
+Install: `pnpm add shippo`
+
+Create `src/lib/shippo.ts`:
+```typescript
+import { Shippo } from "shippo";
+
+export const shippo = new Shippo({
+  apiKeyHeader: process.env.SHIPPO_API_KEY || "",
+});
+```
+
+#### Returns (`/api/returns/*`)
+
+- `POST /admin/returns` — create return request
+- `POST /admin/returns/:id/receive` — mark items received
+- Refund: `POST /admin/orders/:id/refunds` → triggers Stripe refund
+
+---
+
+### Phase 3: Rewire Quotes, Invoices, Vendors
+
+These are the least standardized in Medusa and may need **custom modules**.
+
+#### Quotes
+
+**Option A:** Use Medusa draft orders as quotes
+- Create: `POST /admin/draft-orders`
+- Convert to order: `POST /admin/draft-orders/:id/pay`
+
+**Option B:** Build custom Medusa module `fas-quotes`
+- Better if you need quote-specific fields (validUntil, revision tracking, approval workflow)
+
+#### Invoices
+
+**Option A:** Stripe Invoices API
+- If using Stripe for billing, invoices live there
+- fas-dash reads via Stripe SDK
+
+**Option B:** Custom Medusa module `fas-invoices`
+- If you need invoicing separate from Stripe
+
+#### Vendors & Purchase Orders
+
+Custom Medusa modules:
+- `fas-vendors` — vendor profiles, portal access
+- `fas-purchase-orders` — PO lifecycle
+
+These don't map to any standard Medusa module, so they need custom development in fas-medusa.
+
+Transition rule:
+- Keep current vendor integration in Sanity until replacement vendor workspace and webhook timeline are verified.
+- Decommission only after `docs/SourceOfTruths/vendor-cutover-checklist.md` is fully verified.
+
+---
+
+### Phase 4: Rewire Auth
+
+**Current:** NextAuth CredentialsProvider against Sanity `user` docs.
+
+**Options:**
+
+1. **Keep Sanity for admin users** (simplest short-term)
+   - fas-dash users are internal employees, not commerce customers
+   - Sanity `user` doc with hashed passwords works fine
+   - Already has RBAC (admin, manager, sales, warehouse, support)
+   - Low migration risk
+
+2. **Migrate to Medusa admin users** (cleaner long-term)
+   - `POST /admin/auth/token` for login
+   - Medusa has admin user management built-in
+   - Would need to map FAS roles to Medusa admin roles
+
+**Recommendation:** Keep Sanity auth for Phase 1-3. Migrate in Phase 5 when everything else is stable.
+
+---
+
+### Phase 5: Webhooks & Real-Time Sync
+
+#### Medusa → Sanity (product sync)
+
+In `fas-medusa/src/subscribers/product-sync.ts`:
+```typescript
+import { SubscriberArgs, type SubscriberConfig } from "@medusajs/framework";
+
+export default async function productCreatedHandler({
+  event,
+  container,
+}: SubscriberArgs<{ id: string }>) {
+  // When product created in Medusa, create stub in Sanity
+  const productId = event.data.id;
+  const productService = container.resolve("product");
+  const product = await productService.retrieve(productId);
+
+  // POST to fas-dash webhook endpoint or directly to Sanity
+  await fetch(process.env.SANITY_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "createStub",
+      medusaProductId: product.id,
+      title: product.title,
+      handle: product.handle,
+    }),
+  });
+}
+
+export const config: SubscriberConfig = {
+  event: "product.created",
+};
+```
+
+#### Sanity → Astro (content publish)
+
+Sanity webhook on document publish → triggers Astro rebuild:
+- Webhook URL: `https://api.netlify.com/build_hooks/xxx` (or Vercel deploy hook)
+- Filter: `_type in ["product", "page", "blogPost", "collection", "home"]`
+
+#### Sanity → fas-dash (template updates)
+
+No active webhook needed. fas-dash queries Sanity at request time for:
+- Email templates (when sending transactional emails)
+- Quote/invoice templates (when generating PDFs)
+- Blog content (dashboard blog management)
+
+These are infrequent reads, not real-time sync.
+
+---
+
+### Phase 6: Print & Email Integration
+
+#### Print routes (`/api/print/*`)
+
+**Current:** Renders invoice/packing slip/picklist from Sanity order data.
+**After:** 
+1. Fetch order data from Medusa
+2. Fetch document template from Sanity (layout, branding, copy)
+3. Merge and render
+
+```typescript
+// GET /api/print/invoice?orderId=xxx
+const order = await medusaGet(`/admin/orders/${orderId}`);
+const template = await sanityClient.fetch(
+  `*[_type == "invoiceTemplate" && isDefault == true][0]`
+);
+// Render PDF using order data + template layout
+```
+
+#### Email sending
+
+**Current:** `resend.emails.send()` with inline content.
+**After:**
+1. Medusa event fires (order.placed, shipment.created, etc.)
+2. fas-dash webhook handler catches event
+3. Fetches email template from Sanity
+4. Hydrates with Medusa order/customer data
+5. Sends via Resend
+
+```typescript
+// POST /api/webhooks/medusa (new route)
+// Event: order.placed
+const order = await medusaGet(`/admin/orders/${event.data.id}`);
+const template = await sanityClient.fetch(
+  `*[_type == "orderEmailTemplate" && trigger == "order_placed"][0]`
+);
+const html = renderTemplate(template, order);
+await resend.emails.send({
+  to: order.email,
+  subject: template.subject,
+  html,
+});
+```
+
+---
+
+## Migration Checklist
+
+### Files to Create
+
+```
+src/lib/medusa-admin.ts          # Medusa admin API client
+src/lib/medusa-types.ts          # TypeScript interfaces for Medusa responses
+src/lib/shippo.ts                # Shippo client
+src/lib/adapters/
+  order-adapter.ts               # Medusa order → fas-dash order shape
+  customer-adapter.ts            # Medusa customer → fas-dash customer shape
+  product-adapter.ts             # Medusa product + Sanity content → merged shape
+  inventory-adapter.ts           # Medusa inventory → fas-dash inventory shape
+src/app/api/webhooks/
+  medusa/route.ts                # Medusa event webhook handler
+  sanity/route.ts                # Sanity publish webhook handler
+```
+
+### Files to Rewrite (Sanity → Medusa)
+
+```
+src/app/api/orders/route.ts
+src/app/api/orders/[id]/route.ts
+src/app/api/orders/[id]/status/route.ts
+src/app/api/orders/analytics/route.ts
+src/app/api/orders/bulk/route.ts
+src/app/api/customers/route.ts
+src/app/api/customers/[id]/route.ts
+src/app/api/customers/[id]/orders/route.ts
+src/app/api/customers/[id]/invoices/route.ts
+src/app/api/customers/[id]/vehicles/route.ts
+src/app/api/customers/analytics/route.ts
+src/app/api/customers/bulk/route.ts
+src/app/api/products/route.ts              # Hybrid: Medusa + Sanity
+src/app/api/products/[id]/route.ts         # Hybrid
+src/app/api/products/search/route.ts
+src/app/api/inventory/route.ts
+src/app/api/inventory/adjust/route.ts
+src/app/api/inventory/alerts/route.ts
+src/app/api/inventory/history/route.ts
+src/app/api/invoices/route.ts
+src/app/api/invoices/[id]/route.ts
+src/app/api/quotes/route.ts
+src/app/api/quotes/[id]/route.ts
+src/app/api/quotes/[id]/convert/route.ts
+src/app/api/returns/route.ts
+src/app/api/returns/[id]/approve/route.ts
+src/app/api/returns/[id]/refund/route.ts
+src/app/api/shipping/route.ts
+src/app/api/shipping/[id]/route.ts
+src/app/api/shipping/[id]/tracking/route.ts
+src/app/api/shipping/analytics/route.ts
+src/app/api/fulfillment/route.ts
+src/app/api/fulfillment/pick/route.ts
+src/app/api/fulfillment/pack/route.ts
+src/app/api/fulfillment/assign/route.ts
+src/app/api/fulfillment/complete/route.ts
+src/app/api/vendors/route.ts
+src/app/api/vendors/[id]/route.ts
+src/app/api/vendors/[id]/portal/route.ts
+src/app/api/vendor-portal/auth/login/route.ts
+src/app/api/vendor-messages/route.ts
+src/app/api/purchase-orders/route.ts
+src/app/api/purchase-orders/[id]/route.ts
+src/app/api/reports/sales/route.ts
+src/app/api/reports/customers/route.ts
+src/app/api/reports/fulfillment/route.ts
+src/app/api/reports/inventory/route.ts
+src/app/api/reports/export/route.ts
+src/app/api/settings/shipping/route.ts
+src/app/api/settings/taxes/route.ts
+src/app/api/bulk/assign/route.ts
+src/app/api/bulk/inventory/route.ts
+src/app/api/bulk/status/route.ts
+src/app/api/bulk/print/route.ts
+src/app/api/print/invoice/route.ts         # Medusa data + Sanity template
+src/app/api/print/packing/route.ts         # Medusa data + Sanity template
+src/app/api/print/picklist/route.ts        # Medusa data + Sanity template
+src/app/api/activity/route.ts
+src/app/api/notifications/route.ts
+src/app/api/notifications/[id]/route.ts
+src/app/api/users/route.ts                 # Keep Sanity for now (Phase 4 migration)
+src/app/api/users/[id]/route.ts
+```
+
+### Files to Keep (already correct or content-only)
+
+```
+src/app/api/blog/posts/route.ts            # Sanity blog content ✓
+src/app/api/blog/posts/[id]/route.ts       # Sanity blog content ✓
+src/app/api/blog/categories/route.ts       # Sanity blog categories ✓
+src/app/api/categories/route.ts            # Sanity product categories ✓
+src/app/api/categories/[id]/route.ts       # Sanity product categories ✓
+src/app/api/calendar/events/route.ts       # Sanity calendar events ✓ (for now)
+src/app/api/calendar/events/[id]/route.ts  # Sanity calendar events ✓
+src/app/api/communication/email/route.ts   # Resend SDK, no Sanity ✓
+src/app/api/og/*/route.ts                  # OG image generation ✓
+src/app/api/barcode/lookup/route.ts        # External API ✓
+src/app/api/ai/gateway/route.ts            # AI SDK ✓
+src/app/api/auth/[...nextauth]/route.ts    # Keep Sanity auth for now ✓
+src/app/api/auth/register/route.ts         # Keep Sanity auth for now ✓
+```
+
+### Files to Refactor
+
+```
+src/lib/queries.ts                # Remove commerce queries, keep blog/calendar/template queries
+src/lib/store-adapter.ts          # Replace with Medusa adapter OR delete (store pages move to fas-cms-fresh)
+src/lib/sanity.ts                 # Keep (still used for content)
+```
+
+### Files to Delete
+
+```
+src/app/(store)/*                 # Store pages belong in fas-cms-fresh (Astro), not fas-dash
+src/app/(landing)/*               # Landing/marketing pages belong in fas-cms-fresh
+src/components/store/*            # Store components belong in Astro
+src/lib/hooks/useProduct.ts       # Store hooks
+src/lib/hooks/useProducts.ts
+src/lib/context/CartContext.tsx    # Cart belongs in storefront
+src/components/cart/*
+src/content/*                     # Static content files (blog MDX, legal) — move to Sanity
+src/lib/fourthwall.ts             # Appears unused/legacy
+```
+
+---
+
+## fas-medusa: Custom Modules Needed
+
+For fas-dash to work against Medusa for everything, these custom modules need to exist in `fas-medusa`:
+
+| Module | Purpose | Priority |
+|--------|---------|----------|
+| `fulfillment-shippo` | Already exists — Shippo integration | ✅ Done |
+| `fas-quotes` | Quote lifecycle: draft → sent → accepted → converted to order | High |
+| `fas-invoices` | Invoice generation and tracking (if not using Stripe Invoicing) | High |
+| `fas-vendors` | Vendor profiles, portal access, vendor products | Medium |
+| `fas-purchase-orders` | PO creation, receiving, vendor communication | Medium |
+| `fas-notifications` | Internal notification system for dashboard | Low |
+
+---
+
+## Rollout Order
+
+| Phase | Scope | Weeks | Dependencies |
+|-------|-------|-------|-------------|
+| **0** | Add Medusa client + adapters to fas-dash | 1 | Medusa running locally |
+| **1** | Orders + Customers → Medusa | 2 | Phase 0, Medusa order/customer data seeded |
+| **2** | Products (hybrid) + Inventory → Medusa | 2 | Phase 1, Sanity product schema refactored |
+| **3** | Fulfillment + Shipping + Returns → Medusa + Shippo | 2 | Phase 1, Shippo configured |
+| **4** | Quotes + Invoices → Medusa custom modules | 2 | fas-medusa custom modules built |
+| **5** | Vendors + POs → Medusa custom modules | 2 | fas-medusa custom modules built |
+| **6** | Webhooks, email templates, print templates | 1 | Sanity restructure complete |
+| **7** | Remove dead code, delete store/landing routes, clean queries.ts | 1 | All phases stable |
+| **8** | Auth migration (optional) | 1 | Everything else stable |
+| **9** | Vendor cutover verification + decommission | 1 | `vendor-cutover-checklist.md` fully verified |
+
+**Total: ~14 weeks** if executed sequentially. Phases 4+5 can run in parallel with Phase 3.
+
+---
+
+## Key Decisions to Lock In
+
+1. **Medusa is the primary system of record for commerce data.** fas-dash never writes prices, inventory, orders, or customer records to Sanity.
+
+2. **Sanity supplies content to fas-dash** for: blog, email templates, document templates, product descriptions/images (read-only in admin context), and calendar events.
+
+3. **fas-dash writes to Medusa** for all operational mutations (order status, fulfillment, inventory adjustments, returns).
+
+4. **fas-dash writes to Sanity** only for: blog post CRUD and calendar event CRUD.
+
+5. **Vendor decommission is sequenced.** Legacy vendor integration is removed only after checklist verification and webhook timeline verification.
+
+5. **Email workflow:** Sanity writes templates → fas-dash fetches template + Medusa data → sends via Resend.
+
+6. **Product route is hybrid:** Medusa for commerce fields, Sanity for content fields, merged at API layer.
+
+7. **Store/landing pages get deleted from fas-dash.** They belong in fas-cms-fresh (Astro storefront).
+
+8. **Auth stays in Sanity short-term.** Migrate to Medusa admin auth after everything else is stable.
