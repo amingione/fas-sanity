@@ -1,54 +1,24 @@
-import {schedule} from '@netlify/functions'
-import {createClient} from '@sanity/client'
-import Stripe from 'stripe'
-import {resolveStripeSecretKey, STRIPE_SECRET_ENV_KEY} from '../lib/stripeEnv'
-import {STRIPE_API_VERSION} from '../lib/stripeConfig'
-import {requireSanityCredentials} from '../lib/sanityEnv'
-import {syncStripeCoupons} from '../lib/stripeCoupons'
+import type {Handler} from '@netlify/functions'
 
-const handler = schedule('0 3 * * *', async () => {
-  const stripeKey = resolveStripeSecretKey()
-  if (!stripeKey) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: `Missing Stripe secret (set ${STRIPE_SECRET_ENV_KEY})`,
-      }),
-    }
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'OPTIONS,GET,POST',
+}
+
+export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {statusCode: 204, headers, body: ''}
   }
-
-  let sanityConfig: {projectId: string; dataset: string; token: string}
-  try {
-    sanityConfig = requireSanityCredentials()
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({error: err instanceof Error ? err.message : String(err)}),
-    }
-  }
-
-  const sanity = createClient({
-    projectId: sanityConfig.projectId,
-    dataset: sanityConfig.dataset,
-    token: sanityConfig.token,
-    apiVersion: '2024-10-01',
-    useCdn: false,
-  })
-
-  const stripe = new Stripe(stripeKey, {apiVersion: STRIPE_API_VERSION})
-  const summary = await syncStripeCoupons({
-    stripe,
-    sanity,
-    syncedAt: new Date().toISOString(),
-    logger: console,
-    markMissingAsDeleted: true,
-  })
-  console.log('syncStripeCoupons: reconciliation complete', summary)
 
   return {
-    statusCode: 200,
-    body: JSON.stringify(summary),
+    statusCode: 410,
+    headers: {...headers, 'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      error:
+        'Deprecated endpoint. Transactional commerce/payment/shipping operations must execute through Medusa-authoritative services.',
+    }),
   }
-})
+}
 
-export {handler}
+export default handler
