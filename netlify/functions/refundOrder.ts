@@ -1,38 +1,6 @@
 import type {Handler} from '@netlify/functions'
-import Stripe from 'stripe'
-import {Resend} from 'resend'
-import {sanityClient} from '../lib/sanityClient'
-import {resolveResendApiKey} from '../../shared/resendEnv'
-import {STRIPE_API_VERSION} from '../lib/stripeConfig'
-import {getMissingResendFields} from '../lib/resendValidation'
-import {markEmailLogFailed, markEmailLogSent, reserveEmailLog} from '../lib/emailIdempotency'
-import {getMessageId} from '../../shared/messageResponse.js'
 
-type OrderDoc = {
-  _id: string
-  orderNumber?: string | null
-  status?: string | null
-  paymentIntentId?: string | null
-  stripePaymentIntentId?: string | null
-  customerEmail?: string | null
-}
-
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY || ''
-const stripe = stripeSecretKey
-  ? new Stripe(stripeSecretKey, {
-      apiVersion: STRIPE_API_VERSION,
-    })
-  : null
-
-const resendApiKey = resolveResendApiKey() || ''
-const resendFrom =
-  process.env.RESEND_FROM || 'F.A.S. Motorsports <noreply@updates.fasmotorsports.com>'
-const resendClient = resendApiKey ? new Resend(resendApiKey) : null
-
-const DEFAULT_ORIGINS = (process.env.CORS_ALLOW || 'http://localhost:3333,http://localhost:8888')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean)
+const DEFAULT_ORIGINS = ['http://localhost:3333', 'http://localhost:8888']
 
 const pickOrigin = (origin?: string) => {
   if (!origin) return DEFAULT_ORIGINS[0] || '*'
@@ -46,17 +14,6 @@ const buildCors = (origin?: string) => ({
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'OPTIONS,POST',
 })
-
-const buildRefundEmail = (order: OrderDoc) => {
-  return `
-    <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#111827;background:#ffffff;">
-      <h2 style="margin:0 0 12px;">Refund processed for ${order.orderNumber || 'your order'}</h2>
-      <p style="margin:0 0 12px;">We've issued a refund and cancelled any outstanding shipments.</p>
-      <p style="margin:0 0 12px;">Please allow 5-10 business days for your bank to post the funds.</p>
-      <p style="margin:20px 0 0;color:#4b5563;">Need help? Reply to this email.</p>
-    </div>
-  `
-}
 
 export const handler: Handler = async (event) => {
   const cors = buildCors(event.headers?.origin || event.headers?.Origin)
@@ -73,141 +30,9 @@ export const handler: Handler = async (event) => {
     }
   }
 
-  let payload: {orderId?: string}
-  try {
-    payload = JSON.parse(event.body || '{}')
-  } catch {
-    return {
-      statusCode: 400,
-      headers: {...cors, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'Invalid JSON'}),
-    }
-  }
-
-  const orderId = (payload.orderId || '').trim()
-  if (!orderId) {
-    return {
-      statusCode: 400,
-      headers: {...cors, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: 'orderId is required'}),
-    }
-  }
-
-  try {
-    const order = await sanityClient.fetch<OrderDoc | null>(
-      `*[_type == "order" && _id == $id][0]{
-        _id,
-      orderNumber,
-      status,
-      paymentIntentId,
-      stripePaymentIntentId,
-      customerEmail,
-    }`,
-      {id: orderId},
-    )
-
-    if (!order) {
-      return {
-        statusCode: 404,
-        headers: {...cors, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: 'Order not found'}),
-      }
-    }
-
-    const paymentIntentId = order.paymentIntentId || order.stripePaymentIntentId
-    if (!paymentIntentId) {
-      return {
-        statusCode: 400,
-        headers: {...cors, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: 'Order is missing payment intent'}),
-      }
-    }
-
-    if ((order.status || '').toLowerCase() === 'refunded') {
-      return {
-        statusCode: 400,
-        headers: {...cors, 'Content-Type': 'application/json'},
-        body: JSON.stringify({error: 'Order already refunded'}),
-      }
-    }
-
-    if (!stripe) {
-      throw new Error('Stripe is not configured')
-    }
-
-    const refund = await stripe.refunds.create({
-      payment_intent: paymentIntentId,
-      reason: 'requested_by_customer',
-    })
-
-    await sanityClient
-      .patch(order._id)
-      .set({
-        status: 'refunded',
-        paymentStatus: 'refunded',
-        amountRefunded:
-          typeof refund.amount === 'number' ? Number((refund.amount / 100).toFixed(2)) : undefined,
-        lastRefundId: refund.id,
-        lastRefundReason: refund.reason || 'requested_by_customer',
-        lastRefundStatus: refund.status || 'succeeded',
-        lastRefundedAt:
-          typeof refund.created === 'number'
-            ? new Date(refund.created * 1000).toISOString()
-            : new Date().toISOString(),
-        stripeLastSyncedAt: new Date().toISOString(),
-      })
-      .commit({autoGenerateArrayKeys: true})
-
-    if (resendClient && order.customerEmail) {
-      let reservationLogId: string | undefined
-      try {
-        const subject = `Refund processed for ${order.orderNumber || 'your order'}`
-        const missing = getMissingResendFields({
-          to: order.customerEmail,
-          from: resendFrom,
-          subject,
-        })
-        if (missing.length) {
-          console.warn('refundOrder: missing Resend fields', {missing, orderId: order._id})
-          throw new Error(`Missing email fields: ${missing.join(', ')}`)
-        }
-        const contextKey = `refund-order:${order._id}:${refund.id}`
-        const reservation = await reserveEmailLog({
-          contextKey,
-          to: order.customerEmail,
-          subject,
-          orderId: order._id,
-        })
-        reservationLogId = reservation.logId
-        if (reservation.shouldSend) {
-          const response = await resendClient.emails.send({
-            from: resendFrom,
-            to: order.customerEmail,
-            subject,
-            html: buildRefundEmail(order),
-          })
-          const resendId = getMessageId(response)
-          await markEmailLogSent(reservation.logId, resendId)
-        }
-      } catch (emailError) {
-        await markEmailLogFailed(reservationLogId, emailError)
-        console.warn('refundOrder: failed to send refund email', emailError)
-      }
-    }
-
-    return {
-      statusCode: 200,
-      headers: {...cors, 'Content-Type': 'application/json'},
-      body: JSON.stringify({ok: true, orderId: order._id}),
-    }
-  } catch (error: any) {
-    console.error('refundOrder failed', error)
-    return {
-      statusCode: 500,
-      headers: {...cors, 'Content-Type': 'application/json'},
-      body: JSON.stringify({error: error?.message || 'Unable to refund order'}),
-    }
+  return {
+    statusCode: 410,
+    headers: {...cors, 'Content-Type': 'application/json'},
+    body: JSON.stringify({error: 'Deprecated endpoint. Refund execution is Medusa-authoritative.'}),
   }
 }
-
-export default handler
