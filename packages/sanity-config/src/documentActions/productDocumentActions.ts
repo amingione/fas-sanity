@@ -426,6 +426,82 @@ const createSyncStripeAction =
     }
   }
 
+const createSyncToMedusaAction =
+  (_context: DocumentActionsContext): DocumentActionComponent =>
+  (props) => {
+    const toast = useToast()
+    const [busy, setBusy] = useState(false)
+    const bases = getNetlifyFunctionBaseCandidates()
+    const source = (props.draft || props.published) as ProductDocument | undefined
+
+    if (!isProduct(props)) return null
+
+    // Only show for published products (or products with contentStatus == "published")
+    const isPublished =
+      (source as any)?.contentStatus === 'published' ||
+      (source as any)?.status === 'active' ||
+      !!props.published
+
+    return {
+      label: busy ? 'Syncing…' : 'Sync to Medusa',
+      disabled: busy || !isPublished,
+      title: isPublished ? undefined : 'Publish the product first before syncing to Medusa',
+      tone: 'positive' as const,
+      onHandle: async () => {
+        const publishedId = toPublishedId(props.draft?._id || props.published?._id || props.id)
+        if (!publishedId) {
+          toast.push({status: 'warning', title: 'Missing product id'})
+          props.onComplete()
+          return
+        }
+
+        setBusy(true)
+        let lastError: string | null = null
+
+        for (const base of bases) {
+          try {
+            const response = await fetch(`${base}/.netlify/functions/syncSanityProductsToMedusa`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ids: [publishedId]}),
+            })
+            const json = await response.json().catch(() => ({}))
+            if (response.ok && json.ok >= 1) {
+              toast.push({
+                status: 'success',
+                title: 'Synced to Medusa',
+                description: source?.title
+                  ? `"${source.title}" is now in Medusa and will appear on the storefront.`
+                  : 'Product synced successfully.',
+              })
+              setBusy(false)
+              props.onComplete()
+              return
+            }
+            if (response.ok && json.errors >= 1) {
+              const firstError = json.results?.find((r: any) => r.status === 'error')?.error || ''
+              lastError = firstError || 'Medusa returned an error during sync'
+            } else {
+              lastError =
+                json.error || json.message || `HTTP ${response.status}: ${response.statusText}`
+            }
+          } catch (error) {
+            lastError =
+              error instanceof Error ? error.message : typeof error === 'string' ? error : 'Error'
+          }
+        }
+
+        toast.push({
+          status: 'error',
+          title: 'Medusa sync failed',
+          description: lastError || 'No Netlify base responded',
+        })
+        setBusy(false)
+        props.onComplete()
+      },
+    }
+  }
+
 export function resolveProductDocumentActions(
   prev: DocumentActionComponent[],
   context: DocumentActionsContext
@@ -440,6 +516,7 @@ export function resolveProductDocumentActions(
   const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
   const previewServicePackageAction = createPreviewServicePackageAction(context)
   const syncStripeAction = createSyncStripeAction(context)
+  const syncToMedusaAction = createSyncToMedusaAction(context)
   const NormalizeRefsAction: DocumentActionComponent = (props) => {
     const toast = useToast()
     const [busy, setBusy] = useState(false)
@@ -510,6 +587,7 @@ export function resolveProductDocumentActions(
     duplicateServicePackageAction,
     previewServicePackageAction,
     syncStripeAction,
+    syncToMedusaAction,
     NormalizeRefsAction,
   ]
   Object.defineProperty(enhanced, TAG_ACTIONS_FLAG, {value: true})
