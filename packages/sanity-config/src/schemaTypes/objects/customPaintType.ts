@@ -59,6 +59,28 @@ export const customPaintType = defineType({
       hidden: ({parent}) => !parent?.enabled,
     }),
     defineField({
+      name: 'codeLabel',
+      title: 'Paint Code Label (Legacy)',
+      type: 'string',
+      description: 'Legacy field kept for backward compatibility with existing product records.',
+      hidden: ({parent}) => !parent?.enabled,
+    }),
+    defineField({
+      name: 'instructions',
+      title: 'Instructions (Legacy)',
+      type: 'text',
+      rows: 3,
+      description: 'Legacy field kept for backward compatibility with existing product records.',
+      hidden: ({parent}) => !parent?.enabled,
+    }),
+    defineField({
+      name: 'paintCodeRequired',
+      title: 'Paint Code Required (Legacy)',
+      type: 'boolean',
+      description: 'Legacy field kept for backward compatibility with existing product records.',
+      hidden: ({parent}) => !parent?.enabled,
+    }),
+    defineField({
       name: 'colorSwatches',
       title: 'Popular Color Swatches (Optional)',
       type: 'array',

@@ -59,8 +59,16 @@ export const settingsType = defineType({
           type: 'customProductOptionSize',
         },
         {
+          name: 'legacyCustomProductOptionSize',
+          type: 'customProductOption.size',
+        },
+        {
           name: 'customProductOptionCustom',
           type: 'customProductOptionCustom',
+        },
+        {
+          name: 'legacyCustomProductOptionCustom',
+          type: 'customProductOption.custom',
         },
       ],
       validation: (Rule) =>

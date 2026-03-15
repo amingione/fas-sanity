@@ -45,6 +45,8 @@ import {productAddOnType} from './objects/productAddOnType'
 import {productCustomizationType} from './objects/productCustomizationType'
 import {customPaintType} from './objects/customPaintType'
 import {colorValueType} from './objects/colorValueType'
+import {stripeMetadataEntryType} from './objects/stripeMetadataEntryType'
+import {stripePriceSnapshotType} from './objects/stripePriceSnapshotType'
 
 import {customProductOptionColorType} from './objects/customProductOption/customProductOptionColorType'
 import {customProductOptionColorObjectType} from './objects/customProductOption/customProductOptionColorObjectType'
@@ -52,6 +54,10 @@ import {customProductOptionSizeType} from './objects/customProductOption/customP
 import {customProductOptionSizeObjectType} from './objects/customProductOption/customProductOptionSizeObjectType'
 import {customProductOptionCustomType} from './objects/customProductOption/customProductOptionCustomType'
 import {customProductOptionCustomObjectType} from './objects/customProductOption/customProductOptionCustomObjectType'
+import {legacyCustomProductOptionSizeType} from './objects/customProductOption/legacyCustomProductOptionSizeType'
+import {legacyCustomProductOptionSizeObjectType} from './objects/customProductOption/legacyCustomProductOptionSizeObjectType'
+import {legacyCustomProductOptionCustomType} from './objects/customProductOption/legacyCustomProductOptionCustomType'
+import {legacyCustomProductOptionCustomObjectType} from './objects/customProductOption/legacyCustomProductOptionCustomObjectType'
 
 import {badgeType} from './objects/badgeType'
 import {comparisonRowType} from './objects/comparisonRowType'
@@ -159,12 +165,18 @@ const objects = [
   productCustomizationType,
   customPaintType,
   colorValueType,
+  stripeMetadataEntryType,
+  stripePriceSnapshotType,
   customProductOptionColorType,
   customProductOptionColorObjectType,
   customProductOptionSizeType,
   customProductOptionSizeObjectType,
   customProductOptionCustomType,
   customProductOptionCustomObjectType,
+  legacyCustomProductOptionSizeType,
+  legacyCustomProductOptionSizeObjectType,
+  legacyCustomProductOptionCustomType,
+  legacyCustomProductOptionCustomObjectType,
   badgeType,
   comparisonRowType,
   faqItemType,

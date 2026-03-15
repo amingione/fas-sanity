@@ -18,6 +18,7 @@ const singleton = (S: any, type: string, id: string, title: string, icon?: any) 
 
 const DOWNLOADS_BASE_FILTER = '_type == "downloadResource" && isArchived != true'
 const DOWNLOADS_DEFAULT_ORDERING = [{field: 'lastUpdated', direction: 'desc' as const}]
+const API_VERSION = '2024-10-01'
 
 const buildHubCategoryFilter = (slug: string) =>
   `${DOWNLOADS_BASE_FILTER} && references(*[_type == "internalDocCategory" && slug.current == "${slug}"][0]._id)`
@@ -36,6 +37,7 @@ const buildHubCategoryListItem = (
       S.documentTypeList('downloadResource')
         .id(paneId)
         .title(title)
+        .apiVersion(API_VERSION)
         .filter(buildHubCategoryFilter(slug))
         .defaultOrdering([
           ...DOWNLOADS_DEFAULT_ORDERING,
@@ -79,6 +81,7 @@ export const deskStructure: StructureResolver = (S) =>
                   S.documentTypeList('downloadResource')
                     .id('all-documents-list')
                     .title('All Documents')
+                    .apiVersion(API_VERSION)
                     .filter(DOWNLOADS_BASE_FILTER)
                     .defaultOrdering([
                       ...DOWNLOADS_DEFAULT_ORDERING,
