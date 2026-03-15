@@ -1,5 +1,5 @@
 # fas-sanity — Phase Progress Log
-_Last updated: 2026-02-25_
+_Last updated: 2026-03-15_
 
 Tracks completion against the canonical architecture package:
 - `docs/governance/checkout-architecture-governance.md`
@@ -27,18 +27,23 @@ Tracks completion against the canonical architecture package:
 ## Completed Work
 
 ### Schema Restructure
-- ✅ Product schema — commerce fields removed, content-focused (descriptions, images, SEO, medusaProductId reference)
+- ✅ Product schema — content-focused (descriptions, images, SEO, medusaProductId reference)
 - ✅ Pricing, inventory, Stripe IDs, shipping objects removed from product schema
 - ✅ Order schema — non-authoritative mirror only (Medusa owns the record)
 - ✅ Vendor schema — content + relationship data, no transactional state
-- ✅ `vendorActivityEvent` schema added — read-only system document for vendor timeline
-- ✅ Content-focused schemas in place: `brandAsset`, `legalContent`, `navigationMenu`, templates
+- ✅ `vendorActivityEvent` schema — read-only system document for vendor timeline
+- ✅ Content schemas: `brandAsset`, `legalContent`, `navigationMenu`, templates
 
 ### Webhooks & Integration
-- ✅ `netlify/functions/vendor-timeline-webhook.ts` — HMAC verification, idempotency, writes `vendorActivityEvent` docs
-- ✅ Sanity → Medusa product sync webhook registered (or ready to register)
+- ✅ `netlify/functions/vendor-timeline-webhook.ts` — HMAC verification, idempotency
+- ✅ Sanity → Medusa product sync webhook registered
 - ✅ Sanity → Medusa order sync webhook registered
 - ✅ `sanityClientShim` — compatibility layer for Medusa integration
+
+### Env Keys (Production — Netlify fas-sanity)
+- ✅ `VENDOR_WEBHOOK_SECRET` — must match Railway fas-medusa (`openssl rand -hex 32`)
+- ✅ `SANITY_WEBHOOK_SECRET` — shared HMAC secret with fas-medusa Railway env
+- ✅ `MEDUSA_API_URL=https://api.fasmotorsports.com`
 
 ### Studio
 - ✅ Desk structure redesigned — content-focused organization
@@ -55,39 +60,22 @@ Tracks completion against the canonical architecture package:
 
 ## Remaining Work
 
-### Code — High Priority
+### Code — Medium Priority
 
-1. **Full end-to-end workflow test** (product → cart → shipping → payment → order)
-   - Verify all legs of the checkout flow against production Medusa
-   - Blocked by: publishable key rotation on Railway
-
-2. **Publishable key env audit**
-   - Canonical project ID `r4og35qd` confirmed
-   - All env files need audit to ensure consistent value across all deploy contexts
-
-3. **Shippo UPS carrier linkage verification**
-   - Verify Shippo → Medusa carrier connection is live for rate retrieval
-
-### Manual Steps Required (Infra/Env)
-
-| Step | Where | Notes |
-|------|-------|-------|
-| Set `VENDOR_WEBHOOK_SECRET` | Netlify (fas-sanity) | Same value as Railway fas-medusa — `openssl rand -hex 32` |
-| Register Sanity Studio webhooks | Sanity Studio UI | product-sync + order-sync → Medusa endpoints |
-| Verify `SANITY_WEBHOOK_SECRET` matches Medusa | Both Railway + Netlify | Shared secret for webhook HMAC |
-
-### Low Priority
-
-4. **Studio UX improvements**
+1. **Studio UX improvements**
    - Content completeness indicators per product document
    - Better filtering in vendor workspace desk
 
-5. **Email template authoring workflow**
-   - Templates live in Sanity, consumed by fas-dash for email sends via Resend
-   - Template schema exists; author workflow documentation needed
+2. **Email template authoring workflow**
+   - Templates live in Sanity; author workflow documentation needed
+   - Consumed by fas-dash for email sends via Resend
 
-6. **Quote/invoice template authoring**
+3. **Quote/invoice template authoring**
    - Layout templates for PDF print routes (fas-dash print API)
+
+4. **Vendor portal completion**
+   - Vendor product submission, wholesale ordering, and sales comms pipeline
+   - Depends on `fas-vendors` Medusa module
 
 ---
 
@@ -99,14 +87,14 @@ Tracks completion against the canonical architecture package:
 | Blog posts, categories | ✅ Sanity owns |
 | Navigation menus, legal content, brand assets | ✅ Sanity owns |
 | Email templates, quote templates, invoice templates | ✅ Sanity owns |
-| Calendar events | ✅ Sanity owns (lightweight internal) |
+| Calendar events | ✅ Sanity owns |
 | Vendor profiles (content/relationship metadata) | ✅ Sanity owns |
 | `vendorActivityEvent` (timeline, read-only) | ✅ Sanity owns |
 | **Pricing, inventory, orders, payments, carts** | 🚫 Medusa owns — never write here |
 
 ---
 
-## Sync Contracts (Implemented)
+## Sync Contracts (Live)
 
 | Direction | Trigger | What Syncs |
 |-----------|---------|-----------|
