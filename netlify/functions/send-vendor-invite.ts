@@ -268,9 +268,9 @@ const handler: Handler = async (event) => {
 
   const template = await fetchTemplate(templateId)
 
-  // Generate secure setup token + expiry
+  // Generate secure setup token + expiry (7-day window so vendors aren't blocked by 24h expiry)
   const setupToken = crypto.randomBytes(32).toString('hex')
-  const setupTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  const setupTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   if (!setupBase) {
     return {
       statusCode: 500,

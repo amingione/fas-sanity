@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import {createClient} from '@sanity/client'
 import {Resend} from 'resend'
 import {resolveResendApiKey} from '../../shared/resendEnv'
@@ -164,18 +165,46 @@ export const runOnboardingCron = async () => {
           `*[_type == "vendor"
             && portalAccess.enabled == true
             && defined(portalAccess.invitedAt)
+            && !defined(portalAccess.setupCompletedAt)
             && portalAccess.invitedAt < $targetDate
             && !(_id in *[_type == "vendorEmailLog" && campaign._ref == $campaignId && emailNumber == $emailNumber].vendor._ref)
           ]{_id, portalAccess}`,
           {targetDate, campaignId: campaign._id, emailNumber: email.emailNumber},
         )) || []
 
+      const nowIso = new Date().toISOString()
+      const portalBase = resolveVendorPortalBase(SITE_URL)
+
       for (const vendor of vendors) {
         try {
+          let setupLink: string | undefined
+          const existingToken = vendor.portalAccess?.setupToken as string | undefined
+          const tokenExpiry = vendor.portalAccess?.setupTokenExpiry as string | undefined
+          const tokenExpired = !tokenExpiry || tokenExpiry <= nowIso
+
+          if (portalBase) {
+            if (tokenExpired) {
+              // Regenerate expired token so the follow-up email contains a live link
+              const freshToken = crypto.randomBytes(32).toString('hex')
+              const freshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+              await sanityClient
+                .patch(vendor._id)
+                .set({
+                  'portalAccess.setupToken': freshToken,
+                  'portalAccess.setupTokenExpiry': freshExpiry,
+                })
+                .commit()
+              setupLink = `${portalBase.replace(/\/$/, '')}/vendor-portal/setup?token=${freshToken}`
+            } else if (existingToken) {
+              setupLink = `${portalBase.replace(/\/$/, '')}/vendor-portal/setup?token=${existingToken}`
+            }
+          }
+
           await sendCampaignEmail({
             vendorId: vendor._id,
             campaignId: campaign._id,
             emailNumber: email.emailNumber,
+            setupLink,
           })
           sentCount += 1
         } catch (err) {
