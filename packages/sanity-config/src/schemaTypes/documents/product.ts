@@ -44,7 +44,7 @@ const product = defineType({
       group: 'content',
     }),
     defineField({name: 'description', type: 'portableText', group: 'content'}),
-    defineField({name: 'keyFeatures', type: 'array', of: [{type: 'string'}], group: 'content'}),
+    defineField({name: 'keyFeatures', type: 'array', of: [{type: 'collapsibleFeature'}], group: 'content'}),
     defineField({name: 'importantNotes', type: 'portableTextSimple', group: 'content'}),
     defineField({name: 'specifications', type: 'array', of: [{type: 'specItem'}], group: 'content'}),
     defineField({name: 'attributes', type: 'array', of: [{type: 'attribute'}], group: 'content'}),
