@@ -10,7 +10,7 @@ import {
   hasAttributionData,
   AttributionParams,
 } from '../netlify/lib/attribution'
-import {parseStripeSummaryData} from '../netlify/lib/stripeSummary'
+import {parseStripeSummaryData} from '../../netlify/lib/stripeSummary'
 
 type StripeMetadataEntry = {
   key?: string

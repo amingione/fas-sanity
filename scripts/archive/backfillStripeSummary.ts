@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 import Stripe from 'stripe'
 import {createClient} from '@sanity/client'
-import {buildStripeSummary, serializeStripeSummaryData} from '../netlify/lib/stripeSummary'
+import {buildStripeSummary, serializeStripeSummaryData} from '../../netlify/lib/stripeSummary'
 
 dotenv.config()
 
@@ -27,7 +27,7 @@ async function main() {
   const sanity = createClient({
     projectId: sanityProjectId,
     dataset: sanityDataset,
-    apiVersion: '2024-10-01',
+    apiVersion: '2024-01-01',
     token: sanityToken,
     useCdn: false,
   })

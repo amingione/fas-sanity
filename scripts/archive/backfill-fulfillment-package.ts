@@ -14,7 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import {createClient} from '@sanity/client'
-import {parseStripeSummaryData} from '../netlify/lib/stripeSummary'
+import {parseStripeSummaryData} from '../../netlify/lib/stripeSummary'
 
 const ENV_FILES = ['.env.development.local', '.env.local', '.env.development', '.env']
 for (const filename of ENV_FILES) {
