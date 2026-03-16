@@ -249,6 +249,7 @@ export const deskStructure: StructureResolver = (S) =>
               S.documentTypeListItem('vendorDocument').title('Vendor Documents'),
               S.documentTypeListItem('vendorNotification').title('Vendor Notifications'),
               S.documentTypeListItem('vendorMessage').title('Vendor Messages'),
+              S.documentTypeListItem('vendorProductSubmission').title('Product Submissions'),
               S.documentTypeListItem('vendorActivityEvent').title('Vendor Timeline'),
               S.documentTypeListItem('customer').title('Customers'),
             ]),

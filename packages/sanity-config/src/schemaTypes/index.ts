@@ -126,6 +126,7 @@ import vendorNotification from './documents/vendorNotification'
 import vendorDocument from './documents/vendorDocument'
 import vendorReturn from './documents/vendorReturn'
 import vendorMessage from './documents/vendorMessage'
+import vendorProductSubmission from './documents/vendorProductSubmission'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -243,6 +244,7 @@ const documents = [
   vendorDocument,
   vendorReturn,
   vendorMessage,
+  vendorProductSubmission,
 ]
 
 export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents]
