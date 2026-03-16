@@ -51,7 +51,19 @@ export default defineType({
       initialValue: 'draft',
       validation: (Rule) => Rule.required(),
     }),
-    defineField({name: 'publishedAt', title: 'Published At', type: 'datetime'}),
+    defineField({
+      name: 'publishedAt',
+      title: 'Published At',
+      type: 'datetime',
+      validation: (Rule) =>
+        Rule.custom((value, context) => {
+          const status = (context?.document as any)?.status
+          if (status === 'published' && !value) {
+            return 'Published At is required when status is "published"'
+          }
+          return true
+        }),
+    }),
     defineField({
       name: 'seo',
       title: 'SEO',
