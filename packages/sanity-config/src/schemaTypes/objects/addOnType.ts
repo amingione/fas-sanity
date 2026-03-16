@@ -6,6 +6,12 @@ export const addOnType = defineType({
   type: 'object',
   fields: [
     defineField({name: 'label', type: 'string', validation: (Rule) => Rule.required()}),
+    defineField({
+      name: 'priceDelta',
+      title: 'Price Add-On (USD)',
+      type: 'number',
+      description: 'Additional cost in dollars for this add-on (e.g. 75 = +$75.00). Leave blank or 0 if included at no extra cost.',
+    }),
     defineField({name: 'description', type: 'text', rows: 2}),
     defineField({name: 'image', type: 'image', options: {hotspot: true}}),
     defineField({name: 'skuSuffix', type: 'string'}),
