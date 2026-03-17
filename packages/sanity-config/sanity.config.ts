@@ -23,6 +23,7 @@ import {dashboardTool} from '@sanity/dashboard'
 import {media} from 'sanity-plugin-media'
 import {cloudinaryAssetSourcePlugin} from 'sanity-plugin-cloudinary'
 import {assist} from '@sanity/assist'
+import {scheduledPublishing} from '@sanity/scheduled-publishing'
 // Removed presentation/preview tool
 import schemaTypes from './src/schemaTypes/index'
 import {deskStructure} from './src/desk/deskStructure'
@@ -298,6 +299,7 @@ When creating or editing content:
         }
       : {}),
   }),
+  scheduledPublishing(),
   ...(autoMapperEnabled ? [autoMapperPlugin()] : []),
   // preview/presentation tool removed
   ...(visionEnabled ? [visionTool()] : []),

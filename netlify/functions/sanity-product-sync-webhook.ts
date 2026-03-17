@@ -72,6 +72,15 @@ const extractProductIds = (rawBody: Buffer): string[] => {
   }
 }
 
+const getDocumentFromPayload = (rawBody: Buffer): any => {
+  try {
+    const payload = JSON.parse(rawBody.toString('utf8') || '{}')
+    return payload?.after || payload?.document || payload
+  } catch {
+    return null
+  }
+}
+
 export async function handler(event: any) {
   if ((event.httpMethod || 'POST').toUpperCase() !== 'POST') {
     return {
@@ -92,6 +101,24 @@ export async function handler(event: any) {
 
   const eventId = getEventId(event.headers)
   const productIds = extractProductIds(rawBodyBuffer)
+  const document = getDocumentFromPayload(rawBodyBuffer)
+
+  // Guard: Skip non-published products
+  if (document?._type === 'product' && document?.contentStatus !== 'published') {
+    console.info('[Sanity Product Sync Proxy] Skipping non-published product', {
+      event_id: eventId,
+      product_id: document?._id,
+      content_status: document?.contentStatus,
+    })
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        skipped: true,
+        reason: 'contentStatus not published',
+      }),
+    }
+  }
 
   console.info('[Sanity Product Sync Proxy] Received webhook', {
     event_id: eventId,

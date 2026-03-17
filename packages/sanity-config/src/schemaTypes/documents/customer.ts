@@ -62,6 +62,93 @@ export default defineType({
       },
       initialValue: 'retail',
     }),
+    defineField({
+      name: 'addresses',
+      title: 'Addresses',
+      type: 'array',
+      of: [
+        {
+          type: 'object',
+          fields: [
+            {
+              name: 'label',
+              title: 'Label',
+              type: 'string',
+            },
+            {
+              name: 'street1',
+              title: 'Street 1',
+              type: 'string',
+            },
+            {
+              name: 'street2',
+              title: 'Street 2',
+              type: 'string',
+            },
+            {
+              name: 'city',
+              title: 'City',
+              type: 'string',
+            },
+            {
+              name: 'state',
+              title: 'State',
+              type: 'string',
+            },
+            {
+              name: 'zip',
+              title: 'ZIP Code',
+              type: 'string',
+            },
+            {
+              name: 'country',
+              title: 'Country',
+              type: 'string',
+            },
+            {
+              name: 'isDefault',
+              title: 'Default Address',
+              type: 'boolean',
+              initialValue: false,
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
+      name: 'segment',
+      title: 'Segment',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'VIP', value: 'vip'},
+          {title: 'Wholesale', value: 'wholesale'},
+          {title: 'Retail', value: 'retail'},
+          {title: 'Inactive', value: 'inactive'},
+          {title: 'New', value: 'new'},
+        ],
+      },
+    }),
+    defineField({
+      name: 'lifetimeValue',
+      title: 'Lifetime Value',
+      type: 'number',
+      readOnly: true,
+      description: 'Synced from Medusa',
+    }),
+    defineField({
+      name: 'orderCount',
+      title: 'Order Count',
+      type: 'number',
+      readOnly: true,
+      description: 'Synced from Medusa',
+    }),
+    defineField({
+      name: 'notes',
+      title: 'Notes',
+      type: 'text',
+      description: 'Internal staff notes',
+    }),
   ],
   preview: {
     select: {

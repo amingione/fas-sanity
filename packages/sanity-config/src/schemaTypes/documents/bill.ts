@@ -13,6 +13,39 @@ export default defineType({
     defineField({name: 'paidDate', title: 'Paid Date', type: 'date'}),
     defineField({name: 'checkNumber', title: 'Check Number', type: 'string'}),
     defineField({name: 'notes', title: 'Notes', type: 'text', rows: 3}),
+    defineField({
+      name: 'invoiceRef',
+      title: 'Invoice Reference',
+      type: 'reference',
+      to: [{type: 'invoice'}],
+      weak: true,
+    }),
+    defineField({
+      name: 'paymentMethod',
+      title: 'Payment Method',
+      type: 'string',
+      options: {
+        list: [
+          {title: 'Check', value: 'check'},
+          {title: 'ACH', value: 'ach'},
+          {title: 'Wire', value: 'wire'},
+          {title: 'Credit Card', value: 'credit_card'},
+          {title: 'Net 30', value: 'net30'},
+          {title: 'Net 60', value: 'net60'},
+        ],
+      },
+    }),
+    defineField({
+      name: 'paymentReceipt',
+      title: 'Payment Receipt',
+      type: 'string',
+      description: 'Receipt or check number',
+    }),
+    defineField({
+      name: 'paidAt',
+      title: 'Paid At',
+      type: 'datetime',
+    }),
   ],
   preview: {
     select: {
