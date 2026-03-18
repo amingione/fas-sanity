@@ -4,6 +4,7 @@ import type {DocumentActionComponent} from 'sanity'
 import type {DocumentStub} from '../../types/sanity'
 import {useClient} from 'sanity'
 import {generateReferenceCode} from '../../../../../shared/referenceCodes'
+import {getNetlifyFnBase} from './netlifyFnBase'
 
 const API_VERSION = '2024-10-01'
 
@@ -28,6 +29,29 @@ const resolvePortalUrl = () =>
   (process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
     process.env.PUBLIC_VENDOR_PORTAL_URL ||
     '').replace(/\/$/, '')
+
+const buildInvoiceEmailMessage = (payload: {
+  invoiceNumber: string
+  total: number
+  dueDate?: string
+  paymentUrl?: string
+  pdfUrl: string
+}) => {
+  const dueLine = payload.dueDate ? `Due Date: ${payload.dueDate}` : 'Due Date: On receipt'
+  const paymentLine = payload.paymentUrl ? `Pay online: ${payload.paymentUrl}` : ''
+  return [
+    `Your invoice ${payload.invoiceNumber} is ready.`,
+    `Total: $${payload.total.toFixed(2)}`,
+    dueLine,
+    paymentLine,
+    `Download PDF: ${payload.pdfUrl}`,
+    '',
+    'Thank you,',
+    'F.A.S. Motorsports',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
 
 export const convertVendorInvoiceToOrderAction: DocumentActionComponent = (props) => {
   const toast = useToast()
@@ -129,6 +153,7 @@ export const convertVendorInvoiceToOrderAction: DocumentActionComponent = (props
       const portalBase = resolvePortalUrl()
       const orderUrl = portalBase ? `${portalBase}/vendor-portal/orders/${createdOrder._id}` : ''
       const payUrl = portalBase ? `${portalBase}/vendor-portal/invoices/${invoice._id}` : ''
+      const base = getNetlifyFnBase()
 
       await fetch(`${base}/.netlify/functions/sendVendorEmail`, {
         method: 'POST',
@@ -185,5 +210,155 @@ export const convertVendorInvoiceToOrderAction: DocumentActionComponent = (props
           ),
         }
       : undefined,
+  }
+}
+
+export const sendInvoiceEmailAction: DocumentActionComponent = (props) => {
+  const toast = useToast()
+  const client = useClient({apiVersion: API_VERSION})
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  if (props.type !== 'invoice') return null
+  const docId = props.id.replace(/^drafts\./, '')
+
+  const handleSend = async () => {
+    setBusy(true)
+    try {
+      const invoice = await client.fetch(
+        `*[_type == "invoice" && _id == $id][0]{
+          _id,
+          invoiceNumber,
+          total,
+          dueDate,
+          billTo,
+          customerRef->{email}
+        }`,
+        {id: docId},
+      )
+      if (!invoice) throw new Error('Invoice not found')
+      const toEmail = invoice.billTo?.email || invoice.customerRef?.email
+      if (!toEmail) throw new Error('Invoice recipient email is missing (billTo.email/customer.email)')
+
+      const base = getNetlifyFnBase().replace(/\/$/, '')
+      const pdfUrl = `${base}/.netlify/functions/generateInvoicePDF?invoiceId=${encodeURIComponent(docId)}`
+      const portalBase = resolvePortalUrl()
+      const payUrl = portalBase ? `${portalBase}/vendor-portal/invoices/${invoice._id}` : ''
+      const subject = `Invoice ${invoice.invoiceNumber || docId} from F.A.S. Motorsports`
+      const message = buildInvoiceEmailMessage({
+        invoiceNumber: invoice.invoiceNumber || docId,
+        total: Number(invoice.total) || 0,
+        dueDate: invoice.dueDate,
+        paymentUrl: payUrl || undefined,
+        pdfUrl,
+      })
+
+      const res = await fetch(`${base}/.netlify/functions/sendCustomerEmail`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          to: toEmail,
+          subject,
+          message,
+          template: 'invoice',
+        }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as {error?: string}
+      if (!res.ok || payload?.error) {
+        throw new Error(payload?.error || 'Invoice email send failed')
+      }
+
+      const patchOps = {
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+        lastEmailTo: toEmail,
+        emailStatus: 'sent',
+      }
+      const tx = client.transaction()
+      if (props.published) tx.patch(docId, (patch) => patch.set(patchOps).inc({emailSendCount: 1}))
+      if (props.draft) tx.patch(`drafts.${docId}`, (patch) => patch.set(patchOps).inc({emailSendCount: 1}))
+      await tx.commit({autoGenerateArrayKeys: true})
+
+      toast.push({status: 'success', title: 'Invoice emailed to client'})
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      const tx = client.transaction()
+      if (props.published) tx.patch(docId, (patch) => patch.set({emailStatus: 'failed', lastEmailError: message}))
+      if (props.draft) tx.patch(`drafts.${docId}`, (patch) => patch.set({emailStatus: 'failed', lastEmailError: message}))
+      await tx.commit({autoGenerateArrayKeys: true}).catch(() => undefined)
+      toast.push({status: 'error', title: 'Invoice email failed', description: message})
+    } finally {
+      setBusy(false)
+      setOpen(false)
+      props.onComplete()
+    }
+  }
+
+  return {
+    label: 'Send Invoice Email',
+    tone: 'primary',
+    onHandle: () => setOpen(true),
+    dialog: open
+      ? {
+          type: 'dialog',
+          header: 'Email invoice to client?',
+          onClose: () => {
+            setOpen(false)
+            props.onComplete()
+          },
+          content: (
+            <Box padding={4}>
+              <Stack space={4}>
+                <Text>Sends invoice details + PDF link using Resend.</Text>
+                <Flex justify="flex-end" gap={3}>
+                  <Button text="Cancel" mode="ghost" disabled={busy} onClick={() => setOpen(false)} />
+                  <Button text="Send Email" tone="primary" loading={busy} onClick={handleSend} />
+                </Flex>
+              </Stack>
+            </Box>
+          ),
+        }
+      : undefined,
+  }
+}
+
+export const printInvoiceAction: DocumentActionComponent = (props) => {
+  const toast = useToast()
+  const client = useClient({apiVersion: API_VERSION})
+  const [busy, setBusy] = useState(false)
+
+  if (props.type !== 'invoice') return null
+  const docId = props.id.replace(/^drafts\./, '')
+
+  const handlePrint = async () => {
+    setBusy(true)
+    try {
+      const base = getNetlifyFnBase().replace(/\/$/, '')
+      const pdfUrl = `${base}/.netlify/functions/generateInvoicePDF?invoiceId=${encodeURIComponent(docId)}`
+      if (typeof window !== 'undefined') {
+        window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+      }
+
+      const patchOps = {lastPrintedAt: new Date().toISOString()}
+      const tx = client.transaction()
+      if (props.published) tx.patch(docId, (patch) => patch.set(patchOps).inc({printCount: 1}))
+      if (props.draft) tx.patch(`drafts.${docId}`, (patch) => patch.set(patchOps).inc({printCount: 1}))
+      await tx.commit({autoGenerateArrayKeys: true})
+
+      toast.push({status: 'success', title: 'Invoice PDF opened'})
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      toast.push({status: 'error', title: 'Failed to open invoice PDF', description: message})
+    } finally {
+      setBusy(false)
+      props.onComplete()
+    }
+  }
+
+  return {
+    label: busy ? 'Opening PDF…' : 'Print / Download PDF',
+    tone: 'default',
+    disabled: busy,
+    onHandle: handlePrint,
   }
 }

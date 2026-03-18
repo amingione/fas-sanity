@@ -351,15 +351,32 @@ export const sendVendorQuoteEmailAction: DocumentActionComponent = (props) => {
         },
       })
 
-      const patchOps = {status: 'sent', sentAt: new Date().toISOString()}
+      const patchOps = {
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+        lastEmailTo: vendorEmail || '',
+        emailStatus: 'sent',
+      }
       const tx = client.transaction()
-      if (props.published) tx.patch(docId, (patch) => patch.set(patchOps))
-      if (props.draft) tx.patch(`drafts.${docId}`, (patch) => patch.set(patchOps))
+      if (props.published) {
+        tx.patch(docId, (patch) => patch.set(patchOps).inc({emailSendCount: 1}))
+      }
+      if (props.draft) {
+        tx.patch(`drafts.${docId}`, (patch) => patch.set(patchOps).inc({emailSendCount: 1}))
+      }
       await tx.commit({autoGenerateArrayKeys: true})
 
       toast.push({status: 'success', title: 'Quote emailed to vendor'})
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
+      const tx = client.transaction()
+      if (props.published) {
+        tx.patch(docId, (patch) => patch.set({emailStatus: 'failed', lastEmailError: message}))
+      }
+      if (props.draft) {
+        tx.patch(`drafts.${docId}`, (patch) => patch.set({emailStatus: 'failed', lastEmailError: message}))
+      }
+      await tx.commit({autoGenerateArrayKeys: true}).catch(() => undefined)
       toast.push({status: 'error', title: 'Email failed', description: message})
     } finally {
       setBusy(false)

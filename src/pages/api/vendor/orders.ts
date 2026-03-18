@@ -33,28 +33,6 @@ interface VendorOrderSummary {
   notes?: string
 }
 
-// GROQ — paginated vendor orders with cart item count
-const VENDOR_ORDERS_QUERY = `{
-  "orders": *[
-    _type == "vendorOrder" &&
-    vendor._ref == $vendorId
-    ${`\$status != null`} => [status == $status]
-  ] | order(createdAt desc) [$offset...$end] {
-    _id,
-    orderNumber,
-    status,
-    createdAt,
-    currency,
-    amountSubtotal,
-    amountTax,
-    amountShipping,
-    totalAmount,
-    "itemCount": count(cart),
-    notes
-  },
-  "total": count(*[_type == "vendorOrder" && vendor._ref == $vendorId])
-}`
-
 // Separate queries for filtered vs unfiltered (GROQ doesn't support optional filters cleanly)
 const VENDOR_ORDERS_FILTERED_QUERY = `{
   "orders": *[

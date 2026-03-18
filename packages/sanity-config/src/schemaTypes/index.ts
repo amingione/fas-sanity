@@ -94,6 +94,7 @@ import emailAutomation from './documents/emailAutomation'
 import marketingOptIn from './documents/marketingOptIn'
 import merchantFeed from './documents/merchantFeed'
 import shoppingCampaign from './documents/shoppingCampaign'
+import brandMention from './documents/brandMention'
 
 import {homeType} from './singletons/homeType'
 import {settingsType as siteSettingsType} from './singletons/siteSettingsType'
@@ -218,6 +219,7 @@ const documents = [
   marketingOptIn,
   merchantFeed,
   shoppingCampaign,
+  brandMention,
   brandAsset,
   customer,
   legalContent,
