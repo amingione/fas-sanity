@@ -18,7 +18,7 @@
     "@sanity/client": "^7.13.2",
     "@sanity/code-input": "^7.0.2",
     "@sanity/dashboard": "^5.0.1",
-    "@sanity/scheduled-publishing": "^2.9.0",
+    "@sanity/scheduled-publishing": "^1.4.1",
     "@sanity/icons": "^3.7.4",
     "@sanity/sdk-react": "^2.4.0",
     "@sanity/ui": "^3.1.11",
