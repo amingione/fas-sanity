@@ -82,7 +82,7 @@ async function buildPdf(quote: any): Promise<Uint8Array> {
   let y = height - 40
 
   // Business header
-  page.drawText('F.A.S. Motorsports LLC', {x: 40, y: y - 10, size: 16, font: bold, color: black})
+  page.drawText('FAS Motorsports', {x: 40, y: y - 10, size: 16, font: bold, color: black})
   page.drawText('6161 Riverside Dr', {x: 40, y: y - 28, size: 10, font, color: gray})
   page.drawText('Punta Gorda, FL 33982', {x: 40, y: y - 42, size: 10, font, color: gray})
   page.drawText('(812) 200-9012 • sales@fasmotorsports.com', {
@@ -255,7 +255,7 @@ export const handler: Handler = async (event) => {
 
     const html = `
       <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color:#111;">
-        <h2 style="margin:0 0 8px;">Your Quote from F.A.S. Motorsports</h2>
+        <h2 style="margin:0 0 8px;">Your Quote from FAS Motorsports</h2>
         <p style="margin:0 0 8px;">Quote <b>#${safe(quote.quoteNumber || quote._id)}</b></p>
         <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:12px;">
           <tr><td style="padding:4px 8px;">Subtotal</td><td style="padding:4px 8px; text-align:right;">${money(subtotal)}</td></tr>

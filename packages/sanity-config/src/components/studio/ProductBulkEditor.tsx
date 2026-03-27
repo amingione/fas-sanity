@@ -1813,7 +1813,7 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
       const manualInventory = Number.isFinite(product.manualInventoryCount ?? NaN)
         ? String(product.manualInventoryCount)
         : ''
-      const brand = product.brand || 'F.A.S. Motorsports'
+      const brand = product.brand || 'FAS Motorsports'
       const mpn = product.mpn || product.sku || product._id
       const identifierExists = product.mpn ? 'TRUE' : 'FALSE'
       const shippingWeight = product.shippingWeight ? `${product.shippingWeight} lb` : ''

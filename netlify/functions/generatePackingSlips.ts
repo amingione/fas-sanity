@@ -45,7 +45,7 @@ const builder = imageUrlBuilder(sanity)
 // Fallback constants (used if print settings not configured)
 const LOGO_URL = process.env.PACKING_SLIP_LOGO_URL || 'https://fassite.netlify.app/logo.png'
 const SHOP_NAME =
-  process.env.PACKING_SLIP_SHOP_NAME || process.env.SHIP_FROM_NAME || 'F.A.S. Motorsports'
+  process.env.PACKING_SLIP_SHOP_NAME || process.env.SHIP_FROM_NAME || 'FAS Motorsports'
 const SHOP_EMAIL =
   process.env.PACKING_SLIP_SHOP_EMAIL || process.env.SHIP_FROM_EMAIL || 'orders@fasmotorsports.com'
 const SHOP_DOMAIN = (process.env.PACKING_SLIP_SHOP_DOMAIN || 'www.fasmotorsports.com')

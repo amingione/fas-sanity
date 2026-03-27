@@ -214,7 +214,7 @@ const buildDiscountEmailHtml = (code: string, expiresAt: number | null) => {
             <div class="footer">
               <p>This code is unique to you and can only be used once.</p>
               <p>Questions? Contact support@fasmotorsports.com</p>
-              <p>F.A.S. Motorsports</p>
+              <p>FAS Motorsports</p>
             </div>
           </div>
         </div>

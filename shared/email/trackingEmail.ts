@@ -47,7 +47,7 @@ export function buildTrackingEmailHtml(
       ${trackingCode ? `<p style="margin:0 0 8px;font-weight:600;">Tracking #: ${trackingCode}</p>` : ''}
       ${trackingButton}
       ${cartMarkup}
-      <p style="margin:20px 0 0;color:#4b5563;">Thanks for shopping with F.A.S. Motorsports!</p>
+      <p style="margin:20px 0 0;color:#4b5563;">Thanks for shopping with FAS Motorsports!</p>
     </div>
   `
 }
@@ -72,7 +72,7 @@ export function buildTrackingEmailText(
     lines.push(...cartList.textLines)
   }
 
-  lines.push('', 'Thanks for shopping with F.A.S. Motorsports!')
+  lines.push('', 'Thanks for shopping with FAS Motorsports!')
   return lines.filter((line, index, arr) => {
     if (line !== '') return true
     return index === 0 || arr[index - 1] !== ''

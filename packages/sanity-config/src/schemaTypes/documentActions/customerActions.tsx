@@ -42,7 +42,7 @@ const EMAIL_TEMPLATES: Record<
     label: 'Welcome',
     subject: (name) => `Welcome to FAS Motorsports${name ? `, ${name}` : ''}!`,
     body: (name) =>
-      `Hi ${name || 'there'},\n\nThanks for trusting F.A.S. Motorsports with your build. Let us know how we can help next.\n\nBest,\nTeam FAS`,
+      `Hi ${name || 'there'},\n\nThanks for trusting FAS Motorsports with your build. Let us know how we can help next.\n\nBest,\nTeam FAS`,
   },
   promotion: {
     label: 'Promotion',

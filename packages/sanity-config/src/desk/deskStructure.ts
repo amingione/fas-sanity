@@ -48,7 +48,7 @@ const buildHubCategoryListItem = (
 
 export const deskStructure: StructureResolver = (S) =>
   S.list()
-    .title('F.A.S. Content')
+    .title('FAS Content')
     .items([
       S.listItem()
         .id('documents-hub')

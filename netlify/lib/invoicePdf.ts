@@ -165,7 +165,7 @@ type BrandTheme = {
 }
 
 const brandTheme: BrandTheme = {
-  name: 'F.A.S. Motorsports LLC',
+  name: 'FAS Motorsports',
   street: '6161 Riverside Dr',
   city: 'Punta Gorda, FL 33982',
   phone: '(812) 200-9012',

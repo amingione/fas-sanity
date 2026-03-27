@@ -13,7 +13,7 @@ const stripe =
 const BUSINESS_NAME =
   process.env.FINANCIAL_CONNECTIONS_BUSINESS_NAME ||
   process.env.PUBLIC_COMPANY_NAME ||
-  'F.A.S. Motorsports LLC'
+  'FAS Motorsports'
 
 const DEFAULT_RETURN_URL =
   process.env.FINANCIAL_CONNECTIONS_RETURN_URL ||

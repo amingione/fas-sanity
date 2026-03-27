@@ -198,7 +198,7 @@ async function generateCheckPdf(checkId: string) {
   const paymentDate = new Date(check.paymentDate || new Date()).toLocaleDateString()
   const checkNumber = check.checkNumber || '000000'
   const memo = check.memo || ''
-  const holder = check.bankAccount.holderName || 'F.A.S. Motorsports LLC'
+  const holder = check.bankAccount.holderName || 'FAS Motorsports'
   const institution =
     check.bankAccount.institutionName || bankDetails.bank_name || 'Financial Institution'
 

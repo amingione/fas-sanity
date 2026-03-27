@@ -218,7 +218,7 @@ export const handler: Handler = async (event) => {
           condition: ['new', 'used', 'refurbished'].includes(condition) ? condition : 'new',
           availability,
           price: {value: price.toFixed(2), currency},
-          brand: product?.brand || 'F.A.S. Motorsports',
+          brand: product?.brand || 'FAS Motorsports',
           mpn,
         }
 

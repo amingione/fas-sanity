@@ -14,7 +14,7 @@ const corsHeaders = {
 
 const resendApiKey = resolveResendApiKey()
 const fromAddress =
-  process.env.RESEND_FROM || 'F.A.S. Motorsports <noreply@updates.fasmotorsports.com>'
+  process.env.RESEND_FROM || 'FAS Motorsports <noreply@updates.fasmotorsports.com>'
 const resend = resendApiKey ? new Resend(resendApiKey) : null
 
 const handler: Handler = async (event) => {

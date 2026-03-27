@@ -47,7 +47,7 @@ const buildInvoiceEmailMessage = (payload: {
     `Download PDF: ${payload.pdfUrl}`,
     '',
     'Thank you,',
-    'F.A.S. Motorsports',
+    'FAS Motorsports',
   ]
     .filter(Boolean)
     .join('\n')
@@ -244,7 +244,7 @@ export const sendInvoiceEmailAction: DocumentActionComponent = (props) => {
       const pdfUrl = `${base}/.netlify/functions/generateInvoicePDF?invoiceId=${encodeURIComponent(docId)}`
       const portalBase = resolvePortalUrl()
       const payUrl = portalBase ? `${portalBase}/vendor-portal/invoices/${invoice._id}` : ''
-      const subject = `Invoice ${invoice.invoiceNumber || docId} from F.A.S. Motorsports`
+      const subject = `Invoice ${invoice.invoiceNumber || docId} from FAS Motorsports`
       const message = buildInvoiceEmailMessage({
         invoiceNumber: invoice.invoiceNumber || docId,
         total: Number(invoice.total) || 0,

@@ -258,7 +258,7 @@ export default function OrderShippingView(props: DocumentViewProps) {
         '',
         'We wanted to follow up on your recent order. Let us know if you have any questions.',
         '',
-        '— F.A.S. Motorsports',
+        '— FAS Motorsports',
       ].join('\n'),
     )
     window.location.href = `mailto:${customerEmail}?subject=${subject}&body=${body}`

@@ -3,7 +3,7 @@ import {normalizeAddress} from '../address'
 
 describe('normalizeAddress', () => {
   const extras = {
-    name: 'F.A.S. Motorsports LLC',
+    name: 'FAS Motorsports',
     phone: '(812) 200-9012',
     email: 'sales@fasmotorsports.com',
   }
@@ -17,7 +17,7 @@ describe('normalizeAddress', () => {
       country: 'US',
     }
     expect(normalizeAddress(input, extras)).toEqual({
-      name: 'F.A.S. Motorsports LLC',
+      name: 'FAS Motorsports',
       line1: '6161 Riverside Dr',
       line2: undefined,
       city: 'Punta Gorda',
@@ -39,7 +39,7 @@ describe('normalizeAddress', () => {
       country: 'US',
     }
     expect(normalizeAddress(input, extras)).toEqual({
-      name: 'F.A.S. Motorsports LLC',
+      name: 'FAS Motorsports',
       line1: '6161 Riverside Dr',
       line2: undefined,
       city: 'Punta Gorda',
@@ -60,7 +60,7 @@ describe('normalizeAddress', () => {
       country: 'US',
     }
     expect(normalizeAddress(input, extras)).toEqual({
-      name: 'F.A.S. Motorsports LLC',
+      name: 'FAS Motorsports',
       line1: '6161 Riverside Dr',
       line2: undefined,
       city: 'Punta Gorda',

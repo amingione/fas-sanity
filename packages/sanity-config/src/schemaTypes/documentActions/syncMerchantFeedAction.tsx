@@ -110,7 +110,7 @@ const SyncMerchantFeedAction: DocumentActionComponent = (props) => {
         availability: snapshot.status === 'active' ? 'in stock' : 'out of stock',
         price,
         sale_price,
-        brand: snapshot.brand || 'F.A.S. Motorsports',
+        brand: snapshot.brand || 'FAS Motorsports',
         linkedProduct: {_type: 'reference', _ref: baseId},
       }
 
