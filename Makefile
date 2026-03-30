@@ -416,3 +416,17 @@ codex-%-enforce:
 	cat docs/prompts/codex-$*-enforce.txt >> $$tmpfile; \
 	mv $$tmpfile docs/prompts/codex-$*-enforce.txt; \
 	echo "✔ Prompt docs/prompts/codex-$*-enforce.txt generated with full enforcement content and header."
+# =========================================================
+# Architecture Compliance Check (FAS Governance System)
+# Authority: fas-sanity/AGENTS.md — this is the canonical repo
+# =========================================================
+
+.PHONY: compliance-check compliance-check-fix
+
+compliance-check:
+	@echo "🔍 FAS Architecture Compliance Check (all 4 repos)"
+	@npx ts-node scripts/compliance/fas-compliance-check.ts
+
+compliance-check-fix:
+	@echo "📋 Showing remediation steps for all failing checks..."
+	@npx ts-node scripts/compliance/fas-compliance-check.ts 2>&1 | grep -A1 "Fix:"

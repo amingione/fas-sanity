@@ -129,6 +129,35 @@
   force = true
   conditions = { Host = ["fasmotorsports.us", "www.fasmotorsports.us"] }
 
+
+# ─── DEPRECATED COMMERCE FUNCTIONS ─────────────────────────────────────────
+# These Netlify functions called Stripe/Shippo directly, violating AGENTS.md.
+# Stripe webhooks and order creation are now owned by Medusa (fas-medusa).
+# Requests are returned as 410 Gone to prevent split-brain order handling.
+[[redirects]]
+  from = "/.netlify/functions/createCheckoutSession"
+  to = "/gone"
+  status = 410
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/stripeWebhook"
+  to = "/gone"
+  status = 410
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/manual-fulfill-order"
+  to = "/gone"
+  status = 410
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/stripeWebhookHandler"
+  to = "/gone"
+  status = 410
+  force = true
+
 # SPA catch-all for Sanity Studio (served at fassanity.fasmotorsports.com)
 # NOTE: This site should NOT receive requests for www.fasmotorsports.com/checkout
 # If /checkout is returning 301, check Netlify DNS/routing configuration to ensure
