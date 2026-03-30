@@ -1,5 +1,9 @@
 # FAS Motorsports - Sanity Repo Objectives
 
+> Governance Notice (2026-03-30): This project planning document may contain transition-era notes that are superseded.
+> Canonical architecture authority is `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/AGENTS.md`.
+> If any statement here conflicts with `AGENTS.md`, `AGENTS.md` wins.
+
 > Sanity-specific phase objectives for the Medusa migration project.
 > **Central control hub:** [`fas-medusa/docs/PROJECT_STATUS.md`](../fas-medusa/docs/PROJECT_STATUS.md)
 
