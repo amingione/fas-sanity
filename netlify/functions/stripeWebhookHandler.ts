@@ -1,4 +1,4 @@
-// Deprecated stub: manual-fulfill-order
+// Deprecated stub: stripeWebhookHandler
 /**
  * DEPRECATED — returns 410 Gone.
  *
