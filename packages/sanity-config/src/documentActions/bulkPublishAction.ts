@@ -23,7 +23,7 @@ export const BulkPublishAction: DocumentActionComponent = (props) => {
   return {
     label: isPublishing ? 'Publishing...' : 'Publish',
     icon: PublishIcon,
-    disabled: publish.disabled || isPublishing,
+    disabled: Boolean(publish.disabled) || isPublishing,
     onHandle: handlePublish,
   }
 }

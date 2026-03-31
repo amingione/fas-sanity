@@ -7,7 +7,17 @@ export default defineType({
   fields: [
     defineField({name: 'from', type: 'string', validation: (Rule) => Rule.required()}),
     defineField({name: 'to', type: 'string', validation: (Rule) => Rule.required()}),
-    defineField({name: 'statusCode', type: 'number', initialValue: 301, validation: (Rule) => Rule.required().valid(301, 302, 307, 308)}),
+    defineField({
+      name: 'statusCode',
+      type: 'number',
+      initialValue: 301,
+      validation: (Rule) =>
+        Rule.required().custom((value) =>
+          [301, 302, 307, 308].includes(Number(value))
+            ? true
+            : 'Status code must be one of: 301, 302, 307, 308',
+        ),
+    }),
     defineField({name: 'active', type: 'boolean', initialValue: true}),
     defineField({name: 'notes', type: 'text', rows: 2}),
   ],

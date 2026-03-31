@@ -27,7 +27,7 @@ async function main() {
   const documentTypes = schemaTypes
     .filter((schema) => schema?.type === 'document')
     .map((schema) => schema?.name)
-    .filter((name): name is string => Boolean(name))
+    .filter(Boolean) as string[]
 
   if (!documentTypes.length) {
     console.log('No document types found in schema registry.')

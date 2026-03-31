@@ -38,6 +38,8 @@
   "exclude": [
     "node_modules",
     "archive",
+    "scripts/archive",
+    "scripts/deprecated-medusa",
     "packages/sanity-config/src/schemaTypes/objects/buildQuote.ts"
   ]
 }

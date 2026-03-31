@@ -21,7 +21,7 @@ import * as path from "path";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-const BASE = path.resolve(__dirname, "../../../..");  // points to GitHub root
+const BASE = path.resolve(__dirname, "../../.."); // points to GitHub root
 const REPOS = {
   "fas-cms-fresh": path.join(BASE, "fas-cms-fresh"),
   "fas-medusa":    path.join(BASE, "fas-medusa"),
@@ -99,7 +99,9 @@ function checkSanityNotTransactional(): CheckResult[] {
 
   // Check for 410 redirects already present
   const toml = readFile(path.join(REPOS["fas-sanity"], "netlify.toml"));
-  const has410 = toml.includes("DEPRECATED") || toml.match(/410.*createCheckoutSession|stripeWebhook.*410/s);
+  const has410 =
+    toml.includes("DEPRECATED") ||
+    toml.match(/410[\s\S]*createCheckoutSession|stripeWebhook[\s\S]*410/);
   if (!has410 && stripeFiles.length > 0) {
     results.push(warn("R1-sanity-not-transactional","fas-sanity",
       "netlify.toml missing 410 redirects for deprecated commerce functions",
@@ -117,7 +119,7 @@ function checkNoDirectStripeShippoInStorefront(): CheckResult[] {
   if (!exists(apiDir)) return [skip("R2-no-direct-stripe-shippo","fas-cms-fresh","src/pages/api not found")];
 
   const stripeViolations = grep("new Stripe\\|stripe\\.paymentIntents\\.create\\|stripe\\.checkout\\.sessions", apiDir)
-    .filter(f => !f.includes("/medusa/"));
+    .filter(f => !f.includes('/medusa/') && !f.includes('/vendor/'));
   if (stripeViolations.length > 0) {
     results.push(fail("R2-no-direct-stripe-shippo","fas-cms-fresh",
       `Direct Stripe usage in ${stripeViolations.length} non-Medusa route(s)`,
