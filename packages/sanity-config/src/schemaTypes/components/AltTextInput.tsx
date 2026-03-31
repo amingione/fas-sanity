@@ -149,19 +149,30 @@ const AltTextInput = (props: StringInputProps) => {
     if (status === 'success') return 'positive'
     return undefined
   }, [status])
+  const liveRole = status === 'error' ? 'alert' : 'status'
+  const liveMode = status === 'error' ? 'assertive' : 'polite'
 
   return (
     <Stack space={3}>
       {renderDefault(props)}
       <Button
-        text="🤖 Generate from Product"
+        text="Generate from Product"
         tone="primary"
         disabled={status === 'loading'}
         loading={status === 'loading'}
         onClick={handleGenerate}
+        aria-label="Generate alt text from related product content"
       />
       {message && (
-        <Card padding={3} radius={2} shadow={1} tone={statusTone} role="status">
+        <Card
+          padding={3}
+          radius={2}
+          shadow={1}
+          tone={statusTone}
+          role={liveRole}
+          aria-live={liveMode}
+          aria-atomic="true"
+        >
           <Text size={1}>{message}</Text>
         </Card>
       )}

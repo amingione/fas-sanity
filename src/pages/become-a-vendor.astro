@@ -13,11 +13,11 @@ import Layout from '../layouts/Layout.astro'
       <div class="benefits">
         <h2>Vendor Benefits</h2>
         <ul>
-          <li>✅ Wholesale pricing (20-40% off retail)</li>
-          <li>✅ Flexible payment terms (Net 30/60)</li>
-          <li>✅ Priority support</li>
-          <li>✅ Marketing materials</li>
-          <li>✅ Drop shipping available</li>
+          <li><span aria-hidden="true">✅</span> Wholesale pricing (20-40% off retail)</li>
+          <li><span aria-hidden="true">✅</span> Flexible payment terms (Net 30/60)</li>
+          <li><span aria-hidden="true">✅</span> Priority support</li>
+          <li><span aria-hidden="true">✅</span> Marketing materials</li>
+          <li><span aria-hidden="true">✅</span> Drop shipping available</li>
         </ul>
       </div>
 
@@ -156,7 +156,13 @@ import Layout from '../layouts/Layout.astro'
           <legend>Tax Information</legend>
 
           <label class="checkbox">
-            <input type="checkbox" name="taxExempt" id="taxExempt" />
+            <input
+              type="checkbox"
+              name="taxExempt"
+              id="taxExempt"
+              aria-controls="tax-cert-upload"
+              aria-expanded="false"
+            />
             <span>We are tax exempt</span>
           </label>
 
@@ -173,7 +179,8 @@ import Layout from '../layouts/Layout.astro'
           <button type="submit" class="submit-btn">Submit Application</button>
         </div>
 
-        <div id="form-message"></div>
+        <p id="tax-cert-status" class="sr-only" aria-live="polite"></p>
+        <div id="form-message" role="status" aria-live="polite" aria-atomic="true"></div>
       </form>
     </div>
   </div>
@@ -185,13 +192,24 @@ import Layout from '../layouts/Layout.astro'
     const taxUpload = document.getElementById('tax-cert-upload') as HTMLElement | null
     const form = document.getElementById('vendor-application-form') as HTMLFormElement | null
     const message = document.getElementById('form-message') as HTMLElement | null
+    const taxCertStatus = document.getElementById('tax-cert-status') as HTMLElement | null
 
     const toggleTaxUpload = () => {
       if (!taxUpload) return
-      if (taxCheckbox && taxCheckbox.checked) {
+      const expanded = Boolean(taxCheckbox && taxCheckbox.checked)
+      if (taxCheckbox) {
+        taxCheckbox.setAttribute('aria-expanded', expanded ? 'true' : 'false')
+      }
+      if (expanded) {
         taxUpload.style.display = 'block'
+        if (taxCertStatus) {
+          taxCertStatus.textContent = 'Tax exemption certificate upload is now available.'
+        }
       } else {
         taxUpload.style.display = 'none'
+        if (taxCertStatus) {
+          taxCertStatus.textContent = 'Tax exemption certificate upload is now hidden.'
+        }
       }
     }
 
@@ -207,7 +225,8 @@ import Layout from '../layouts/Layout.astro'
 
       submitButton.disabled = true
       submitButton.textContent = 'Submitting...'
-      message.innerHTML = ''
+      message.setAttribute('aria-live', 'polite')
+      message.textContent = 'Submitting application, please wait.'
 
       try {
         const response = await fetch('/.netlify/functions/vendor-application', {
@@ -223,7 +242,7 @@ import Layout from '../layouts/Layout.astro'
 
         message.innerHTML = `
           <div class="success-message">
-            <h3>✅ Application Submitted Successfully!</h3>
+            <h3><span aria-hidden="true">✅</span> Application Submitted Successfully!</h3>
             <p><strong>Application Number:</strong> ${result.applicationNumber}</p>
             <p>Thank you for your interest in becoming a FAS Motorsports vendor.
             We'll review your application and get back to you within 2-3 business days.</p>
@@ -238,9 +257,10 @@ import Layout from '../layouts/Layout.astro'
       } catch (error) {
         const description =
           error instanceof Error ? error.message : 'Please try again or contact us directly.'
+        message.setAttribute('aria-live', 'assertive')
         message.innerHTML = `
           <div class="error-message">
-            <h3>❌ Submission Failed</h3>
+            <h3><span aria-hidden="true">❌</span> Submission Failed</h3>
             <p>${description}</p>
           </div>
         `
@@ -355,6 +375,14 @@ import Layout from '../layouts/Layout.astro'
   select:focus,
   textarea:focus {
     outline: none;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  .submit-btn:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
     border-color: #000;
   }
 
@@ -429,6 +457,18 @@ import Layout from '../layouts/Layout.astro'
   .success-message h3,
   .error-message h3 {
     margin-top: 0;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   @media (max-width: 768px) {

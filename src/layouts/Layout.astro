@@ -1,9 +1,10 @@
 ---
 interface Props {
   title?: string
+  description?: string
 }
 
-const {title = 'FAS Motorsports'} = Astro.props as Props
+const {title = 'FAS Motorsports', description = 'FAS Motorsports'} = Astro.props as Props
 ---
 <!doctype html>
 <html lang="en">
@@ -11,7 +12,7 @@ const {title = 'FAS Motorsports'} = Astro.props as Props
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <meta name="description" content="FAS Motorsports" />
+    <meta name="description" content={description} />
     <style>
       :root {
         font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
