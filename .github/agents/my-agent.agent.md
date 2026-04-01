@@ -10,50 +10,37 @@ description: >
 
 ## Primary Authority
 
-The canonical architecture reference is:
+Canonical architecture source:
 `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/AGENTS.md`
 
-If any prompt, note, or document conflicts with AGENTS.md, AGENTS.md wins.
+Canonical execution tracker:
+`/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md`
 
-## Non-Negotiable Architecture Rules
+If anything conflicts with AGENTS.md, AGENTS.md wins.
 
-- Medusa is the commerce authority for products, pricing, inventory, carts, checkout, orders, and shipping logic.
-- Stripe is accessed only through Medusa.
-- Shippo is accessed only through Medusa.
-- Sanity is content and operations support only (not transactional commerce authority).
-- fas-cms-fresh is UI/API consumer only and must not compute pricing or shipping logic.
-- fas-dash must consume Medusa-managed commerce state and must not reintroduce split authority.
+## 4-Repo End Goal
 
-## Behavior Expectations
+Sanity (content) -> Medusa (commerce authority) -> fas-cms-fresh (storefront) and fas-dash (ops) -> Stripe/Shippo via Medusa.
 
-- Audit existing code paths before proposing changes.
-- Patch existing flows instead of redesigning architecture unless explicitly requested.
-- Preserve working pipeline direction: Sanity content -> Medusa commerce -> storefront display -> Stripe/Shippo via Medusa.
-- Flag conflicts immediately with exact file and line references.
+## Non-Negotiable Rules
 
-## Enforcement and Diagnostics (When Requested)
+- Medusa is the commerce authority for products, pricing, inventory, cart, checkout, orders, returns, refunds, and shipping.
+- Stripe is accessed only through Medusa for commerce transactions.
+- Shippo is accessed only through Medusa for labels/rates/tracking in commerce flows.
+- Sanity is content and campaign operations only.
+- fas-cms-fresh and fas-dash consume Medusa state; they do not create parallel commerce authority.
 
-1. Webhook and endpoint validation
-- Verify webhook endpoint URLs and handler ownership align with Medusa-first flow.
-- Verify event coverage for active handlers.
-- Flag duplicate, dead, or deprecated webhook paths that can create split authority.
+## Required Agent Behavior
 
-2. Event handling coverage validation
-- Compare inbound Stripe events against actual handler logic.
-- Identify ignored events, silent no-op returns, and success responses without persistence.
-- Confirm persistence targets align with AGENTS.md authority rules.
+- Audit first, patch second.
+- Preserve working pipeline direction while removing drift.
+- Do not add new split-authority paths.
+- When drift is found, classify it by repo and map remediation to tracker items.
+- Include exact files and lines for all enforcement findings.
 
-3. Environment and function diagnostics
-- Validate required environment variables and secret usage for relevant runtime paths.
-- Inspect signature verification and secret rotation assumptions.
-- Surface misconfiguration with minimally disruptive patch guidance.
+## Reporting Format
 
-4. Data persistence and visibility checks
-- Validate Sanity write behavior remains operational/documentary only.
-- Confirm Medusa remains source of truth for transactional commerce state.
-- Analyze GROQ/query filters that hide valid operational records.
-
-5. Reporting format
-- Root cause classification.
-- Affected layer(s): Medusa / Stripe-via-Medusa / Shippo-via-Medusa / Sanity / UI.
-- Exact patch recommendations with no placeholders.
+1. Root cause category
+2. Affected layer(s): Sanity / Medusa / CMS / Dash / Stripe-via-Medusa / Shippo-via-Medusa
+3. Proposed patch
+4. Tracker task(s) updated

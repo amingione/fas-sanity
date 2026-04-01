@@ -1,81 +1,54 @@
 refer to:
 
 > codex.md & AI_GUIDELINES.md
-> Access to all fas repositories **fas-sanity** and **fas-cms-fresh** and **fas-medusa** is currently ALLOWED.
-> fas-cms-fresh and fas-cms refer to the same codebase and can be used interchangably.
-> Local paths to each repo on Amber's machine are as follows:
+> Access to all FAS repositories is allowed: fas-sanity, fas-medusa, fas-cms-fresh, fas-dash.
+> fas-cms-fresh and fas-cms refer to the same codebase.
 
-- **fas-cms-fresh**: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh`
-- **fas-medusa**: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-medusa`
-- **fas-sanity**: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity`
+Local paths:
+
+- fas-sanity: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity
+- fas-medusa: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-medusa
+- fas-cms-fresh: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
+- fas-dash: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-dash
 
 AGENTS.md is the authoritative architecture reference for commerce responsibilities across all FAS repositories.
 
-# **The Correct Architecture (Authoritative)**
+# FAS 4-Repo Architecture (Authoritative)
 
-This document is the **single source of truth** for how commerce is architected across all FAS repositories.
+If any other document conflicts with this file, this file wins.
 
-If any other documentation, comments, or agent instructions conflict with this section, **this section wins**.
+## System Authorities
 
----
+| Concern | System |
+| --- | --- |
+| Products, variants, pricing, inventory, shipping profiles | Medusa |
+| Cart, checkout, orders, customers, shipping logic | Medusa |
+| Payments | Stripe via Medusa only |
+| Shipping labels and rates | Shippo via Medusa only |
+| Content, SEO, media, campaigns, editorial pages | Sanity |
+| Customer storefront UI | fas-cms-fresh |
+| Employee operations console | fas-dash |
 
-## Source of Truth by Responsibility
+## Non-Negotiable Rules
 
-| **Concern**                                                | **System**                |
-| ---------------------------------------------------------- | ------------------------- |
-| Products (variants, pricing, inventory, shipping profiles) | **Medusa**                |
-| Customers / Orders / Cart / Checkout / Shipping            | **Medusa**                |
-| Payments                                                   | **Stripe (via Medusa)**   |
-| Shipping labels & live rates                               | **Shippo (via Medusa)**   |
-| Content (descriptions, images, SEO, marketing pages)       | **Sanity**                |
-| Storefront UI                                              | **fas-cms-fresh (Astro)** |
+- Sanity is content-only and non-transactional.
+- fas-cms-fresh is storefront UI and API consumer only.
+- fas-dash is internal operations UI and API consumer only.
+- Medusa is the only commerce authority.
+- Direct Stripe or Shippo usage outside Medusa is prohibited.
+- No duplicate authority for prices, inventory, order state, shipping state, or refunds.
 
-### Non‑Negotiable Rules
+## Required End-State Pipeline
 
-- **Sanity is NOT transactional**
-  - No prices, carts, orders, checkout, shipping, or payments
-  - Sanity holds content and identifiers only
+Sanity (content) -> Medusa (commerce brain) -> fas-cms-fresh (storefront) and fas-dash (ops) -> Stripe/Shippo via Medusa.
 
-- **Medusa is the commerce engine**
-  - All pricing invariants are enforced in Medusa
-  - All carts, orders, and shipping calculations originate in Medusa
+## Migration Policy
 
-- **Stripe and Shippo are accessed only via Medusa**
-  - No direct Stripe or Shippo calls from fas-cms-fresh
-  - No direct Stripe or Shippo calls from Sanity
+Legacy paths can exist temporarily, but they are deprecated and must not be expanded.
+Any new work must reduce drift and move toward the end-state pipeline.
 
-- **fas-cms-fresh is UI + API consumer only**
-  - Renders storefront UI
-  - Calls Medusa APIs
-  - Does not compute prices or shipping
+## Execution Tracker
 
-Violating these rules WILL cause checkout, pricing, or shipping failures.
+Canonical tracker: docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md
 
----
-
-## End‑State Data Flow (Required)
-
-```
-Sanity (content only)
-        ↓ (one‑time + enrichment sync)
-Medusa (products, variants, pricing)
-        ↓
-fas‑cms‑fresh storefront
-        ↓
-Medusa cart & checkout
-        ↓
-Stripe payment (via Medusa)
-        ↓
-Shippo shipping (via Medusa)
-```
-
----
-
-## Migration Status
-
-This architecture reflects the **target and enforced end state**.
-
-Legacy systems (direct Stripe, direct Shippo, Sanity‑as‑commerce) may still exist during migration but are **deprecated** and must not be expanded.
-
-Any new work MUST conform to the architecture above.
-- **fas-dash**: `/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-dash`
+All architecture, migration, and governance work must map to tracker items and status.

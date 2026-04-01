@@ -1,29 +1,41 @@
 # FAS Checkout Architecture Governance
 
-DOCS_VERSION: v2026.03.07  
+DOCS_VERSION: v2026.04.01
 Status: Canonical
 
-## System roles
-| System | Checkout role |
-| --- | --- |
-| `fas-medusa` | Commerce authority, backend, webhook layer |
-| `fas-dash` | Internal admin and operations UI |
-| `fas-cms-fresh` | Storefront and customer-facing checkout surface |
-| `Stripe` | Payment processor only |
-| `Sanity` | Content only |
+## Canonical Authority
 
-## Checkout runtime flow
-1. Storefront reads commerce state from Medusa-backed flows.
-2. Storefront sends cart/address/shipping/checkout actions to Medusa.
-3. Medusa calculates shipping, tax, totals, and payment payloads.
-4. Medusa creates/updates Stripe payment objects.
-5. Stripe processes payment only and returns status.
-6. Medusa creates orders and owns authoritative order state.
-7. Dash consumes and operates on Medusa-owned state.
-8. Sanity remains content-only and non-authoritative.
+- Primary architecture source: `AGENTS.md`
+- Canonical execution tracker: `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md`
+
+If any governance file conflicts with AGENTS.md, AGENTS.md wins.
+
+## 4-Repo Roles
+
+| System | Role |
+| --- | --- |
+| fas-medusa | Commerce authority (products, pricing, inventory, cart, checkout, orders, shipping, returns/refunds) |
+| fas-cms-fresh | Customer storefront UI and API consumer |
+| fas-dash | Employee operations UI and API consumer |
+| fas-sanity | Content and marketing system only |
+| Stripe | Payment processor via Medusa |
+| Shippo | Shipping provider via Medusa |
+
+## Runtime Flow (Required)
+
+1. Sanity manages content only.
+2. Storefront (fas-cms-fresh) reads and mutates commerce state through Medusa.
+3. Medusa calculates totals, validates shipping, and owns checkout invariants.
+4. Medusa creates and manages Stripe payment objects.
+5. Stripe returns payment outcome to Medusa webhook layer.
+6. Medusa creates orders and owns order lifecycle state.
+7. Dash consumes Medusa state for fulfillment, reconciliation, and support operations.
+8. Shipping labels and tracking are executed through Shippo via Medusa.
 
 ## Enforcement
+
 - Medusa is the only commerce authority.
-- Stripe is payment processor only.
-- Sanity is content only.
-- Storefront and Dash must not become parallel commerce authorities.
+- No direct Stripe or Shippo commerce flows outside Medusa.
+- No duplicate pricing, inventory, order, payment, or shipping authority outside Medusa.
+- Sanity remains non-transactional.
+- fas-cms-fresh and fas-dash must not compute commerce invariants.
