@@ -83,6 +83,7 @@ import blogPost from './documents/blog/blogPost'
 import blogCategory from './documents/blog/blogCategory'
 import article from './documents/article'
 import {pageType} from './documents/page'
+import seoPage from './documents/seoPage'
 
 import campaign from './marketing/campaigns/campaign'
 import marketingChannel from './marketing/marketingChannel'
@@ -193,6 +194,7 @@ const singletons = [homeType, siteSettingsType, dashboardViewType]
 const documents = [
   colorThemeType,
   pageType,
+  seoPage,
   blogPost,
   blogCategory,
   article,

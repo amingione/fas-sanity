@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -16,10 +16,10 @@
     "incremental": true,
     "noEmit": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "paths": {
-      "@fas/sanity-config/*": ["packages/sanity-config/src/*"],
-      "@/*": ["src/*"]
+      "@fas/sanity-config/*": ["./packages/sanity-config/src/*"],
+      "@/*": ["./src/*"],
+      "netlify/*": ["./netlify/*"]
     }
   },
   "include": [
