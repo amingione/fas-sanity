@@ -16,7 +16,7 @@
     "deploy:schema": "pnpm exec sanity schema deploy --non-interactive",
     "deploy": "pnpm exec sanity deploy",
     "deploy-graphql": "pnpm exec sanity graphql deploy",
-    "lint": "eslint --max-warnings=0 .",
+    "lint": "eslint --max-warnings=0 . --no-warn-ignored --ignore-pattern '**/.astro/**'",
     "typecheck": "pnpm exec tsc -p tsconfig.runtime.json",
     "ai:audit": "echo 'Run Codex audit prompt from docs/ai-governance.md'",
     "ai:verify": "echo 'Run Gemini verification prompt'",
