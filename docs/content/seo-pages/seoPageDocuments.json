@@ -1,0 +1,537 @@
+[
+  {
+    "_id": "seoPage.6-1-hemi-performance-upgrades",
+    "_type": "seoPage",
+    "title": "6.1 HEMI Performance Upgrades",
+    "slug": {
+      "_type": "slug",
+      "current": "6-1-hemi-performance-upgrades"
+    },
+    "seoTitle": "6.1 HEMI Performance Upgrades | F.A.S. Motorsports",
+    "seoDescription": "6.1 HEMI Performance Upgrades from F.A.S. Motorsports help you move from bolt-ons to 1000HP-ready forced induction with the right cam, fuel, and tuning strategy.",
+    "intro": "The 6.1 HEMI is one of the most underrated performance platforms and one of the easiest to transform. With the right setup, you can push serious horsepower gains while keeping the drivability that made these cars popular in the first place.",
+    "sections": [
+      {
+        "heading": "Build Paths",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Stage 1 focuses on intake, long-tube headers, and a calibration that cleans up power delivery without sacrificing daily manners."
+              }
+            ]
+          },
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Stage 2 adds camshaft and fueling upgrades to support stronger airflow and consistent torque through the midrange and top end."
+              }
+            ]
+          },
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Stage 3 introduces forced induction for builds targeting roughly 700 to 1000HP, backed by fuel, cooling, and tune strategy that keeps the package reliable."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Core categories for this platform include cam kits, long-tube headers, injector upgrades, and complete fuel system kits matched to your power target."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Ready to Build Your 6.1 HEMI the Right Way?",
+    "ctaText": "Get a parts path tailored to your goals, budget, and timeline with a quote from the FAS team.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "6-1-hemi-upgrades"
+  },
+  {
+    "_id": "seoPage.hellcat-1000hp-package",
+    "_type": "seoPage",
+    "title": "Hellcat 1000HP Package",
+    "slug": {
+      "_type": "slug",
+      "current": "hellcat-1000hp-package"
+    },
+    "seoTitle": "Hellcat 1000HP Package | F.A.S. Motorsports",
+    "seoDescription": "Hellcat 1000HP Package planning from F.A.S. Motorsports combines supercharger, fueling, tuning, and supporting hardware for reliable repeatable power.",
+    "intro": "A properly built 1000HP Hellcat is not just fast. It is engineered for reliable, repeatable power every time you lean into it.",
+    "sections": [
+      {
+        "heading": "What It Takes",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "A true 1000HP package starts with supercharger and pulley strategy, then scales with a complete fuel system, custom calibration, and supporting mods that remove bottlenecks."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Stages",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "The common progression moves from 850HP setups into a full 1000HP build and then into 1200+HP combinations when airflow, fuel, drivetrain, and heat management are all upgraded together."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "This page should surface upgrade bundles, fuel systems, and supercharger components that align with staged power goals instead of one-off part stacking."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Ready to Start Your 1000HP Hellcat Build?",
+    "ctaText": "Tell us your current setup and power target, and we will map the right package from first upgrade to final tune.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "hellcat-1000hp"
+  },
+  {
+    "_id": "seoPage.trackhawk-performance-upgrades",
+    "_type": "seoPage",
+    "title": "Trackhawk Performance Upgrades",
+    "slug": {
+      "_type": "slug",
+      "current": "trackhawk-performance-upgrades"
+    },
+    "seoTitle": "Trackhawk Performance Upgrades | F.A.S. Motorsports",
+    "seoDescription": "Trackhawk Performance Upgrades from F.A.S. Motorsports focus on airflow, boost, fueling, and AWD-aware tuning to build a dominant performance SUV.",
+    "intro": "The Trackhawk becomes one of the most dominant performance SUVs on the street with the right upgrade strategy.",
+    "sections": [
+      {
+        "heading": "Build Strategy",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Strong Trackhawk builds begin with airflow and boost control, then reinforce fuel delivery so commanded power stays consistent under load."
+              }
+            ]
+          },
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "AWD tuning optimization is critical for launch behavior, shift quality, and repeatability when torque rises beyond stock thresholds."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Recommended categories include pulley kits, injector upgrades, and cooling system components that support sustained power instead of short pulls."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Build a Faster, Stronger Trackhawk",
+    "ctaText": "Get a proven upgrade path that matches your use case, fuel type, and horsepower goals.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "trackhawk-performance-upgrades"
+  },
+  {
+    "_id": "seoPage.dodge-charger-performance-mods",
+    "_type": "seoPage",
+    "title": "Dodge Charger Performance Mods",
+    "slug": {
+      "_type": "slug",
+      "current": "dodge-charger-performance-mods"
+    },
+    "seoTitle": "Dodge Charger Performance Mods | F.A.S. Motorsports",
+    "seoDescription": "Dodge Charger Performance Mods from F.A.S. Motorsports cover 5.7, 6.4, and Hellcat build paths with matched intake, exhaust, and tuning upgrades.",
+    "intro": "The Charger platform supports everything from refined daily drivers to full performance builds when the parts and calibration are planned together.",
+    "sections": [
+      {
+        "heading": "Upgrade Paths",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "5.7 builds focus on efficient bolt-ons and calibration, 6.4 builds gain strongly from airflow and cam strategy, and Hellcat builds scale with boost and fueling infrastructure."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "This page should pull core categories like exhaust systems, intake upgrades, and tuning-support products that fit each Charger power tier."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Find the Right Charger Upgrade Path",
+    "ctaText": "Tell us your engine and target, and we will build a package that performs cleanly on the street or track.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "dodge-charger-performance-mods"
+  },
+  {
+    "_id": "seoPage.dodge-challenger-performance-mods",
+    "_type": "seoPage",
+    "title": "Dodge Challenger Performance Mods",
+    "slug": {
+      "_type": "slug",
+      "current": "dodge-challenger-performance-mods"
+    },
+    "seoTitle": "Dodge Challenger Performance Mods | F.A.S. Motorsports",
+    "seoDescription": "Dodge Challenger Performance Mods from F.A.S. Motorsports support 600-800HP, 800-1000HP, and 1000+HP builds with staged fuel and boost strategy.",
+    "intro": "The Challenger delivers serious performance when it is built in stages with the right airflow, fuel, and calibration support.",
+    "sections": [
+      {
+        "heading": "Build Paths",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "A 600 to 800HP path builds a strong baseline, the 800 to 1000HP tier adds more aggressive fueling and airflow, and 1000+HP combinations require complete system coordination."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Key product groups include performance kits, fuel upgrades, and boost-system components selected by target power band and intended use."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Start Your Challenger Build With a Real Plan",
+    "ctaText": "Avoid mismatched parts and get a staged package that scales from your current setup to your final horsepower goal.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "dodge-challenger-performance-mods"
+  },
+  {
+    "_id": "seoPage.hellcat-supercharger-upgrades",
+    "_type": "seoPage",
+    "title": "Hellcat Supercharger Upgrades",
+    "slug": {
+      "_type": "slug",
+      "current": "hellcat-supercharger-upgrades"
+    },
+    "seoTitle": "Hellcat Supercharger Upgrades | F.A.S. Motorsports",
+    "seoDescription": "Hellcat Supercharger Upgrades from F.A.S. Motorsports pair pulley changes with fuel and ECU strategy so you unlock power safely and consistently.",
+    "intro": "Supercharger upgrades are one of the fastest ways to unlock meaningful horsepower in a Hellcat when the rest of the system is scaled to match.",
+    "sections": [
+      {
+        "heading": "Core Upgrades",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Most builds start with pulley swaps to change blower speed, then layer in fuel upgrades and ECU tuning so commanded boost and ignition stay stable under real load."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Recommended categories include pulley kits, injector packages, and complete boost bundles designed to work as a matched combination."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Upgrade Your Hellcat Supercharger Setup",
+    "ctaText": "Get a staged recommendation that balances boost, fuel, and tune reliability for your target output.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "hellcat-supercharger-upgrades"
+  },
+  {
+    "_id": "seoPage.best-mods-for-6-4-hemi",
+    "_type": "seoPage",
+    "title": "Best Mods for 6.4 HEMI",
+    "slug": {
+      "_type": "slug",
+      "current": "best-mods-for-6-4-hemi"
+    },
+    "seoTitle": "Best Mods for 6.4 HEMI | F.A.S. Motorsports",
+    "seoDescription": "Best Mods for 6.4 HEMI builds from F.A.S. Motorsports cover staged intake, exhaust, cam, tune, and forced-induction paths for reliable power gains.",
+    "intro": "The 6.4 HEMI responds extremely well to staged performance upgrades when each step is built on a stable baseline.",
+    "sections": [
+      {
+        "heading": "Stages",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Stage 1 combines intake and exhaust improvements, Stage 2 adds cam and tuning for stronger character, and Stage 3 introduces forced induction with the required fuel and thermal support."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Product Hooks",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Suggested categories include cam kits, intake systems, and long-tube headers selected for compatibility with your current and future stages."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Upgrade Your 6.4 HEMI With Confidence",
+    "ctaText": "Get a practical staged plan that improves performance now and keeps your next step open.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "6-4-hemi-upgrades"
+  },
+  {
+    "_id": "seoPage.how-to-build-a-1000hp-hellcat",
+    "_type": "seoPage",
+    "title": "How to Build a 1000HP Hellcat",
+    "slug": {
+      "_type": "slug",
+      "current": "how-to-build-a-1000hp-hellcat"
+    },
+    "seoTitle": "How to Build a 1000HP Hellcat | F.A.S. Motorsports",
+    "seoDescription": "How to Build a 1000HP Hellcat the right way with boost, fueling, tuning, and support-mod planning from F.A.S. Motorsports.",
+    "intro": "A 1000HP Hellcat requires a complete system approach, not random parts added one at a time.",
+    "sections": [
+      {
+        "heading": "What You Need",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "You need a boost system matched to your target, a fuel system with overhead, calibration built for your fuel and environment, and supporting mods that protect consistency under repeated pulls."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Common Mistakes",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "The most common failures are weak fuel systems, poor tuning strategy, and skipped support mods that leave critical bottlenecks in place once boost rises."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Get a Real 1000HP Hellcat Build Plan",
+    "ctaText": "Send your current setup and target, and we will map the parts and sequence needed to do it once and do it right.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "hellcat-1000hp-build-guide"
+  },
+  {
+    "_id": "seoPage.fas-custom-builds",
+    "_type": "seoPage",
+    "title": "FAS Custom Builds",
+    "slug": {
+      "_type": "slug",
+      "current": "fas-custom-builds"
+    },
+    "seoTitle": "FAS Custom Builds | F.A.S. Motorsports",
+    "seoDescription": "FAS Custom Builds combine consultations, performance packages, and complete project execution focused on real-world reliability and repeatable power.",
+    "intro": "FAS Motorsports builds performance vehicles designed for real-world power and reliability, not just one dyno graph.",
+    "sections": [
+      {
+        "heading": "What We Offer",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Our process includes full custom builds, modular performance packages, and direct consultations so each project is matched to power goal, use case, and budget."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Proof",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "We validate with real build outcomes, measured results, and trackable performance data so recommendations are based on experience instead of hype."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Start Your FAS Custom Build",
+    "ctaText": "Work with the team to design a package that fits your platform, timeline, and end goal.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "fas-custom-build-packages"
+  },
+  {
+    "_id": "seoPage.hellcat-vs-redeye-vs-demon",
+    "_type": "seoPage",
+    "title": "Hellcat vs Redeye vs Demon",
+    "slug": {
+      "_type": "slug",
+      "current": "hellcat-vs-redeye-vs-demon"
+    },
+    "seoTitle": "Hellcat vs Redeye vs Demon | F.A.S. Motorsports",
+    "seoDescription": "Hellcat vs Redeye vs Demon explained by F.A.S. Motorsports with platform differences, upgrade potential, and the best path to your horsepower goal.",
+    "intro": "Choosing the right platform depends on your performance goals, budget, and how far you plan to push the build.",
+    "sections": [
+      {
+        "heading": "Breakdown",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "Hellcat offers a strong baseline, Redeye adds factory headroom and airflow advantages, and Demon pushes the package further for dedicated high-output use cases."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Upgrade Potential",
+        "body": [
+          {
+            "_type": "block",
+            "style": "normal",
+            "children": [
+              {
+                "_type": "span",
+                "text": "All three platforms can exceed 1000HP when boost, fuel, calibration, and support hardware are treated as one integrated system."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "ctaHeading": "Need Help Choosing the Right Platform?",
+    "ctaText": "Tell us your target and we will recommend the best starting point and upgrade path.",
+    "ctaButtonLabel": "Request a Quote",
+    "ctaButtonHref": "/quote",
+    "medusaCollectionHandle": "hellcat-redeye-demon-comparison"
+  }
+]
