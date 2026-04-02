@@ -1,54 +1,72 @@
-refer to:
+# AGENTS.md — fas-sanity
 
-> codex.md & AI_GUIDELINES.md
-> Access to all FAS repositories is allowed: fas-sanity, fas-medusa, fas-cms-fresh, fas-dash.
-> fas-cms-fresh and fas-cms refer to the same codebase.
+**This file is the authoritative architecture reference for fas-sanity.**
+If any other document in this repo conflicts with this file, this file wins.
 
-Local paths:
+---
+
+## Repo Role
+
+fas-sanity is the **content layer** of the FAS 4-repo commerce pipeline.
+
+```
+Sanity (content) → Medusa (commerce) → fas-cms-fresh (storefront) + fas-dash (ops) → Stripe/Shippo via Medusa
+```
+
+## Local Repo Paths
 
 - fas-sanity: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity
 - fas-medusa: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-medusa
 - fas-cms-fresh: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-cms-fresh
 - fas-dash: /Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-dash
 
-AGENTS.md is the authoritative architecture reference for commerce responsibilities across all FAS repositories.
+fas-cms-fresh and fas-cms refer to the same codebase.
 
-# FAS 4-Repo Architecture (Authoritative)
-
-If any other document conflicts with this file, this file wins.
+---
 
 ## System Authorities
 
-| Concern | System |
-| --- | --- |
+| Concern | Authority |
+|---------|-----------|
 | Products, variants, pricing, inventory, shipping profiles | Medusa |
 | Cart, checkout, orders, customers, shipping logic | Medusa |
 | Payments | Stripe via Medusa only |
 | Shipping labels and rates | Shippo via Medusa only |
+| Refunds and returns | Medusa only |
 | Content, SEO, media, campaigns, editorial pages | Sanity |
+| Vendor CRM metadata (non-transactional) | Sanity |
 | Customer storefront UI | fas-cms-fresh |
 | Employee operations console | fas-dash |
 
+---
+
 ## Non-Negotiable Rules
 
-- Sanity is content-only and non-transactional.
-- fas-cms-fresh is storefront UI and API consumer only.
-- fas-dash is internal operations UI and API consumer only.
-- Medusa is the only commerce authority.
-- Direct Stripe or Shippo usage outside Medusa is prohibited.
-- No duplicate authority for prices, inventory, order state, shipping state, or refunds.
+1. Sanity is content-only and non-transactional.
+2. All schema `integration` group fields are `readOnly: true`. Never write prices, stock, or order state from app code.
+3. fas-cms-fresh is storefront UI and API consumer only — no commerce authority.
+4. fas-dash is ops console and API consumer only — no commerce authority.
+5. Medusa is the only commerce authority.
+6. Direct Stripe or Shippo usage outside Medusa is prohibited.
+7. No duplicate authority for prices, inventory, order state, shipping state, or refunds.
+8. Legacy Netlify commerce functions are 410 GONE — do not restore or expand them.
 
-## Required End-State Pipeline
-
-Sanity (content) -> Medusa (commerce brain) -> fas-cms-fresh (storefront) and fas-dash (ops) -> Stripe/Shippo via Medusa.
-
-## Migration Policy
-
-Legacy paths can exist temporarily, but they are deprecated and must not be expanded.
-Any new work must reduce drift and move toward the end-state pipeline.
+---
 
 ## Execution Tracker
 
-Canonical tracker: docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md
+Canonical tracker: `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md`
 
-All architecture, migration, and governance work must map to tracker items and status.
+All architecture, migration, and governance work maps to tracker workstream items.
+
+---
+
+## Pipeline Status (2026-04-02)
+
+All 6 workstreams closed or in-progress with clean authority boundaries:
+- No direct Stripe SDK in fas-sanity
+- No direct Shippo SDK in fas-sanity
+- All integration group fields readOnly verified
+- Legacy checkout Netlify functions: 410 GONE
+- One-time migration scripts moved to scripts/archive/
+- Governance docs cleaned and archived
