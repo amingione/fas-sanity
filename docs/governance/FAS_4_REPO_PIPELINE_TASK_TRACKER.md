@@ -42,14 +42,14 @@ Sanity (content) -> Medusa (commerce authority) -> fas-cms-fresh (storefront) an
 | --- | --- | --- | --- | --- |
 | WS3-1 | Validate checkout path: storefront -> Medusa -> Stripe via Medusa | fas-cms-fresh, fas-medusa | done | Verified: no stripe.paymentIntents.create outside Medusa. Legacy checkout routes 410'd in fas-cms-fresh. Storefront uses Medusa cart/payment session flows. |
 | WS3-2 | Validate post-payment path: Stripe webhook -> Medusa order creation | fas-medusa | done | Verified 2026-04-02: src/api/webhooks/stripe/route.ts has signature verification, pg.raw idempotency pre-check, completeCartWorkflow, post-failure duplicate guard, non-retriable reconciliation event persistence. |
-| WS3-3 | Dash reconciliation queue for paid-not-converted carts/events | fas-dash, fas-medusa | in_progress | Ghost order filter fixed on 3 surfaces. Order total display hardened. Reconciliation queue UI at /orders/reconciliation filters requires_manual_reconciliation=true. Manual resolve/retry controls pending. |
+| WS3-3 | Dash reconciliation queue for paid-not-converted carts/events | fas-dash, fas-medusa | done | Reconciliation queue UI complete at /orders/reconciliation. Two tabs: paid-not-converted carts (7d/30d/90d window) + webhook reconciliation events. Inline Resolve/Retry action buttons wired to /api/reconciliation/webhooks (PATCH/POST → Medusa). (2026-04-02) |
 
 ### WS4 - Fulfillment, Returns, Refunds
 
 | ID | Task | Repo(s) | Status | Notes |
 | --- | --- | --- | --- | --- |
 | WS4-1 | Label purchase and tracking events via Medusa-owned shipping flow | fas-medusa, fas-dash | done | AddTrackingDialog built; Medusa shipment event firing (Path A) + Resend fallback (Path B). Shippo label/packing-slip in fulfillment queue. fas-medusa fulfillment-shippo module registered as ModuleProvider(Modules.FULFILLMENT). |
-| WS4-2 | Refund/return actions routed through Medusa authority | fas-medusa, fas-dash | in_progress | Verified 2026-04-02: fas-dash returns/[id]/approve and returns/[id]/refund return 501 directing to Medusa workflows. No direct Stripe calls. Medusa native /admin/returns endpoint handles mutations. Dash UI approve/refund buttons pending (Phase 7). |
+| WS4-2 | Refund/return actions routed through Medusa authority | fas-medusa, fas-dash | done | Returns page converted to interactive client component. Approve → POST /admin/returns/{id}/receive-items. Refund → POST /admin/orders/{order_id}/refunds with payment_id+amount resolved from expanded order.payments. Returns API expanded with order+payments fields. No direct Stripe calls. (2026-04-02) |
 | WS4-3 | Ops visibility for shipment/refund lifecycle in Dash | fas-dash | done | Ghost-order filter fixed on 3 surfaces (2026-04-02). Order total display hardened via metadata.total_cents priority chain. Shipping method visible in order detail dialog. |
 
 ### WS5 - Content and Marketing Separation
@@ -175,3 +175,22 @@ Notes:
 
 ## 2026-04-02 Policy Decision
 - WS5-3 closed: Option A — fas-dash remains Medusa-only write surface. No Sanity write token added to fas-dash. Content/copy edits must go through Sanity Studio. Architecture boundary maintained.
+
+## 2026-04-02 Phase 7 Hardening Pass (WS3-3, WS4-2)
+
+### WS3-3 — Reconciliation Queue Resolve/Retry Controls
+- ReconciliationTableClient.tsx: Two-section queue — paid-not-converted carts + webhook reconciliation events
+- Inline Resolve (PATCH) and Retry (POST) buttons per webhook event → /api/reconciliation/webhooks
+- 7d/30d/90d window selector + Refresh control
+- Status: **done**
+
+### WS4-2 — Returns Approve/Refund via Medusa Authority
+- `/api/returns/[id]/approve/route.ts`: POST proxies to Medusa `POST /admin/returns/{id}/receive-items`
+- `/api/returns/[id]/refund/route.ts`: POST fetches return → gets order_id → proxies to Medusa `POST /admin/orders/{order_id}/refunds` with `payment_id` + `amount` from expanded `order.payments`
+- `/api/returns/route.ts`: GET now expands `+order.display_id,+order.currency_code,+order.payments,+items,+refund_amount`
+- Returns page (`/returns`): Converted from static server component to interactive client component. Approve Return button (requested/open/pending), Issue Refund button (received), inline action feedback per row
+- Authority boundary: zero direct Stripe calls, all mutations via Medusa
+- Status: **done**
+
+### Phase 7 Summary
+All hardening workstreams complete. Pipeline boundary enforced end-to-end.
