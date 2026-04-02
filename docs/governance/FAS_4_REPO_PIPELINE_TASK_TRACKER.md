@@ -58,7 +58,7 @@ Sanity (content) -> Medusa (commerce authority) -> fas-cms-fresh (storefront) an
 | --- | --- | --- | --- | --- |
 | WS5-1 | Sanity blog/campaign/editorial workflows unaffected by commerce migration | fas-sanity | done | Verified: article, blog, page, reusableSnippet schemas have no commerce writes. Editorial group fields are content-only. |
 | WS5-2 | Product content sync contract Sanity -> Medusa (non-transactional) | fas-sanity, fas-medusa | done | Verified 2026-04-02: Sanity product schema description states "Content enrichment for Medusa products. Medusa owns pricing, inventory, checkout, and shipping rules." Integration group fields are readOnly. Sync is non-transactional. |
-| WS5-3 | Owner override paths in Dash for content fields (if needed) | fas-dash, fas-sanity | blocked | Requires explicit product policy decision |
+| WS5-3 | Owner override paths in Dash for content fields | fas-dash, fas-sanity | done | Decision: Option A — no override paths. fas-dash is Medusa-only; all content edits go through Sanity Studio. Won't implement by design. (2026-04-02) |
 
 ### WS6 - Governance and CI
 
@@ -147,7 +147,7 @@ Notes:
 **Remaining open items:**
 - WS3-3: Reconciliation queue UI exists; manual resolve/retry controls pending
 - WS4-2: Dash approve/refund UI buttons pending (Phase 7 UX work; authority boundary is clean)
-- WS5-3: Blocked on product policy decision (owner override paths in Dash)
+- WS5-3: Closed — Option A selected (2026-04-02). No override paths in fas-dash. Content edits go through Sanity Studio only. Won't implement by design.
 
 ### 2026-04-02 Fulfillment Queue & Order Total Data Integrity Pass (WS3-3, WS4-1, WS4-3)
 
@@ -172,3 +172,6 @@ Notes:
 - BUILT: Shippo label purchase and packing slip generation workflow integrated into fulfillment queue.
 - BUILT: Dynamic shipping method name display in order detail dialog (commit WS4-DASH-1).
 - STATUS: WS4-1 advanced to `in_progress`. Remaining: end-to-end Shippo-via-Medusa validation in fas-medusa.
+
+## 2026-04-02 Policy Decision
+- WS5-3 closed: Option A — fas-dash remains Medusa-only write surface. No Sanity write token added to fas-dash. Content/copy edits must go through Sanity Studio. Architecture boundary maintained.
