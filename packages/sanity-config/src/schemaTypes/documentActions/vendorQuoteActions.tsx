@@ -232,19 +232,6 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       }
       const createdInvoice = await client.create(invoiceDoc, {autoGenerateArrayKeys: true})
 
-      const base = getNetlifyFnBase().replace(/\/$/, '')
-      const paymentIntentRes = await fetch(`${base}/.netlify/functions/createVendorInvoicePaymentIntent`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({invoiceId: createdInvoice._id}),
-      })
-      const paymentIntentPayload = (await paymentIntentRes.json().catch(() => ({}))) as {
-        error?: string
-      }
-      if (!paymentIntentRes.ok || paymentIntentPayload?.error) {
-        throw new Error(paymentIntentPayload?.error || 'Stripe PaymentIntent creation failed')
-      }
-
       const updatedItems = orderItems.map((item) => ({
         _key: item._key,
         quantity: item.quantity,
@@ -285,7 +272,7 @@ export const convertVendorQuoteAction: DocumentActionComponent = (props) => {
       }
       await tx.commit({autoGenerateArrayKeys: true})
 
-      toast.push({status: 'success', title: 'Invoice created (payment ready)'})
+      toast.push({status: 'success', title: 'Invoice created'})
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       toast.push({status: 'error', title: 'Conversion failed', description: message})

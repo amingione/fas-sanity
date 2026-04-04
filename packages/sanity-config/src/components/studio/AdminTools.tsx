@@ -56,10 +56,6 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
   const [paymentFailuresPaymentIntent, setPaymentFailuresPaymentIntent] = useState('')
 
 
-  const [productMode, setProductMode] = useState<'missing' | 'all'>('missing')
-  const [productLimit, setProductLimit] = useState('25')
-  const [productIds, setProductIds] = useState('')
-
   const [secret, setSecret] = useState<string>(() => {
     try {
       return (
@@ -214,20 +210,6 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         return `OK${data.dryRun ? ' (dry run)' : ''}: processed=${data.total}, changed=${data.changed}, userIdSet=${data.userIdSet}, optInDefaults=${data.optInDefaults}, updatedStamped=${data.updatedStamped}`
       case 'paymentFailures':
         return `OK${data.dryRun ? ' (dry run)' : ''}: matched=${data.total}, updated=${data.updated}, skipped=${data.skipped}`
-      case 'stripeProducts': {
-        const successCount = Array.isArray(data.results)
-          ? data.results.filter((r: any) => r?.status === 'synced').length
-          : undefined
-        const errorCount = Array.isArray(data.errors) ? data.errors.length : 0
-        return [
-          `OK: mode=${data.mode || 'missing'}`,
-          `processed=${data.processed ?? 0}`,
-          typeof successCount === 'number' ? `synced=${successCount}` : null,
-          errorCount ? `errors=${errorCount}` : null,
-        ]
-          .filter(Boolean)
-          .join(', ')
-      }
       default:
         return 'OK'
     }
@@ -513,85 +495,6 @@ const AdminTools = React.forwardRef<HTMLDivElement>(function AdminTools(_props, 
         {renderMessage('paymentFailures')}
       </section>
 
-      <section className="p-space-3 mb-space-3" style={cardStyle}>
-        <h3 className="mt-0">Stripe Products Sync</h3>
-        <p className="text-text-meta" style={descriptionStyle}>
-          Invokes the catalog sync to ensure Sanity products are reflected in Stripe with current
-          pricing.
-        </p>
-        <div className="flex flex-wrap gap-space-3 mb-space-2">
-          <label
-            className="flex flex-col gap-space-1"
-            htmlFor="stripe-product-mode"
-          >
-            <span className="text-text-caption" style={fieldLabelStyle}>
-              Mode
-            </span>
-            <select
-              id="stripe-product-mode"
-              name="productMode"
-              value={productMode}
-              onChange={(event) => setProductMode(event.target.value === 'all' ? 'all' : 'missing')}
-              className="p-space-2 text-text-body"
-              style={inlineInputStyle}
-            >
-              <option value="missing">Missing only</option>
-              <option value="all">Sync all</option>
-            </select>
-          </label>
-          <label
-            className="flex flex-col gap-space-1"
-            htmlFor="stripe-product-limit"
-          >
-            <span className="text-text-caption" style={fieldLabelStyle}>
-              Limit
-            </span>
-            <input
-              id="stripe-product-limit"
-              name="productLimit"
-              type="number"
-              min={1}
-              max={100}
-              value={productLimit}
-              onChange={(event) => setProductLimit(event.target.value)}
-              className="p-space-2 text-text-body"
-              style={inlineInputStyle}
-            />
-          </label>
-        </div>
-        <label
-          className="flex flex-col gap-space-1 mb-space-2"
-          htmlFor="stripe-product-ids"
-        >
-          <span className="text-text-caption" style={fieldLabelStyle}>
-            Specific product IDs (optional, comma separated)
-          </span>
-          <input
-            id="stripe-product-ids"
-            name="productIds"
-            type="text"
-            value={productIds}
-            onChange={(event) => setProductIds(event.target.value)}
-            placeholder="productId1,productId2"
-            className="w-full p-space-2 text-text-body"
-            style={inputStyle}
-          />
-        </label>
-        {renderActionButton('stripeProducts', 'Run Stripe Sync', () => {
-          const ids = productIds
-            .split(',')
-            .map((part) => part.trim())
-            .filter(Boolean)
-          invokeBackfill('stripeProducts', 'backfillStripeProducts', {
-            body: {
-              mode: productMode,
-              limit: parseLimit(productLimit),
-              ...(ids.length ? {productIds: ids} : {}),
-            },
-          })
-        })}
-        {renderMessage('stripeProducts')}
-      </section>
     </div>
   )
 })

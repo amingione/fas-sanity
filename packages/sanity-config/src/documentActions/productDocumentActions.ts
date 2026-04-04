@@ -375,57 +375,6 @@ const createPreviewServicePackageAction =
     }
   }
 
-const createSyncStripeAction =
-  (_context: DocumentActionsContext): DocumentActionComponent =>
-  (props) => {
-    const toast = useToast()
-    const bases = getNetlifyFunctionBaseCandidates()
-
-    if (!isProduct(props)) return null
-
-    return {
-      label: 'Sync to Stripe',
-      icon: LaunchIcon,
-      tone: 'primary',
-      onHandle: async () => {
-        const targetId = props.draft?._id || props.published?._id || props.id
-        if (!targetId) {
-          toast.push({status: 'warning', title: 'Missing product id'})
-          props.onComplete()
-          return
-        }
-
-        let lastError: string | null = null
-        for (const base of bases) {
-          try {
-            const response = await fetch(`${base}/.netlify/functions/syncStripeCatalog`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({mode: 'ids', ids: [targetId]}),
-            })
-            if (response.ok) {
-              toast.push({status: 'success', title: 'Stripe sync triggered'})
-              props.onComplete()
-              return
-            }
-            const message = await response.text()
-            lastError = message || response.statusText
-          } catch (error) {
-            lastError =
-              error instanceof Error ? error.message : typeof error === 'string' ? error : 'Error'
-          }
-        }
-
-        toast.push({
-          status: 'warning',
-          title: 'Unable to trigger Stripe sync',
-          description: lastError || 'No Netlify base responded',
-        })
-        props.onComplete()
-      },
-    }
-  }
-
 const createSyncToMedusaAction =
   (_context: DocumentActionsContext): DocumentActionComponent =>
   (props) => {
@@ -515,7 +464,6 @@ export function resolveProductDocumentActions(
   const generateCodesAction = createGenerateCodesAction(context)
   const duplicateServicePackageAction = createDuplicateServicePackageAction(context)
   const previewServicePackageAction = createPreviewServicePackageAction(context)
-  const syncStripeAction = createSyncStripeAction(context)
   const syncToMedusaAction = createSyncToMedusaAction(context)
   const NormalizeRefsAction: DocumentActionComponent = (props) => {
     const toast = useToast()
@@ -586,7 +534,6 @@ export function resolveProductDocumentActions(
     generateCodesAction,
     duplicateServicePackageAction,
     previewServicePackageAction,
-    syncStripeAction,
     syncToMedusaAction,
     NormalizeRefsAction,
   ]

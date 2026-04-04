@@ -219,7 +219,6 @@ import Layout from '../layouts/Layout.astro'
       event.preventDefault()
       if (!form || !message) return
 
-      const formData = new FormData(form)
       const submitButton = form.querySelector('button[type="submit"]')
       if (!(submitButton instanceof HTMLButtonElement)) return
 
@@ -229,31 +228,17 @@ import Layout from '../layouts/Layout.astro'
       message.textContent = 'Submitting application, please wait.'
 
       try {
-        const response = await fetch('/.netlify/functions/vendor-application', {
-          method: 'POST',
-          body: formData,
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result?.error || 'Submission failed')
-        }
-
         message.innerHTML = `
-          <div class="success-message">
-            <h3><span aria-hidden="true">✅</span> Application Submitted Successfully!</h3>
-            <p><strong>Application Number:</strong> ${result.applicationNumber}</p>
-            <p>Thank you for your interest in becoming a FAS Motorsports vendor.
-            We'll review your application and get back to you within 2-3 business days.</p>
-            <p>If you have any questions, please contact us at
-            <a href="mailto:sales@fasmotorsports.com">sales@fasmotorsports.com</a></p>
+          <div class="error-message">
+            <h3><span aria-hidden="true">⚠️</span> Submissions Temporarily Disabled</h3>
+            <p>Vendor application submission from this page has been removed.</p>
+            <p>Please email
+            <a href="mailto:sales@fasmotorsports.com">sales@fasmotorsports.com</a>
+            to request onboarding.</p>
           </div>
         `
-        form.reset()
-        toggleTaxUpload()
         submitButton.disabled = false
-        submitButton.textContent = 'Submit Application'
+        submitButton.textContent = 'Submission Unavailable'
       } catch (error) {
         const description =
           error instanceof Error ? error.message : 'Please try again or contact us directly.'

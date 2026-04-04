@@ -2,10 +2,8 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react'
 import {PDFDocument} from 'pdf-lib'
 import {
-  Box,
   Button,
   Checkbox,
-  Dialog,
   Flex,
   Heading,
   Inline,
@@ -225,13 +223,7 @@ export default function OrdersDocumentTable({
   const [searchTerm, setSearchTerm] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const [bulkBusy, setBulkBusy] = useState(false)
-  const [trackingDialog, setTrackingDialog] = useState<{open: boolean; targetIds: string[]}>({
-    open: false,
-    targetIds: [],
-  })
   const toast = useToast()
-  const [trackingNumber, setTrackingNumber] = useState('')
-  const [trackingUrl, setTrackingUrl] = useState('')
   const [activeTab, setActiveTab] = useState<OrderTabId>('all')
   const [openCount, setOpenCount] = useState<number | null>(null)
   const [orderTypeFilter, setOrderTypeFilter] = useState<string | null>(null)
@@ -413,42 +405,6 @@ export default function OrdersDocumentTable({
       }
     },
     [client],
-  )
-
-  const fulfillOrders = useCallback(
-    async (ids: string[]) => {
-      const failures: string[] = []
-      for (const id of ids) {
-        try {
-          await callNetlifyFunction('fulfillOrder', {orderId: id})
-        } catch (err) {
-          console.error('Fulfill failed for', id, err)
-          failures.push(id)
-        }
-      }
-      return failures
-    },
-    [],
-  )
-
-  const cancelOrders = useCallback(
-    async (ids: string[], reason?: string) => {
-      const failures: string[] = []
-      const normalizedReason = reason?.trim() || undefined
-      for (const id of ids) {
-        try {
-          await callNetlifyFunction('cancelOrder', {
-            orderId: id,
-            reason: normalizedReason,
-          })
-        } catch (err) {
-          console.error('Cancel failed for', id, err)
-          failures.push(id)
-        }
-      }
-      return failures
-    },
-    [],
   )
 
   const printPackingSlips = useCallback(
@@ -665,21 +621,6 @@ export default function OrdersDocumentTable({
     [currentItems, fetchLabelPdf, mergePdfBuffers, toast],
   )
 
-  const handleBulkFulfill = useCallback(async () => {
-    if (!selectedCount) return
-    setBulkBusy(true)
-    try {
-      const failed = await fulfillOrders(selectedIdList)
-      setRefreshKey((key) => key + 1)
-      setSelectedIds(new Set())
-      if (failed.length) {
-        window.alert(`Fulfillment failed for ${failed.length} order(s). Check logs for details.`)
-      }
-    } finally {
-      setBulkBusy(false)
-    }
-  }, [fulfillOrders, selectedCount, selectedIdList])
-
   const handleBulkPrint = useCallback(async () => {
     if (!selectedCount) return
     setBulkBusy(true)
@@ -691,33 +632,6 @@ export default function OrdersDocumentTable({
       setBulkBusy(false)
     }
   }, [printPackingSlips, selectedCount, selectedIdList])
-
-  const handleBulkCancel = useCallback(async () => {
-    if (!selectedCount) return
-    const confirmed = window.confirm(
-      `Cancel ${selectedCount} order${selectedCount === 1 ? '' : 's'}? This cannot be undone.`,
-    )
-    if (!confirmed) return
-    const reason = window.prompt('Reason for cancellation (optional):') || undefined
-    setBulkBusy(true)
-    try {
-      const failed = await cancelOrders(selectedIdList, reason || undefined)
-      setRefreshKey((key) => key + 1)
-      setSelectedIds(new Set())
-      if (failed.length) {
-        window.alert(`Unable to cancel ${failed.length} order(s). Check logs for details.`)
-      } else {
-        window.alert('Orders cancelled.')
-      }
-    } finally {
-      setBulkBusy(false)
-    }
-  }, [cancelOrders, selectedCount, selectedIdList])
-
-  const handleBulkTracking = useCallback(() => {
-    if (!selectedCount) return
-    setTrackingDialog({open: true, targetIds: selectedIdList})
-  }, [selectedCount, selectedIdList])
 
   const headerContent = (
     <Stack space={3}>
@@ -800,13 +714,7 @@ export default function OrdersDocumentTable({
             />
           }
           menu={
-            <Menu>
-              <MenuItem
-                text="Fulfill orders"
-                tone="positive"
-                disabled={selectedCount === 0 || bulkBusy}
-                onClick={handleBulkFulfill}
-              />
+              <Menu>
               <MenuItem
                 text="Print packing slips"
                 tone="primary"
@@ -817,17 +725,6 @@ export default function OrdersDocumentTable({
                 text="Print shipping labels"
                 disabled={selectedCount === 0 || bulkBusy}
                 onClick={() => printShippingLabels(selectedIdList)}
-              />
-              <MenuItem
-                text="Add tracking"
-                disabled={selectedCount === 0 || bulkBusy}
-                onClick={handleBulkTracking}
-              />
-              <MenuItem
-                text="Cancel orders"
-                tone="critical"
-                disabled={selectedCount === 0 || bulkBusy}
-                onClick={handleBulkCancel}
               />
               <MenuDivider />
               <MenuItem
@@ -990,61 +887,6 @@ export default function OrdersDocumentTable({
           },
         ]}
       />
-      {trackingDialog.open ? (
-        <Dialog
-          id="orders-add-tracking"
-          header={`Add tracking (${trackingDialog.targetIds.length})`}
-          onClose={() => setTrackingDialog({open: false, targetIds: []})}
-          width={1}
-        >
-          <Box padding={4}>
-            <Stack space={3}>
-              <Text size={1}>Tracking number</Text>
-              <TextInput
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.currentTarget.value)}
-                placeholder="1Z… / JJD… / etc."
-              />
-              <Text size={1}>Tracking URL (optional)</Text>
-              <TextInput
-                value={trackingUrl}
-                onChange={(e) => setTrackingUrl(e.currentTarget.value)}
-                placeholder="https://carrier.example/track/…"
-              />
-              <Flex gap={2} marginTop={3}>
-                <Button
-                  text="Save + notify"
-                  tone="positive"
-                  disabled={!trackingNumber.trim()}
-                  onClick={async () => {
-                    const number = trackingNumber.trim()
-                    const url = trackingUrl.trim() || undefined
-                    for (const id of trackingDialog.targetIds) {
-                      try {
-                        await callNetlifyFunction('manual-fulfill-order', {
-                          orderId: id,
-                          trackingNumber: number,
-                          trackingUrl: url,
-                        })
-                      } catch (err) {
-                        console.error('Manual fulfill failed for', id, err)
-                      }
-                    }
-                    setTrackingDialog({open: false, targetIds: []})
-                    setTrackingNumber('')
-                    setTrackingUrl('')
-                  }}
-                />
-                <Button
-                  text="Cancel"
-                  mode="bleed"
-                  onClick={() => setTrackingDialog({open: false, targetIds: []})}
-                />
-              </Flex>
-            </Stack>
-          </Box>
-        </Dialog>
-      ) : null}
     </>
   )
 }

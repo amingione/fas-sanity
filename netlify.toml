@@ -59,21 +59,11 @@
   name = "update-customer-segments"
   schedule = "30 3 * * *"
 
-[[scheduled_function]]
-  name = "inventoryReorderCheck"
-  schedule = "0 9 * * *"
-
 # Bypass redirect for known static assets
 [[redirects]]
   from = "/site.webmanifest"
   to = "/site.webmanifest"
   status = 200
-
-[[redirects]]
-  from = "/webhooks/shippo"
-  to = "/.netlify/functions/shippo-webhook"
-  status = 200
-  force = true
 
 [[redirects]]
   from = "/webhooks/sanity-order-sync"
@@ -128,35 +118,6 @@
   status = 301
   force = true
   conditions = { Host = ["fasmotorsports.us", "www.fasmotorsports.us"] }
-
-
-# ─── DEPRECATED COMMERCE FUNCTIONS ─────────────────────────────────────────
-# These Netlify functions called Stripe/Shippo directly, violating AGENTS.md.
-# Stripe webhooks and order creation are now owned by Medusa (fas-medusa).
-# Requests are returned as 410 Gone to prevent split-brain order handling.
-[[redirects]]
-  from = "/.netlify/functions/createCheckoutSession"
-  to = "/gone"
-  status = 410
-  force = true
-
-[[redirects]]
-  from = "/.netlify/functions/stripeWebhook"
-  to = "/gone"
-  status = 410
-  force = true
-
-[[redirects]]
-  from = "/.netlify/functions/manual-fulfill-order"
-  to = "/gone"
-  status = 410
-  force = true
-
-[[redirects]]
-  from = "/.netlify/functions/stripeWebhookHandler"
-  to = "/gone"
-  status = 410
-  force = true
 
 # SPA catch-all for Sanity Studio (served at fassanity.fasmotorsports.com)
 # NOTE: This site should NOT receive requests for www.fasmotorsports.com/checkout
