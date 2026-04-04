@@ -186,13 +186,14 @@ function checkDashUsesMedusa(): CheckResult[] {
   return results;
 }
 
-/** R5: All repos must have AGENTS.md referencing Medusa */
+/** R5: All repos must have governance docs aligned to AGENTS + docs/governance */
 function checkGovernanceFiles(): CheckResult[] {
   const results: CheckResult[] = [];
   for (const [name, repoPath] of Object.entries(REPOS)) {
     const repo = name as RepoName;
     const agentsFile = path.join(repoPath, "AGENTS.md");
-    const claudeFile = path.join(repoPath, "CLAUDE.md");
+    const trackerFile = path.join(repoPath, "docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md");
+    const releaseChecklistFile = path.join(repoPath, "docs/governance/RELEASE_CHECKLIST.md");
 
     if (!exists(agentsFile)) {
       results.push(fail("R5-governance-files", repo, "AGENTS.md missing",
@@ -207,11 +208,18 @@ function checkGovernanceFiles(): CheckResult[] {
       }
     }
 
-    if (!exists(claudeFile)) {
-      results.push(warn("R5-governance-files", repo, "CLAUDE.md missing",
-        { remediation: `Create CLAUDE.md in ${repoPath} with role, stack, and architecture rules` }));
+    if (!exists(trackerFile)) {
+      results.push(fail("R5-governance-files", repo, "FAS_4_REPO_PIPELINE_TASK_TRACKER.md missing",
+        { remediation: `Sync docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md into ${repoPath}` }));
     } else {
-      results.push(pass("R5-governance-files", repo, "CLAUDE.md present"));
+      results.push(pass("R5-governance-files", repo, "FAS_4_REPO_PIPELINE_TASK_TRACKER.md present"));
+    }
+
+    if (!exists(releaseChecklistFile)) {
+      results.push(fail("R5-governance-files", repo, "RELEASE_CHECKLIST.md missing",
+        { remediation: `Sync docs/governance/RELEASE_CHECKLIST.md into ${repoPath}` }));
+    } else {
+      results.push(pass("R5-governance-files", repo, "RELEASE_CHECKLIST.md present"));
     }
   }
   return results;

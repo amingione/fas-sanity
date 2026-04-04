@@ -425,8 +425,8 @@ codex-%-enforce:
 
 compliance-check:
 	@echo "🔍 FAS Architecture Compliance Check (all 4 repos)"
-	@npx ts-node scripts/compliance/fas-compliance-check.ts
+	@npx tsx scripts/compliance/fas-compliance-check.ts
 
 compliance-check-fix:
 	@echo "📋 Showing remediation steps for all failing checks..."
-	@npx ts-node scripts/compliance/fas-compliance-check.ts 2>&1 | grep -A1 "Fix:"
+	@npx tsx scripts/compliance/fas-compliance-check.ts 2>&1 | grep -A1 "Fix:"
