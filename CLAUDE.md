@@ -99,6 +99,72 @@ RESEND_API_KEY=...
 VENDOR_WEBHOOK_SECRET=...   # same value as fas-medusa Railway env
 ```
 
+### AI — Claude Proxy
+Used by: `netlify/functions/claude-chat.ts`
+Returns 500 if absent — AI chat in Sanity Studio broken.
+```
+ANTHROPIC_API_KEY             required — Claude API key for Studio AI chat proxy
+ANTHROPIC_MODEL               optional — defaults to claude-3-5-sonnet; override to pin model
+```
+
+### SMS — Twilio
+Used by: `netlify/functions/notify-sms.ts`
+Returns 500 if absent — SMS notifications broken.
+```
+TWILIO_ACCOUNT_SID            required
+TWILIO_AUTH_TOKEN             required
+TWILIO_PHONE_NUMBER           required
+```
+
+### Google Ads — Customer Match
+Used by: `netlify/functions/uploadCustomerMatch.ts`
+Silently fails if absent.
+```
+GOOGLE_ADS_CLIENT_ID          required
+GOOGLE_ADS_CLIENT_SECRET      required
+GOOGLE_ADS_REFRESH_TOKEN      required
+GOOGLE_ADS_DEVELOPER_TOKEN    required
+GOOGLE_ADS_LOGIN_CUSTOMER_ID  required
+GOOGLE_ADS_CUSTOMER_ID        required
+GOOGLE_ADS_CUSTOMER_MATCH_LIST required
+```
+
+### Google Merchant Center
+Used by: `netlify/functions/syncMerchantProducts.ts`, `netlify/functions/merchantFeed.ts`
+```
+GOOGLE_MERCHANT_ID                    required — Merchant Center account ID
+GOOGLE_SERVICE_ACCOUNT_EMAIL          required — service account for googleapis auth
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY    required — PEM key for service account
+MERCHANT_SYNC_SECRET                  required — auth guard for syncMerchantProducts endpoint
+MERCHANT_FEED_API_SECRET              required — auth guard for merchantFeed endpoint (open without this)
+SITE_BASE_URL                         required by syncMerchantProducts — product URL prefix
+```
+
+### Backfill Auth Guards
+```
+SYNC_BACKFILL_SECRET    required — auth guard for syncSanityProductsToMedusa (open endpoint without this)
+```
+
+### Vendor Timeline Reconciliation
+Used by: `netlify/functions/vendor-timeline-reconcile.ts`
+```
+VENDOR_TIMELINE_RECONCILE_SECRET    optional — falls back to VENDOR_WEBHOOK_SECRET if absent; document the fallback in ops runbook
+```
+
+### Stripe Financial Connections (Optional)
+Used by: `netlify/functions/createFinancialConnectionSession.ts`
+Falls back to PUBLIC_COMPANY_NAME / PUBLIC_STUDIO_URL if absent.
+```
+FINANCIAL_CONNECTIONS_BUSINESS_NAME   optional — display name in Stripe FC modal
+FINANCIAL_CONNECTIONS_RETURN_URL      optional — redirect after FC session
+```
+
+### Log Drain (Optional)
+Used by: `netlify/functions/logDrainProxy.ts`
+```
+LOG_DRAIN_ENABLED    optional — set to "false" to disable proxy; enabled by default
+```
+
 ---
 
 ## What NOT to Do
