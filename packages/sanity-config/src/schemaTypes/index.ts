@@ -129,6 +129,12 @@ import vendorDocument from './documents/vendorDocument'
 import vendorReturn from './documents/vendorReturn'
 import vendorMessage from './documents/vendorMessage'
 import vendorProductSubmission from './documents/vendorProductSubmission'
+import expense from './documents/expense'
+import appointment from './documents/appointment'
+import workOrder from './documents/workOrder'
+import inventoryRecord from './documents/inventoryRecord'
+import manufacturingOrder from './documents/manufacturingOrder'
+import shipment from './documents/shipment'
 
 const annotations = [linkEmailType, linkExternalType, linkInternalType, linkProductType]
 
@@ -249,6 +255,12 @@ const documents = [
   vendorReturn,
   vendorMessage,
   vendorProductSubmission,
+  expense,
+  appointment,
+  workOrder,
+  inventoryRecord,
+  manufacturingOrder,
+  shipment,
 ]
 
 export const schemaTypes = [...annotations, ...objects, ...singletons, ...blocks, ...documents]
