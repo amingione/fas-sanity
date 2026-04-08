@@ -10,7 +10,7 @@ const product = defineType({
     {name: 'content', title: 'Content', default: true},
     {name: 'compatibility', title: 'Compatibility'},
     {name: 'seo', title: 'SEO'},
-    {name: 'integration', title: 'Medusa Bridge'},
+    {name: 'integration', title: 'Medusa Bridge (read-only)'},
   ],
   fields: [
     defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required(), group: 'content'}),

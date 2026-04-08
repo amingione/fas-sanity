@@ -15,11 +15,31 @@ const repoRoot = path.resolve(scriptDir, '../..')
 const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const referenceTypeMatcher = /\btype\s*:\s*['"`]reference['"`]/
 
+/**
+ * Returns true when the candidate line sits inside a defineField block that is
+ * both readOnly: true AND group: 'integration'.  These are intentional
+ * read-only mirrors of Medusa/Stripe data (WS1-3) and must not be flagged as
+ * commerce-authority drift.  A symmetric ±8-line window is used so both
+ * single-line and multi-line field declarations are covered.
+ */
+const isReadOnlyIntegrationContext = (lines, lineIndex, windowSize = 8) => {
+  const start = Math.max(0, lineIndex - windowSize)
+  const end = Math.min(lines.length - 1, lineIndex + windowSize)
+  const windowText = lines.slice(start, end + 1).join('\n')
+  return (
+    /\breadOnly\s*:\s*true\b/.test(windowText) &&
+    /\bgroup\s*:\s*['"`]integration['"`]/.test(windowText)
+  )
+}
+
 const findMatches = ({lines, matcher, filePath, kind, token}) => {
   const matches = []
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
     if (matcher.test(line)) {
+      if (isReadOnlyIntegrationContext(lines, index)) {
+        continue
+      }
       matches.push({
         kind,
         token,

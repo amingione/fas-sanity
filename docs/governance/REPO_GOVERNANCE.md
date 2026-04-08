@@ -1,7 +1,7 @@
 # fas-sanity — Repo Governance
 
 **Role in Pipeline:** Content layer (Sanity CMS)
-**Last Updated:** 2026-04-02
+**Last Updated:** 2026-04-08
 
 ---
 
@@ -28,9 +28,28 @@ Sanity (content) → Medusa (commerce) → fas-cms-fresh + fas-dash → Stripe/S
 - Call Shippo SDK directly
 - Expand legacy Netlify commerce functions (4 are 410 GONE)
 
-## Authority Boundary Status (2026-04-02)
+## Read-Only Integration Field Pattern (WS1-3)
 
-- ✅ Integration group schema fields: all `readOnly: true`
+Schemas that mirror Medusa/Stripe commerce data follow this pattern to enforce content-only boundaries:
+
+1. **Group separation** — All mirrored fields are placed in a dedicated `integration` group (Studio tab titled "Medusa Bridge (read-only)"), visually isolated from editable content fields.
+2. **`readOnly: true`** — Every integration group field carries `readOnly: true` so Sanity Studio renders them as non-editable, preventing accidental writes.
+3. **Field descriptions** — Individual integration fields include a description noting they are "Mirrored from Medusa – read-only."
+
+Affected schemas: `product`, `productVariant`, `collection`.
+
+### CI Guard
+
+`scripts/ci/check-content-schema-commerce-authority.mjs` (run via `npm run guard:content-schema-authority`) enforces that no unauthorized commerce authority fields appear in content-focused schemas.
+
+- Fields that are both `readOnly: true` **and** in `group: 'integration'` are exempt — they are intentional read-only mirrors, not authority drift.
+- Any commerce field added to a content schema without `readOnly: true` + `group: 'integration'` will fail the guard.
+
+## Authority Boundary Status (2026-04-08)
+
+- ✅ Integration group schema fields: all `readOnly: true` (product, productVariant, collection)
+- ✅ productVariant and collection schemas: `integration` group added, mirrored fields clearly separated
+- ✅ CI guard: exempts properly-labeled read-only integration mirrors; flags unauthorized commerce authority
 - ✅ Legacy Netlify functions (createCheckoutSession, stripeWebhook, manual-fulfill-order, createRefund): 410 GONE
 - ✅ One-time migration scripts: moved to scripts/archive/
 - ✅ Stale governance docs: moved to docs/archive/
