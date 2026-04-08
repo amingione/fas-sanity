@@ -283,6 +283,115 @@ function checkFlowLoggerPresent(): CheckResult[] {
   return [warn("R9-flow-logger","fas-cms-fresh","logger.ts exists but may be missing withFlowLog or FAILURE_MAP")];
 }
 
+/**
+ * R10 (WS2-3): fas-dash product operation routes must use Medusa admin APIs exclusively.
+ *
+ * Governance: https://github.com/amingione/fas-sanity/issues/228
+ * Tracker:    WS2-3 in docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md
+ *
+ * Checks:
+ *   (a) Product mutation routes call medusaAdminFetch — no direct Sanity/Stripe writes
+ *   (b) Product routes target /admin/products paths (not Sanity patch for product state)
+ *   (c) No split-authority: a single product update must not write to both Medusa and Sanity
+ */
+function checkDashProductOpsMedusaOnly(): CheckResult[] {
+  const results: CheckResult[] = [];
+  const productsApiDir = path.join(REPOS["fas-dash"], "src/app/api/products");
+
+  if (!exists(productsApiDir)) {
+    results.push(skip(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      "src/app/api/products not found — skip (repo may not be co-located)"
+    ));
+    return results;
+  }
+
+  // (a) Any direct Sanity write (patch/create) inside product API routes is a split-authority violation
+  const sanityWrites = grep(
+    "sanityClient\\.patch\\(\\|sanityClient\\.create\\(\\|client\\.patch\\(\\|client\\.create\\(",
+    productsApiDir
+  );
+  if (sanityWrites.length > 0) {
+    results.push(fail(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      `Split-authority violation: ${sanityWrites.length} product API route(s) write to Sanity — Medusa must be the sole product authority`,
+      {
+        file: sanityWrites[0],
+        remediation: "Remove Sanity writes from product routes. All product mutations must go through medusaAdminFetch('/admin/products/:id', ...).",
+      }
+    ));
+  } else {
+    results.push(pass(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      "No Sanity writes detected in product API routes (WS2-3 ✅)"
+    ));
+  }
+
+  // (b) Product mutation routes should reference medusaAdminFetch
+  const medusaAdminCalls = grep("medusaAdminFetch", productsApiDir);
+  if (medusaAdminCalls.length === 0) {
+    results.push(warn(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      "No medusaAdminFetch calls found in product API routes — verify product operations route through Medusa",
+      {
+        remediation: "Product PATCH/POST/DELETE routes must call medusaAdminFetch('/admin/products/:id', ...) — see src/lib/medusa-admin.ts",
+      }
+    ));
+  } else {
+    results.push(pass(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      `Product API routes use medusaAdminFetch (${medusaAdminCalls.length} file(s) verified) (WS2-3 ✅)`
+    ));
+  }
+
+  // (c) No direct Stripe SDK calls in product routes (e.g. stripe.products.create)
+  const stripeInProducts = grep(
+    "stripe\\.products\\|stripe\\.prices\\|new Stripe",
+    productsApiDir
+  );
+  if (stripeInProducts.length > 0) {
+    results.push(fail(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      `Direct Stripe calls in product routes: ${stripeInProducts.length} file(s) — product authority must be Medusa-only`,
+      {
+        file: stripeInProducts[0],
+        remediation: "Remove stripe.products / stripe.prices calls. Product sync is Medusa → Stripe via Medusa payment provider, never direct.",
+      }
+    ));
+  } else {
+    results.push(pass(
+      "R10-ws2-3-dash-product-ops",
+      "fas-dash",
+      "No direct Stripe product/price calls in product routes (WS2-3 ✅)"
+    ));
+  }
+
+  // (d) Audit document must be present as formal sign-off evidence
+  const auditDoc = path.join(REPOS["fas-sanity"], "docs/governance/WS2-3-DASH-PRODUCT-OPS-AUDIT.md");
+  if (!exists(auditDoc)) {
+    results.push(warn(
+      "R10-ws2-3-dash-product-ops",
+      "fas-sanity",
+      "WS2-3 audit document not found at docs/governance/WS2-3-DASH-PRODUCT-OPS-AUDIT.md",
+      { remediation: "Create the audit document to formally close WS2-3 cross-repo governance." }
+    ));
+  } else {
+    results.push(pass(
+      "R10-ws2-3-dash-product-ops",
+      "fas-sanity",
+      "WS2-3 cross-repo audit document present (WS2-3 ✅)"
+    ));
+  }
+
+  return results;
+}
+
 // ─── Runner ──────────────────────────────────────────────────────────────────
 
 function runAllChecks(): CheckResult[] {
@@ -296,6 +405,7 @@ function runAllChecks(): CheckResult[] {
     ...checkMedusaOwnsStripeWebhook(),
     ...checkOtelEnabled(),
     ...checkFlowLoggerPresent(),
+    ...checkDashProductOpsMedusaOnly(),
   ];
 }
 
