@@ -24,7 +24,7 @@ import {media} from 'sanity-plugin-media'
 import {cloudinaryAssetSourcePlugin} from 'sanity-plugin-cloudinary'
 import {assist} from '@sanity/assist'
 // Removed presentation/preview tool
-import schemaTypes from './src/schemaTypes/index'
+import {schemaTypes} from './src/schemaTypes/index'
 import {deskStructure} from './src/desk/deskStructure'
 import {deskStructureBuilderTool} from './src/plugins/deskStructureBuilder'
 import resolveDocumentActions from './src/resolveDocumentActions'

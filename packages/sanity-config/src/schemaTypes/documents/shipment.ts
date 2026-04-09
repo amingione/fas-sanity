@@ -56,11 +56,11 @@ export default defineType({
       ],
     }),
     defineField({
-      name: 'order',
-      title: 'Order',
-      type: 'reference',
-      weak: true,
-      to: [{type: 'order'}],
+      name: 'medusaOrderId',
+      title: 'Medusa Order ID',
+      type: 'string',
+      description: 'Read-only reference to the Medusa order. Commerce authority lives in Medusa.',
+      readOnly: true,
     }),
     defineField({
       name: 'invoice',

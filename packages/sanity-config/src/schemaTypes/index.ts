@@ -131,6 +131,8 @@ import vendorMessage from './documents/vendorMessage'
 import vendorProductSubmission from './documents/vendorProductSubmission'
 import expense from './documents/expense'
 import appointment from './documents/appointment'
+import vehicle from './documents/vehicle'
+import service from './documents/service'
 import workOrder from './documents/workOrder'
 import inventoryRecord from './documents/inventoryRecord'
 import manufacturingOrder from './documents/manufacturingOrder'
@@ -257,6 +259,8 @@ const documents = [
   vendorProductSubmission,
   expense,
   appointment,
+  vehicle,
+  service,
   workOrder,
   inventoryRecord,
   manufacturingOrder,
