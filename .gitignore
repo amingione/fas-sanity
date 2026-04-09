@@ -26,6 +26,7 @@ yarn-error.log*
 Thumbs.db
 .vscode/*
 !.vscode/launch.json
+.claude/launch.json
 *.swp
 *.swo
 *.save

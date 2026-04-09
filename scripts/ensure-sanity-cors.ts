@@ -2,7 +2,27 @@ import 'dotenv/config'
 import fetch from 'node-fetch'
 
 const projectId = process.env.SANITY_STUDIO_PROJECT_ID || 'r4og35qd'
-const token = process.env.SANITY_API_TOKEN || process.env.SANITY_DEPLOY_TOKEN
+const tokenEnvKeys = [
+  'SANITY_API_TOKEN',
+  'SANITY_DEPLOY_TOKEN',
+  'SANITY_AUTH_TOKEN',
+  'SANITY_STUDIO_API_TOKEN',
+  'SANITY_WRITE_TOKEN',
+] as const
+
+const resolveToken = () => {
+  for (const key of tokenEnvKeys) {
+    const value = process.env[key]
+    if (typeof value === 'string' && value.trim()) {
+      return {token: value, source: key}
+    }
+  }
+
+  return {token: '', source: undefined}
+}
+
+const tokenResolution = resolveToken()
+const token = tokenResolution.token
 
 class SanityCorsPermissionError extends Error {
   constructor(status: number, body: string) {
@@ -68,10 +88,24 @@ async function addOrigin(origin: string) {
 
 async function ensureCors() {
   if (!token) {
+    const populatedKeys = tokenEnvKeys.filter((key) => {
+      const value = process.env[key]
+      return typeof value === 'string' && value.trim().length > 0
+    })
+
     console.warn(
-      'Skipping Sanity CORS configuration: set SANITY_API_TOKEN (or SANITY_DEPLOY_TOKEN).',
+      'Skipping Sanity CORS configuration: set SANITY_API_TOKEN (preferred) or SANITY_DEPLOY_TOKEN/SANITY_AUTH_TOKEN.',
+    )
+    console.warn(
+      `Sanity token env check (names only): ${populatedKeys.length ? populatedKeys.join(', ') : 'none set'}.`,
     )
     return
+  }
+
+  if (tokenResolution.source && tokenResolution.source !== 'SANITY_API_TOKEN') {
+    console.log(
+      `Using ${tokenResolution.source} for Sanity CORS automation (SANITY_API_TOKEN is preferred).`,
+    )
   }
 
   const requiredOrigins = await getRequiredOrigins()
