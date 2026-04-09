@@ -7,7 +7,7 @@ export const productVariantType = defineType({
   description: 'Content-only variant enrichment tied to a Medusa variant. Medusa owns pricing, inventory, and commerce state.',
   groups: [
     {name: 'content', title: 'Content', default: true},
-    {name: 'integration', title: 'Medusa Bridge'},
+    {name: 'integration', title: 'Medusa Bridge (read-only)'},
   ],
   fields: [
     defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required(), group: 'content'}),

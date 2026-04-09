@@ -8,7 +8,7 @@ export const collectionType = defineType({
   icon: PackageIcon,
   groups: [
     {name: 'content', title: 'Content', default: true},
-    {name: 'integration', title: 'Medusa Bridge'},
+    {name: 'integration', title: 'Medusa Bridge (read-only)'},
   ],
   fields: [
     defineField({name: 'title', type: 'string', validation: (Rule) => Rule.required(), group: 'content'}),

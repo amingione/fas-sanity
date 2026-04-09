@@ -16,19 +16,47 @@ const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const referenceTypeMatcher = /\btype\s*:\s*['"`]reference['"`]/
 
 /**
- * Returns true when the candidate line sits inside a defineField block that is
- * both readOnly: true AND group: 'integration'.  These are intentional
- * read-only mirrors of Medusa/Stripe data (WS1-3) and must not be flagged as
- * commerce-authority drift.  A symmetric ±8-line window is used so both
- * single-line and multi-line field declarations are covered.
+ * Extracts the text of the innermost defineField(...) block that encloses
+ * the given line index.  Walks backwards to locate the nearest
+ * `defineField(` opener, then counts parentheses forward to find the
+ * matching close.  Returns null when no enclosing block is found.
  */
-const isReadOnlyIntegrationContext = (lines, lineIndex, windowSize = 8) => {
-  const start = Math.max(0, lineIndex - windowSize)
-  const end = Math.min(lines.length - 1, lineIndex + windowSize)
-  const windowText = lines.slice(start, end + 1).join('\n')
+const getEnclosingDefineFieldText = (lines, lineIndex) => {
+  let start = lineIndex
+  while (start >= 0 && !lines[start].includes('defineField(')) {
+    start -= 1
+  }
+  if (start < 0) return null
+
+  let depth = 0
+  for (let i = start; i < lines.length; i += 1) {
+    for (const ch of lines[i]) {
+      if (ch === '(') depth += 1
+      else if (ch === ')') {
+        depth -= 1
+        if (depth === 0) {
+          return lines.slice(start, i + 1).join('\n')
+        }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Returns true when the matched field name sits inside a defineField block
+ * that is both readOnly: true AND group: 'integration'.  These are
+ * intentional read-only mirrors of Medusa/Stripe data (WS1-3) and must not
+ * be flagged as commerce-authority drift.
+ * Only applies to field-name violations; type/reference violations are
+ * always reported regardless of context.
+ */
+const isReadOnlyIntegrationField = (lines, lineIndex) => {
+  const blockText = getEnclosingDefineFieldText(lines, lineIndex)
+  if (!blockText) return false
   return (
-    /\breadOnly\s*:\s*true\b/.test(windowText) &&
-    /\bgroup\s*:\s*['"`]integration['"`]/.test(windowText)
+    /\breadOnly\s*:\s*true\b/.test(blockText) &&
+    /\bgroup\s*:\s*['"`]integration['"`]/.test(blockText)
   )
 }
 
@@ -37,7 +65,7 @@ const findMatches = ({lines, matcher, filePath, kind, token}) => {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
     if (matcher.test(line)) {
-      if (isReadOnlyIntegrationContext(lines, index)) {
+      if (isReadOnlyIntegrationField(lines, index)) {
         continue
       }
       matches.push({
