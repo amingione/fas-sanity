@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Sanity Studio",
+      "runtimeExecutable": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/node_modules/.bin/sanity",
+      "runtimeArgs": ["dev"],
+      "port": 3333
+    },
+    {
+      "name": "Netlify Functions (via CLI)",
+      "runtimeExecutable": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/node_modules/.bin/netlify",
+      "runtimeArgs": ["functions:serve", "--functions", "netlify/functions", "--port", "8888"],
+      "port": 8888
+    },
+    {
+      "name": "Local Functions Server (no CLI)",
+      "runtimeExecutable": "/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub/fas-sanity/node_modules/.bin/tsx",
+      "runtimeArgs": ["scripts/local-functions-server.ts"],
+      "port": 8888
+    }
+  ]
+}
