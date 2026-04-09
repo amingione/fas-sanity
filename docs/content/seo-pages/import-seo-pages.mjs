@@ -1,3 +1,4 @@
+/* global process, console */
 /**
  * SANITY SEO PAGE IMPORT SCRIPT
  *

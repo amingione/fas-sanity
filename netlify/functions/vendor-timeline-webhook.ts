@@ -56,7 +56,6 @@ type VendorTimelinePayload = {
 }
 
 const ACCEPTED_VERSIONS = new Set(['1.0', '2026-02-21.v1'])
-
 // ─── HMAC verification ─────────────────────────────────────────────────────────
 
 function verifySignature(rawBody: string, signature: string, secret: string): boolean {

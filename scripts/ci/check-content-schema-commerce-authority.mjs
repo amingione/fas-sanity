@@ -14,6 +14,15 @@ const repoRoot = path.resolve(scriptDir, '../..')
 
 const escapeForRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const referenceTypeMatcher = /\btype\s*:\s*['"`]reference['"`]/
+const integrationGroupMatcher = /\bgroup\s*:\s*['"`]integration['"`]/
+const readOnlyMatcher = /\breadOnly\s*:\s*true\b/
+
+const hasReadOnlyIntegrationContext = ({lines, lineIndex, before = 12, after = 12}) => {
+  const start = Math.max(0, lineIndex - before)
+  const end = Math.min(lines.length - 1, lineIndex + after)
+  const context = lines.slice(start, end + 1).join('\n')
+  return integrationGroupMatcher.test(context) && readOnlyMatcher.test(context)
+}
 
 /**
  * Extracts the text of the innermost defineField(...) block that encloses
@@ -65,8 +74,11 @@ const findMatches = ({lines, matcher, filePath, kind, token}) => {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index]
     if (matcher.test(line)) {
-      if (isReadOnlyIntegrationField(lines, index)) {
-        continue
+      // Sanity integration mirrors are allowed when explicitly read-only and in integration group.
+      if (kind === 'field' || kind === 'type') {
+        if (hasReadOnlyIntegrationContext({lines, lineIndex: index})) {
+          continue
+        }
       }
       matches.push({
         kind,
