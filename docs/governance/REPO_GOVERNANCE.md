@@ -32,7 +32,7 @@ Sanity (content) → Medusa (commerce) → fas-cms-fresh + fas-dash → Stripe/S
 
 Schemas that mirror Medusa/Stripe commerce data follow this pattern to enforce content-only boundaries:
 
-1. **Group separation** — All mirrored fields are placed in a dedicated `integration` group (Studio tab titled "Medusa Bridge (read-only)"), visually isolated from editable content fields.
+1. **Group separation** — All mirrored fields are placed in a dedicated `integration` group (currently labeled "Medusa Bridge" in Studio), visually isolated from editable content fields.
 2. **`readOnly: true`** — Every integration group field carries `readOnly: true` so Sanity Studio renders them as non-editable, preventing accidental writes.
 3. **Field descriptions** — Individual integration fields include a description noting they are "Mirrored from Medusa – read-only."
 
