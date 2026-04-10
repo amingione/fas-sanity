@@ -1,9 +1,6 @@
-# Secrets handling policy:
-# - Local dev (netlify dev): uses env vars only; no AWS secrets or shims
-# - CI/Production: may use @netlify/plugin-secrets-manager + aws-secrets-shim
-# - Plugins must be scoped by context (not conditional)
+# Secrets: dotenvx decrypts .env.production at build + function runtime via DOTENV_KEY
 [build]
-  command = "NODE_OPTIONS=--require=./scripts/aws-secrets-shim.cjs pnpm run build:ci"
+  command = "pnpm exec dotenvx run -f .env.production -- pnpm run build:ci"
   publish = "dist"
 
 [build.environment]
@@ -15,12 +12,8 @@
   SECRETS_SCAN_OMIT_KEYS = "CORS_ALLOW"
 
 [context.production]
-  [[context.production.plugins]]
-    package = "@netlify/plugin-secrets-manager"
 
 [context.deploy-preview]
-  [[context.deploy-preview.plugins]]
-    package = "@netlify/plugin-secrets-manager"
 
 [context.production.environment]
   NODE_ENV = "production"
@@ -29,12 +22,12 @@
   directory = "netlify/functions"
   # Ensure certain deps are not bundled and are resolved from node_modules
   node_bundler = "esbuild"
-  included_files = ["scripts/aws-secrets-shim.cjs"]
-  # Keep AWS SDK available at runtime for the secrets shim (not referenced by functions code directly)
-  external_node_modules = ["get-stream", "@aws-sdk/client-secrets-manager"]
+  included_files = [".env.production"]
+  # dotenvx must remain external so it resolves at /var/task/node_modules/ at runtime
+  external_node_modules = ["@dotenvx/dotenvx"]
 
 [functions.environment]
-  NODE_OPTIONS = "--require=/var/task/scripts/aws-secrets-shim.cjs" # CI/prod runtime preload only.
+  NODE_OPTIONS = "--require /var/task/node_modules/@dotenvx/dotenvx/src/lib/config.js" # dotenvx runtime decryption
 
 [functions.masterBackfill]
   node_module_format = "esm"

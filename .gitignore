@@ -46,8 +46,10 @@ Thumbs.db
 !.env.example
 !.env.development.example
 !.env.*.example
+!.env.production
 .env.*.local
 *.local
+.env.keys
 .env.development.local
 gmc-key.json
 # Vite/Next.js cache (if using)
