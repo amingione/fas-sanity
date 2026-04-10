@@ -27,12 +27,12 @@
   - Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §3`
 - Register Sanity Studio webhooks (product-sync + order-sync → Medusa)
   - Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §1`
-- Publishable key rotation (needs Railway shell) — see runbook §2
+- ~~Publishable key rotation~~ — ✅ RESOLVED: key returns 200, correctly linked
 
 ### ⏳ Still Pending
 - Full curl workflow pass (product → cart → shipping → payment → order)
 - Sanity project ID canonical lock (confirmed `r4og35qd` — needs env audit)
-- Shippo UPS carrier linkage verification
+- ~~Shippo UPS carrier linkage verification~~ — ✅ CONFIRMED: account beeeee156c... enabled in Shippo portal, webhooks firing live
 
 **Sanity Project**: `r4og35qd` | Dataset: `production`
 **Netlify Site IDs**: fassanity=`43b3d2f9-45f1-444a-8672-48a8694cba5b` | ingress=`334cf000-980e-414d-9450-dc983ac92279`

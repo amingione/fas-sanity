@@ -9,7 +9,7 @@ fi
 
 SECRET_NAME="$1"
 REPO_DIR="${2:-.}"
-TARGET_FILE="${3:-.env}"
+TARGET_FILE="${3:-.env.local}"
 SECRET_PATH="$HOME/.local_secrets/$SECRET_NAME"
 TARGET_PATH="$REPO_DIR/$TARGET_FILE"
 
