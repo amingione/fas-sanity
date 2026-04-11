@@ -1,5 +1,5 @@
 # fas-sanity — Phase Progress Log
-_Last updated: 2026-03-15_
+_Last updated: 2026-04-10_
 
 Tracks completion against the canonical architecture package:
 - `docs/governance/checkout-architecture-governance.md`
@@ -23,6 +23,13 @@ Tracks completion against the canonical architecture package:
 | 7 | Hardening & Governance | 🔜 Not Started |
 
 ---
+
+## Recent Updates (2026-04-10)
+
+### ✅ Blockers Resolved
+- **Publishable key issue** — Resolved: `/store/*` routes now return 200 (key `pk_dcb89b...` verified)
+- **Shippo UPS linkage** — Confirmed: UPS shipping integration working correctly
+- **Environment audit baseline** — Stamped via `dotenvx-env-audit.sh` script
 
 ## Completed Work
 
