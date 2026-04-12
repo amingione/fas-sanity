@@ -59,3 +59,12 @@ Affected schemas: `product`, `productVariant`, `collection`.
 - **Canonical tracker:** `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md` (synced from fas-dash)
 - **Release checklist:** `docs/governance/RELEASE_CHECKLIST.md` (synced from fas-dash)
 - **Architecture authority:** `AGENTS.md` (this repo root)
+
+### Symlink Operational Note
+
+`docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md` is a cross-repo canonical file and may appear modified in this repo when updated from another linked repo path.
+
+Expected behavior:
+- AI agents should treat this as normal cross-repo synchronization.
+- Do not flag this file as unexpected churn by default.
+- Verify content if needed, but continue work unless there is clear unintended drift.

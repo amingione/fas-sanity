@@ -14,6 +14,15 @@ This workflow governs AI-assisted delivery across all four FAS repositories:
 
 If any workflow note conflicts with AGENTS.md, AGENTS.md wins.
 
+## Symlinked Tracker Behavior (Expected Git Noise)
+
+`docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md` is a canonical cross-repo file and is symlinked in sibling repos.
+
+Operational rule for AI agents:
+- A local `git status` modification on this file can be expected when work was done from another repo.
+- Treat this as normal cross-repo sync behavior, not an immediate anomaly.
+- Only pause/escalate if the content itself appears unintended or architecture-breaking.
+
 ## Roles
 
 - Discovery/Verification agent: audit and verify only.

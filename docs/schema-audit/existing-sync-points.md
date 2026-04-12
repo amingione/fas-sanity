@@ -1,5 +1,11 @@
 # Existing Sync Points: Sanity ↔ Medusa Integration Mechanisms
 
+> STATUS: HISTORICAL / OUTDATED REFERENCE
+>
+> Last reviewed: 2026-04-12
+> This document predates the current architecture lock in `AGENTS.md` and contains implementation references that may be superseded.
+> Use `docs/system/doc-mapping/DOCUMENT_INVENTORY.md` and governance trackers for current-state integration boundaries.
+
 **Generated:** 2026-02-11
 **Purpose:** Document all current integration points, workflows, webhooks, and sync mechanisms between Sanity CMS and Medusa.js
 **Scope:** Complete runtime integration inventory across all repositories

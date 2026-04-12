@@ -1,5 +1,11 @@
 # Sanity Schema Inventory – Medusa Data Pipeline
 
+> STATUS: HISTORICAL / OUTDATED REFERENCE
+>
+> Last reviewed: 2026-04-12
+> This document predates the current architecture lock in `AGENTS.md` and contains assumptions that are no longer authoritative.
+> Use `docs/system/doc-mapping/DOCUMENT_INVENTORY.md` and `docs/system/mapping-inventory.json` for current-state inventory.
+
 **Generated:** 2026-02-11
 **Purpose:** Complete field-level documentation of Sanity schemas that exchange data with Medusa.js
 **Scope:** Core commerce entities (Product, Order, Customer) + supporting objects

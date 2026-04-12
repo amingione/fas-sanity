@@ -1,5 +1,8 @@
 version: 1
 name: sanity-schema-authority-checklist
+status: complete
+lifecycle: active-governance-checklist
+last_reviewed: 2026-04-12
 checks:
   - id: authority-owner-required
     rule: Every new schema PR must state authority owner (Sanity, Medusa, or external).
@@ -8,4 +11,4 @@ checks:
   - id: bridge-fields-allowed
     rule: Medusa bridge identifiers are allowed as read-only link fields.
   - id: integration-contract-update
-    rule: If schema interfaces change, update cross-repo contract docs in docs/fas-dash-sanity-plan.
+    rule: If schema interfaces change, update docs/system/SANITY_MEDUSA_CONTRACT.md and docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md.

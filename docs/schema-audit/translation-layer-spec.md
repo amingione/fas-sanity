@@ -1,5 +1,11 @@
 # Translation Layer Specification
 
+> STATUS: HISTORICAL / OUTDATED REFERENCE
+>
+> Last reviewed: 2026-04-12
+> This specification predates the current architecture lock in `AGENTS.md` and should not be treated as canonical runtime mapping authority.
+> Use `docs/system/doc-mapping/DOCUMENT_INVENTORY.md` and `docs/system/mapping-inventory.json` for current-state mapping inventory.
+
 **Purpose**: Define type-safe, null-safe utility functions for bidirectional data transformation between Sanity.io CMS and Medusa.js 2.x e-commerce backend.
 
 **Zero-Null Guarantee**: Every utility function in this specification is designed to prevent null propagation through fallback values, validation, and explicit error handling.

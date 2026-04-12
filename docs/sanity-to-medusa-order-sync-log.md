@@ -1,3 +1,12 @@
+## Status
+
+- Status: COMPLETE (historical migration execution log)
+- Last reviewed: 2026-04-12
+- Source period: 2026-02-20 migration runs
+- Note: this file is retained as immutable run evidence, not a live task tracker.
+
+---
+
 ambermin@storm fas-medusa % npm run migrate-sanity-historical-commerce
 
 > fas-medusa@0.0.1 migrate-sanity-historical-commerce

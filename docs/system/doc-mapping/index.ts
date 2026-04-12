@@ -774,8 +774,12 @@ const ensureInvoiceForOrder = async (
   }
 
   let action: RelationshipLog['action'] = 'unchanged'
+  const runtimeEnv =
+    typeof globalThis === 'object' && globalThis && 'process' in globalThis
+      ? (globalThis as {process?: {env?: Record<string, string | undefined>}}).process?.env ?? {}
+      : {}
   const prefix =
-    (process.env.SANITY_STUDIO_INVOICE_PREFIX || process.env.INVOICE_PREFIX || 'INV')
+    (runtimeEnv.SANITY_STUDIO_INVOICE_PREFIX || runtimeEnv.INVOICE_PREFIX || 'INV')
       .toString()
       .replace(/[^a-z0-9]/gi, '')
       .toUpperCase() || 'INV'

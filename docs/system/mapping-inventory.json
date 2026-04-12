@@ -1,88 +1,85 @@
 {
-  "sanity": {
-    "product": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/product.ts",
-      "fields": [
-        "title",
-        "slug",
-        "status",
-        "productType",
-        "sku",
-        "price",
-        "images",
-        "shortDescription",
-        "description",
-        "category",
-        "tags",
-        "featured",
-        "shippingConfig",
-        "trackInventory",
-        "manualInventoryCount",
-        "medusaProductId",
-        "medusaVariantId"
-      ]
-    },
-    "category": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/category.ts",
-      "fields": ["title", "slug", "image"]
-    },
-    "order": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/order.tsx",
-      "fields": [
-        "orderNumber",
-        "createdAt",
-        "status",
-        "paymentStatus",
-        "customerRef",
-        "cart",
-        "totalAmount",
-        "medusaOrderId"
-      ]
-    },
-    "customer": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/customer.ts",
-      "fields": [
-        "firstName",
-        "lastName",
-        "email",
-        "phone",
-        "shippingAddress",
-        "billingAddress",
-        "medusaCustomerId"
-      ]
-    },
-    "vendor": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/vendor.ts",
-      "fields": ["companyName", "primaryContact", "businessAddress"]
-    },
-    "quote": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/quoteContent.tsx",
-      "fields": ["quoteNumber", "customer", "lineItems", "total"]
-    },
-    "invoice": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/invoiceContent.tsx",
-      "fields": ["invoiceNumber", "orderRef", "customerRef", "lineItems", "total"]
-    },
-    "filterTag": {
-      "filePath": "fas-sanity/packages/sanity-config/src/schemaTypes/documents/filterTag.ts",
-      "fields": ["title", "slug"]
-    }
+  "_meta": {
+    "status": "active",
+    "generated_at": "2026-04-12",
+    "source_of_truth": "AGENTS.md",
+    "repo": "fas-sanity",
+    "notes": [
+      "Sanity is content and operational mirror only.",
+      "Medusa is commerce authority.",
+      "Stripe and Shippo are accessed via Medusa only."
+    ]
   },
-  "medusa": {
-    "Product": {
-      "fields": ["title", "handle", "status", "variants", "collection_id"]
+  "authority": {
+    "products_variants_pricing_inventory": "medusa",
+    "cart_checkout_orders_shipping_logic": "medusa",
+    "payments": "stripe_via_medusa_only",
+    "shipping_rates_labels": "shippo_via_medusa_only",
+    "content_seo_media": "sanity"
+  },
+  "sanity_bridge_documents": [
+    {
+      "type": "product",
+      "file": "packages/sanity-config/src/schemaTypes/documents/product.ts",
+      "integration_group": "read_only",
+      "integration_fields_examples": [
+        "medusaProductId",
+        "medusaVariantId",
+        "price",
+        "manualInventoryCount",
+        "shippingConfig",
+        "stripePriceId"
+      ]
     },
-    "ProductVariant": {
-      "fields": ["title", "sku", "prices"]
+    {
+      "type": "productVariant",
+      "file": "packages/sanity-config/src/schemaTypes/documents/productVariant.tsx",
+      "integration_group": "read_only",
+      "integration_fields_examples": [
+        "medusaVariantId",
+        "lastSyncedFromMedusa"
+      ]
     },
-    "ProductCollection": {
-      "fields": ["title", "handle"]
+    {
+      "type": "collection",
+      "file": "packages/sanity-config/src/schemaTypes/documents/collection.tsx",
+      "integration_group": "read_only",
+      "integration_fields_examples": [
+        "medusaCollectionId",
+        "lastSyncedFromMedusa"
+      ]
     },
-    "Order": {
-      "fields": ["display_id", "created_at", "status", "payment_status", "customer_id", "items", "total"]
+    {
+      "type": "customer",
+      "file": "packages/sanity-config/src/schemaTypes/documents/customer.ts",
+      "mirror_fields_examples": [
+        "medusaCustomerId",
+        "stripeCustomerId",
+        "orderCount",
+        "lifetimeValue"
+      ]
     },
-    "Customer": {
-      "fields": ["first_name", "last_name", "email", "phone", "shipping_addresses", "billing_address"]
+    {
+      "type": "shipment",
+      "file": "packages/sanity-config/src/schemaTypes/documents/shipment.ts",
+      "mirror_fields_examples": [
+        "medusaOrderId",
+        "trackingNumber",
+        "labelUrl"
+      ]
     }
-  }
+  ],
+  "governance_docs": [
+    "docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md",
+    "docs/PROGRESS.md",
+    "docs/governance/RELEASE_CHECKLIST.md",
+    "docs/architecture/schema-authority-checklist.yml",
+    "docs/system/SANITY_MEDUSA_CONTRACT.md"
+  ],
+  "historical_schema_audit_docs": [
+    "docs/schema-audit/sanity-schema-inventory.md",
+    "docs/schema-audit/sanity-to-medusa-field-map.md",
+    "docs/schema-audit/existing-sync-points.md",
+    "docs/schema-audit/translation-layer-spec.md"
+  ]
 }

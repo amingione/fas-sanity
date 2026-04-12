@@ -4,6 +4,27 @@ Last Updated: 2026-04-02 (Pass 2)
 Owner: Cross-repo governance
 Status Model: `not_started` | `in_progress` | `blocked` | `done`
 
+## Canonical Tracker File Notice
+
+This tracker's canonical file lives in:
+`fas-sanity/docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md`
+
+In `fas-medusa`, `fas-cms-fresh`, and `fas-dash`, this path is a symlink to the canonical file.
+Edits from any repo path update the same underlying file.
+
+Operational note for AI agents:
+- A local `git status` modification on this file can be expected when updates are made from a sibling repo.
+- Treat this as normal cross-repo sync behavior by default (not an anomaly).
+- Only pause/escalate if the content itself appears unintended or architecture-breaking.
+
+**Per Repo Progress References:**
+In `fas-medusa`:
+ - `docs/PROGRESS.md` references its current status/progress
+ - `docs/WORK_LOG.md` for detailed chronological update history
+
+In `fas-cms-fresh`:
+ - `docs/PROGRESS.md` references its current status/progress
+
 ## End Goal
 
 Single-authority architecture with no split commerce logic:
@@ -194,3 +215,4 @@ Notes:
 
 ### Phase 7 Summary
 All hardening workstreams complete. Pipeline boundary enforced end-to-end.
+<--symlink test Sun Apr 12 00:31:49 EDT 2026 -->
