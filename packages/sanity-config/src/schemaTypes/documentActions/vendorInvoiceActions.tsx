@@ -27,7 +27,9 @@ const buildOrderCartItem = (item: any) => {
 
 const resolvePortalUrl = () =>
   (process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
+    process.env.VENDOR_PORTAL_URL ||
     process.env.PUBLIC_VENDOR_PORTAL_URL ||
+    process.env.SITE_URL ||
     '').replace(/\/$/, '')
 
 const buildInvoiceEmailMessage = (payload: {

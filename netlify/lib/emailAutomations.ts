@@ -91,7 +91,11 @@ const sanity = createClient({
   useCdn: false,
 })
 
-const PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com'
+const SITE_URL =
+  process.env.SITE_URL ||
+  process.env.SITE_BASE_URL ||
+  process.env.PUBLIC_SITE_URL ||
+  'https://fasmotorsports.com'
 
 const AUTOMATION_QUERY = `*[_type == "emailAutomation" && active == true && trigger == $trigger]{
   _id,
@@ -364,7 +368,7 @@ const buildVariables = (
     }
   }
   if ('stripeSessionId' in context) {
-    const url = `${PUBLIC_SITE_URL}/checkout/recover?sessionId=${context.stripeSessionId || ''}`
+    const url = `${SITE_URL}/checkout/recover?sessionId=${context.stripeSessionId || ''}`
     return {
       customerName: context.customerName || '',
       cartTotal: context.totalAmount ? `$${context.totalAmount.toFixed(2)}` : '',

@@ -142,7 +142,11 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const siteBase = process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com'
+    const siteBase =
+      process.env.SITE_URL ||
+      process.env.SITE_BASE_URL ||
+      process.env.PUBLIC_SITE_URL ||
+      'https://fasmotorsports.com'
     let sent = 0
     let failed = 0
 

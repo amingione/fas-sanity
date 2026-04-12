@@ -18,7 +18,9 @@ import {getNetlifyFnBase} from './netlifyFnBase'
 const API_VERSION = '2024-10-01'
 const DEFAULT_PORTAL_URL =
   process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
+  process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
+  process.env.SITE_URL ||
   ''
 
 type PortalUser = {

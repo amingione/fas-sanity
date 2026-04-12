@@ -178,7 +178,7 @@ const buildDiscountEmailHtml = (code: string, expiresAt: number | null) => {
         day: 'numeric',
       })
     : 'No expiration date'
-  const shopUrl = `${process.env.PUBLIC_SITE_URL || ''}/shop`
+  const shopUrl = `${process.env.SITE_URL || process.env.SITE_BASE_URL || process.env.PUBLIC_SITE_URL || ''}/shop`
   return `
     <!DOCTYPE html>
     <html>

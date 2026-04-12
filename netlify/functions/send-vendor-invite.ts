@@ -31,12 +31,15 @@ const DEFAULT_PORTAL_URL =
   process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
+  process.env.SITE_URL ||
   process.env.PUBLIC_SITE_URL ||
   ''
 const SITE_URL =
   process.env.SANITY_STUDIO_VENDOR_PORTAL_URL ||
   process.env.VENDOR_PORTAL_URL ||
   process.env.PUBLIC_VENDOR_PORTAL_URL ||
+  process.env.SITE_URL ||
+  process.env.SITE_BASE_URL ||
   process.env.PUBLIC_SITE_URL ||
   process.env.SANITY_STUDIO_SITE_URL ||
   ''
@@ -236,6 +239,8 @@ const handler: Handler = async (event) => {
     process.env.SANITY_STUDIO_VENDOR_PORTAL_URL || '',
     process.env.VENDOR_PORTAL_URL || '',
     process.env.PUBLIC_VENDOR_PORTAL_URL || '',
+    process.env.SITE_URL || '',
+    process.env.SITE_BASE_URL || '',
     process.env.PUBLIC_SITE_URL || '',
     process.env.SANITY_STUDIO_SITE_URL || '',
     SITE_URL,

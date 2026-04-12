@@ -111,6 +111,7 @@ export const handler: Handler = async (event) => {
 
   // Helpful extras
   const extras = {
+    SITE_URL: process.env.SITE_URL || '',
     PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || '',
   }
 

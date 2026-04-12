@@ -4,6 +4,8 @@ import type {SanityClient} from '@sanity/client'
 export function resolveNetlifyBase(): string | null {
   const raw =
     process.env.SANITY_STUDIO_NETLIFY_BASE ||
+    process.env.SITE_URL ||
+    process.env.SITE_BASE_URL ||
     process.env.PUBLIC_SITE_URL ||
     ''
   const trimmed = raw.trim()

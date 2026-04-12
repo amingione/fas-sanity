@@ -23,7 +23,11 @@ const ProductJsonLdPreview = (props: StringInputProps) => {
   const [nonce, setNonce] = useState(0)
 
   const siteUrl =
+    (typeof window !== 'undefined' ? (window as any)?.ENV?.SITE_URL : undefined) ||
+    (typeof window !== 'undefined' ? (window as any)?.ENV?.SITE_BASE_URL : undefined) ||
     (typeof window !== 'undefined' ? (window as any)?.ENV?.PUBLIC_SITE_URL : undefined) ||
+    (typeof process !== 'undefined' ? (process.env as Record<string, string | undefined>)?.SITE_URL : undefined) ||
+    (typeof process !== 'undefined' ? (process.env as Record<string, string | undefined>)?.SITE_BASE_URL : undefined) ||
     (typeof process !== 'undefined' ? (process.env as Record<string, string | undefined>)?.PUBLIC_SITE_URL : undefined) ||
     'https://fasmotorsports.com'
 

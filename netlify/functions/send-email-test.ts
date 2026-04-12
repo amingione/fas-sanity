@@ -89,7 +89,7 @@ const handler: Handler = async (event) => {
         trackingSlug: (campaign.trackingSlug as any)?.current || (campaign.trackingSlug as string),
       },
       {
-        unsubscribeUrl: `${process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com'}/unsubscribe`,
+        unsubscribeUrl: `${process.env.SITE_URL || process.env.SITE_BASE_URL || process.env.PUBLIC_SITE_URL || 'https://fasmotorsports.com'}/unsubscribe`,
       },
     )
     const text = htmlToText(html)

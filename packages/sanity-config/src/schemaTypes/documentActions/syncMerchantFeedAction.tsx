@@ -43,6 +43,7 @@ function formatPrice(value?: number | null): string | undefined {
 function resolveSiteBase(): string {
   const envUrl =
     process.env.SANITY_STUDIO_SITE_URL ||
+    process.env.SITE_URL ||
     process.env.SITE_BASE_URL ||
     process.env.PUBLIC_SITE_URL ||
     process.env.URL

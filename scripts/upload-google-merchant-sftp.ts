@@ -52,6 +52,7 @@ function resolveFeedEndpoint(): string {
     process.env.URL,
     process.env.DEPLOY_URL,
     process.env.DEPLOY_PRIME_URL,
+    process.env.SITE_URL,
     process.env.SITE_BASE_URL,
     process.env.PUBLIC_SITE_URL,
   ].filter(Boolean) as string[]
