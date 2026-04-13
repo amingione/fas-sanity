@@ -7,7 +7,7 @@ const args = process.argv.slice(2)
 const env = {...process.env}
 const isDevContext = env.CONTEXT === 'dev' || env.NETLIFY_LOCAL === 'true'
 if (isDevContext) {
-  delete env.NODE_OPTIONS // Prevent local aws-secrets-shim preload.
+  delete env.NODE_OPTIONS // Keep local function runtime free of repo-specific preloads.
 }
 delete env.NETLIFY_AUTH_TOKEN
 

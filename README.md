@@ -42,3 +42,71 @@ Use existing scripts in `package.json`.
 Common checks:
 - `node ../scripts/docs-drift-check.mjs --repo fas-sanity`
 - `pnpm build`
+
+## Env Workflow (Canonical)
+
+If you use cross-repo env tooling from your shell profile, add this to `~/.zshrc`:
+
+```bash
+# FAS repo root for cross-repo tools
+export FAS_REPOS_ROOT="/Users/ambermin/LocalStorm/Workspace/DevProjects/GitHub"
+
+# Audit shortcuts
+alias env-audit='bash "$FAS_REPOS_ROOT/scripts/dotenvx-env-audit.sh"'
+alias env-ack='bash "$FAS_REPOS_ROOT/scripts/dotenvx-env-audit.sh" --ack'
+
+# -- env-sync: per-repo skip-keys auto-wired ---------------------------------
+_ENV_SYNC_SCRIPT="$FAS_REPOS_ROOT/scripts/sync-env-local-to-prod.sh"
+
+_env_sync_skip_keys() {
+  case "$(basename "$PWD")" in
+    fas-medusa)    echo "DATABASE_URL,REDIS_URL,AHREFS_COUNTRY,AHREFS_MAX_KD,AHREFS_MIN_VOLUME" ;;
+    fas-sanity)    echo "GMC_SERVICE_ACCOUNT_KEY_FILE" ;;
+    fas-dash)      echo "VERCEL_URL" ;;
+    fas-cms-fresh) echo "" ;;
+    *)             echo "" ;;
+  esac
+}
+
+env-sync() {
+  local skip
+  skip="$(_env_sync_skip_keys)"
+  if [[ -n "$skip" ]]; then
+    bash "$_ENV_SYNC_SCRIPT" --skip-keys "$skip" "$@"
+  else
+    bash "$_ENV_SYNC_SCRIPT" "$@"
+  fi
+}
+
+env-sync-apply() {
+  local skip
+  skip="$(_env_sync_skip_keys)"
+  if [[ -n "$skip" ]]; then
+    bash "$_ENV_SYNC_SCRIPT" --apply --skip-keys "$skip" "$@"
+  else
+    bash "$_ENV_SYNC_SCRIPT" --apply "$@"
+  fi
+}
+# ---------------------------------------------------------------------------
+
+# Run fas-sanity package.json env:* scripts from anywhere
+fasenv() {
+  local repo="$FAS_REPOS_ROOT/fas-sanity"
+  cd "$repo" || return 1
+  pnpm run "$@"
+}
+```
+
+Then reload:
+
+```bash
+source ~/.zshrc
+```
+
+Examples:
+
+```bash
+fasenv env:check:prod
+fasenv env:decrypt:stdout:prod
+fasenv env:run:prod -- node -e "console.log(process.env.SANITY_PROJECT_ID)"
+```

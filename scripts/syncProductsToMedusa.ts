@@ -86,21 +86,25 @@ const slugify = (value: string): string =>
     .slice(0, 96) || `product-${Math.random().toString(36).slice(2, 10)}`
 
 /**
- * Convert Sanity price to Medusa minor units (cents), with a guard against
- * double-conversion loops from legacy datasets.
+ * Convert Sanity price to Medusa minor units (cents).
+ *
+ * Unit is controlled by SANITY_SYNC_PRICE_INPUT_UNIT:
+ * - "dollars" (default): 1899.99 -> 189999
+ * - "cents":            189999  -> 189999
  */
 const toMinorUnits = (value: number): number => {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`Invalid price value: ${value}`)
   }
 
-  // Guard: large integer values in Sanity price fields are usually already cents
-  // (e.g. 89999 accidentally written to a dollars field).
-  if (Number.isInteger(value) && value >= 50000) {
-    console.warn(
-      `[PRICE] Value ${value} looks like already-cents integer. Passing through unchanged to prevent 100x inflation.`,
-    )
+  const unit = (process.env.SANITY_SYNC_PRICE_INPUT_UNIT || 'dollars').trim().toLowerCase()
+  if (unit === 'cents') {
     return Math.round(value)
+  }
+  if (unit !== 'dollars') {
+    throw new Error(
+      `Invalid SANITY_SYNC_PRICE_INPUT_UNIT="${unit}". Expected "dollars" or "cents".`,
+    )
   }
 
   return Math.round(value * 100)

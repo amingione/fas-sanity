@@ -54,7 +54,6 @@ are moved to `scripts/archive/`.
 
 | Script | Purpose |
 |--------|---------|
-| `aws-secrets-shim.cjs` | AWS Secrets Manager shim for local dev |
 | `deploy-schema-if-token.js` | Deploy schema when token available |
 | `ensure-netlify-cjs.ts` | Ensure Netlify CJS compatibility |
 | `ensure-sanity-cors.ts` | Ensure CORS origins configured in Sanity |
@@ -67,6 +66,13 @@ are moved to `scripts/archive/`.
 | `agent-rewrite-product-titles-async.ts` | AI-assisted product title rewrite |
 | `upload-google-merchant-sftp.ts` | Upload merchant feed via SFTP |
 | `bulkSEOUpdate.ts` | Bulk SEO field updates |
+
+| Script | Purpose |
+|--------|---------|
+| `dotenvx-env-audit.sh` | Audit .env.local vs encrypted .env.production |
+| `sync-env-local-to-prod.sh` | Sync .env.local to encrypted .env.production |
+| `sync-env-prod-to-local.sh` | Sync encrypted .env.production to .env.local |
+| `sync-env-to-netlify.sh` | Sync .env variables to Netlify environment variables |
 
 ---
 

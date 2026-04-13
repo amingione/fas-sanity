@@ -5,7 +5,6 @@ import type {DocumentActionComponent, DocumentActionProps, DocumentActionsContex
 import {generateProductTags, type ProductDocument} from '../utils/generateProductTags'
 import {ensureProductCodes} from '../utils/generateProductCodes'
 import {ensureShippingConfig} from '../utils/ensureShippingConfig'
-import {ensureSalePricing} from '../utils/ensureSalePricing'
 import {getNetlifyFunctionBaseCandidates} from '../utils/netlifyBase'
 import {ensureProductMetaAndStatus} from '../utils/ensureProductMeta'
 
@@ -174,9 +173,6 @@ async function ensureCodesBeforePublish(
     await ensureShippingConfig(targetId, client, {
       log: (...args: unknown[]) => console.log('[shipping-config]', ...args),
     })
-    await ensureSalePricing(targetId, client, {
-      log: (...args: unknown[]) => console.log('[sale-pricing]', ...args),
-    })
     await ensureProductCodes(targetId, client, {
       log: (...args: unknown[]) => console.log('[product-codes]', ...args),
     })
@@ -185,7 +181,7 @@ async function ensureCodesBeforePublish(
     })
   } catch (error) {
     console.warn(
-      'Failed to auto-generate SKU/MPN, shipping config, sale pricing, or meta before publish',
+      'Failed to auto-generate SKU/MPN, shipping config, or meta before publish',
       error,
     )
   }

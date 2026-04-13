@@ -1672,64 +1672,16 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
     if (!product._id) return
     try {
       updateProductField(product._id, 'isSaving', true)
-      const tagsPayload = Array.isArray(product.tags) ? normalizeTagsList(product.tags) : undefined
       const categoryRefs = normalizeRefList(product.categories).filter((ref) => ref._id)
       const vehicleRefs = normalizeRefList(product.compatibleVehicles).filter((ref) => ref._id)
+      // Governance: Sanity must never write commerce authority fields
+      // (price, sale, inventory, shipping, wholesale) directly.
       const payload: Record<string, any> = {
         title: product.title || '',
-        productType: product.productType || undefined,
-        sku: product.sku || undefined,
-        status: product.status || undefined,
-        price: Number.isFinite(product.price) ? Number(product.price) : undefined,
-        salePrice: Number.isFinite(product.salePrice) ? Number(product.salePrice) : undefined,
-        discountType: product.discountType || undefined,
-        discountValue: Number.isFinite(product.discountValue)
-          ? Number(product.discountValue)
-          : undefined,
-        saleStartDate: product.saleStartDate || undefined,
-        saleEndDate: product.saleEndDate || undefined,
-        saleLabel: product.saleLabel || undefined,
-        onSale: Boolean(product.onSale),
-        availability: product.availability || 'in_stock',
-        condition: product.condition || 'new',
-        manualInventoryCount: Number.isFinite(product.manualInventoryCount)
-          ? Number(product.manualInventoryCount)
-          : undefined,
-        taxBehavior: product.taxBehavior || undefined,
-        taxCode: product.taxCode || undefined,
-        shippingWeight: Number.isFinite(product.shippingWeight)
-          ? Number(product.shippingWeight)
-          : undefined,
-        boxDimensions: product.boxDimensions || undefined,
         brand: product.brand || undefined,
         mpn: product.mpn || undefined,
         canonicalUrl: product.canonicalUrl || undefined,
         googleProductCategory: product.googleProductCategory || undefined,
-        availableForWholesale:
-          product.availableForWholesale === undefined
-            ? undefined
-            : Boolean(product.availableForWholesale),
-        wholesalePriceStandard: Number.isFinite(product.wholesalePriceStandard)
-          ? Number(product.wholesalePriceStandard)
-          : undefined,
-        wholesalePricePreferred: Number.isFinite(product.wholesalePricePreferred)
-          ? Number(product.wholesalePricePreferred)
-          : undefined,
-        wholesalePricePlatinum: Number.isFinite(product.wholesalePricePlatinum)
-          ? Number(product.wholesalePricePlatinum)
-          : undefined,
-        minimumWholesaleQuantity: Number.isFinite(product.minimumWholesaleQuantity)
-          ? Number(product.minimumWholesaleQuantity)
-          : undefined,
-        manufacturingCost: Number.isFinite(product.manufacturingCost)
-          ? Number(product.manufacturingCost)
-          : undefined,
-        installOnly: Boolean(product.installOnly),
-        shippingLabel: product.shippingLabel || undefined,
-        shippingClass: product.shippingClass || undefined,
-      }
-      if (tagsPayload !== undefined) {
-        payload.tags = tagsPayload
       }
       payload.category =
         categoryRefs.length > 0
@@ -1946,6 +1898,12 @@ export default function ProductBulkEditor({productIds}: {productIds?: string[]})
             />
           </Inline>
         </Flex>
+        <Card tone="caution" radius={2} padding={3}>
+          <Text size={1}>
+            Commerce authority guard: price, sale, inventory, shipping, and wholesale edits are not
+            persisted here and remain Medusa-owned.
+          </Text>
+        </Card>
         <Inline space={2} style={{flexWrap: 'wrap'}}>
           <select
             value={filterProductType}

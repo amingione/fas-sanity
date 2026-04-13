@@ -48,7 +48,11 @@
     "auto-mapper:audit": "tsx packages/sanity-config/src/autoMapper/cli/autoMapperAudit.ts",
     "mcp:sanity": "pnpm exec sanity-mcp-server",
     "docs:check": "node ./scripts/docs-drift-check.mjs",
-    "compliance:check": "npx tsx scripts/compliance/fas-compliance-check.ts"
+    "compliance:check": "npx tsx scripts/compliance/fas-compliance-check.ts",
+    "env:encrypt:prod": "pnpm exec dotenvx encrypt -f .env.production",
+    "env:decrypt:stdout:prod": "pnpm exec dotenvx decrypt -f .env.production --stdout",
+    "env:check:prod": "pnpm exec dotenvx decrypt -f .env.production --stdout >/dev/null && echo 'env.production decrypt check: ok'",
+    "env:run:prod": "pnpm exec dotenvx run -f .env.production --"
   },
   "keywords": [
     "sanity"
