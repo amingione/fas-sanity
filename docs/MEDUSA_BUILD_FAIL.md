@@ -71,4 +71,4 @@
 > []
 
 
-> **_If you have completed the above tasks, please mark this task as completed and update all relevant documentation and reports to reflect the completed work._**
+> If you have completed the above tasks, please mark this task as completed and update all relevant documentation and reports to reflect the completed work.
