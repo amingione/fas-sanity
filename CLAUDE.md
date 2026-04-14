@@ -1,17 +1,20 @@
 # Claude AI Guide — fas-sanity
 
-<<<<<<< HEAD
-**Version:** 3.0.0
-**Last Updated:** 2026-04-02
-**Status:** Phase 6 — Optimize UX (Active)
-=======
+> **Synced Block — Authority & Session Discipline**
+>
+> - **Canonical authority is `AGENTS.md`** for architecture and commerce rules across all four FAS repos.
+> - **Use `CLAUDE.md` as working memory** for session learnings, decisions, rationale, and action items.
+> - **No exceptions to commerce authority rules** without first updating `AGENTS.md` and referencing that change here.
+> - **Start each session with a quick `CLAUDE.md` review** to preserve continuity and reduce context drift.
+
 **Version:** 2.0.0
-**Last Updated:** 2026-02-24
+**Last Updated:** 2026-04-14
 **For:** Claude Code, Cursor, and other AI assistants
 
 ---
 
-## ⚡ CURRENT STATUS (2026-02-24)
+## ⚡ CURRENT STATUS (2026-04-14)
+
 
 **Active Phase**: Phase 1 Stabilization → Vendor Timeline Live
 
@@ -22,11 +25,11 @@
   - Verifies HMAC (VENDOR_WEBHOOK_SECRET), idempotency on eventId, writes vendorActivityEvent docs
 
 ### 🔴 Manual Steps Required (env/infra — not code)
-- Set `VENDOR_WEBHOOK_SECRET` in Netlify (fas-sanity) — same value as Railway fas-medusa
-  - Generate: `openssl rand -hex 32`
-  - Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §3`
+- ~~Set `VENDOR_WEBHOOK_SECRET` in Netlify (fas-sanity) — same value as Railway fas-medusa~~
+  - ~~Generate: `openssl rand -hex 32`~~
+  - ~~Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §3`~~
 - Register Sanity Studio webhooks (product-sync + order-sync → Medusa)
-  - Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §1`
+  -~~ Runbook: `fas-medusa/docs/ops-runbook-webhook-and-key-setup.md §1`~~
 - ~~Publishable key rotation~~ — ✅ RESOLVED: key returns 200, correctly linked
 
 ### ⏳ Still Pending
@@ -44,7 +47,6 @@ See integration status: `../docs/INTEGRATION_STATUS.md`
 ---
 
 > **📖 Full Documentation:** See [codex.md](./codex.md) for comprehensive patterns, examples, and integration details.
->>>>>>> 659912a4 (feat: Add vendor timeline webhook and related schema for vendor activity events)
 
 ---
 

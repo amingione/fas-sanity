@@ -26,17 +26,17 @@ fas-cms-fresh and fas-cms refer to the same codebase.
 
 ## System Authorities
 
-| Concern | Authority |
-|---------|-----------|
-| Products, variants, pricing, inventory, shipping profiles | Medusa |
-| Cart, checkout, orders, customers, shipping logic | Medusa |
-| Payments | Stripe via Medusa only |
-| Shipping labels and rates | Shippo via Medusa only |
-| Refunds and returns | Medusa only |
-| Content, SEO, media, campaigns, editorial pages | Sanity |
-| Vendor CRM metadata (non-transactional) | Sanity |
-| Customer storefront UI | fas-cms-fresh |
-| Employee operations console | fas-dash |
+| Concern                                                   | Authority              |
+| --------------------------------------------------------- | ---------------------- |
+| Products, variants, pricing, inventory, shipping profiles | Medusa                 |
+| Cart, checkout, orders, customers, shipping logic         | Medusa                 |
+| Payments                                                  | Stripe via Medusa only |
+| Shipping labels and rates                                 | Shippo via Medusa only |
+| Refunds and returns                                       | Medusa only            |
+| Content, SEO, media, campaigns, editorial pages           | Sanity                 |
+| Vendor CRM metadata (non-transactional)                   | Sanity                 |
+| Customer storefront UI                                    | fas-cms-fresh          |
+| Employee operations console                               | fas-dash               |
 
 ---
 
@@ -58,25 +58,26 @@ fas-cms-fresh and fas-cms refer to the same codebase.
 **fas-sanity is the canonical source for all shared governance and architecture docs.**
 The following files exist as real files ONLY in fas-sanity. In fas-medusa, fas-dash, and fas-cms-fresh they are **symlinks** — any write to those paths writes through to fas-sanity. Never create a regular file at these paths in any other repo.
 
-| Symlinked path (in fas-medusa / fas-dash / fas-cms-fresh) | Edit here in fas-sanity |
-|---|---|
-| `docs/governance/RELEASE_CHECKLIST.md` | `docs/governance/RELEASE_CHECKLIST.md` |
-| `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md` | `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md` |
-| `docs/architecture/canonical-commerce-architecture.md` | `docs/architecture/canonical-commerce-architecture.md` |
-| `docs/architecture/migration-status.md` | `docs/architecture/migration-status.md` |
-| `docs/architecture/schema-authority-checklist.yml` | `docs/architecture/schema-authority-checklist.yml` |
-| `docs/ai-governance.md` | `docs/ai-governance.md` |
-| `docs/ai-governance/AI_TASK_RUNBOOK.MD` | `docs/ai-governance/AI_TASK_RUNBOOK.MD` |
-| `docs/ai-governance/GOVERNANCE_MAKE_COMMANDS.md` | `docs/ai-governance/GOVERNANCE_MAKE_COMMANDS.md` |
-| `docs/ai-governance/HOW_WE_FIX_BUGS.md` | `docs/ai-governance/HOW_WE_FIX_BUGS.md` |
-| `docs/ai-governance/Makefile.template` | `docs/ai-governance/Makefile.template` |
-| `docs/ai-governance/PROD_IDENTIFICATION_RULES.md` | `docs/ai-governance/PROD_IDENTIFICATION_RULES.md` |
+| Symlinked path (in fas-medusa / fas-dash / fas-cms-fresh)     | Edit here in fas-sanity                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------- |
+| `docs/governance/RELEASE_CHECKLIST.md`                        | `docs/governance/RELEASE_CHECKLIST.md`                        |
+| `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md`         | `docs/governance/FAS_4_REPO_PIPELINE_TASK_TRACKER.md`         |
+| `docs/architecture/canonical-commerce-architecture.md`        | `docs/architecture/canonical-commerce-architecture.md`        |
+| `docs/architecture/migration-status.md`                       | `docs/architecture/migration-status.md`                       |
+| `docs/architecture/schema-authority-checklist.yml`            | `docs/architecture/schema-authority-checklist.yml`            |
+| `docs/ai-governance.md`                                       | `docs/ai-governance.md`                                       |
+| `docs/ai-governance/AI_TASK_RUNBOOK.MD`                       | `docs/ai-governance/AI_TASK_RUNBOOK.MD`                       |
+| `docs/ai-governance/GOVERNANCE_MAKE_COMMANDS.md`              | `docs/ai-governance/GOVERNANCE_MAKE_COMMANDS.md`              |
+| `docs/ai-governance/HOW_WE_FIX_BUGS.md`                       | `docs/ai-governance/HOW_WE_FIX_BUGS.md`                       |
+| `docs/ai-governance/Makefile.template`                        | `docs/ai-governance/Makefile.template`                        |
+| `docs/ai-governance/PROD_IDENTIFICATION_RULES.md`             | `docs/ai-governance/PROD_IDENTIFICATION_RULES.md`             |
 | `docs/ai-governance/System_Architecture_And_API_Reference.md` | `docs/ai-governance/System_Architecture_And_API_Reference.md` |
-| `docs/ai-governance/ai-governance.md` | `docs/ai-governance/ai-governance.md` |
-| `docs/ai-governance/contracts/` *(entire directory)* | `docs/ai-governance/contracts/` |
-| `docs/ai-governance/guards/` *(entire directory)* | `docs/ai-governance/guards/` |
-| `docs/ai-governance/templates/` *(entire directory)* | `docs/ai-governance/templates/` |
-| `docs/system/SANITY_MEDUSA_CONTRACT.md` | `docs/system/SANITY_MEDUSA_CONTRACT.md` |
+| `docs/ai-governance/ai-governance.md`                         | `docs/ai-governance/ai-governance.md`                         |
+| `docs/ai-governance/contracts/` *(entire directory)*          | `docs/ai-governance/contracts/`                               |
+| `docs/ai-governance/guards/` *(entire directory)*             | `docs/ai-governance/guards/`                                  |
+| `docs/ai-governance/templates/` *(entire directory)*          | `docs/ai-governance/templates/`                               |
+| `docs/system/SANITY_MEDUSA_CONTRACT.md`                       | `docs/system/SANITY_MEDUSA_CONTRACT.md`                       |
+| `docs/governance/DOTENVX/` *(entire directory)*               | `docs/governance/DOTENVX/`                                    |
 
 **NOT symlinked (repo-specific):**
 - `docs/governance/REPO_GOVERNANCE.md` — different per repo
