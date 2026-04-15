@@ -18,6 +18,13 @@ export const addOnType = defineType({
     defineField({name: 'defaultSelected', type: 'boolean', initialValue: false}),
     defineField({name: 'medusaOptionId', type: 'string', readOnly: true}),
     defineField({name: 'medusaOptionValueId', type: 'string', readOnly: true}),
+    defineField({name: 'syncedPriceCents', type: 'number', readOnly: true}),
+    defineField({
+      name: 'syncStatus',
+      type: 'string',
+      readOnly: true,
+      options: {list: ['pending', 'synced', 'error']},
+    }),
     defineField({name: 'lastSyncedAt', type: 'datetime', readOnly: true}),
   ],
   preview: {
