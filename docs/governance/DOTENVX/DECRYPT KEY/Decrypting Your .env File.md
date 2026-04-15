@@ -1,9 +1,13 @@
 ## Decrypting Your .env File
 
-To decrypt your encrypted .env file, use the ** `dotenvx decrypt` ** command:
+To decrypt your encrypted .env file, use the ** `dotenvx decrypt` or `dotenvx decrypt -f .env.production` ** command:
 
 ```bash
 dotenvx decrypt
+```
+
+```bash
+dotenvx decrypt -f .env.production
 ```
 
 

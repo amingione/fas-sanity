@@ -1,6 +1,6 @@
 # Secrets: dotenvx decrypts .env.production at build + function runtime via DOTENV_KEY
 [build]
-  command = "pnpm exec dotenvx run -f .env.production -- pnpm run build:ci"
+  command = "node ./scripts/check-env-production-encrypted.mjs --file .env.production && pnpm exec dotenvx run -f .env.production -- pnpm run build:ci"
   publish = "dist"
 
 [build.environment]

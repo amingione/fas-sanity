@@ -1,101 +1,94 @@
 ---
 sticker: emoji//1f511
 ---
-## Basic Setup
+## FAS Dotenvx Setup (Real Repo Version)
 
-**1. Initialize dotenvx in your repo:**
+This project does **not** use template `.env`.  
+FAS standard is:
+
+- Encrypted runtime file: `.env.production` (committed)
+- Private key file: `.env.keys` (never committed)
+- Local dev override: `.env.local` (usually symlinked to `~/.local_secrets/<repo>`)
+
+## Required tooling
+
+Install dotenvx CLI locally:
+
 ```bash
-dotenvx new
+brew install dotenvx/brew/dotenvx
+dotenvx --version
 ```
-This creates `.env` and `.env.keys` files.
 
-**2. Add to .gitignore:**
+## Repo dependency/runtime map (current FAS state)
+
+| Repo            | How dotenvx is provided                                 | Where it runs                                   |
+| --------------- | ------------------------------------------------------- | ----------------------------------------------- |
+| `fas-dash`      | `@dotenvx/dotenvx` in `dependencies`                    | `npm run build`, Vercel runtime/instrumentation |
+| `fas-cms-fresh` | `@dotenvx/dotenvx` in `devDependencies`                 | Netlify build + Netlify Functions runtime       |
+| `fas-sanity`    | `@dotenvx/dotenvx` in `devDependencies`                 | Netlify build + Netlify Functions runtime       |
+| `fas-medusa`    | Dockerfile global install (`npm i -g @dotenvx/dotenvx`) | Railway preDeploy/start + container runtime     |
+
+## One-time setup per repo
+
+From repo root:
+
 ```bash
-# Don't commit your private keys!
-.env.keys
+# 1) Ensure file exists
+ls -la .env.production .env.keys
 
-# You CAN commit the encrypted .env file
-# (it's safe because it's encrypted)
+# 2) Encrypt in place (or re-encrypt after edits)
+dotenvx encrypt -f .env.production
+
+# 3) Validate encrypted format (hard guard used by build/deploy)
+node ./scripts/check-env-production-encrypted.mjs --file .env.production
+
+# 4) Optional decrypt smoke test (no write)
+dotenvx decrypt -f .env.production --stdout >/dev/null
 ```
 
-So your `.gitignore` should have:
-```
-.env.keys
-.env.local
-.env.*.local
-node_modules/
-```
+## Team workflow
 
-**3. Commit the encrypted .env:**
+When changing secrets:
+
 ```bash
-git add .env
-git commit -m "Add encrypted environment variables"
+# Add/update key in encrypted production env
+dotenvx set KEY_NAME "value" -f .env.production
+
+# Verify encrypted file is still safe
+node ./scripts/check-env-production-encrypted.mjs --file .env.production
+
+# Commit encrypted env only
+git add .env.production
+git commit -m "Update encrypted production env"
 git push
 ```
 
-## Sharing with Team Members
+What to share:
 
-**1. You share the `.env.keys` file securely:**
-- Don't commit it to git
-- Share via password manager, secure file transfer, or 1 Password/LastPass
-- Only share with people who need access
+- Share `.env.keys` securely out-of-band only (1Password, secure transfer, etc.).
+- Do **not** commit `.env.keys`.
 
-**2. Team members clone the repo:**
-```bash
-git clone your-repo
-```
+## Host-level required key
 
-**3. Team members add the `.env.keys` file:**
-```bash
-# They receive .env.keys from you and place it in the project root
-# Now they can decrypt:
-dotenvx decrypt
-```
+Each deployed environment must provide:
 
-## Workflow Example
+- `DOTENV_PRIVATE_KEY_PRODUCTION` (plaintext host env var)
 
-```bash
-# You: Add a new secret
-dotenvx set DATABASE_URL "postgres://user:pass@localhost/db"
+Used by:
 
-# This updates .env (encrypted)
-git add .env
-git commit -m "Update database URL"
-git push
+- Vercel (`fas-dash`)
+- Netlify (`fas-cms-fresh`, `fas-sanity`)
+- Railway (`fas-medusa`)
 
-# Team member: Pull changes
-git pull
+## Build/deploy behavior (current)
 
-# Team member: Decrypt to see the values
-dotenvx decrypt
+- `fas-dash`: `npm run build` and `deploy:vercel` guard `.env.production` encryption first.
+- `fas-cms-fresh`: Netlify `build.command` runs encryption guard before `dotenvx run`.
+- `fas-sanity`: Netlify `build.command` runs encryption guard before `dotenvx run`.
+- `fas-medusa`: Railway predeploy/start and Docker build run encryption guard before boot/migrate.
 
-# Or run with dotenvx
-dotenvx run -- npm start  # Automatically loads and uses decrypted env vars
-```
+If `.env.production` is plaintext, build/deploy now fails fast.
 
-## Running Your App
+## Local dev note
 
-**Option 1: With automatic decryption**
-```bash
-dotenvx run -- npm start
-dotenvx run -- python app.py
-dotenvx run -- node server.js
-```
-
-**Option 2: Decrypt first, then run**
-```bash
-dotenvx decrypt
-npm start
-```
-
-## Key Points
-
-| File | Commit? | Share? |
-|------|---------|--------|
-| `.env` (encrypted) | ✅ Yes | ✅ Yes (safe) |
-| `.env.keys` | ❌ No | 🔒 Securely only |
-| `.env.local` | ❌ No | ❌ No |
-
----
-
-**TL;DR:** Commit encrypted `.env` → Don't commit `.env.keys` → Share keys privately with team → They decrypt locally and run!
+Local development should use `.env.local` (symlinked secret files), not decrypted `.env.production`.

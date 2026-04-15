@@ -11,8 +11,8 @@
   "scripts": {
     "dev": "tsx scripts/ensure-sanity-cors.ts && tsx scripts/ensure-netlify-cjs.ts && pnpm exec sanity dev",
     "start": "pnpm exec sanity start",
-    "build": "node scripts/sanitize-cors-env.js && pnpm exec sanity build",
-    "build:ci": "node scripts/sanitize-cors-env.js && pnpm exec sanity build && node scripts/deploy-schema-if-token.js",
+    "build": "pnpm run env:check:encrypted:prod && node scripts/sanitize-cors-env.js && pnpm exec sanity build",
+    "build:ci": "pnpm run env:check:encrypted:prod && node scripts/sanitize-cors-env.js && pnpm exec sanity build && node scripts/deploy-schema-if-token.js",
     "deploy:schema": "pnpm exec sanity schema deploy --non-interactive",
     "deploy": "pnpm exec sanity deploy",
     "deploy-graphql": "pnpm exec sanity graphql deploy",
@@ -52,7 +52,8 @@
     "env:encrypt:prod": "pnpm exec dotenvx encrypt -f .env.production",
     "env:decrypt:stdout:prod": "pnpm exec dotenvx decrypt -f .env.production --stdout",
     "env:check:prod": "pnpm exec dotenvx decrypt -f .env.production --stdout >/dev/null && echo 'env.production decrypt check: ok'",
-    "env:run:prod": "pnpm exec dotenvx run -f .env.production --"
+    "env:run:prod": "pnpm exec dotenvx run -f .env.production --",
+    "env:check:encrypted:prod": "node ./scripts/check-env-production-encrypted.mjs --file .env.production"
   },
   "keywords": [
     "sanity"
