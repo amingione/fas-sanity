@@ -121,11 +121,26 @@ const GROUP_MAP: Record<string, {group: string; value: string}> = {
 const normalizeLabel = (value: unknown): string =>
   String(value || '')
     .replace(/\u00A0/g, ' ')
+    .replace(/\(\s*\+?\$[\d,.]+\s*\)/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/\s*([-/–—])\s*/g, ' $1 ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
+
+const findOptionByTitle = (options: MedusaOption[], title: string): MedusaOption | undefined => {
+  const target = normalizeLabel(title)
+  return options.find((entry) => normalizeLabel(entry.title) === target)
+}
+
+const pickOptionValue = (option: MedusaOption, candidates: string[]): MedusaOptionValue | undefined => {
+  for (const candidate of candidates) {
+    const target = normalizeLabel(candidate)
+    const found = option.values.find((entry) => normalizeLabel(entry.value) === target)
+    if (found) return found
+  }
+  return undefined
+}
 
 const parseArgs = (): CliOptions => {
   const args = process.argv.slice(2)
@@ -370,37 +385,60 @@ const resolveAddOn = async (
   const expectedDeltaCents = toCents(addOn.priceDelta)
 
   const mapped = GROUP_MAP[normalized]
-  if (!mapped) {
-    return {
-      addOnKey: addOn._key,
-      label: addOn.label,
-      expectedDeltaCents,
-      reason: 'no_group_mapping',
+
+  const attemptedReasons: string[] = []
+  const optionCandidates: Array<{option: MedusaOption; valueCandidates: string[]}> = []
+
+  if (mapped) {
+    const mappedOption = findOptionByTitle(catalog.options, mapped.group)
+    if (mappedOption) {
+      optionCandidates.push({
+        option: mappedOption,
+        valueCandidates: [mapped.value, 'Yes'],
+      })
+    } else {
+      attemptedReasons.push(`option_not_found:${mapped.group}`)
     }
   }
 
-  const option = catalog.options.find(
-    (entry) => normalizeLabel(entry.title) === normalizeLabel(mapped.group),
-  )
-  if (!option) {
+  const directOption = findOptionByTitle(catalog.options, addOn.label)
+  if (directOption && !optionCandidates.some((candidate) => candidate.option.id === directOption.id)) {
+    optionCandidates.push({
+      option: directOption,
+      valueCandidates: mapped ? [mapped.value, 'Yes'] : ['Yes'],
+    })
+  }
+
+  if (!optionCandidates.length) {
     return {
       addOnKey: addOn._key,
       label: addOn.label,
       expectedDeltaCents,
-      reason: `option_not_found:${mapped.group}`,
+      reason: attemptedReasons[0] || 'no_group_mapping',
     }
   }
 
-  const optionValue = option.values.find(
-    (entry) => normalizeLabel(entry.value) === normalizeLabel(mapped.value),
-  )
-  if (!optionValue) {
+  let option: MedusaOption | undefined
+  let optionValue: MedusaOptionValue | undefined
+  for (const candidate of optionCandidates) {
+    const picked = pickOptionValue(candidate.option, candidate.valueCandidates)
+    if (picked) {
+      option = candidate.option
+      optionValue = picked
+      break
+    }
+    attemptedReasons.push(
+      `option_value_not_found:${candidate.valueCandidates.join('|')}@${candidate.option.title}`,
+    )
+  }
+
+  if (!option || !optionValue) {
     return {
       addOnKey: addOn._key,
       label: addOn.label,
       expectedDeltaCents,
-      medusaOptionId: option.id,
-      reason: `option_value_not_found:${mapped.value}`,
+      medusaOptionId: optionCandidates[0]?.option.id,
+      reason: attemptedReasons[0] || 'option_value_not_found',
     }
   }
 
