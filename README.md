@@ -43,6 +43,9 @@ Common checks:
 - `node ../scripts/docs-drift-check.mjs --repo fas-sanity`
 - `pnpm build`
 
+Content exports:
+- `pnpm env:run:prod pnpm export:products -- --mode content --out exports/products.csv`
+
 ## Env Workflow (Canonical)
 
 If you use cross-repo env tooling from your shell profile, add this to `~/.zshrc`:
@@ -108,5 +111,5 @@ Examples:
 ```bash
 fasenv env:check:prod
 fasenv env:decrypt:stdout:prod
-fasenv env:run:prod -- node -e "console.log(process.env.SANITY_PROJECT_ID)"
+fasenv env:run:prod node -e "console.log(process.env.SANITY_PROJECT_ID)"
 ```

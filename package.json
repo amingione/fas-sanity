@@ -44,6 +44,7 @@
     "sync:addon-mappings": "tsx scripts/sync/addon-mapping-sync.ts",
     "sync:addon-mappings:apply": "tsx scripts/sync/addon-mapping-sync.ts --apply",
     "verify:addon-mappings": "tsx scripts/sync/addon-mapping-sync.ts --verify",
+    "export:products": "tsx scripts/export-products.ts",
     "seed:email-channel": "tsx scripts/ensure-email-marketing-channel.ts",
     "audit:schema-types": "tsx scripts/audit-unused-schema-types.ts",
     "sync:products-to-medusa": "tsx scripts/syncProductsToMedusa.ts",
