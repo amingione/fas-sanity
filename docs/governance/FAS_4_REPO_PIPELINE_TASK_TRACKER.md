@@ -1,6 +1,6 @@
 # FAS 4-Repo Pipeline Task Tracker
 
-Last Updated: 2026-04-02 (Pass 2)
+Last Updated: 2026-04-16
 Owner: Cross-repo governance
 Status Model: `not_started` | `in_progress` | `blocked` | `done`
 
@@ -56,6 +56,7 @@ Sanity (content) -> Medusa (commerce authority) -> fas-cms-fresh (storefront) an
 | WS2-1 | Medusa authoritative product + variant + pricing integrity checks | fas-medusa | done | price-normalization.ts and money-normalization.ts hardened (2026-04-01). normalizeSanityPriceToCents deterministic dollars-only. Powerstroke incident resolved and verified. |
 | WS2-2 | Ensure storefront reads product price/availability only from Medusa | fas-cms-fresh | done | Verified 2026-04-02: medusa-storefront-pricing.ts uses medusaFetch only. search.ts uses listStoreProductsForPricing + attachMedusaPricingBySanityIdentity. No Sanity price fields consumed. |
 | WS2-3 | Ensure dash product operations map to Medusa admin APIs | fas-dash | done | Verified 2026-04-02: all product PATCH routes use medusaAdminFetch to /admin/products/:id. No parallel product authority. Formal audit document created 2026-04-08: docs/governance/WS2-3-DASH-PRODUCT-OPS-AUDIT.md. Automated enforcement: R10-ws2-3-dash-product-ops in scripts/compliance/fas-compliance-check.ts. |
+| WS2-4 | Harden Sanity→Medusa collection mapping guardrails | fas-medusa | done | Verified 2026-04-16: ignore invalid Sanity `medusaCollectionId` and fall back to lookup/create by `metadata.sanity_id` in taxonomy sync step. |
 
 ### WS3 - Order Pipeline and Reconciliation
 
