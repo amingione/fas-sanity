@@ -1,10 +1,94 @@
 [
   {
-    "oldSlug": "/products/67l-kit",
-    "newSlug": "/products/6-7l-powerstroke-piping-kit-2011-2026"
+    "oldSlug": "/hellcat-supercharger-porting",
+    "newSlug": "/shop/2-4l-2-7l-snout-porting"
   },
   {
-    "oldSlug": "/products/67l-kit",
-    "newSlug": "/products/6-7l-powerstroke-piping-kit-2011-2026"
+    "oldSlug": "/hellcat-supercharger-porting/",
+    "newSlug": "/shop/2-4l-2-7l-snout-porting"
+  },
+  {
+    "oldSlug": "/about/refund_returns",
+    "newSlug": "/returnRefundPolicy"
+  },
+  {
+    "oldSlug": "/shop/billet-parts",
+    "newSlug": "/shop/?filters=billet-parts"
+  },
+  {
+    "oldSlug": "/shop/billet-parts/",
+    "newSlug": "/shop/?filters=billet-parts"
+  },
+  {
+    "oldSlug": "/shop/fas-predator-lower-pulley",
+    "newSlug": "/shop/fas-predator-lower-pulley-no-tune-required"
+  },
+  {
+    "oldSlug": "/shop/fas-predator-lower-pulley/",
+    "newSlug": "/shop/fas-predator-lower-pulley-no-tune-required"
+  },
+  {
+    "oldSlug": "/shop/6-7l-ford-powerstroke-piping-kit",
+    "newSlug": "/shop/2020-6-7l-powerstroke-piping-kit"
+  },
+  {
+    "oldSlug": "/shop/6-7l-ford-powerstroke-piping-kit/",
+    "newSlug": "/shop/2020-6-7l-powerstroke-piping-kit"
+  },
+  {
+    "oldSlug": "/customBuild",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/customFab",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/faq2",
+    "newSlug": "/faq/"
+  },
+  {
+    "oldSlug": "/platform",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/cyberMonday",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/coreExchange",
+    "newSlug": "/shop/hellcat-throttle-body-porting"
+  },
+  {
+    "oldSlug": "/igla",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/porting",
+    "newSlug": "/shop/?categorySlug=porting"
+  },
+  {
+    "oldSlug": "/power-packages",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/packages/power-packages",
+    "newSlug": "/shop/"
+  },
+  {
+    "oldSlug": "/services",
+    "newSlug": "/services/overview/"
+  },
+  {
+    "oldSlug": "/services/AllServices",
+    "newSlug": "/services/overview/"
+  },
+  {
+    "oldSlug": "/services/Services",
+    "newSlug": "/services/overview/"
+  },
+  {
+    "oldSlug": "/products?sort=featured&start=0&end=124",
+    "newSlug": "/shop/"
   }
 ]
