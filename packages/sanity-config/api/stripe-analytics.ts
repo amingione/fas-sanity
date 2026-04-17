@@ -1,5 +1,3 @@
-import {fetchStripeAnalytics} from '../src/server/stripe-analytics'
-
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
   'Cache-Control': 'no-store',
@@ -27,6 +25,9 @@ export default async function handler(request: Request): Promise<Response> {
     })
   }
 
+  // Architecture enforcement: Stripe access is prohibited outside Medusa.
+  // This endpoint remains for backwards compatibility with Studio UI, but the
+  // data source must move to Medusa-owned reporting.
   try {
     ensureStudioHeaders(request.headers)
   } catch (err) {
@@ -34,18 +35,12 @@ export default async function handler(request: Request): Promise<Response> {
     return new Response(JSON.stringify({error: message}), {status: 401, headers: JSON_HEADERS})
   }
 
-  try {
-    const analytics = await fetchStripeAnalytics()
-    if (method === 'HEAD') {
-      return new Response(null, {status: 200, headers: JSON_HEADERS})
-    }
-    return new Response(JSON.stringify(analytics), {status: 200, headers: JSON_HEADERS})
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to load Stripe analytics'
-    const status = /missing STRIPE_SECRET_KEY/i.test(message) ? 503 : 500
-    console.error('stripe-analytics API failed', err)
-    return new Response(JSON.stringify({error: message}), {status, headers: JSON_HEADERS})
+  const error =
+    '410 GONE: Stripe analytics is disabled in fas-sanity. Use Medusa for Stripe reporting.'
+  if (method === 'HEAD') {
+    return new Response(null, {status: 410, headers: JSON_HEADERS})
   }
+  return new Response(JSON.stringify({error}), {status: 410, headers: JSON_HEADERS})
 }
 
 function ensureStudioHeaders(headers: Headers) {
@@ -66,4 +61,3 @@ function ensureStudioHeaders(headers: Headers) {
     throw new Error('Missing Sanity headers')
   }
 }
-

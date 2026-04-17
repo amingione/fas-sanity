@@ -181,7 +181,14 @@ const product = defineType({
     defineField({name: 'medusaProductId', type: 'string', readOnly: true, validation: (Rule) => Rule.required(), group: 'integration'}),
     defineField({name: 'medusaVariantId', type: 'string', readOnly: true, group: 'integration'}),
     defineField({name: 'lastSyncedFromMedusa', type: 'datetime', readOnly: true, group: 'integration'}),
-    defineField({name: 'price', type: 'number', readOnly: true, group: 'integration'}),
+    defineField({
+      name: 'price',
+      type: 'number',
+      readOnly: true,
+      description:
+        'Mirrored from Medusa (commerce authority). Fix by updating the Medusa variant price; do not edit in Sanity.',
+      group: 'integration',
+    }),
     defineField({name: 'compareAtPrice', type: 'number', readOnly: true, group: 'integration'}),
     defineField({name: 'discountType', type: 'string', readOnly: true, group: 'integration'}),
     defineField({name: 'priceCurrency', type: 'string', readOnly: true, group: 'integration'}),
@@ -248,7 +255,14 @@ const product = defineType({
     defineField({name: 'boxDimensions', type: 'string', readOnly: true, group: 'integration'}),
     defineField({name: 'condition', type: 'string', readOnly: true, group: 'integration'}),
     defineField({name: 'coreRequired', type: 'boolean', readOnly: true, group: 'integration'}),
-    defineField({name: 'installOnly', type: 'boolean', readOnly: true, group: 'integration'}),
+    defineField({
+      name: 'installOnly',
+      type: 'boolean',
+      readOnly: true,
+      description:
+        'Mirrored from Medusa (commerce authority). Fix by updating Medusa metadata (install_only); do not edit in Sanity.',
+      group: 'integration',
+    }),
     defineField({name: 'merchantCenterStatus', type: 'object', readOnly: true, group: 'integration', fields: [
       defineField({name: 'isApproved', type: 'boolean'}),
       defineField({name: 'issues', type: 'array', of: [defineArrayMember({type: 'string'})]}),

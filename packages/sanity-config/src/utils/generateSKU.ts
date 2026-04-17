@@ -1,5 +1,4 @@
 import type {SanityClient} from '@sanity/client'
-import Stripe from 'stripe'
 
 // DRIFT ACKNOWLEDGEMENT:
 // This generator intentionally enforces deterministic SKU/MPN formats.
@@ -60,20 +59,7 @@ export async function generateFasSKU(
 
 export async function syncSKUToStripe(sku?: string | null, stripeProductId?: string | null) {
   if (!sku || !stripeProductId) return
-
-  const secret = typeof process !== 'undefined' ? process.env?.STRIPE_SECRET_KEY : undefined
-  if (!secret) {
-    console.warn('STRIPE_SECRET_KEY is not configured; cannot sync SKU to Stripe.')
-    return
-  }
-
-  try {
-    const stripe = new Stripe(secret, {apiVersion: '2025-08-27.basil'})
-    const product = await stripe.products.retrieve(stripeProductId)
-    const merged = {...(product.metadata || {}), sku}
-    await stripe.products.update(stripeProductId, {metadata: merged})
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.warn('Failed to sync SKU to Stripe:', message)
-  }
+  console.warn(
+    'Direct Stripe writes are disabled in fas-sanity by architecture policy. Update Stripe metadata via Medusa.',
+  )
 }

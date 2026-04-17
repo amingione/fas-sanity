@@ -2,7 +2,7 @@ import {useEffect, useMemo, useRef} from 'react'
 import {TextInput} from '@sanity/ui'
 import {set, type StringInputProps, useClient, useFormValue} from 'sanity'
 
-import {generateFasSKU, syncSKUToStripe} from '../utils/generateSKU'
+import {generateFasSKU} from '../utils/generateSKU'
 
 const API_VERSION = '2024-10-01'
 
@@ -18,7 +18,6 @@ export default function AutoSKUInput(props: StringInputProps) {
 
   const titleValue = useFormValue(['title']) as string | undefined
   const platformValue = useFormValue(['platform']) as string | undefined
-  const stripeProductId = useFormValue(['stripeProductId']) as string | undefined
 
   const title = useMemo(() => (titleValue || '').toString().trim(), [titleValue])
   const platform = useMemo(() => (platformValue || '').toString().trim(), [platformValue])
@@ -46,10 +45,6 @@ export default function AutoSKUInput(props: StringInputProps) {
         if (cancelled || !newSKU || newSKU === value) return
 
         onChange?.(set(newSKU))
-
-        if (stripeProductId) {
-          await syncSKUToStripe(newSKU, stripeProductId)
-        }
       } catch (error) {
         console.warn('Failed to auto-generate SKU:', error)
       } finally {
@@ -64,7 +59,7 @@ export default function AutoSKUInput(props: StringInputProps) {
     return () => {
       cancelled = true
     }
-  }, [client, onChange, platform, stripeProductId, title, value])
+  }, [client, onChange, platform, title, value])
 
   return (
     <TextInput

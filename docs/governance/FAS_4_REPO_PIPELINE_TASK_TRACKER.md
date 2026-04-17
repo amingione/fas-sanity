@@ -1,6 +1,6 @@
 # FAS 4-Repo Pipeline Task Tracker
 
-Last Updated: 2026-04-16
+Last Updated: 2026-04-17
 Owner: Cross-repo governance
 Status Model: `not_started` | `in_progress` | `blocked` | `done`
 
@@ -48,6 +48,7 @@ Sanity (content) -> Medusa (commerce authority) -> fas-cms-fresh (storefront) an
 | WS1-1 | Remove or quarantine legacy direct Stripe commerce calls outside Medusa | fas-cms-fresh, fas-dash | done | fas-dash: orphaned stripe.ts deleted (2026-04-02). fas-cms-fresh: legacy checkout routes 410'd. No direct Stripe SDK usage outside Medusa. |
 | WS1-2 | Remove or quarantine direct Shippo commerce calls outside Medusa | fas-cms-fresh, fas-dash | done | fas-dash: orphaned shippo.ts deleted (2026-04-02). fas-cms-fresh: all Shippo paths route via Medusa fulfillment-shippo module. |
 | WS1-3 | Enforce read-only labeling for mirrored commerce data in Sanity | fas-sanity | done | Verified 2026-04-02: all fields in integration group on product + productVariant schemas have readOnly: true. |
+| WS1-4 | Disable direct Stripe SDK usage in Sanity Studio | fas-sanity | done | Verified 2026-04-17: disabled `stripe-analytics` Studio API + removed SKU-to-Stripe direct write hook; Stripe usage remains Medusa-only. |
 
 ### WS2 - Product and Pricing Authority
 

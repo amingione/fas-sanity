@@ -1,10 +1,3 @@
-import Stripe from 'stripe'
-
-const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2025-08-27.basil'
-const DAY_SECONDS = 60 * 60 * 24
-const DAY_BUCKETS = 30
-const DEFAULT_CHARGE_SCAN_LIMIT = getNumericEnv('SANITY_STUDIO_STRIPE_ANALYTICS_CHARGE_LIMIT', 5000)
-
 export type StripeAnalyticsSummary = {
   currency: string
   totalSalesAllTime: number
@@ -35,143 +28,16 @@ export type StripeAnalyticsPayload = {
   rangeEnd: string
 }
 
+/**
+ * Stripe access is prohibited outside Medusa.
+ *
+ * This module intentionally does not call Stripe APIs. Any Stripe reporting
+ * should be implemented in Medusa (commerce authority) and surfaced to Studio
+ * via Medusa-owned endpoints.
+ */
 export async function fetchStripeAnalytics(): Promise<StripeAnalyticsPayload> {
-  const stripe = requireStripeClient()
-  const now = Math.floor(Date.now() / 1000)
-  const todayStart = startOfDayUnix(now)
-  const rangeStart = todayStart - (DAY_BUCKETS - 1) * DAY_SECONDS
-
-  const dayBuckets = seedDayBuckets(rangeStart, DAY_BUCKETS)
-  let totalSalesAllTime = 0
-  let totalSales30d = 0
-  let totalOrders = 0
-  let refundCount = 0
-  let refundTotal = 0
-  let currency: string | null = null
-  let inspectedCharges = 0
-  const chargeIterator = stripe.charges.list({
-    limit: 100,
-    expand: ['data.refunds'],
-  }) as Stripe.ApiListPromise<Stripe.Charge>
-
-  try {
-    for await (const charge of chargeIterator) {
-      if (!charge?.paid || charge.status !== 'succeeded') {
-        continue
-      }
-      const amountCaptured = charge.amount_captured ?? charge.amount ?? 0
-      totalSalesAllTime += amountCaptured
-      totalOrders += 1
-      if (!currency && charge.currency) {
-        currency = charge.currency
-      }
-
-      if (charge.created >= rangeStart) {
-        totalSales30d += amountCaptured
-        const bucket = bucketKey(charge.created)
-        if (bucket && dayBuckets.has(bucket)) {
-          dayBuckets.set(bucket, (dayBuckets.get(bucket) || 0) + amountCaptured)
-        }
-      }
-
-      if ((charge.amount_refunded || 0) > 0) {
-        const refundEntries: Array<Pick<Stripe.Refund, 'amount'>> =
-          charge.refunds?.data && charge.refunds.data.length > 0
-            ? charge.refunds.data
-            : charge.amount_refunded
-              ? [{amount: charge.amount_refunded}]
-              : []
-        for (const refund of refundEntries) {
-          if (!refund?.amount) continue
-          refundTotal += refund.amount
-          refundCount += 1
-        }
-      }
-
-      inspectedCharges += 1
-      if (inspectedCharges >= DEFAULT_CHARGE_SCAN_LIMIT) {
-        break
-      }
-    }
-  } catch (err) {
-    console.error('stripe-analytics: failed to iterate charges', err)
-  }
-
-  const chart: StripeAnalyticsChartPoint[] = Array.from(dayBuckets.entries()).map(
-    ([date, cents]) => ({
-      date,
-      total: centsToAmount(cents),
-    }),
+  throw new Error(
+    'Stripe analytics is disabled in fas-sanity. Use Medusa for Stripe reporting.',
   )
-
-  const summary: StripeAnalyticsSummary = {
-    currency: (currency || 'usd').toUpperCase(),
-    totalSalesAllTime: centsToAmount(totalSalesAllTime),
-    totalSales30d: centsToAmount(totalSales30d),
-    totalOrders,
-    refundCount,
-    refundTotal: centsToAmount(refundTotal),
-    averageOrderValue: totalOrders ? centsToAmount(totalSalesAllTime / totalOrders) : 0,
-  }
-
-  const topProducts = await collectTopProducts(stripe, now)
-
-  return {
-    summary,
-    salesByDay: chart,
-    topProducts,
-    generatedAt: new Date().toISOString(),
-    rangeStart: new Date(rangeStart * 1000).toISOString(),
-    rangeEnd: new Date(now * 1000).toISOString(),
-  }
 }
 
-function requireStripeClient(): Stripe {
-  const secret = process.env.STRIPE_SECRET_KEY
-
-  if (!secret) {
-    throw new Error('Stripe analytics unavailable: missing STRIPE_SECRET_KEY')
-  }
-
-  return new Stripe(secret, {apiVersion: STRIPE_API_VERSION})
-}
-
-function centsToAmount(cents: number): number {
-  if (!Number.isFinite(cents)) return 0
-  return Number((cents / 100).toFixed(2))
-}
-
-function startOfDayUnix(timestampSec: number): number {
-  const date = new Date(timestampSec * 1000)
-  date.setUTCHours(0, 0, 0, 0)
-  return Math.floor(date.getTime() / 1000)
-}
-
-function seedDayBuckets(start: number, days: number): Map<string, number> {
-  const map = new Map<string, number>()
-  for (let i = 0; i < days; i += 1) {
-    const date = new Date((start + i * DAY_SECONDS) * 1000)
-    map.set(date.toISOString().slice(0, 10), 0)
-  }
-  return map
-}
-
-function bucketKey(timestampSec: number): string {
-  const date = new Date(timestampSec * 1000)
-  return date.toISOString().slice(0, 10)
-}
-
-function getNumericEnv(name: string, fallback: number) {
-  const raw = process.env[name]
-  if (!raw) return fallback
-  const value = Number(raw)
-  return Number.isFinite(value) && value > 0 ? value : fallback
-}
-
-async function collectTopProducts(
-  _stripe: Stripe,
-  _now: number,
-): Promise<StripeAnalyticsProductRow[]> {
-  console.warn('stripe-analytics: checkout-session aggregation disabled; use payment-intent based reporting.')
-  return []
-}
