@@ -11,7 +11,8 @@ Applies to: `fas-medusa`, `fas-dash`, `fas-cms-fresh`, `fas-sanity`
 | `fas-dash` | Internal admin and operations UI |
 | `fas-cms-fresh` | Customer-facing storefront |
 | Stripe | Payment processor only |
-| Sanity | Content only |
+| Sanity | Content only: SEO, blogs, sitemaps, direct web pages, Vendor Portal, etc |
+| Shippo | Fully Dynamic Shipping Partner |
 
 ## Commerce source of truth
 Medusa is source of truth for products, variants, pricing, inventory, cart, checkout, shipping logic, and orders.
